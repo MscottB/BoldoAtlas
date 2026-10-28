@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Que el autor pueda crear y editar su organigrama en la app: unidades (gerencia, área, subárea), jerarquía y conexiones laterales en un lienzo, jefaturas, fichas de trabajadores y vacantes, etiquetas, directorio, búsqueda `Ctrl+K`, tema claro/oscuro con acento, bienvenida con datos de ejemplo y configuración de la organización.
+**Goal:** Que el autor pueda crear y editar su organigrama en la app: unidades (gerencia, área, subárea), jerarquía y conexiones laterales en un lienzo, jefaturas, fichas de trabajadores y vacantes, mantenedores (cargo, tipo de contrato, sede, jornada), etiquetas, directorio, búsqueda `Ctrl+K`, tema claro/oscuro con acento, bienvenida con datos de ejemplo y configuración de la organización.
 
 **Architecture:** La lógica vive en funciones puras testeables: repositorios que **arman sentencias SQL** (`Sentencia[]`) sin ejecutarlas, dominio de jerarquía y layout. Un store Pinia (`useOrganizacion`) carga todo con `consultar` y escribe con `lote` (una transacción por acción). Los componentes solo leen el store y llaman sus acciones. Los tests de repositorios y del store corren el SQL real sobre `node:sqlite` en memoria con el mismo esquema `0001_inicial.sql`.
 
@@ -20,6 +20,7 @@
 - Borrado siempre lógico (`deleted_at`); las lecturas normales filtran `deleted_at IS NULL`.
 - Correo vacío o solo espacios se guarda como `NULL`.
 - Gerencia y área **no** se guardan en el trabajador: se derivan de la jerarquía.
+- Cargo, tipo de contrato, sede y jornada se eligen de sus mantenedores (tablas `cargos`, `tipos_contrato`, `sedes`, `jornadas`); la ficha nunca guarda esos datos como texto libre. Desactivar un valor es borrado lógico: sale de las listas, pero las fichas que lo usan lo conservan y lo muestran "(inactivo)".
 - Lienzo: **sin** `only-render-visible-elements`; ramas **colapsadas por defecto** desde el nivel 2; nodos livianos (sin sombras ni transiciones por nodo).
 - Guardado automático: no existe botón "Guardar"; indicador "Guardado" en la barra superior.
 - Eliminar muestra un aviso con **Deshacer** durante 8 s.
@@ -35,6 +36,7 @@
 3. **Correo repetido con otras mayúsculas o espacios, o vacío**: mensaje claro ("Ya existe una persona con ese correo"); vacío se guarda como `NULL`. → Tests en Tasks 2 y 4.
 4. **Deshacer después de "mover contenido y eliminar"**: las subunidades y personas vuelven a su superior original, no se quedan en el nuevo. → Test en Task 5 (`deshacer restaura el contenido movido`).
 5. **Organización grande totalmente expandida (2.000 unidades)**: el lienzo debe seguir ≥ 30 FPS al arrastrar con el nodo real. → Medición en Task 14.
+6. **Valor de mantenedor duplicado o desactivado**: agregar "analista  de Compras" cuando existe "Analista de compras" sugiere el existente en vez de duplicar; desactivar un cargo en uso no lo borra de las fichas ni del directorio. → Tests en Task 5 (`crearValor` y `desactivarValor`).
 
 ---
 
@@ -66,17 +68,20 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
 
 ---
 
-### Task 2: Repositorios (sentencias SQL) y entorno de pruebas SQLite
+### Task 2: Mantenedores en el esquema, repositorios (sentencias SQL) y entorno de pruebas SQLite
 
 **Files:**
-- Create: `src/db/repos/unidades.ts`, `trabajadores.ts`, `etiquetas.ts`, `conexiones.ts`, `meta.ts`; `src/db/tipos.ts`
+- Modify: `src-tauri/migrations/0001_inicial.sql` (aún no publicada, se edita en el lugar), `src/db/esquema.test.ts`
+- Create: `src/db/repos/unidades.ts`, `trabajadores.ts`, `catalogos.ts`, `etiquetas.ts`, `conexiones.ts`, `meta.ts`; `src/db/tipos.ts`
 - Create: `src/db/prueba/sqlite.ts` (solo tests: abre `:memory:` con el esquema y ejecuta `Sentencia[]` en una transacción, imitando `db::lote`)
 - Test: `src/db/repos/*.test.ts`
 
 **Interfaces:**
 - Consumes: `Sentencia` de `src/db/cliente.ts`; `nuevoId`, `ahora` (Task 1).
-- Produces (`src/db/tipos.ts`): `Unidad { id, tipo: 'gerencia'|'area'|'subarea'|'otra', nombre, descripcion: string|null, parent_id: string|null, jefe_id: string|null, orden }`, `Trabajador { id, estado: 'activo'|'vacante', nombre: string|null, correo: string|null, telefono: string|null, cargo: string|null, unidad_id, foto_png: string|null, notas: string|null }`, `Etiqueta { id, nombre, color }`, `Conexion { id, origen_id, destino_id, etiqueta: string|null }`.
+- Esquema (cambia `0001_inicial.sql`): cuatro tablas `cargos`, `tipos_contrato`, `sedes`, `jornadas` con columnas `id TEXT PRIMARY KEY NOT NULL, nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0), orden INTEGER NOT NULL DEFAULT 0, created_at, updated_at, deleted_at` y un índice único parcial `ux_<tabla>_nombre ON <tabla>(lower(trim(nombre))) WHERE deleted_at IS NULL`. En `trabajadores`, la columna `cargo TEXT` se reemplaza por `cargo_id TEXT REFERENCES cargos(id) DEFERRABLE INITIALLY DEFERRED` y se agregan `tipo_contrato_id`, `sede_id`, `jornada_id` (mismas reglas, cada uno con su índice). El CHECK de vacante pasa a `estado = 'activo' OR cargo_id IS NOT NULL`.
+- Produces (`src/db/tipos.ts`): `Unidad { id, tipo: 'gerencia'|'area'|'subarea'|'otra', nombre, descripcion: string|null, parent_id: string|null, jefe_id: string|null, orden }`, `Trabajador { id, estado: 'activo'|'vacante', nombre: string|null, correo: string|null, telefono: string|null, cargo_id: string|null, tipo_contrato_id: string|null, sede_id: string|null, jornada_id: string|null, unidad_id, foto_png: string|null, notas: string|null }`, `TablaCatalogo = 'cargos'|'tipos_contrato'|'sedes'|'jornadas'`, `TABLAS_CATALOGO: readonly TablaCatalogo[]`, `ValorCatalogo { id, nombre, orden, deleted_at: string|null }`, `Etiqueta { id, nombre, color }`, `Conexion { id, origen_id, destino_id, etiqueta: string|null }`.
 - Produces (cada función devuelve `Sentencia[]`, nunca ejecuta):
+  - `catalogos`: `crearValor(tabla, nombre): { id, sentencias }`, `renombrarValor(tabla, id, nombre)`, `moverValor(tabla, id, orden)`, `desactivarValor(tabla, id)`, `reactivarValor(tabla, id)`. El nombre de tabla no puede ir como parámetro SQL: toda función valida `tabla` contra `TABLAS_CATALOGO` y lanza `Error('Catálogo desconocido')` si no está.
   - `unidades`: `crearUnidad(datos): { id, sentencias }`, `editarUnidad(id, cambios)`, `moverUnidad(id, nuevoPadre: string|null)`, `asignarJefe(id, jefeId: string|null)`, `eliminarUnidad(u: Unidad, contenido: { hijos: string[], personas: string[] })` (mueve hijos y personas a `u.parent_id` y marca `deleted_at`), `restaurarUnidad(id, contenido: { hijos: string[], personas: string[] })` (quita `deleted_at` y devuelve el contenido a `id`); lecturas `SQL_UNIDADES`.
   - `trabajadores`: `crearTrabajador(datos)`, `editarTrabajador(id, cambios)` (normaliza correo), `eliminarTrabajador(id)`, `restaurarTrabajador(id)`; `normalizarCorreo(c: string|null): string|null`.
   - `etiquetas`: `crearEtiqueta`, `etiquetarUnidad(unidadId, etiquetaId)`, `quitarEtiqueta(unidadId, etiquetaId)`.
@@ -84,7 +89,9 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
   - `meta`: `guardarMeta(clave, valor)`; claves `org_nombre`, `logo_png`.
 - Toda sentencia de edición fija `updated_at = ahora()`.
 
+- [ ] **Step 0: Esquema.** Actualizar los tests de `src/db/esquema.test.ts` que usan `cargo` para que usen `cargo_id` (insertando antes un cargo) y agregar: `cargos` rechaza `" ANALISTA "` si existe `"analista"` (`/UNIQUE/`) y lo acepta si el existente está desactivado; `trabajadores.cargo_id` con un id inexistente falla al confirmar (`/FOREIGN KEY/`); la clave foránea de cada catálogo tiene índice (el test de índices existente debe seguir pasando). Verlos fallar, cambiar `0001_inicial.sql`, verlos pasar, y correr también `cargo test --manifest-path src-tauri/Cargo.toml` (la migración se incluye en Rust).
 - [ ] **Step 1: Tests que fallan** (uno por función; se aplican con `src/db/prueba/sqlite.ts` y se consulta el resultado):
+  - `crearValor('cargos', 'Analista')` crea el valor; `crearValor('usuarios', 'x')` lanza `'Catálogo desconocido'`; `desactivarValor` deja `deleted_at` y el trabajador que lo usaba conserva su `cargo_id`; `reactivarValor` lo devuelve.
   - `crearUnidad` crea raíz y subunidad con `parent_id` correcto.
   - `eliminarUnidad` con 2 hijos y 3 personas: hijos y personas quedan en el superior; la unidad queda con `deleted_at`.
   - `restaurarUnidad` devuelve hijos y personas a la unidad restaurada.
@@ -94,7 +101,7 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
   - `crearConexion(a, a)` lanza `/CHECK/`.
   - `guardarMeta('org_nombre', 'X')` inserta o reemplaza (`INSERT … ON CONFLICT(clave) DO UPDATE`).
 - [ ] **Step 2:** Verificar que fallan; implementar; verificar que pasan (`npx vitest run src/db`).
-- [ ] **Step 3: Commit** `feat(db): repositorios de unidades, trabajadores, etiquetas, conexiones y meta`
+- [ ] **Step 3: Commit** `feat(db): mantenedores y repositorios de unidades, trabajadores, catálogos, etiquetas, conexiones y meta`
 
 ---
 
@@ -137,6 +144,7 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
   - `ux_etiquetas_nombre` → `"Ya existe una etiqueta con ese nombre."`; `ux_unidad_etiquetas` → `"La unidad ya tiene esa etiqueta."`
   - `"CHECK constraint failed: …estado = 'vacante' OR…nombre…"` → `"Falta el nombre de la persona."`; el de `cargo` → `"Una vacante necesita un cargo."`
   - `"CHECK constraint failed: origen_id <> destino_id"` → `"Una unidad no puede conectarse consigo misma."`
+  - `ux_cargos_nombre`, `ux_tipos_contrato_nombre`, `ux_sedes_nombre`, `ux_jornadas_nombre` → `"Ese valor ya existe en la lista."`
   - `"FOREIGN KEY constraint failed"` → `"La unidad o persona relacionada ya no existe."`
   - Texto desconocido → se devuelve tal cual (nunca se oculta el error).
 - [ ] **Step 2:** Verificar que fallan; implementar; verificar que pasan.
@@ -147,7 +155,7 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
 ### Task 5: Store de la organización
 
 **Files:**
-- Create: `src/stores/organizacion.ts`, `src/stores/organizacion.test.ts`
+- Create: `src/stores/organizacion.ts`, `src/stores/organizacion.test.ts`, `src/lib/texto.ts`, `src/lib/texto.test.ts`
 
 **Interfaces:**
 - Consumes: `consultar`, `lote`, `leerMeta` (`src/db/cliente.ts`); repos (Task 2); jerarquía (Task 3); `traducirError` (Task 4).
@@ -156,6 +164,8 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
   - getters: `raices`, `vacia` (sin unidades activas), `porId`.
   - acciones (todas `async`, devuelven `{ ok: true } | { ok: false, mensaje: string }` y recargan tras escribir): `cargar()`, `crearUnidad(datos)`, `editarUnidad(id, cambios)`, `moverUnidad(id, nuevoPadre)` (rechaza ciclos **antes** de escribir: `"No se puede mover una unidad dentro de su propia rama."`), `asignarJefe`, `eliminarUnidad(id)` (raíz con contenido → `"No se puede eliminar la unidad raíz mientras tenga contenido."`), `crearTrabajador`, `editarTrabajador`, `eliminarTrabajador`, `etiquetar`, `quitarEtiqueta`, `crearEtiqueta`, `crearConexion`, `eliminarConexion`, `guardarOrg(nombre, logo)`, `deshacer()`, `cargarEjemplo()` (organización de muestra en un solo `lote`).
   - `Borrado = { tipo: 'unidad'|'trabajador', id, contenido?: { hijos, personas }, vence: number }`; `deshacer()` solo actúa si `Date.now() < vence`.
+  - Mantenedores: estado `catalogos: Record<TablaCatalogo, ValorCatalogo[]>` (incluye los desactivados); getters `activos(tabla)` (ordenados por `orden`, luego `nombre`) y `usos(tabla, id): number` (trabajadores no borrados que lo usan); acciones `crearValor(tabla, nombre)` → `{ ok: true, id } | { ok: false, mensaje, existente?: string }` (antes de escribir busca uno activo igual con `normalizarTexto`; si lo hay, no escribe y devuelve `mensaje: 'Ya existe «<nombre existente>» en la lista.'` y `existente: id`), `renombrarValor`, `moverValor`, `desactivarValor`, `reactivarValor`.
+- Produces (`src/lib/texto.ts`): `normalizarTexto(s: string): string` (minúsculas, sin tildes ni diéresis, espacios colapsados y recortados; `'  Analista  de  Compras '` → `'analista de compras'`, `'Muñoz'` → `'munoz'`).
 - Recarga completa tras cada escritura. `// shortcut: recarga todo tras cada escritura; si una org de 2.000 unidades se siente lenta, aplicar el cambio en memoria.`
 
 - [ ] **Step 1: Tests que fallan.** `vi.mock('@/db/cliente')` con un adaptador sobre `src/db/prueba/sqlite.ts` (`consultar` → `prepare().all()`, `lote` → transacción + `data_revision`):
@@ -165,7 +175,10 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
   - `eliminarUnidad(raiz)` con hijos → `ok: false` con el mensaje de raíz.
   - `crearTrabajador` con correo repetido (`' ANA@x.cl '`) → `{ ok: false, mensaje: 'Ya existe una persona con ese correo.' }`.
   - `deshacer()` después de vencido no hace nada.
-  - `cargarEjemplo()` deja ≥ 10 unidades, ≥ 1 conexión lateral, ≥ 1 vacante y ≥ 3 etiquetas en un solo `lote` (`data_revision` sube exactamente 1).
+  - `cargarEjemplo()` deja ≥ 10 unidades, ≥ 1 conexión lateral, ≥ 1 vacante, ≥ 3 etiquetas y valores en los cuatro mantenedores en un solo `lote` (`data_revision` sube exactamente 1).
+  - `crearValor('cargos', 'analista  de Compras')` con "Analista de compras" activo → `ok: false`, `existente` = su id, sin escribir; con el existente desactivado → crea uno nuevo.
+  - `desactivarValor` de un cargo en uso: el trabajador conserva `cargo_id`, `activos('cargos')` ya no lo incluye y `usos` sigue contándolo.
+  - `normalizarTexto` (en `texto.test.ts`): los dos ejemplos de la interfaz.
 - [ ] **Step 2:** Verificar que fallan; implementar; verificar que pasan.
 - [ ] **Step 3: Commit** `feat: store de la organización con deshacer y datos de ejemplo`
 
@@ -272,8 +285,8 @@ Comportamiento: se abre al seleccionar y desplaza el lienzo (no lo tapa); `Esc` 
 **Interfaces:**
 - Produces: `validarFicha(f: { estado, nombre, cargo, correo }): Record<string, string>` (errores por campo).
 
-- [ ] **Step 1: Tests que fallan:** activo sin nombre → `{ nombre: 'Escribe el nombre.' }`; vacante sin cargo → `{ cargo: 'Una vacante necesita un cargo.' }`; correo `"ana@"` → `{ correo: 'El correo no es válido.' }`; vacante sin nombre ni correo con cargo → `{}`.
-- [ ] **Step 2:** Implementar `validarFicha` y `FichaTrabajador.vue` (Dialog): alternar Persona/Vacante ("Cubrir vacante" pasa a Persona), nombre, cargo, correo, teléfono, notas, foto opcional (PNG/JPG/WebP hasta 1 MB, se guarda en base64), unidad con selector y ruta derivada, jefe de su unidad, unidades que encabeza. Guarda al salir de cada campo si es válido; errores bajo el campo con `traducirError` para los de la base. "Eliminar" con toast **Deshacer**.
+- [ ] **Step 1: Tests que fallan:** (`validarFicha` recibe `cargo_id` en vez de `cargo`) activo sin nombre → `{ nombre: 'Escribe el nombre.' }`; vacante sin `cargo_id` → `{ cargo: 'Una vacante necesita un cargo.' }`; correo `"ana@"` → `{ correo: 'El correo no es válido.' }`; vacante sin nombre ni correo con `cargo_id` → `{}`.
+- [ ] **Step 2:** Implementar `validarFicha`, `src/features/trabajadores/SelectorCatalogo.vue` (combobox con `Command` en `Popover`: valores activos del mantenedor, el valor actual aunque esté inactivo marcado "(inactivo)", y la opción "Agregar «texto» a la lista" cuando no hay coincidencia exacta; si `crearValor` responde `existente`, selecciona ese y avisa) y `FichaTrabajador.vue` (Dialog): alternar Persona/Vacante ("Cubrir vacante" pasa a Persona), nombre, cargo, tipo de contrato, sede y jornada con `SelectorCatalogo`, correo, teléfono, notas, foto opcional (PNG/JPG/WebP hasta 1 MB, se guarda en base64), unidad con selector y ruta derivada, jefe de su unidad, unidades que encabeza. Guarda al salir de cada campo si es válido; errores bajo el campo con `traducirError` para los de la base. "Eliminar" con toast **Deshacer**.
 - [ ] **Step 3:** Verificar que los tests pasan; en la app: crear vacante, cubrirla, correo repetido muestra el mensaje.
 - [ ] **Step 4: Commit** `feat(trabajadores): ficha con vacantes, validación y foto`
 
@@ -285,9 +298,10 @@ Comportamiento: se abre al seleccionar y desplaza el lienzo (no lo tapa); `Esc` 
 - Create: `src/features/directorio/VistaDirectorio.vue`, `src/features/directorio/filtrar.ts`, `src/features/directorio/filtrar.test.ts`
 
 **Interfaces:**
-- Produces: `filtrarDirectorio(trabajadores, unidades, unidadEtiquetas, filtros: { texto, unidad: string|null, cargo: string|null, etiqueta: string|null, estado: 'activo'|'vacante'|null }, orden: { campo: 'nombre'|'cargo'|'unidad', asc: boolean }): FilaDirectorio[]` con `FilaDirectorio { id, titulo, cargo, ruta, correo, estado }`.
+- Consumes: `normalizarTexto` (Task 5), `catalogos` del store.
+- Produces: `filtrarDirectorio(trabajadores, unidades, unidadEtiquetas, catalogos, filtros: { texto, unidad: string|null, cargo_id: string|null, tipo_contrato_id: string|null, sede_id: string|null, jornada_id: string|null, etiqueta: string|null, estado: 'activo'|'vacante'|null }, orden: { campo: 'nombre'|'cargo'|'unidad', asc: boolean }): FilaDirectorio[]` con `FilaDirectorio { id, titulo, cargo, tipoContrato, sede, jornada, ruta, correo, estado }` (nombres de los valores de catálogo, también los inactivos).
 
-- [ ] **Step 1: Tests que fallan:** filtrar por unidad incluye su rama; por etiqueta usa las etiquetas de la unidad de la persona; texto busca en nombre, cargo y correo sin tildes ni mayúsculas (`"munoz"` encuentra `"Muñoz"`); orden por unidad usa la ruta.
+- [ ] **Step 1: Tests que fallan:** filtrar por unidad incluye su rama; por etiqueta usa las etiquetas de la unidad de la persona; por sede y por cargo filtran por id exacto; texto busca en nombre, cargo y correo sin tildes ni mayúsculas (`"munoz"` encuentra `"Muñoz"`); orden por unidad usa la ruta; una persona con cargo desactivado sigue apareciendo con su cargo.
 - [ ] **Step 2:** Implementar `filtrarDirectorio` y la vista (tabla con encabezados ordenables, filtros recordados con `guardarPreferencia`, clic abre la ficha, "Exportar esta lista a Excel" deshabilitado con tooltip "Fase 4", tabla con scroll horizontal en ventanas angostas).
 - [ ] **Step 3:** Verificar que los tests pasan; verificar en la app.
 - [ ] **Step 4: Commit** `feat(directorio): tabla filtrable y ordenable de personas y vacantes`
@@ -307,6 +321,7 @@ Comportamiento: se abre al seleccionar y desplaza el lienzo (no lo tapa); `Esc` 
   - **Paleta** (`Command` de shadcn en diálogo): unidades (nombre + ruta), personas (nombre + cargo) y acciones (Nueva unidad, Ir al directorio, Cambiar tema, Configuración); elegir una unidad la selecciona y centra en el lienzo.
   - **Bienvenida:** cuatro opciones: crear organización vacía (pide nombre de la organización y de la unidad raíz), cargar desde Excel (deshabilitada, "Fase 4"), abrir `.boldo` (deshabilitada, "Fase 5") y explorar un ejemplo (`cargarEjemplo()`).
   - **Configuración:** nombre de la organización, logo (PNG/JPG/WebP hasta 1 MB → `meta.logo_png`), tema, color de acento, escala de interfaz.
+  - **Configuración › Mantenedores** (`src/vistas/VistaMantenedores.vue`, ruta `/configuracion/mantenedores`): pestañas Cargos, Tipos de contrato, Sedes y Jornadas; cada una lista sus valores con el número de personas que lo usan y su estado; permite agregar (con la misma sugerencia de duplicados), renombrar en línea, subir/bajar el orden, desactivar y reactivar.
 - [ ] **Step 3:** Verificar tests y en la app, solo con teclado: `Ctrl+K` → buscar una persona → abrir ficha → `Esc`.
 - [ ] **Step 4: Commit** `feat: paleta de comandos, atajos, bienvenida y configuración`
 
@@ -330,7 +345,7 @@ Comportamiento: se abre al seleccionar y desplaza el lienzo (no lo tapa); `Esc` 
 
 | Spec | Task |
 |---|---|
-| §5 unidades, jefaturas, conexiones, etiquetas, trabajadores y vacantes | 2, 5 |
+| §5 unidades, jefaturas, conexiones, etiquetas, trabajadores, vacantes y mantenedores | 2, 5, 11, 13 |
 | §7 estructura, bienvenida, guardado automático, deshacer, paleta, atajos, accesibilidad | 8, 10, 11, 13, 14 |
 | §8 árbol, filtros, panel de unidad, ficha, directorio | 9, 10, 11, 12 |
 | §13 tema, acento, logo, nombre de la organización | 6, 13 |

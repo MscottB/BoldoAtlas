@@ -137,12 +137,22 @@ Profundidad libre. La ausencia de ciclos se valida en la capa de datos antes de 
 Único parcial (`actividad_id`) `WHERE rol = 'A'`: como máximo un Aprobador por actividad.
 La UI avisa (sin bloquear) si una actividad no tiene ningún R.
 
+### Mantenedores: `cargos`, `tipos_contrato`, `sedes`, `jornadas`
+Cuatro catálogos con la misma forma, administrados en Configuración › Mantenedores, para que la ficha use listas controladas y no texto libre:
+`nombre` NOT NULL (CHECK largo > 0), `orden` INTEGER NOT NULL DEFAULT 0 + comunes.
+Único parcial `lower(trim(nombre))` donde `deleted_at IS NULL` (por catálogo).
+Una tabla por catálogo, y no una tabla genérica de "valores", para que la clave foránea garantice el tipo correcto (en `cargo_id` solo puede ir un cargo).
+Desactivar un valor = borrado lógico: deja de ofrecerse en las listas, pero las fichas que ya lo usan lo conservan y lo muestran como "(inactivo)". El mantenedor muestra cuántas personas usan cada valor.
+
 ### `trabajadores`
 | columna | reglas |
 |---|---|
 | `estado` | NOT NULL DEFAULT 'activo', CHECK in ('activo','vacante') |
 | `nombre` | NULL solo si `estado = 'vacante'` (CHECK) |
-| `cargo` | NOT NULL si `estado = 'vacante'` (CHECK) |
+| `cargo_id` | NULL → `cargos.id`; NOT NULL si `estado = 'vacante'` (CHECK) |
+| `tipo_contrato_id` | NULL → `tipos_contrato.id` |
+| `sede_id` | NULL → `sedes.id` |
+| `jornada_id` | NULL → `jornadas.id` |
 | `correo`, `telefono` | NULL |
 | `unidad_id` | NOT NULL → `unidades.id` |
 | `foto_png` | NULL (base64) |
@@ -226,10 +236,10 @@ Pestañas: Resumen (datos, jefe, etiquetas, indicadores) · Procesos (con SIPOC,
 Formulario con datos generales, atributos (frecuencia, criticidad, estado, documento), bloque SIPOC (cuatro columnas) y lista de actividades. Cada actividad tiene una mini-matriz RACI: se agregan personas y se elige su rol.
 
 ### Ficha de trabajador
-Formulario modal; muestra la ruta Gerencia › Área › Subárea derivada, su jefe (el de su unidad), las actividades en que participa con su rol RACI y las unidades que encabeza.
+Formulario modal; cargo, tipo de contrato, sede y jornada se eligen de sus mantenedores (se puede agregar un valor nuevo desde la misma lista; si ya existe uno igual sin importar mayúsculas ni tildes, se sugiere ese en vez de duplicarlo); muestra la ruta Gerencia › Área › Subárea derivada, su jefe (el de su unidad), las actividades en que participa con su rol RACI y las unidades que encabeza.
 
 ### Directorio
-Tabla de personas y vacantes con búsqueda y filtros por unidad (incluye su rama), cargo, etiqueta de la unidad y estado. Columnas ordenables. Clic abre la ficha. Botón "Exportar esta lista a Excel" (respeta filtros).
+Tabla de personas y vacantes con búsqueda y filtros por unidad (incluye su rama), cargo, tipo de contrato, sede, jornada, etiqueta de la unidad y estado. Columnas ordenables. Clic abre la ficha. Botón "Exportar esta lista a Excel" (respeta filtros).
 
 ### Indicadores
 Calculados al vuelo con funciones puras sobre los datos (sin tablas extra):
@@ -285,7 +295,7 @@ Limitación aceptada: sin una base común de referencia, "Diferente" no distingu
 
 - **Plantilla descargable** `Plantilla_BoldoAtlas.xlsx` con hojas `Unidades` y `Trabajadores`, encabezados fijos, validación de listas (tipo, estado) y 3 filas de ejemplo. Una hoja `Instrucciones` explica cada columna.
 - **Unidades:** columnas `tipo, nombre, unidad_superior, jefe_correo, descripcion, etiquetas`. La unidad superior se escribe como ruta con `›` o `/` (ej. `Gerencia de Operaciones / Logística`); las rutas inexistentes se crean en orden.
-- **Trabajadores:** columnas `estado, nombre, correo, telefono, cargo, unidad, notas`. `unidad` se escribe como ruta. Si el correo ya existe en la base → se **actualiza** esa persona; si no → se crea.
+- **Trabajadores:** columnas `estado, nombre, correo, telefono, cargo, tipo_contrato, sede, jornada, unidad, notas`. Cargo, tipo de contrato, sede y jornada se escriben por nombre; los que no existan en su mantenedor aparecen en la vista previa como "valores nuevos" y se crean solo al confirmar. `unidad` se escribe como ruta. Si el correo ya existe en la base → se **actualiza** esa persona; si no → se crea.
 - Se aceptan `.xlsx` y `.csv` (UTF-8, separador `,` o `;` detectado). En CSV se carga una hoja por archivo y se elige cuál es.
 - **Vista previa obligatoria:** resumen (unidades a crear, personas a crear/actualizar) y tabla de errores por fila con hoja, fila, columna y mensaje (p. ej. "tipo 'gerncia' no válido", "unidad 'X' no existe y no tiene ruta completa", "correo repetido en el archivo"). Con errores no se puede aplicar; se puede descargar el archivo de errores para corregir.
 - Al aplicar: respaldo automático, una sola transacción, `data_revision` +1.
@@ -320,7 +330,7 @@ Opciones: alcance + qué hojas incluir + qué columnas de cada hoja (casillas, t
 | Procesos | unidad, ruta, nombre, descripción, frecuencia, criticidad, estado, documento, proveedores, entradas, salidas, clientes, nº actividades |
 | Actividades | unidad, proceso, nombre, descripción, responsables (R), aprobador (A), consultados (C), informados (I) |
 | Matriz RACI | filas = actividades (agrupadas por proceso), columnas = personas involucradas, celdas = R/A/C/I |
-| Trabajadores | estado, nombre, correo, teléfono, cargo, gerencia, área, subárea, ruta completa, jefe, notas |
+| Trabajadores | estado, nombre, correo, teléfono, cargo, tipo de contrato, sede, jornada, gerencia, área, subárea, ruta completa, jefe, notas |
 | Indicadores | una fila por unidad con todos los indicadores de la sección 8 |
 
 Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajustado, logo en la hoja Información. Los IDs internos no se exportan salvo que se marque la columna opcional "ID". Nombre: `Organizacion_AAAA-MM-DD_rN.xlsx`.
