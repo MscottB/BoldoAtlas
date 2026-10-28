@@ -1,17 +1,42 @@
 import { describe, expect, it } from "vitest";
 import type { Trabajador, Unidad } from "../../db/tipos";
-import { creaCiclo, descendientes, dotacion, gerenciaYArea, hijos, indexar, ruta, rutaTexto } from "./jerarquia";
+import {
+  creaCiclo,
+  descendientes,
+  dotacion,
+  gerenciaYArea,
+  hijos,
+  indexar,
+  ruta,
+  rutaTexto,
+} from "./jerarquia";
 
 type ConBorrado<T> = T & { deleted_at?: string | null };
 
-function u(id: string, tipo: Unidad["tipo"], nombre: string, parent_id: string | null, orden = 0): ConBorrado<Unidad> {
+function u(
+  id: string,
+  tipo: Unidad["tipo"],
+  nombre: string,
+  parent_id: string | null,
+  orden = 0,
+): ConBorrado<Unidad> {
   return { id, tipo, nombre, descripcion: null, parent_id, jefe_id: null, orden };
 }
 
 function t(id: string, unidad_id: string, estado: Trabajador["estado"] = "activo"): ConBorrado<Trabajador> {
   return {
-    id, estado, nombre: estado === "activo" ? id : null, correo: null, telefono: null, cargo_id: null,
-    tipo_contrato_id: null, sede_id: null, jornada_id: null, unidad_id, foto_png: null, notas: null,
+    id,
+    estado,
+    nombre: estado === "activo" ? id : null,
+    correo: null,
+    telefono: null,
+    cargo_id: null,
+    tipo_contrato_id: null,
+    sede_id: null,
+    jornada_id: null,
+    unidad_id,
+    foto_png: null,
+    notas: null,
   };
 }
 
@@ -49,7 +74,12 @@ describe("jerarquía", () => {
   });
 
   it("ruta y rutaTexto van de la raíz a la unidad", () => {
-    expect(ruta(unidades, "mecanica").map((x) => x.id)).toEqual(["gg", "operaciones", "mantencion", "mecanica"]);
+    expect(ruta(unidades, "mecanica").map((x) => x.id)).toEqual([
+      "gg",
+      "operaciones",
+      "mantencion",
+      "mecanica",
+    ]);
     expect(rutaTexto(unidades, "mecanica")).toBe("Gerencia General › Operaciones › Mantención › Mecánica");
   });
 
@@ -70,12 +100,19 @@ describe("jerarquía", () => {
   });
 
   it("dotacion ignora trabajadores borrados", () => {
-    const conBorrado = [...trabajadores, { ...t("t9", "mantencion"), deleted_at: "2026-01-01T00:00:00.000Z" }];
+    const conBorrado = [
+      ...trabajadores,
+      { ...t("t9", "mantencion"), deleted_at: "2026-01-01T00:00:00.000Z" },
+    ];
     expect(dotacion(unidades, conBorrado, "mantencion")).toEqual({ directa: 1, total: 5, vacantes: 1 });
   });
 
   it("gerenciaYArea deriva gerencia, área y subárea de los ancestros", () => {
-    expect(gerenciaYArea(unidades, "mecanica")).toEqual({ gerencia: "Operaciones", area: "Mantención", subarea: "Mecánica" });
+    expect(gerenciaYArea(unidades, "mecanica")).toEqual({
+      gerencia: "Operaciones",
+      area: "Mantención",
+      subarea: "Mecánica",
+    });
     expect(gerenciaYArea(unidades, "finanzas")).toEqual({ gerencia: "Finanzas", area: null, subarea: null });
   });
 });

@@ -18,7 +18,11 @@ export function ruta(unidades: Unidad[], id: string): Unidad[] {
   const indice = indexar(unidades);
   const camino: Unidad[] = [];
   const vistos = new Set<string>(); // corta si los datos ya traen un ciclo
-  for (let u = indice.get(id); u && !vistos.has(u.id); u = u.parent_id ? indice.get(u.parent_id) : undefined) {
+  for (
+    let u = indice.get(id);
+    u && !vistos.has(u.id);
+    u = u.parent_id ? indice.get(u.parent_id) : undefined
+  ) {
     vistos.add(u.id);
     camino.unshift(u);
   }
@@ -26,7 +30,9 @@ export function ruta(unidades: Unidad[], id: string): Unidad[] {
 }
 
 export function rutaTexto(unidades: Unidad[], id: string): string {
-  return ruta(unidades, id).map((u) => u.nombre).join(" › ");
+  return ruta(unidades, id)
+    .map((u) => u.nombre)
+    .join(" › ");
 }
 
 export function descendientes(unidades: U[], id: string): Set<string> {
