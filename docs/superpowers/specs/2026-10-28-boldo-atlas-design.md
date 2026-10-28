@@ -28,7 +28,7 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 - Funciones "premium" del modelo open core (solo se elige la licencia ahora).
 - Historial de cambios (auditoría) y deshacer/rehacer general → candidatos a v2. (v1 sí tiene "Deshacer" al eliminar; ver sección 7.)
 - Campos personalizados definidos por el usuario.
-- Actualizador automático.
+- Actualizaciones automáticas o en segundo plano: la app solo busca actualizaciones cuando el usuario lo pide (ver §12, "Buscar actualizaciones").
 - Envío por correo desde la app (se guarda el archivo y se ofrece "Abrir carpeta").
 - Idiomas distintos al español y al inglés.
 - Builds de macOS/Linux (el workflow queda preparado; v1 publica Windows).
@@ -361,6 +361,13 @@ Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajus
   - (Nombres sin versión a propósito; ver sección 14.)
 - Requisito: WebView2 (incluido en Windows 11 y casi todo Windows 10).
 - **Aviso conocido:** un `.exe` sin firmar descargado de internet también dispara SmartScreen en modo portable (no solo el instalador). Mitigación v1: instrucciones en el README ("Más información → Ejecutar de todas formas"). Mejora futura: firma gratuita para proyectos open source vía SignPath Foundation.
+
+### Actualizar
+- **Manual (siempre posible):** descargar el zip nuevo y reemplazar `BoldoAtlas.exe`; `datos/` no se toca. Al abrir, si el esquema cambió, la app respalda y migra (§6). Se explica en la Ayuda y en el README.
+- **"Buscar actualizaciones"** (en Acerca de): solo cuando el usuario lo pide; la app nunca se conecta sola. Consulta la última versión publicada en GitHub Releases (`releases/latest`) y, si es más nueva (comparación SemVer), muestra la versión y sus notas y ofrece "Descargar e instalar".
+  - Usa `tauri-plugin-updater` con un manifiesto `latest.json` que publica el workflow de release, **firmado** con una clave del autor (`tauri signer`; la clave privada vive solo como secreto `TAURI_SIGNING_PRIVATE_KEY` en GitHub y la pública va en `tauri.conf.json`). Se rechaza cualquier descarga con firma inválida.
+  - Instalado: corre el instalador NSIS nuevo. Portable: descarga el zip firmado, renombra el `.exe` en uso a `BoldoAtlas.old.exe`, escribe el nuevo en su lugar y pide reiniciar; el `.old` se borra en el siguiente arranque. Si algo falla, se restaura el `.exe` anterior y se informa el error.
+  - Sin conexión o sin versión nueva: un mensaje claro ("Ya tienes la última versión" / "No se pudo consultar: revisa tu conexión").
 
 ## 13. Marca, tema y "Acerca de"
 

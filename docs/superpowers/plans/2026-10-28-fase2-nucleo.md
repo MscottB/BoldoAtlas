@@ -381,6 +381,25 @@ Comportamiento: se abre al seleccionar y desplaza el lienzo (no lo tapa); `Esc` 
 
 ---
 
+### Task 15: Sitio web bilingüe (adelanto de la Fase 6)
+
+Pedido del autor: página de GitHub al cerrar la Fase 2, en español e inglés, con presentación, descarga y Ayuda.
+
+- `site/` con VitePress (`locales` es/en), que publica las páginas de `ayuda/es` y `ayuda/en` como manual (sin duplicar contenido), una portada con capturas reales de la Fase 2 (tomadas en la Task 14), la página de descargas con los enlaces estables de `releases/latest/download/<archivo>`, requisitos, aviso de SmartScreen, verificación SHA256 y cómo actualizar.
+- `.github/workflows/pages.yml` (spec §14): construye y publica en GitHub Pages en push a `main` con cambios en `site/` o `ayuda/`, y al publicar un release.
+- Verificación: `npm run build` dentro de `site/` sin enlaces rotos (VitePress falla con enlaces muertos); ambos idiomas navegables en `npx vitepress preview`.
+- Requiere que el autor active *Settings → Pages → Source: GitHub Actions*.
+- Commit: `feat(site): sitio bilingüe con presentación, descargas y ayuda`
+
+### Task 16: Buscar actualizaciones (spec §12 "Actualizar")
+
+- `tauri-plugin-updater` + manifiesto `latest.json` firmado generado por `scripts/release.mjs` (también en local con `npm run release`, si hay clave) y subido al Release; clave pública en `tauri.conf.json`.
+- Botón "Buscar actualizaciones" en Acerca de; nada se consulta sin que el usuario lo pida.
+- Portable: renombrar `BoldoAtlas.exe` en uso → `BoldoAtlas.old.exe`, escribir el nuevo, pedir reinicio, borrar el `.old` en el siguiente arranque, restaurar si falla. Instalado: instalador NSIS.
+- Tests: comparación de versiones SemVer (`esMasNueva('0.2.0', '0.1.0')`, pre-release menor que final, `dev` nunca ofrece bajar de versión) y el reemplazo del `.exe` en Rust sobre una carpeta temporal (renombra, escribe, restaura si falla la escritura).
+- Requiere del autor: generar la clave con `npx tauri signer generate` y guardarla como secreto `TAURI_SIGNING_PRIVATE_KEY` (y su contraseña) en GitHub; sin eso el release no firma y el botón informa que la versión no admite actualización automática.
+- Commit: `feat: buscar actualizaciones bajo demanda con descarga firmada`
+
 ## Cobertura de la spec en esta fase
 
 | Spec | Task |
