@@ -224,6 +224,12 @@ crear organización vacía · cargar desde Excel (con enlace a la plantilla) · 
 
 ## 8. Vistas de trabajo
 
+### Administrador de árboles y subárboles
+- Una base puede tener **varios árboles independientes** (uno por raíz).
+- Cualquier unidad se puede **abrir como árbol**: el lienzo muestra solo su rama, con esa unidad como raíz. No es una copia: sigue colgando de su superior y lo que se edita ahí se edita en el árbol completo. Arriba del lienzo, la ruta de origen (`Gerencia General › Operaciones › Mantención`, cada tramo clicable), "Subir un nivel" y "Ver en el árbol completo".
+- Vista **Árboles** (barra lateral): lista cada árbol independiente (nombre de la raíz, dotación total) y, debajo, sus **subárboles guardados**; permite crear un árbol nuevo (nueva raíz), abrir cualquiera, y renombrar, reordenar o quitar un subárbol guardado (quitarlo no borra la rama). Desde el lienzo o el panel de unidad: "Abrir como árbol" y "Guardar en Árboles".
+- Tabla `subarboles_guardados`: `unidad_id` NOT NULL → `unidades.id`, `nombre` NULL (por defecto se muestra el de la unidad), `orden` INTEGER NOT NULL DEFAULT 0 + comunes; único parcial (`unidad_id`) donde `deleted_at IS NULL`. Es dato de la organización: viaja en el `.boldo` (en una exportación parcial, solo los de unidades incluidas). Si la unidad se elimina, el subárbol guardado deja de mostrarse.
+
 ### Árbol (lienzo)
 Vue Flow con el árbol completo, zoom, mover, minimapa, colapsar/expandir ramas.
 Tarjeta de unidad: tipo, nombre, foto y nombre del jefe (o "Sin jefatura"), dotación total de la rama, vacantes (si hay), chips de etiquetas.

@@ -250,10 +250,29 @@ Comportamiento (spec §7–8):
 - Arrastrar una tarjeta y soltarla sobre otra: diálogo "¿Mover *X* dentro de *Y*?"; si `creaCiclo`, aviso y no mueve.
 - Barra del lienzo: "+ Nueva unidad", resaltar por etiqueta y por texto (las demás quedan al 35 % de opacidad, no se ocultan), zoom −/+, "Encuadrar" (`Ctrl+0`).
 - Recalcula el layout al cambiar unidades o colapsados.
+- **Vista enfocada en una rama** (pedido del autor, spec §8 "Administrador de árboles y subárboles"): la ruta acepta `/?raiz=<unidadId>`; con `raiz`, el lienzo muestra solo esa unidad y sus descendientes (filtrar las unidades antes de `subgrafoVisible`, tratando `raiz` como única raíz) y, arriba, la ruta de origen con `rutaTexto` (cada tramo clicable cambia `raiz`), "Subir un nivel" (`raiz` = su superior; en una raíz, quita el parámetro) y "Ver en el árbol completo". Sin `raiz` se ven todos los árboles. Lógica pura y testeable: `unidadesDeRama(unidades, raiz): Unidad[]` en `layout.ts` (test: incluye la raíz y sus descendientes vivos, excluye hermanos y ancestros).
 
 - [ ] **Step 1:** Implementar.
 - [ ] **Step 2: Verificar** en `npm run tauri dev` con "Explorar un ejemplo": crear subunidad con "+", renombrar con doble clic, plegar y desplegar, arrastrar Mantención sobre su propia subárea → aviso y sin cambios, resaltar por etiqueta, encuadrar. Volver a abrir la app: los cambios siguen ahí.
 - [ ] **Step 3: Commit** `feat(arbol): lienzo con edición, plegado, arrastre y resaltado`
+
+---
+
+### Task 9b: Administrador de árboles y subárboles guardados
+
+**Files:**
+- Modify: `src-tauri/migrations/0001_inicial.sql` (tabla `subarboles_guardados`; aún no publicada), `src/db/esquema.test.ts`, `src/db/tipos.ts`, `src/stores/organizacion.ts`, `src/stores/organizacion.test.ts`, `src/App.vue` (entrada "Árboles" en la barra lateral), `src/router.ts`
+- Create: `src/db/repos/subarboles.ts`, `src/db/repos/subarboles.test.ts`, `src/features/arboles/VistaArboles.vue`
+
+**Interfaces:**
+- Consumes: `jerarquia` (`dotacion`, `rutaTexto`), store, ruta `/?raiz=<id>` de Task 9.
+- Produces: tabla `subarboles_guardados (id TEXT PRIMARY KEY NOT NULL, unidad_id TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED, nombre TEXT, orden INTEGER NOT NULL DEFAULT 0, created_at, updated_at, deleted_at)` con `idx_subarboles_guardados_unidad_id` y único parcial `ux_subarboles_unidad ON subarboles_guardados(unidad_id) WHERE deleted_at IS NULL`; tipo `SubarbolGuardado { id, unidad_id, nombre: string|null, orden }`; repo `guardarSubarbol(unidadId, nombre?)`, `renombrarSubarbol(id, nombre|null)`, `moverSubarbol(id, orden)`, `quitarSubarbol(id)`, lectura `SQL_SUBARBOLES` (solo los de unidades vivas); store: estado `subarboles`, acciones `guardarSubarbol`, `renombrarSubarbol`, `moverSubarbol`, `quitarSubarbol` (mismo contrato `{ ok, mensaje }`) y `crearArbol(nombre, tipo)` (= `crearUnidad` sin superior).
+- Vista `/arboles`: un bloque por raíz (nombre, tipo, dotación total con `dotacion`, botón "Abrir" → `/?raiz=<id>`), debajo sus subárboles guardados (nombre o el de la unidad, ruta de origen con `rutaTexto`, abrir, renombrar en línea, subir/bajar, quitar), y "+ Nuevo árbol". En el lienzo (Task 9) y en el panel (Task 10): "Guardar en Árboles" para la raíz enfocada o la unidad seleccionada (si ya está guardada, el botón dice "Guardado").
+
+- [ ] **Step 1: Tests que fallan:** esquema — un segundo subárbol activo de la misma unidad lanza `/UNIQUE/`, y tras quitarlo se puede volver a guardar; repo — guardar, renombrar, mover y quitar; store — `guardarSubarbol` dos veces devuelve `ok: false` con `"Esa rama ya está guardada en Árboles."` (agregar el mensaje a `traducirError` para `subarboles_guardados.unidad_id`); el subárbol de una unidad eliminada no aparece en `subarboles`.
+- [ ] **Step 2:** Verificar que fallan; implementar; verificar que pasan; `cargo test` (la migración se incluye en Rust).
+- [ ] **Step 3:** Verificar en la app: crear un segundo árbol, guardar Mantención como subárbol, abrirlo desde Árboles, subir un nivel, volver al árbol completo.
+- [ ] **Step 4: Commit** `feat(arboles): administrador de árboles y subárboles guardados`
 
 ---
 
@@ -348,6 +367,7 @@ Comportamiento: se abre al seleccionar y desplaza el lienzo (no lo tapa); `Esc` 
 | §5 unidades, jefaturas, conexiones, etiquetas, trabajadores, vacantes y mantenedores | 2, 5, 11, 13 |
 | §7 estructura, bienvenida, guardado automático, deshacer, paleta, atajos, accesibilidad | 8, 10, 11, 13, 14 |
 | §8 árbol, filtros, panel de unidad, ficha, directorio | 9, 10, 11, 12 |
+| §8 administrador de árboles y subárboles (pedido del autor) | 9, 9b, 10 |
 | §13 tema, acento, logo, nombre de la organización | 6, 13 |
 | Nota de rendimiento (ramas colapsadas, sin solo-visibles, nueva medición) | 7, 9, 14 |
 
