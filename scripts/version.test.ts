@@ -5,37 +5,38 @@ const f = "28102026";
 
 describe("formatearVersion", () => {
   it("en etiqueta exacta", () =>
-    expect(formatearVersion({ tag: "v1.2.0", distancia: 0, sha: "3f2a1bc", sucio: false, fecha: f }).completa).toBe(
-      "1.2.0+28102026",
-    ));
+    expect(
+      formatearVersion({ tag: "v1.2.0", distancia: 0, sha: "3f2a1bc", sucio: false, fecha: f }).completa,
+    ).toBe("1.2.0+28102026"));
   it("commits después", () =>
-    expect(formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: false, fecha: f }).completa).toBe(
-      "1.2.0-dev.5+28102026.3f2a1bc",
-    ));
+    expect(
+      formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: false, fecha: f }).completa,
+    ).toBe("1.2.0-dev.5+28102026.3f2a1bc"));
   it("sucio", () =>
-    expect(formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: true, fecha: f }).completa).toBe(
-      "1.2.0-dev.5+28102026.3f2a1bc.sucio",
-    ));
+    expect(
+      formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: true, fecha: f }).completa,
+    ).toBe("1.2.0-dev.5+28102026.3f2a1bc.sucio"));
   it("sucio en etiqueta exacta", () =>
-    expect(formatearVersion({ tag: "v1.2.0", distancia: 0, sha: "3f2a1bc", sucio: true, fecha: f }).completa).toBe(
-      "1.2.0+28102026.3f2a1bc.sucio",
-    ));
+    expect(
+      formatearVersion({ tag: "v1.2.0", distancia: 0, sha: "3f2a1bc", sucio: true, fecha: f }).completa,
+    ).toBe("1.2.0+28102026.3f2a1bc.sucio"));
   it("sin etiquetas", () =>
-    expect(formatearVersion({ tag: null, distancia: 12, sha: "3f2a1bc", sucio: false, fecha: f }).completa).toBe(
-      "0.0.0-dev.12+28102026.3f2a1bc",
-    ));
+    expect(
+      formatearVersion({ tag: null, distancia: 12, sha: "3f2a1bc", sucio: false, fecha: f }).completa,
+    ).toBe("0.0.0-dev.12+28102026.3f2a1bc"));
   it("sin git", () =>
     expect(formatearVersion({ tag: null, distancia: 0, sha: "", sucio: false, fecha: f }).completa).toBe(
       "0.0.0-dev.0+28102026",
     ));
   it("pre-release con commits después", () =>
     expect(
-      formatearVersion({ tag: "v1.3.0-beta.1", distancia: 2, sha: "abc1234", sucio: false, fecha: f }).completa,
+      formatearVersion({ tag: "v1.3.0-beta.1", distancia: 2, sha: "abc1234", sucio: false, fecha: f })
+        .completa,
     ).toBe("1.3.0-beta.1.dev.2+28102026.abc1234"));
   it("numerica descarta pre-release", () =>
-    expect(formatearVersion({ tag: "v1.3.0-beta.1", distancia: 0, sha: "", sucio: false, fecha: f }).numerica).toBe(
-      "1.3.0",
-    ));
+    expect(
+      formatearVersion({ tag: "v1.3.0-beta.1", distancia: 0, sha: "", sucio: false, fecha: f }).numerica,
+    ).toBe("1.3.0"));
 });
 
 describe("fechaDDMMAAAA", () => {
