@@ -4,7 +4,8 @@ const esCheck = (t: string) => t.includes("CHECK constraint failed");
 const reglas: [(texto: string) => boolean, string][] = [
   [(t) => t.includes("ux_trabajadores_correo"), "Ya existe una persona con ese correo."],
   [(t) => t.includes("ux_etiquetas_nombre"), "Ya existe una etiqueta con ese nombre."],
-  [(t) => t.includes("ux_unidad_etiquetas"), "La unidad ya tiene esa etiqueta."],
+  // Índice sobre columnas simples: SQLite informa las columnas, no el nombre del índice.
+  [(t) => t.includes("UNIQUE constraint failed: unidad_etiquetas."), "La unidad ya tiene esa etiqueta."],
   [(t) => /ux_(cargos|tipos_contrato|sedes|jornadas)_nombre/.test(t), "Ese valor ya existe en la lista."],
   [(t) => esCheck(t) && t.includes("cargo_id"), "Una vacante necesita un cargo."],
   [(t) => esCheck(t) && t.includes("estado") && t.includes("nombre"), "Falta el nombre de la persona."],
