@@ -444,3 +444,9 @@ Se ejecutan después de la Task 11 y antes de la Task 10. Las tareas 10 y 12 usa
 - i18n es/en; ayuda `ayuda/{es,en}/leyendas.md`.
 - Para la Fase 4 (capturas/PDF): opciones **colores personalizados | estándar** y **con | sin leyenda**.
 - Commit: `feat: leyendas y colores de puestos con copiar estilo`
+
+### Task 11c (ampliación 2, pedido del autor): opciones de vista y marcas de gerencia/área
+- Esquema (en T11b, misma migración no publicada): `unidades.marca_color` NULL (hex) y `unidades.marca_codigo` NULL (CHECK largo ≤ 4), editables en el panel de unidad (T10).
+- Pura y testeada: `marcaHeredada(unidades, unidadId, nivel: 'gerencia'|'area'|'cualquiera')` → la marca de la unidad más cercana hacia arriba que la tenga (según el nivel elegido).
+- Panel **"Vista"** en la barra del lienzo (preferencias por PC): mostrar/ocultar puestos, cargo, persona y "gerencia · área" en las tarjetas; selector **"Colorear por"**: ninguno | marca de gerencia | marca de área | leyenda del puesto (un solo criterio a la vez); la leyenda flotante muestra las entradas del criterio activo que están en uso (color + código + nombre).
+- Las mismas opciones se ofrecen al exportar (Fase 4).
