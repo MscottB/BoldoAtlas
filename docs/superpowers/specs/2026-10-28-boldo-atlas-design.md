@@ -162,6 +162,17 @@ Desactivar un valor = borrado lógico: deja de ofrecerse en las listas, pero las
 Una vacante es una fila con `estado = 'vacante'`: un cargo sin persona asignada. "Cubrir vacante" = completar los datos y pasar a `activo`.
 Índice único parcial: `lower(trim(correo))` donde `correo IS NOT NULL AND deleted_at IS NULL`.
 
+### Puestos y asignaciones (pedido del autor; reemplaza el modelo "vacante = trabajador sin nombre")
+El **puesto** (un cargo en una unidad) y la **persona** son cosas distintas, para registrar reemplazos sin pisar al titular y conservar el historial de cada puesto.
+- `puestos`: `unidad_id` NOT NULL → `unidades.id`, `cargo_id` NOT NULL → `cargos.id`, `descripcion` NULL, `orden` + comunes.
+- `asignaciones`: `puesto_id` NOT NULL → `puestos.id`, `trabajador_id` NOT NULL → `trabajadores.id`, `tipo` NOT NULL CHECK in ('titular','reemplazo'), `desde` TEXT NOT NULL (fecha `AAAA-MM-DD`), `hasta` TEXT NULL (NULL = vigente; CHECK `hasta IS NULL OR hasta >= desde`), `motivo` NULL + comunes. Únicos parciales: un **titular vigente** por puesto y un **reemplazo vigente** por puesto (`WHERE hasta IS NULL AND deleted_at IS NULL`, por tipo).
+- `trabajadores` pasa a ser solo la **persona**: `nombre` NOT NULL, `correo`, `telefono`, `tipo_contrato_id`, `sede_id`, `jornada_id`, `foto_png`, `notas` (sin `estado`, `cargo_id` ni `unidad_id`).
+- **Vacante** = puesto sin titular vigente; si tiene reemplazo vigente se muestra "Vacante · cubre <persona> (reemplazo)". Asignar un titular nuevo cierra la asignación titular anterior (`hasta` = fecha), nunca la borra: así queda el historial.
+- **Jefatura:** `unidades.jefe_puesto_id` → `puestos.id` (reemplaza `jefe_id`); el jefe visible es el titular vigente o, si no hay, el reemplazo vigente.
+- **Dotación:** puestos con titular vigente (directa y de la rama); vacantes = puestos sin titular vigente. Un reemplazo no suma dotación.
+- La unidad, gerencia y área de una persona se derivan de sus asignaciones vigentes (puede tener más de una: titular en un puesto y reemplazo en otro).
+- Ficha de la persona: sus puestos vigentes y su historial. Puesto: titular, reemplazo vigente e historial completo, con acciones "Asignar titular", "Registrar reemplazo" y "Terminar asignación" (fecha y motivo).
+
 ### Preferencias por PC (no van en la BD, no viajan)
 Tema, color de acento, columnas elegidas para Excel, filtros del directorio, última carpeta usada, lista de escenarios recientes. En `localStorage` del webview; si la lectura falla se usan valores por defecto.
 

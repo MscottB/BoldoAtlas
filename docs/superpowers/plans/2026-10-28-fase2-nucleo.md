@@ -412,3 +412,24 @@ Pedido del autor: página de GitHub al cerrar la Fase 2, en español e inglés, 
 | Nota de rendimiento (ramas colapsadas, sin solo-visibles, nueva medición) | 7, 9, 14 |
 
 Quedan para fases siguientes: indicadores completos y pestaña Procesos (3), exportaciones y carga masiva (4), `.boldo`/fusión/escenarios (5), sitio (6).
+
+---
+
+## Anexo (pedido del autor): puestos, asignaciones, reemplazos e historial (spec §5 "Puestos y asignaciones")
+
+Se ejecutan después de la Task 11 y antes de la Task 10. Las tareas 10 y 12 usan este modelo (pestaña **Puestos** en el panel; el directorio lista personas con sus puestos vigentes y los puestos vacantes).
+
+### Task 11b: Modelo de datos de puestos y asignaciones
+- `0001_inicial.sql` (aún no publicada): tablas `puestos` y `asignaciones` según la spec (FK diferidas con índice, únicos parciales de titular y reemplazo vigentes, CHECK de fechas); `trabajadores` sin `estado`, `cargo_id` ni `unidad_id` y con `nombre` NOT NULL; `unidades.jefe_puesto_id` en lugar de `jefe_id`. Tests de esquema (titular vigente duplicado → UNIQUE; `hasta < desde` → CHECK; un titular cerrado y uno vigente conviven).
+- Repos `puestos.ts` (crear, editar, eliminar/restaurar) y `asignaciones.ts` (`asignarTitular(puestoId, trabajadorId, desde)` cierra la titular vigente en el mismo lote; `registrarReemplazo(puestoId, trabajadorId, desde, hasta?)`; `terminarAsignacion(id, hasta, motivo?)`); `traducirError` con los textos reales de SQLite (probados contra SQLite real).
+- Jerarquía: `dotacion`/`dotacionPorUnidad` cuentan puestos con titular vigente; vacantes = puestos sin titular vigente; `jefeVisible(unidad)` = titular o, si no, reemplazo del puesto de jefatura; `unidadesDePersona(trabajadorId)`.
+- Store: estado `puestos`, `asignaciones`; acciones con el contrato `{ ok, mensaje }`; `eliminarUnidad` mueve también sus puestos al superior; `cargarEjemplo` con puestos, un reemplazo vigente y un historial de al menos dos titulares.
+- Migrar los usos existentes de `cargo_id`/`unidad_id`/`estado`/`jefe_id` de trabajadores en código y tests (store, jerarquía, lienzo, ficha de la Task 11) sin cambiar comportamientos ya aprobados salvo los que el modelo exige.
+- Commit: `feat(db): puestos y asignaciones con reemplazos e historial`
+
+### Task 11c: Pantallas de puestos, reemplazos e historial
+- Tarjeta del lienzo: jefe visible (titular o "reemplazo: <nombre>"), dotación y vacantes con el nuevo cálculo.
+- Ficha de la persona (Task 11): sus puestos vigentes (titular/reemplazo) e historial; ya no edita cargo ni unidad (eso es del puesto).
+- Diálogo de puesto: cargo (mantenedor), titular vigente, reemplazo vigente, historial ordenado por fecha, y las acciones "Asignar titular", "Registrar reemplazo" y "Terminar asignación" con fecha y motivo.
+- i18n es/en y página de ayuda `ayuda/{es,en}/puestos.md`.
+- Commit: `feat: puestos con titular, reemplazo e historial en el árbol y la ficha`
