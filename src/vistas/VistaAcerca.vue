@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { infoApp, leerMeta, type InfoApp } from "@/db/cliente";
 import { AUTOR, LICENCIA, REPO } from "@/app/about";
 import { infoParaCopiar, versionVisible } from "@/app/version";
 import logo from "../../assets/brand/logo-horizontal.webp";
 
+const { t } = useI18n();
 const info = ref<InfoApp | null>(null);
 const meta = ref<Record<string, string>>({});
 const copiado = ref(false);
@@ -34,17 +36,17 @@ async function copiar() {
     </div>
 
     <dl v-if="info" class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-      <dt class="text-muted-foreground">Esquema de base de datos</dt>
+      <dt class="text-muted-foreground">{{ t("acerca.esquema") }}</dt>
       <dd>{{ info.versionEsquema }}</dd>
-      <dt class="text-muted-foreground">Identificador de la base</dt>
+      <dt class="text-muted-foreground">{{ t("acerca.idBase") }}</dt>
       <dd class="select-all font-mono text-xs leading-5">{{ meta.db_id }}</dd>
-      <dt class="text-muted-foreground">Revisión de datos</dt>
+      <dt class="text-muted-foreground">{{ t("acerca.revision") }}</dt>
       <dd>{{ meta.data_revision }}</dd>
-      <dt class="text-muted-foreground">Base creada</dt>
+      <dt class="text-muted-foreground">{{ t("acerca.baseCreada") }}</dt>
       <dd>{{ meta.db_creada }}</dd>
-      <dt class="text-muted-foreground">Modo</dt>
-      <dd>{{ info.portable ? "Portable" : "Instalado" }}</dd>
-      <dt class="text-muted-foreground">Carpeta de datos</dt>
+      <dt class="text-muted-foreground">{{ t("acerca.modo") }}</dt>
+      <dd>{{ info.portable ? t("acerca.portable") : t("acerca.instalado") }}</dd>
+      <dt class="text-muted-foreground">{{ t("acerca.carpetaDatos") }}</dt>
       <dd class="select-all break-all text-xs leading-5">{{ info.dirDatos }}</dd>
     </dl>
 
@@ -53,23 +55,29 @@ async function copiar() {
       class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ring"
       @click="copiar"
     >
-      {{ copiado ? "Copiado" : "Copiar información" }}
+      {{ copiado ? t("acerca.copiado") : t("acerca.copiar") }}
     </button>
 
     <div class="space-y-1 border-t pt-6 text-sm">
       <p>
-        Creado por
-        <button type="button" class="font-medium text-marca underline-offset-4 hover:underline" @click="openUrl(AUTOR.enlace)">
+        {{ t("acerca.creadoPor") }}
+        <button
+          type="button"
+          class="font-medium text-marca underline-offset-4 hover:underline"
+          @click="openUrl(AUTOR.enlace)"
+        >
           {{ AUTOR.nombre }}
         </button>
       </p>
       <p>
-        Licencia
+        {{ t("acerca.licencia") }}
         <button type="button" class="underline-offset-4 hover:underline" @click="openUrl(LICENCIA.enlace)">
           {{ LICENCIA.nombre }}
         </button>
         ·
-        <button type="button" class="underline-offset-4 hover:underline" @click="openUrl(REPO)">Repositorio en GitHub</button>
+        <button type="button" class="underline-offset-4 hover:underline" @click="openUrl(REPO)">
+          {{ t("acerca.repositorio") }}
+        </button>
       </p>
     </div>
   </section>

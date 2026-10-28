@@ -1,0 +1,97 @@
+{
+  "nav": {
+    "principal": "Navegación principal",
+    "arbol": "Árbol",
+    "directorio": "Directorio",
+    "indicadores": "Indicadores",
+    "escenarios": "Escenarios",
+    "importarExportar": "Importar/Exportar",
+    "configuracion": "Configuración",
+    "ayuda": "Ayuda",
+    "acerca": "Acerca de",
+    "llegaFase3": "Llega en la Fase 3",
+    "llegaFase5": "Llega en la Fase 5",
+    "llegaFases45": "Llega en las Fases 4 y 5"
+  },
+  "barra": {
+    "mostrarBarra": "Mostrar barra lateral",
+    "ocultarBarra": "Ocultar barra lateral",
+    "sinNombre": "Organización sin nombre",
+    "buscar": "Buscar",
+    "exportar": "Exportar",
+    "llegaFase4": "Llega en la Fase 4",
+    "temaClaro": "Cambiar a tema claro",
+    "temaOscuro": "Cambiar a tema oscuro"
+  },
+  "guardado": {
+    "guardando": "Guardando…",
+    "guardado": "Guardado",
+    "noSeGuardo": "No se guardó"
+  },
+  "pantallaError": {
+    "titulo": "BoldoAtlas no pudo abrir sus datos",
+    "carpetaDatos": "Carpeta de datos",
+    "copiar": "Copiar detalle",
+    "copiado": "Copiado"
+  },
+  "acerca": {
+    "version": "Versión {version} · {fecha}",
+    "esquema": "Esquema de base de datos",
+    "idBase": "Identificador de la base",
+    "revision": "Revisión de datos",
+    "baseCreada": "Base creada",
+    "modo": "Modo",
+    "portable": "Portable",
+    "instalado": "Instalado",
+    "carpetaDatos": "Carpeta de datos",
+    "copiar": "Copiar información",
+    "copiado": "Copiado",
+    "creadoPor": "Creado por",
+    "licencia": "Licencia",
+    "repositorio": "Repositorio en GitHub",
+    "copia": {
+      "commit": "Commit {commit}",
+      "desconocido": "desconocido",
+      "esquema": "Esquema {esquema}",
+      "base": "Base {id} · revisión {revision} · creada {creada}",
+      "modoPortable": "Modo portable",
+      "modoInstalado": "Modo instalado"
+    }
+  },
+  "arbol": {
+    "vacioTitulo": "Aún no hay unidades",
+    "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí."
+  },
+  "provisional": {
+    "bienvenida": "Bienvenida",
+    "enConstruccion": "En construcción"
+  },
+  "idioma": {
+    "etiqueta": "Idioma",
+    "es": "Español",
+    "en": "English"
+  },
+  "ayuda": {
+    "titulo": "Ayuda",
+    "paginas": "Páginas de ayuda",
+    "noExiste": "Esa página de ayuda no existe."
+  },
+  "errores": {
+    "correoDuplicado": "Ya existe una persona con ese correo.",
+    "etiquetaDuplicada": "Ya existe una etiqueta con ese nombre.",
+    "unidadYaEtiquetada": "La unidad ya tiene esa etiqueta.",
+    "valorDuplicado": "Ese valor ya existe en la lista.",
+    "vacanteSinCargo": "Una vacante necesita un cargo.",
+    "personaSinNombre": "Falta el nombre de la persona.",
+    "conexionConsigoMisma": "Una unidad no puede conectarse consigo misma.",
+    "relacionInexistente": "La unidad o persona relacionada ya no existe."
+  },
+  "store": {
+    "nombreVacio": "Escribe un nombre.",
+    "cicloRama": "No se puede mover una unidad dentro de su propia rama.",
+    "unidadInexistente": "La unidad ya no existe.",
+    "raizConContenido": "No se puede eliminar la unidad raíz mientras tenga contenido.",
+    "noSePuedeDeshacer": "Ya no se puede deshacer.",
+    "valorExiste": "Ya existe «{nombre}» en la lista."
+  }
+}

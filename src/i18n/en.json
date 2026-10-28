@@ -1,0 +1,97 @@
+{
+  "nav": {
+    "principal": "Main navigation",
+    "arbol": "Tree",
+    "directorio": "Directory",
+    "indicadores": "Indicators",
+    "escenarios": "Scenarios",
+    "importarExportar": "Import/Export",
+    "configuracion": "Settings",
+    "ayuda": "Help",
+    "acerca": "About",
+    "llegaFase3": "Coming in Phase 3",
+    "llegaFase5": "Coming in Phase 5",
+    "llegaFases45": "Coming in Phases 4 and 5"
+  },
+  "barra": {
+    "mostrarBarra": "Show sidebar",
+    "ocultarBarra": "Hide sidebar",
+    "sinNombre": "Unnamed organization",
+    "buscar": "Search",
+    "exportar": "Export",
+    "llegaFase4": "Coming in Phase 4",
+    "temaClaro": "Switch to light theme",
+    "temaOscuro": "Switch to dark theme"
+  },
+  "guardado": {
+    "guardando": "Saving…",
+    "guardado": "Saved",
+    "noSeGuardo": "Not saved"
+  },
+  "pantallaError": {
+    "titulo": "BoldoAtlas could not open its data",
+    "carpetaDatos": "Data folder",
+    "copiar": "Copy details",
+    "copiado": "Copied"
+  },
+  "acerca": {
+    "version": "Version {version} · {fecha}",
+    "esquema": "Database schema",
+    "idBase": "Database identifier",
+    "revision": "Data revision",
+    "baseCreada": "Database created",
+    "modo": "Mode",
+    "portable": "Portable",
+    "instalado": "Installed",
+    "carpetaDatos": "Data folder",
+    "copiar": "Copy information",
+    "copiado": "Copied",
+    "creadoPor": "Created by",
+    "licencia": "License",
+    "repositorio": "Repository on GitHub",
+    "copia": {
+      "commit": "Commit {commit}",
+      "desconocido": "unknown",
+      "esquema": "Schema {esquema}",
+      "base": "Database {id} · revision {revision} · created {creada}",
+      "modoPortable": "Portable mode",
+      "modoInstalado": "Installed mode"
+    }
+  },
+  "arbol": {
+    "vacioTitulo": "There are no units yet",
+    "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here."
+  },
+  "provisional": {
+    "bienvenida": "Welcome",
+    "enConstruccion": "Under construction"
+  },
+  "idioma": {
+    "etiqueta": "Language",
+    "es": "Español",
+    "en": "English"
+  },
+  "ayuda": {
+    "titulo": "Help",
+    "paginas": "Help pages",
+    "noExiste": "That help page does not exist."
+  },
+  "errores": {
+    "correoDuplicado": "A person with that email already exists.",
+    "etiquetaDuplicada": "A tag with that name already exists.",
+    "unidadYaEtiquetada": "The unit already has that tag.",
+    "valorDuplicado": "That value already exists in the list.",
+    "vacanteSinCargo": "A vacancy needs a position.",
+    "personaSinNombre": "The person's name is missing.",
+    "conexionConsigoMisma": "A unit cannot be connected to itself.",
+    "relacionInexistente": "The related unit or person no longer exists."
+  },
+  "store": {
+    "nombreVacio": "Enter a name.",
+    "cicloRama": "A unit cannot be moved inside its own branch.",
+    "unidadInexistente": "The unit no longer exists.",
+    "raizConContenido": "The root unit cannot be deleted while it has content.",
+    "noSePuedeDeshacer": "This can no longer be undone.",
+    "valorExiste": "\"{nombre}\" already exists in the list."
+  }
+}

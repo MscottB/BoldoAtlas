@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import { Check, LoaderCircle, TriangleAlert } from "@lucide/vue";
 
 defineProps<{ guardando: boolean; error?: string | null }>();
+const { t } = useI18n();
 </script>
 
 <template>
@@ -16,9 +18,9 @@ defineProps<{ guardando: boolean; error?: string | null }>();
     <LoaderCircle v-else-if="guardando" class="size-4 animate-spin" aria-hidden="true" />
     <Check v-else class="size-4" aria-hidden="true" />
     <template v-if="error">
-      No se guardó
+      {{ t("guardado.noSeGuardo") }}
       <span class="sr-only">: {{ error }}</span>
     </template>
-    <template v-else>{{ guardando ? "Guardando…" : "Guardado" }}</template>
+    <template v-else>{{ guardando ? t("guardado.guardando") : t("guardado.guardado") }}</template>
   </p>
 </template>

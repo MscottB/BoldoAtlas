@@ -19,6 +19,7 @@ import * as X from "@/db/repos/conexiones";
 import { guardarMeta } from "@/db/repos/meta";
 import { creaCiclo, hijos } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
+import { i18n } from "@/i18n";
 
 export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
@@ -32,7 +33,7 @@ export interface Borrado {
 }
 
 const VIGENCIA_DESHACER_MS = 8000;
-const NOMBRE_VACIO = "Escribe un nombre.";
+const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
 const COLUMNA_CATALOGO: Record<TablaCatalogo, keyof Trabajador> = {
   cargos: "cargo_id",
   tipos_contrato: "tipo_contrato_id",
@@ -145,21 +146,20 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const asignarJefe = (id: string, jefeId: string | null) => escribir(() => U.asignarJefe(id, jefeId));
 
   async function moverUnidad(id: string, nuevoPadre: string | null): Promise<Resultado> {
-    if (creaCiclo(unidades.value, id, nuevoPadre))
-      return rechazar("No se puede mover una unidad dentro de su propia rama.");
+    if (creaCiclo(unidades.value, id, nuevoPadre)) return rechazar(t("store.cicloRama"));
     return escribir(() => U.moverUnidad(id, nuevoPadre));
   }
 
   async function eliminarUnidad(id: string): Promise<Resultado> {
     const u = porId.value.get(id);
-    if (!u) return rechazar("La unidad ya no existe.");
+    if (!u) return rechazar(t("store.unidadInexistente"));
     const contenido = {
       hijos: hijos(unidades.value, id).map((h) => h.id),
       personas: trabajadores.value.filter((t) => t.unidad_id === id).map((t) => t.id),
     };
     // Una raíz no tiene superior al que pasar su contenido (quedaría unidad_id NULL).
     if (u.parent_id === null && (contenido.hijos.length || contenido.personas.length))
-      return rechazar("No se puede eliminar la unidad raíz mientras tenga contenido.");
+      return rechazar(t("store.raizConContenido"));
     return escribir(
       () => U.eliminarUnidad(u, contenido),
       () =>
@@ -181,7 +181,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     const b = ultimoBorrado.value;
     if (!b || Date.now() >= b.vence) {
       ultimoBorrado.value = null;
-      return { ok: false, mensaje: "Ya no se puede deshacer." };
+      return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     }
     return escribir(
       () => (b.tipo === "unidad" ? U.restaurarUnidad(b.id, b.contenido!) : T.restaurarTrabajador(b.id)),
@@ -202,11 +202,11 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
 
   async function crearValor(tabla: TablaCatalogo, nombre: string): Promise<ResultadoValor> {
-    if (!nombre.trim()) return rechazar(NOMBRE_VACIO);
+    if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
     const clave = normalizarTexto(nombre);
     const igual = catalogos.value[tabla].find((v) => !v.deleted_at && normalizarTexto(v.nombre) === clave);
     if (igual) {
-      const mensaje = `Ya existe «${igual.nombre}» en la lista.`;
+      const mensaje = t("store.valorExiste", { nombre: igual.nombre });
       error.value = mensaje;
       return { ok: false, mensaje, existente: igual.id };
     }
@@ -216,7 +216,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const renombrarValor = (tabla: TablaCatalogo, id: string, nombre: string): Promise<Resultado> =>
     nombre.trim()
       ? escribir(() => C.renombrarValor(tabla, id, nombre))
-      : Promise.resolve(rechazar(NOMBRE_VACIO));
+      : Promise.resolve(rechazar(t("store.nombreVacio")));
   const moverValor = (tabla: TablaCatalogo, id: string, orden: number) =>
     escribir(() => C.moverValor(tabla, id, orden));
   const desactivarValor = (tabla: TablaCatalogo, id: string) => escribir(() => C.desactivarValor(tabla, id));

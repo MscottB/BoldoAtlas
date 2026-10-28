@@ -22,6 +22,11 @@ export const router = createRouter({
       name: "configuracion",
       component: () => import("@/vistas/VistaConfiguracion.vue"),
     },
+    {
+      path: "/ayuda/:pagina?",
+      name: "ayuda",
+      component: () => import("@/vistas/VistaAyuda.vue"),
+    },
     { path: "/acerca", name: "acerca", component: () => import("@/vistas/VistaAcerca.vue") },
     {
       path: "/bienvenida",
