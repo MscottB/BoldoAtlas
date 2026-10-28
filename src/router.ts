@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
-import VistaArbol from "@/vistas/VistaArbol.vue";
+import VistaArbol from "@/features/arbol/VistaArbol.vue";
 
 declare module "vue-router" {
   interface RouteMeta {

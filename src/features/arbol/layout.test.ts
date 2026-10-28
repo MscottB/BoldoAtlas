@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Conexion } from "../../db/tipos";
 import { u, unidades } from "./fixture";
-import { calcularLayout, colapsadosIniciales, subgrafoVisible } from "./layout";
+import { calcularLayout, colapsadosIniciales, subgrafoVisible, unidadesDeRama } from "./layout";
 
 const lateral: Conexion = { id: "c1", origen_id: "mecanica", destino_id: "finanzas", etiqueta: null };
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id).sort();
@@ -50,5 +50,14 @@ describe("layout del árbol", () => {
     for (const [padre, hijo] of g.jerarquicas) {
       expect(pos.get(hijo)!.y).toBeGreaterThan(pos.get(padre)!.y);
     }
+  });
+
+  it("unidadesDeRama deja la raíz pedida y sus descendientes vivos, sin hermanos ni ancestros", () => {
+    const rama = unidadesDeRama(unidades, "operaciones");
+    expect(ids(rama)).toEqual(["electrica", "mantencion", "mecanica", "operaciones"]);
+    expect(rama.find((x) => x.id === "operaciones")!.parent_id).toBeNull();
+    const g = subgrafoVisible(rama, [lateral], new Set());
+    expect(ids(g.nodos)).toEqual(["electrica", "mantencion", "mecanica", "operaciones"]);
+    expect(g.laterales).toEqual([]); // Finanzas queda fuera de la rama
   });
 });

@@ -60,7 +60,36 @@
   },
   "arbol": {
     "vacioTitulo": "Aún no hay unidades",
-    "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí."
+    "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí.",
+    "tipos": {
+      "gerencia": "Gerencia",
+      "area": "Área",
+      "subarea": "Subárea",
+      "otra": "Otra"
+    },
+    "nuevaUnidad": "Nueva unidad",
+    "nuevaSubunidad": "Nueva subunidad",
+    "abrirComoArbol": "Abrir como árbol",
+    "nombre": "Nombre de la unidad",
+    "ayudaNombre": "Doble clic o F2 para renombrar",
+    "sinJefatura": "Sin jefatura",
+    "dotacion": "Dotación total",
+    "vacantes": "{n} vacante | {n} vacantes",
+    "expandir": "Mostrar {n} subunidad | Mostrar {n} subunidades",
+    "plegar": "Plegar rama",
+    "resaltarEtiqueta": "Resaltar por etiqueta",
+    "todasEtiquetas": "Resaltar etiqueta: ninguna",
+    "resaltarTexto": "Resaltar por texto",
+    "alejar": "Alejar",
+    "acercar": "Acercar",
+    "encuadrar": "Encuadrar",
+    "encuadrarAtajo": "Encuadrar todo (Ctrl+0)",
+    "rutaOrigen": "Ruta de origen",
+    "subirNivel": "Subir un nivel",
+    "verCompleto": "Ver en el árbol completo",
+    "confirmarMover": "¿Mover «{unidad}» dentro de «{destino}»?",
+    "cancelar": "Cancelar",
+    "mover": "Mover"
   },
   "provisional": {
     "bienvenida": "Bienvenida",

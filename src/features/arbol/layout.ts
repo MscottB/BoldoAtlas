@@ -1,6 +1,6 @@
 import ELK from "elkjs/lib/elk.bundled.js";
 import type { Conexion, Unidad } from "../../db/tipos";
-import { indiceHijos } from "./jerarquia";
+import { descendientes, indiceHijos } from "./jerarquia";
 
 // Las lecturas de repos no traen deleted_at; se acepta por si el llamador pasa filas crudas.
 type U = Unidad & { deleted_at?: string | null };
@@ -25,6 +25,14 @@ export function colapsadosIniciales(unidades: U[]): Set<string> {
   };
   (indice.get(null) ?? []).forEach((r) => visitar(r, 0));
   return colapsados;
+}
+
+// Vista enfocada: la raíz pedida (sin superior, para que sea la única raíz) y sus descendientes vivos.
+export function unidadesDeRama(unidades: U[], raiz: string): Unidad[] {
+  const rama = descendientes(unidades, raiz);
+  return unidades.flatMap((x) =>
+    x.id === raiz && !x.deleted_at ? [{ ...x, parent_id: null }] : rama.has(x.id) ? [x] : [],
+  );
 }
 
 export function subgrafoVisible(unidades: U[], conexiones: Conexion[], colapsados: Set<string>): Subgrafo {

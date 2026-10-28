@@ -60,7 +60,36 @@
   },
   "arbol": {
     "vacioTitulo": "There are no units yet",
-    "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here."
+    "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here.",
+    "tipos": {
+      "gerencia": "Division",
+      "area": "Area",
+      "subarea": "Sub-area",
+      "otra": "Other"
+    },
+    "nuevaUnidad": "New unit",
+    "nuevaSubunidad": "New sub-unit",
+    "abrirComoArbol": "Open as tree",
+    "nombre": "Unit name",
+    "ayudaNombre": "Double-click or F2 to rename",
+    "sinJefatura": "No manager",
+    "dotacion": "Total headcount",
+    "vacantes": "{n} vacancy | {n} vacancies",
+    "expandir": "Show {n} sub-unit | Show {n} sub-units",
+    "plegar": "Collapse branch",
+    "resaltarEtiqueta": "Highlight by tag",
+    "todasEtiquetas": "Highlight tag: none",
+    "resaltarTexto": "Highlight by text",
+    "alejar": "Zoom out",
+    "acercar": "Zoom in",
+    "encuadrar": "Fit view",
+    "encuadrarAtajo": "Fit everything (Ctrl+0)",
+    "rutaOrigen": "Origin path",
+    "subirNivel": "Up one level",
+    "verCompleto": "View in the full tree",
+    "confirmarMover": "Move “{unidad}” into “{destino}”?",
+    "cancelar": "Cancel",
+    "mover": "Move"
   },
   "provisional": {
     "bienvenida": "Welcome",
