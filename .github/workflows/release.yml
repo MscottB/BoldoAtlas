@@ -32,7 +32,7 @@ jobs:
       - run: npm run test
       - run: cargo test
         working-directory: src-tauri
-      - run: node scripts/version.mjs --aplicar
+      - run: node scripts/version.mjs --aplicar --etiqueta ${{ github.ref_name }}
       - run: npm run tauri build -- --bundles nsis
       - name: Empaquetar
         shell: pwsh

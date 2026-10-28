@@ -43,6 +43,19 @@ export function formatearVersion({ tag, distancia, sha, sucio, fecha }) {
   return { completa: `${base}${pre}+${meta.join(".")}`, base, numerica };
 }
 
+/**
+ * En el release, la versión calculada debe ser la etiqueta empujada (con dos etiquetas en un commit,
+ * git describe puede preferir la otra).
+ * @param {string} base versión calculada, p. ej. `0.1.0`
+ * @param {string} etiqueta etiqueta del release, p. ej. `v0.1.0`
+ * @returns {string | null} mensaje de error o null si coinciden
+ */
+export function verificarEtiqueta(base, etiqueta) {
+  return base === etiqueta.replace(/^v/, "")
+    ? null
+    : `La versión calculada (${base}) no coincide con la etiqueta publicada (${etiqueta}).`;
+}
+
 /** @param {string[]} args @param {string} cwd */
 function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -100,6 +113,12 @@ function escribirVersion(ruta, version) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const v = obtenerVersion();
+  const i = process.argv.indexOf("--etiqueta");
+  const error = i > 0 ? verificarEtiqueta(v.base, process.argv[i + 1] ?? "") : null;
+  if (error) {
+    console.error(error);
+    process.exit(1);
+  }
   if (process.argv.includes("--aplicar")) {
     escribirVersion("package.json", v.numerica);
     escribirVersion("src-tauri/tauri.conf.json", v.numerica);

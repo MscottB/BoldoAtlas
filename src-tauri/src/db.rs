@@ -1,9 +1,9 @@
 use rusqlite::types::{Value as Sql, ValueRef};
-use rusqlite::{Connection, TransactionBehavior, params_from_iter};
+use rusqlite::{Connection, ErrorCode, TransactionBehavior, params_from_iter};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub const MIGRACIONES: &[&str] = &[include_str!("../migrations/0001_inicial.sql")];
 
@@ -48,9 +48,20 @@ pub fn abrir(ruta: &Path) -> Result<Connection, String> {
     conn.busy_timeout(Duration::from_secs(5)).map_err(texto)?;
     conn.pragma_update(None, "foreign_keys", "ON")
         .map_err(texto)?;
-    conn.query_row("PRAGMA journal_mode = WAL", [], |_| Ok(()))
-        .map_err(texto)?;
-    Ok(conn)
+    // Cambiar a WAL no pasa por busy_timeout: con varias instancias abriendo a la vez se reintenta hasta 5 s.
+    let inicio = Instant::now();
+    loop {
+        match conn.query_row("PRAGMA journal_mode = WAL", [], |_| Ok(())) {
+            Ok(()) => return Ok(conn),
+            Err(e)
+                if e.sqlite_error_code() == Some(ErrorCode::DatabaseBusy)
+                    && inicio.elapsed() < Duration::from_secs(5) =>
+            {
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            Err(e) => return Err(texto(e)),
+        }
+    }
 }
 
 pub fn migrar(conn: &mut Connection, dir_respaldos: &Path) -> Result<i64, String> {
@@ -62,39 +73,60 @@ pub fn migrar_con(
     migraciones: &[&str],
     dir_respaldos: &Path,
 ) -> Result<i64, String> {
-    let actual: i64 = conn
-        .pragma_query_value(None, "user_version", |f| f.get(0))
-        .map_err(texto)?;
     let conocida = migraciones.len() as i64;
-    if actual > conocida {
-        return Err(format!(
-            "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla."
-        ));
-    }
-    if actual == conocida {
-        return Ok(actual);
-    }
-    if actual > 0 {
-        let sello: String = conn
-            .query_row("SELECT strftime('%Y%m%d%H%M%S', 'now')", [], |f| f.get(0))
+    let mut respaldada = false;
+    loop {
+        // IMMEDIATE: si dos instancias arrancan a la vez, la segunda espera y luego ve la versión ya migrada
+        let tx = conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(texto)?;
-        let destino = dir_respaldos.join(format!("antes-migracion-{actual}-{sello}.boldo"));
-        conn.execute("VACUUM INTO ?1", [destino.to_string_lossy()])
+        let actual: i64 = tx
+            .pragma_query_value(None, "user_version", |f| f.get(0))
             .map_err(texto)?;
-    }
-    for (i, sql) in migraciones.iter().enumerate().skip(actual as usize) {
-        let tx = conn.transaction().map_err(texto)?;
-        tx.execute_batch(sql).map_err(texto)?;
-        tx.pragma_update(None, "user_version", i as i64 + 1)
+        if actual > conocida {
+            return Err(format!(
+                "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla."
+            ));
+        }
+        if actual == conocida {
+            return Ok(actual);
+        }
+        if actual > 0 && !respaldada {
+            // VACUUM INTO no puede ir dentro de una transacción: se respalda y se vuelve a comprobar
+            drop(tx);
+            respaldar(conn, dir_respaldos, actual)?;
+            respaldada = true;
+            continue;
+        }
+        for sql in &migraciones[actual as usize..] {
+            tx.execute_batch(sql).map_err(texto)?;
+        }
+        tx.pragma_update(None, "user_version", conocida)
             .map_err(texto)?;
         tx.commit().map_err(texto)?;
+        return Ok(conocida);
     }
-    Ok(conocida)
+}
+
+fn respaldar(conn: &Connection, dir_respaldos: &Path, version: i64) -> Result<(), String> {
+    let sello: String = conn
+        .query_row("SELECT strftime('%Y%m%d%H%M%S', 'now')", [], |f| f.get(0))
+        .map_err(texto)?;
+    // sufijo aleatorio: dos instancias en el mismo segundo no chocan
+    let azar = uuid::Uuid::now_v7().simple().to_string();
+    let destino = dir_respaldos.join(format!(
+        "antes-migracion-{version}-{sello}-{}.boldo",
+        &azar[azar.len() - 8..]
+    ));
+    conn.execute("VACUUM INTO ?1", [destino.to_string_lossy()])
+        .map_err(texto)?;
+    Ok(())
 }
 
 pub fn asegurar_meta(conn: &Connection) -> Result<(), String> {
     let id = uuid::Uuid::now_v7().to_string();
-    let tx = conn.unchecked_transaction().map_err(texto)?;
+    let tx = rusqlite::Transaction::new_unchecked(conn, TransactionBehavior::Immediate)
+        .map_err(texto)?;
     tx.execute(
         "INSERT OR IGNORE INTO meta (clave, valor) VALUES ('db_id', ?1)",
         [&id],
@@ -119,6 +151,9 @@ pub fn consultar(
     params: &[Value],
 ) -> Result<Vec<Map<String, Value>>, String> {
     let mut stmt = conn.prepare(sql).map_err(texto)?;
+    if !stmt.readonly() {
+        return Err("db_consultar es solo lectura; las escrituras van por db_lote.".into());
+    }
     let columnas: Vec<String> = stmt.column_names().map(String::from).collect();
     let mut filas = stmt
         .query(params_from_iter(params.iter().map(a_sql)))
@@ -194,6 +229,42 @@ mod tests {
                 .into(),
             params: vec![json!(uuid::Uuid::now_v7().to_string()), json!(nombre)],
         }
+    }
+
+    #[test]
+    fn dos_instancias_migran_a_la_vez() {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("boldo.db");
+        let salida = std::sync::Arc::new(std::sync::Barrier::new(4));
+        let hilos: Vec<_> = (0..4)
+            .map(|_| {
+                let (ruta, carpeta, salida) =
+                    (ruta.clone(), dir.path().to_path_buf(), salida.clone());
+                std::thread::spawn(move || {
+                    salida.wait();
+                    let mut c = abrir(&ruta).map_err(|e| format!("abrir: {e}"))?;
+                    migrar(&mut c, &carpeta).map_err(|e| format!("migrar: {e}"))?;
+                    asegurar_meta(&c).map_err(|e| format!("meta: {e}"))
+                })
+            })
+            .collect();
+        for h in hilos {
+            h.join().unwrap().unwrap();
+        }
+        assert_eq!(version(&abrir(&ruta).unwrap()), 1);
+    }
+
+    #[test]
+    fn consultar_rechaza_escrituras() {
+        let (_dir, _, conn) = base_nueva();
+        let err = consultar(
+            &conn,
+            "UPDATE meta SET valor = '9' WHERE clave = 'data_revision'",
+            &[],
+        )
+        .unwrap_err();
+        assert!(err.contains("solo lectura"), "{err}");
+        assert_eq!(meta(&conn, "data_revision"), "0");
     }
 
     #[test]

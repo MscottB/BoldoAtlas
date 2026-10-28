@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { parsearDescribe, fechaDDMMAAAA, formatearVersion } from "./version.mjs";
+import { parsearDescribe, fechaDDMMAAAA, formatearVersion, verificarEtiqueta } from "./version.mjs";
+
+describe("verificarEtiqueta", () => {
+  it("acepta cuando la versión calculada es la de la etiqueta publicada", () =>
+    expect(verificarEtiqueta("0.1.0", "v0.1.0")).toBeNull());
+  it("rechaza si git describe eligió otra etiqueta del mismo commit", () =>
+    expect(verificarEtiqueta("0.1.0-beta.1", "v0.1.0")).toMatch(/0\.1\.0-beta\.1.*v0\.1\.0/));
+});
 
 const f = "28102026";
 

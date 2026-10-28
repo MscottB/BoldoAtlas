@@ -79,6 +79,29 @@ describe("esquema 0001", () => {
     expect(() => db.exec("COMMIT")).not.toThrow();
   });
 
+  it("rechaza id nulo", () => expect(() => ins("unidades", { id: null, tipo: "area", nombre: "X" })).toThrow(/NOT NULL/));
+
+  it("acepta varias personas con correo vacío", () => {
+    ins("trabajadores", { nombre: "A", correo: "", unidad_id: u });
+    expect(() => ins("trabajadores", { nombre: "B", correo: "  ", unidad_id: u })).not.toThrow();
+  });
+
+  it("toda clave foránea tiene un índice completo que empieza por ella", () => {
+    const tablas = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[];
+    const sinIndice: string[] = [];
+    for (const { name } of tablas) {
+      const fks = db.prepare("SELECT \"from\" AS col FROM pragma_foreign_key_list(?)").all(name) as { col: string }[];
+      const indices = db.prepare("SELECT name FROM pragma_index_list(?) WHERE partial = 0").all(name) as {
+        name: string;
+      }[];
+      const primeras = indices.map(
+        (i) => (db.prepare("SELECT name FROM pragma_index_info(?) WHERE seqno = 0").get(i.name) as { name: string })?.name,
+      );
+      for (const { col } of fks) if (!primeras.includes(col)) sinIndice.push(`${name}.${col}`);
+    }
+    expect(sinIndice).toEqual([]);
+  });
+
   it("FK diferida: falla al confirmar si el padre no existe", () => {
     db.exec("BEGIN");
     ins("trabajadores", { nombre: "Ana", unidad_id: randomUUID() });
