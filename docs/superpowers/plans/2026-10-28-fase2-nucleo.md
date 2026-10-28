@@ -235,6 +235,27 @@ it('guarda y lee JSON con prefijo boldo:', () => { /* stub en memoria; guardarPr
 
 ---
 
+### Task 8c: Idiomas (es/en), Ayuda y menú reorganizado
+
+Pedido del autor: app, README y sitio en español e inglés; sección Ayuda en la app y en la web; "Acerca de" abajo del menú, separado de las secciones del programa.
+
+**Files:**
+- Create: `src/i18n/index.ts`, `src/i18n/es.json`, `src/i18n/en.json`, `src/i18n/i18n.test.ts`, `ayuda/es/inicio.md`, `ayuda/en/inicio.md`, `ayuda/es/atajos.md`, `ayuda/en/atajos.md`, `src/vistas/VistaAyuda.vue`
+- Modify: todos los componentes y vistas existentes con texto (`App.vue`, `BarraSuperior.vue`, `IndicadorGuardado.vue`, `PantallaError.vue`, `VistaAcerca.vue`, `VistaArbol.vue`, vistas provisionales), `src/stores/organizacion.ts` y `src/db/errores.ts` (mensajes por clave), `src/router.ts` (ruta `/ayuda/:pagina?`), `src/main.ts`
+
+**Interfaces:**
+- Produces: `i18n` (instancia de `vue-i18n`, modo composición, `legacy: false`), `idiomaInicial(navegador: string): 'es'|'en'`, `cambiarIdioma(idioma)` (persiste con `guardarPreferencia('idioma', …)`); `t()` disponible en componentes (`useI18n`) y fuera de ellos (`i18n.global.t`) para el store y `traducirError`. Las claves se agrupan por área (`nav.*`, `barra.*`, `acerca.*`, `errores.*`, `store.*`, `ayuda.*`).
+- Menú: arriba Árbol · Directorio · Indicadores · Escenarios · Importar/Exportar (Árboles llega en T9b); abajo, separados por un divisor: Configuración · Ayuda · Acerca de.
+- Ayuda: `VistaAyuda` lista las páginas del idioma activo y muestra la elegida; el Markdown se importa con `?raw` y se renderiza con `markdown-it` (HTML desactivado en el renderizador). Páginas iniciales: inicio (qué es BoldoAtlas, modo portable, dónde quedan los datos) y atajos.
+
+- [ ] **Step 1: Tests que fallan:** `idiomaInicial('es-CL')` → `'es'`, `idiomaInicial('en-US')` → `'en'`, `idiomaInicial('pt-BR')` → `'en'`; `es.json` y `en.json` tienen exactamente las mismas claves (test que compara los conjuntos de claves aplanadas); con idioma `en`, `traducirError` de correo duplicado devuelve el texto en inglés; los tests existentes del store y de errores siguen pasando con el idioma `es` sin cambiar sus aserciones.
+- [ ] **Step 2:** Verificar que fallan; implementar; migrar cada texto literal existente a claves (sin cambiar su redacción en español); verificar `npm run lint && npm run typecheck && npm run test && npx vite build`.
+- [ ] **Step 3: Commit** `feat: interfaz en español e inglés, sección Ayuda y menú reorganizado`
+
+Para las tareas siguientes (9 a 13): todo texto nuevo va por claves en `es.json` y `en.json`, y cada tarea agrega su página de ayuda en ambos idiomas (`ayuda/es/<tema>.md`, `ayuda/en/<tema>.md`).
+
+---
+
 ### Task 9: Lienzo del árbol
 
 **Files:**

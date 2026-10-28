@@ -30,7 +30,7 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 - Campos personalizados definidos por el usuario.
 - Actualizador automático.
 - Envío por correo desde la app (se guarda el archivo y se ofrece "Abrir carpeta").
-- Idiomas distintos al español.
+- Idiomas distintos al español y al inglés.
 - Builds de macOS/Linux (el workflow queda preparado; v1 publica Windows).
 
 ## 3. Stack
@@ -188,7 +188,9 @@ Tema, color de acento, columnas elegidas para Excel, filtros del directorio, úl
 ## 7. UX/UI
 
 ### Estructura de la ventana
-- **Barra lateral izquierda** (colapsable): Árbol · Directorio · Indicadores · Escenarios · Importar/Exportar · Configuración · Acerca de.
+- **Barra lateral izquierda** (colapsable): arriba, las secciones del programa: Árbol · Árboles · Directorio · Indicadores · Escenarios · Importar/Exportar; abajo, separadas: Configuración · Ayuda · Acerca de.
+- **Idiomas:** español e inglés en toda la interfaz (`vue-i18n`; diccionarios `src/i18n/es.json` y `en.json`). El idioma inicial sigue al de Windows (`es*` → español, otro → inglés) y se cambia en Configuración (preferencia por PC). Ningún texto de interfaz va literal en componentes, stores ni mensajes de error. Los datos que ingresa el usuario (nombres de unidades, valores de mantenedores) no se traducen. Fechas y números con `Intl` según el idioma.
+- **Ayuda:** sección con páginas en Markdown por idioma (`ayuda/es/*.md`, `ayuda/en/*.md`), mostradas dentro de la app y publicadas también en el sitio web (una sola fuente). Cada función nueva agrega su página en ambos idiomas.
 - **Barra superior:** nombre de la organización, insignia de escenario activo (color de acento + nombre) si no es la base principal, búsqueda global, botón Exportar, indicador "Guardado".
 - **Área central:** la vista elegida.
 - **Panel derecho contextual:** se abre al seleccionar una unidad, proceso o persona; se cierra con Esc. No tapa el lienzo: lo desplaza.
