@@ -8,6 +8,9 @@ export function normalizarCorreo(c: string | null): string | null {
   return c?.trim() || null;
 }
 
+export const SQL_TRABAJADORES = `SELECT id, estado, nombre, correo, telefono, cargo_id, tipo_contrato_id, sede_id,
+  jornada_id, unidad_id, foto_png, notas FROM trabajadores WHERE deleted_at IS NULL ORDER BY nombre`;
+
 type DatosTrabajador = Pick<Trabajador, "unidad_id"> & Partial<Omit<Trabajador, "id" | "unidad_id">>;
 
 export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencias: Sentencia[] } {

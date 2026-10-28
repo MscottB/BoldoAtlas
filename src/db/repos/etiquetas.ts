@@ -1,6 +1,13 @@
 import type { Sentencia } from "@/db/cliente";
 import { ahora, nuevoId } from "@/lib/ids";
 
+export const SQL_ETIQUETAS =
+  "SELECT id, nombre, color FROM etiquetas WHERE deleted_at IS NULL ORDER BY nombre";
+
+// Solo asignaciones a unidades vivas: si se restaura la unidad, vuelven con ella.
+export const SQL_UNIDAD_ETIQUETAS = `SELECT unidad_id, etiqueta_id FROM unidad_etiquetas
+  WHERE deleted_at IS NULL AND unidad_id IN (SELECT id FROM unidades WHERE deleted_at IS NULL)`;
+
 export function crearEtiqueta(nombre: string, color: string): { id: string; sentencias: Sentencia[] } {
   const id = nuevoId();
   const t = ahora();

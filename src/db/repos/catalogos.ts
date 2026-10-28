@@ -8,6 +8,12 @@ function validar(tabla: TablaCatalogo): void {
   if (!TABLAS_CATALOGO.includes(tabla)) throw new Error("Catálogo desconocido");
 }
 
+/** Lectura de un mantenedor: incluye los desactivados (deleted_at) para que las fichas que los usan sigan resolviéndose. */
+export function sqlValores(tabla: TablaCatalogo): string {
+  validar(tabla);
+  return `SELECT id, nombre, orden, deleted_at FROM ${tabla} ORDER BY orden, nombre`;
+}
+
 export function crearValor(tabla: TablaCatalogo, nombre: string): { id: string; sentencias: Sentencia[] } {
   validar(tabla);
   const id = nuevoId();
