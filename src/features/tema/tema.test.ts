@@ -29,4 +29,7 @@ describe("ACENTOS", () => {
   it("define los cuatro acentos", () => {
     expect(ACENTOS).toEqual({ cobre: "#C8743F", azul: "#2563EB", verde: "#0D9488", violeta: "#7C3AED" });
   });
+  it("el texto sobre cada acento cumple AA para texto chico (≥ 4,5), p. ej. el chip de vacantes", () => {
+    for (const c of Object.values(ACENTOS)) expect(contraste(textoSobre(c), c)).toBeGreaterThanOrEqual(4.5);
+  });
 });

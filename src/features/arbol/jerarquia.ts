@@ -82,6 +82,35 @@ export function dotacion(
   };
 }
 
+/** `dotacion` de todas las unidades vivas en O(unidades + trabajadores): conteos directos sumados de hojas a raíz. */
+export function dotacionPorUnidad(
+  unidades: U[],
+  trabajadores: ConBorrado<Trabajador>[],
+): Map<string, { directa: number; total: number; vacantes: number }> {
+  const res = new Map<string, { directa: number; total: number; vacantes: number }>();
+  for (const u of unidades) if (!u.deleted_at) res.set(u.id, { directa: 0, total: 0, vacantes: 0 });
+  for (const t of trabajadores) {
+    const d = t.deleted_at ? undefined : res.get(t.unidad_id);
+    if (d && t.estado === "activo") d.directa++;
+    else if (d) d.vacantes++;
+  }
+  const indice = indiceHijos(unidades);
+  const vistos = new Set<string>(); // corta si los datos ya traen un ciclo
+  const sumar = (id: string) => {
+    vistos.add(id);
+    const d = res.get(id)!;
+    d.total = d.directa;
+    for (const h of indice.get(id) ?? []) {
+      if (vistos.has(h.id)) continue;
+      sumar(h.id);
+      d.total += res.get(h.id)!.total;
+      d.vacantes += res.get(h.id)!.vacantes;
+    }
+  };
+  (indice.get(null) ?? []).forEach((r) => sumar(r.id));
+  return res;
+}
+
 // Gerencia y área no se guardan en el trabajador: se derivan del ancestro más cercano de cada tipo.
 export function gerenciaYArea(
   unidades: Unidad[],

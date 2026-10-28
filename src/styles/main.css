@@ -61,7 +61,7 @@
     --primary-foreground: oklch(0.985 0 0);
     /* cobre del logo; shadcn usa --accent para hovers, por eso la marca va en su propio token */
     --marca: #c8743f;
-    --marca-foreground: #ffffff;
+    --marca-foreground: #111827; /* = textoSobre(#c8743f): 5,09:1; el blanco da 3,49:1 */
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
@@ -98,7 +98,7 @@
     --primary: #e6ebf1;
     --primary-foreground: #1e2a38;
     --marca: #c8743f;
-    --marca-foreground: #ffffff;
+    --marca-foreground: #111827; /* = textoSobre(#c8743f): 5,09:1; el blanco da 3,49:1 */
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);

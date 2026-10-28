@@ -4,6 +4,7 @@ import {
   creaCiclo,
   descendientes,
   dotacion,
+  dotacionPorUnidad,
   gerenciaYArea,
   hijos,
   indexar,
@@ -46,6 +47,14 @@ describe("jerarquía", () => {
   it("dotacion cuenta activos directos, activos de la rama y vacantes de la rama", () => {
     expect(dotacion(unidades, trabajadores, "mantencion")).toEqual({ directa: 1, total: 5, vacantes: 1 });
     expect(dotacion(unidades, trabajadores, "gg")).toEqual({ directa: 1, total: 6, vacantes: 2 });
+  });
+
+  it("dotacionPorUnidad da lo mismo que dotacion para cada unidad viva, en una pasada", () => {
+    const conBorrado = [...trabajadores, { ...t("t9", "mecanica"), deleted_at: "2026-01-01T00:00:00.000Z" }];
+    const todas = dotacionPorUnidad(unidades, conBorrado);
+    const vivas = unidades.filter((x) => !x.deleted_at);
+    expect([...todas.keys()].sort()).toEqual(vivas.map((x) => x.id).sort());
+    for (const x of vivas) expect(todas.get(x.id)).toEqual(dotacion(unidades, conBorrado, x.id));
   });
 
   it("dotacion ignora trabajadores borrados", () => {

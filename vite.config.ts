@@ -10,6 +10,8 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [vue(), tailwindcss()],
+  // App de escritorio: carga desde el disco local; elkjs (layout del árbol) solo ya pesa ~1,5 MB.
+  build: { chunkSizeWarningLimit: 2000 },
   define: constantesVersion(),
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { VueFlow, useVueFlow, type Edge, type Node, type NodeDragEvent } from "@vue-flow/core";
@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { Etiqueta, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
-import { creaCiclo, dotacion, indiceHijos, ruta } from "./jerarquia";
+import { creaCiclo, dotacionPorUnidad, indiceHijos, ruta } from "./jerarquia";
 import {
   calcularLayout,
   subgrafoVisible,
@@ -41,7 +41,7 @@ const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
 const { colapsados, seleccion, expandir } = useLienzo();
-const { fitView, updateNode, onNodesInitialized } = useVueFlow();
+const { fitView, setCenter, updateNode } = useVueFlow();
 
 // Vista enfocada: /?raiz=<id>. Una raíz que ya no existe se ignora y se ve todo.
 const raiz = computed(() => {
@@ -51,21 +51,23 @@ const raiz = computed(() => {
 const mostradas = computed(() => (raiz.value ? unidadesDeRama(org.unidades, raiz.value) : org.unidades));
 const origen = computed(() => (raiz.value ? ruta(org.unidades, raiz.value) : []));
 
-let encuadrado = false;
+// Al cambiar de vista, tras el próximo layout: encuadrar todo, o centrar en `centrar`.
+// `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada.
+let revelar: string | null = null;
+let encuadrar = false;
+let centrar: string | null = null;
 watch(
   raiz,
   () => {
-    colapsados.value = colapsadosIniciales(mostradas.value);
-    seleccion.value = null;
-    encuadrado = false;
+    const c = colapsadosIniciales(mostradas.value);
+    if (revelar) for (const a of ruta(org.unidades, revelar).slice(0, -1)) c.delete(a.id);
+    colapsados.value = c;
+    seleccion.value = centrar = revelar;
+    encuadrar = !revelar;
+    revelar = null;
   },
   { immediate: true },
 );
-onNodesInitialized(() => {
-  if (encuadrado) return;
-  encuadrado = true;
-  void fitView();
-});
 
 // El layout es asíncrono: solo aplica el del último cambio, junto con el subgrafo que lo produjo.
 const vista = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
@@ -75,7 +77,15 @@ watch(
   async (g) => {
     const este = ++ultimo;
     const pos = await calcularLayout(g, TAM);
-    if (este === ultimo) vista.value = { g, pos };
+    if (este !== ultimo) return;
+    vista.value = { g, pos };
+    if (!encuadrar && !centrar) return;
+    const p = centrar && pos.get(centrar);
+    encuadrar = false;
+    centrar = null;
+    await nextTick(); // la tarjeta tiene tamaño fijo: basta con que los nodos estén puestos
+    if (p) void setCenter(p.x + TAM.ancho / 2, p.y + TAM.alto / 2, { zoom: 1 });
+    else void fitView();
   },
   { immediate: true },
 );
@@ -91,13 +101,13 @@ const etiquetasDe = computed(() => {
   return m;
 });
 
-// shortcut: dotacion recorre la rama y los trabajadores por cada nodo visible; si 2.000 nodos abiertos se sienten lentos, sumar en una pasada.
 const nodos = computed<Node<DatosNodo>[]>(() => {
   if (!vista.value) return [];
   const { g, pos } = vista.value;
   const indice = indiceHijos(mostradas.value);
+  const dotaciones = dotacionPorUnidad(mostradas.value, org.trabajadores);
   return g.nodos.map((u) => {
-    const { total, vacantes } = dotacion(mostradas.value, org.trabajadores, u.id);
+    const { total, vacantes } = dotaciones.get(u.id)!;
     return {
       id: u.id,
       type: "unidad",
@@ -155,6 +165,10 @@ async function mover() {
 }
 
 const irA = (id: string | null) => router.push({ query: id ? { raiz: id } : {} });
+function verCompleto() {
+  revelar = raiz.value;
+  void irA(null);
+}
 </script>
 
 <template>
@@ -183,7 +197,7 @@ const irA = (id: string | null) => router.push({ query: id ? { raiz: id } : {} }
           <ArrowUp aria-hidden="true" />
           {{ t("arbol.subirNivel") }}
         </Button>
-        <Button variant="outline" size="sm" @click="irA(null)">{{ t("arbol.verCompleto") }}</Button>
+        <Button variant="outline" size="sm" @click="verCompleto">{{ t("arbol.verCompleto") }}</Button>
       </span>
     </nav>
     <BarraLienzo :raiz="raiz" />
