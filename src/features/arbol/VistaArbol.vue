@@ -41,7 +41,7 @@ const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
 const { colapsados, seleccion, expandir } = useLienzo();
-const { fitView, setCenter, updateNode } = useVueFlow();
+const { fitView, setCenter, updateNode, areNodesInitialized } = useVueFlow();
 
 // Vista enfocada: /?raiz=<id>. Una raíz que ya no existe se ignora y se ve todo.
 const raiz = computed(() => {
@@ -80,15 +80,24 @@ watch(
     if (este !== ultimo) return;
     vista.value = { g, pos };
     if (!encuadrar && !centrar) return;
-    const p = centrar && pos.get(centrar);
+    const id = centrar;
     encuadrar = false;
     centrar = null;
-    await nextTick(); // la tarjeta tiene tamaño fijo: basta con que los nodos estén puestos
-    if (p) void setCenter(p.x + TAM.ancho / 2, p.y + TAM.alto / 2, { zoom: 1 });
-    else void fitView();
+    await nextTick(); // Vue Flow ya recibió los nodos nuevos: desde aquí, "medidos" se refiere a ellos
+    pendiente.value = { centrar: id };
   },
   { immediate: true },
 );
+
+// fitView ignora los nodos sin medir: se espera a que Vue Flow los mida todos (de inmediato si ya lo estaban).
+const pendiente = ref<{ centrar: string | null } | null>(null);
+watch([pendiente, areNodesInitialized], ([p, medidos]) => {
+  if (!p || !medidos) return;
+  pendiente.value = null;
+  const c = p.centrar && vista.value?.pos.get(p.centrar);
+  if (c) void setCenter(c.x + TAM.ancho / 2, c.y + TAM.alto / 2, { zoom: 1 });
+  else void fitView();
+});
 
 const trabajadorPorId = computed(() => new Map(org.trabajadores.map((x) => [x.id, x])));
 const etiquetasDe = computed(() => {
@@ -167,7 +176,10 @@ async function mover() {
 const irA = (id: string | null) => router.push({ query: id ? { raiz: id } : {} });
 function verCompleto() {
   revelar = raiz.value;
-  void irA(null);
+  // Si la navegación no cambió `raiz` (p. ej. abortada), que no quede pendiente para otra.
+  void irA(null)
+    .then(() => nextTick())
+    .finally(() => (revelar = null));
 }
 </script>
 
