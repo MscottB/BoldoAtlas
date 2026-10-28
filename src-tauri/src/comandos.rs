@@ -19,7 +19,9 @@ impl Estado {
         let mut rutas_ok = None;
         let resultado = (|| {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            let exe_dir = exe.parent().ok_or("No se pudo ubicar la carpeta del programa.")?;
+            let exe_dir = exe
+                .parent()
+                .ok_or("No se pudo ubicar la carpeta del programa.")?;
             let appdata = std::env::var_os("APPDATA").map(std::path::PathBuf::from);
             let r = rutas::dir_datos(exe_dir, appdata.as_deref())?;
             rutas_ok = Some(r.clone());
@@ -35,15 +37,28 @@ impl Estado {
                 version_esquema: version,
                 error: None,
             },
-            Err(e) => Estado { conn: Mutex::new(None), rutas: rutas_ok, version_esquema: 0, error: Some(e) },
+            Err(e) => Estado {
+                conn: Mutex::new(None),
+                rutas: rutas_ok,
+                version_esquema: 0,
+                error: Some(e),
+            },
         }
     }
 
-    fn con_conexion<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T, String>) -> Result<T, String> {
-        let mut guardia = self.conn.lock().map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
-        let conn = guardia
-            .as_mut()
-            .ok_or_else(|| self.error.clone().unwrap_or_else(|| "La base de datos no está abierta.".into()))?;
+    fn con_conexion<T>(
+        &self,
+        f: impl FnOnce(&mut Connection) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let mut guardia = self
+            .conn
+            .lock()
+            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
+        let conn = guardia.as_mut().ok_or_else(|| {
+            self.error
+                .clone()
+                .unwrap_or_else(|| "La base de datos no está abierta.".into())
+        })?;
         f(conn)
     }
 }
@@ -71,11 +86,19 @@ pub fn info_app(estado: State<Estado>) -> InfoApp {
 }
 
 #[tauri::command]
-pub fn db_consultar(estado: State<Estado>, sql: String, params: Vec<Value>) -> Result<Vec<Map<String, Value>>, String> {
+pub fn db_consultar(
+    estado: State<Estado>,
+    sql: String,
+    params: Vec<Value>,
+) -> Result<Vec<Map<String, Value>>, String> {
     estado.con_conexion(|c| db::consultar(c, &sql, &params))
 }
 
 #[tauri::command]
-pub fn db_lote(estado: State<Estado>, sentencias: Vec<Sentencia>, version_app: String) -> Result<(), String> {
+pub fn db_lote(
+    estado: State<Estado>,
+    sentencias: Vec<Sentencia>,
+    version_app: String,
+) -> Result<(), String> {
     estado.con_conexion(|c| db::lote(c, &sentencias, &version_app))
 }

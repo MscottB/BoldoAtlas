@@ -119,7 +119,7 @@ pub fn consultar(
     params: &[Value],
 ) -> Result<Vec<Map<String, Value>>, String> {
     let mut stmt = conn.prepare(sql).map_err(texto)?;
-    let columnas: Vec<String> = stmt.column_names().into_iter().map(String::from).collect();
+    let columnas: Vec<String> = stmt.column_names().map(String::from).collect();
     let mut filas = stmt
         .query(params_from_iter(params.iter().map(a_sql)))
         .map_err(texto)?;

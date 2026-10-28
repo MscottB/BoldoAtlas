@@ -7,6 +7,7 @@ pub struct Rutas {
     pub datos: PathBuf,
     pub bd: PathBuf,
     pub respaldos: PathBuf,
+    #[allow(dead_code)] // la usa la Fase 5 (escenarios)
     pub escenarios: PathBuf,
     pub portable: bool,
 }
