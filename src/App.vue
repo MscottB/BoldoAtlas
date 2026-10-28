@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Info, Network } from "@lucide/vue";
+import { Toaster } from "@/components/ui/sonner";
 import icono from "../assets/brand/icono.png";
 
 const navegacion = [
@@ -32,5 +33,6 @@ const navegacion = [
     <main class="min-w-0 flex-1 overflow-auto">
       <RouterView />
     </main>
+    <Toaster />
   </div>
 </template>
