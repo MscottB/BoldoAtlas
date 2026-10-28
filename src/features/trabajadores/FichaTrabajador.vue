@@ -3,6 +3,16 @@ import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { ImagePlus, Trash2, UserCheck, X } from "@lucide/vue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,10 +28,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { TablaCatalogo, Trabajador } from "@/db/tipos";
 import { rutaTexto } from "@/features/arbol/jerarquia";
-import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { useOrganizacion } from "@/stores/organizacion";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
-import { validarFicha, validarFoto } from "./validar";
+import {
+  camposGuardables,
+  cambiosFicha,
+  hayCambiosSinGuardar,
+  normalizarFicha,
+  validarFicha,
+  validarFoto,
+  type DatosFicha,
+} from "./validar";
 
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -54,7 +72,9 @@ const form = reactive({ ...vacio("", "activo"), nombre: "", correo: "", telefono
 // "" = ficha nueva, todavía sin guardar.
 const id = computed(() => form.id || null);
 const verErrores = ref(false);
-const erroresBd = ref<Record<string, string>>({});
+// Errores que devolvió la base, por campo del formulario (o "general"); se borran al editar ese campo.
+const fallidos = ref<Record<string, string>>({});
+const confirmando = ref(false);
 const errorFoto = ref("");
 
 watch(
@@ -70,47 +90,75 @@ watch(
       notas: w.notas ?? "",
     });
     verErrores.value = false;
-    erroresBd.value = {};
+    fallidos.value = {};
+    confirmando.value = false;
     errorFoto.value = "";
   },
   { immediate: true },
 );
 
-const errores = computed(() => ({ ...(verErrores.value ? validarFicha(form) : {}), ...erroresBd.value }));
+watch(
+  () => ({ ...form }),
+  (nuevo, viejo) => {
+    for (const k of Object.keys(nuevo))
+      if (nuevo[k as keyof typeof nuevo] !== viejo[k as keyof typeof viejo]) delete fallidos.value[k];
+  },
+);
+
+const errores = computed<Record<string, string>>(() => {
+  const otro = Object.entries(fallidos.value).find(([k]) => k !== "correo")?.[1];
+  return {
+    ...(verErrores.value ? validarFicha(form) : {}),
+    ...(fallidos.value.correo ? { correo: fallidos.value.correo } : {}),
+    ...(otro ? { general: otro } : {}),
+  };
+});
 const describe = (campo: string) => (errores.value[campo] ? `ficha-error-${campo}` : undefined);
 
-// Guardar: una ficha nueva se crea al primer guardado válido; las existentes envían solo lo que cambió.
+// Guardar: una ficha nueva se crea cuando sus campos obligatorios son válidos; una existente guarda cada campo
+// válido por separado (un campo inválido no arrastra a los demás) y muestra los errores pendientes.
 // Los guardados se encolan para que dos salidas de campo seguidas no creen la ficha dos veces.
 let cola: Promise<void> = Promise.resolve();
 const guardar = () => (cola = cola.then(guardarAhora));
 
 async function guardarAhora() {
-  if (!ficha.abierta.value || Object.keys(validarFicha(form)).length) return;
-  erroresBd.value = {};
-  const datos = {
-    ...form,
-    nombre: form.nombre.trim() || null,
-    correo: form.correo.trim() || null,
-    telefono: form.telefono.trim() || null,
-    notas: form.notas.trim() || null,
-  };
-  let r: Resultado;
+  if (!ficha.abierta.value) return;
   if (!id.value) {
-    r = await org.crearTrabajador(datos);
+    if (Object.keys(validarFicha(form)).length) {
+      verErrores.value = true;
+      return;
+    }
+    const r = await org.crearTrabajador(normalizarFicha(form));
+    // El store ya traduce el error de la base; el del correo repetido va bajo su campo.
     if (r.ok) form.id = r.id!;
-  } else {
-    const guardado = org.trabajadores.find((x) => x.id === id.value);
-    if (!guardado) return;
-    const cambios = Object.fromEntries(
-      Object.entries(datos).filter(([k, v]) => v !== guardado[k as keyof Trabajador]),
-    );
-    if (!Object.keys(cambios).length) return;
-    r = await org.editarTrabajador(id.value, cambios);
+    else fallidos.value = { [r.mensaje === t("errores.correoDuplicado") ? "correo" : "general"]: r.mensaje };
+    return;
   }
-  if (r.ok) return;
-  // El store ya traduce el error de la base; el del correo repetido va bajo su campo.
-  erroresBd.value =
-    r.mensaje === t("errores.correoDuplicado") ? { correo: r.mensaje } : { general: r.mensaje };
+  const guardado = org.trabajadores.find((x) => x.id === id.value);
+  if (!guardado) return;
+  const cambios = cambiosFicha(form, guardado);
+  // Un campo que la base ya rechazó espera a que lo editen.
+  for (const k of Object.keys(fallidos.value)) delete cambios[k as keyof DatosFicha];
+  const errs = { ...validarFicha({ ...form, estado: guardado.estado }), ...validarFicha(form) };
+  const guardables = camposGuardables(cambios, errs);
+  if (Object.keys(guardables).length < Object.keys(cambios).length) verErrores.value = true;
+  // El estado va al final: la base exige que ya estén el nombre o el cargo que pide.
+  const orden = Object.entries(guardables).sort(
+    ([a], [b]) => Number(a === "estado") - Number(b === "estado"),
+  );
+  for (const [campo, valor] of orden) {
+    const r = await org.editarTrabajador(id.value, { [campo]: valor });
+    if (!r.ok) fallidos.value = { ...fallidos.value, [campo]: r.mensaje };
+  }
+}
+
+async function pedirCerrar() {
+  await cola; // que termine lo que se está guardando antes de decidir
+  const a = ficha.abierta.value;
+  if (!a) return;
+  const base = id.value ? org.trabajadores.find((x) => x.id === id.value) : vacio(a.unidadId, a.estado);
+  if (base && hayCambiosSinGuardar(form, base)) confirmando.value = true;
+  else ficha.cerrar();
 }
 
 function alSalir() {
@@ -126,7 +174,6 @@ function cambiar<K extends CampoCatalogo | "unidad_id" | "foto_png">(campo: K, v
 async function cambiarEstado(estado: Trabajador["estado"]) {
   if (form.estado === estado) return;
   form.estado = estado;
-  if (estado === "vacante") verErrores.value = true;
   guardar();
   if (estado === "activo") {
     await nextTick();
@@ -202,7 +249,7 @@ const alAbrir = (e: Event) => {
 </script>
 
 <template>
-  <Dialog :open="!!ficha.abierta.value" @update:open="(v) => !v && ficha.cerrar()">
+  <Dialog :open="!!ficha.abierta.value" @update:open="(v) => !v && pedirCerrar()">
     <DialogContent
       class="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
       :show-close-button="false"
@@ -286,7 +333,7 @@ const alAbrir = (e: Event) => {
             autocomplete="off"
             :aria-invalid="!!errores.correo"
             :aria-describedby="describe('correo')"
-            @input="delete erroresBd.correo"
+            @input="delete fallidos.correo"
             @blur="alSalir"
           />
           <p v-if="errores.correo" id="ficha-error-correo" role="alert" class="text-xs text-destructive">
@@ -382,4 +429,16 @@ const alAbrir = (e: Event) => {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  <AlertDialog v-model:open="confirmando">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ t("ficha.sinGuardarTitulo") }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ t("ficha.sinGuardarTexto") }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>{{ t("ficha.seguirEditando") }}</AlertDialogCancel>
+        <AlertDialogAction @click="ficha.cerrar()">{{ t("ficha.descartar") }}</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

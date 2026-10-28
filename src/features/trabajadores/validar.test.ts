@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { hayCoincidenciaExacta, validarFicha, validarFoto } from "./validar";
+import {
+  camposGuardables,
+  cambiosFicha,
+  hayCambiosSinGuardar,
+  hayCoincidenciaExacta,
+  validarFicha,
+  validarFoto,
+  type DatosFicha,
+} from "./validar";
 
 const base = { estado: "activo" as const, nombre: "Ana", cargo_id: null, correo: "" };
 
@@ -45,5 +53,57 @@ describe("hayCoincidenciaExacta", () => {
   });
   it("una coincidencia parcial no cuenta", () => {
     expect(hayCoincidenciaExacta(valores, "Analista")).toBe(false);
+  });
+});
+
+const vacia: DatosFicha = {
+  estado: "activo",
+  nombre: null,
+  correo: null,
+  telefono: null,
+  cargo_id: null,
+  tipo_contrato_id: null,
+  sede_id: null,
+  jornada_id: null,
+  unidad_id: "u1",
+  foto_png: null,
+  notas: null,
+};
+const guardada: DatosFicha = { ...vacia, nombre: "Ana", correo: "ana@x.cl" };
+
+describe("guardar cada campo válido", () => {
+  it("correo inválido y teléfono editados: solo el teléfono se guarda", () => {
+    const form = { ...guardada, correo: "ana@", telefono: "123" };
+    const cambios = cambiosFicha(form, guardada);
+    expect(Object.keys(cambios).sort()).toEqual(["correo", "telefono"]);
+    expect(camposGuardables(cambios, validarFicha(form))).toEqual({ telefono: "123" });
+  });
+  it("la foto se guarda sola aunque otro campo sea inválido", () => {
+    const form = { ...guardada, correo: "ana@", foto_png: "AAAA" };
+    expect(camposGuardables(cambiosFicha(form, guardada), validarFicha(form))).toEqual({ foto_png: "AAAA" });
+  });
+  it("pasar a Persona sin nombre no se guarda hasta tener nombre", () => {
+    const vacante = { ...vacia, estado: "vacante" as const, cargo_id: "c1" };
+    const form = { ...vacante, estado: "activo" as const };
+    expect(camposGuardables(cambiosFicha(form, vacante), validarFicha(form))).toEqual({});
+    const conNombre = { ...form, nombre: " Luis " };
+    expect(camposGuardables(cambiosFicha(conNombre, vacante), validarFicha(conNombre))).toEqual({
+      estado: "activo",
+      nombre: "Luis",
+    });
+  });
+});
+
+describe("hayCambiosSinGuardar", () => {
+  it("ficha nueva sin ninguna entrada: no hay nada que perder", () => {
+    expect(hayCambiosSinGuardar(vacia, vacia)).toBe(false);
+    expect(hayCambiosSinGuardar({ ...vacia, nombre: "  ", telefono: "" }, vacia)).toBe(false);
+  });
+  it("ficha nueva con entrada: sí", () => {
+    expect(hayCambiosSinGuardar({ ...vacia, sede_id: "s1" }, vacia)).toBe(true);
+  });
+  it("ficha guardada con un campo inválido pendiente: sí; sin diferencias: no", () => {
+    expect(hayCambiosSinGuardar({ ...guardada, correo: "ana@" }, guardada)).toBe(true);
+    expect(hayCambiosSinGuardar({ ...guardada, nombre: " Ana " }, guardada)).toBe(false);
   });
 });

@@ -17,7 +17,9 @@ Arriba eliges **Persona** o **Vacante**. Una persona necesita nombre; una vacant
 
 ## Guardado
 
-No hay botón Guardar: los cambios se guardan al salir de cada campo, siempre que la ficha sea válida. Si algo no es válido, el motivo aparece bajo el campo y no se guarda hasta corregirlo. Una ficha nueva se crea con el primer guardado válido.
+No hay botón Guardar: cada campo se guarda al salir de él, siempre que ese campo sea válido. Si uno no es válido, el motivo aparece bajo el campo y ese campo no se guarda hasta corregirlo; los demás sí se guardan. Una ficha nueva se crea cuando están completos sus datos obligatorios (nombre en una persona, cargo en una vacante); hasta entonces se muestran los que faltan.
+
+Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nueva sin crear), aparece **Hay cambios sin guardar**: **Seguir editando** vuelve a la ficha y **Descartar** la cierra y pierde esos cambios.
 
 - El **correo** debe tener forma de dirección (por ejemplo, ana@empresa.cl) y no puede repetirse entre personas.
 - La **foto** es opcional: PNG, JPG o WebP de hasta 1 MB.

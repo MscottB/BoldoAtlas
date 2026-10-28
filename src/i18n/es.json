@@ -147,7 +147,7 @@
     "tituloVacante": "Ficha de vacante",
     "nuevaPersona": "Nueva persona",
     "nuevaVacante": "Nueva vacante",
-    "descripcion": "Los cambios se guardan al salir de cada campo.",
+    "descripcion": "Los cambios se guardan al salir de cada campo, si son válidos.",
     "tipoFicha": "Tipo de ficha",
     "persona": "Persona",
     "vacante": "Vacante",
@@ -187,6 +187,10 @@
       "fotoPeso": "La foto no puede pesar más de 1 MB.",
       "fotoLectura": "No se pudo leer la foto."
     },
-    "cerrar": "Cerrar"
+    "cerrar": "Cerrar",
+    "sinGuardarTitulo": "Hay cambios sin guardar",
+    "sinGuardarTexto": "Algún campo no es válido o la ficha aún no se creó. Si descartas, se perderán.",
+    "seguirEditando": "Seguir editando",
+    "descartar": "Descartar"
   }
 }

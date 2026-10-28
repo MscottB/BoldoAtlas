@@ -17,7 +17,9 @@ At the top you choose **Person** or **Vacancy**. A person needs a name; a vacanc
 
 ## Saving
 
-There is no Save button: changes are saved when you leave each field, as long as the record is valid. If something is not valid, the reason appears under the field and nothing is saved until it is fixed. A new record is created on the first valid save.
+There is no Save button: each field is saved when you leave it, as long as that field is valid. If one is not valid, the reason appears under the field and that field is not saved until it is fixed; the others are saved. A new record is created once its required data is complete (a name for a person, a job title for a vacancy); until then the missing items are shown.
+
+If you close the record with unsaved changes (an invalid field, or a new record not yet created), **You have unsaved changes** appears: **Keep editing** returns to the record and **Discard** closes it and loses those changes.
 
 - The **email** must look like an address (for example, ana@company.com) and cannot be shared between people.
 - The **photo** is optional: PNG, JPG or WebP up to 1 MB.

@@ -147,7 +147,7 @@
     "tituloVacante": "Vacancy record",
     "nuevaPersona": "New person",
     "nuevaVacante": "New vacancy",
-    "descripcion": "Changes are saved when you leave each field.",
+    "descripcion": "Changes are saved when you leave each field, if they are valid.",
     "tipoFicha": "Record type",
     "persona": "Person",
     "vacante": "Vacancy",
@@ -187,6 +187,10 @@
       "fotoPeso": "The photo cannot be larger than 1 MB.",
       "fotoLectura": "The photo could not be read."
     },
-    "cerrar": "Close"
+    "cerrar": "Close",
+    "sinGuardarTitulo": "You have unsaved changes",
+    "sinGuardarTexto": "A field is not valid or the record has not been created yet. If you discard, they will be lost.",
+    "seguirEditando": "Keep editing",
+    "descartar": "Discard"
   }
 }
