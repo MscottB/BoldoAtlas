@@ -44,6 +44,7 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 | Diagrama | Vue Flow + elkjs (layout automático) |
 | BD | SQLite vía `rusqlite` (SQLite incluido en el binario) expuesto con 3 comandos Tauri; migraciones con `PRAGMA user_version`. Se descartó `tauri-plugin-sql` porque su pool de conexiones no garantiza transacciones atómicas desde el frontend. |
 | Archivos/diálogos | `tauri-plugin-fs`, `tauri-plugin-dialog`, `tauri-plugin-opener` |
+| Cifrado del `.boldo` | Rust: `argon2` (Argon2id) + `chacha20poly1305` (XChaCha20-Poly1305), RustCrypto |
 | PDF | pdfmake (fuente Inter embebida) |
 | Excel (leer y escribir) | ExcelJS (MIT); CSV leído con el mismo flujo |
 | Tests | Vitest |
@@ -256,18 +257,21 @@ Calculados al vuelo con funciones puras sobre los datos (sin tablas extra):
 Vista Indicadores: tarjetas con totales de la organización, tabla por unidad ordenable, y listas "unidades sin jefatura", "procesos sin actividades", "actividades sin responsable". Clic en cualquier fila lleva a la unidad en el árbol.
 
 ### Escenarios
-- **Guardar como escenario:** copia la base actual con `VACUUM INTO` a `escenarios/<nombre>.boldo`, con nuevo `db_id`, `escenario_nombre` y `escenario_origen_id`.
+- **Guardar como escenario:** copia la base actual con `VACUUM INTO` a `escenarios/<nombre>.db` (archivo interno sin cifrar: no sale del equipo), con nuevo `db_id`, `escenario_nombre` y `escenario_origen_id`. Para compartir un escenario se exporta como cualquier base (`.boldo` cifrado).
 - **Abrir escenario:** cambia la base activa; la barra superior muestra la insignia del escenario y "Volver a la base principal".
 - **Comparar:** elige dos bases (p. ej. principal vs escenario) y muestra el resultado de `diff.ts` en solo lectura: unidades nuevas, eliminadas, movidas (cambio de `parent_id`), cambios de jefatura, personas reasignadas, y diferencia de indicadores (dotación, vacantes) por unidad. Exportable a Excel.
 - Pasar un escenario a la base principal = importar con "Reemplazar todo" o "Fusionar" (sección 9), sin flujo nuevo.
 
 ## 9. Exportar e importar `.boldo`
 
-**Formato:** copia SQLite completa generada con `VACUUM INTO` (incluye `meta`, logo y esquema).
+**Formato propio y cifrado.** Cada PC es un ambiente aislado y el archivo viaja por correo o pendrive con datos personales, así que va cifrado y solo se abre con un código que se entrega aparte.
+- Contenido: copia SQLite completa generada con `VACUUM INTO` (incluye `meta`, logo y esquema), cifrada con **XChaCha20-Poly1305**; la clave se deriva del código con **Argon2id** (memoria 64 MiB, 3 pasadas, 1 hilo) y una sal aleatoria por archivo.
+- Cabecera en claro, solo lo necesario para descifrar: identificador `BOLDO`, versión del formato, parámetros de Argon2id, sal y nonce. Nada más va en claro (ni el nombre de la organización ni las versiones: esos datos están dentro del contenido cifrado, en `meta`).
+- Todo el cifrado y descifrado ocurre en Rust (crates `argon2` y `chacha20poly1305` de RustCrypto), nunca en el frontend.
 
-**Exportar:** diálogo "Guardar como" → `Organizacion_AAAA-MM-DD_rN.boldo`.
+**Exportar:** diálogo "Guardar como" → `Organizacion_AAAA-MM-DD_rN.boldo`. La app genera un **código único para ese archivo**: 20 caracteres del alfabeto Crockford base32, sin caracteres confusos (sin O/0 ni I/1/L), en grupos de 4 (`K7QM-2XRP-9DWN-H4TB-V3CJ`, unos 100 bits). Se muestra **una sola vez** con "Copiar código" y la recomendación de enviar el archivo y el código **por canales distintos**. El código no se guarda en ningún lado: si se pierde, ese archivo no se puede abrir y hay que exportar de nuevo (otro archivo, otro código).
 
-**Importar:** se abre el archivo como segunda conexión de solo lectura, se valida el esquema (sección 6) y se elige el modo. **Antes de aplicar cualquiera de los dos modos se guarda un respaldo** en `respaldos/` con fecha (se conservan los últimos 20).
+**Importar:** se pide el código; Rust descifra a un archivo temporal dentro de `datos/`. Si el código no corresponde o el archivo fue alterado, el descifrado falla y se muestra "El código no es correcto o el archivo está dañado", sin tocar la base local. Con el contenido descifrado se abre una segunda conexión de solo lectura, se valida el esquema (sección 6) y se elige el modo; el temporal se borra al terminar o al cancelar. **Antes de aplicar cualquiera de los dos modos se guarda un respaldo** en `respaldos/` con fecha (se conservan los últimos 20).
 
 ### Modo A — Reemplazar todo
 La base local se sustituye por el archivo importado (tras el respaldo).
@@ -406,5 +410,6 @@ Las capturas del sitio se toman a mano de la base de ejemplo en v1 (automatizarl
 - Vue Flow con miles de nodos: mitigado por la prueba temprana.
 - pdfmake con cientos de unidades puede tardar: mostrar progreso; si no alcanza, mover generación a Rust.
 - Fusión sin base común: posibles decisiones manuales repetidas en fusiones frecuentes.
+- Código de un `.boldo` perdido: el archivo no se puede abrir (no hay recuperación, por diseño). Mitigación: el aviso al exportar y la posibilidad de exportar de nuevo cuando se quiera.
 - Carpeta de datos sin permiso de escritura (p. ej. el `.exe` abierto desde dentro del zip): se detecta al iniciar y se muestra cómo resolverlo.
 - Alcance v1 creció (SIPOC/RACI, carga masiva, escenarios): el plan de implementación debe entregarse por fases usables (núcleo árbol+fichas → procesos → exportaciones → sync/escenarios) para tener algo funcionando pronto.
