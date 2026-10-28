@@ -1,4 +1,4 @@
-// Release de Windows en salida/: instalador NSIS, zip portable y SHA256SUMS.txt.
+// Release de Windows en release/<versión>/: instalador NSIS, zip portable y SHA256SUMS.txt.
 // Lo usan `npm run release` (local) y .github/workflows/release.yml (con --etiqueta).
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -17,7 +17,7 @@ export const NOMBRES = {
 export const TAR = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
 
 /**
- * Arma salida/ a partir del exe y del instalador ya compilados.
+ * Arma la carpeta `salida` a partir del exe y del instalador ya compilados.
  * @param {{ exe: string, instalador: string, salida: string }} rutas
  */
 export function empaquetar({ exe, instalador, salida }) {
@@ -55,7 +55,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   empaquetar({
     exe: join(release, "boldo-atlas.exe"),
     instalador: join(release, "bundle", "nsis", `BoldoAtlas_${v.numerica}_x64-setup.exe`),
-    salida: "salida",
+    salida: join("release", v.base),
   });
-  console.log(`\nRelease ${v.completa} listo en salida/`);
+  console.log(`\nRelease ${v.completa} listo en release/${v.base}/`);
 }

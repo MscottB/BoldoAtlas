@@ -27,7 +27,7 @@ npm ci
 npm run tauri dev      # app en modo desarrollo
 npm run test           # tests del frontend
 cargo test --manifest-path src-tauri/Cargo.toml   # tests de Rust
-npm run release        # release completo en salida/: instalador, zip portable y SHA256SUMS.txt
+npm run release        # release completo en release/<versión>/: instalador, zip portable y SHA256SUMS.txt
 ```
 
 `npm run release` es el mismo comando que usa GitHub Actions, así que lo que genera en local es lo que se publicaría.
