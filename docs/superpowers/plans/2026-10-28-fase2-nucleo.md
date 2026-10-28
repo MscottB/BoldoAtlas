@@ -433,3 +433,14 @@ Se ejecutan después de la Task 11 y antes de la Task 10. Las tareas 10 y 12 usa
 - Diálogo de puesto: cargo (mantenedor), titular vigente, reemplazo vigente, historial ordenado por fecha, y las acciones "Asignar titular", "Registrar reemplazo" y "Terminar asignación" con fecha y motivo.
 - i18n es/en y página de ayuda `ayuda/{es,en}/puestos.md`.
 - Commit: `feat: puestos con titular, reemplazo e historial en el árbol y la ficha`
+
+### Task 11c (ampliación, pedido del autor): puestos visibles en el árbol
+- Interruptor **"Ver puestos"** en la barra del lienzo (apagado por defecto, preferencia por PC): bajo cada unidad visible se dibujan tarjetas de sus puestos (cargo, titular o "Vacante", "Reemplazo: <persona>" si hay), como hijos de la unidad en el layout. Medir en Task 14 con puestos visibles.
+
+### Task 11d: Leyendas y colores de puestos
+- Tabla `leyendas` (`nombre` NOT NULL, `color` NOT NULL hex, `descripcion` NULL, `orden` + comunes; único parcial por `lower(trim(nombre))`) y `puestos.leyenda_id` NULL → `leyendas.id` (FK diferida con índice). Dato de la organización: viaja en el `.boldo`.
+- En el puesto: elegir entrada de leyenda, "Copiar estilo" y "Pegar estilo" (asigna la misma entrada), "Quitar estilo". La tarjeta del puesto usa el color (borde y franja; texto con contraste AA vía `textoSobre`).
+- Leyenda flotante en el lienzo con las entradas en uso (ocultable); mantenedor de leyendas en Configuración › Mantenedores (crear, renombrar, color, descripción, orden, desactivar).
+- i18n es/en; ayuda `ayuda/{es,en}/leyendas.md`.
+- Para la Fase 4 (capturas/PDF): opciones **colores personalizados | estándar** y **con | sin leyenda**.
+- Commit: `feat: leyendas y colores de puestos con copiar estilo`
