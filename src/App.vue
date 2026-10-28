@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Info, Network } from "lucide-vue-next";
+import { Info, Network } from "@lucide/vue";
+import icono from "../assets/brand/icono.png";
 
 const navegacion = [
   { to: "/", etiqueta: "Árbol", icono: Network },
@@ -13,8 +14,9 @@ const navegacion = [
       class="flex w-56 shrink-0 flex-col gap-1 border-r bg-sidebar p-3 text-sidebar-foreground"
       aria-label="Navegación principal"
     >
-      <p class="px-2 pb-3 text-base font-semibold tracking-tight">
-        Boldo<span class="text-marca">Atlas</span>
+      <p class="flex items-center gap-2 px-2 pb-3 text-base font-semibold tracking-tight">
+        <img :src="icono" alt="" class="size-6" />
+        <span>Boldo<span class="text-marca">Atlas</span></span>
       </p>
       <RouterLink
         v-for="item in navegacion"
