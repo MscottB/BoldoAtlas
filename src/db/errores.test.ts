@@ -4,6 +4,7 @@ import { abrirBasePrueba } from "@/db/prueba/sqlite";
 import { crearUnidad } from "@/db/repos/unidades";
 import { crearTrabajador } from "@/db/repos/trabajadores";
 import { crearEtiqueta, etiquetarUnidad } from "@/db/repos/etiquetas";
+import { guardarSubarbol } from "@/db/repos/subarboles";
 
 describe("traducirError", () => {
   it.each([
@@ -60,6 +61,10 @@ describe("traducirError", () => {
     bd.aplicar(etiquetarUnidad(unidad.id, etiqueta.id));
     const etiquetaDuplicada = capturar(() => bd.aplicar(etiquetarUnidad(unidad.id, etiqueta.id)));
     expect(etiquetaDuplicada).toBe("La unidad ya tiene esa etiqueta.");
+
+    bd.aplicar(guardarSubarbol(unidad.id).sentencias);
+    const ramaDuplicada = capturar(() => bd.aplicar(guardarSubarbol(unidad.id).sentencias));
+    expect(ramaDuplicada).toBe("Esa rama ya está guardada en Árboles.");
   });
 
   it("no confunde el CHECK de nombre de un catálogo con el de la persona", () => {

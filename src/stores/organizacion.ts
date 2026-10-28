@@ -5,6 +5,7 @@ import { traducirError } from "@/db/errores";
 import {
   TABLAS_CATALOGO,
   type Conexion,
+  type SubarbolGuardado,
   type Etiqueta,
   type TablaCatalogo,
   type Trabajador,
@@ -16,6 +17,7 @@ import * as T from "@/db/repos/trabajadores";
 import * as C from "@/db/repos/catalogos";
 import * as E from "@/db/repos/etiquetas";
 import * as X from "@/db/repos/conexiones";
+import * as S from "@/db/repos/subarboles";
 import { guardarMeta } from "@/db/repos/meta";
 import { creaCiclo, hijos } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
@@ -53,6 +55,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const etiquetas = ref<Etiqueta[]>([]);
   const unidadEtiquetas = ref<{ unidad_id: string; etiqueta_id: string }[]>([]);
   const conexiones = ref<Conexion[]>([]);
+  const subarboles = ref<SubarbolGuardado[]>([]);
   const catalogos = ref(catalogosVacios());
   const org = ref<{ nombre: string; logo: string | null }>({ nombre: "", logo: null });
   const cargado = ref(false);
@@ -83,12 +86,13 @@ export const useOrganizacion = defineStore("organizacion", () => {
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      const [u, t, et, ue, co, meta, ...cats] = await Promise.all([
+      const [u, t, et, ue, co, sa, meta, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
         consultar<Etiqueta>(E.SQL_ETIQUETAS),
         consultar<{ unidad_id: string; etiqueta_id: string }>(E.SQL_UNIDAD_ETIQUETAS),
         consultar<Conexion>(X.SQL_CONEXIONES),
+        consultar<SubarbolGuardado>(S.SQL_SUBARBOLES),
         leerMeta(),
         ...TABLAS_CATALOGO.map((tabla) => consultar<ValorCatalogo>(C.sqlValores(tabla))),
       ]);
@@ -98,6 +102,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       etiquetas.value = et;
       unidadEtiquetas.value = ue;
       conexiones.value = co;
+      subarboles.value = sa;
       catalogos.value = Object.fromEntries(TABLAS_CATALOGO.map((tabla, i) => [tabla, cats[i]])) as Record<
         TablaCatalogo,
         ValorCatalogo[]
@@ -141,6 +146,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   };
 
   const crearUnidad = (datos: Parameters<typeof U.crearUnidad>[0]) => escribir(() => U.crearUnidad(datos));
+  const crearArbol = (nombre: string, tipo: Unidad["tipo"]) => crearUnidad({ tipo, nombre });
   const editarUnidad = (id: string, cambios: Parameters<typeof U.editarUnidad>[1]) =>
     escribir(() => U.editarUnidad(id, cambios));
   const asignarJefe = (id: string, jefeId: string | null) => escribir(() => U.asignarJefe(id, jefeId));
@@ -197,6 +203,12 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const crearConexion = (origen: string, destino: string, etiqueta: string | null = null) =>
     escribir(() => X.crearConexion(origen, destino, etiqueta));
   const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));
+
+  const guardarSubarbol = (unidadId: string) => escribir(() => S.guardarSubarbol(unidadId));
+  const renombrarSubarbol = (id: string, nombre: string | null) =>
+    escribir(() => S.renombrarSubarbol(id, nombre));
+  const moverSubarbol = (id: string, orden: number) => escribir(() => S.moverSubarbol(id, orden));
+  const quitarSubarbol = (id: string) => escribir(() => S.quitarSubarbol(id));
 
   const guardarOrg = (nombre: string, logo: string | null) =>
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
@@ -328,6 +340,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     etiquetas,
     unidadEtiquetas,
     conexiones,
+    subarboles,
     catalogos,
     org,
     cargado,
@@ -341,6 +354,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     usos,
     cargar,
     crearUnidad,
+    crearArbol,
     editarUnidad,
     moverUnidad,
     asignarJefe,
@@ -353,6 +367,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     crearEtiqueta,
     crearConexion,
     eliminarConexion,
+    guardarSubarbol,
+    renombrarSubarbol,
+    moverSubarbol,
+    quitarSubarbol,
     guardarOrg,
     deshacer,
     cargarEjemplo,

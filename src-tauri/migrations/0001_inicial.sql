@@ -170,3 +170,16 @@ CREATE INDEX idx_actividad_roles_actividad_id ON actividad_roles(actividad_id);
 CREATE INDEX idx_actividad_roles_trabajador_id ON actividad_roles(trabajador_id);
 CREATE UNIQUE INDEX ux_roles_persona ON actividad_roles(actividad_id, trabajador_id) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX ux_roles_aprobador ON actividad_roles(actividad_id) WHERE rol = 'A' AND deleted_at IS NULL;
+
+-- Ramas guardadas en "Árboles": una unidad se abre como árbol propio sin dejar de colgar de su superior.
+CREATE TABLE subarboles_guardados (
+  id         TEXT PRIMARY KEY NOT NULL,
+  unidad_id  TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
+  nombre     TEXT,
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE INDEX idx_subarboles_guardados_unidad_id ON subarboles_guardados(unidad_id);
+CREATE UNIQUE INDEX ux_subarboles_unidad ON subarboles_guardados(unidad_id) WHERE deleted_at IS NULL;

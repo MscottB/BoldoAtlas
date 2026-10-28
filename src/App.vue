@@ -8,6 +8,7 @@ import {
   ChartColumn,
   CircleHelp,
   GitBranch,
+  FolderTree,
   Info,
   Network,
   Settings,
@@ -29,6 +30,7 @@ interface Entrada {
 }
 const secciones: Entrada[] = [
   { to: "/", etiqueta: "nav.arbol", icono: Network },
+  { to: "/arboles", etiqueta: "nav.arboles", icono: FolderTree },
   { to: "/directorio", etiqueta: "nav.directorio", icono: Users },
   { etiqueta: "nav.indicadores", icono: ChartColumn, aviso: "nav.llegaFase3" },
   { etiqueta: "nav.escenarios", icono: GitBranch, aviso: "nav.llegaFase5" },

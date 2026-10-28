@@ -335,3 +335,46 @@ describe("nombre vacío en mantenedores", () => {
     expect(s.error).toBe("Escribe un nombre.");
   });
 });
+
+describe("árboles y subárboles guardados", () => {
+  it("crearArbol crea una raíz", async () => {
+    const s = nuevo();
+    const r = await s.crearArbol("Nuevo", "gerencia");
+    expect(r.ok).toBe(true);
+    expect(s.raices.map((u) => u.nombre)).toEqual(["Nuevo"]);
+  });
+
+  it("guarda, renombra, mueve y quita un subárbol", async () => {
+    const s = nuevo();
+    const raiz = await unidad(s, "Raíz");
+    const hija = await unidad(s, "Hija", raiz);
+    const r = await s.guardarSubarbol(hija);
+    expect(r.ok).toBe(true);
+    expect(s.subarboles).toEqual([{ id: expect.any(String), unidad_id: hija, nombre: null, orden: 1 }]);
+    const id = s.subarboles[0].id;
+    await s.renombrarSubarbol(id, "Mi rama");
+    await s.moverSubarbol(id, 3);
+    expect(s.subarboles[0]).toMatchObject({ nombre: "Mi rama", orden: 3 });
+    await s.quitarSubarbol(id);
+    expect(s.subarboles).toEqual([]);
+  });
+
+  it("guardar dos veces la misma rama devuelve ok: false con el mensaje", async () => {
+    const s = nuevo();
+    const hija = await unidad(s, "Hija", await unidad(s, "Raíz"));
+    await s.guardarSubarbol(hija);
+    const r = await s.guardarSubarbol(hija);
+    expect(r).toEqual({ ok: false, mensaje: "Esa rama ya está guardada en Árboles." });
+    expect(s.subarboles).toHaveLength(1);
+  });
+
+  it("el subárbol de una unidad eliminada no aparece y vuelve al deshacer", async () => {
+    const s = nuevo();
+    const hija = await unidad(s, "Hija", await unidad(s, "Raíz"));
+    await s.guardarSubarbol(hija);
+    await s.eliminarUnidad(hija);
+    expect(s.subarboles).toEqual([]);
+    await s.deshacer();
+    expect(s.subarboles).toHaveLength(1);
+  });
+});

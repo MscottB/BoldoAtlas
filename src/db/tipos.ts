@@ -41,6 +41,13 @@ export interface Etiqueta {
   color: string;
 }
 
+export interface SubarbolGuardado {
+  id: string;
+  unidad_id: string;
+  nombre: string | null;
+  orden: number;
+}
+
 export interface Conexion {
   id: string;
   origen_id: string;

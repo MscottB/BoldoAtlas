@@ -2,6 +2,7 @@
   "nav": {
     "principal": "Main navigation",
     "arbol": "Tree",
+    "arboles": "Trees",
     "directorio": "Directory",
     "indicadores": "Indicators",
     "escenarios": "Scenarios",
@@ -91,6 +92,23 @@
     "cancelar": "Cancel",
     "mover": "Move"
   },
+  "arboles": {
+    "titulo": "Trees",
+    "nuevoArbol": "New tree",
+    "nombreArbol": "Tree name",
+    "tipoArbol": "Type",
+    "crear": "Create",
+    "abrir": "Open",
+    "abrirNombre": "Open “{nombre}”",
+    "subarboles": "Saved subtrees",
+    "sinSubarboles": "There are no saved subtrees yet.",
+    "renombrar": "Rename subtree",
+    "subir": "Move up",
+    "bajar": "Move down",
+    "quitar": "Remove from Trees",
+    "guardarEnArboles": "Save in Trees",
+    "guardado": "Saved"
+  },
   "provisional": {
     "bienvenida": "Welcome",
     "enConstruccion": "Under construction"
@@ -113,7 +131,8 @@
     "vacanteSinCargo": "A vacancy needs a position.",
     "personaSinNombre": "The person's name is missing.",
     "conexionConsigoMisma": "A unit cannot be connected to itself.",
-    "relacionInexistente": "The related unit or person no longer exists."
+    "relacionInexistente": "The related unit or person no longer exists.",
+    "ramaYaGuardada": "That branch is already saved in Trees."
   },
   "store": {
     "nombreVacio": "Enter a name.",

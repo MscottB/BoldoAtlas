@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { toast } from "vue-sonner";
 import { useVueFlow } from "@vue-flow/core";
 import { onKeyStroke } from "@vueuse/core";
-import { Maximize, Plus, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Bookmark, BookmarkCheck, Maximize, Plus, ZoomIn, ZoomOut } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -25,6 +27,17 @@ function nueva() {
   const padre = seleccion.value ?? props.raiz;
   void nuevaUnidad(padre ? (org.porId.get(padre) ?? null) : null);
 }
+
+// La unidad seleccionada, o la raíz enfocada. Una raíz ya es un árbol en Árboles: solo se guardan ramas.
+const aGuardar = computed(() => {
+  const u = org.porId.get(seleccion.value ?? props.raiz ?? "");
+  return u?.parent_id ? u : null;
+});
+const guardada = computed(() => org.subarboles.some((s) => s.unidad_id === aGuardar.value?.id));
+async function guardarEnArboles() {
+  const r = aGuardar.value && (await org.guardarSubarbol(aGuardar.value.id));
+  if (r && !r.ok) toast.error(r.mensaje);
+}
 </script>
 
 <template>
@@ -32,6 +45,10 @@ function nueva() {
     <Button size="sm" @click="nueva">
       <Plus aria-hidden="true" />
       {{ t("arbol.nuevaUnidad") }}
+    </Button>
+    <Button v-if="aGuardar" variant="outline" size="sm" :disabled="guardada" @click="guardarEnArboles">
+      <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
+      {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
     </Button>
     <select
       v-model="filtroEtiqueta"

@@ -106,6 +106,13 @@ describe("esquema 0001", () => {
     expect(() => ins("trabajadores", { nombre: "B", correo: "  ", unidad_id: u })).not.toThrow();
   });
 
+  it("subarboles_guardados: un segundo subárbol activo de la misma unidad falla y tras quitarlo se puede volver a guardar", () => {
+    const primero = ins("subarboles_guardados", { unidad_id: u });
+    expect(() => ins("subarboles_guardados", { unidad_id: u })).toThrow(/UNIQUE/);
+    db.prepare("UPDATE subarboles_guardados SET deleted_at = ? WHERE id = ?").run(AHORA, primero);
+    expect(() => ins("subarboles_guardados", { unidad_id: u })).not.toThrow();
+  });
+
   it("toda clave foránea tiene un índice completo que empieza por ella", () => {
     const tablas = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as {
       name: string;

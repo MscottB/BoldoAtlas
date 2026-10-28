@@ -13,6 +13,11 @@ export const router = createRouter({
   routes: [
     { path: "/", name: "arbol", component: VistaArbol },
     {
+      path: "/arboles",
+      name: "arboles",
+      component: () => import("@/features/arboles/VistaArboles.vue"),
+    },
+    {
       path: "/directorio",
       name: "directorio",
       component: () => import("@/features/directorio/VistaDirectorio.vue"),

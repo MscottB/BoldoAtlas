@@ -2,6 +2,7 @@
   "nav": {
     "principal": "Navegación principal",
     "arbol": "Árbol",
+    "arboles": "Árboles",
     "directorio": "Directorio",
     "indicadores": "Indicadores",
     "escenarios": "Escenarios",
@@ -91,6 +92,23 @@
     "cancelar": "Cancelar",
     "mover": "Mover"
   },
+  "arboles": {
+    "titulo": "Árboles",
+    "nuevoArbol": "Nuevo árbol",
+    "nombreArbol": "Nombre del árbol",
+    "tipoArbol": "Tipo",
+    "crear": "Crear",
+    "abrir": "Abrir",
+    "abrirNombre": "Abrir «{nombre}»",
+    "subarboles": "Subárboles guardados",
+    "sinSubarboles": "Aún no hay subárboles guardados.",
+    "renombrar": "Renombrar subárbol",
+    "subir": "Subir",
+    "bajar": "Bajar",
+    "quitar": "Quitar de Árboles",
+    "guardarEnArboles": "Guardar en Árboles",
+    "guardado": "Guardado"
+  },
   "provisional": {
     "bienvenida": "Bienvenida",
     "enConstruccion": "En construcción"
@@ -113,7 +131,8 @@
     "vacanteSinCargo": "Una vacante necesita un cargo.",
     "personaSinNombre": "Falta el nombre de la persona.",
     "conexionConsigoMisma": "Una unidad no puede conectarse consigo misma.",
-    "relacionInexistente": "La unidad o persona relacionada ya no existe."
+    "relacionInexistente": "La unidad o persona relacionada ya no existe.",
+    "ramaYaGuardada": "Esa rama ya está guardada en Árboles."
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
