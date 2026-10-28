@@ -5,6 +5,8 @@ import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
 import { infoApp } from "./db/cliente";
 import { useTema } from "./features/tema/useTema";
+import { useOrganizacion } from "./stores/organizacion";
+import { destinoInicial } from "./app/estructura";
 import "./styles/main.css";
 
 // Antes de montar: el tema ya está aplicado en el primer pintado, sin parpadeo.
@@ -13,9 +15,16 @@ useTema().aplicar();
 /* eslint-disable vue/one-component-per-file -- son dos raíces alternativas de createApp, no dos componentes */
 // Si Rust no pudo abrir la base (o ni siquiera responde), se muestra el motivo en vez de una ventana en blanco.
 infoApp()
-  .then((info) => {
-    if (info.error) createApp(PantallaError, { info }).mount("#app");
-    else createApp(App).use(createPinia()).use(router).mount("#app");
+  .then(async (info) => {
+    if (info.error) return createApp(PantallaError, { info }).mount("#app");
+    const pinia = createPinia();
+    const org = useOrganizacion(pinia);
+    // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, la vista muestra su propio estado.
+    await org.cargar();
+    const app = createApp(App).use(pinia).use(router);
+    const destino = destinoInicial(org.cargado, org.vacia);
+    if (destino) await router.replace(destino);
+    app.mount("#app");
   })
   .catch((e: unknown) => {
     const info = { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
