@@ -21,13 +21,57 @@ CREATE TABLE unidades (
 CREATE INDEX idx_unidades_parent_id ON unidades(parent_id);
 CREATE INDEX idx_unidades_jefe_id ON unidades(jefe_id);
 
+-- Mantenedores: valores de lista de la ficha del trabajador. Desactivar = deleted_at (la ficha conserva su id).
+CREATE TABLE cargos (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_cargos_nombre ON cargos(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+CREATE TABLE tipos_contrato (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_tipos_contrato_nombre ON tipos_contrato(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+CREATE TABLE sedes (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_sedes_nombre ON sedes(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+CREATE TABLE jornadas (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_jornadas_nombre ON jornadas(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
 CREATE TABLE trabajadores (
   id         TEXT PRIMARY KEY NOT NULL,
   estado     TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo', 'vacante')),
   nombre     TEXT,
   correo     TEXT,
   telefono   TEXT,
-  cargo      TEXT,
+  cargo_id         TEXT REFERENCES cargos(id) DEFERRABLE INITIALLY DEFERRED,
+  tipo_contrato_id TEXT REFERENCES tipos_contrato(id) DEFERRABLE INITIALLY DEFERRED,
+  sede_id          TEXT REFERENCES sedes(id) DEFERRABLE INITIALLY DEFERRED,
+  jornada_id       TEXT REFERENCES jornadas(id) DEFERRABLE INITIALLY DEFERRED,
   unidad_id  TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
   foto_png   TEXT,
   notas      TEXT,
@@ -35,9 +79,13 @@ CREATE TABLE trabajadores (
   updated_at TEXT NOT NULL,
   deleted_at TEXT,
   CHECK (estado = 'vacante' OR length(trim(coalesce(nombre, ''))) > 0),
-  CHECK (estado = 'activo' OR length(trim(coalesce(cargo, ''))) > 0)
+  CHECK (estado = 'activo' OR cargo_id IS NOT NULL)
 );
 CREATE INDEX idx_trabajadores_unidad_id ON trabajadores(unidad_id);
+CREATE INDEX idx_trabajadores_cargo_id ON trabajadores(cargo_id);
+CREATE INDEX idx_trabajadores_tipo_contrato_id ON trabajadores(tipo_contrato_id);
+CREATE INDEX idx_trabajadores_sede_id ON trabajadores(sede_id);
+CREATE INDEX idx_trabajadores_jornada_id ON trabajadores(jornada_id);
 CREATE UNIQUE INDEX ux_trabajadores_correo ON trabajadores(lower(trim(correo)))
   WHERE correo IS NOT NULL AND trim(correo) <> '' AND deleted_at IS NULL;
 

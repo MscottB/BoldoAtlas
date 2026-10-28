@@ -40,8 +40,27 @@ describe("esquema 0001", () => {
   it("rechaza activo sin nombre", () =>
     expect(() => ins("trabajadores", { estado: "activo", unidad_id: u })).toThrow(/CHECK/));
 
-  it("acepta vacante con cargo y sin nombre", () =>
-    expect(() => ins("trabajadores", { estado: "vacante", cargo: "Analista", unidad_id: u })).not.toThrow());
+  it("acepta vacante con cargo y sin nombre", () => {
+    const cargo = ins("cargos", { nombre: "Analista" });
+    expect(() => ins("trabajadores", { estado: "vacante", cargo_id: cargo, unidad_id: u })).not.toThrow();
+  });
+
+  it("cargos rechaza un nombre repetido sin importar mayúsculas ni espacios", () => {
+    ins("cargos", { nombre: "analista" });
+    expect(() => ins("cargos", { nombre: " ANALISTA " })).toThrow(/UNIQUE/);
+  });
+
+  it("cargos acepta el nombre de uno desactivado", () => {
+    ins("cargos", { nombre: "analista", deleted_at: AHORA });
+    expect(() => ins("cargos", { nombre: " ANALISTA " })).not.toThrow();
+  });
+
+  it("trabajadores.cargo_id inexistente falla al confirmar", () => {
+    db.exec("BEGIN");
+    ins("trabajadores", { nombre: "Ana", cargo_id: randomUUID(), unidad_id: u });
+    expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
+    db.exec("ROLLBACK");
+  });
 
   it("rechaza tipo de unidad inválido", () =>
     expect(() => ins("unidades", { tipo: "gerncia", nombre: "X" })).toThrow(/CHECK/));
