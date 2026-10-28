@@ -40,7 +40,7 @@ const etiquetaTema = computed(() => (oscuro.value ? "Cambiar a tema claro" : "Ca
         <span>Buscar</span>
         <kbd class="ml-auto rounded border px-1 font-sans text-xs">Ctrl K</kbd>
       </Button>
-      <IndicadorGuardado :guardando="org.guardando" />
+      <IndicadorGuardado :guardando="org.guardando" :error="org.error" />
       <Tooltip>
         <TooltipTrigger as-child>
           <Button variant="outline" aria-disabled="true" class="cursor-not-allowed text-muted-foreground">

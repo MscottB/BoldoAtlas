@@ -6,7 +6,7 @@ import { router } from "./router";
 import { infoApp } from "./db/cliente";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
-import { destinoInicial } from "./app/estructura";
+import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
 import "./styles/main.css";
 
 // Antes de montar: el tema ya está aplicado en el primer pintado, sin parpadeo.
@@ -19,8 +19,9 @@ infoApp()
     if (info.error) return createApp(PantallaError, { info }).mount("#app");
     const pinia = createPinia();
     const org = useOrganizacion(pinia);
-    // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, la vista muestra su propio estado.
-    await org.cargar();
+    // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, se muestra el motivo en vez de una app vacía.
+    const falloCarga = infoSiFalloCarga(await org.cargar());
+    if (falloCarga) return createApp(PantallaError, { info: falloCarga }).mount("#app");
     const app = createApp(App).use(pinia).use(router);
     const destino = destinoInicial(org.cargado, org.vacia);
     if (destino) await router.replace(destino);
