@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Network } from "lucide-vue-next";
+import { Network } from "@lucide/vue";
 </script>
 
 <template>

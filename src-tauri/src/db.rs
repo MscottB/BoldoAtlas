@@ -15,7 +15,10 @@ pub struct Sentencia {
 }
 
 fn texto(e: rusqlite::Error) -> String {
-    e.to_string()
+    match e.sqlite_error_code() {
+        Some(ErrorCode::ReadOnly) => "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura.".into(),
+        _ => e.to_string(),
+    }
 }
 
 /// JSON del frontend → valor SQLite. Arreglos y objetos se guardan como texto JSON.
@@ -365,6 +368,22 @@ mod tests {
         std::fs::create_dir_all(&carpeta).unwrap();
         let mut conn = abrir(&carpeta.join("boldo.db")).unwrap();
         assert_eq!(migrar(&mut conn, &carpeta).unwrap(), 1);
+    }
+
+    #[test]
+    fn base_de_solo_lectura_explica_el_problema() {
+        let (_dir, ruta, conn) = base_nueva();
+        drop(conn);
+        let mut permisos = std::fs::metadata(&ruta).unwrap().permissions();
+        permisos.set_readonly(true);
+        std::fs::set_permissions(&ruta, permisos.clone()).unwrap();
+        let err = abrir(&ruta)
+            .and_then(|mut c| lote(&mut c, &[insertar_unidad("A")], "1.0.0"))
+            .unwrap_err();
+        #[allow(clippy::permissions_set_readonly_false)]
+        permisos.set_readonly(false);
+        std::fs::set_permissions(&ruta, permisos).unwrap();
+        assert!(err.contains("solo lectura"), "{err}");
     }
 
     #[test]

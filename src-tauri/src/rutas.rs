@@ -39,7 +39,7 @@ pub fn dir_datos(exe_dir: &Path, appdata: Option<&Path>) -> Result<Rutas, String
     };
     preparar().map_err(|e| {
         format!(
-            "No se puede escribir en {}. Si abriste BoldoAtlas desde dentro del .zip, extráelo primero a una carpeta. Detalle: {e}",
+            "No se puede escribir en {}. Mueve BoldoAtlas a una carpeta con permiso de escritura (por ejemplo, Documentos) o revisa los permisos de esa carpeta. Detalle: {e}",
             datos.display()
         )
     })?;
@@ -111,6 +111,7 @@ mod tests {
             err.contains(&exe.path().join("datos").display().to_string()),
             "{err}"
         );
-        assert!(err.contains("extráelo primero a una carpeta"), "{err}");
+        assert!(err.contains("permiso de escritura"), "{err}");
+        assert!(err.contains("Documentos"), "{err}");
     }
 }

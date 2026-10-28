@@ -6,8 +6,14 @@ import { router } from "./router";
 import { infoApp } from "./db/cliente";
 import "./styles/main.css";
 
-// Si Rust no pudo abrir la base, se muestra el motivo en vez de una app vacía.
-void infoApp().then((info) => {
-  if (info.error) createApp(PantallaError, { info }).mount("#app");
-  else createApp(App).use(createPinia()).use(router).mount("#app");
-});
+/* eslint-disable vue/one-component-per-file -- son dos raíces alternativas de createApp, no dos componentes */
+// Si Rust no pudo abrir la base (o ni siquiera responde), se muestra el motivo en vez de una ventana en blanco.
+infoApp()
+  .then((info) => {
+    if (info.error) createApp(PantallaError, { info }).mount("#app");
+    else createApp(App).use(createPinia()).use(router).mount("#app");
+  })
+  .catch((e: unknown) => {
+    const info = { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
+    createApp(PantallaError, { info }).mount("#app");
+  });

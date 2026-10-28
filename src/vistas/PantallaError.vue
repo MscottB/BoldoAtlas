@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { TriangleAlert } from "lucide-vue-next";
+import { TriangleAlert } from "@lucide/vue";
 import type { InfoApp } from "@/db/cliente";
 
 const props = defineProps<{ info: InfoApp }>();
