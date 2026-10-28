@@ -6,7 +6,8 @@ import { actualizar, fijarBorrado } from "./comun";
 export const SQL_UNIDADES =
   "SELECT id, tipo, nombre, descripcion, parent_id, jefe_id, orden FROM unidades WHERE deleted_at IS NULL ORDER BY orden, nombre";
 
-type DatosUnidad = Pick<Unidad, "tipo" | "nombre"> & Partial<Pick<Unidad, "descripcion" | "parent_id" | "jefe_id" | "orden">>;
+type DatosUnidad = Pick<Unidad, "tipo" | "nombre"> &
+  Partial<Pick<Unidad, "descripcion" | "parent_id" | "jefe_id" | "orden">>;
 
 export function crearUnidad(datos: DatosUnidad): { id: string; sentencias: Sentencia[] } {
   const id = nuevoId();

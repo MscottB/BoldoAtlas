@@ -6,7 +6,8 @@ import { crearValor, renombrarValor, moverValor, desactivarValor, reactivarValor
 import type { ValorCatalogo } from "@/db/tipos";
 
 let bd: BasePrueba;
-const valores = () => bd.consultar<ValorCatalogo>("SELECT id, nombre, orden, deleted_at FROM cargos ORDER BY orden");
+const valores = () =>
+  bd.consultar<ValorCatalogo>("SELECT id, nombre, orden, deleted_at FROM cargos ORDER BY orden");
 
 beforeEach(() => {
   bd = abrirBasePrueba();
@@ -45,7 +46,9 @@ describe("catalogos", () => {
 
     bd.aplicar(desactivarValor("cargos", cargo.id));
     expect(valores()[0].deleted_at).not.toBeNull();
-    expect(bd.consultar<{ cargo_id: string }>("SELECT cargo_id FROM trabajadores")[0].cargo_id).toBe(cargo.id);
+    expect(bd.consultar<{ cargo_id: string }>("SELECT cargo_id FROM trabajadores")[0].cargo_id).toBe(
+      cargo.id,
+    );
 
     bd.aplicar(reactivarValor("cargos", cargo.id));
     expect(valores()[0].deleted_at).toBeNull();
