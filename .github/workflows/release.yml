@@ -32,19 +32,8 @@ jobs:
       - run: npm run test
       - run: cargo test
         working-directory: src-tauri
-      - run: node scripts/version.mjs --aplicar --etiqueta ${{ github.ref_name }}
-      - run: npm run tauri build -- --bundles nsis
-      - name: Empaquetar
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory salida, portable/datos | Out-Null
-          Copy-Item src-tauri/target/release/boldo-atlas.exe portable/BoldoAtlas.exe
-          New-Item portable/portable.flag | Out-Null
-          New-Item portable/datos/.keep | Out-Null
-          Compress-Archive portable/* salida/BoldoAtlas_windows_x64_portable.zip
-          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1) salida/BoldoAtlas_windows_x64_setup.exe
-          $sumas = Get-ChildItem salida | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower(), $_.Name }
-          $sumas | Set-Content salida/SHA256SUMS.txt -Encoding ascii
+      # mismo comando que `npm run release` en local; falla si la versión no coincide con la etiqueta
+      - run: node scripts/release.mjs --etiqueta ${{ github.ref_name }}
       - uses: softprops/action-gh-release@v2
         with:
           files: salida/*

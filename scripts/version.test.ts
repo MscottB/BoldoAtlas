@@ -18,11 +18,11 @@ describe("formatearVersion", () => {
   it("commits después", () =>
     expect(
       formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: false, fecha: f }).completa,
-    ).toBe("1.2.0-dev.5+28102026.3f2a1bc"));
+    ).toBe("1.2.1-dev.5+28102026.3f2a1bc"));
   it("sucio", () =>
     expect(
       formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: true, fecha: f }).completa,
-    ).toBe("1.2.0-dev.5+28102026.3f2a1bc.sucio"));
+    ).toBe("1.2.1-dev.5+28102026.3f2a1bc.sucio"));
   it("sucio en etiqueta exacta", () =>
     expect(
       formatearVersion({ tag: "v1.2.0", distancia: 0, sha: "3f2a1bc", sucio: true, fecha: f }).completa,
@@ -30,10 +30,10 @@ describe("formatearVersion", () => {
   it("sin etiquetas", () =>
     expect(
       formatearVersion({ tag: null, distancia: 12, sha: "3f2a1bc", sucio: false, fecha: f }).completa,
-    ).toBe("0.0.0-dev.12+28102026.3f2a1bc"));
+    ).toBe("0.0.1-dev.12+28102026.3f2a1bc"));
   it("sin git", () =>
     expect(formatearVersion({ tag: null, distancia: 0, sha: "", sucio: false, fecha: f }).completa).toBe(
-      "0.0.0-dev.0+28102026",
+      "0.0.1-dev.0+28102026",
     ));
   it("pre-release con commits después", () =>
     expect(
@@ -44,6 +44,12 @@ describe("formatearVersion", () => {
     expect(
       formatearVersion({ tag: "v1.3.0-beta.1", distancia: 0, sha: "", sucio: false, fecha: f }).numerica,
     ).toBe("1.3.0"));
+});
+
+describe("orden SemVer de las versiones de desarrollo", () => {
+  const dev = formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: false, fecha: f });
+  it("la base de un build de desarrollo es la versión siguiente con -dev.N", () => expect(dev.base).toBe("1.2.1-dev.5"));
+  it("la numérica del instalador es la versión siguiente", () => expect(dev.numerica).toBe("1.2.1"));
 });
 
 describe("fechaDDMMAAAA", () => {

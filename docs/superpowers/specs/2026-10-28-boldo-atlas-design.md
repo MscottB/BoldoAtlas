@@ -157,18 +157,19 @@ Tema, color de acento, columnas elegidas para Excel, filtros del directorio, úl
 ## 6. Versiones
 
 - **App:** [SemVer 2.0](https://semver.org/lang/es/) con **la etiqueta de git como única fuente** (`vX.Y.Z`). Nadie edita el número a mano en archivos.
-  - `scripts/version.mjs` ejecuta `git describe --tags --long --dirty --match "v*"` y arma la versión con una función pura `formatearVersion({ tag, distancia, sha, sucio, fecha })`:
+  - `scripts/version.mjs` ejecuta `git describe --tags --long --match "v*"` (y `git status` para detectar cambios sin commitear) y arma la versión con una función pura `formatearVersion({ tag, distancia, sha, sucio, fecha })`:
 
     | Situación | Versión completa | Ejemplo |
     |---|---|---|
     | Compilado exactamente en una etiqueta, sin cambios locales | `X.Y.Z+DDMMAAAA` | `1.2.0+28102026` |
-    | N commits después de la etiqueta | `X.Y.Z-dev.N+DDMMAAAA.SHA` | `1.2.0-dev.5+28102026.3f2a1bc` |
-    | Con cambios sin commitear | se agrega `.sucio` a los metadatos | `1.2.0-dev.5+28102026.3f2a1bc.sucio` |
-    | Repositorio sin etiquetas | base `0.0.0` | `0.0.0-dev.12+28102026.3f2a1bc` |
+    | N commits después de una etiqueta final | versión siguiente: `X.Y.(Z+1)-dev.N+DDMMAAAA.SHA` (en SemVer `X.Y.Z-dev.N` quedaría *antes* de `X.Y.Z`) | `1.2.1-dev.5+28102026.3f2a1bc` |
+    | N commits después de una pre-release | `X.Y.Z-beta.K.dev.N+DDMMAAAA.SHA` | `1.3.0-beta.1.dev.2+28102026.abc1234` |
+    | Con cambios sin commitear | se agrega `.sucio` a los metadatos | `1.2.1-dev.5+28102026.3f2a1bc.sucio` |
+    | Repositorio sin etiquetas | como si la última fuera `0.0.0` | `0.0.1-dev.12+28102026.3f2a1bc` |
 
   - `DDMMAAAA` = fecha de compilación en zona `America/Santiago` (fija, para que el runner en UTC no cambie el día). Va como metadato de compilación de SemVer (`+…`), que el estándar permite y que no altera el orden de versiones.
-  - El script entrega a Vite las constantes `__APP_VERSION__` (completa), `__APP_VERSION_CORTA__` (`X.Y.Z`), `__APP_FECHA__` (`DDMMAAAA`) y `__APP_COMMIT__` (SHA).
-  - En el workflow de release, el mismo script escribe `X.Y.Z` en `package.json` y `tauri.conf.json` antes de compilar (sin commitear), porque el instalador de Windows solo acepta `X.Y.Z`.
+  - El script entrega a Vite las constantes `__APP_VERSION__` (completa), `__APP_VERSION_CORTA__` (sin metadatos: `1.2.0` o `1.2.1-dev.5`), `__APP_FECHA__` (`DDMMAAAA`) y `__APP_COMMIT__` (SHA).
+  - `scripts/release.mjs` (usado por `npm run release` y por el workflow) pasa `X.Y.Z` a Tauri con `--config`, sin modificar archivos versionados, porque el instalador de Windows solo acepta `X.Y.Z`. En el workflow, además, falla si la versión calculada no coincide con la etiqueta empujada.
   - Se muestra en "Acerca de", en la barra de estado de Configuración, en portada/pie del PDF, en la hoja Información del Excel y en `meta.app_version_ultima`.
 - **Esquema BD:** número de migración. Al abrir una base con esquema menor → respaldo automático y migración. Al importar o abrir un archivo con esquema **mayor** → se rechaza con "Actualiza BoldoAtlas para abrir este archivo".
 - **Datos:** `data_revision` + `db_id` + `db_creada` (+ `escenario_nombre` si aplica) identifican de qué base y momento viene un archivo, PDF o Excel.

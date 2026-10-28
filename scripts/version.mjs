@@ -1,6 +1,5 @@
 // Versión SemVer 2.0 derivada de la etiqueta git `vX.Y.Z`, con la fecha de compilación DDMMAAAA como metadato.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -33,14 +32,19 @@ export function fechaDDMMAAAA(fecha, zona = "America/Santiago") {
  * @returns {{ completa: string, base: string, numerica: string }}
  */
 export function formatearVersion({ tag, distancia, sha, sucio, fecha }) {
-  const base = tag ? tag.replace(/^v/, "") : "0.0.0";
+  const etiqueta = tag ? tag.replace(/^v/, "") : "0.0.0";
+  let base = etiqueta;
+  if (distancia > 0 || !tag) {
+    // En SemVer X.Y.Z-dev.N va ANTES que X.Y.Z: el desarrollo posterior a una versión final apunta a la siguiente
+    base = etiqueta.includes("-")
+      ? `${etiqueta}.dev.${distancia}`
+      : `${etiqueta.replace(/\d+$/, (parche) => String(Number(parche) + 1))}-dev.${distancia}`;
+  }
   const numerica = base.split(/[-+]/)[0];
-  let pre = "";
-  if (distancia > 0 || !tag) pre = `${base.includes("-") ? "." : "-"}dev.${distancia}`;
   const meta = [fecha];
   if (sha && (distancia > 0 || sucio)) meta.push(sha);
   if (sucio) meta.push("sucio");
-  return { completa: `${base}${pre}+${meta.join(".")}`, base, numerica };
+  return { completa: `${base}+${meta.join(".")}`, base, numerica };
 }
 
 /**
@@ -83,20 +87,7 @@ export function obtenerVersion(cwd = process.cwd()) {
     }
   }
   try {
-    // --aplicar modifica estos dos archivos en el release: no deben marcar la versión como sucia
-    info.sucio =
-      git(
-        [
-          "status",
-          "--porcelain",
-          "--untracked-files=no",
-          "--",
-          ".",
-          ":(exclude)package.json",
-          ":(exclude)src-tauri/tauri.conf.json",
-        ],
-        cwd,
-      ) !== "";
+    info.sucio = git(["status", "--porcelain", "--untracked-files=no"], cwd) !== "";
   } catch {
     info.sucio = false;
   }
@@ -104,24 +95,6 @@ export function obtenerVersion(cwd = process.cwd()) {
   return { ...formatearVersion({ ...info, fecha }), fecha, commit: info.sha };
 }
 
-/** @param {string} ruta @param {string} version */
-function escribirVersion(ruta, version) {
-  const json = JSON.parse(readFileSync(ruta, "utf8"));
-  json.version = version;
-  writeFileSync(ruta, JSON.stringify(json, null, 2) + "\n");
-}
-
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const v = obtenerVersion();
-  const i = process.argv.indexOf("--etiqueta");
-  const error = i > 0 ? verificarEtiqueta(v.base, process.argv[i + 1] ?? "") : null;
-  if (error) {
-    console.error(error);
-    process.exit(1);
-  }
-  if (process.argv.includes("--aplicar")) {
-    escribirVersion("package.json", v.numerica);
-    escribirVersion("src-tauri/tauri.conf.json", v.numerica);
-  }
-  console.log(JSON.stringify(v, null, 2));
+  console.log(JSON.stringify(obtenerVersion(), null, 2));
 }
