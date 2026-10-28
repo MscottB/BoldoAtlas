@@ -48,7 +48,8 @@ describe("formatearVersion", () => {
 
 describe("orden SemVer de las versiones de desarrollo", () => {
   const dev = formatearVersion({ tag: "v1.2.0", distancia: 5, sha: "3f2a1bc", sucio: false, fecha: f });
-  it("la base de un build de desarrollo es la versión siguiente con -dev.N", () => expect(dev.base).toBe("1.2.1-dev.5"));
+  it("la base de un build de desarrollo es la versión siguiente con -dev.N", () =>
+    expect(dev.base).toBe("1.2.1-dev.5"));
   it("la numérica del instalador es la versión siguiente", () => expect(dev.numerica).toBe("1.2.1"));
 });
 
