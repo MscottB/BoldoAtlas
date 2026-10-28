@@ -1,0 +1,52 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe necesita historia y etiquetas
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: cargo test
+        working-directory: src-tauri
+      - run: node scripts/version.mjs --aplicar
+      - run: npm run tauri build -- --bundles nsis
+      - name: Empaquetar
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory salida, portable/datos | Out-Null
+          Copy-Item src-tauri/target/release/boldo-atlas.exe portable/BoldoAtlas.exe
+          New-Item portable/portable.flag | Out-Null
+          New-Item portable/datos/.keep | Out-Null
+          Compress-Archive portable/* salida/BoldoAtlas_windows_x64_portable.zip
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1) salida/BoldoAtlas_windows_x64_setup.exe
+          $sumas = Get-ChildItem salida | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower(), $_.Name }
+          $sumas | Set-Content salida/SHA256SUMS.txt -Encoding ascii
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: salida/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
