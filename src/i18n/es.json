@@ -141,5 +141,52 @@
     "raizConContenido": "No se puede eliminar la unidad raíz mientras tenga contenido.",
     "noSePuedeDeshacer": "Ya no se puede deshacer.",
     "valorExiste": "Ya existe «{nombre}» en la lista."
+  },
+  "ficha": {
+    "tituloPersona": "Ficha de persona",
+    "tituloVacante": "Ficha de vacante",
+    "nuevaPersona": "Nueva persona",
+    "nuevaVacante": "Nueva vacante",
+    "descripcion": "Los cambios se guardan al salir de cada campo.",
+    "tipoFicha": "Tipo de ficha",
+    "persona": "Persona",
+    "vacante": "Vacante",
+    "cubrir": "Cubrir vacante",
+    "nombre": "Nombre",
+    "cargo": "Cargo",
+    "tipoContrato": "Tipo de contrato",
+    "sede": "Sede",
+    "jornada": "Jornada",
+    "correo": "Correo",
+    "telefono": "Teléfono",
+    "notas": "Notas",
+    "foto": "Foto",
+    "elegirFoto": "Elegir foto",
+    "quitarFoto": "Quitar foto",
+    "unidad": "Unidad",
+    "esJefe": "Es el jefe de su unidad",
+    "jefeUnidad": "Jefe de la unidad: {nombre}",
+    "encabeza": "Unidades que encabeza",
+    "ninguna": "Ninguna",
+    "eliminar": "Eliminar",
+    "eliminado": "Ficha eliminada",
+    "deshacer": "Deshacer",
+    "selector": {
+      "elegir": "Elegir…",
+      "buscar": "Buscar o escribir un valor nuevo",
+      "inactivo": "(inactivo)",
+      "agregar": "Agregar «{texto}» a la lista",
+      "sinValor": "Sin valor",
+      "yaExistia": "«{nombre}» ya estaba en la lista: se seleccionó ese."
+    },
+    "error": {
+      "nombre": "Escribe el nombre.",
+      "cargo": "Una vacante necesita un cargo.",
+      "correo": "El correo no es válido.",
+      "fotoTipo": "La foto debe ser PNG, JPG o WebP.",
+      "fotoPeso": "La foto no puede pesar más de 1 MB.",
+      "fotoLectura": "No se pudo leer la foto."
+    },
+    "cerrar": "Cerrar"
   }
 }

@@ -141,5 +141,52 @@
     "raizConContenido": "The root unit cannot be deleted while it has content.",
     "noSePuedeDeshacer": "This can no longer be undone.",
     "valorExiste": "\"{nombre}\" already exists in the list."
+  },
+  "ficha": {
+    "tituloPersona": "Person record",
+    "tituloVacante": "Vacancy record",
+    "nuevaPersona": "New person",
+    "nuevaVacante": "New vacancy",
+    "descripcion": "Changes are saved when you leave each field.",
+    "tipoFicha": "Record type",
+    "persona": "Person",
+    "vacante": "Vacancy",
+    "cubrir": "Fill vacancy",
+    "nombre": "Name",
+    "cargo": "Job title",
+    "tipoContrato": "Contract type",
+    "sede": "Site",
+    "jornada": "Shift",
+    "correo": "Email",
+    "telefono": "Phone",
+    "notas": "Notes",
+    "foto": "Photo",
+    "elegirFoto": "Choose photo",
+    "quitarFoto": "Remove photo",
+    "unidad": "Unit",
+    "esJefe": "Is the head of their unit",
+    "jefeUnidad": "Unit head: {nombre}",
+    "encabeza": "Units they head",
+    "ninguna": "None",
+    "eliminar": "Delete",
+    "eliminado": "Record deleted",
+    "deshacer": "Undo",
+    "selector": {
+      "elegir": "Choose…",
+      "buscar": "Search or type a new value",
+      "inactivo": "(inactive)",
+      "agregar": "Add «{texto}» to the list",
+      "sinValor": "No value",
+      "yaExistia": "«{nombre}» was already in the list: selected that one."
+    },
+    "error": {
+      "nombre": "Enter the name.",
+      "cargo": "A vacancy needs a job title.",
+      "correo": "The email is not valid.",
+      "fotoTipo": "The photo must be PNG, JPG or WebP.",
+      "fotoPeso": "The photo cannot be larger than 1 MB.",
+      "fotoLectura": "The photo could not be read."
+    },
+    "cerrar": "Close"
   }
 }
