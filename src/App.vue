@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { Network } from "lucide-vue-next";
+import { Info, Network } from "lucide-vue-next";
 
-const navegacion = [{ to: "/", etiqueta: "Árbol", icono: Network }];
+const navegacion = [
+  { to: "/", etiqueta: "Árbol", icono: Network },
+  { to: "/acerca", etiqueta: "Acerca de", icono: Info },
+];
 </script>
 
 <template>

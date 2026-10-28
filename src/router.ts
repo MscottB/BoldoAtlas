@@ -3,5 +3,8 @@ import VistaArbol from "@/vistas/VistaArbol.vue";
 
 export const router = createRouter({
   history: createWebHashHistory(),
-  routes: [{ path: "/", name: "arbol", component: VistaArbol }],
+  routes: [
+    { path: "/", name: "arbol", component: VistaArbol },
+    { path: "/acerca", name: "acerca", component: () => import("@/vistas/VistaAcerca.vue") },
+  ],
 });
