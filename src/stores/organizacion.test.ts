@@ -1,20 +1,31 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
+import * as U from "@/db/repos/unidades";
 import { useOrganizacion } from "./organizacion";
 
-const h = vi.hoisted(() => ({ bd: null as BasePrueba | null }));
+// antesDeLote / antesDeMeta: ganchos de los tests para pausar una llamada y forzar solapes.
+const h = vi.hoisted(() => ({
+  bd: null as BasePrueba | null,
+  antesDeLote: null as (() => Promise<void>) | null,
+  antesDeMeta: null as (() => Promise<void>) | null,
+}));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
 vi.mock("@/db/cliente", () => ({
   consultar: async (sql: string, params?: unknown[]) => h.bd!.consultar(sql, params),
-  lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => h.bd!.aplicar(s),
-  leerMeta: async () =>
-    Object.fromEntries(
+  lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => {
+    await h.antesDeLote?.();
+    h.bd!.aplicar(s);
+  },
+  leerMeta: async () => {
+    await h.antesDeMeta?.();
+    return Object.fromEntries(
       h
         .bd!.consultar<{ clave: string; valor: string | null }>("SELECT clave, valor FROM meta")
         .map((f) => [f.clave, f.valor ?? ""]),
-    ),
+    );
+  },
 }));
 
 const revision = () =>
@@ -45,6 +56,8 @@ async function persona(
 
 beforeEach(() => {
   h.bd = abrirBasePrueba();
+  h.antesDeLote = null;
+  h.antesDeMeta = null;
 });
 afterEach(() => vi.useRealTimers());
 
@@ -249,5 +262,76 @@ describe("organización, etiquetas y conexiones", () => {
     expect(s.conexiones).toHaveLength(1);
     await s.eliminarConexion(c.id);
     expect(s.conexiones).toHaveLength(0);
+  });
+});
+
+describe("concurrencia", () => {
+  it("guardando sigue activo hasta que terminan todas las escrituras superpuestas", async () => {
+    const s = nuevo();
+    const liberar: (() => void)[] = [];
+    h.antesDeLote = () => new Promise<void>((resolver) => liberar.push(resolver));
+    const p1 = s.crearUnidad({ tipo: "area", nombre: "A", parent_id: null });
+    const p2 = s.crearUnidad({ tipo: "area", nombre: "B", parent_id: null });
+    expect(s.guardando).toBe(true);
+    liberar[0]();
+    await p1;
+    expect(s.guardando).toBe(true);
+    liberar[1]();
+    await p2;
+    expect(s.guardando).toBe(false);
+  });
+
+  it("una recarga lenta no pisa el resultado de una más reciente", async () => {
+    const s = nuevo();
+    let liberar!: () => void;
+    h.antesDeMeta = () => {
+      h.antesDeMeta = null;
+      return new Promise<void>((resolver) => (liberar = resolver));
+    };
+    const vieja = s.cargar(); // foto sin unidades, queda pausada
+    h.bd!.aplicar(U.crearUnidad({ tipo: "area", nombre: "Nueva", parent_id: null }).sentencias);
+    await s.cargar(); // foto con la unidad
+    expect(s.unidades).toHaveLength(1);
+    liberar();
+    await vieja;
+    expect(s.unidades).toHaveLength(1);
+  });
+});
+
+describe("errores", () => {
+  it("el siguiente éxito limpia el error de un rechazo previo", async () => {
+    const s = nuevo();
+    const padre = await unidad(s, "Padre");
+    const hija = await unidad(s, "Hija", padre);
+    await s.moverUnidad(padre, hija);
+    expect(s.error).not.toBeNull();
+    expect((await s.crearUnidad({ tipo: "area", nombre: "Otra", parent_id: null })).ok).toBe(true);
+    expect(s.error).toBeNull();
+  });
+
+  it("el siguiente éxito limpia el error de una escritura fallida", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    await persona(s, u, "Ana", "ana@x.cl");
+    await s.crearTrabajador({ unidad_id: u, nombre: "Otra", correo: "ana@x.cl" });
+    expect(s.error).not.toBeNull();
+    expect((await s.cargar()).ok).toBe(true);
+    expect(s.error).toBeNull();
+  });
+});
+
+describe("nombre vacío en mantenedores", () => {
+  it("crearValor y renombrarValor piden un nombre sin escribir", async () => {
+    const s = nuevo();
+    const a = await s.crearValor("cargos", "Analista");
+    if (!a.ok) throw new Error("no se creó");
+    const antes = revision();
+    const esperado = { ok: false, mensaje: "Escribe un nombre." };
+    expect(await s.crearValor("cargos", "")).toEqual(esperado);
+    expect(await s.crearValor("cargos", "   ")).toEqual(esperado);
+    expect(await s.renombrarValor("cargos", a.id, " ")).toEqual(esperado);
+    expect(revision()).toBe(antes);
+    expect(s.catalogos.cargos[0].nombre).toBe("Analista");
+    expect(s.error).toBe("Escribe un nombre.");
   });
 });

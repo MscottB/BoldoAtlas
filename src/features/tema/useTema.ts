@@ -16,12 +16,13 @@ const tema = ref<Tema>(leerValido("tema", TEMAS, "sistema"));
 const acento = ref<Acento>(leerValido("acento", Object.keys(ACENTOS) as Acento[], "cobre"));
 const escala = ref<Escala>(leerValido("escala", ESCALAS, 100));
 
-const mediaOscuro = window.matchMedia("(prefers-color-scheme: dark)");
+let mediaOscuro: MediaQueryList | undefined; // se crea en iniciar(): importar el módulo no debe tocar window
 
 export function aplicar(): void {
   const raiz = document.documentElement;
-  const oscuro = tema.value === "oscuro" || (tema.value === "sistema" && mediaOscuro.matches);
+  const oscuro = tema.value === "oscuro" || (tema.value === "sistema" && !!mediaOscuro?.matches);
   raiz.classList.toggle("dark", oscuro);
+  raiz.style.colorScheme = oscuro ? "dark" : "light";
   const color = ACENTOS[acento.value];
   raiz.style.setProperty("--marca", color);
   raiz.style.setProperty("--marca-foreground", textoSobre(color));
@@ -32,9 +33,12 @@ let iniciado = false;
 function iniciar(): void {
   if (iniciado) return;
   iniciado = true;
-  mediaOscuro.addEventListener("change", () => {
-    if (tema.value === "sistema") aplicar();
-  });
+  if (typeof window !== "undefined") {
+    mediaOscuro = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaOscuro.addEventListener("change", () => {
+      if (tema.value === "sistema") aplicar();
+    });
+  }
   watch(tema, (v) => (guardarPreferencia("tema", v), aplicar()));
   watch(acento, (v) => (guardarPreferencia("acento", v), aplicar()));
   watch(escala, (v) => (guardarPreferencia("escala", v), aplicar()));

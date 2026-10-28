@@ -8,10 +8,23 @@ export function indexar(unidades: Unidad[]): Map<string, Unidad> {
   return new Map(unidades.map((u) => [u.id, u]));
 }
 
+const porOrden = (a: Unidad, b: Unidad) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es");
+
 export function hijos(unidades: U[], id: string): Unidad[] {
-  return unidades
-    .filter((u) => u.parent_id === id && !u.deleted_at)
-    .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es"));
+  return unidades.filter((u) => u.parent_id === id && !u.deleted_at).sort(porOrden);
+}
+
+/** Hijos de cada unidad (clave null = raíces) en una sola pasada; mismo filtro y orden que `hijos`. */
+export function indiceHijos(unidades: U[]): Map<string | null, Unidad[]> {
+  const indice = new Map<string | null, Unidad[]>();
+  for (const u of unidades) {
+    if (u.deleted_at) continue;
+    const lista = indice.get(u.parent_id);
+    if (lista) lista.push(u);
+    else indice.set(u.parent_id, [u]);
+  }
+  for (const lista of indice.values()) lista.sort(porOrden);
+  return indice;
 }
 
 export function ruta(unidades: Unidad[], id: string): Unidad[] {
@@ -36,10 +49,11 @@ export function rutaTexto(unidades: Unidad[], id: string): string {
 }
 
 export function descendientes(unidades: U[], id: string): Set<string> {
+  const indice = indiceHijos(unidades);
   const resultado = new Set<string>();
   const pendientes = [id];
   while (pendientes.length) {
-    for (const h of hijos(unidades, pendientes.pop()!)) {
+    for (const h of indice.get(pendientes.pop()!) ?? []) {
       if (!resultado.has(h.id)) {
         resultado.add(h.id);
         pendientes.push(h.id);

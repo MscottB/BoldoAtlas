@@ -7,6 +7,7 @@ import {
   gerenciaYArea,
   hijos,
   indexar,
+  indiceHijos,
   ruta,
   rutaTexto,
 } from "./jerarquia";
@@ -62,5 +63,13 @@ describe("jerarquía", () => {
       subarea: "Mecánica",
     });
     expect(gerenciaYArea(unidades, "finanzas")).toEqual({ gerencia: "Finanzas", area: null, subarea: null });
+  });
+});
+
+describe("indiceHijos", () => {
+  it("agrupa igual que hijos para cada unidad y para las raíces", () => {
+    const indice = indiceHijos(unidades);
+    for (const x of unidades) expect(indice.get(x.id) ?? []).toEqual(hijos(unidades, x.id));
+    expect(indice.get(null)?.map((x) => x.id)).toEqual(["gg"]);
   });
 });

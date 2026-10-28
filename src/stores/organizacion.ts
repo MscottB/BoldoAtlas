@@ -32,6 +32,7 @@ export interface Borrado {
 }
 
 const VIGENCIA_DESHACER_MS = 8000;
+const NOMBRE_VACIO = "Escribe un nombre.";
 const COLUMNA_CATALOGO: Record<TablaCatalogo, keyof Trabajador> = {
   cargos: "cargo_id",
   tipos_contrato: "tipo_contrato_id",
@@ -54,7 +55,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const catalogos = ref(catalogosVacios());
   const org = ref<{ nombre: string; logo: string | null }>({ nombre: "", logo: null });
   const cargado = ref(false);
-  const guardando = ref(false);
+  const pendientes = ref(0);
+  const guardando = computed(() => pendientes.value > 0);
   const error = ref<string | null>(null);
   const ultimoBorrado = ref<Borrado | null>(null);
 
@@ -75,7 +77,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return { ok: false, mensaje };
   }
 
+  let ultimaCarga = 0; // solo la carga más reciente aplica su resultado
+
   async function cargar(): Promise<Resultado> {
+    const esta = ++ultimaCarga;
     try {
       const [u, t, et, ue, co, meta, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
@@ -86,6 +91,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         leerMeta(),
         ...TABLAS_CATALOGO.map((tabla) => consultar<ValorCatalogo>(C.sqlValores(tabla))),
       ]);
+      if (esta !== ultimaCarga) return { ok: true };
       unidades.value = u;
       trabajadores.value = t;
       etiquetas.value = et;
@@ -100,7 +106,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       error.value = null;
       return { ok: true };
     } catch (e) {
-      return fallo(e);
+      return esta === ultimaCarga ? fallo(e) : { ok: true };
     }
   }
 
@@ -110,7 +116,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     hacer: () => Sentencia[] | { id: string; sentencias: Sentencia[] },
     alExito?: () => void,
   ): Promise<Resultado> {
-    guardando.value = true;
+    pendientes.value++;
     try {
       const plan = hacer();
       const sentencias = Array.isArray(plan) ? plan : plan.sentencias;
@@ -124,11 +130,11 @@ export const useOrganizacion = defineStore("organizacion", () => {
       error.value = r.mensaje;
       return r;
     } finally {
-      guardando.value = false;
+      pendientes.value--;
     }
   }
 
-  const rechazar = (mensaje: string): Resultado => {
+  const rechazar = (mensaje: string): { ok: false; mensaje: string } => {
     error.value = mensaje;
     return { ok: false, mensaje };
   };
@@ -196,6 +202,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
 
   async function crearValor(tabla: TablaCatalogo, nombre: string): Promise<ResultadoValor> {
+    if (!nombre.trim()) return rechazar(NOMBRE_VACIO);
     const clave = normalizarTexto(nombre);
     const igual = catalogos.value[tabla].find((v) => !v.deleted_at && normalizarTexto(v.nombre) === clave);
     if (igual) {
@@ -206,8 +213,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     const r = await escribir(() => C.crearValor(tabla, nombre));
     return r.ok ? { ok: true, id: r.id! } : r;
   }
-  const renombrarValor = (tabla: TablaCatalogo, id: string, nombre: string) =>
-    escribir(() => C.renombrarValor(tabla, id, nombre));
+  const renombrarValor = (tabla: TablaCatalogo, id: string, nombre: string): Promise<Resultado> =>
+    nombre.trim()
+      ? escribir(() => C.renombrarValor(tabla, id, nombre))
+      : Promise.resolve(rechazar(NOMBRE_VACIO));
   const moverValor = (tabla: TablaCatalogo, id: string, orden: number) =>
     escribir(() => C.moverValor(tabla, id, orden));
   const desactivarValor = (tabla: TablaCatalogo, id: string) => escribir(() => C.desactivarValor(tabla, id));
