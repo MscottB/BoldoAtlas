@@ -11,15 +11,9 @@ export const FOTO_TIPOS = ["image/png", "image/jpeg", "image/webp"];
 const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Errores por campo (clave = campo del formulario); `{}` si la ficha es válida. */
-export function validarFicha(f: {
-  estado: "activo" | "vacante";
-  nombre: string | null;
-  cargo_id: string | null;
-  correo: string | null;
-}): Record<string, string> {
+export function validarFicha(f: { nombre: string; correo: string | null }): Record<string, string> {
   const errores: Record<string, string> = {};
-  if (f.estado === "activo" && !f.nombre?.trim()) errores.nombre = t("ficha.error.nombre");
-  if (f.estado === "vacante" && !f.cargo_id) errores.cargo = t("ficha.error.cargo");
+  if (!f.nombre.trim()) errores.nombre = t("ficha.error.nombre");
   const correo = f.correo?.trim();
   if (correo && !CORREO.test(correo)) errores.correo = t("ficha.error.correo");
   return errores;
@@ -38,10 +32,10 @@ export const hayCoincidenciaExacta = (valores: { nombre: string }[], texto: stri
 
 export type DatosFicha = Omit<Trabajador, "id">;
 
-/** Lo que se guarda: textos recortados y en blanco como null. */
+/** Lo que se guarda: textos recortados y en blanco como null (el nombre es obligatorio: solo se recorta). */
 export const normalizarFicha = (f: DatosFicha): DatosFicha => ({
   ...f,
-  nombre: f.nombre?.trim() || null,
+  nombre: f.nombre.trim(),
   correo: f.correo?.trim() || null,
   telefono: f.telefono?.trim() || null,
   notas: f.notas?.trim() || null,
@@ -60,24 +54,11 @@ export function cambiosFicha(form: DatosFicha, base: DatosFicha): Partial<DatosF
 export const hayCambiosSinGuardar = (form: DatosFicha, base: DatosFicha): boolean =>
   Object.keys(cambiosFicha(form, base)).length > 0;
 
-// Campo del formulario → clave de su error en `validarFicha`.
-const CLAVE_ERROR: Partial<Record<keyof DatosFicha, string>> = {
-  nombre: "nombre",
-  cargo_id: "cargo",
-  correo: "correo",
-};
-
-/**
- * De los cambios de una ficha ya creada, los que se pueden guardar ahora: cada campo vale por sí solo.
- * El estado exige que el nombre (Persona) o el cargo (Vacante) ya estén; la base lo rechaza si no.
- */
+/** De los cambios de una ficha ya creada, los que se pueden guardar ahora: cada campo vale por sí solo. */
 export function camposGuardables(
   cambios: Partial<DatosFicha>,
   errores: Record<string, string>,
 ): Partial<DatosFicha> {
-  return Object.fromEntries(
-    Object.entries(cambios).filter(([k]) =>
-      k === "estado" ? !errores.nombre && !errores.cargo : !errores[CLAVE_ERROR[k as keyof DatosFicha] ?? ""],
-    ),
-  );
+  // Las claves de `validarFicha` son los nombres de los campos.
+  return Object.fromEntries(Object.entries(cambios).filter(([k]) => !errores[k]));
 }

@@ -8,10 +8,10 @@ export function normalizarCorreo(c: string | null): string | null {
   return c?.trim() || null;
 }
 
-export const SQL_TRABAJADORES = `SELECT id, estado, nombre, correo, telefono, cargo_id, tipo_contrato_id, sede_id,
-  jornada_id, unidad_id, foto_png, notas FROM trabajadores WHERE deleted_at IS NULL ORDER BY nombre`;
+export const SQL_TRABAJADORES = `SELECT id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id,
+  foto_png, notas FROM trabajadores WHERE deleted_at IS NULL ORDER BY nombre`;
 
-type DatosTrabajador = Pick<Trabajador, "unidad_id"> & Partial<Omit<Trabajador, "id" | "unidad_id">>;
+type DatosTrabajador = Pick<Trabajador, "nombre"> & Partial<Omit<Trabajador, "id" | "nombre">>;
 
 export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencias: Sentencia[] } {
   const id = nuevoId();
@@ -20,20 +20,17 @@ export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencia
     id,
     sentencias: [
       {
-        sql: `INSERT INTO trabajadores (id, estado, nombre, correo, telefono, cargo_id, tipo_contrato_id, sede_id,
-                jornada_id, unidad_id, foto_png, notas, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO trabajadores (id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id,
+                foto_png, notas, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params: [
           id,
-          datos.estado ?? "activo",
-          datos.nombre ?? null,
+          datos.nombre,
           normalizarCorreo(datos.correo ?? null),
           datos.telefono ?? null,
-          datos.cargo_id ?? null,
           datos.tipo_contrato_id ?? null,
           datos.sede_id ?? null,
           datos.jornada_id ?? null,
-          datos.unidad_id,
           datos.foto_png ?? null,
           datos.notas ?? null,
           t,
@@ -45,15 +42,12 @@ export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencia
 }
 
 const EDITABLES = [
-  "estado",
   "nombre",
   "correo",
   "telefono",
-  "cargo_id",
   "tipo_contrato_id",
   "sede_id",
   "jornada_id",
-  "unidad_id",
   "foto_png",
   "notas",
 ];

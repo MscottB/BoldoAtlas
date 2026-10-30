@@ -4,7 +4,9 @@ import { leerMeta, lote, consultar, type Sentencia } from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import {
   TABLAS_CATALOGO,
+  type Asignacion,
   type Conexion,
+  type Puesto,
   type SubarbolGuardado,
   type Etiqueta,
   type TablaCatalogo,
@@ -18,6 +20,8 @@ import * as C from "@/db/repos/catalogos";
 import * as E from "@/db/repos/etiquetas";
 import * as X from "@/db/repos/conexiones";
 import * as S from "@/db/repos/subarboles";
+import * as P from "@/db/repos/puestos";
+import * as A from "@/db/repos/asignaciones";
 import { guardarMeta } from "@/db/repos/meta";
 import { creaCiclo, hijos } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
@@ -27,17 +31,17 @@ export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
 export interface Borrado {
-  tipo: "unidad" | "trabajador";
+  tipo: "unidad" | "trabajador" | "puesto";
   id: string;
-  contenido?: { hijos: string[]; personas: string[] };
+  contenido?: { hijos: string[]; puestos: string[] };
   /** Epoch en ms hasta el que se puede deshacer. */
   vence: number;
 }
 
 const VIGENCIA_DESHACER_MS = 8000;
 const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
-const COLUMNA_CATALOGO: Record<TablaCatalogo, keyof Trabajador> = {
-  cargos: "cargo_id",
+// El cargo es del puesto; los demás valores, de la persona.
+const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos">, keyof Trabajador> = {
   tipos_contrato: "tipo_contrato_id",
   sedes: "sede_id",
   jornadas: "jornada_id",
@@ -52,6 +56,8 @@ const catalogosVacios = () =>
 export const useOrganizacion = defineStore("organizacion", () => {
   const unidades = ref<Unidad[]>([]);
   const trabajadores = ref<Trabajador[]>([]);
+  const puestos = ref<Puesto[]>([]);
+  const asignaciones = ref<Asignacion[]>([]);
   const etiquetas = ref<Etiqueta[]>([]);
   const unidadEtiquetas = ref<{ unidad_id: string; etiqueta_id: string }[]>([]);
   const conexiones = ref<Conexion[]>([]);
@@ -73,7 +79,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
       .filter((v) => !v.deleted_at)
       .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es"));
   const usos = (tabla: TablaCatalogo, id: string) =>
-    trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
+    tabla === "cargos"
+      ? puestos.value.filter((p) => p.cargo_id === id).length
+      : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
 
   function fallo(e: unknown): { ok: false; mensaje: string } {
     const mensaje = traducirError(e);
@@ -86,9 +94,11 @@ export const useOrganizacion = defineStore("organizacion", () => {
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      const [u, t, et, ue, co, sa, meta, ...cats] = await Promise.all([
+      const [u, t, pu, as, et, ue, co, sa, meta, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
+        consultar<Puesto>(P.SQL_PUESTOS),
+        consultar<Asignacion>(A.SQL_ASIGNACIONES),
         consultar<Etiqueta>(E.SQL_ETIQUETAS),
         consultar<{ unidad_id: string; etiqueta_id: string }>(E.SQL_UNIDAD_ETIQUETAS),
         consultar<Conexion>(X.SQL_CONEXIONES),
@@ -99,6 +109,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
       if (esta !== ultimaCarga) return { ok: true };
       unidades.value = u;
       trabajadores.value = t;
+      puestos.value = pu;
+      asignaciones.value = as;
       etiquetas.value = et;
       unidadEtiquetas.value = ue;
       conexiones.value = co;
@@ -149,7 +161,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const crearArbol = (nombre: string, tipo: Unidad["tipo"]) => crearUnidad({ tipo, nombre });
   const editarUnidad = (id: string, cambios: Parameters<typeof U.editarUnidad>[1]) =>
     escribir(() => U.editarUnidad(id, cambios));
-  const asignarJefe = (id: string, jefeId: string | null) => escribir(() => U.asignarJefe(id, jefeId));
+  const asignarJefe = (id: string, puestoId: string | null) => escribir(() => U.asignarJefe(id, puestoId));
 
   async function moverUnidad(id: string, nuevoPadre: string | null): Promise<Resultado> {
     if (creaCiclo(unidades.value, id, nuevoPadre)) return rechazar(t("store.cicloRama"));
@@ -161,10 +173,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     if (!u) return rechazar(t("store.unidadInexistente"));
     const contenido = {
       hijos: hijos(unidades.value, id).map((h) => h.id),
-      personas: trabajadores.value.filter((t) => t.unidad_id === id).map((t) => t.id),
+      puestos: puestos.value.filter((p) => p.unidad_id === id).map((p) => p.id),
     };
     // Una raíz no tiene superior al que pasar su contenido (quedaría unidad_id NULL).
-    if (u.parent_id === null && (contenido.hijos.length || contenido.personas.length))
+    if (u.parent_id === null && (contenido.hijos.length || contenido.puestos.length))
       return rechazar(t("store.raizConContenido"));
     return escribir(
       () => U.eliminarUnidad(u, contenido),
@@ -183,6 +195,27 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => (ultimoBorrado.value = { tipo: "trabajador", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
 
+  const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0]) => escribir(() => P.crearPuesto(datos));
+  const editarPuesto = (id: string, cambios: Parameters<typeof P.editarPuesto>[1]) =>
+    escribir(() => P.editarPuesto(id, cambios));
+  const eliminarPuesto = (id: string) =>
+    escribir(
+      () => P.eliminarPuesto(id),
+      () => (ultimoBorrado.value = { tipo: "puesto", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
+    );
+  const asignarTitular = (puestoId: string, trabajadorId: string, desde: string) =>
+    escribir(() => A.asignarTitular(puestoId, trabajadorId, desde));
+  const registrarReemplazo = (puestoId: string, trabajadorId: string, desde: string, hasta?: string | null) =>
+    escribir(() => A.registrarReemplazo(puestoId, trabajadorId, desde, hasta));
+  const terminarAsignacion = (id: string, hasta: string, motivo?: string | null) =>
+    escribir(() => A.terminarAsignacion(id, hasta, motivo));
+
+  const RESTAURAR = {
+    unidad: (b: Borrado) => U.restaurarUnidad(b.id, b.contenido!),
+    trabajador: (b: Borrado) => T.restaurarTrabajador(b.id),
+    puesto: (b: Borrado) => P.restaurarPuesto(b.id),
+  };
+
   async function deshacer(): Promise<Resultado> {
     const b = ultimoBorrado.value;
     if (!b || Date.now() >= b.vence) {
@@ -190,7 +223,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     }
     return escribir(
-      () => (b.tipo === "unidad" ? U.restaurarUnidad(b.id, b.contenido!) : T.restaurarTrabajador(b.id)),
+      () => RESTAURAR[b.tipo](b),
       () => (ultimoBorrado.value = null),
     );
   }
@@ -274,44 +307,47 @@ export const useOrganizacion = defineStore("organizacion", () => {
         uid[clave] = nuevo(U.crearUnidad({ tipo, nombre, parent_id: padre && uid[padre], orden }));
       });
 
-      // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?
-      const personas: [string, string, number, boolean][] = [
-        ["gg", "Camila Rojas", 0, true],
-        ["op", "Andrés Soto", 0, true],
-        ["ma", "Patricio Muñoz", 1, true],
-        ["me", "Luis Fuentes", 3, true],
-        ["me", "Marta Díaz", 3, false],
-        ["el", "Rosa Vera", 3, true],
-        ["pr", "Jorge Pizarro", 1, true],
-        ["pr", "Elena Silva", 2, false],
-        ["fi", "Paula Araya", 0, true],
-        ["co", "Tomás Bravo", 1, true],
-        ["co", "Inés Lagos", 2, false],
-        ["cm", "Sofía Contreras", 1, true],
-        ["pe", "Daniela Herrera", 0, true],
-        ["se", "Matías Núñez", 2, true],
-        ["re", "Carolina Parra", 2, true],
-        ["ca", "Felipe Ibáñez", 2, true],
+      // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde
+      const personas: [string, string, number, boolean, string][] = [
+        ["gg", "Camila Rojas", 0, true, "2015-03-02"],
+        ["op", "Andrés Soto", 0, true, "2023-07-01"],
+        ["ma", "Patricio Muñoz", 1, true, "2023-07-01"],
+        ["me", "Luis Fuentes", 3, true, "2017-05-02"],
+        ["me", "Marta Díaz", 3, false, "2021-01-04"],
+        ["el", "Rosa Vera", 3, true, "2019-08-01"],
+        ["pr", "Jorge Pizarro", 1, true, "2016-10-03"],
+        ["pr", "Elena Silva", 2, false, "2022-04-01"],
+        ["fi", "Paula Araya", 0, true, "2018-01-02"],
+        ["co", "Tomás Bravo", 1, true, "2020-06-01"],
+        ["co", "Inés Lagos", 2, false, "2024-02-01"],
+        ["cm", "Sofía Contreras", 1, true, "2019-11-04"],
+        ["pe", "Daniela Herrera", 0, true, "2017-09-01"],
+        ["se", "Matías Núñez", 2, true, "2021-03-01"],
+        ["re", "Carolina Parra", 2, true, "2018-07-02"],
+        ["ca", "Felipe Ibáñez", 2, true, "2022-08-01"],
       ];
-      personas.forEach(([u, nombre, cargo, jefe], i) => {
-        const id = nuevo(
+      // Historial: Andrés Soto fue jefe de Mantención hasta que Patricio Muñoz tomó el puesto.
+      const anterior: Record<string, [string, string]> = { ma: ["Andrés Soto", "2018-04-02"] };
+      const pid: Record<string, string> = {};
+      personas.forEach(([u, nombre, cargo, jefe, desde], i) => {
+        pid[nombre] = nuevo(
           T.crearTrabajador({
-            unidad_id: uid[u],
             nombre,
             correo: `${normalizarTexto(nombre).replace(/ /g, ".")}@ejemplo.test`,
-            cargo_id: cat.cargos[cargo],
             tipo_contrato_id: cat.tipos_contrato[i % 3],
             sede_id: cat.sedes[i % 2],
             jornada_id: cat.jornadas[u === "me" || u === "el" ? 1 : 0],
           }),
         );
-        if (jefe) s.push(...U.asignarJefe(uid[u], id));
+        const puesto = nuevo(P.crearPuesto({ unidad_id: uid[u], cargo_id: cat.cargos[cargo], orden: i }));
+        if (anterior[u]) nuevo(A.asignarTitular(puesto, pid[anterior[u][0]], anterior[u][1]));
+        nuevo(A.asignarTitular(puesto, pid[nombre], desde));
+        if (jefe) s.push(...U.asignarJefe(uid[u], puesto));
       });
-      for (const [u, cargo] of [
-        ["me", 3],
-        ["cm", 2],
-      ] as const)
-        nuevo(T.crearTrabajador({ estado: "vacante", unidad_id: uid[u], cargo_id: cat.cargos[cargo] }));
+      // Vacantes: puestos sin titular; la de Compras la cubre Inés Lagos como reemplazo.
+      nuevo(P.crearPuesto({ unidad_id: uid.me, cargo_id: cat.cargos[3], orden: 90 }));
+      const compras = nuevo(P.crearPuesto({ unidad_id: uid.cm, cargo_id: cat.cargos[2], orden: 91 }));
+      nuevo(A.registrarReemplazo(compras, pid["Inés Lagos"], "2026-09-01"));
 
       const etiqueta: Record<string, string> = {};
       for (const [nombre, color] of [
@@ -337,6 +373,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   return {
     unidades,
     trabajadores,
+    puestos,
+    asignaciones,
     etiquetas,
     unidadEtiquetas,
     conexiones,
@@ -362,6 +400,12 @@ export const useOrganizacion = defineStore("organizacion", () => {
     crearTrabajador,
     editarTrabajador,
     eliminarTrabajador,
+    crearPuesto,
+    editarPuesto,
+    eliminarPuesto,
+    asignarTitular,
+    registrarReemplazo,
+    terminarAsignacion,
     etiquetar,
     quitarEtiqueta,
     crearEtiqueta,

@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
-import { crearUnidad } from "./unidades";
-import { crearValor } from "./catalogos";
 import {
   crearTrabajador,
   editarTrabajador,
@@ -11,7 +9,6 @@ import {
 } from "./trabajadores";
 
 let bd: BasePrueba;
-let unidadId: string;
 const fila = (id: string) =>
   bd.consultar<{ correo: string | null; nombre: string | null; deleted_at: string | null }>(
     "SELECT * FROM trabajadores WHERE id = ?",
@@ -20,9 +17,6 @@ const fila = (id: string) =>
 
 beforeEach(() => {
   bd = abrirBasePrueba();
-  const u = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
-  bd.aplicar(u.sentencias);
-  unidadId = u.id;
 });
 
 describe("normalizarCorreo", () => {
@@ -34,23 +28,18 @@ describe("normalizarCorreo", () => {
 });
 
 describe("trabajadores", () => {
-  it("crea un activo con estado por defecto y correo en blanco como NULL", () => {
-    const t = crearTrabajador({ nombre: "Ana", correo: "  ", unidad_id: unidadId });
+  it("crea una persona con correo en blanco como NULL", () => {
+    const t = crearTrabajador({ nombre: "Ana", correo: "  " });
     bd.aplicar(t.sentencias);
     expect(fila(t.id)).toMatchObject({ nombre: "Ana", correo: null });
   });
 
-  it("vacante sin nombre y con cargo pasa; sin cargo falla por CHECK", () => {
-    const cargo = crearValor("cargos", "Analista");
-    bd.aplicar(cargo.sentencias);
-    const ok = crearTrabajador({ estado: "vacante", cargo_id: cargo.id, unidad_id: unidadId });
-    expect(() => bd.aplicar(ok.sentencias)).not.toThrow();
-    const mal = crearTrabajador({ estado: "vacante", unidad_id: unidadId });
-    expect(() => bd.aplicar(mal.sentencias)).toThrow(/CHECK/);
+  it("una persona sin nombre falla", () => {
+    expect(() => bd.aplicar(crearTrabajador({ nombre: null as never }).sentencias)).toThrow(/NOT NULL/);
   });
 
   it("editarTrabajador guarda NULL con correo en blanco y normaliza el correo", () => {
-    const t = crearTrabajador({ nombre: "Ana", correo: "ana@x.cl", unidad_id: unidadId });
+    const t = crearTrabajador({ nombre: "Ana", correo: "ana@x.cl" });
     bd.aplicar(t.sentencias);
     bd.aplicar(editarTrabajador(t.id, { correo: "  ", nombre: "Ana María" }));
     expect(fila(t.id)).toMatchObject({ correo: null, nombre: "Ana María" });
@@ -59,7 +48,7 @@ describe("trabajadores", () => {
   });
 
   it("eliminar y restaurar marcan y limpian deleted_at", () => {
-    const t = crearTrabajador({ nombre: "Ana", unidad_id: unidadId });
+    const t = crearTrabajador({ nombre: "Ana" });
     bd.aplicar(t.sentencias);
     bd.aplicar(eliminarTrabajador(t.id));
     expect(fila(t.id).deleted_at).not.toBeNull();

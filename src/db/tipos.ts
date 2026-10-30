@@ -5,23 +5,46 @@ export interface Unidad {
   nombre: string;
   descripcion: string | null;
   parent_id: string | null;
-  jefe_id: string | null;
+  jefe_puesto_id: string | null;
+  /** Hex `#rrggbb`. */
+  marca_color: string | null;
+  /** Hasta 4 caracteres. */
+  marca_codigo: string | null;
   orden: number;
 }
 
+/** La persona; su unidad y cargo salen de sus asignaciones vigentes. */
 export interface Trabajador {
   id: string;
-  estado: "activo" | "vacante";
-  nombre: string | null;
+  nombre: string;
   correo: string | null;
   telefono: string | null;
-  cargo_id: string | null;
   tipo_contrato_id: string | null;
   sede_id: string | null;
   jornada_id: string | null;
-  unidad_id: string;
   foto_png: string | null;
   notas: string | null;
+}
+
+/** Un cargo en una unidad. */
+export interface Puesto {
+  id: string;
+  unidad_id: string;
+  cargo_id: string;
+  descripcion: string | null;
+  orden: number;
+}
+
+export interface Asignacion {
+  id: string;
+  puesto_id: string;
+  trabajador_id: string;
+  tipo: "titular" | "reemplazo";
+  /** AAAA-MM-DD. */
+  desde: string;
+  /** AAAA-MM-DD; null = vigente. */
+  hasta: string | null;
+  motivo: string | null;
 }
 
 export type TablaCatalogo = "cargos" | "tipos_contrato" | "sedes" | "jornadas";

@@ -1,4 +1,4 @@
-import type { Trabajador, Unidad } from "../../db/tipos";
+import type { Asignacion, Puesto, Unidad } from "../../db/tipos";
 
 // Las lecturas de repos no traen deleted_at; se acepta por si el llamador pasa filas crudas.
 type ConBorrado<T> = T & { deleted_at?: string | null };
@@ -68,30 +68,48 @@ export function creaCiclo(unidades: U[], id: string, nuevoPadre: string | null):
   return nuevoPadre !== null && (nuevoPadre === id || descendientes(unidades, id).has(nuevoPadre));
 }
 
+export type Vigentes = Map<string, { titular?: Asignacion; reemplazo?: Asignacion }>;
+
+/** Titular y reemplazo vigentes (hasta = null) de cada puesto, en una pasada. */
+export function vigentesPorPuesto(asignaciones: ConBorrado<Asignacion>[]): Vigentes {
+  const v: Vigentes = new Map();
+  for (const a of asignaciones) {
+    if (a.deleted_at || a.hasta !== null) continue;
+    v.set(a.puesto_id, { ...v.get(a.puesto_id), [a.tipo]: a });
+  }
+  return v;
+}
+
+/** Dotación = puestos con titular vigente; vacantes = puestos sin titular vigente (un reemplazo no suma). */
 export function dotacion(
   unidades: U[],
-  trabajadores: ConBorrado<Trabajador>[],
+  puestos: ConBorrado<Puesto>[],
+  asignaciones: ConBorrado<Asignacion>[],
   id: string,
 ): { directa: number; total: number; vacantes: number } {
   const rama = descendientes(unidades, id).add(id);
-  const vivos = trabajadores.filter((t) => !t.deleted_at);
+  const vigentes = vigentesPorPuesto(asignaciones);
+  const vivos = puestos.filter((p) => !p.deleted_at);
+  const ocupado = (p: Puesto) => !!vigentes.get(p.id)?.titular;
   return {
-    directa: vivos.filter((t) => t.estado === "activo" && t.unidad_id === id).length,
-    total: vivos.filter((t) => t.estado === "activo" && rama.has(t.unidad_id)).length,
-    vacantes: vivos.filter((t) => t.estado === "vacante" && rama.has(t.unidad_id)).length,
+    directa: vivos.filter((p) => ocupado(p) && p.unidad_id === id).length,
+    total: vivos.filter((p) => ocupado(p) && rama.has(p.unidad_id)).length,
+    vacantes: vivos.filter((p) => !ocupado(p) && rama.has(p.unidad_id)).length,
   };
 }
 
-/** `dotacion` de todas las unidades vivas en O(unidades + trabajadores): conteos directos sumados de hojas a raíz. */
+/** `dotacion` de todas las unidades vivas en O(unidades + puestos + asignaciones): conteos directos sumados de hojas a raíz. */
 export function dotacionPorUnidad(
   unidades: U[],
-  trabajadores: ConBorrado<Trabajador>[],
+  puestos: ConBorrado<Puesto>[],
+  asignaciones: ConBorrado<Asignacion>[],
 ): Map<string, { directa: number; total: number; vacantes: number }> {
   const res = new Map<string, { directa: number; total: number; vacantes: number }>();
   for (const u of unidades) if (!u.deleted_at) res.set(u.id, { directa: 0, total: 0, vacantes: 0 });
-  for (const t of trabajadores) {
-    const d = t.deleted_at ? undefined : res.get(t.unidad_id);
-    if (d && t.estado === "activo") d.directa++;
+  const vigentes = vigentesPorPuesto(asignaciones);
+  for (const p of puestos) {
+    const d = p.deleted_at ? undefined : res.get(p.unidad_id);
+    if (d && vigentes.get(p.id)?.titular) d.directa++;
     else if (d) d.vacantes++;
   }
   const indice = indiceHijos(unidades);
@@ -109,6 +127,39 @@ export function dotacionPorUnidad(
   };
   (indice.get(null) ?? []).forEach((r) => sumar(r.id));
   return res;
+}
+
+/** Quien encabeza la unidad: el titular vigente de su puesto de jefatura o, si no hay, el reemplazo vigente. */
+export function jefeVisible(unidad: Unidad, vigentes: Vigentes): Asignacion | null {
+  const v = unidad.jefe_puesto_id ? vigentes.get(unidad.jefe_puesto_id) : undefined;
+  return v?.titular ?? v?.reemplazo ?? null;
+}
+
+/** Unidades donde la persona tiene un puesto vigente (titular o reemplazo), sin repetir. */
+export function unidadesDePersona(
+  puestos: ConBorrado<Puesto>[],
+  asignaciones: ConBorrado<Asignacion>[],
+  trabajadorId: string,
+): string[] {
+  const unidadDe = new Map(puestos.filter((p) => !p.deleted_at).map((p) => [p.id, p.unidad_id]));
+  const res = new Set<string>();
+  for (const a of asignaciones) {
+    const u = unidadDe.get(a.puesto_id);
+    if (u && a.trabajador_id === trabajadorId && a.hasta === null && !a.deleted_at) res.add(u);
+  }
+  return [...res];
+}
+
+/** Marca de la unidad más cercana hacia arriba (incluida ella) del tipo `nivel` que tenga color o código. */
+export function marcaHeredada(
+  unidades: Unidad[],
+  unidadId: string,
+  nivel: Unidad["tipo"] | "cualquiera",
+): { color: string | null; codigo: string | null } | null {
+  const m = ruta(unidades, unidadId)
+    .reverse()
+    .find((u) => (nivel === "cualquiera" || u.tipo === nivel) && (u.marca_color || u.marca_codigo));
+  return m ? { color: m.marca_color, codigo: m.marca_codigo } : null;
 }
 
 // Gerencia y área no se guardan en el trabajador: se derivan del ancestro más cercano de cada tipo.

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { crearUnidad } from "./unidades";
-import { crearTrabajador } from "./trabajadores";
+import { crearPuesto } from "./puestos";
 import { crearValor, renombrarValor, moverValor, desactivarValor, reactivarValor } from "./catalogos";
 import type { ValorCatalogo } from "@/db/tipos";
 
@@ -38,17 +38,15 @@ describe("catalogos", () => {
     expect(valores()).toMatchObject([{ nombre: "Analista senior", orden: 7 }]);
   });
 
-  it("desactivar deja deleted_at y el trabajador conserva su cargo; reactivar lo devuelve", () => {
+  it("desactivar deja deleted_at y el puesto conserva su cargo; reactivar lo devuelve", () => {
     const cargo = crearValor("cargos", "Analista");
     const unidad = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
-    const t = crearTrabajador({ nombre: "Ana", cargo_id: cargo.id, unidad_id: unidad.id });
-    bd.aplicar([...cargo.sentencias, ...unidad.sentencias, ...t.sentencias]);
+    const p = crearPuesto({ cargo_id: cargo.id, unidad_id: unidad.id });
+    bd.aplicar([...cargo.sentencias, ...unidad.sentencias, ...p.sentencias]);
 
     bd.aplicar(desactivarValor("cargos", cargo.id));
     expect(valores()[0].deleted_at).not.toBeNull();
-    expect(bd.consultar<{ cargo_id: string }>("SELECT cargo_id FROM trabajadores")[0].cargo_id).toBe(
-      cargo.id,
-    );
+    expect(bd.consultar<{ cargo_id: string }>("SELECT cargo_id FROM puestos")[0].cargo_id).toBe(cargo.id);
 
     bd.aplicar(reactivarValor("cargos", cargo.id));
     expect(valores()[0].deleted_at).toBeNull();

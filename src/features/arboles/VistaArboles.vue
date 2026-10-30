@@ -14,7 +14,7 @@ const { t } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
 
-const dotaciones = computed(() => dotacionPorUnidad(org.unidades, org.trabajadores));
+const dotaciones = computed(() => dotacionPorUnidad(org.unidades, org.puestos, org.asignaciones));
 const total = (id: string) => dotaciones.value.get(id)?.total ?? 0;
 
 interface Rama {

@@ -65,8 +65,18 @@ describe("subárboles guardados", () => {
     bd.aplicar(guardarSubarbol(a).sentencias);
     bd.aplicar(
       eliminarUnidad(
-        { id: a, tipo: "area", nombre: "A", descripcion: null, parent_id: raiz, jefe_id: null, orden: 0 },
-        { hijos: [], personas: [] },
+        {
+          id: a,
+          tipo: "area",
+          nombre: "A",
+          descripcion: null,
+          parent_id: raiz,
+          jefe_puesto_id: null,
+          marca_color: null,
+          marca_codigo: null,
+          orden: 0,
+        },
+        { hijos: [], puestos: [] },
       ),
     );
     expect(leer()).toEqual([]);

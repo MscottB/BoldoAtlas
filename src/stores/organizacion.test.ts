@@ -43,14 +43,21 @@ async function unidad(s: ReturnType<typeof nuevo>, nombre: string, parent_id: st
   return r.id;
 }
 
-async function persona(
-  s: ReturnType<typeof nuevo>,
-  unidad_id: string,
-  nombre: string,
-  correo: string | null = null,
-) {
-  const r = await s.crearTrabajador({ unidad_id, nombre, correo });
+async function persona(s: ReturnType<typeof nuevo>, nombre: string, correo: string | null = null) {
+  const r = await s.crearTrabajador({ nombre, correo });
   if (!r.ok || !r.id) throw new Error("no se creó la persona");
+  return r.id;
+}
+
+/** Crea un puesto (con un cargo nuevo si no se indica) y devuelve su id. */
+async function puesto(s: ReturnType<typeof nuevo>, unidad_id: string, cargo_id?: string) {
+  if (!cargo_id) {
+    const c = await s.crearValor("cargos", `Cargo ${s.catalogos.cargos.length + 1}`);
+    if (!c.ok) throw new Error("no se creó el cargo");
+    cargo_id = c.id;
+  }
+  const r = await s.crearPuesto({ unidad_id, cargo_id });
+  if (!r.ok || !r.id) throw new Error("no se creó el puesto");
   return r.id;
 }
 
@@ -82,23 +89,23 @@ describe("unidades", () => {
     expect(revision()).toBe(antes);
   });
 
-  it("al eliminar deja hijos y personas en el superior, y deshacer los devuelve", async () => {
+  it("al eliminar deja hijos y puestos en el superior, y deshacer los devuelve", async () => {
     const s = nuevo();
     const raiz = await unidad(s, "Raíz");
     const media = await unidad(s, "Media", raiz);
     const hija = await unidad(s, "Hija", media);
-    const ana = await persona(s, media, "Ana");
+    const p = await puesto(s, media);
 
     expect((await s.eliminarUnidad(media)).ok).toBe(true);
     expect(s.porId.has(media)).toBe(false);
     expect(s.porId.get(hija)?.parent_id).toBe(raiz);
-    expect(s.trabajadores.find((t) => t.id === ana)?.unidad_id).toBe(raiz);
+    expect(s.puestos.find((x) => x.id === p)?.unidad_id).toBe(raiz);
     expect(s.ultimoBorrado).toMatchObject({ tipo: "unidad", id: media });
 
     expect((await s.deshacer()).ok).toBe(true);
     expect(s.porId.get(media)).toBeDefined();
     expect(s.porId.get(hija)?.parent_id).toBe(media);
-    expect(s.trabajadores.find((t) => t.id === ana)?.unidad_id).toBe(media);
+    expect(s.puestos.find((x) => x.id === p)?.unidad_id).toBe(media);
     expect(s.ultimoBorrado).toBeNull();
   });
 
@@ -116,10 +123,10 @@ describe("unidades", () => {
     expect(s.unidades).toHaveLength(2);
   });
 
-  it("rechaza eliminar una raíz que solo tiene personas", async () => {
+  it("rechaza eliminar una raíz que solo tiene puestos", async () => {
     const s = nuevo();
     const raiz = await unidad(s, "Raíz");
-    await persona(s, raiz, "Ana");
+    await puesto(s, raiz);
     expect((await s.eliminarUnidad(raiz)).ok).toBe(false);
   });
 
@@ -134,9 +141,8 @@ describe("unidades", () => {
 describe("trabajadores", () => {
   it("traduce el error de correo repetido y deja el store intacto", async () => {
     const s = nuevo();
-    const u = await unidad(s, "Raíz");
-    await persona(s, u, "Ana", "ana@x.cl");
-    const r = await s.crearTrabajador({ unidad_id: u, nombre: "Otra", correo: " ANA@x.cl " });
+    await persona(s, "Ana", "ana@x.cl");
+    const r = await s.crearTrabajador({ nombre: "Otra", correo: " ANA@x.cl " });
     expect(r).toEqual({ ok: false, mensaje: "Ya existe una persona con ese correo." });
     expect(s.trabajadores).toHaveLength(1);
     expect(s.error).toBe("Ya existe una persona con ese correo.");
@@ -144,8 +150,7 @@ describe("trabajadores", () => {
 
   it("deshacer no hace nada una vez vencido", async () => {
     const s = nuevo();
-    const u = await unidad(s, "Raíz");
-    const ana = await persona(s, u, "Ana");
+    const ana = await persona(s, "Ana");
     vi.useFakeTimers({ toFake: ["Date"] });
     await s.eliminarTrabajador(ana);
     expect(s.trabajadores).toHaveLength(0);
@@ -159,13 +164,89 @@ describe("trabajadores", () => {
 
   it("deshacer informa si el correo se reutilizó mientras estaba borrado", async () => {
     const s = nuevo();
-    const u = await unidad(s, "Raíz");
-    const ana = await persona(s, u, "Ana", "ana@x.cl");
+    const ana = await persona(s, "Ana", "ana@x.cl");
     await s.eliminarTrabajador(ana);
-    await persona(s, u, "Ana bis", "ana@x.cl");
+    await persona(s, "Ana bis", "ana@x.cl");
     const r = await s.deshacer();
     expect(r).toEqual({ ok: false, mensaje: "Ya existe una persona con ese correo." });
     expect(s.trabajadores).toHaveLength(1);
+  });
+});
+
+describe("puestos y asignaciones", () => {
+  it("asignar un titular nuevo cierra el anterior y deja el historial", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    const beto = await persona(s, "Beto");
+    expect((await s.asignarTitular(p, ana, "2024-01-01")).ok).toBe(true);
+    expect((await s.asignarTitular(p, beto, "2026-03-01")).ok).toBe(true);
+    expect(s.asignaciones.map((a) => [a.trabajador_id, a.hasta])).toEqual([
+      [ana, "2026-03-01"],
+      [beto, null],
+    ]);
+  });
+
+  it("un segundo reemplazo vigente se rechaza con el mensaje traducido; terminar el primero lo permite", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    const r1 = await s.registrarReemplazo(p, ana, "2026-01-01");
+    if (!r1.ok || !r1.id) throw new Error("no se registró");
+    expect(await s.registrarReemplazo(p, ana, "2026-02-01")).toEqual({
+      ok: false,
+      mensaje: "Ese puesto ya tiene una asignación vigente de ese tipo.",
+    });
+    expect((await s.terminarAsignacion(r1.id, "2026-01-31", "Vuelve el titular")).ok).toBe(true);
+    expect(s.asignaciones[0]).toMatchObject({ hasta: "2026-01-31", motivo: "Vuelve el titular" });
+    expect((await s.registrarReemplazo(p, ana, "2026-02-01", "2026-02-28")).ok).toBe(true);
+  });
+
+  it("terminar antes del inicio devuelve ok: false con el mensaje", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const r = await s.asignarTitular(p, await persona(s, "Ana"), "2026-01-01");
+    expect(await s.terminarAsignacion(r.ok ? r.id! : "", "2025-12-31")).toEqual({
+      ok: false,
+      mensaje: "La fecha de término no puede ser anterior a la de inicio.",
+    });
+  });
+
+  it("edita y elimina un puesto; deshacer lo devuelve con su historial", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    await s.asignarTitular(p, await persona(s, "Ana"), "2026-01-01");
+    expect((await s.editarPuesto(p, { descripcion: "Turno noche" })).ok).toBe(true);
+    expect(s.puestos[0].descripcion).toBe("Turno noche");
+    expect((await s.eliminarPuesto(p)).ok).toBe(true);
+    expect(s.puestos).toEqual([]);
+    expect(s.asignaciones).toEqual([]);
+    expect(s.ultimoBorrado).toMatchObject({ tipo: "puesto", id: p });
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.puestos).toHaveLength(1);
+    expect(s.asignaciones).toHaveLength(1);
+  });
+
+  it("asignarJefe fija el puesto de jefatura de la unidad", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const p = await puesto(s, u);
+    await s.asignarJefe(u, p);
+    expect(s.porId.get(u)?.jefe_puesto_id).toBe(p);
+  });
+
+  it("usos de un cargo cuenta puestos; los demás mantenedores, personas", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const cargo = await s.crearValor("cargos", "Analista");
+    if (!cargo.ok) throw new Error("no se creó");
+    await puesto(s, u, cargo.id);
+    await puesto(s, u, cargo.id);
+    const sede = await s.crearValor("sedes", "Norte");
+    if (!sede.ok) throw new Error("no se creó");
+    await s.crearTrabajador({ nombre: "Ana", sede_id: sede.id });
+    expect(s.usos("cargos", cargo.id)).toBe(2);
+    expect(s.usos("sedes", sede.id)).toBe(1);
   });
 });
 
@@ -178,12 +259,18 @@ describe("cargarEjemplo", () => {
     expect(revision()).toBe(antes + 1);
     expect(s.unidades.length).toBeGreaterThanOrEqual(10);
     expect(s.conexiones.length).toBeGreaterThanOrEqual(1);
-    expect(s.trabajadores.some((t) => t.estado === "vacante")).toBe(true);
+    const titulares = s.asignaciones.filter((a) => a.tipo === "titular");
+    const conTitular = new Set(titulares.filter((a) => a.hasta === null).map((a) => a.puesto_id));
+    expect(s.puestos.some((p) => !conTitular.has(p.id))).toBe(true); // una vacante
+    expect(s.asignaciones.some((a) => a.tipo === "reemplazo" && a.hasta === null)).toBe(true);
+    const veces = new Map<string, number>();
+    for (const a of titulares) veces.set(a.puesto_id, (veces.get(a.puesto_id) ?? 0) + 1);
+    expect(Math.max(...veces.values())).toBeGreaterThanOrEqual(2); // historial de titulares
     expect(s.etiquetas.length).toBeGreaterThanOrEqual(3);
     for (const tabla of ["cargos", "tipos_contrato", "sedes", "jornadas"] as const)
       expect(s.activos(tabla).length).toBeGreaterThan(0);
     expect(s.org.nombre).toBe("Compañía Demo");
-    expect(s.unidades.some((u) => u.jefe_id)).toBe(true);
+    expect(s.unidades.some((u) => u.jefe_puesto_id)).toBe(true);
   });
 });
 
@@ -213,15 +300,15 @@ describe("mantenedores", () => {
     expect(s.catalogos.cargos).toHaveLength(2);
   });
 
-  it("un cargo desactivado en uso se conserva en la ficha y sigue contando", async () => {
+  it("un cargo desactivado en uso se conserva en el puesto y sigue contando", async () => {
     const s = nuevo();
     const cargo = await s.crearValor("cargos", "Analista");
     if (!cargo.ok) throw new Error("no se creó");
     const u = await unidad(s, "Raíz");
-    const r = await s.crearTrabajador({ unidad_id: u, nombre: "Ana", cargo_id: cargo.id });
+    const r = await s.crearPuesto({ unidad_id: u, cargo_id: cargo.id });
     if (!r.ok) throw new Error("no se creó");
     await s.desactivarValor("cargos", cargo.id);
-    expect(s.trabajadores[0].cargo_id).toBe(cargo.id);
+    expect(s.puestos[0].cargo_id).toBe(cargo.id);
     expect(s.activos("cargos").map((v) => v.id)).not.toContain(cargo.id);
     expect(s.usos("cargos", cargo.id)).toBe(1);
   });
@@ -311,9 +398,8 @@ describe("errores", () => {
 
   it("el siguiente éxito limpia el error de una escritura fallida", async () => {
     const s = nuevo();
-    const u = await unidad(s, "Raíz");
-    await persona(s, u, "Ana", "ana@x.cl");
-    await s.crearTrabajador({ unidad_id: u, nombre: "Otra", correo: "ana@x.cl" });
+    await persona(s, "Ana", "ana@x.cl");
+    await s.crearTrabajador({ nombre: "Otra", correo: "ana@x.cl" });
     expect(s.error).not.toBeNull();
     expect((await s.cargar()).ok).toBe(true);
     expect(s.error).toBeNull();

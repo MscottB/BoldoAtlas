@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { Etiqueta, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
-import { creaCiclo, dotacionPorUnidad, indiceHijos, ruta } from "./jerarquia";
+import { creaCiclo, dotacionPorUnidad, indiceHijos, jefeVisible, ruta, vigentesPorPuesto } from "./jerarquia";
 import {
   calcularLayout,
   subgrafoVisible,
@@ -114,16 +114,18 @@ const nodos = computed<Node<DatosNodo>[]>(() => {
   if (!vista.value) return [];
   const { g, pos } = vista.value;
   const indice = indiceHijos(mostradas.value);
-  const dotaciones = dotacionPorUnidad(mostradas.value, org.trabajadores);
+  const dotaciones = dotacionPorUnidad(mostradas.value, org.puestos, org.asignaciones);
+  const vigentes = vigentesPorPuesto(org.asignaciones);
   return g.nodos.map((u) => {
     const { total, vacantes } = dotaciones.get(u.id)!;
+    const jefe = jefeVisible(u, vigentes);
     return {
       id: u.id,
       type: "unidad",
       position: pos.get(u.id)!,
       data: {
         unidad: u,
-        jefe: (u.jefe_id && trabajadorPorId.value.get(u.jefe_id)) || null, // jefe borrado → Sin jefatura
+        jefe: (jefe && trabajadorPorId.value.get(jefe.trabajador_id)) || null,
         total,
         vacantes,
         etiquetas: etiquetasDe.value.get(u.id) ?? [],

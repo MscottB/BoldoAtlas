@@ -10,8 +10,10 @@ const reglas: [(texto: string) => boolean, string][] = [
   [(t) => t.includes("UNIQUE constraint failed: unidad_etiquetas."), "errores.unidadYaEtiquetada"],
   [(t) => t.includes("UNIQUE constraint failed: subarboles_guardados."), "errores.ramaYaGuardada"],
   [(t) => /ux_(cargos|tipos_contrato|sedes|jornadas)_nombre/.test(t), "errores.valorDuplicado"],
-  [(t) => esCheck(t) && t.includes("cargo_id"), "errores.vacanteSinCargo"],
-  [(t) => esCheck(t) && t.includes("estado") && t.includes("nombre"), "errores.personaSinNombre"],
+  // Titular y reemplazo vigentes usan índices sobre la misma columna: SQLite no los distingue.
+  [(t) => t.includes("UNIQUE constraint failed: asignaciones."), "errores.asignacionVigenteDuplicada"],
+  [(t) => esCheck(t) && t.includes("hasta >= desde"), "errores.fechasInvertidas"],
+  [(t) => t.includes("NOT NULL constraint failed: trabajadores.nombre"), "errores.personaSinNombre"],
   [(t) => esCheck(t) && t.includes("origen_id"), "errores.conexionConsigoMisma"],
   [(t) => t.includes("FOREIGN KEY constraint failed"), "errores.relacionInexistente"],
 ];

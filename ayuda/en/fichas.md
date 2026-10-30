@@ -1,14 +1,12 @@
-# Person and vacancy records
+# Person records
 
-The record is the form for a person or a vacancy. It opens from a unit's panel or from the Directory.
+The record is the form for a person: their contact details, contract, site, shift, photo and notes. It opens from a unit's panel or from the Directory.
 
-## Person or vacancy
-
-At the top you choose **Person** or **Vacancy**. A person needs a name; a vacancy needs a job title and can have no name. When someone takes the position, press **Fill vacancy**: the record becomes a Person and keeps its job title, contract, site and shift; only the name is missing.
+Job title and unit are not edited in the record: they belong to the **position** the person holds (as holder or as a replacement). A vacancy is a position without a holder.
 
 ## Value lists
 
-**Job title**, **Contract type**, **Site** and **Shift** are chosen from lists, so data stays tidy and free of duplicates.
+**Contract type**, **Site** and **Shift** are chosen from lists, so data stays tidy and free of duplicates.
 
 - Type in the search box to filter the list.
 - If the value does not exist, **Add «text» to the list** appears: it creates the value and selects it.
@@ -17,18 +15,16 @@ At the top you choose **Person** or **Vacancy**. A person needs a name; a vacanc
 
 ## Saving
 
-There is no Save button: each field is saved when you leave it, as long as that field is valid. If one is not valid, the reason appears under the field and that field is not saved until it is fixed; the others are saved. A new record is created once its required data is complete (a name for a person, a job title for a vacancy); until then the missing items are shown.
+There is no Save button: each field is saved when you leave it, as long as that field is valid. If one is not valid, the reason appears under the field and that field is not saved until it is fixed; the others are saved. A new record is created once it has a name, which is required; until then you are told it is missing.
 
 If you close the record with unsaved changes (an invalid field, or a new record not yet created), **You have unsaved changes** appears: **Keep editing** returns to the record and **Discard** closes it and loses those changes.
 
 - The **email** must look like an address (for example, ana@company.com) and cannot be shared between people.
 - The **photo** is optional: PNG, JPG or WebP up to 1 MB.
 
-## Unit and head
+## Head of unit
 
-- **Unit** moves the person to another unit; below it you see the unit's full path.
-- **Is the head of their unit** marks them as head of that unit (available once the record is saved). If someone else is the head, their name is shown.
-- **Units they head** lists the units they are head of.
+**Units they head** lists the units they are head of: they hold the head position as holder or, if that position has no holder, as a replacement.
 
 ## Delete
 

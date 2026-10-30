@@ -2,7 +2,7 @@
 
 ## What BoldoAtlas is
 
-BoldoAtlas is a Windows desktop app for building your organization's org chart: divisions, areas and sub-areas connected to each other, plus a record for each person (or vacancy) who works in them. You can explore the result on the tree canvas or in the directory.
+BoldoAtlas is a Windows desktop app for building your organization's org chart: divisions, areas and sub-areas connected to each other, plus a record for each person who works in them. You can explore the result on the tree canvas or in the directory.
 
 Processes, indicators and export arrive in later phases.
 

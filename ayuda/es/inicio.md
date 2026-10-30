@@ -2,7 +2,7 @@
 
 ## Qué es BoldoAtlas
 
-BoldoAtlas es una app de escritorio para Windows con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona (o vacante) que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
+BoldoAtlas es una app de escritorio para Windows con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
 
 Los procesos, los indicadores y la exportación llegan en fases posteriores.
 

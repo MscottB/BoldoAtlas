@@ -5,6 +5,9 @@ import { crearUnidad } from "@/db/repos/unidades";
 import { crearTrabajador } from "@/db/repos/trabajadores";
 import { crearEtiqueta, etiquetarUnidad } from "@/db/repos/etiquetas";
 import { guardarSubarbol } from "@/db/repos/subarboles";
+import { crearValor } from "@/db/repos/catalogos";
+import { crearPuesto } from "@/db/repos/puestos";
+import { asignarTitular, registrarReemplazo, terminarAsignacion } from "@/db/repos/asignaciones";
 
 describe("traducirError", () => {
   it.each([
@@ -18,11 +21,15 @@ describe("traducirError", () => {
     ["UNIQUE constraint failed: index 'ux_tipos_contrato_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_sedes_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_jornadas_nombre'", "Ese valor ya existe en la lista."],
+    ["NOT NULL constraint failed: trabajadores.nombre", "Falta el nombre de la persona."],
     [
-      "CHECK constraint failed: estado = 'vacante' OR length(trim(coalesce(nombre, ''))) > 0",
-      "Falta el nombre de la persona.",
+      "UNIQUE constraint failed: asignaciones.puesto_id",
+      "Ese puesto ya tiene una asignación vigente de ese tipo.",
     ],
-    ["CHECK constraint failed: estado = 'activo' OR cargo_id IS NOT NULL", "Una vacante necesita un cargo."],
+    [
+      "CHECK constraint failed: hasta IS NULL OR hasta >= desde",
+      "La fecha de término no puede ser anterior a la de inicio.",
+    ],
     ["CHECK constraint failed: origen_id <> destino_id", "Una unidad no puede conectarse consigo misma."],
     ["FOREIGN KEY constraint failed", "La unidad o persona relacionada ya no existe."],
   ])("traduce %s", (texto, esperado) => {
@@ -39,7 +46,7 @@ describe("traducirError", () => {
     const bd = abrirBasePrueba();
     const unidad = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
     bd.aplicar(unidad.sentencias);
-    bd.aplicar(crearTrabajador({ nombre: "Ana", correo: "ana@empresa.cl", unidad_id: unidad.id }).sentencias);
+    bd.aplicar(crearTrabajador({ nombre: "Ana", correo: "ana@empresa.cl" }).sentencias);
     const capturar = (fn: () => void) => {
       try {
         fn();
@@ -50,9 +57,7 @@ describe("traducirError", () => {
     };
 
     const correoDuplicado = capturar(() =>
-      bd.aplicar(
-        crearTrabajador({ nombre: "Ana 2", correo: " ANA@empresa.cl ", unidad_id: unidad.id }).sentencias,
-      ),
+      bd.aplicar(crearTrabajador({ nombre: "Ana 2", correo: " ANA@empresa.cl " }).sentencias),
     );
     expect(correoDuplicado).toBe("Ya existe una persona con ese correo.");
 
@@ -65,6 +70,29 @@ describe("traducirError", () => {
     bd.aplicar(guardarSubarbol(unidad.id).sentencias);
     const ramaDuplicada = capturar(() => bd.aplicar(guardarSubarbol(unidad.id).sentencias));
     expect(ramaDuplicada).toBe("Esa rama ya está guardada en Árboles.");
+
+    const sinNombre = capturar(() => bd.aplicar(crearTrabajador({ nombre: null as never }).sentencias));
+    expect(sinNombre).toBe("Falta el nombre de la persona.");
+
+    const cargo = crearValor("cargos", "Analista");
+    const puesto = crearPuesto({ unidad_id: unidad.id, cargo_id: cargo.id });
+    const beto = crearTrabajador({ nombre: "Beto" });
+    bd.aplicar([cargo, puesto, beto].flatMap((x) => x.sentencias));
+    bd.aplicar(registrarReemplazo(puesto.id, beto.id, "2026-01-01").sentencias);
+    const reemplazoDuplicado = capturar(() =>
+      bd.aplicar(registrarReemplazo(puesto.id, beto.id, "2026-02-01").sentencias),
+    );
+    expect(reemplazoDuplicado).toBe("Ese puesto ya tiene una asignación vigente de ese tipo.");
+
+    const titular = asignarTitular(puesto.id, beto.id, "2026-03-01");
+    bd.aplicar(titular.sentencias);
+    const fechas = capturar(() => bd.aplicar(terminarAsignacion(titular.id, "2026-02-28")));
+    expect(fechas).toBe("La fecha de término no puede ser anterior a la de inicio.");
+    // Un titular nuevo anterior al vigente cerraría la vigente antes de su inicio.
+    const titularAnterior = capturar(() =>
+      bd.aplicar(asignarTitular(puesto.id, beto.id, "2026-01-15").sentencias),
+    );
+    expect(titularAnterior).toBe("La fecha de término no puede ser anterior a la de inicio.");
   });
 
   it("no confunde el CHECK de nombre de un catálogo con el de la persona", () => {

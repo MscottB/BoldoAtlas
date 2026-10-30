@@ -1,14 +1,12 @@
-# Fichas de personas y vacantes
+# Fichas de personas
 
-La ficha es el formulario de una persona o de una vacante. Se abre desde el panel de una unidad o desde el Directorio.
+La ficha es el formulario de una persona: sus datos de contacto, contrato, sede, jornada, foto y notas. Se abre desde el panel de una unidad o desde el Directorio.
 
-## Persona o vacante
-
-Arriba eliges **Persona** o **Vacante**. Una persona necesita nombre; una vacante necesita un cargo y puede quedar sin nombre. Cuando alguien ocupa el puesto, pulsa **Cubrir vacante**: la ficha pasa a Persona y conserva su cargo, contrato, sede y jornada; solo falta el nombre.
+El cargo y la unidad no se editan en la ficha: son del **puesto** que la persona ocupa (como titular o como reemplazo). Una vacante es un puesto sin titular.
 
 ## Listas de valores
 
-**Cargo**, **Tipo de contrato**, **Sede** y **Jornada** se eligen de listas, para que los datos queden ordenados y sin duplicados.
+**Tipo de contrato**, **Sede** y **Jornada** se eligen de listas, para que los datos queden ordenados y sin duplicados.
 
 - Escribe en el cuadro de búsqueda para filtrar la lista.
 - Si el valor no existe, aparece **Agregar «texto» a la lista**: lo crea y lo deja elegido.
@@ -17,18 +15,16 @@ Arriba eliges **Persona** o **Vacante**. Una persona necesita nombre; una vacant
 
 ## Guardado
 
-No hay botón Guardar: cada campo se guarda al salir de él, siempre que ese campo sea válido. Si uno no es válido, el motivo aparece bajo el campo y ese campo no se guarda hasta corregirlo; los demás sí se guardan. Una ficha nueva se crea cuando están completos sus datos obligatorios (nombre en una persona, cargo en una vacante); hasta entonces se muestran los que faltan.
+No hay botón Guardar: cada campo se guarda al salir de él, siempre que ese campo sea válido. Si uno no es válido, el motivo aparece bajo el campo y ese campo no se guarda hasta corregirlo; los demás sí se guardan. Una ficha nueva se crea cuando tiene nombre, que es obligatorio; hasta entonces se muestra que falta.
 
 Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nueva sin crear), aparece **Hay cambios sin guardar**: **Seguir editando** vuelve a la ficha y **Descartar** la cierra y pierde esos cambios.
 
 - El **correo** debe tener forma de dirección (por ejemplo, ana@empresa.cl) y no puede repetirse entre personas.
 - La **foto** es opcional: PNG, JPG o WebP de hasta 1 MB.
 
-## Unidad y jefatura
+## Jefatura
 
-- **Unidad** cambia a la persona de unidad; debajo se ve la ruta completa de la unidad.
-- **Es el jefe de su unidad** la marca como jefe de esa unidad (disponible cuando la ficha ya está guardada). Si otra persona es jefe, se muestra su nombre.
-- **Unidades que encabeza** lista las unidades de las que es jefe.
+**Unidades que encabeza** lista las unidades de las que es jefe: ocupa el puesto de jefatura como titular o, si ese puesto no tiene titular, como reemplazo.
 
 ## Eliminar
 

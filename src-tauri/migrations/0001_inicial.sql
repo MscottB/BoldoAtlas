@@ -12,14 +12,16 @@ CREATE TABLE unidades (
   nombre      TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
   descripcion TEXT,
   parent_id   TEXT REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
-  jefe_id     TEXT REFERENCES trabajadores(id) DEFERRABLE INITIALLY DEFERRED,
+  jefe_puesto_id TEXT REFERENCES puestos(id) DEFERRABLE INITIALLY DEFERRED,
+  marca_color  TEXT,
+  marca_codigo TEXT CHECK (length(marca_codigo) <= 4),
   orden       INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL,
   deleted_at  TEXT
 );
 CREATE INDEX idx_unidades_parent_id ON unidades(parent_id);
-CREATE INDEX idx_unidades_jefe_id ON unidades(jefe_id);
+CREATE INDEX idx_unidades_jefe_puesto_id ON unidades(jefe_puesto_id);
 
 -- Mantenedores: valores de lista de la ficha del trabajador. Desactivar = deleted_at (la ficha conserva su id).
 CREATE TABLE cargos (
@@ -62,32 +64,60 @@ CREATE TABLE jornadas (
 );
 CREATE UNIQUE INDEX ux_jornadas_nombre ON jornadas(lower(trim(nombre))) WHERE deleted_at IS NULL;
 
+-- La persona; su unidad, cargo y jefatura salen de sus asignaciones vigentes a puestos.
 CREATE TABLE trabajadores (
   id         TEXT PRIMARY KEY NOT NULL,
-  estado     TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo', 'vacante')),
-  nombre     TEXT,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
   correo     TEXT,
   telefono   TEXT,
-  cargo_id         TEXT REFERENCES cargos(id) DEFERRABLE INITIALLY DEFERRED,
   tipo_contrato_id TEXT REFERENCES tipos_contrato(id) DEFERRABLE INITIALLY DEFERRED,
   sede_id          TEXT REFERENCES sedes(id) DEFERRABLE INITIALLY DEFERRED,
   jornada_id       TEXT REFERENCES jornadas(id) DEFERRABLE INITIALLY DEFERRED,
-  unidad_id  TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
   foto_png   TEXT,
   notas      TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  deleted_at TEXT,
-  CHECK (estado = 'vacante' OR length(trim(coalesce(nombre, ''))) > 0),
-  CHECK (estado = 'activo' OR cargo_id IS NOT NULL)
+  deleted_at TEXT
 );
-CREATE INDEX idx_trabajadores_unidad_id ON trabajadores(unidad_id);
-CREATE INDEX idx_trabajadores_cargo_id ON trabajadores(cargo_id);
 CREATE INDEX idx_trabajadores_tipo_contrato_id ON trabajadores(tipo_contrato_id);
 CREATE INDEX idx_trabajadores_sede_id ON trabajadores(sede_id);
 CREATE INDEX idx_trabajadores_jornada_id ON trabajadores(jornada_id);
 CREATE UNIQUE INDEX ux_trabajadores_correo ON trabajadores(lower(trim(correo)))
   WHERE correo IS NOT NULL AND trim(correo) <> '' AND deleted_at IS NULL;
+
+-- Puesto = un cargo en una unidad. Vacante = puesto sin titular vigente.
+CREATE TABLE puestos (
+  id          TEXT PRIMARY KEY NOT NULL,
+  unidad_id   TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
+  cargo_id    TEXT NOT NULL REFERENCES cargos(id) DEFERRABLE INITIALLY DEFERRED,
+  descripcion TEXT,
+  orden       INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  deleted_at  TEXT
+);
+CREATE INDEX idx_puestos_unidad_id ON puestos(unidad_id);
+CREATE INDEX idx_puestos_cargo_id ON puestos(cargo_id);
+
+-- Quién ocupa cada puesto y desde/hasta cuándo (AAAA-MM-DD). hasta NULL = vigente; las cerradas son el historial.
+CREATE TABLE asignaciones (
+  id            TEXT PRIMARY KEY NOT NULL,
+  puesto_id     TEXT NOT NULL REFERENCES puestos(id) DEFERRABLE INITIALLY DEFERRED,
+  trabajador_id TEXT NOT NULL REFERENCES trabajadores(id) DEFERRABLE INITIALLY DEFERRED,
+  tipo          TEXT NOT NULL CHECK (tipo IN ('titular', 'reemplazo')),
+  desde         TEXT NOT NULL,
+  hasta         TEXT CHECK (hasta IS NULL OR hasta >= desde),
+  motivo        TEXT,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  deleted_at    TEXT
+);
+CREATE INDEX idx_asignaciones_puesto_id ON asignaciones(puesto_id);
+CREATE INDEX idx_asignaciones_trabajador_id ON asignaciones(trabajador_id);
+CREATE UNIQUE INDEX ux_asignaciones_titular_vigente ON asignaciones(puesto_id)
+  WHERE tipo = 'titular' AND hasta IS NULL AND deleted_at IS NULL;
+CREATE UNIQUE INDEX ux_asignaciones_reemplazo_vigente ON asignaciones(puesto_id)
+  WHERE tipo = 'reemplazo' AND hasta IS NULL AND deleted_at IS NULL;
 
 CREATE TABLE conexiones (
   id         TEXT PRIMARY KEY NOT NULL,

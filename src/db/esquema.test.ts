@@ -21,8 +21,8 @@ function ins(tabla: string, fila: Record<string, string | number | null>): strin
 function actividadConPersonas() {
   const p = ins("procesos", { unidad_id: u, nombre: "Compras" });
   const a = ins("actividades", { proceso_id: p, nombre: "Cotizar" });
-  const t1 = ins("trabajadores", { nombre: "Ana", unidad_id: u });
-  const t2 = ins("trabajadores", { nombre: "Beto", unidad_id: u });
+  const t1 = ins("trabajadores", { nombre: "Ana" });
+  const t2 = ins("trabajadores", { nombre: "Beto" });
   return { a, t1, t2 };
 }
 
@@ -34,16 +34,10 @@ beforeEach(() => {
 });
 
 describe("esquema 0001", () => {
-  it("rechaza vacante sin cargo", () =>
-    expect(() => ins("trabajadores", { estado: "vacante", unidad_id: u })).toThrow(/CHECK/));
-
-  it("rechaza activo sin nombre", () =>
-    expect(() => ins("trabajadores", { estado: "activo", unidad_id: u })).toThrow(/CHECK/));
-
-  it("acepta vacante con cargo y sin nombre", () => {
-    const cargo = ins("cargos", { nombre: "Analista" });
-    expect(() => ins("trabajadores", { estado: "vacante", cargo_id: cargo, unidad_id: u })).not.toThrow();
-  });
+  it("rechaza persona sin nombre", () =>
+    expect(() => ins("trabajadores", { correo: "ana@x.cl" })).toThrow(
+      /NOT NULL constraint failed: trabajadores.nombre/,
+    ));
 
   it("cargos rechaza un nombre repetido sin importar mayúsculas ni espacios", () => {
     ins("cargos", { nombre: "analista" });
@@ -55,9 +49,9 @@ describe("esquema 0001", () => {
     expect(() => ins("cargos", { nombre: " ANALISTA " })).not.toThrow();
   });
 
-  it("trabajadores.cargo_id inexistente falla al confirmar", () => {
+  it("puestos.cargo_id inexistente falla al confirmar", () => {
     db.exec("BEGIN");
-    ins("trabajadores", { nombre: "Ana", cargo_id: randomUUID(), unidad_id: u });
+    ins("puestos", { unidad_id: u, cargo_id: randomUUID() });
     expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
     db.exec("ROLLBACK");
   });
@@ -66,13 +60,13 @@ describe("esquema 0001", () => {
     expect(() => ins("unidades", { tipo: "gerncia", nombre: "X" })).toThrow(/CHECK/));
 
   it("rechaza correo duplicado sin importar mayúsculas ni espacios", () => {
-    ins("trabajadores", { nombre: "A", correo: "ana@x.cl", unidad_id: u });
-    expect(() => ins("trabajadores", { nombre: "B", correo: " ANA@x.cl ", unidad_id: u })).toThrow(/UNIQUE/);
+    ins("trabajadores", { nombre: "A", correo: "ana@x.cl" });
+    expect(() => ins("trabajadores", { nombre: "B", correo: " ANA@x.cl " })).toThrow(/UNIQUE/);
   });
 
   it("permite reutilizar el correo de un trabajador borrado", () => {
-    ins("trabajadores", { nombre: "A", correo: "ana@x.cl", unidad_id: u, deleted_at: AHORA });
-    expect(() => ins("trabajadores", { nombre: "B", correo: "ana@x.cl", unidad_id: u })).not.toThrow();
+    ins("trabajadores", { nombre: "A", correo: "ana@x.cl", deleted_at: AHORA });
+    expect(() => ins("trabajadores", { nombre: "B", correo: "ana@x.cl" })).not.toThrow();
   });
 
   it("rechaza dos aprobadores en la misma actividad", () => {
@@ -93,7 +87,7 @@ describe("esquema 0001", () => {
   it("FK diferida: permite insertar hijo antes que padre dentro de una transacción", () => {
     const nueva = randomUUID();
     db.exec("BEGIN");
-    ins("trabajadores", { nombre: "Ana", unidad_id: nueva });
+    ins("puestos", { unidad_id: nueva, cargo_id: ins("cargos", { nombre: "Analista" }) });
     ins("unidades", { id: nueva, tipo: "area", nombre: "Logística", parent_id: u });
     expect(() => db.exec("COMMIT")).not.toThrow();
   });
@@ -102,8 +96,8 @@ describe("esquema 0001", () => {
     expect(() => ins("unidades", { id: null, tipo: "area", nombre: "X" })).toThrow(/NOT NULL/));
 
   it("acepta varias personas con correo vacío", () => {
-    ins("trabajadores", { nombre: "A", correo: "", unidad_id: u });
-    expect(() => ins("trabajadores", { nombre: "B", correo: "  ", unidad_id: u })).not.toThrow();
+    ins("trabajadores", { nombre: "A", correo: "" });
+    expect(() => ins("trabajadores", { nombre: "B", correo: "  " })).not.toThrow();
   });
 
   it("subarboles_guardados: un segundo subárbol activo de la misma unidad falla y tras quitarlo se puede volver a guardar", () => {
@@ -140,8 +134,68 @@ describe("esquema 0001", () => {
 
   it("FK diferida: falla al confirmar si el padre no existe", () => {
     db.exec("BEGIN");
-    ins("trabajadores", { nombre: "Ana", unidad_id: randomUUID() });
+    ins("puestos", { unidad_id: randomUUID(), cargo_id: ins("cargos", { nombre: "Analista" }) });
     expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
     db.exec("ROLLBACK");
+  });
+
+  describe("puestos y asignaciones", () => {
+    let puesto: string;
+    let ana: string;
+    let beto: string;
+    const asignar = (fila: Record<string, string | null>) =>
+      ins("asignaciones", {
+        puesto_id: puesto,
+        trabajador_id: ana,
+        tipo: "titular",
+        desde: "2026-01-01",
+        ...fila,
+      });
+
+    beforeEach(() => {
+      puesto = ins("puestos", { unidad_id: u, cargo_id: ins("cargos", { nombre: "Analista" }) });
+      ana = ins("trabajadores", { nombre: "Ana" });
+      beto = ins("trabajadores", { nombre: "Beto" });
+    });
+
+    it("rechaza un segundo titular vigente en el mismo puesto", () => {
+      asignar({});
+      expect(() => asignar({ trabajador_id: beto })).toThrow(/UNIQUE/);
+    });
+
+    it("rechaza un segundo reemplazo vigente, pero un titular y un reemplazo vigentes conviven", () => {
+      asignar({});
+      expect(() => asignar({ trabajador_id: beto, tipo: "reemplazo" })).not.toThrow();
+      expect(() => asignar({ tipo: "reemplazo" })).toThrow(/UNIQUE/);
+    });
+
+    it("un titular cerrado y uno vigente conviven; también uno vigente borrado", () => {
+      asignar({ hasta: "2026-03-01" });
+      asignar({ trabajador_id: beto, deleted_at: AHORA });
+      expect(() => asignar({ trabajador_id: beto, desde: "2026-03-01" })).not.toThrow();
+    });
+
+    it("rechaza hasta anterior a desde y acepta el mismo día", () => {
+      expect(() => asignar({ hasta: "2025-12-31" })).toThrow(/CHECK/);
+      expect(() => asignar({ hasta: "2026-01-01" })).not.toThrow();
+    });
+
+    it("rechaza un tipo de asignación inválido", () =>
+      expect(() => asignar({ tipo: "interino" })).toThrow(/CHECK/));
+
+    it("marca_codigo admite hasta 4 caracteres", () => {
+      expect(() =>
+        ins("unidades", { tipo: "area", nombre: "A", marca_color: "#c2410c", marca_codigo: "OPER" }),
+      ).not.toThrow();
+      expect(() => ins("unidades", { tipo: "area", nombre: "B", marca_codigo: "OPERA" })).toThrow(/CHECK/);
+    });
+
+    it("jefe_puesto_id apunta a un puesto existente", () => {
+      expect(() => ins("unidades", { tipo: "area", nombre: "A", jefe_puesto_id: puesto })).not.toThrow();
+      db.exec("BEGIN");
+      ins("unidades", { tipo: "area", nombre: "B", jefe_puesto_id: randomUUID() });
+      expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
+      db.exec("ROLLBACK");
+    });
   });
 });

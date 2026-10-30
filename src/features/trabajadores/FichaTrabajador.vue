@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { ImagePlus, Trash2, UserCheck, X } from "@lucide/vue";
+import { ImagePlus, Trash2, X } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { TablaCatalogo, Trabajador } from "@/db/tipos";
-import { rutaTexto } from "@/features/arbol/jerarquia";
+import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
@@ -45,30 +45,26 @@ const { t } = useI18n();
 const org = useOrganizacion();
 const ficha = useFicha();
 
-type CampoCatalogo = "cargo_id" | "tipo_contrato_id" | "sede_id" | "jornada_id";
+type CampoCatalogo = "tipo_contrato_id" | "sede_id" | "jornada_id";
 const CATALOGOS: { campo: CampoCatalogo; tabla: TablaCatalogo; etiqueta: string }[] = [
-  { campo: "cargo_id", tabla: "cargos", etiqueta: "ficha.cargo" },
   { campo: "tipo_contrato_id", tabla: "tipos_contrato", etiqueta: "ficha.tipoContrato" },
   { campo: "sede_id", tabla: "sedes", etiqueta: "ficha.sede" },
   { campo: "jornada_id", tabla: "jornadas", etiqueta: "ficha.jornada" },
 ];
 
-const vacio = (unidad_id: string, estado: Trabajador["estado"]): Trabajador => ({
+const vacio = (): Trabajador => ({
   id: "",
-  estado,
-  nombre: null,
+  nombre: "",
   correo: null,
   telefono: null,
-  cargo_id: null,
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  unidad_id,
   foto_png: null,
   notas: null,
 });
-// Los campos de texto se editan como "" y se guardan como null.
-const form = reactive({ ...vacio("", "activo"), nombre: "", correo: "", telefono: "", notas: "" });
+// Los campos de texto se editan como "" y se guardan como null (el nombre, obligatorio, solo se recorta).
+const form = reactive({ ...vacio(), correo: "", telefono: "", notas: "" });
 // "" = ficha nueva, todavía sin guardar.
 const id = computed(() => form.id || null);
 const verErrores = ref(false);
@@ -81,10 +77,9 @@ watch(
   () => ficha.abierta.value,
   (a) => {
     if (!a) return;
-    const w = a.id ? org.trabajadores.find((x) => x.id === a.id) : vacio(a.unidadId, a.estado);
+    const w = a.id ? org.trabajadores.find((x) => x.id === a.id) : vacio();
     if (!w) return ficha.cerrar(); // la ficha ya no existe
     Object.assign(form, w, {
-      nombre: w.nombre ?? "",
       correo: w.correo ?? "",
       telefono: w.telefono ?? "",
       notas: w.notas ?? "",
@@ -139,14 +134,9 @@ async function guardarAhora() {
   const cambios = cambiosFicha(form, guardado);
   // Un campo que la base ya rechazó espera a que lo editen.
   for (const k of Object.keys(fallidos.value)) delete cambios[k as keyof DatosFicha];
-  const errs = { ...validarFicha({ ...form, estado: guardado.estado }), ...validarFicha(form) };
-  const guardables = camposGuardables(cambios, errs);
+  const guardables = camposGuardables(cambios, validarFicha(form));
   if (Object.keys(guardables).length < Object.keys(cambios).length) verErrores.value = true;
-  // El estado va al final: la base exige que ya estén el nombre o el cargo que pide.
-  const orden = Object.entries(guardables).sort(
-    ([a], [b]) => Number(a === "estado") - Number(b === "estado"),
-  );
-  for (const [campo, valor] of orden) {
+  for (const [campo, valor] of Object.entries(guardables)) {
     const r = await org.editarTrabajador(id.value, { [campo]: valor });
     if (!r.ok) fallidos.value = { ...fallidos.value, [campo]: r.mensaje };
   }
@@ -156,7 +146,7 @@ async function pedirCerrar() {
   await cola; // que termine lo que se está guardando antes de decidir
   const a = ficha.abierta.value;
   if (!a) return;
-  const base = id.value ? org.trabajadores.find((x) => x.id === id.value) : vacio(a.unidadId, a.estado);
+  const base = id.value ? org.trabajadores.find((x) => x.id === id.value) : vacio();
   if (base && hayCambiosSinGuardar(form, base)) confirmando.value = true;
   else ficha.cerrar();
 }
@@ -166,19 +156,9 @@ function alSalir() {
   guardar();
 }
 
-function cambiar<K extends CampoCatalogo | "unidad_id" | "foto_png">(campo: K, valor: Trabajador[K]) {
+function cambiar<K extends CampoCatalogo | "foto_png">(campo: K, valor: Trabajador[K]) {
   (form as Record<string, unknown>)[campo] = valor;
   guardar();
-}
-
-async function cambiarEstado(estado: Trabajador["estado"]) {
-  if (form.estado === estado) return;
-  form.estado = estado;
-  guardar();
-  if (estado === "activo") {
-    await nextTick();
-    document.getElementById("ficha-nombre")?.focus();
-  }
 }
 
 const inputFoto = ref<HTMLInputElement | null>(null);
@@ -202,25 +182,14 @@ async function elegirFoto(e: Event) {
   }
 }
 
-const unidades = computed(() =>
-  // shortcut: arma la ruta de cada unidad con rutaTexto (O(n²)); si una org de miles de unidades se siente lenta, calcularla con porId.
-  org.unidades
-    .map((u) => ({ id: u.id, texto: rutaTexto(org.unidades, u.id) }))
-    .sort((a, b) => a.texto.localeCompare(b.texto, "es")),
-);
-const rutaUnidad = computed(() => (form.unidad_id ? rutaTexto(org.unidades, form.unidad_id) : ""));
-// jefe_id puede apuntar a alguien eliminado: ya no está en org.trabajadores y cuenta como sin jefe.
-const jefe = computed(() => org.trabajadores.find((x) => x.id === org.porId.get(form.unidad_id)?.jefe_id));
-const esJefe = computed(() => !!id.value && jefe.value?.id === id.value);
-const encabeza = computed(() =>
-  id.value
-    ? org.unidades.filter((u) => u.jefe_id === id.value).map((u) => rutaTexto(org.unidades, u.id))
-    : [],
-);
-async function alternarJefe(e: Event) {
-  const r = await org.asignarJefe(form.unidad_id, (e.target as HTMLInputElement).checked ? id.value : null);
-  if (!r.ok) toast.error(r.mensaje);
-}
+// Unidades de las que es el jefe visible (titular o, si falta, reemplazo del puesto de jefatura).
+const encabeza = computed(() => {
+  if (!id.value) return [];
+  const vigentes = vigentesPorPuesto(org.asignaciones);
+  return org.unidades
+    .filter((u) => jefeVisible(u, vigentes)?.trabajador_id === id.value)
+    .map((u) => rutaTexto(org.unidades, u.id));
+});
 
 async function eliminar() {
   const r = await org.eliminarTrabajador(id.value!);
@@ -238,13 +207,10 @@ async function eliminar() {
   });
 }
 
-const titulo = computed(() => {
-  const clave = form.estado === "vacante" ? "Vacante" : "Persona";
-  return t(id.value ? `ficha.titulo${clave}` : `ficha.nueva${clave}`);
-});
+const titulo = computed(() => t(id.value ? "ficha.tituloPersona" : "ficha.nuevaPersona"));
 const alAbrir = (e: Event) => {
   e.preventDefault();
-  document.getElementById(form.estado === "activo" ? "ficha-nombre" : "ficha-cargo_id")?.focus();
+  document.getElementById("ficha-nombre")?.focus();
 };
 </script>
 
@@ -259,32 +225,6 @@ const alAbrir = (e: Event) => {
         <DialogTitle>{{ titulo }}</DialogTitle>
         <DialogDescription>{{ t("ficha.descripcion") }}</DialogDescription>
       </DialogHeader>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <div role="group" :aria-label="t('ficha.tipoFicha')" class="flex gap-1">
-          <Button
-            v-for="e in ['activo', 'vacante'] as const"
-            :key="e"
-            type="button"
-            size="sm"
-            :variant="form.estado === e ? 'default' : 'outline'"
-            :aria-pressed="form.estado === e"
-            @click="cambiarEstado(e)"
-          >
-            {{ t(e === "activo" ? "ficha.persona" : "ficha.vacante") }}
-          </Button>
-        </div>
-        <Button
-          v-if="form.estado === 'vacante' && id"
-          type="button"
-          size="sm"
-          variant="outline"
-          @click="cambiarEstado('activo')"
-        >
-          <UserCheck aria-hidden="true" />
-          {{ t("ficha.cubrir") }}
-        </Button>
-      </div>
 
       <p v-if="errores.general" role="alert" class="text-sm text-destructive">{{ errores.general }}</p>
 
@@ -310,18 +250,8 @@ const alAbrir = (e: Event) => {
             :id="`ficha-${c.campo}`"
             :tabla="c.tabla"
             :model-value="form[c.campo]"
-            :aria-invalid="c.campo === 'cargo_id' && !!errores.cargo"
-            :aria-describedby="c.campo === 'cargo_id' ? describe('cargo') : undefined"
             @update:model-value="cambiar(c.campo, $event)"
           />
-          <p
-            v-if="c.campo === 'cargo_id' && errores.cargo"
-            id="ficha-error-cargo"
-            role="alert"
-            class="text-xs text-destructive"
-          >
-            {{ errores.cargo }}
-          </p>
         </div>
 
         <div class="grid gap-1.5">
@@ -344,29 +274,6 @@ const alAbrir = (e: Event) => {
         <div class="grid gap-1.5">
           <Label for="ficha-telefono">{{ t("ficha.telefono") }}</Label>
           <Input id="ficha-telefono" v-model="form.telefono" type="tel" autocomplete="off" @blur="alSalir" />
-        </div>
-
-        <div class="grid gap-1.5 sm:col-span-2">
-          <Label for="ficha-unidad">{{ t("ficha.unidad") }}</Label>
-          <select
-            id="ficha-unidad"
-            class="h-8 rounded-lg border bg-background px-2 text-sm"
-            :value="form.unidad_id"
-            @change="cambiar('unidad_id', ($event.target as HTMLSelectElement).value)"
-          >
-            <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.texto }}</option>
-          </select>
-          <p class="text-xs text-muted-foreground">{{ rutaUnidad }}</p>
-        </div>
-
-        <div v-if="form.estado === 'activo'" class="grid gap-1.5 sm:col-span-2">
-          <label class="flex items-center gap-2 text-sm">
-            <input type="checkbox" :checked="esJefe" :disabled="!id" class="size-4" @change="alternarJefe" />
-            {{ t("ficha.esJefe") }}
-          </label>
-          <p v-if="jefe && !esJefe" class="text-xs text-muted-foreground">
-            {{ t("ficha.jefeUnidad", { nombre: jefe.nombre }) }}
-          </p>
         </div>
 
         <div v-if="id" class="grid gap-1 sm:col-span-2">

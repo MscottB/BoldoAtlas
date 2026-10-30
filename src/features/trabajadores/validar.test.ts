@@ -9,22 +9,14 @@ import {
   type DatosFicha,
 } from "./validar";
 
-const base = { estado: "activo" as const, nombre: "Ana", cargo_id: null, correo: "" };
+const base = { nombre: "Ana", correo: "" };
 
 describe("validarFicha", () => {
-  it("activo sin nombre pide el nombre", () => {
+  it("sin nombre pide el nombre", () => {
     expect(validarFicha({ ...base, nombre: "  " })).toEqual({ nombre: "Escribe el nombre." });
-  });
-  it("vacante sin cargo pide un cargo", () => {
-    expect(validarFicha({ ...base, estado: "vacante", nombre: null })).toEqual({
-      cargo: "Una vacante necesita un cargo.",
-    });
   });
   it("correo inválido", () => {
     expect(validarFicha({ ...base, correo: "ana@" })).toEqual({ correo: "El correo no es válido." });
-  });
-  it("vacante con cargo y sin nombre ni correo es válida", () => {
-    expect(validarFicha({ estado: "vacante", nombre: null, cargo_id: "c1", correo: null })).toEqual({});
   });
   it("correo válido o en blanco no da error", () => {
     expect(validarFicha({ ...base, correo: "ana@ejemplo.cl" })).toEqual({});
@@ -57,15 +49,12 @@ describe("hayCoincidenciaExacta", () => {
 });
 
 const vacia: DatosFicha = {
-  estado: "activo",
-  nombre: null,
+  nombre: "",
   correo: null,
   telefono: null,
-  cargo_id: null,
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  unidad_id: "u1",
   foto_png: null,
   notas: null,
 };
@@ -82,15 +71,11 @@ describe("guardar cada campo válido", () => {
     const form = { ...guardada, correo: "ana@", foto_png: "AAAA" };
     expect(camposGuardables(cambiosFicha(form, guardada), validarFicha(form))).toEqual({ foto_png: "AAAA" });
   });
-  it("pasar a Persona sin nombre no se guarda hasta tener nombre", () => {
-    const vacante = { ...vacia, estado: "vacante" as const, cargo_id: "c1" };
-    const form = { ...vacante, estado: "activo" as const };
-    expect(camposGuardables(cambiosFicha(form, vacante), validarFicha(form))).toEqual({});
-    const conNombre = { ...form, nombre: " Luis " };
-    expect(camposGuardables(cambiosFicha(conNombre, vacante), validarFicha(conNombre))).toEqual({
-      estado: "activo",
-      nombre: "Luis",
-    });
+  it("borrar el nombre no se guarda; el nombre se guarda recortado", () => {
+    const sinNombre = { ...guardada, nombre: "  " };
+    expect(camposGuardables(cambiosFicha(sinNombre, guardada), validarFicha(sinNombre))).toEqual({});
+    const otro = { ...guardada, nombre: " Luis " };
+    expect(camposGuardables(cambiosFicha(otro, guardada), validarFicha(otro))).toEqual({ nombre: "Luis" });
   });
 });
 
