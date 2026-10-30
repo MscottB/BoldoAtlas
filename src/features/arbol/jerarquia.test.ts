@@ -16,6 +16,7 @@ import {
   ruta,
   rutaPorTipo,
   rutasPorTipo,
+  rutaSuperiores,
   rutaTexto,
   tipoHijo,
   tiposEnUso,
@@ -128,6 +129,32 @@ describe("tipos de unidad", () => {
       ["Área", "mantencion"],
       ["Otra", "gg"],
     ]);
+  });
+
+  it("con un tipo repetido en el camino, gana la unidad más cercana", () => {
+    // Otra dentro de Otra (GG › … › Mecánica › Interna › Detalle) y Área dentro de Área.
+    const repetidas = [
+      ...unidades,
+      u("interna", TIPO_OTRA, "Interna", "mecanica"),
+      u("detalle", TIPO_SUBAREA, "Detalle", "interna"),
+      u("areaInterna", TIPO_AREA, "Área interna", "mantencion"),
+    ];
+    expect(nombres(rutaPorTipo(repetidas, tipos, "detalle"))).toEqual([
+      ["Gerencia", "operaciones"],
+      ["Área", "mantencion"],
+      ["Subárea", "detalle"],
+      ["Otra", "interna"],
+    ]);
+    expect(nombres(rutaPorTipo(repetidas, tipos, "areaInterna"))).toContainEqual(["Área", "areaInterna"]);
+  });
+
+  it("rutaSuperiores: los superiores por tipo, sin la unidad; un Área dentro de un Área muestra la externa", () => {
+    const repetidas = [...unidades, u("areaInterna", TIPO_AREA, "Área interna", "mantencion")];
+    const rutas = rutasPorTipo(repetidas, tipos, new Set([TIPO_GERENCIA, TIPO_AREA]));
+    const ids = (id: string) => rutaSuperiores(rutas, repetidas.find((x) => x.id === id)!).map((x) => x.id);
+    expect(ids("areaInterna")).toEqual(["operaciones", "mantencion"]);
+    expect(ids("mantencion")).toEqual(["operaciones"]);
+    expect(ids("gg")).toEqual([]);
   });
 
   it("tipoHijo: el siguiente tipo activo en orden; el último se repite; sin superior, el primero", () => {

@@ -245,6 +245,11 @@ export function rutasPorTipo(
   );
 }
 
+/** De `rutasPorTipo`, solo los superiores de la unidad: la ruta de su padre (la propia unidad taparía a un superior de su mismo tipo). */
+export function rutaSuperiores(rutas: Map<string, Unidad[]>, unidad: Unidad): Unidad[] {
+  return (unidad.parent_id && rutas.get(unidad.parent_id)) || [];
+}
+
 /** Tipos que alguna unidad viva usa, en el orden del catálogo. */
 export function tiposEnUso(unidades: U[], tipos: ValorCatalogo[]): ValorCatalogo[] {
   const usados = new Set(unidades.filter((u) => !u.deleted_at).map((u) => u.tipo_id));

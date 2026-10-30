@@ -30,6 +30,7 @@ import {
   marcasPorUnidad,
   ruta,
   rutasPorTipo,
+  rutaSuperiores,
   tiposEnUso,
   vigentesPorPuesto,
 } from "./jerarquia";
@@ -197,8 +198,7 @@ const nodos = computed<Node[]>(() => {
         hijos: indice.get(u.id)?.length ?? 0,
         marca: marcas.value?.get(u.id) ?? null,
         ruta: rutas.value
-          ? (rutas.value.get(u.id) ?? [])
-              .filter((x) => x.id !== u.id)
+          ? rutaSuperiores(rutas.value, u)
               .map((x) => x.nombre)
               .join(" › ")
           : null,

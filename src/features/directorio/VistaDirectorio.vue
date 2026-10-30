@@ -1,12 +1,228 @@
 <script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "@lucide/vue";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TablaCatalogo } from "@/db/tipos";
+import { tiposEnUso } from "@/features/arbol/jerarquia";
+import { usePuesto } from "@/features/puestos/usePuesto";
+import { useFicha } from "@/features/trabajadores/useFicha";
+import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
+import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { useOrganizacion } from "@/stores/organizacion";
+import { filtrarDirectorio, type FilaDirectorio, type Filtros, type Orden } from "./filtrar";
 
 const { t } = useI18n();
+const org = useOrganizacion();
+const ficha = useFicha();
+const puesto = usePuesto();
+
+const SIN_FILTROS: Filtros = {
+  texto: "",
+  unidad: null,
+  cargo_id: null,
+  tipo_contrato_id: null,
+  sede_id: null,
+  jornada_id: null,
+  etiqueta: null,
+  estado: null,
+};
+// Los filtros y el orden se recuerdan por PC.
+const guardado = leerPreferencia<{ filtros?: Partial<Filtros>; orden?: Orden } | null>("directorio", null);
+const filtros = ref<Filtros>({ ...SIN_FILTROS, ...guardado?.filtros });
+const orden = ref<Orden>({ campo: "persona", asc: true, ...guardado?.orden });
+watch([filtros, orden], () => guardarPreferencia("directorio", { filtros: filtros.value, orden: orden.value }), {
+  deep: true,
+});
+const hayFiltros = computed(() => JSON.stringify(filtros.value) !== JSON.stringify(SIN_FILTROS));
+
+const filas = computed(() => filtrarDirectorio(org, filtros.value, orden.value));
+const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
+const sinDatos = computed(() => !org.puestos.length && !org.trabajadores.length);
+
+// Cada selector ofrece todos los valores del catálogo: los desactivados siguen asignados a alguien.
+const selectores = computed(() => {
+  const opciones = (tabla: TablaCatalogo) =>
+    [...org.catalogos[tabla]]
+      .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es"))
+      .map((v) => ({ id: v.id, nombre: v.deleted_at ? `${v.nombre} ${t("directorio.desactivado")}` : v.nombre }));
+  return [
+    { campo: "cargo_id", etiqueta: "directorio.cargo", opciones: opciones("cargos") },
+    { campo: "tipo_contrato_id", etiqueta: "directorio.tipoContrato", opciones: opciones("tipos_contrato") },
+    { campo: "sede_id", etiqueta: "directorio.sede", opciones: opciones("sedes") },
+    { campo: "jornada_id", etiqueta: "directorio.jornada", opciones: opciones("jornadas") },
+    {
+      campo: "etiqueta",
+      etiqueta: "directorio.etiqueta",
+      opciones: org.etiquetas.map((e) => ({ id: e.id, nombre: e.nombre })),
+    },
+  ] as const;
+});
+const NINGUNA = new Set<string>();
+const estados = ["ocupado", "vacante", "sinPuesto"] as const;
+
+function ordenarPor(campo: Orden["campo"]) {
+  orden.value = { campo, asc: orden.value.campo === campo ? !orden.value.asc : true };
+}
+const ariaSort = (campo: Orden["campo"]) =>
+  orden.value.campo !== campo ? "none" : orden.value.asc ? "ascending" : "descending";
+
+// Clic en la fila (o Enter sobre el nombre, que es un botón dentro de ella): la ficha de la persona o, en una vacante, el puesto.
+function abrir(f: FilaDirectorio) {
+  if (f.personaId) void ficha.intentarAbrir(f.personaId);
+  else if (f.puestoId) puesto.abrir(f.puestoId);
+}
+const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipoId === tipoId)?.nombre;
 </script>
 
 <template>
-  <section class="p-6">
-    <h1 class="text-lg font-semibold">{{ t("nav.directorio") }}</h1>
-    <p class="text-sm text-muted-foreground">{{ t("provisional.enConstruccion") }}</p>
+  <section class="flex h-full flex-col gap-3 p-6">
+    <header class="flex flex-wrap items-center gap-2">
+      <h1 class="text-lg font-semibold">{{ t("nav.directorio") }}</h1>
+      <span class="text-sm text-muted-foreground" aria-live="polite">{{ t("directorio.filas", filas.length) }}</span>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button variant="outline" aria-disabled="true" class="ml-auto cursor-not-allowed text-muted-foreground">
+            <Download aria-hidden="true" />
+            {{ t("directorio.exportar") }}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{{ t("barra.llegaFase4") }}</TooltipContent>
+      </Tooltip>
+    </header>
+
+    <p v-if="sinDatos" class="text-sm text-muted-foreground">{{ t("directorio.vacio") }}</p>
+    <template v-else>
+      <form
+        class="flex flex-wrap items-center gap-2"
+        role="search"
+        :aria-label="t('directorio.filtros')"
+        @submit.prevent
+      >
+        <Input
+          v-model="filtros.texto"
+          type="search"
+          class="h-8 w-64"
+          :aria-label="t('directorio.buscar')"
+          :placeholder="t('directorio.buscar')"
+        />
+        <div class="w-56">
+          <SelectorUnidad
+            :aria-label="t('directorio.unidad')"
+            class="h-8"
+            :excluidas="NINGUNA"
+            :texto="filtros.unidad ? (org.porId.get(filtros.unidad)?.nombre ?? '') : t('directorio.todasUnidades')"
+            :ninguna="t('directorio.todasUnidades')"
+            @elegir="filtros.unidad = $event"
+          />
+        </div>
+        <select
+          v-for="s in selectores"
+          :key="s.campo"
+          v-model="filtros[s.campo]"
+          class="h-8 rounded-md border bg-background px-2 text-sm"
+          :aria-label="t(s.etiqueta)"
+        >
+          <option :value="null">{{ t(s.etiqueta) }}: {{ t("directorio.todos") }}</option>
+          <option v-for="o in s.opciones" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+        </select>
+        <select
+          v-model="filtros.estado"
+          class="h-8 rounded-md border bg-background px-2 text-sm"
+          :aria-label="t('directorio.estado')"
+        >
+          <option :value="null">{{ t("directorio.estado") }}: {{ t("directorio.todos") }}</option>
+          <option v-for="e in estados" :key="e" :value="e">{{ t(`directorio.${e}`) }}</option>
+        </select>
+        <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="filtros = { ...SIN_FILTROS }">
+          {{ t("directorio.limpiar") }}
+        </Button>
+      </form>
+
+      <p v-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
+      <div v-else class="min-h-0 flex-1 overflow-auto rounded-lg border">
+        <table class="w-full border-collapse text-left text-sm" :aria-label="t('directorio.tabla')">
+          <thead class="sticky top-0 z-10 bg-muted text-muted-foreground">
+            <tr>
+              <th
+                v-for="c in ['persona', 'cargo'] as const"
+                :key="c"
+                scope="col"
+                class="px-3 py-2 font-medium whitespace-nowrap"
+                :aria-sort="ariaSort(c)"
+              >
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                  @click="ordenarPor(c)"
+                >
+                  {{ t(`directorio.${c}`) }}
+                  <ArrowUp v-if="orden.campo === c && orden.asc" class="size-3.5" aria-hidden="true" />
+                  <ArrowDown v-else-if="orden.campo === c" class="size-3.5" aria-hidden="true" />
+                  <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
+                </button>
+              </th>
+              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.reemplazo") }}</th>
+              <th
+                v-for="(tipo, i) in tipos"
+                :key="tipo.id"
+                scope="col"
+                class="px-3 py-2 font-medium whitespace-nowrap"
+                :aria-sort="i === 0 ? ariaSort('unidad') : undefined"
+              >
+                <!-- Se ordena por la ruta completa de la unidad; el botón está en la primera columna de tipo. -->
+                <button
+                  v-if="i === 0"
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                  :title="t('directorio.ordenarUnidad')"
+                  @click="ordenarPor('unidad')"
+                >
+                  {{ tipo.nombre }}
+                  <ArrowUp v-if="orden.campo === 'unidad' && orden.asc" class="size-3.5" aria-hidden="true" />
+                  <ArrowDown v-else-if="orden.campo === 'unidad'" class="size-3.5" aria-hidden="true" />
+                  <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
+                  <span class="sr-only">{{ t("directorio.ordenarUnidad") }}</span>
+                </button>
+                <template v-else>{{ tipo.nombre }}</template>
+              </th>
+              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.correo") }}</th>
+              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.tipoContrato") }}</th>
+              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.sede") }}</th>
+              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.jornada") }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="f in filas" :key="f.clave" class="cursor-pointer border-t hover:bg-accent" @click="abrir(f)">
+              <th scope="row" class="px-3 py-1.5 font-normal whitespace-nowrap">
+                <button
+                  type="button"
+                  class="rounded-sm text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                  :class="!f.persona && 'font-normal text-muted-foreground italic'"
+                >
+                  {{ f.persona ?? t("directorio.vacante") }}
+                </button>
+              </th>
+              <td class="px-3 py-1.5 whitespace-nowrap">
+                <span v-if="f.estado === 'sinPuesto'" class="text-muted-foreground italic">{{
+                  t("directorio.sinPuesto")
+                }}</span>
+                <template v-else>{{ f.cargo }}</template>
+              </td>
+              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.reemplazo }}</td>
+              <td v-for="tipo in tipos" :key="tipo.id" class="px-3 py-1.5 whitespace-nowrap">
+                {{ delTipo(f, tipo.id) }}
+              </td>
+              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.correo }}</td>
+              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.tipoContrato }}</td>
+              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.sede }}</td>
+              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.jornada }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
   </section>
 </template>
