@@ -115,7 +115,7 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
         class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-ring"
       >
         {{ t(`revision.${s.clave}.titulo`) }}
-        <span class="rounded-full bg-muted px-2 text-xs text-muted-foreground">{{ s.cuenta }}</span>
+        <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ s.cuenta }}</span>
       </summary>
       <p class="px-3 pb-2 text-sm text-muted-foreground">{{ t(`revision.${s.clave}.ayuda`) }}</p>
       <p v-if="!s.filas.length" class="border-t px-3 py-2 text-sm">{{ t("revision.todoEnOrden") }}</p>
@@ -124,7 +124,7 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
           <component
             :is="f.abrir ? 'button' : 'div'"
             v-bind="f.abrir ? { type: 'button', onClick: f.abrir } : {}"
-            class="flex w-full items-baseline gap-2 px-3 py-1.5 text-left"
+            class="group flex w-full items-baseline gap-2 px-3 py-1.5 text-left"
             :class="
               f.abrir
                 ? 'hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring'
@@ -132,7 +132,7 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
             "
           >
             <span>{{ f.texto }}</span>
-            <span v-if="f.detalle" class="text-muted-foreground">{{ f.detalle }}</span>
+            <span v-if="f.detalle" class="text-muted-foreground group-hover:text-foreground">{{ f.detalle }}</span>
           </component>
         </li>
       </ul>

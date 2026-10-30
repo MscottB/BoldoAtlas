@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TIPO_AREA, TIPO_GERENCIA, type Leyenda, type Trabajador, type ValorCatalogo } from "@/db/tipos";
 import { a, asignaciones, p, puestos as puestosBase, u, unidades } from "@/features/arbol/fixture";
 import {
@@ -65,12 +65,7 @@ describe("unidadesSinJefatura", () => {
         { ...u("rem", TIPO_AREA, "Con reemplazo", "sin"), jefe_puesto_id: "pr" },
         { ...u("eliminada", TIPO_AREA, "Eliminada", "sin"), deleted_at: BORRADO },
       ],
-      puestos: [
-        { ...p("pb", "sin"), deleted_at: BORRADO },
-        p("pv", "vacio"),
-        p("po", "ok"),
-        p("pr", "rem"),
-      ],
+      puestos: [{ ...p("pb", "sin"), deleted_at: BORRADO }, p("pv", "vacio"), p("po", "ok"), p("pr", "rem")],
       asignaciones: [
         a("a1", "pb", "t1"),
         a("a2", "po", "t1"),
@@ -117,8 +112,47 @@ describe("puestosVacantes", () => {
   });
 
   it("un puesto sin fecha alguna queda al final, sin días", () => {
-    const f = puestosVacantes(con({ unidades, puestos: [p("x", "gg"), { ...p("y", "gg"), created_at: "2026-03-01T00:00:00Z" }] }), HOY);
-    expect(f.map((x) => [x.puestoId, x.dias])).toEqual([["y", 10], ["x", null]]);
+    const f = puestosVacantes(
+      con({ unidades, puestos: [p("x", "gg"), { ...p("y", "gg"), created_at: "2026-03-01T12:00:00Z" }] }),
+      HOY,
+    );
+    expect(f.map((x) => [x.puestoId, x.dias])).toEqual([
+      ["y", 10],
+      ["x", null],
+    ]);
+  });
+});
+
+describe("puestosVacantes: días con la fecha local", () => {
+  const TZ = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = "America/Santiago"; // UTC-3 hasta el 2026-04-04 (fin del horario de verano), UTC-4 después
+  });
+  afterEach(() => {
+    if (TZ === undefined) delete process.env.TZ;
+    else process.env.TZ = TZ;
+  });
+  const dias = (puesto: Partial<ReturnType<typeof p>>, asig: ReturnType<typeof a>[], hoy: Date) =>
+    puestosVacantes(con({ unidades, puestos: [{ ...p("x", "gg"), ...puesto }], asignaciones: asig }), hoy)[0].dias;
+
+  it("de noche el día local ya cambió pero el UTC aún no (o al revés): cuenta días de calendario locales", () => {
+    const cierre = [a("a1", "x", "t1", "titular", "2026-03-10")];
+    expect(dias({}, cierre, new Date(2026, 2, 11, 0, 30))).toBe(1);
+    expect(dias({}, cierre, new Date(2026, 2, 11, 22, 30))).toBe(1); // 01:30Z del día 12
+    expect(dias({}, cierre, new Date(2026, 2, 10, 23, 59))).toBe(0);
+  });
+
+  it("created_at (UTC) se pasa a su día local antes de comparar", () => {
+    // 01:30Z del 12 = 22:30 del 11 en Santiago
+    const creado = { created_at: "2026-03-12T01:30:00Z" };
+    expect(dias(creado, [], new Date(2026, 2, 13, 1, 0))).toBe(2);
+    expect(dias(creado, [], new Date(2026, 2, 11, 23, 0))).toBe(0);
+  });
+
+  it("un cambio de horario en medio no suma ni resta días", () => {
+    const cierre = [a("a1", "x", "t1", "titular", "2026-04-03")];
+    expect(dias({}, cierre, new Date(2026, 3, 6, 10, 0))).toBe(3); // el 4 de abril el reloj retrocede una hora
+    expect(dias({}, cierre, new Date(2026, 3, 4, 0, 30))).toBe(1);
   });
 });
 
@@ -238,15 +272,25 @@ describe("unidadesVacias", () => {
 describe("valoresSinUso", () => {
   it("valores activos que nada vivo usa; los desactivados no se reportan", () => {
     const e = con({
-      unidades: [u("un", "t-usado", "Una", null), { ...u("bor", "t-borrada-unidad", "B", null), deleted_at: BORRADO }],
+      unidades: [
+        u("un", "t-usado", "Una", null),
+        { ...u("bor", "t-borrada-unidad", "B", null), deleted_at: BORRADO },
+      ],
       puestos: [
         { ...p("p1", "un"), cargo_id: "c-usado", leyenda_id: "l-usada" },
         { ...p("p2", "un"), cargo_id: "c-solo-borrado", deleted_at: BORRADO },
       ],
-      trabajadores: [trab("t1", "Ana", { tipo_contrato_id: "k-usado", sede_id: "s-usada", jornada_id: "j-usada" })],
+      trabajadores: [
+        trab("t1", "Ana", { tipo_contrato_id: "k-usado", sede_id: "s-usada", jornada_id: "j-usada" }),
+      ],
       leyendas: [ley("l-usada"), ley("l-libre"), ley("l-inactiva", BORRADO)],
       catalogos: {
-        cargos: [cat("c-usado", "Usado"), cat("c-libre", "Libre"), cat("c-solo-borrado", "Solo borrado"), cat("c-off", "Off", BORRADO)],
+        cargos: [
+          cat("c-usado", "Usado"),
+          cat("c-libre", "Libre"),
+          cat("c-solo-borrado", "Solo borrado"),
+          cat("c-off", "Off", BORRADO),
+        ],
         tipos_contrato: [cat("k-usado", "Indef"), cat("k-libre", "Plazo")],
         sedes: [cat("s-usada", "Norte"), cat("s-libre", "Sur"), cat("s-off", "Este", BORRADO)],
         jornadas: [cat("j-usada", "Completa"), cat("j-libre", "Parcial")],
@@ -305,7 +349,9 @@ describe("avisos y contador", () => {
 
   it("escala: 2.000 unidades, 4.000 puestos y 5.000 personas", () => {
     const grande = con({
-      unidades: Array.from({ length: 2000 }, (_, i) => u(`u${i}`, TIPO_AREA, `Unidad ${i}`, i ? `u${(i - 1) >> 1}` : null)),
+      unidades: Array.from({ length: 2000 }, (_, i) =>
+        u(`u${i}`, TIPO_AREA, `Unidad ${i}`, i ? `u${(i - 1) >> 1}` : null),
+      ),
       puestos: Array.from({ length: 4000 }, (_, i) => p(`p${i}`, `u${i % 2000}`)),
       trabajadores: Array.from({ length: 5000 }, (_, i) =>
         trab(`t${i}`, `Nombre${i % 3000} Apellido${i % 7}`, { correo: `c${i % 4000}@x.cl` }),

@@ -103,7 +103,7 @@ watch(
                     aria-hidden="true"
                     >{{ item.contador() }}</span
                   >
-                  <span v-if="!colapsada" class="sr-only">{{ t("revision.avisos", item.contador()) }}</span>
+                  <span v-if="!colapsada" class="sr-only">, {{ t("revision.avisos", item.contador()) }}</span>
                 </template>
               </RouterLink>
               <button

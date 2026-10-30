@@ -9,6 +9,7 @@ import {
   type ValorCatalogo,
 } from "@/db/tipos";
 import { jefeVisible, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { hoyISO } from "@/features/puestos/puestos";
 import { normalizarTexto } from "@/lib/texto";
 
 type ConBorrado<T> = T & { deleted_at?: string | null };
@@ -75,6 +76,19 @@ export interface Avisos {
 const vivo = (x: { deleted_at?: string | null }) => !x.deleted_at;
 const DIA_MS = 86_400_000;
 
+const utcDe = (iso: string) => {
+  const [a, m, d] = iso.split("-").map(Number);
+  return Date.UTC(a, m - 1, d);
+};
+
+/** Días de calendario (locales) de `desde` a `hoy`. `desde` es AAAA-MM-DD o un instante ISO, que se pasa antes a su día local. */
+export function diasDesde(desde: string | undefined, hoy: Date): number | null {
+  if (!desde) return null;
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(desde) ? desde : Number.isNaN(Date.parse(desde)) ? null : hoyISO(new Date(desde));
+  // Ambos días como UTC a medianoche: la diferencia es entera y un cambio de horario no la mueve.
+  return dia === null ? null : Math.max(0, (utcDe(hoyISO(hoy)) - utcDe(dia)) / DIA_MS);
+}
+
 function rutaPadres(porId: Map<string, Unidad>, u: Unidad): string {
   const nombres: string[] = [];
   const vistos = new Set([u.id]); // corta si los datos ya traen un ciclo
@@ -89,11 +103,13 @@ function rutaPadres(porId: Map<string, Unidad>, u: Unidad): string {
   return nombres.join(" › ");
 }
 
-const filaUnidad = (porId: Map<string, Unidad>) => (u: Unidad): FilaUnidad => ({
-  unidadId: u.id,
-  nombre: u.nombre,
-  ruta: rutaPadres(porId, u),
-});
+const filaUnidad =
+  (porId: Map<string, Unidad>) =>
+  (u: Unidad): FilaUnidad => ({
+    unidadId: u.id,
+    nombre: u.nombre,
+    ruta: rutaPadres(porId, u),
+  });
 
 /** Sin puesto de jefatura, con el puesto borrado, o sin titular ni reemplazo vigente en él. */
 export function unidadesSinJefatura(e: EstadoRevision): FilaUnidad[] {
@@ -119,14 +135,12 @@ export function puestosVacantes(e: EstadoRevision, hoy: Date): FilaVacante[] {
   return e.puestos
     .filter((p) => vivo(p) && !vigentes.get(p.id)?.titular)
     .map((p) => {
-      const desde = ultimoCierre.get(p.id) ?? p.created_at;
-      const t = desde ? Date.parse(desde) : NaN;
       return {
         puestoId: p.id,
         unidadId: p.unidad_id,
         unidad: unidad.get(p.unidad_id) ?? "",
         cargo: cargo.get(p.cargo_id) ?? "",
-        dias: Number.isNaN(t) ? null : Math.max(0, Math.floor((hoy.getTime() - t) / DIA_MS)),
+        dias: diasDesde(ultimoCierre.get(p.id) ?? p.created_at, hoy),
       };
     })
     .sort((a, b) => (b.dias ?? -1) - (a.dias ?? -1));
@@ -157,9 +171,13 @@ export function reemplazosVigentes(e: EstadoRevision): FilaReemplazo[] {
 export function personasSinPuesto(e: EstadoRevision): Avisos["sinPuesto"] {
   const puestos = new Set(e.puestos.filter(vivo).map((p) => p.id));
   const conPuesto = new Set(
-    e.asignaciones.filter((a) => vivo(a) && a.hasta === null && puestos.has(a.puesto_id)).map((a) => a.trabajador_id),
+    e.asignaciones
+      .filter((a) => vivo(a) && a.hasta === null && puestos.has(a.puesto_id))
+      .map((a) => a.trabajador_id),
   );
-  return e.trabajadores.filter((t) => vivo(t) && !conPuesto.has(t.id)).map((t) => ({ personaId: t.id, nombre: t.nombre }));
+  return e.trabajadores
+    .filter((t) => vivo(t) && !conPuesto.has(t.id))
+    .map((t) => ({ personaId: t.id, nombre: t.nombre }));
 }
 
 /** Grupos de dos o más personas vivas con la misma clave (en el orden en que aparece cada clave). */
@@ -176,12 +194,21 @@ function agrupar(e: EstadoRevision, clave: (t: Trabajador) => string): GrupoPers
   return [...grupos].filter(([, l]) => l.length > 1).map(([k, personas]) => ({ clave: k, personas }));
 }
 
-export const correosRepetidos = (e: EstadoRevision) => agrupar(e, (t) => t.correo?.trim().toLowerCase() ?? "");
+export const correosRepetidos = (e: EstadoRevision) =>
+  agrupar(e, (t) => t.correo?.trim().toLowerCase() ?? "");
 
 /** Mismo nombre sin tildes ni mayúsculas, o las mismas palabras en otro orden («Pérez Juan» ~ «Juan Perez»). Sin distancia de edición. */
 export const nombresParecidos = (e: EstadoRevision) =>
   agrupar(e, (t) =>
-    [...new Set(normalizarTexto(t.nombre).split(/[^\p{L}\p{N}]+/u).filter(Boolean))].sort().join(" "),
+    [
+      ...new Set(
+        normalizarTexto(t.nombre)
+          .split(/[^\p{L}\p{N}]+/u)
+          .filter(Boolean),
+      ),
+    ]
+      .sort()
+      .join(" "),
   );
 
 /** Sin puestos vivos ni subunidades vivas. */
