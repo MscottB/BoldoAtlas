@@ -26,6 +26,10 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 
 **Unidades que encabeza** lista las unidades de las que es jefe: ocupa el puesto de jefatura como titular o, si ese puesto no tiene titular, como reemplazo.
 
+## Puestos
+
+En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es titular o reemplazo y desde cuándo) y, en **Historial**, los que ya terminaron. Pulsa uno para abrir el puesto.
+
 ## Eliminar
 
 **Eliminar** cierra la ficha y muestra un aviso con **Deshacer** durante 8 segundos.

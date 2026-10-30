@@ -126,6 +126,7 @@ const nodos = computed<Node<DatosNodo>[]>(() => {
       data: {
         unidad: u,
         jefe: (jefe && trabajadorPorId.value.get(jefe.trabajador_id)) || null,
+        jefeReemplazo: jefe?.tipo === "reemplazo",
         total,
         vacantes,
         etiquetas: etiquetasDe.value.get(u.id) ?? [],

@@ -7,7 +7,7 @@ The tree is the main screen: it shows your organization as an org chart you can 
 Each unit is a card with:
 
 - its type (for example, Gerencia or Área) and its name;
-- the photo or initials and name of its manager, or **No manager** if it has none;
+- the photo or initials and name of its manager (**Replacement: name** if its position only has a replacement), or **No manager** if it has none;
 - the total headcount of its branch (the unit and everything under it);
 - the branch's vacancies, if any;
 - a colored dot for each tag (hover over it to see its name).
@@ -24,6 +24,7 @@ When the tree opens you see the roots and their first level; the rest is collaps
 
 - **Click** a card to select it. Click the background to clear the selection.
 - The selected card shows **+**: it creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
+- With the card selected, **Positions (n)** lists the unit's positions and lets you create a new one (see "Positions and replacements").
 - **Double-click** the name, or press `F2` with the name focused, to edit it. `Enter` saves and `Esc` cancels.
 - **+ New unit**, in the canvas bar, creates a sub-unit of the selected card; if none is selected, of the root of the focused view, or a new root of the first type in the list.
 

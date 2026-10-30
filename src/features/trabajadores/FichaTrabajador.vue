@@ -28,6 +28,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { TablaCatalogo, Trabajador } from "@/db/tipos";
 import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { asignacionesDePersona, formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
+import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion } from "@/stores/organizacion";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
@@ -41,9 +43,10 @@ import {
   type DatosFicha,
 } from "./validar";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const org = useOrganizacion();
 const ficha = useFicha();
+const puesto = usePuesto();
 
 type CampoCatalogo = "tipo_contrato_id" | "sede_id" | "jornada_id";
 const CATALOGOS: { campo: CampoCatalogo; tabla: TablaCatalogo; etiqueta: string }[] = [
@@ -191,6 +194,21 @@ const encabeza = computed(() => {
     .map((u) => rutaTexto(org.unidades, u.id));
 });
 
+// Sus puestos (cargo y unidad son del puesto, no de la persona): vigentes e historial, solo lectura.
+const misPuestos = computed(() =>
+  id.value ? asignacionesDePersona(org.puestos, org.asignaciones, id.value) : { vigentes: [], cerradas: [] },
+);
+function textoPuesto({ asignacion: a, puesto: p }: FilaPersona) {
+  const fecha = (iso: string) => formatearFecha(iso, locale.value);
+  return t(a.hasta ? "ficha.puestoCerrado" : "ficha.puestoVigente", {
+    cargo: org.catalogos.cargos.find((c) => c.id === p.cargo_id)?.nombre ?? "",
+    unidad: rutaTexto(org.unidades, p.unidad_id),
+    tipo: t(`puesto.tipo.${a.tipo}`),
+    desde: fecha(a.desde),
+    hasta: a.hasta ? fecha(a.hasta) : "",
+  });
+}
+
 async function eliminar() {
   const r = await org.eliminarTrabajador(id.value!);
   if (!r.ok) return void toast.error(r.mensaje);
@@ -282,6 +300,38 @@ const alAbrir = (e: Event) => {
             <li v-for="u in encabeza" :key="u">{{ u }}</li>
           </ul>
           <p v-else class="text-sm text-muted-foreground">{{ t("ficha.ninguna") }}</p>
+        </div>
+
+        <div v-if="id" class="grid gap-1 sm:col-span-2">
+          <p class="text-sm font-medium">{{ t("ficha.puestos") }}</p>
+          <ul v-if="misPuestos.vigentes.length" class="grid gap-0.5">
+            <li v-for="f in misPuestos.vigentes" :key="f.asignacion.id">
+              <button
+                type="button"
+                class="rounded text-left text-sm underline focus-visible:outline-2 focus-visible:outline-ring"
+                @click="puesto.abrir(f.puesto.id)"
+              >
+                {{ textoPuesto(f) }}
+              </button>
+            </li>
+          </ul>
+          <p v-else class="text-sm text-muted-foreground">{{ t("ficha.sinPuestos") }}</p>
+          <details v-if="misPuestos.cerradas.length" class="text-sm">
+            <summary class="w-fit cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-ring">
+              {{ t("ficha.historialPuestos", { n: misPuestos.cerradas.length }) }}
+            </summary>
+            <ul class="mt-1 grid gap-0.5">
+              <li v-for="f in misPuestos.cerradas" :key="f.asignacion.id">
+                <button
+                  type="button"
+                  class="rounded text-left underline focus-visible:outline-2 focus-visible:outline-ring"
+                  @click="puesto.abrir(f.puesto.id)"
+                >
+                  {{ textoPuesto(f) }}
+                </button>
+              </li>
+            </ul>
+          </details>
         </div>
 
         <div class="grid gap-1.5 sm:col-span-2">

@@ -7,7 +7,7 @@ El árbol es la pantalla principal: muestra tu organización como un organigrama
 Cada unidad es una tarjeta con:
 
 - su tipo (por ejemplo, Gerencia o Área) y su nombre;
-- la foto o las iniciales y el nombre de la jefatura, o **Sin jefatura** si no tiene;
+- la foto o las iniciales y el nombre de la jefatura (**Reemplazo: nombre** si su puesto solo tiene reemplazo), o **Sin jefatura** si no tiene;
 - la dotación total de su rama (ella y todo lo que cuelga de ella);
 - las vacantes de la rama, si hay;
 - un punto de color por cada etiqueta (pasa el puntero por encima para ver su nombre).
@@ -24,6 +24,7 @@ Al abrir el árbol se ven las raíces y su primer nivel; el resto está plegado.
 
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
 - En la tarjeta seleccionada aparece **+**: crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
+- Con la tarjeta seleccionada, **Puestos (n)** lista los puestos de la unidad y permite crear uno nuevo (ver «Puestos y reemplazos»).
 - **Doble clic** sobre el nombre, o `F2` con el nombre enfocado, lo edita. `Enter` guarda y `Esc` cancela.
 - **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una raíz nueva del primer tipo de la lista.
 

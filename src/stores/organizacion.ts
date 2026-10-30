@@ -213,6 +213,24 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => A.registrarReemplazo(puestoId, trabajadorId, desde, hasta));
   const terminarAsignacion = (id: string, hasta: string, motivo?: string | null) =>
     escribir(() => A.terminarAsignacion(id, hasta, motivo));
+  /** "Crear persona «X»" desde un puesto: la persona y su asignación entran en el mismo lote. */
+  const asignarNuevaPersona = (
+    puestoId: string,
+    tipo: Asignacion["tipo"],
+    nombre: string,
+    desde: string,
+    hasta?: string | null,
+  ): Promise<Resultado> =>
+    nombre.trim()
+      ? escribir(() => {
+          const p = T.crearTrabajador({ nombre: nombre.trim() });
+          const a =
+            tipo === "titular"
+              ? A.asignarTitular(puestoId, p.id, desde)
+              : A.registrarReemplazo(puestoId, p.id, desde, hasta);
+          return { id: p.id, sentencias: [...p.sentencias, ...a.sentencias] };
+        })
+      : Promise.resolve(rechazar(t("store.nombreVacio")));
 
   const RESTAURAR = {
     unidad: (b: Borrado) => U.restaurarUnidad(b.id, b.contenido!),
@@ -413,6 +431,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     asignarTitular,
     registrarReemplazo,
     terminarAsignacion,
+    asignarNuevaPersona,
     etiquetar,
     quitarEtiqueta,
     crearEtiqueta,

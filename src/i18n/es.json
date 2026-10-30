@@ -85,7 +85,8 @@
     "verCompleto": "Ver en el árbol completo",
     "confirmarMover": "¿Mover «{unidad}» dentro de «{destino}»?",
     "cancelar": "Cancelar",
-    "mover": "Mover"
+    "mover": "Mover",
+    "reemplazo": "Reemplazo: {nombre}"
   },
   "arboles": {
     "titulo": "Árboles",
@@ -176,6 +177,65 @@
     "sinGuardarTitulo": "Hay cambios sin guardar",
     "sinGuardarTexto": "Algún campo no es válido o la ficha aún no se creó. Si descartas, se perderán.",
     "seguirEditando": "Seguir editando",
-    "descartar": "Descartar"
+    "descartar": "Descartar",
+    "puestos": "Puestos",
+    "sinPuestos": "Sin puestos vigentes.",
+    "historialPuestos": "Historial ({n})",
+    "puestoVigente": "{cargo} · {unidad} · {tipo} · desde {desde}",
+    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} a {hasta}"
+  },
+  "puesto": {
+    "nuevo": "Nuevo puesto",
+    "nuevoPuesto": "Nuevo puesto",
+    "puestos": "Puestos ({n})",
+    "sinPuestos": "Esta unidad aún no tiene puestos.",
+    "cargo": "Cargo",
+    "descripcion": "Descripción",
+    "esJefatura": "Es la jefatura de la unidad",
+    "vigentes": "Asignaciones vigentes",
+    "tipo": {
+      "titular": "Titular",
+      "reemplazo": "Reemplazo"
+    },
+    "vacante": "Vacante",
+    "sinReemplazo": "Sin reemplazo",
+    "desdeFecha": "Desde {fecha}",
+    "terminarDe": "Terminar asignación de {nombre}",
+    "reemplazoDe": "Reemplazo: {nombre}",
+    "accion": {
+      "titular": "Asignar titular",
+      "reemplazo": "Registrar reemplazo",
+      "terminar": "Terminar asignación"
+    },
+    "historial": "Historial",
+    "sinHistorial": "Este puesto aún no tiene asignaciones.",
+    "col": {
+      "tipo": "Tipo",
+      "persona": "Persona"
+    },
+    "persona": "Persona",
+    "desde": "Desde",
+    "hasta": "Hasta",
+    "hastaOpcional": "Hasta (opcional)",
+    "motivo": "Motivo",
+    "vigente": "Vigente",
+    "elegirPersona": "Elegir persona…",
+    "buscarPersona": "Buscar o escribir un nombre",
+    "crearPersona": "Crear persona «{texto}»",
+    "personaNueva": "«{nombre}» (persona nueva)",
+    "sinPersonas": "No hay personas.",
+    "terminaA": "Termina la asignación de {nombre}.",
+    "cierraTitular": "{nombre} dejará de ser titular el {fecha}; queda en el historial.",
+    "yaEsTitular": "Esa persona ya es la titular de este puesto: no se cambió nada.",
+    "cancelar": "Cancelar",
+    "confirmar": "Confirmar",
+    "crear": "Crear puesto",
+    "eliminar": "Eliminar puesto",
+    "eliminado": "Puesto eliminado",
+    "error": {
+      "fecha": "Indica la fecha.",
+      "persona": "Elige una persona.",
+      "cargo": "Elige el cargo."
+    }
   }
 }

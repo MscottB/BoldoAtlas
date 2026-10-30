@@ -1,0 +1,63 @@
+import type { Asignacion, Puesto, Trabajador } from "@/db/tipos";
+import type { Vigentes } from "@/features/arbol/jerarquia";
+import { normalizarTexto } from "@/lib/texto";
+
+/** Fecha más reciente primero; a igual fecha, la vigente (hasta = null) antes que la cerrada. */
+const masReciente = (a: Asignacion, b: Asignacion) =>
+  b.desde.localeCompare(a.desde) || Number(b.hasta === null) - Number(a.hasta === null);
+
+export const historialPuesto = (asignaciones: Asignacion[], puestoId: string): Asignacion[] =>
+  asignaciones.filter((a) => a.puesto_id === puestoId).sort(masReciente);
+
+/** Personas cuyo nombre contiene `texto` (sin tildes ni mayúsculas), por nombre; `limite` evita pintar miles de filas. */
+export function filtrarPersonas(trabajadores: Trabajador[], texto: string, limite = 50): Trabajador[] {
+  const buscado = normalizarTexto(texto);
+  return trabajadores
+    .filter((w) => normalizarTexto(w.nombre).includes(buscado))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+    .slice(0, limite);
+}
+
+/** Se ofrece "Crear persona" si hay texto y no existe ya alguien con ese nombre. */
+export const puedeCrearPersona = (trabajadores: Trabajador[], texto: string): boolean =>
+  !!texto.trim() && !trabajadores.some((w) => normalizarTexto(w.nombre) === normalizarTexto(texto));
+
+/** Reasignar al titular de hoy no cambia nada: no debe dejar una fila nueva en el historial. */
+export const esTitularVigente = (vigentes: Vigentes, puestoId: string, trabajadorId: string): boolean =>
+  vigentes.get(puestoId)?.titular?.trabajador_id === trabajadorId;
+
+export interface FilaPersona {
+  asignacion: Asignacion;
+  puesto: Puesto;
+}
+
+/** Asignaciones de la persona en puestos vivos: las vigentes y las ya cerradas (historial). */
+export function asignacionesDePersona(
+  puestos: Puesto[],
+  asignaciones: Asignacion[],
+  trabajadorId: string,
+): { vigentes: FilaPersona[]; cerradas: FilaPersona[] } {
+  const porId = new Map(puestos.map((p) => [p.id, p]));
+  const filas = asignaciones
+    .filter((a) => a.trabajador_id === trabajadorId && porId.has(a.puesto_id))
+    .sort(masReciente)
+    .map((asignacion) => ({ asignacion, puesto: porId.get(asignacion.puesto_id)! }));
+  return {
+    vigentes: filas.filter((f) => f.asignacion.hasta === null),
+    cerradas: filas.filter((f) => f.asignacion.hasta !== null),
+  };
+}
+
+const dos = (n: number) => String(n).padStart(2, "0");
+/** AAAA-MM-DD del día local (no UTC: a la noche en Chile `toISOString` ya marcaría mañana). */
+export const hoyISO = (d = new Date()): string =>
+  `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+
+/** AAAA-MM-DD → fecha corta en el idioma; se arma con partes locales para que la zona horaria no la corra. */
+export function formatearFecha(iso: string, idioma: string): string {
+  const [a, m, d] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(idioma, { dateStyle: "medium" }).format(new Date(a, m - 1, d));
+}
+
+/** Quien recibe la asignación: una persona existente o el nombre de una por crear. */
+export type EleccionPersona = { id: string } | { nombre: string };

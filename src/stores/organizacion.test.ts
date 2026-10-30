@@ -252,6 +252,30 @@ describe("puestos y asignaciones", () => {
     });
   });
 
+  it("asignarNuevaPersona crea a la persona y la asigna en un solo lote", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const antes = revision();
+    const r = await s.asignarNuevaPersona(p, "titular", "Ana Rojas", "2026-01-01");
+    expect(r).toEqual({ ok: true, id: expect.any(String) });
+    expect(revision()).toBe(antes + 1);
+    expect(s.trabajadores.map((w) => w.nombre)).toEqual(["Ana Rojas"]);
+    expect(s.asignaciones).toEqual([
+      expect.objectContaining({ trabajador_id: r.ok && r.id, tipo: "titular" }),
+    ]);
+    expect((await s.asignarNuevaPersona(p, "reemplazo", "Beto", "2026-02-01")).ok).toBe(true);
+    expect(s.asignaciones.map((a) => a.tipo)).toEqual(["titular", "reemplazo"]);
+  });
+
+  it("asignarNuevaPersona que falla no deja a la persona creada", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    await s.asignarTitular(p, await persona(s, "Ana"), "2026-05-01");
+    const r = await s.asignarNuevaPersona(p, "titular", "Beto", "2026-01-01"); // antes del inicio del titular
+    expect(r.ok).toBe(false);
+    expect(s.trabajadores.map((w) => w.nombre)).toEqual(["Ana"]);
+  });
+
   it("edita y elimina un puesto; deshacer lo devuelve con su historial", async () => {
     const s = nuevo();
     const p = await puesto(s, await unidad(s, "Raíz"));

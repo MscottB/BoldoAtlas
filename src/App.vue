@@ -17,6 +17,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BarraSuperior from "@/components/BarraSuperior.vue";
+import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
 import icono from "../assets/brand/icono.png";
@@ -109,6 +110,7 @@ watch(
       </div>
     </div>
     <FichaTrabajador />
+    <DialogoPuesto />
     <Toaster />
   </TooltipProvider>
 </template>

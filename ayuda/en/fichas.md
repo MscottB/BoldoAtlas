@@ -26,6 +26,10 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 
 **Units they head** lists the units they are head of: they hold the head position as holder or, if that position has no holder, as a replacement.
 
+## Positions
+
+**Positions** lists the person's current positions (job title, unit, whether holder or replacement, and since when) and, under **History**, the ones that have ended. Press one to open the position.
+
 ## Delete
 
 **Delete** closes the record and shows a notice with **Undo** for 8 seconds.

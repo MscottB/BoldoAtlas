@@ -85,7 +85,8 @@
     "verCompleto": "View in the full tree",
     "confirmarMover": "Move “{unidad}” into “{destino}”?",
     "cancelar": "Cancel",
-    "mover": "Move"
+    "mover": "Move",
+    "reemplazo": "Replacement: {nombre}"
   },
   "arboles": {
     "titulo": "Trees",
@@ -176,6 +177,65 @@
     "sinGuardarTitulo": "You have unsaved changes",
     "sinGuardarTexto": "A field is not valid or the record has not been created yet. If you discard, they will be lost.",
     "seguirEditando": "Keep editing",
-    "descartar": "Discard"
+    "descartar": "Discard",
+    "puestos": "Positions",
+    "sinPuestos": "No current positions.",
+    "historialPuestos": "History ({n})",
+    "puestoVigente": "{cargo} · {unidad} · {tipo} · since {desde}",
+    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}"
+  },
+  "puesto": {
+    "nuevo": "New position",
+    "nuevoPuesto": "New position",
+    "puestos": "Positions ({n})",
+    "sinPuestos": "This unit has no positions yet.",
+    "cargo": "Job title",
+    "descripcion": "Description",
+    "esJefatura": "Is the head of the unit",
+    "vigentes": "Current assignments",
+    "tipo": {
+      "titular": "Holder",
+      "reemplazo": "Replacement"
+    },
+    "vacante": "Vacant",
+    "sinReemplazo": "No replacement",
+    "desdeFecha": "Since {fecha}",
+    "terminarDe": "End assignment of {nombre}",
+    "reemplazoDe": "Replacement: {nombre}",
+    "accion": {
+      "titular": "Assign holder",
+      "reemplazo": "Register replacement",
+      "terminar": "End assignment"
+    },
+    "historial": "History",
+    "sinHistorial": "This position has no assignments yet.",
+    "col": {
+      "tipo": "Type",
+      "persona": "Person"
+    },
+    "persona": "Person",
+    "desde": "From",
+    "hasta": "To",
+    "hastaOpcional": "To (optional)",
+    "motivo": "Reason",
+    "vigente": "Current",
+    "elegirPersona": "Choose a person…",
+    "buscarPersona": "Search or type a name",
+    "crearPersona": "Create person «{texto}»",
+    "personaNueva": "«{nombre}» (new person)",
+    "sinPersonas": "No people.",
+    "terminaA": "Ends the assignment of {nombre}.",
+    "cierraTitular": "{nombre} will stop being the holder on {fecha}; they stay in the history.",
+    "yaEsTitular": "That person is already the holder of this position: nothing changed.",
+    "cancelar": "Cancel",
+    "confirmar": "Confirm",
+    "crear": "Create position",
+    "eliminar": "Delete position",
+    "eliminado": "Position deleted",
+    "error": {
+      "fecha": "Enter the date.",
+      "persona": "Choose a person.",
+      "cargo": "Choose the job title."
+    }
   }
 }

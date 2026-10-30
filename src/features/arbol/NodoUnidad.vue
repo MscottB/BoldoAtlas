@@ -7,11 +7,14 @@ import { toast } from "vue-sonner";
 import { Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
+import PuestosUnidad from "@/features/puestos/PuestosUnidad.vue";
 import { useLienzo } from "./useLienzo";
 
 export interface DatosNodo {
   unidad: Unidad;
   jefe: Trabajador | null;
+  /** La jefatura la cubre un reemplazo: el puesto no tiene titular vigente. */
+  jefeReemplazo: boolean;
   total: number;
   vacantes: number;
   etiquetas: Etiqueta[];
@@ -107,9 +110,13 @@ async function guardar(e: Event) {
         >
           {{ iniciales }}
         </span>
-        <span class="truncate">{{ data.jefe.nombre }}</span>
+        <span class="truncate">
+          {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
+        </span>
       </template>
       <span v-else class="text-amber-700 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
+      <!-- En esta fila y no en la del pie: ahí ya no cabe junto a la dotación y las vacantes. -->
+      <span v-if="seleccionada" class="nodrag ml-auto shrink-0"><PuestosUnidad :unidad-id="id" /></span>
     </div>
     <div class="mt-auto flex items-center gap-1.5">
       <span class="flex items-center gap-1" :title="t('arbol.dotacion')">

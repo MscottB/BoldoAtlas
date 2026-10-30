@@ -14,7 +14,7 @@ import { hayCoincidenciaExacta } from "./validar";
 
 // Combobox sobre un mantenedor: elige un valor activo o agrega uno nuevo sin duplicar. Los atributos (id, aria-*) van al botón.
 defineOptions({ inheritAttrs: false });
-const props = defineProps<{ tabla: TablaCatalogo; modelValue: string | null }>();
+const props = defineProps<{ tabla: TablaCatalogo; modelValue: string | null; requerido?: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [id: string | null] }>();
 
 const { t } = useI18n();
@@ -87,7 +87,7 @@ async function agregar() {
         </div>
         <CommandList>
           <CommandGroup>
-            <CommandItem v-if="modelValue && !texto" value="sin-valor" @select="elegir(null)">
+            <CommandItem v-if="modelValue && !texto && !requerido" value="sin-valor" @select="elegir(null)">
               {{ t("ficha.selector.sinValor") }}
             </CommandItem>
             <CommandItem
