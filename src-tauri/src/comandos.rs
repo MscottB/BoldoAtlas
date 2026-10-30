@@ -112,8 +112,12 @@ pub fn db_lote(
 }
 
 #[tauri::command]
-pub async fn listar_respaldos(estado: State<'_, Estado>) -> Result<Vec<Respaldo>, Fallo> {
-    respaldos::listar(&estado.rutas()?.respaldos)
+pub async fn listar_respaldos(app: AppHandle) -> Result<Vec<Respaldo>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        respaldos::listar(&app.state::<Estado>().rutas()?.respaldos)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// En un hilo aparte: el VACUUM INTO no congela la ventana.

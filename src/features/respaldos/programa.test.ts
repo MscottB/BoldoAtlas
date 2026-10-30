@@ -37,11 +37,20 @@ describe("tocaRespaldar", () => {
 describe("ultimoRespaldo", () => {
   it("toma la fecha más nueva de la lista, en hora local", () => {
     const lista = [
-      { fecha: "2026-10-29T08:15" },
-      { fecha: "2026-10-30T09:05" },
-      { fecha: "2026-01-01T00:00" },
+      { fecha: "2026-10-29T08:15", legible: true },
+      { fecha: "2026-10-30T09:05", legible: true },
+      { fecha: "2026-01-01T00:00", legible: true },
     ];
     expect(ultimoRespaldo(lista)).toEqual(new Date(2026, 9, 30, 9, 5));
     expect(ultimoRespaldo([])).toBeNull();
+  });
+
+  it("ignora los archivos ilegibles: uno dañado y reciente no frena el respaldo automático", () => {
+    const lista = [
+      { fecha: "2026-10-30T11:00", legible: false },
+      { fecha: "2026-10-20T09:00", legible: true },
+    ];
+    expect(ultimoRespaldo(lista)).toEqual(new Date(2026, 9, 20, 9, 0));
+    expect(ultimoRespaldo([{ fecha: "2026-10-30T11:00", legible: false }])).toBeNull();
   });
 });

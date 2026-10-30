@@ -131,12 +131,14 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
 /// `VACUUM INTO respaldos/boldo-<sello>.db` (o `-2`, `-3`… si ya existe) y poda a los últimos CONSERVAR.
 pub fn respaldar(conn: &Connection, dir: &Path, sello: &str) -> Result<String, Fallo> {
     let nombre = volcar(conn, dir, PREFIJO, sello)?;
-    for viejo in entradas(dir)?
+    // el respaldo ya está hecho: si la poda falla (archivo abierto, permisos), se reintenta la próxima vez
+    for viejo in entradas(dir)
+        .unwrap_or_default()
         .iter()
         .filter(|e| !e.seguridad)
         .skip(CONSERVAR)
     {
-        fs::remove_file(dir.join(&viejo.nombre))?;
+        let _ = fs::remove_file(dir.join(&viejo.nombre));
     }
     Ok(nombre)
 }
@@ -151,15 +153,17 @@ fn revision(ruta: &Path) -> Option<i64> {
     .ok()
 }
 
-/// Respaldos de la carpeta, del más nuevo al más viejo. Un archivo ilegible se lista sin revisión.
+/// Respaldos de la carpeta, del más nuevo al más viejo. Un archivo ilegible se lista sin revisión;
+/// uno que ni siquiera se puede consultar (desapareció, sin permisos) se omite.
 pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
-    entradas(dir)?
+    Ok(entradas(dir)?
         .into_iter()
-        .map(|e| {
+        .filter_map(|e| {
             let ruta = dir.join(&e.nombre);
+            let bytes = fs::metadata(&ruta).ok()?.len();
             let revision = revision(&ruta);
             let s = &e.sello;
-            Ok(Respaldo {
+            Some(Respaldo {
                 fecha: format!(
                     "{}-{}-{}T{}:{}",
                     &s[..4],
@@ -168,14 +172,14 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
                     &s[9..11],
                     &s[11..]
                 ),
-                bytes: fs::metadata(&ruta)?.len(),
+                bytes,
                 legible: revision.is_some(),
                 revision,
                 seguridad: e.seguridad,
                 nombre: e.nombre,
             })
         })
-        .collect()
+        .collect())
 }
 
 fn con_sufijo(ruta: &Path, sufijo: &str) -> PathBuf {
@@ -249,25 +253,36 @@ pub fn restaurar(
         let actual = conexion
             .take()
             .ok_or_else(|| Fallo::de("fallo", "la base no está abierta"))?;
-        let seguridad =
-            sello_local(&actual).and_then(|sello| volcar(&actual, dir, PREFIJO_SEGURIDAD, &sello));
-        if let Err(e) = seguridad {
-            *conexion = Some(actual);
-            return Err(e);
-        }
-        // Al cerrar la última conexión SQLite vuelca el WAL y lo borra; si sigue ahí, otra ventana usa la base.
-        actual.close().map_err(|(_, e)| e)?;
-        if con_sufijo(bd, "-wal").exists() {
-            return Err(Fallo::de("en_uso", bd.display()));
-        }
-        // un -shm sin -wal no guarda datos; se quita para que el respaldo arranque limpio
-        let _ = fs::remove_file(con_sufijo(bd, "-shm"));
-        fs::rename(&copia, bd)?;
-        Ok(())
+        let seguridad = match sello_local(&actual)
+            .and_then(|sello| volcar(&actual, dir, PREFIJO_SEGURIDAD, &sello))
+        {
+            Ok(nombre) => dir.join(nombre),
+            Err(e) => {
+                *conexion = Some(actual);
+                return Err(e);
+            }
+        };
+        let cambiar = || -> Result<(), Fallo> {
+            // Al cerrar la última conexión SQLite vuelca el WAL y lo borra; si sigue ahí, otra ventana usa la base.
+            actual.close().map_err(|(_, e)| e)?;
+            if con_sufijo(bd, "-wal").exists() {
+                return Err(Fallo::de("en_uso", bd.display()));
+            }
+            // un -shm sin -wal no guarda datos; se quita para que el respaldo arranque limpio
+            let _ = fs::remove_file(con_sufijo(bd, "-shm"));
+            fs::rename(&copia, bd)?;
+            Ok(())
+        };
+        // si no se reemplazó, la copia «antes de restaurar» sobra (y contaría como último respaldo)
+        cambiar().inspect_err(|_| {
+            let _ = fs::remove_file(&seguridad);
+        })
     };
     let resultado = reemplazar();
     let _ = borrar_bd(&copia);
-    if conexion.is_none() {
+    // Tras el éxito la conexión queda cerrada hasta el reinicio: nada escribe en la base restaurada
+    // sin pasar por el respaldo de seguridad. Si falló, se reabre la base de siempre.
+    if resultado.is_err() && conexion.is_none() {
         *conexion = Some(db::abrir(bd)?);
     }
     resultado
@@ -369,6 +384,28 @@ mod tests {
         assert_eq!(propios[0], "boldo-20200103-0000.db");
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn un_error_al_podar_no_hace_fallar_el_respaldo() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let (_, respaldos, conn) = base(dir.path());
+        for d in 1..=CONSERVAR {
+            respaldar(&conn, &respaldos, &format!("202001{d:02}-0000")).unwrap();
+        }
+        // sin compartir: Windows no deja borrar el más viejo mientras esté abierto
+        let _bloqueo = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(respaldos.join("boldo-20200101-0000.db"))
+            .unwrap();
+        assert_eq!(
+            respaldar(&conn, &respaldos, "20200201-0000").unwrap(),
+            "boldo-20200201-0000.db"
+        );
+        assert!(respaldos.join("boldo-20200201-0000.db").is_file());
+    }
+
     #[test]
     fn lista_del_mas_nuevo_y_marca_los_ilegibles() {
         let dir = tempfile::tempdir().unwrap();
@@ -440,8 +477,8 @@ mod tests {
         assert!(fs::metadata(&wal).unwrap().len() > 0);
         let mut slot = Some(conn);
         restaurar(&mut slot, &bd, &respaldos, &nombre, MIGRACIONES).unwrap();
-        assert_eq!(revision(slot.as_ref().unwrap()), 1);
-        drop(slot);
+        // tras el éxito la conexión queda cerrada: nada escribe en la base restaurada antes del reinicio
+        assert!(slot.is_none());
         assert_eq!(revision(&db::abrir(&bd).unwrap()), 1);
         // la base de antes quedó respaldada (revisión 4) y se puede volver a ella
         let lista = listar(&respaldos).unwrap();
@@ -466,7 +503,8 @@ mod tests {
         let dos = [MIGRACIONES[0], "CREATE TABLE extra (x INTEGER);"];
         let mut slot = Some(conn);
         restaurar(&mut slot, &bd, &respaldos, &nombre, &dos).unwrap();
-        let c = slot.as_ref().unwrap();
+        assert!(slot.is_none());
+        let c = db::abrir(&bd).unwrap();
         let v: i64 = c
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .unwrap();
@@ -552,5 +590,7 @@ mod tests {
         assert_eq!(err.codigo, "en_uso");
         assert_eq!(revision(slot.as_ref().unwrap()), 3);
         assert_eq!(revision(&otra), 3);
+        // un intento fallido no deja una copia «antes de restaurar» suelta
+        assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));
     }
 }

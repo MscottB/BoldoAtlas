@@ -13,8 +13,8 @@ export function tocaRespaldar(frecuencia: string, ultimo: Date | null, ahora: Da
   return transcurrido < 0 || transcurrido >= (HORAS[frecuencia] ?? HORAS[FRECUENCIA_POR_DEFECTO]) * 3_600_000;
 }
 
-/** `fecha` viene de Rust como `AAAA-MM-DDTHH:MM` sin zona, que JS lee como hora local. */
-export function ultimoRespaldo(lista: { fecha: string }[]): Date | null {
-  const tiempos = lista.map((r) => new Date(r.fecha).getTime());
+/** `fecha` viene de Rust como `AAAA-MM-DDTHH:MM` sin zona, que JS lee como hora local. Un archivo ilegible no cuenta. */
+export function ultimoRespaldo(lista: { fecha: string; legible: boolean }[]): Date | null {
+  const tiempos = lista.filter((r) => r.legible).map((r) => new Date(r.fecha).getTime());
   return tiempos.length ? new Date(Math.max(...tiempos)) : null;
 }
