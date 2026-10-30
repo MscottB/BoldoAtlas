@@ -22,8 +22,9 @@ export default defineConfig(() => ({
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
+  // (`npm run app` elige uno libre y lo pasa en BOLDO_PUERTO junto con el devUrl de Tauri)
   server: {
-    port: 1420,
+    port: Number(process.env.BOLDO_PUERTO ?? 1420),
     strictPort: true,
     host: host || false,
     hmr: host

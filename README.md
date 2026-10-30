@@ -71,7 +71,7 @@ Requires Node 24+ and stable Rust.
 
 ```bash
 npm ci
-npm run tauri dev      # run in development
+npm run app            # run in development (picks a free port)
 npm run test           # frontend tests
 cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
 npm run release        # full Windows release in release/<version>/
