@@ -427,6 +427,15 @@ Se ejecutan después de la Task 11 y antes de la Task 10. Las tareas 10 y 12 usa
 - Migrar los usos existentes de `cargo_id`/`unidad_id`/`estado`/`jefe_id` de trabajadores en código y tests (store, jerarquía, lienzo, ficha de la Task 11) sin cambiar comportamientos ya aprobados salvo los que el modelo exige.
 - Commit: `feat(db): puestos y asignaciones con reemplazos e historial`
 
+### Task 11e (pedido del autor): tipos de unidad configurables (spec §5 `tipos_unidad`)
+Va después de la 11b y antes de la 11c: el panel Vista, las marcas, el directorio y la ficha ya nacen sobre tipos flexibles.
+- Esquema (misma migración no publicada): tabla `tipos_unidad` (`nombre` NOT NULL, `orden` INTEGER NOT NULL DEFAULT 0 + comunes; único parcial `lower(trim(nombre))`), sembrada con Gerencia, Área, Subárea y Otra con ids fijos exportados como constantes; `unidades.tipo` (CHECK fijo) → `unidades.tipo_id` NOT NULL FK diferida con índice. Tests de esquema (tipo inexistente → FK; nombre duplicado sin importar mayúsculas → UNIQUE).
+- Catálogo: `tipos_unidad` se suma a `TablaCatalogo`/`TABLAS_CATALOGO` y reutiliza `crearValor`/`renombrarValor`/orden/desactivar y la sugerencia de duplicados; el store lo carga como los demás. Mantenedor: pestaña **Tipos de unidad** (la vista de Mantenedores llega en T13; si aún no existe, solo el catálogo y el store).
+- Jerarquía: `tipoHijo(tipos, tipoPadreId)` = siguiente tipo activo por `orden` (el último se repite); `gerenciaYArea` → `rutaPorTipo(unidades, tipos, unidadId): { tipo: ValorCatalogo, unidad: Unidad }[]` (para cada tipo, la unidad más cercana hacia arriba de ese tipo, en orden del catálogo); `marcaHeredada(…, nivel: tipoId | 'cualquiera')`. Tests con un tipo agregado ("Superintendencia" entre Gerencia y Área) y con uno renombrado.
+- Migrar los usos de `tipo`/`gerenciaYArea` y de los literales 'gerencia'/'area'/'subarea'/'otra' (lienzo: chip de tipo con el nombre del catálogo; "+" sugiere `tipoHijo`; ficha y directorio: columnas por tipo en uso; datos de ejemplo con una Superintendencia). Sin literales de tipo en el código fuera de las semillas.
+- i18n es/en (la pestaña y los textos; los nombres de tipos son datos); ayuda: mencionar los tipos en `arbol.md`.
+- Commit: `feat: tipos de unidad configurables`
+
 ### Task 11c: Pantallas de puestos, reemplazos e historial
 - Tarjeta del lienzo: jefe visible (titular o "reemplazo: <nombre>"), dotación y vacantes con el nuevo cálculo.
 - Ficha de la persona (Task 11): sus puestos vigentes (titular/reemplazo) e historial; ya no edita cargo ni unidad (eso es del puesto).
@@ -448,5 +457,6 @@ Se ejecutan después de la Task 11 y antes de la Task 10. Las tareas 10 y 12 usa
 ### Task 11c (ampliación 2, pedido del autor): opciones de vista y marcas de gerencia/área
 - Esquema (en T11b, misma migración no publicada): `unidades.marca_color` NULL (hex) y `unidades.marca_codigo` NULL (CHECK largo ≤ 4), editables en el panel de unidad (T10).
 - Pura y testeada: `marcaHeredada(unidades, unidadId, nivel: 'gerencia'|'area'|'cualquiera')` → la marca de la unidad más cercana hacia arriba que la tenga (según el nivel elegido).
-- Panel **"Vista"** en la barra del lienzo (preferencias por PC): mostrar/ocultar puestos, cargo, persona y "gerencia · área" en las tarjetas; selector **"Colorear por"**: ninguno | marca de gerencia | marca de área | leyenda del puesto (un solo criterio a la vez); la leyenda flotante muestra las entradas del criterio activo que están en uso (color + código + nombre).
+- (Tras la 11e: los niveles son los tipos del catálogo, no 'gerencia'/'area' fijos.)
+- Panel **"Vista"** en la barra del lienzo (preferencias por PC): mostrar/ocultar puestos, cargo, persona y la ruta por tipo (elegir qué tipos) en las tarjetas; selector **"Colorear por"**: ninguno | marca de <cada tipo en uso> | leyenda del puesto (un solo criterio a la vez); la leyenda flotante muestra las entradas del criterio activo que están en uso (color + código + nombre).
 - Las mismas opciones se ofrecen al exportar (Fase 4).

@@ -5,7 +5,7 @@ Fecha: 2026-10-28 · Estado: borrador para revisión · Licencia del proyecto: A
 ## 1. Objetivo
 
 App de escritorio local para construir y revisar un organigrama grande de una organización:
-unidades (gerencias, áreas, subáreas) conectadas jerárquicamente o lateralmente, con sus jefaturas,
+unidades (gerencias, superintendencias, áreas… con tipos que define cada organización) conectadas jerárquicamente o lateralmente, con sus jefaturas,
 procesos (SIPOC), actividades (RACI) y las fichas de cada trabajador. Debe pesar poco, verse moderna,
 funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar datos entre PCs mediante archivos.
 
@@ -95,7 +95,7 @@ La versión de esquema la lleva `PRAGMA user_version`.
 ### `unidades`
 | columna | tipo | reglas |
 |---|---|---|
-| `tipo` | TEXT | NOT NULL, CHECK in ('gerencia','area','subarea','otra') |
+| `tipo_id` | TEXT | NOT NULL → `tipos_unidad.id` (ver abajo) |
 | `nombre` | TEXT | NOT NULL, CHECK largo > 0 |
 | `descripcion` | TEXT | NULL |
 | `parent_id` | TEXT | NULL → `unidades.id`; NULL = raíz (permite árboles sueltos) |
@@ -103,6 +103,14 @@ La versión de esquema la lleva `PRAGMA user_version`.
 | `orden` | INTEGER | NOT NULL DEFAULT 0 |
 
 Profundidad libre. La ausencia de ciclos se valida en la capa de datos antes de guardar (SQLite no puede expresarlo con CHECK). El jefe puede pertenecer a la propia unidad o a la superior.
+
+### `tipos_unidad` (pedido del autor: tipos flexibles, p. ej. Gerencia, Superintendencia, Área, Departamento)
+Cada organización nombra sus propios niveles; no hay tipos fijos en el código.
+- Columnas: `nombre` NOT NULL (único parcial por `lower(trim(nombre))`), `orden` INTEGER NOT NULL DEFAULT 0 (nivel sugerido: menor = más arriba) + comunes. Mantenedor en Configuración › Mantenedores igual a los demás catálogos (crear, renombrar, reordenar, desactivar; un tipo desactivado sigue válido en las unidades que ya lo usan pero no se ofrece para nuevas).
+- La migración siembra Gerencia, Área, Subárea y Otra con ids fijos; el usuario los renombra, reordena o agrega otros (Superintendencia, Departamento…).
+- El orden **no restringe** la estructura: cualquier tipo puede colgar de cualquier otro. Solo se usa para listar, para sugerir el tipo de una unidad hija nueva (el siguiente en orden después del de su superior) y para ordenar columnas.
+- **Ruta por tipo** (reemplaza "Gerencia › Área › Subárea" fijo en todo el documento): para cada tipo, la unidad más cercana hacia arriba de ese tipo. La ficha, el directorio (columnas y filtros), el Excel y el PDF muestran una columna por cada tipo en uso, en el orden del catálogo; las migas de pan muestran la ruta completa.
+- Las marcas heredadas y "Colorear por" se eligen por tipo: "marca de <tipo>" para cada tipo en uso, además de "ninguno" y "leyenda del puesto".
 
 ### `conexiones` (relaciones laterales)
 `origen_id` NOT NULL → `unidades.id`, `destino_id` NOT NULL → `unidades.id`, `etiqueta` TEXT NULL. CHECK `origen_id <> destino_id`.
