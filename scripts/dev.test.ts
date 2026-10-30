@@ -37,6 +37,17 @@ Conexiones activas
   it("devuelve vacío si nadie escucha", () => {
     expect(pidsEscuchando(netstat, 1500)).toEqual([]);
   });
+
+  it("detecta el estado de escucha en cualquier idioma, por la dirección remota", () => {
+    const filas = [
+      "  TCP    [::1]:1577             [::]:0                 LISTENING       11",
+      "  TCP    127.0.0.1:1577         0.0.0.0:0              ABHÖREN         22",
+      "  TCP    0.0.0.0:1577           0.0.0.0:0              ÉCOUTE          33",
+      "  TCP    0.0.0.0:1577           *:*                    HÖRT            44",
+      "  TCP    127.0.0.1:1577         127.0.0.1:50000        ESTABLISHED     55",
+    ].join("\n");
+    expect(pidsEscuchando(filas, 1577)).toEqual([11, 22, 33, 44]);
+  });
 });
 
 describe("esViteDeEsteRepo", () => {
@@ -59,6 +70,21 @@ describe("esViteDeEsteRepo", () => {
 
   it("rechaza otro proceso de este repositorio que no es Vite", () => {
     expect(esViteDeEsteRepo(String.raw`${repo}\src-tauri\target\debug\boldo-atlas.exe`, repo)).toBe(false);
+  });
+
+  it("rechaza una carpeta hermana con el mismo comienzo", () => {
+    const cmd = String.raw`node ${repo}-old\node_modules\vite\bin\vite.js`;
+    expect(esViteDeEsteRepo(cmd, repo)).toBe(false);
+  });
+
+  it("rechaza vitest y otros nombres que solo empiezan por vite", () => {
+    expect(esViteDeEsteRepo(String.raw`node ${repo}\node_modules\vitest\vitest.mjs`, repo)).toBe(false);
+    expect(esViteDeEsteRepo(String.raw`node ${repo}\node_modules\vite-plugin-x\run.js`, repo)).toBe(false);
+  });
+
+  it("acepta el binario vite.cmd y el paquete vite", () => {
+    expect(esViteDeEsteRepo(String.raw`cmd /c ${repo}\node_modules\.bin\vite.cmd --port 1420`, repo)).toBe(true);
+    expect(esViteDeEsteRepo(String.raw`node ${repo}\node_modules\.bin\vite --port 1420`, repo)).toBe(true);
   });
 
   it("rechaza una línea de comando vacía o desconocida", () => {

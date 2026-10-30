@@ -20,13 +20,16 @@ export async function primerPuertoLibre(desde, ocupado) {
   throw new Error(`No hay puertos libres entre ${desde} y ${desde + INTENTOS - 1}`);
 }
 
-/** PID únicos que escuchan (LISTENING) en `puerto`, según la salida de `netstat -ano`. */
+/**
+ * PID únicos que escuchan en `puerto`, según la salida de `netstat -ano` (IPv4 e IPv6).
+ * El estado depende del idioma de Windows; un socket en escucha siempre tiene dirección remota «vacía».
+ */
 export function pidsEscuchando(salida, puerto) {
   const pids = new Set();
   for (const linea of salida.split(/\r?\n/)) {
     const c = linea.trim().split(/\s+/);
-    if (c.length >= 5 && /^TCP$/i.test(c[0]) && c[1].endsWith(`:${puerto}`) && /^(LISTENING|ESCUCHANDO)$/i.test(c[3]))
-      pids.add(Number(c[4]));
+    const escuchando = /^(0\.0\.0\.0:0|\[::\]:0|\*:\*)$/.test(c[2]) || /^(LISTENING|ESCUCHANDO)$/i.test(c[3]);
+    if (c.length >= 5 && /^TCP$/i.test(c[0]) && c[1].endsWith(`:${puerto}`) && escuchando) pids.add(Number(c[4]));
   }
   return [...pids];
 }
@@ -35,7 +38,8 @@ export function pidsEscuchando(salida, puerto) {
 export function esViteDeEsteRepo(linea, repo) {
   const norm = (s) => s.toLowerCase().replaceAll("/", "\\");
   const l = norm(linea ?? "");
-  return l.includes("vite") && l.includes(norm(repo));
+  // la carpeta del repositorio completa (no «BoldoAtlas-old») y vite como paquete o binario (no «vitest»)
+  return l.includes(`${norm(repo)}\\`) && /\\vite(?:\\|\.(?:m?js|cmd)|(?=["'\s]|$))/.test(l);
 }
 
 // Vite escucha en "localhost", que en Windows puede resolver a ::1 o a 127.0.0.1: se prueban ambos.
@@ -60,6 +64,21 @@ function matarArbol(pid) {
   }
 }
 
+/** Detiene un proceso ajeno al árbol lanzado: en Windows con sus hijos; en otros sistemas solo ese PID (SIGTERM y, si sigue vivo, SIGKILL). */
+function detener(pid) {
+  if (WINDOWS) return matarArbol(pid);
+  try {
+    process.kill(pid, "SIGTERM");
+    for (let i = 0; i < 10; i++) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      process.kill(pid, 0); // lanza si ya terminó
+    }
+    process.kill(pid, "SIGKILL");
+  } catch {
+    // ya no existe
+  }
+}
+
 function lineaDeComando(pid) {
   try {
     if (!WINDOWS) return salida("ps", ["-o", "args=", "-p", String(pid)]);
@@ -75,7 +94,7 @@ export function liberarPuerto(puerto) {
   let pids = [];
   try {
     pids = WINDOWS
-      ? pidsEscuchando(salida("netstat", ["-ano", "-p", "tcp"]), puerto)
+      ? pidsEscuchando(salida("netstat", ["-ano"]), puerto) // sin -p tcp: ese filtro omite IPv6 (donde escucha «localhost»)
       : salida("lsof", ["-ti", `tcp:${puerto}`, "-sTCP:LISTEN"]).split(/\s+/).filter(Boolean).map(Number);
   } catch {
     return; // sin netstat/lsof (o nadie escucha): nada que hacer
@@ -83,7 +102,7 @@ export function liberarPuerto(puerto) {
   for (const pid of pids) {
     if (esViteDeEsteRepo(lineaDeComando(pid), REPO)) {
       console.log(`Vite quedó escuchando en el puerto ${puerto} (PID ${pid}); se detiene.`);
-      matarArbol(pid);
+      detener(pid);
     } else console.warn(`El puerto ${puerto} sigue ocupado por el PID ${pid}, que no es el Vite de este proyecto; no se toca.`);
   }
 }

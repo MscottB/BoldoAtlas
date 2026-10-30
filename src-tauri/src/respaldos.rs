@@ -142,7 +142,9 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
 /// Borra los temporales que dejó un respaldo interrumpido. Se llama al iniciar, cuando ninguno está en curso.
 pub fn limpiar_parciales(dir: &Path) {
     for e in fs::read_dir(dir).into_iter().flatten().flatten() {
-        if e.file_name().to_string_lossy().ends_with(SUFIJO_TEMPORAL) {
+        let nombre = e.file_name().to_string_lossy().into_owned();
+        // solo los temporales de un respaldo (`boldo-….db.tmp`), nunca otro .tmp de la carpeta
+        if nombre.starts_with(PREFIJO) && nombre.ends_with(&format!(".db{SUFIJO_TEMPORAL}")) {
             let _ = fs::remove_file(e.path());
         }
     }
@@ -383,13 +385,19 @@ mod tests {
         // lo que deja un cierre a mitad de `VACUUM INTO`: el nombre temporal, nunca uno válido
         fs::write(respaldos.join("boldo-20260101-0900.db.tmp"), "a medias").unwrap();
         fs::write(respaldos.join("notas.txt"), "x").unwrap();
+        // un .tmp que no es de un respaldo no se toca
+        fs::write(respaldos.join("ajeno.tmp"), "x").unwrap();
+        fs::write(respaldos.join("boldo-notas.tmp"), "x").unwrap();
         assert!(listar(&respaldos).unwrap().is_empty());
         limpiar_parciales(&respaldos);
-        assert_eq!(archivos(&respaldos), ["notas.txt"]);
-        // uno completo sí se lista y no deja temporales
+        assert_eq!(
+            archivos(&respaldos),
+            ["ajeno.tmp", "boldo-notas.tmp", "notas.txt"]
+        );
+        // uno completo sí se lista y no deja temporales de respaldo
         respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         assert_eq!(listar(&respaldos).unwrap().len(), 1);
-        assert!(archivos(&respaldos).iter().all(|n| !n.ends_with(".tmp")));
+        assert!(archivos(&respaldos).iter().all(|n| !n.ends_with(".db.tmp")));
     }
 
     #[test]
