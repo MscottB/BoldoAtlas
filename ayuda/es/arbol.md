@@ -24,7 +24,7 @@ Al abrir el árbol se ven las raíces y su primer nivel; el resto está plegado.
 
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
 - En la tarjeta seleccionada aparece **+**: crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
-- Con la tarjeta seleccionada, **Puestos (n)** lista los puestos de la unidad y permite crear uno nuevo (ver «Puestos y reemplazos»).
+- Al seleccionar una tarjeta se abre el **panel de la unidad**, a la derecha del lienzo (ver «Panel de unidad»): ahí están sus puestos y todos sus datos.
 - **Doble clic** sobre el nombre, o `F2` con el nombre enfocado, lo edita. `Enter` guarda y `Esc` cancela.
 - **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una raíz nueva del primer tipo de la lista.
 
@@ -68,3 +68,24 @@ Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este c
 ## Vistas guardadas
 
 El botón **Vistas** guarda con nombre la configuración actual (dirección, densidad, líneas, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.
+
+## Panel de unidad
+
+Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un panel a la derecha: el lienzo se reduce, no queda tapado. El foco pasa al panel. El botón **Cerrar el panel** (la X), `Esc` o un clic en el fondo del lienzo lo cierran; con la X o `Esc` el foco vuelve a la tarjeta, y `Esc` guarda antes lo que estabas escribiendo. Arriba aparece la ubicación completa de la unidad, con el tipo de cada tramo; cada tramo se puede pulsar para seleccionar esa unidad.
+
+La pestaña **Resumen** reúne:
+
+- **Tipo**, **nombre** y **descripción**. Se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo).
+- **Superior**: un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
+- **Marca**: un color y un código de hasta 4 caracteres, que se ven al elegir «Colorear por» en **Vista**. **Quitar marca** borra ambos.
+- **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.
+- La **dotación** directa (puestos con titular en la propia unidad), la total (con toda la rama) y las **vacantes** de la rama.
+- **Etiquetas**: quita una con la X, agrega una existente o elige **Nueva etiqueta…** para crearla con su color. Si el nombre ya existe, se usa esa etiqueta en vez de duplicarla.
+- **Conexiones laterales**: escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles.
+- **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol) y **Eliminar unidad**.
+
+La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»). La pestaña **Procesos** llega en la Fase 3.
+
+### Eliminar una unidad
+
+Una unidad sin contenido se elimina de inmediato. Si tiene subunidades o puestos, BoldoAtlas pregunta antes y **mueve su contenido al superior** de la unidad eliminada. Una unidad raíz con contenido no se puede eliminar: primero mueve o elimina lo que contiene. Tras eliminar aparece un aviso con **Deshacer** durante 8 segundos, que devuelve la unidad y todo lo que contenía a su lugar.

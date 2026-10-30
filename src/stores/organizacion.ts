@@ -274,7 +274,25 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));
   const quitarEtiqueta = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.quitarEtiqueta(unidadId, etiquetaId));
-  const crearEtiqueta = (nombre: string, color: string) => escribir(() => E.crearEtiqueta(nombre, color));
+  /** Crea la etiqueta y, si se indica una unidad, se la asigna en el mismo lote. Un nombre repetido sugiere la existente. */
+  async function crearEtiqueta(nombre: string, color: string, paraUnidad?: string): Promise<ResultadoValor> {
+    if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
+    const c = L.normalizarColor(color);
+    if (!c) return rechazar(t("errores.colorInvalido"));
+    const clave = normalizarTexto(nombre);
+    const igual = etiquetas.value.find((e) => normalizarTexto(e.nombre) === clave);
+    if (igual) {
+      const mensaje = t("store.valorExiste", { nombre: igual.nombre });
+      error.value = mensaje;
+      return { ok: false, mensaje, existente: igual.id };
+    }
+    const r = await escribir(() => {
+      const nueva = E.crearEtiqueta(nombre, c);
+      const asignar = paraUnidad ? E.etiquetarUnidad(paraUnidad, nueva.id) : [];
+      return { id: nueva.id, sentencias: [...nueva.sentencias, ...asignar] };
+    });
+    return r.ok ? { ok: true, id: r.id! } : r;
+  }
   const crearConexion = (origen: string, destino: string, etiqueta: string | null = null) =>
     escribir(() => X.crearConexion(origen, destino, etiqueta));
   const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));

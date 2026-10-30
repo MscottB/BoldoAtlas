@@ -4,7 +4,7 @@ Un **puesto** es un cargo dentro de una unidad (por ejemplo, «Analista» en Con
 
 ## Ver y crear puestos
 
-- Selecciona una tarjeta del árbol y pulsa **Puestos (n)**: aparece la lista de puestos de la unidad con su cargo, el titular (o **Vacante**) y el reemplazo si lo hay.
+- Selecciona una tarjeta del árbol y abre la pestaña **Puestos** del panel de la unidad: aparece la lista de puestos de la unidad con su cargo, el titular (o **Vacante**) y el reemplazo si lo hay.
 - Pulsa un puesto para abrirlo, o **Nuevo puesto** para crear otro: elige el cargo (de la lista, igual que en las fichas) y pulsa **Crear puesto**.
 - También puedes abrir un puesto desde la ficha de una persona, en la sección **Puestos**.
 

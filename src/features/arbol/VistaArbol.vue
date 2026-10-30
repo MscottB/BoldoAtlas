@@ -49,12 +49,14 @@ import {
   opcionesElk,
   tamPuesto,
   tamUnidad,
+  tipoArista,
   tipoDeMarca,
 } from "./vista";
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
+import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 
 type Punto = { x: number; y: number };
 
@@ -253,7 +255,12 @@ const aristas = computed<Edge[]>(() => {
   if (!vista.value) return [];
   const { g } = vista.value;
   return [
-    ...g.jerarquicas.map(([a, b]) => ({ id: `${a}>${b}`, source: a, target: b, type: config.value.lineas })),
+    ...g.jerarquicas.map(([a, b]) => ({
+      id: `${a}>${b}`,
+      source: a,
+      target: b,
+      type: tipoArista(config.value.lineas),
+    })),
     ...g.laterales.map((c) => ({
       id: c.id,
       source: c.origen_id,
@@ -289,6 +296,21 @@ async function mover() {
   expandir(m.destino.id);
   const r = await org.moverUnidad(m.unidad.id, m.destino.id);
   if (!r.ok) toast.error(r.mensaje);
+}
+
+// Panel de la unidad seleccionada. Al cerrarlo con el teclado o su botón, el foco vuelve a la tarjeta.
+const unidadSeleccionada = computed(() =>
+  seleccion.value ? (org.porId.get(seleccion.value) ?? null) : null,
+);
+async function cerrarPanel() {
+  const id = seleccion.value;
+  seleccion.value = null;
+  await nextTick();
+  if (id) document.querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"] button`)?.focus();
+}
+// Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta).
+function escEnLienzo(e: KeyboardEvent) {
+  if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) void cerrarPanel();
 }
 
 const irA = (id: string | null) => router.push({ query: id ? { raiz: id } : {} });
@@ -331,39 +353,42 @@ function verCompleto() {
       </span>
     </nav>
     <BarraLienzo :raiz="raiz" />
-    <div class="relative min-h-0 flex-1">
-      <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
-      <VueFlow
-        :nodes="nodos"
-        :edges="aristas"
-        :min-zoom="0.05"
-        :elements-selectable="false"
-        :nodes-connectable="false"
-        :nodes-focusable="false"
-        :edges-focusable="false"
-        :zoom-on-double-click="false"
-        :delete-key-code="null"
-        class="lienzo"
-        @node-drag-stop="alSoltar"
-        @pane-click="seleccion = null"
-      >
-        <template #node-unidad="p">
-          <NodoUnidad :id="p.id" :data="p.data" />
-        </template>
-        <template #node-puesto="p">
-          <NodoPuesto :id="p.id" :data="p.data" />
-        </template>
-        <MiniMap pannable zoomable />
-      </VueFlow>
-      <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
-      <div
-        v-if="org.vacia"
-        class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"
-      >
-        <Network class="size-10 text-muted-foreground" aria-hidden="true" />
-        <h1 class="text-lg font-semibold">{{ t("arbol.vacioTitulo") }}</h1>
-        <p class="max-w-sm text-sm text-muted-foreground">{{ t("arbol.vacioTexto") }}</p>
+    <div class="flex min-h-0 flex-1">
+      <div class="relative min-w-0 flex-1" @keydown.esc="escEnLienzo">
+        <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
+        <VueFlow
+          :nodes="nodos"
+          :edges="aristas"
+          :min-zoom="0.05"
+          :elements-selectable="false"
+          :nodes-connectable="false"
+          :nodes-focusable="false"
+          :edges-focusable="false"
+          :zoom-on-double-click="false"
+          :delete-key-code="null"
+          class="lienzo"
+          @node-drag-stop="alSoltar"
+          @pane-click="seleccion = null"
+        >
+          <template #node-unidad="p">
+            <NodoUnidad :id="p.id" :data="p.data" />
+          </template>
+          <template #node-puesto="p">
+            <NodoPuesto :id="p.id" :data="p.data" />
+          </template>
+          <MiniMap pannable zoomable />
+        </VueFlow>
+        <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
+        <div
+          v-if="org.vacia"
+          class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"
+        >
+          <Network class="size-10 text-muted-foreground" aria-hidden="true" />
+          <h1 class="text-lg font-semibold">{{ t("arbol.vacioTitulo") }}</h1>
+          <p class="max-w-sm text-sm text-muted-foreground">{{ t("arbol.vacioTexto") }}</p>
+        </div>
       </div>
+      <PanelUnidad v-if="unidadSeleccionada" :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
     </div>
     <AlertDialog v-model:open="confirmando">
       <AlertDialogContent>

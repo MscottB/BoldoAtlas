@@ -12,6 +12,7 @@ import {
   sinResaltar,
   tamPuesto,
   tamUnidad,
+  tipoArista,
   tipoDeMarca,
 } from "./vista";
 
@@ -215,5 +216,12 @@ describe("arbolDeVista", () => {
     expect(arbolDeVista(null, sub)).toBeNull();
     expect(arbolDeVista("u1", sub)).toBe("s1");
     expect(arbolDeVista("u2", sub)).toBeUndefined();
+  });
+});
+
+describe("tipoArista", () => {
+  it("las curvas son el tipo «default» de Vue Flow; las rectas en ángulo, «smoothstep»", () => {
+    expect(tipoArista("bezier")).toBe("default");
+    expect(tipoArista("smoothstep")).toBe("smoothstep");
   });
 });

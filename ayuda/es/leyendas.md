@@ -4,7 +4,7 @@ Una **leyenda** es una entrada con nombre y color (por ejemplo, «Crítico» en 
 
 ## Asignar una leyenda a un puesto
 
-1. Abre el puesto (desde **Puestos (n)** de una tarjeta, o pulsándolo si ya ves los puestos en el árbol).
+1. Abre el puesto (desde la pestaña **Puestos** del panel de una unidad, o pulsándolo si ya ves los puestos en el árbol).
 2. En **Leyenda**, elige una entrada de la lista, o **Nueva entrada…** para crear una: escribe el nombre, elige el color y, si quieres, una descripción. Al pulsar **Crear y asignar** se crea y se asigna de una vez.
 3. **Quitar estilo** deja el puesto sin leyenda. Una entrada desactivada sigue mostrándose en los puestos que ya la tenían, marcada como inactiva.
 

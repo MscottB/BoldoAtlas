@@ -24,7 +24,7 @@ When the tree opens you see the roots and their first level; the rest is collaps
 
 - **Click** a card to select it. Click the background to clear the selection.
 - The selected card shows **+**: it creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
-- With the card selected, **Positions (n)** lists the unit's positions and lets you create a new one (see "Positions and replacements").
+- Selecting a card opens the **unit panel**, to the right of the canvas (see "Unit panel"): its positions and all its data are there.
 - **Double-click** the name, or press `F2` with the name focused, to edit it. `Enter` saves and `Esc` cancels.
 - **+ New unit**, in the canvas bar, creates a sub-unit of the selected card; if none is selected, of the root of the focused view, or a new root of the first type in the list.
 
@@ -68,3 +68,24 @@ Each tree (the full one or a subtree saved in Trees) remembers on this computer 
 ## Saved views
 
 The **Views** button saves the current configuration (direction, density, lines, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
+
+## Unit panel
+
+Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on the right: the canvas shrinks, it is not covered. Focus moves into the panel. The **Close the panel** button (the X), `Esc` or a click on the canvas background close it; with the X or `Esc` focus returns to the card, and `Esc` first saves whatever you were typing. At the top you see the unit's full location, with the type of each step; each step can be pressed to select that unit.
+
+The **Summary** tab holds:
+
+- **Type**, **name** and **description**. They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
+- **Parent unit**: a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
+- **Mark**: a color and a code of up to 4 characters, shown when you pick "Color by" in **View**. **Remove mark** clears both.
+- **Head**: choose which of the unit's positions is the head (or **No head**). Below you see who holds it: the holder or, if there is none, **Replacement: name**.
+- The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
+- **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
+- **Lateral connections**: type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible.
+- **Save in Trees** (not shown on roots, which already are a tree) and **Delete unit**.
+
+The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements"). The **Processes** tab arrives in Phase 3.
+
+### Deleting a unit
+
+A unit with no content is deleted right away. If it has subunits or positions, BoldoAtlas asks first and **moves its content to the parent** of the deleted unit. A root unit with content cannot be deleted: first move or delete what it contains. After deleting, a notice with **Undo** appears for 8 seconds, which puts the unit and everything it contained back in place.

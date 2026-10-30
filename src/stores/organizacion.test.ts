@@ -592,6 +592,36 @@ describe("organización, etiquetas y conexiones", () => {
   });
 });
 
+describe("etiqueta nueva para una unidad", () => {
+  it("la crea y se la asigna en un solo lote", async () => {
+    const s = nuevo();
+    const a = await unidad(s, "A");
+    const antes = revision();
+    const r = await s.crearEtiqueta("Crítica", "#C2410C", a);
+    expect(r.ok).toBe(true);
+    expect(revision()).toBe(antes + 1);
+    expect(s.etiquetas.map((e) => [e.nombre, e.color])).toEqual([["Crítica", "#c2410c"]]);
+    expect(s.unidadEtiquetas).toEqual([{ unidad_id: a, etiqueta_id: (r as { id: string }).id }]);
+  });
+
+  it("si el nombre ya existe no duplica y sugiere la existente", async () => {
+    const s = nuevo();
+    const a = await unidad(s, "A");
+    const e = await s.crearEtiqueta("Crítica", "#c2410c");
+    const r = await s.crearEtiqueta("  crítica ", "#2563eb", a);
+    expect(r).toMatchObject({ ok: false, existente: (e as { id: string }).id });
+    expect(s.etiquetas).toHaveLength(1);
+    expect(s.unidadEtiquetas).toHaveLength(0);
+  });
+
+  it("rechaza un nombre vacío o un color mal formado", async () => {
+    const s = nuevo();
+    expect((await s.crearEtiqueta("  ", "#c2410c")).ok).toBe(false);
+    expect((await s.crearEtiqueta("X", "rojo")).ok).toBe(false);
+    expect(s.etiquetas).toHaveLength(0);
+  });
+});
+
 describe("concurrencia", () => {
   it("guardando sigue activo hasta que terminan todas las escrituras superpuestas", async () => {
     const s = nuevo();

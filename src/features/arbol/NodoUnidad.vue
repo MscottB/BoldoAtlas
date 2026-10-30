@@ -7,7 +7,6 @@ import { toast } from "vue-sonner";
 import { Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
-import PuestosUnidad from "@/features/puestos/PuestosUnidad.vue";
 import { textoSobre } from "@/features/tema/tema";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
@@ -141,30 +140,26 @@ async function guardar(e: Event) {
     <span v-if="data.ruta && !compacta" class="truncate text-[11px] text-muted-foreground" :title="data.ruta">
       {{ data.ruta }}
     </span>
-    <div v-if="!compacta && (config.mostrarJefe || seleccionada)" class="flex items-center gap-1.5">
-      <template v-if="config.mostrarJefe">
-        <template v-if="data.jefe">
-          <img
-            v-if="data.jefe.foto_png && config.mostrarFoto"
-            :src="`data:image/png;base64,${data.jefe.foto_png}`"
-            alt=""
-            class="size-5 rounded-full object-cover"
-          />
-          <span
-            v-else-if="config.mostrarFoto"
-            class="grid size-5 place-items-center rounded-full bg-muted text-[10px]"
-            aria-hidden="true"
-          >
-            {{ iniciales }}
-          </span>
-          <span class="truncate">
-            {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
-          </span>
-        </template>
-        <span v-else class="text-amber-700 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
+    <div v-if="!compacta && config.mostrarJefe" class="flex items-center gap-1.5">
+      <template v-if="data.jefe">
+        <img
+          v-if="data.jefe.foto_png && config.mostrarFoto"
+          :src="`data:image/png;base64,${data.jefe.foto_png}`"
+          alt=""
+          class="size-5 rounded-full object-cover"
+        />
+        <span
+          v-else-if="config.mostrarFoto"
+          class="grid size-5 place-items-center rounded-full bg-muted text-[10px]"
+          aria-hidden="true"
+        >
+          {{ iniciales }}
+        </span>
+        <span class="truncate">
+          {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
+        </span>
       </template>
-      <!-- En esta fila y no en la del pie: ahí ya no cabe junto a la dotación y las vacantes. -->
-      <span v-if="seleccionada" class="nodrag ml-auto shrink-0"><PuestosUnidad :unidad-id="id" /></span>
+      <span v-else class="text-amber-700 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
     </div>
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->
@@ -186,7 +181,6 @@ async function guardar(e: Event) {
       </span>
       <span class="ml-auto flex gap-1">
         <template v-if="seleccionada">
-          <span v-if="compacta" class="nodrag"><PuestosUnidad :unidad-id="id" /></span>
           <button
             type="button"
             class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"

@@ -94,6 +94,10 @@ export const CRITERIO_LEYENDA = "leyenda";
 
 export const criterioMarca = (tipoId: string) => `marca:${tipoId}`;
 
+/** Tipo de arista de Vue Flow para la opción de líneas: «bezier» no es un tipo suyo (el de las curvas es «default»). */
+export const tipoArista = (lineas: ConfigVista["lineas"]): "default" | "smoothstep" =>
+  lineas === "bezier" ? "default" : lineas;
+
 /** Lo guardado (preferencia o vista nombrada) puede venir de otra versión o dañado: cada campo inválido vuelve a su valor por defecto. */
 export function leerVista(crudo: unknown): ConfigVista {
   const objeto = (x: unknown) => (typeof x === "object" && x !== null ? x : {}) as Record<string, unknown>;

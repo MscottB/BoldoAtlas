@@ -4,7 +4,7 @@ A **legend** is a named color entry (for example, “Critical” in red or “Su
 
 ## Assign a legend to a position
 
-1. Open the position (from **Positions (n)** on a card, or by clicking it if you already see positions in the tree).
+1. Open the position (from the **Positions** tab of a unit's panel, or by clicking it if you already see positions in the tree).
 2. Under **Legend**, pick an entry from the list, or **New entry…** to create one: type the name, pick the color and, optionally, a description. **Create and assign** creates it and assigns it in one go.
 3. **Remove style** leaves the position without a legend. A deactivated entry keeps showing on the positions that already had it, marked as inactive.
 
