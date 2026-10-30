@@ -33,6 +33,8 @@ export interface Puesto {
   unidad_id: string;
   cargo_id: string;
   descripcion: string | null;
+  /** → `leyendas`: el color con nombre del puesto. */
+  leyenda_id: string | null;
   orden: number;
 }
 
@@ -63,6 +65,17 @@ export const TIPO_GERENCIA = "00000000-0000-7000-8000-000000000001";
 export const TIPO_AREA = "00000000-0000-7000-8000-000000000002";
 export const TIPO_SUBAREA = "00000000-0000-7000-8000-000000000003";
 export const TIPO_OTRA = "00000000-0000-7000-8000-000000000004";
+
+/** Entrada de color con nombre para clasificar puestos. `deleted_at` ≠ null = desactivada (los puestos la conservan). */
+export interface Leyenda {
+  id: string;
+  nombre: string;
+  /** Hex `#rrggbb` en minúsculas. */
+  color: string;
+  descripcion: string | null;
+  orden: number;
+  deleted_at: string | null;
+}
 
 export interface ValorCatalogo {
   id: string;

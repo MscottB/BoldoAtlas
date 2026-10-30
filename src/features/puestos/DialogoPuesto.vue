@@ -30,6 +30,7 @@ import { rutaPorTipo, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useOrganizacion } from "@/stores/organizacion";
+import EstiloPuesto from "./EstiloPuesto.vue";
 import FormAsignacion from "./FormAsignacion.vue";
 import { descripcionPorGuardar, formatearFecha, hayPuestoNuevoPendiente, historialPuesto } from "./puestos";
 import { usePuesto } from "./usePuesto";
@@ -190,6 +191,8 @@ async function verPersona(id: string) {
         </div>
 
         <template v-if="puesto">
+          <EstiloPuesto :puesto="puesto" />
+
           <label class="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

@@ -2,10 +2,18 @@
 import { useI18n } from "vue-i18n";
 import { ChevronDown, ChevronUp } from "@lucide/vue";
 import { textoSobre } from "@/features/tema/tema";
-import type { Marca } from "./jerarquia";
 import { useVista } from "./useVista";
 
-defineProps<{ titulo: string; entradas: Marca[] }>();
+/** Una fila de la leyenda: una marca (con código) o una entrada de leyenda de puestos (con descripción). */
+export interface EntradaLeyenda {
+  clave: string;
+  color: string | null;
+  codigo?: string | null;
+  nombre: string;
+  descripcion?: string | null;
+}
+
+defineProps<{ titulo: string; entradas: EntradaLeyenda[] }>();
 const { t } = useI18n();
 const { config } = useVista();
 </script>
@@ -26,14 +34,20 @@ const { config } = useVista();
       <component :is="config.leyenda ? ChevronDown : ChevronUp" class="size-3.5" aria-hidden="true" />
     </button>
     <ul v-if="config.leyenda" class="grid max-h-48 gap-1 overflow-y-auto px-2 pb-2">
-      <li v-for="e in entradas" :key="e.unidad.id" class="flex items-center gap-2">
+      <li
+        v-for="e in entradas"
+        :key="e.clave"
+        class="flex items-center gap-2"
+        :title="e.descripcion ?? undefined"
+      >
         <span
           class="grid h-4 min-w-6 place-items-center rounded border px-1 text-[10px] font-semibold"
           :class="!e.color && 'bg-muted'"
           :style="e.color ? { background: e.color, color: textoSobre(e.color) } : undefined"
           >{{ e.codigo }}</span
         >
-        <span class="truncate">{{ e.unidad.nombre }}</span>
+        <span class="truncate">{{ e.nombre }}</span>
+        <span v-if="e.descripcion" class="sr-only">{{ e.descripcion }}</span>
       </li>
     </ul>
   </section>

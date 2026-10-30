@@ -21,7 +21,14 @@ const asig = (
   desde: string,
   hasta: string | null = null,
 ) => ({ id, puesto_id: p, trabajador_id: w, tipo, desde, hasta, motivo: null }) satisfies Asignacion;
-const puesto = (id: string): Puesto => ({ id, unidad_id: "u", cargo_id: "c", descripcion: null, orden: 0 });
+const puesto = (id: string): Puesto => ({
+  id,
+  unidad_id: "u",
+  cargo_id: "c",
+  descripcion: null,
+  leyenda_id: null,
+  orden: 0,
+});
 const persona = (id: string, nombre: string) => ({ id, nombre }) as Trabajador;
 
 describe("historialPuesto", () => {

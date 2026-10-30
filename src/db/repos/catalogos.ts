@@ -3,9 +3,13 @@ import { ahora, nuevoId } from "@/lib/ids";
 import { TABLAS_CATALOGO, type TablaCatalogo } from "@/db/tipos";
 import { actualizar, fijarBorrado } from "./comun";
 
+/** Tablas con nombre y orden cuyas filas se renombran, reordenan y desactivan igual que un mantenedor. */
+export type TablaOrdenable = TablaCatalogo | "leyendas";
+const TABLAS: readonly TablaOrdenable[] = [...TABLAS_CATALOGO, "leyendas"];
+
 // El nombre de tabla no puede ir como parámetro SQL: solo se interpola si está en la lista blanca.
-function validar(tabla: TablaCatalogo): void {
-  if (!TABLAS_CATALOGO.includes(tabla)) throw new Error("Catálogo desconocido");
+function validar(tabla: TablaOrdenable): void {
+  if (!TABLAS.includes(tabla)) throw new Error("Catálogo desconocido");
 }
 
 /** Lectura de un mantenedor: incluye los desactivados (deleted_at) para que las fichas que los usan sigan resolviéndose. */
@@ -30,22 +34,22 @@ export function crearValor(tabla: TablaCatalogo, nombre: string): { id: string; 
   };
 }
 
-export function renombrarValor(tabla: TablaCatalogo, id: string, nombre: string): Sentencia[] {
+export function renombrarValor(tabla: TablaOrdenable, id: string, nombre: string): Sentencia[] {
   validar(tabla);
   return actualizar(tabla, id, { nombre: nombre.trim() }, ["nombre"]);
 }
 
-export function moverValor(tabla: TablaCatalogo, id: string, orden: number): Sentencia[] {
+export function moverValor(tabla: TablaOrdenable, id: string, orden: number): Sentencia[] {
   validar(tabla);
   return actualizar(tabla, id, { orden }, ["orden"]);
 }
 
-export function desactivarValor(tabla: TablaCatalogo, id: string): Sentencia[] {
+export function desactivarValor(tabla: TablaOrdenable, id: string): Sentencia[] {
   validar(tabla);
   return [fijarBorrado(tabla, id, true)];
 }
 
-export function reactivarValor(tabla: TablaCatalogo, id: string): Sentencia[] {
+export function reactivarValor(tabla: TablaOrdenable, id: string): Sentencia[] {
   validar(tabla);
   return [fijarBorrado(tabla, id, false)];
 }

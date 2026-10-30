@@ -11,6 +11,7 @@ import {
   type Puesto,
   type SubarbolGuardado,
   type Etiqueta,
+  type Leyenda,
   type TablaCatalogo,
   type Trabajador,
   type Unidad,
@@ -24,6 +25,7 @@ import * as X from "@/db/repos/conexiones";
 import * as S from "@/db/repos/subarboles";
 import * as P from "@/db/repos/puestos";
 import * as A from "@/db/repos/asignaciones";
+import * as L from "@/db/repos/leyendas";
 import { guardarMeta } from "@/db/repos/meta";
 import { creaCiclo, hijos } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
@@ -64,6 +66,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const unidadEtiquetas = ref<{ unidad_id: string; etiqueta_id: string }[]>([]);
   const conexiones = ref<Conexion[]>([]);
   const subarboles = ref<SubarbolGuardado[]>([]);
+  const leyendas = ref<Leyenda[]>([]);
+  /** Estilo copiado (id de leyenda; null = «sin estilo»). Solo en memoria; undefined = nada copiado. */
+  const estiloCopiado = ref<string | null | undefined>(undefined);
   const catalogos = ref(catalogosVacios());
   const org = ref<{ nombre: string; logo: string | null }>({ nombre: "", logo: null });
   const cargado = ref(false);
@@ -80,6 +85,12 @@ export const useOrganizacion = defineStore("organizacion", () => {
     catalogos.value[tabla]
       .filter((v) => !v.deleted_at)
       .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es"));
+  const leyendasActivas = computed(() => leyendas.value.filter((l) => !l.deleted_at));
+  const puedePegarEstilo = computed(
+    () =>
+      estiloCopiado.value !== undefined &&
+      (estiloCopiado.value === null || leyendasActivas.value.some((l) => l.id === estiloCopiado.value)),
+  );
   const usos = (tabla: TablaCatalogo, id: string) =>
     tabla === "cargos"
       ? puestos.value.filter((p) => p.cargo_id === id).length
@@ -98,7 +109,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      const [u, t, pu, as, et, ue, co, sa, meta, ...cats] = await Promise.all([
+      const [u, t, pu, as, et, ue, co, sa, le, meta, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
         consultar<Puesto>(P.SQL_PUESTOS),
@@ -107,6 +118,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         consultar<{ unidad_id: string; etiqueta_id: string }>(E.SQL_UNIDAD_ETIQUETAS),
         consultar<Conexion>(X.SQL_CONEXIONES),
         consultar<SubarbolGuardado>(S.SQL_SUBARBOLES),
+        consultar<Leyenda>(L.SQL_LEYENDAS),
         leerMeta(),
         ...TABLAS_CATALOGO.map((tabla) => consultar<ValorCatalogo>(C.sqlValores(tabla))),
       ]);
@@ -119,6 +131,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       unidadEtiquetas.value = ue;
       conexiones.value = co;
       subarboles.value = sa;
+      leyendas.value = le;
       catalogos.value = Object.fromEntries(TABLAS_CATALOGO.map((tabla, i) => [tabla, cats[i]])) as Record<
         TablaCatalogo,
         ValorCatalogo[]
@@ -207,6 +220,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => P.eliminarPuesto(id),
       () => (ultimoBorrado.value = { tipo: "puesto", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
+  const asignarLeyenda = (puestoId: string, leyendaId: string | null) =>
+    escribir(() => P.editarPuesto(puestoId, { leyenda_id: leyendaId }));
   const asignarTitular = (puestoId: string, trabajadorId: string, desde: string) =>
     escribir(() => A.asignarTitular(puestoId, trabajadorId, desde));
   const registrarReemplazo = (puestoId: string, trabajadorId: string, desde: string, hasta?: string | null) =>
@@ -288,6 +303,52 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const desactivarValor = (tabla: TablaCatalogo, id: string) => escribir(() => C.desactivarValor(tabla, id));
   const reactivarValor = (tabla: TablaCatalogo, id: string) => escribir(() => C.reactivarValor(tabla, id));
 
+  /** Crea la entrada y, si se indica un puesto, se la asigna en el mismo lote. */
+  async function crearLeyenda(
+    datos: { nombre: string; color: string; descripcion?: string | null },
+    paraPuesto?: string,
+  ): Promise<ResultadoValor> {
+    if (!datos.nombre.trim()) return rechazar(t("store.nombreVacio"));
+    const color = L.normalizarColor(datos.color);
+    if (!color) return rechazar(t("errores.colorInvalido"));
+    const clave = normalizarTexto(datos.nombre);
+    const igual = leyendasActivas.value.find((l) => normalizarTexto(l.nombre) === clave);
+    if (igual) {
+      const mensaje = t("store.valorExiste", { nombre: igual.nombre });
+      error.value = mensaje;
+      return { ok: false, mensaje, existente: igual.id };
+    }
+    const r = await escribir(() => {
+      const nueva = L.crearLeyenda({ ...datos, color });
+      const asignar = paraPuesto ? P.editarPuesto(paraPuesto, { leyenda_id: nueva.id }) : [];
+      return { id: nueva.id, sentencias: [...nueva.sentencias, ...asignar] };
+    });
+    return r.ok ? { ok: true, id: r.id! } : r;
+  }
+  async function editarLeyenda(id: string, cambios: { color?: string; descripcion?: string | null }) {
+    const color = cambios.color === undefined ? undefined : L.normalizarColor(cambios.color);
+    if (color === null) return rechazar(t("errores.colorInvalido"));
+    return escribir(() => L.editarLeyenda(id, { ...cambios, color }));
+  }
+  const renombrarLeyenda = (id: string, nombre: string): Promise<Resultado> =>
+    nombre.trim()
+      ? escribir(() => C.renombrarValor("leyendas", id, nombre))
+      : Promise.resolve(rechazar(t("store.nombreVacio")));
+  const moverLeyenda = (id: string, orden: number) => escribir(() => C.moverValor("leyendas", id, orden));
+  const desactivarLeyenda = (id: string) => escribir(() => C.desactivarValor("leyendas", id));
+  const reactivarLeyenda = (id: string) => escribir(() => C.reactivarValor("leyendas", id));
+
+  function copiarEstilo(puestoId: string): Resultado {
+    const p = puestos.value.find((x) => x.id === puestoId);
+    if (!p) return rechazar(t("store.puestoInexistente"));
+    estiloCopiado.value = p.leyenda_id;
+    return { ok: true };
+  }
+  async function pegarEstilo(puestoId: string): Promise<Resultado> {
+    if (!puedePegarEstilo.value) return rechazar(t("store.nadaQuePegar"));
+    return asignarLeyenda(puestoId, estiloCopiado.value ?? null);
+  }
+
   /** Organización ficticia para probar la app; todo en un solo lote. */
   function cargarEjemplo(): Promise<Resultado> {
     return escribir(() => {
@@ -341,6 +402,24 @@ export const useOrganizacion = defineStore("organizacion", () => {
       for (const [clave, marca_color, marca_codigo] of marcas)
         s.push(...U.editarUnidad(uid[clave], { marca_color, marca_codigo }));
 
+      // Leyendas de puestos: nombre, color y descripción.
+      const leyenda: Record<string, string> = {};
+      for (const [nombre, color, descripcion] of [
+        ["Crítico", "#be123c", "No puede quedar vacante ni sin reemplazo"],
+        ["En sucesión", "#b45309", "Hay un plan de sucesión en marcha"],
+        ["Alto potencial", "#0f766e", null],
+      ] as const)
+        leyenda[nombre] = nuevo(L.crearLeyenda({ nombre, color, descripcion }));
+      const leyendaDe: Record<string, string> = {
+        "Camila Rojas": "Crítico",
+        "Paula Araya": "Crítico",
+        "Daniela Herrera": "Crítico",
+        "Patricio Muñoz": "En sucesión",
+        "Tomás Bravo": "En sucesión",
+        "Elena Silva": "Alto potencial",
+        "Felipe Ibáñez": "Alto potencial",
+      };
+
       // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde
       const personas: [string, string, number, boolean, string][] = [
         ["gg", "Camila Rojas", 0, true, "2015-03-02"],
@@ -373,7 +452,14 @@ export const useOrganizacion = defineStore("organizacion", () => {
             jornada_id: cat.jornadas[u === "me" || u === "el" ? 1 : 0],
           }),
         );
-        const puesto = nuevo(P.crearPuesto({ unidad_id: uid[u], cargo_id: cat.cargos[cargo], orden: i }));
+        const puesto = nuevo(
+          P.crearPuesto({
+            unidad_id: uid[u],
+            cargo_id: cat.cargos[cargo],
+            leyenda_id: leyenda[leyendaDe[nombre]],
+            orden: i,
+          }),
+        );
         if (anterior[u]) nuevo(A.asignarTitular(puesto, pid[anterior[u][0]], anterior[u][1]));
         nuevo(A.asignarTitular(puesto, pid[nombre], desde));
         if (jefe) s.push(...U.asignarJefe(uid[u], puesto));
@@ -413,6 +499,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     unidadEtiquetas,
     conexiones,
     subarboles,
+    leyendas,
+    leyendasActivas,
+    estiloCopiado,
+    puedePegarEstilo,
     catalogos,
     org,
     cargado,
@@ -437,6 +527,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     crearPuesto,
     editarPuesto,
     eliminarPuesto,
+    asignarLeyenda,
     asignarTitular,
     registrarReemplazo,
     terminarAsignacion,
@@ -458,5 +549,13 @@ export const useOrganizacion = defineStore("organizacion", () => {
     moverValor,
     desactivarValor,
     reactivarValor,
+    crearLeyenda,
+    editarLeyenda,
+    renombrarLeyenda,
+    moverLeyenda,
+    desactivarLeyenda,
+    reactivarLeyenda,
+    copiarEstilo,
+    pegarEstilo,
   };
 });

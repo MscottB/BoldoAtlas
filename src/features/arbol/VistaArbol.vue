@@ -42,11 +42,11 @@ import {
 } from "./layout";
 import { destinoAlSoltar, useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
-import { ALTO_UNIDAD, ALTO_UNIDAD_CON_RUTA, tipoDeMarca } from "./vista";
+import { ALTO_UNIDAD, ALTO_UNIDAD_CON_RUTA, CRITERIO_LEYENDA, leyendasEnUso, tipoDeMarca } from "./vista";
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
-import LeyendaLienzo from "./LeyendaLienzo.vue";
+import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
 
 type Punto = { x: number; y: number };
 
@@ -63,6 +63,7 @@ const tiposUso = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_uni
 const tiposRuta = computed(
   () => new Set(tiposUso.value.filter((x) => config.value.rutaTipos.includes(x.id)).map((x) => x.id)),
 );
+const porLeyenda = computed(() => config.value.colorearPor === CRITERIO_LEYENDA);
 const tipoMarca = computed(() => tipoDeMarca(config.value.colorearPor, tiposUso.value));
 // Sobre todas las unidades, no solo la rama enfocada: la marca puede venir de un superior fuera de ella.
 const marcas = computed(() => (tipoMarca.value ? marcasPorUnidad(org.unidades, tipoMarca.value) : null));
@@ -181,6 +182,7 @@ const nodos = computed<Node[]>(() => {
   const cargos = new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre]));
   const nombre = (a?: { trabajador_id: string }) =>
     (a && trabajadorPorId.value.get(a.trabajador_id)?.nombre) || null;
+  const leyendas = porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null;
   const delPuesto = g.puestos.map((p): Node<DatosPuesto> => ({
     id: p.id,
     type: "puesto",
@@ -193,16 +195,34 @@ const nodos = computed<Node[]>(() => {
       reemplazo: nombre(vigentes.get(p.id)?.reemplazo),
       mostrarCargo: config.value.mostrarCargo,
       mostrarPersona: config.value.mostrarPersona,
+      leyenda: (p.leyenda_id && leyendas?.get(p.leyenda_id)) || null,
     },
   }));
   return [...unidades, ...delPuesto];
 });
 
-const leyenda = computed(() =>
-  marcas.value && vista.value ? leyendaDeMarcas(marcas.value, vista.value.g.nodos) : [],
-);
+const leyenda = computed<EntradaLeyenda[]>(() => {
+  if (!vista.value) return [];
+  if (porLeyenda.value)
+    return leyendasEnUso(vista.value.g.puestos, org.leyendas).map((l) => ({
+      clave: l.id,
+      color: l.color,
+      nombre: l.nombre,
+      descripcion: l.descripcion,
+    }));
+  return marcas.value
+    ? leyendaDeMarcas(marcas.value, vista.value.g.nodos).map((m) => ({
+        clave: m.unidad.id,
+        color: m.color,
+        codigo: m.codigo,
+        nombre: m.unidad.nombre,
+      }))
+    : [];
+});
 const tituloLeyenda = computed(() =>
-  t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
+  porLeyenda.value
+    ? t("arbol.vista.leyendaPuesto")
+    : t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
 );
 
 const aristas = computed<Edge[]>(() => {

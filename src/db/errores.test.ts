@@ -7,6 +7,7 @@ import { crearEtiqueta, etiquetarUnidad } from "@/db/repos/etiquetas";
 import { guardarSubarbol } from "@/db/repos/subarboles";
 import { crearValor } from "@/db/repos/catalogos";
 import { crearPuesto } from "@/db/repos/puestos";
+import { crearLeyenda } from "@/db/repos/leyendas";
 import { asignarTitular, registrarReemplazo, terminarAsignacion } from "@/db/repos/asignaciones";
 import { TIPO_GERENCIA } from "@/db/tipos";
 
@@ -23,6 +24,11 @@ describe("traducirError", () => {
     ["UNIQUE constraint failed: index 'ux_sedes_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_jornadas_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_tipos_unidad_nombre'", "Ese valor ya existe en la lista."],
+    ["UNIQUE constraint failed: index 'ux_leyendas_nombre'", "Ese valor ya existe en la lista."],
+    [
+      "CHECK constraint failed: color GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'",
+      "El color debe tener el formato #rrggbb (por ejemplo, #be123c).",
+    ],
     ["NOT NULL constraint failed: trabajadores.nombre", "Falta el nombre de la persona."],
     [
       "UNIQUE constraint failed: asignaciones.puesto_id",
@@ -98,6 +104,14 @@ describe("traducirError", () => {
       bd.aplicar(asignarTitular(puesto.id, beto.id, "2026-01-15").sentencias),
     );
     expect(titularAnterior).toBe("La fecha de término no puede ser anterior a la de inicio.");
+
+    bd.aplicar(crearLeyenda({ nombre: "Critico", color: "#be123c" }).sentencias);
+    const leyendaDuplicada = capturar(() =>
+      bd.aplicar(crearLeyenda({ nombre: " CRITICO ", color: "#0f766e" }).sentencias),
+    );
+    expect(leyendaDuplicada).toBe("Ese valor ya existe en la lista.");
+    const colorMalo = capturar(() => bd.aplicar(crearLeyenda({ nombre: "Otro", color: "rojo" }).sentencias));
+    expect(colorMalo).toBe("El color debe tener el formato #rrggbb (por ejemplo, #be123c).");
   });
 
   it("no confunde el CHECK de nombre de un catálogo con el de la persona", () => {

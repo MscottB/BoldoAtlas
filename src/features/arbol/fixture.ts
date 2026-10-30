@@ -37,6 +37,7 @@ export const p = (id: string, unidad_id: string): ConBorrado<Puesto> => ({
   unidad_id,
   cargo_id: "cargo",
   descripcion: null,
+  leyenda_id: null,
   orden: 0,
 });
 

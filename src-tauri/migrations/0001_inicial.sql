@@ -103,12 +103,26 @@ CREATE INDEX idx_trabajadores_jornada_id ON trabajadores(jornada_id);
 CREATE UNIQUE INDEX ux_trabajadores_correo ON trabajadores(lower(trim(correo)))
   WHERE correo IS NOT NULL AND trim(correo) <> '' AND deleted_at IS NULL;
 
+-- Entradas de color con nombre para clasificar puestos (p. ej. «Crítico»). Dato de la organización. color = #rrggbb en minúsculas.
+CREATE TABLE leyendas (
+  id          TEXT PRIMARY KEY NOT NULL,
+  nombre      TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  color       TEXT NOT NULL CHECK (color GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+  descripcion TEXT,
+  orden       INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  deleted_at  TEXT
+);
+CREATE UNIQUE INDEX ux_leyendas_nombre ON leyendas(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
 -- Puesto = un cargo en una unidad. Vacante = puesto sin titular vigente.
 CREATE TABLE puestos (
   id          TEXT PRIMARY KEY NOT NULL,
   unidad_id   TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
   cargo_id    TEXT NOT NULL REFERENCES cargos(id) DEFERRABLE INITIALLY DEFERRED,
   descripcion TEXT,
+  leyenda_id  TEXT REFERENCES leyendas(id) DEFERRABLE INITIALLY DEFERRED,
   orden       INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL,
@@ -116,6 +130,7 @@ CREATE TABLE puestos (
 );
 CREATE INDEX idx_puestos_unidad_id ON puestos(unidad_id);
 CREATE INDEX idx_puestos_cargo_id ON puestos(cargo_id);
+CREATE INDEX idx_puestos_leyenda_id ON puestos(leyenda_id);
 
 -- Quién ocupa cada puesto y desde/hasta cuándo (AAAA-MM-DD). hasta NULL = vigente; las cerradas son el historial.
 CREATE TABLE asignaciones (

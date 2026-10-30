@@ -9,10 +9,14 @@ const reglas: [(texto: string) => boolean, string][] = [
   // Índice sobre columnas simples: SQLite informa las columnas, no el nombre del índice.
   [(t) => t.includes("UNIQUE constraint failed: unidad_etiquetas."), "errores.unidadYaEtiquetada"],
   [(t) => t.includes("UNIQUE constraint failed: subarboles_guardados."), "errores.ramaYaGuardada"],
-  [(t) => /ux_(cargos|tipos_contrato|sedes|jornadas|tipos_unidad)_nombre/.test(t), "errores.valorDuplicado"],
+  [
+    (t) => /ux_(cargos|tipos_contrato|sedes|jornadas|tipos_unidad|leyendas)_nombre/.test(t),
+    "errores.valorDuplicado",
+  ],
   // Titular y reemplazo vigentes usan índices sobre la misma columna: SQLite no los distingue.
   [(t) => t.includes("UNIQUE constraint failed: asignaciones."), "errores.asignacionVigenteDuplicada"],
   [(t) => esCheck(t) && t.includes("hasta >= desde"), "errores.fechasInvertidas"],
+  [(t) => esCheck(t) && t.includes("color GLOB"), "errores.colorInvalido"],
   [(t) => t.includes("NOT NULL constraint failed: trabajadores.nombre"), "errores.personaSinNombre"],
   [(t) => esCheck(t) && t.includes("origen_id"), "errores.conexionConsigoMisma"],
   [(t) => t.includes("FOREIGN KEY constraint failed"), "errores.relacionInexistente"],

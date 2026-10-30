@@ -97,7 +97,9 @@
       "ninguno": "Ninguno",
       "marcaDe": "Marca de {tipo}",
       "ocultarLeyenda": "Ocultar la leyenda",
-      "mostrarLeyenda": "Mostrar la leyenda"
+      "mostrarLeyenda": "Mostrar la leyenda",
+      "leyendaPuesto": "Leyenda del puesto",
+      "activaVerPuestos": "Activa «Ver puestos» para ver los colores de las leyendas."
     }
   },
   "arboles": {
@@ -141,7 +143,8 @@
     "personaSinNombre": "Falta el nombre de la persona.",
     "conexionConsigoMisma": "Una unidad no puede conectarse consigo misma.",
     "relacionInexistente": "La unidad o persona relacionada ya no existe.",
-    "ramaYaGuardada": "Esa rama ya está guardada en Árboles."
+    "ramaYaGuardada": "Esa rama ya está guardada en Árboles.",
+    "colorInvalido": "El color debe tener el formato #rrggbb (por ejemplo, #be123c)."
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
@@ -149,7 +152,9 @@
     "unidadInexistente": "La unidad ya no existe.",
     "raizConContenido": "No se puede eliminar la unidad raíz mientras tenga contenido.",
     "noSePuedeDeshacer": "Ya no se puede deshacer.",
-    "valorExiste": "Ya existe «{nombre}» en la lista."
+    "valorExiste": "Ya existe «{nombre}» en la lista.",
+    "puestoInexistente": "El puesto ya no existe.",
+    "nadaQuePegar": "No hay un estilo copiado que se pueda pegar."
   },
   "ficha": {
     "tituloPersona": "Ficha de persona",
@@ -250,5 +255,24 @@
     },
     "sinGuardarTitulo": "Hay cambios sin guardar",
     "sinGuardarTexto": "El puesto aún no se creó. Si descartas, se perderá lo que escribiste."
+  },
+  "leyenda": {
+    "titulo": "Leyenda",
+    "sin": "Sin leyenda",
+    "nueva": "Nueva entrada…",
+    "inactiva": "(inactiva)",
+    "nombre": "Nombre",
+    "color": "Color",
+    "descripcion": "Descripción (opcional)",
+    "crear": "Crear y asignar",
+    "cancelar": "Cancelar",
+    "copiar": "Copiar estilo",
+    "pegar": "Pegar estilo",
+    "quitar": "Quitar estilo",
+    "copiado": "Estilo copiado: {nombre}",
+    "pegado": "Estilo aplicado: {nombre}",
+    "sinEstilo": "sin estilo",
+    "errorNombre": "Escribe el nombre de la entrada.",
+    "deLeyenda": "Leyenda: {nombre}"
   }
 }

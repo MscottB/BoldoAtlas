@@ -22,7 +22,7 @@ describe("puestos", () => {
     const p = crearPuesto({ unidad_id: unidadId, cargo_id: cargoId });
     bd.aplicar(p.sentencias);
     expect(bd.consultar<Puesto>(SQL_PUESTOS)).toEqual([
-      { id: p.id, unidad_id: unidadId, cargo_id: cargoId, descripcion: null, orden: 0 },
+      { id: p.id, unidad_id: unidadId, cargo_id: cargoId, descripcion: null, leyenda_id: null, orden: 0 },
     ]);
     bd.aplicar(editarPuesto(p.id, { descripcion: "Turno noche", orden: 2 }));
     expect(bd.consultar<Puesto>(SQL_PUESTOS)[0]).toMatchObject({ descripcion: "Turno noche", orden: 2 });

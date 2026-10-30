@@ -362,6 +362,155 @@ describe("cargarEjemplo", () => {
     const conMarca = s.unidades.filter((u) => u.marca_color && u.marca_codigo);
     expect(conMarca.some((u) => u.tipo_id === TIPO_GERENCIA)).toBe(true);
     expect(conMarca.some((u) => u.tipo_id === sup)).toBe(true);
+    // Leyendas de puestos, asignadas a algunos puestos y no a todos.
+    expect(s.leyendasActivas.length).toBeGreaterThanOrEqual(2);
+    const conLeyenda = s.puestos.filter((p) => p.leyenda_id);
+    expect(conLeyenda.length).toBeGreaterThan(0);
+    expect(conLeyenda.length).toBeLessThan(s.puestos.length);
+    expect(new Set(conLeyenda.map((p) => p.leyenda_id)).size).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("leyendas de puestos", () => {
+  async function leyenda(s: ReturnType<typeof nuevo>, nombre = "Crítico", color = "#be123c") {
+    const r = await s.crearLeyenda({ nombre, color });
+    if (!r.ok) throw new Error("no se creó la leyenda");
+    return r.id;
+  }
+
+  it("crea con el color en minúsculas y las ordena", async () => {
+    const s = nuevo();
+    const a = await leyenda(s, " Crítico ", "#BE123C");
+    const b = await leyenda(s, "En sucesión", "#b45309");
+    expect(s.leyendasActivas.map((l) => [l.id, l.nombre, l.color])).toEqual([
+      [a, "Crítico", "#be123c"],
+      [b, "En sucesión", "#b45309"],
+    ]);
+    await s.moverLeyenda(b, 0);
+    expect(s.leyendasActivas.map((l) => l.id)).toEqual([b, a]);
+  });
+
+  it("rechaza un color inválido o un nombre vacío sin escribir", async () => {
+    const s = nuevo();
+    const antes = revision();
+    expect(await s.crearLeyenda({ nombre: "X", color: "rojo" })).toEqual({
+      ok: false,
+      mensaje: "El color debe tener el formato #rrggbb (por ejemplo, #be123c).",
+    });
+    expect(await s.crearLeyenda({ nombre: "  ", color: "#be123c" })).toEqual({
+      ok: false,
+      mensaje: "Escribe un nombre.",
+    });
+    const a = await leyenda(s);
+    expect((await s.editarLeyenda(a, { color: "#zzz" })).ok).toBe(false);
+    expect(revision()).toBe(antes + 1); // solo la creación válida
+  });
+
+  it("no crea una entrada activa repetida y devuelve la existente", async () => {
+    const s = nuevo();
+    const a = await leyenda(s, "En sucesión");
+    const r = await s.crearLeyenda({ nombre: "en  SUCESION", color: "#0f766e" });
+    expect(r).toEqual({ ok: false, mensaje: "Ya existe «En sucesión» en la lista.", existente: a });
+    await s.desactivarLeyenda(a);
+    expect((await s.crearLeyenda({ nombre: "en sucesion", color: "#0f766e" })).ok).toBe(true);
+  });
+
+  it("crear y asignar a un puesto es un solo lote", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const antes = revision();
+    const r = await s.crearLeyenda({ nombre: "Crítico", color: "#be123c" }, p);
+    if (!r.ok) throw new Error("no se creó");
+    expect(revision()).toBe(antes + 1);
+    expect(s.puestos[0].leyenda_id).toBe(r.id);
+  });
+
+  it("edita color y descripción, renombra y desactiva; el puesto conserva la entrada", async () => {
+    const s = nuevo();
+    const a = await leyenda(s);
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    await s.asignarLeyenda(p, a);
+    await s.editarLeyenda(a, { color: "#0F766E", descripcion: "Clave para la operación" });
+    await s.renombrarLeyenda(a, "Muy crítico");
+    expect(s.leyendas[0]).toMatchObject({
+      nombre: "Muy crítico",
+      color: "#0f766e",
+      descripcion: "Clave para la operación",
+    });
+    expect((await s.renombrarLeyenda(a, " ")).ok).toBe(false);
+    await s.desactivarLeyenda(a);
+    expect(s.leyendasActivas).toEqual([]);
+    expect(s.leyendas).toHaveLength(1);
+    expect(s.puestos[0].leyenda_id).toBe(a);
+    await s.reactivarLeyenda(a);
+    expect(s.leyendasActivas).toHaveLength(1);
+  });
+
+  it("renombrar a un nombre que ya existe da un error traducido", async () => {
+    const s = nuevo();
+    await leyenda(s, "Critico");
+    const b = await leyenda(s, "Clave", "#0f766e");
+    expect(await s.renombrarLeyenda(b, " CRITICO ")).toEqual({
+      ok: false,
+      mensaje: "Ese valor ya existe en la lista.",
+    });
+  });
+
+  describe("copiar y pegar estilo", () => {
+    it("no se puede pegar si no se copió nada", async () => {
+      const s = nuevo();
+      const p = await puesto(s, await unidad(s, "Raíz"));
+      expect(s.puedePegarEstilo).toBe(false);
+      const antes = revision();
+      expect((await s.pegarEstilo(p)).ok).toBe(false);
+      expect(revision()).toBe(antes);
+    });
+
+    it("pega la misma entrada en otro puesto", async () => {
+      const s = nuevo();
+      const u = await unidad(s, "Raíz");
+      const [a, b] = [await puesto(s, u), await puesto(s, u)];
+      const l = await leyenda(s);
+      await s.asignarLeyenda(a, l);
+      expect(s.copiarEstilo(a)).toEqual({ ok: true });
+      expect(s.puedePegarEstilo).toBe(true);
+      expect((await s.pegarEstilo(b)).ok).toBe(true);
+      expect(s.puestos.find((x) => x.id === b)?.leyenda_id).toBe(l);
+      expect(s.puedePegarEstilo).toBe(true); // se puede pegar en varios puestos
+    });
+
+    it("copiar un puesto sin estilo y pegar lo deja sin estilo", async () => {
+      const s = nuevo();
+      const u = await unidad(s, "Raíz");
+      const [a, b] = [await puesto(s, u), await puesto(s, u)];
+      await s.asignarLeyenda(b, await leyenda(s));
+      s.copiarEstilo(a);
+      expect(s.puedePegarEstilo).toBe(true);
+      await s.pegarEstilo(b);
+      expect(s.puestos.find((x) => x.id === b)?.leyenda_id).toBeNull();
+    });
+
+    it("si la entrada copiada se desactiva, ya no se puede pegar", async () => {
+      const s = nuevo();
+      const u = await unidad(s, "Raíz");
+      const [a, b] = [await puesto(s, u), await puesto(s, u)];
+      const l = await leyenda(s);
+      await s.asignarLeyenda(a, l);
+      s.copiarEstilo(a);
+      await s.desactivarLeyenda(l);
+      expect(s.puedePegarEstilo).toBe(false);
+      expect((await s.pegarEstilo(b)).ok).toBe(false);
+      expect(s.puestos.find((x) => x.id === b)?.leyenda_id).toBeNull();
+    });
+
+    it("copiar un puesto que no existe falla y no pisa lo copiado", async () => {
+      const s = nuevo();
+      const u = await unidad(s, "Raíz");
+      const a = await puesto(s, u);
+      s.copiarEstilo(a);
+      expect(s.copiarEstilo("no-existe").ok).toBe(false);
+      expect(s.puedePegarEstilo).toBe(true);
+    });
   });
 });
 

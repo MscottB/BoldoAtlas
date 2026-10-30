@@ -223,4 +223,39 @@ describe("esquema 0001", () => {
       db.exec("ROLLBACK");
     });
   });
+
+  describe("leyendas de puestos", () => {
+    const leyenda = (fila: Record<string, string | number | null> = {}) =>
+      ins("leyendas", { nombre: "Critico", color: "#be123c", ...fila });
+
+    it("rechaza un nombre repetido sin importar mayúsculas ni espacios, salvo el de una desactivada", () => {
+      leyenda();
+      expect(() => leyenda({ nombre: " CRITICO " })).toThrow(/UNIQUE/);
+      leyenda({ nombre: "Antigua", deleted_at: AHORA });
+      expect(() => leyenda({ nombre: " antigua " })).not.toThrow();
+    });
+
+    it("exige nombre y color", () => {
+      expect(() => leyenda({ nombre: "  " })).toThrow(/CHECK/);
+      expect(() => leyenda({ nombre: "X", color: null })).toThrow(
+        /NOT NULL constraint failed: leyendas.color/,
+      );
+    });
+
+    it("el color debe ser #rrggbb en minúsculas", () => {
+      for (const malo of ["rojo", "#be123", "#be123cc", "#BE123C", "be123c", "#be123g"])
+        expect(() => leyenda({ nombre: malo, color: malo })).toThrow(/CHECK constraint failed/);
+      expect(() => leyenda({ nombre: "ok", color: "#0f766e" })).not.toThrow();
+    });
+
+    it("puestos.leyenda_id es opcional y debe apuntar a una leyenda existente al confirmar", () => {
+      const cargo = ins("cargos", { nombre: "Analista" });
+      expect(() => ins("puestos", { unidad_id: u, cargo_id: cargo })).not.toThrow();
+      expect(() => ins("puestos", { unidad_id: u, cargo_id: cargo, leyenda_id: leyenda() })).not.toThrow();
+      db.exec("BEGIN");
+      ins("puestos", { unidad_id: u, cargo_id: cargo, leyenda_id: randomUUID() });
+      expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
+      db.exec("ROLLBACK");
+    });
+  });
 });

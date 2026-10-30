@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useOrganizacion } from "@/stores/organizacion";
 import { tiposEnUso } from "./jerarquia";
 import { useVista } from "./useVista";
-import { criterioMarca, tipoDeMarca } from "./vista";
+import { CRITERIO_LEYENDA, criterioMarca, tipoDeMarca } from "./vista";
 
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -17,11 +17,15 @@ const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad
 // Una preferencia guardada con un tipo que ya nadie usa se ve como «ninguno», sin pisar lo guardado.
 const criterio = computed({
   get: () => {
+    if (config.value.colorearPor === CRITERIO_LEYENDA) return CRITERIO_LEYENDA;
     const id = tipoDeMarca(config.value.colorearPor, tipos.value);
     return id ? criterioMarca(id) : "ninguno";
   },
   set: (v: string) => (config.value.colorearPor = v),
 });
+
+// El criterio por leyenda solo se ve en los puestos: se avisa si siguen ocultos.
+const pidePuestos = computed(() => config.value.colorearPor === CRITERIO_LEYENDA && !config.value.verPuestos);
 
 function alternarTipo(id: string, marcado: boolean) {
   const sin = config.value.rutaTipos.filter((x) => x !== id);
@@ -76,12 +80,20 @@ function alternarTipo(id: string, marcado: boolean) {
       </fieldset>
       <label class="grid gap-1">
         <span class="font-medium">{{ t("arbol.vista.colorearPor") }}</span>
-        <select v-model="criterio" class="h-7 rounded-md border bg-background px-2 text-sm">
+        <select
+          v-model="criterio"
+          class="h-7 rounded-md border bg-background px-2 text-sm"
+          :aria-describedby="pidePuestos ? 'vista-pide-puestos' : undefined"
+        >
           <option value="ninguno">{{ t("arbol.vista.ninguno") }}</option>
+          <option :value="CRITERIO_LEYENDA">{{ t("arbol.vista.leyendaPuesto") }}</option>
           <option v-for="tipo in tipos" :key="tipo.id" :value="criterioMarca(tipo.id)">
             {{ t("arbol.vista.marcaDe", { tipo: tipo.nombre }) }}
           </option>
         </select>
+        <span v-if="pidePuestos" id="vista-pide-puestos" class="text-xs text-muted-foreground">
+          {{ t("arbol.vista.activaVerPuestos") }}
+        </span>
       </label>
     </PopoverContent>
   </Popover>

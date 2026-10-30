@@ -97,7 +97,9 @@
       "ninguno": "None",
       "marcaDe": "{tipo} mark",
       "ocultarLeyenda": "Hide the legend",
-      "mostrarLeyenda": "Show the legend"
+      "mostrarLeyenda": "Show the legend",
+      "leyendaPuesto": "Position legend",
+      "activaVerPuestos": "Turn on “Show positions” to see the legend colors."
     }
   },
   "arboles": {
@@ -141,7 +143,8 @@
     "personaSinNombre": "The person's name is missing.",
     "conexionConsigoMisma": "A unit cannot be connected to itself.",
     "relacionInexistente": "The related unit or person no longer exists.",
-    "ramaYaGuardada": "That branch is already saved in Trees."
+    "ramaYaGuardada": "That branch is already saved in Trees.",
+    "colorInvalido": "The color must use the #rrggbb format (for example, #be123c)."
   },
   "store": {
     "nombreVacio": "Enter a name.",
@@ -149,7 +152,9 @@
     "unidadInexistente": "The unit no longer exists.",
     "raizConContenido": "The root unit cannot be deleted while it has content.",
     "noSePuedeDeshacer": "This can no longer be undone.",
-    "valorExiste": "\"{nombre}\" already exists in the list."
+    "valorExiste": "\"{nombre}\" already exists in the list.",
+    "puestoInexistente": "The position no longer exists.",
+    "nadaQuePegar": "There is no copied style that can be pasted."
   },
   "ficha": {
     "tituloPersona": "Person record",
@@ -250,5 +255,24 @@
     },
     "sinGuardarTitulo": "You have unsaved changes",
     "sinGuardarTexto": "The position hasn't been created yet. If you discard, what you entered will be lost."
+  },
+  "leyenda": {
+    "titulo": "Legend",
+    "sin": "No legend",
+    "nueva": "New entry…",
+    "inactiva": "(inactive)",
+    "nombre": "Name",
+    "color": "Color",
+    "descripcion": "Description (optional)",
+    "crear": "Create and assign",
+    "cancelar": "Cancel",
+    "copiar": "Copy style",
+    "pegar": "Paste style",
+    "quitar": "Remove style",
+    "copiado": "Style copied: {nombre}",
+    "pegado": "Style applied: {nombre}",
+    "sinEstilo": "no style",
+    "errorNombre": "Enter the entry name.",
+    "deLeyenda": "Legend: {nombre}"
   }
 }
