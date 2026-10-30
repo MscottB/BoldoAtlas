@@ -1,7 +1,8 @@
 // Filas tal como las devuelven las lecturas de src/db/repos (sin created_at/updated_at/deleted_at).
 export interface Unidad {
   id: string;
-  tipo: "gerencia" | "area" | "subarea" | "otra";
+  /** → `tipos_unidad`. */
+  tipo_id: string;
   nombre: string;
   descripcion: string | null;
   parent_id: string | null;
@@ -47,9 +48,21 @@ export interface Asignacion {
   motivo: string | null;
 }
 
-export type TablaCatalogo = "cargos" | "tipos_contrato" | "sedes" | "jornadas";
+export type TablaCatalogo = "cargos" | "tipos_contrato" | "sedes" | "jornadas" | "tipos_unidad";
 
-export const TABLAS_CATALOGO: readonly TablaCatalogo[] = ["cargos", "tipos_contrato", "sedes", "jornadas"];
+export const TABLAS_CATALOGO: readonly TablaCatalogo[] = [
+  "cargos",
+  "tipos_contrato",
+  "sedes",
+  "jornadas",
+  "tipos_unidad",
+];
+
+// Ids de los tipos de unidad que siembra la migración: solo para semillas, datos de ejemplo y tests.
+export const TIPO_GERENCIA = "00000000-0000-7000-8000-000000000001";
+export const TIPO_AREA = "00000000-0000-7000-8000-000000000002";
+export const TIPO_SUBAREA = "00000000-0000-7000-8000-000000000003";
+export const TIPO_OTRA = "00000000-0000-7000-8000-000000000004";
 
 export interface ValorCatalogo {
   id: string;

@@ -62,14 +62,9 @@
   "arbol": {
     "vacioTitulo": "Aún no hay unidades",
     "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí.",
-    "tipos": {
-      "gerencia": "Gerencia",
-      "area": "Área",
-      "subarea": "Subárea",
-      "otra": "Otra"
-    },
     "nuevaUnidad": "Nueva unidad",
     "nuevaSubunidad": "Nueva subunidad",
+    "sinTiposActivos": "No hay tipos de unidad activos.",
     "abrirComoArbol": "Abrir como árbol",
     "nombre": "Nombre de la unidad",
     "ayudaNombre": "Doble clic o F2 para renombrar",

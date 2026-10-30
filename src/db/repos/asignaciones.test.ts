@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
-import type { Asignacion } from "@/db/tipos";
+import { TIPO_GERENCIA, type Asignacion } from "@/db/tipos";
 import { crearUnidad } from "./unidades";
 import { crearValor } from "./catalogos";
 import { crearPuesto, eliminarPuesto } from "./puestos";
@@ -16,7 +16,7 @@ const leer = () => bd.consultar<Asignacion>(SQL_ASIGNACIONES);
 
 beforeEach(() => {
   bd = abrirBasePrueba();
-  const u = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
+  const u = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
   const c = crearValor("cargos", "Analista");
   const p = crearPuesto({ unidad_id: u.id, cargo_id: c.id });
   const a = crearTrabajador({ nombre: "Ana" });

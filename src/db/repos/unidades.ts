@@ -3,10 +3,10 @@ import { ahora, nuevoId } from "@/lib/ids";
 import type { Unidad } from "@/db/tipos";
 import { actualizar, fijarBorrado } from "./comun";
 
-export const SQL_UNIDADES = `SELECT id, tipo, nombre, descripcion, parent_id, jefe_puesto_id, marca_color, marca_codigo, orden FROM unidades
+export const SQL_UNIDADES = `SELECT id, tipo_id, nombre, descripcion, parent_id, jefe_puesto_id, marca_color, marca_codigo, orden FROM unidades
   WHERE deleted_at IS NULL ORDER BY orden, nombre`;
 
-type DatosUnidad = Pick<Unidad, "tipo" | "nombre"> &
+type DatosUnidad = Pick<Unidad, "tipo_id" | "nombre"> &
   Partial<Pick<Unidad, "descripcion" | "parent_id" | "orden">>;
 
 export function crearUnidad(datos: DatosUnidad): { id: string; sentencias: Sentencia[] } {
@@ -16,11 +16,11 @@ export function crearUnidad(datos: DatosUnidad): { id: string; sentencias: Sente
     id,
     sentencias: [
       {
-        sql: `INSERT INTO unidades (id, tipo, nombre, descripcion, parent_id, orden, created_at, updated_at)
+        sql: `INSERT INTO unidades (id, tipo_id, nombre, descripcion, parent_id, orden, created_at, updated_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         params: [
           id,
-          datos.tipo,
+          datos.tipo_id,
           datos.nombre,
           datos.descripcion ?? null,
           datos.parent_id ?? null,
@@ -36,11 +36,11 @@ export function crearUnidad(datos: DatosUnidad): { id: string; sentencias: Sente
 export function editarUnidad(
   id: string,
   cambios: Partial<
-    Pick<Unidad, "tipo" | "nombre" | "descripcion" | "marca_color" | "marca_codigo" | "orden">
+    Pick<Unidad, "tipo_id" | "nombre" | "descripcion" | "marca_color" | "marca_codigo" | "orden">
   >,
 ): Sentencia[] {
   return actualizar("unidades", id, cambios, [
-    "tipo",
+    "tipo_id",
     "nombre",
     "descripcion",
     "marca_color",

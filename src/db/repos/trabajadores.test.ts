@@ -11,6 +11,7 @@ import { crearUnidad } from "./unidades";
 import { crearValor } from "./catalogos";
 import { crearPuesto } from "./puestos";
 import { asignarTitular, registrarReemplazo } from "./asignaciones";
+import { TIPO_GERENCIA } from "@/db/tipos";
 
 let bd: BasePrueba;
 const fila = (id: string) =>
@@ -52,7 +53,7 @@ describe("trabajadores", () => {
   });
 
   it("eliminar borra sus asignaciones con la misma marca; restaurar devuelve solo esas", () => {
-    const u = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
+    const u = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
     const c = crearValor("cargos", "Analista");
     const p = crearPuesto({ unidad_id: u.id, cargo_id: c.id });
     const t = crearTrabajador({ nombre: "Ana" });

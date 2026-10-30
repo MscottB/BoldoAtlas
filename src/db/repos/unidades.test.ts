@@ -11,7 +11,7 @@ import {
 } from "./unidades";
 import { crearValor } from "./catalogos";
 import { crearPuesto } from "./puestos";
-import type { Unidad } from "@/db/tipos";
+import { TIPO_AREA, TIPO_GERENCIA, TIPO_SUBAREA, type Unidad } from "@/db/tipos";
 
 let bd: BasePrueba;
 const unidad = (id: string) =>
@@ -23,8 +23,8 @@ beforeEach(() => {
 
 describe("unidades", () => {
   it("crea una raíz y una subunidad con su parent_id", () => {
-    const raiz = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
-    const sub = crearUnidad({ tipo: "area", nombre: "Logística", parent_id: raiz.id });
+    const raiz = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
+    const sub = crearUnidad({ tipo_id: TIPO_AREA, nombre: "Logística", parent_id: raiz.id });
     bd.aplicar([...raiz.sentencias, ...sub.sentencias]);
     expect(unidad(raiz.id)).toMatchObject({ parent_id: null, orden: 0, descripcion: null });
     expect(unidad(sub.id).parent_id).toBe(raiz.id);
@@ -32,8 +32,8 @@ describe("unidades", () => {
   });
 
   it("edita (con su marca), mueve y asigna el puesto de jefatura", () => {
-    const a = crearUnidad({ tipo: "gerencia", nombre: "A" });
-    const b = crearUnidad({ tipo: "area", nombre: "B" });
+    const a = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "A" });
+    const b = crearUnidad({ tipo_id: TIPO_AREA, nombre: "B" });
     const c = crearValor("cargos", "Gerente");
     const p = crearPuesto({ unidad_id: a.id, cargo_id: c.id });
     bd.aplicar([a, b, c, p].flatMap((x) => x.sentencias));
@@ -59,9 +59,9 @@ describe("unidades", () => {
   });
 
   function arbolConContenido() {
-    const raiz = crearUnidad({ tipo: "gerencia", nombre: "Raíz" });
-    const u = crearUnidad({ tipo: "area", nombre: "Medio", parent_id: raiz.id });
-    const hijos = [1, 2].map((n) => crearUnidad({ tipo: "subarea", nombre: `H${n}`, parent_id: u.id }));
+    const raiz = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Raíz" });
+    const u = crearUnidad({ tipo_id: TIPO_AREA, nombre: "Medio", parent_id: raiz.id });
+    const hijos = [1, 2].map((n) => crearUnidad({ tipo_id: TIPO_SUBAREA, nombre: `H${n}`, parent_id: u.id }));
     const cargo = crearValor("cargos", "Analista");
     const puestos = [1, 2, 3].map(() => crearPuesto({ unidad_id: u.id, cargo_id: cargo.id }));
     bd.aplicar([raiz, u, cargo, ...hijos, ...puestos].flatMap((x) => x.sentencias));

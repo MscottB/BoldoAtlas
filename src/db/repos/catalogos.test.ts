@@ -3,7 +3,7 @@ import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { crearUnidad } from "./unidades";
 import { crearPuesto } from "./puestos";
 import { crearValor, renombrarValor, moverValor, desactivarValor, reactivarValor } from "./catalogos";
-import type { ValorCatalogo } from "@/db/tipos";
+import { TABLAS_CATALOGO, TIPO_GERENCIA, type ValorCatalogo } from "@/db/tipos";
 
 let bd: BasePrueba;
 const valores = () =>
@@ -40,7 +40,7 @@ describe("catalogos", () => {
 
   it("desactivar deja deleted_at y el puesto conserva su cargo; reactivar lo devuelve", () => {
     const cargo = crearValor("cargos", "Analista");
-    const unidad = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
+    const unidad = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
     const p = crearPuesto({ cargo_id: cargo.id, unidad_id: unidad.id });
     bd.aplicar([...cargo.sentencias, ...unidad.sentencias, ...p.sentencias]);
 
@@ -52,10 +52,25 @@ describe("catalogos", () => {
     expect(valores()[0].deleted_at).toBeNull();
   });
 
-  it("funciona en las cuatro tablas", () => {
-    for (const tabla of ["cargos", "tipos_contrato", "sedes", "jornadas"] as const) {
+  it("funciona en todas las tablas", () => {
+    for (const tabla of TABLAS_CATALOGO) {
+      const antes = bd.consultar(`SELECT id FROM ${tabla}`).length;
       bd.aplicar(crearValor(tabla, "X").sentencias);
-      expect(bd.consultar(`SELECT id FROM ${tabla}`)).toHaveLength(1);
+      expect(bd.consultar(`SELECT id FROM ${tabla}`)).toHaveLength(antes + 1);
     }
+  });
+
+  it("tipos_unidad: un tipo nuevo va después de las semillas y desactivarlo no cambia las unidades que lo usan", () => {
+    const tipos = () =>
+      bd.consultar<ValorCatalogo>("SELECT id, nombre, orden, deleted_at FROM tipos_unidad ORDER BY orden");
+    const nuevo = crearValor("tipos_unidad", "Departamento");
+    const u = crearUnidad({ tipo_id: nuevo.id, nombre: "Logística" });
+    bd.aplicar([...nuevo.sentencias, ...u.sentencias]);
+    expect(tipos().map((t) => t.nombre)).toEqual(["Gerencia", "Área", "Subárea", "Otra", "Departamento"]);
+
+    bd.aplicar(renombrarValor("tipos_unidad", TIPO_GERENCIA, "Dirección"));
+    bd.aplicar(desactivarValor("tipos_unidad", nuevo.id));
+    expect(tipos()[0].nombre).toBe("Dirección");
+    expect(bd.consultar<{ tipo_id: string }>("SELECT tipo_id FROM unidades")[0].tipo_id).toBe(nuevo.id);
   });
 });

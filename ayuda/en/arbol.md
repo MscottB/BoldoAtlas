@@ -6,11 +6,13 @@ The tree is the main screen: it shows your organization as an org chart you can 
 
 Each unit is a card with:
 
-- its type (division, area, sub-area or other) and its name;
+- its type (for example, Gerencia or Área) and its name;
 - the photo or initials and name of its manager, or **No manager** if it has none;
 - the total headcount of its branch (the unit and everything under it);
 - the branch's vacancies, if any;
 - a colored dot for each tag (hover over it to see its name).
+
+Unit types are your organization's own list: it starts with Gerencia, Área, Subárea and Otra, which you can rename, reorder, deactivate or add to (for example, Superintendency or Department). The order of the list doesn't restrict the structure: any type can report to any other.
 
 Solid lines join each unit to its parent. Dotted lines are lateral connections between units, with their description.
 
@@ -21,9 +23,9 @@ When the tree opens you see the roots and their first level; the rest is collaps
 ## Selecting, creating and renaming
 
 - **Click** a card to select it. Click the background to clear the selection.
-- The selected card shows **+**: it creates a sub-unit (division → area → sub-area → other) ready for you to type its name.
+- The selected card shows **+**: it creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
 - **Double-click** the name, or press `F2` with the name focused, to edit it. `Enter` saves and `Esc` cancels.
-- **+ New unit**, in the canvas bar, creates a sub-unit of the selected card; if none is selected, of the root of the focused view, or a new root division.
+- **+ New unit**, in the canvas bar, creates a sub-unit of the selected card; if none is selected, of the root of the focused view, or a new root of the first type in the list.
 
 ## Moving a unit
 

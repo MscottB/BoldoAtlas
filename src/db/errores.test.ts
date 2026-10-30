@@ -8,6 +8,7 @@ import { guardarSubarbol } from "@/db/repos/subarboles";
 import { crearValor } from "@/db/repos/catalogos";
 import { crearPuesto } from "@/db/repos/puestos";
 import { asignarTitular, registrarReemplazo, terminarAsignacion } from "@/db/repos/asignaciones";
+import { TIPO_GERENCIA } from "@/db/tipos";
 
 describe("traducirError", () => {
   it.each([
@@ -21,6 +22,7 @@ describe("traducirError", () => {
     ["UNIQUE constraint failed: index 'ux_tipos_contrato_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_sedes_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_jornadas_nombre'", "Ese valor ya existe en la lista."],
+    ["UNIQUE constraint failed: index 'ux_tipos_unidad_nombre'", "Ese valor ya existe en la lista."],
     ["NOT NULL constraint failed: trabajadores.nombre", "Falta el nombre de la persona."],
     [
       "UNIQUE constraint failed: asignaciones.puesto_id",
@@ -44,7 +46,7 @@ describe("traducirError", () => {
 
   it("traduce los errores reales que produce SQLite con el esquema", () => {
     const bd = abrirBasePrueba();
-    const unidad = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
+    const unidad = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
     bd.aplicar(unidad.sentencias);
     bd.aplicar(crearTrabajador({ nombre: "Ana", correo: "ana@empresa.cl" }).sentencias);
     const capturar = (fn: () => void) => {
@@ -70,6 +72,9 @@ describe("traducirError", () => {
     bd.aplicar(guardarSubarbol(unidad.id).sentencias);
     const ramaDuplicada = capturar(() => bd.aplicar(guardarSubarbol(unidad.id).sentencias));
     expect(ramaDuplicada).toBe("Esa rama ya está guardada en Árboles.");
+
+    const tipoDuplicado = capturar(() => bd.aplicar(crearValor("tipos_unidad", " gerencia ").sentencias));
+    expect(tipoDuplicado).toBe("Ese valor ya existe en la lista.");
 
     const sinNombre = capturar(() => bd.aplicar(crearTrabajador({ nombre: null as never }).sentencias));
     expect(sinNombre).toBe("Falta el nombre de la persona.");

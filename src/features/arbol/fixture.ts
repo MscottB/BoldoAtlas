@@ -1,18 +1,27 @@
-import type { Asignacion, Puesto, Unidad } from "../../db/tipos";
+import {
+  TIPO_AREA,
+  TIPO_GERENCIA,
+  TIPO_OTRA,
+  TIPO_SUBAREA,
+  type Asignacion,
+  type Puesto,
+  type Unidad,
+  type ValorCatalogo,
+} from "../../db/tipos";
 
 // Fixture compartido por los tests del árbol.
 export type ConBorrado<T> = T & { deleted_at?: string | null };
 
 export function u(
   id: string,
-  tipo: Unidad["tipo"],
+  tipo_id: string,
   nombre: string,
   parent_id: string | null,
   orden = 0,
 ): ConBorrado<Unidad> {
   return {
     id,
-    tipo,
+    tipo_id,
     nombre,
     descripcion: null,
     parent_id,
@@ -48,15 +57,23 @@ export const a = (
   motivo: null,
 });
 
+// Los tipos que siembra la migración.
+export const tipos: ValorCatalogo[] = [
+  { id: TIPO_GERENCIA, nombre: "Gerencia", orden: 10, deleted_at: null },
+  { id: TIPO_AREA, nombre: "Área", orden: 20, deleted_at: null },
+  { id: TIPO_SUBAREA, nombre: "Subárea", orden: 30, deleted_at: null },
+  { id: TIPO_OTRA, nombre: "Otra", orden: 40, deleted_at: null },
+];
+
 // GG › Operaciones › Mantención › {Mecánica, Eléctrica}; GG › Finanzas (+ una unidad borrada).
 export const unidades: ConBorrado<Unidad>[] = [
-  u("gg", "otra", "Gerencia General", null),
-  u("finanzas", "gerencia", "Finanzas", "gg", 1),
-  u("operaciones", "gerencia", "Operaciones", "gg", 0),
-  u("mantencion", "area", "Mantención", "operaciones"),
-  u("mecanica", "subarea", "Mecánica", "mantencion"),
-  u("electrica", "subarea", "Eléctrica", "mantencion"),
-  { ...u("borrada", "subarea", "Borrada", "mantencion"), deleted_at: "2026-01-01T00:00:00.000Z" },
+  u("gg", TIPO_OTRA, "Gerencia General", null),
+  u("finanzas", TIPO_GERENCIA, "Finanzas", "gg", 1),
+  u("operaciones", TIPO_GERENCIA, "Operaciones", "gg", 0),
+  u("mantencion", TIPO_AREA, "Mantención", "operaciones"),
+  u("mecanica", TIPO_SUBAREA, "Mecánica", "mantencion"),
+  u("electrica", TIPO_SUBAREA, "Eléctrica", "mantencion"),
+  { ...u("borrada", TIPO_SUBAREA, "Borrada", "mantencion"), deleted_at: "2026-01-01T00:00:00.000Z" },
 ];
 
 // 8 puestos, 2 vacantes (p2 y p6). Rama de Mantención: 5 con titular + 1 vacante.

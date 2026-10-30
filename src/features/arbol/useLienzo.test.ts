@@ -1,17 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { unidades } from "./fixture";
-import { coincideFiltro, destinoAlSoltar, tipoHijo } from "./useLienzo";
+import { coincideFiltro, destinoAlSoltar } from "./useLienzo";
 
 const mantencion = unidades.find((x) => x.id === "mantencion")!;
 
 describe("lógica del lienzo", () => {
-  it("tipoHijo sugiere gerencia → área → subárea → otra", () => {
-    expect(tipoHijo("gerencia")).toBe("area");
-    expect(tipoHijo("area")).toBe("subarea");
-    expect(tipoHijo("subarea")).toBe("otra");
-    expect(tipoHijo("otra")).toBe("otra");
-  });
-
   it("coincideFiltro: sin filtros todo coincide", () => {
     expect(coincideFiltro(mantencion, "", null)).toBe(true);
     expect(coincideFiltro(mantencion, "   ", null)).toBe(true);

@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { a, asignaciones, p, puestos, u, unidades } from "./fixture";
+import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA, type ValorCatalogo } from "@/db/tipos";
+import { a, asignaciones, p, puestos, tipos, u, unidades } from "./fixture";
 import {
   creaCiclo,
   descendientes,
   dotacion,
   dotacionPorUnidad,
-  gerenciaYArea,
   hijos,
   indexar,
   indiceHijos,
   jefeVisible,
   marcaHeredada,
   ruta,
+  rutaPorTipo,
   rutaTexto,
+  tipoHijo,
   unidadesDePersona,
   vigentesPorPuesto,
 } from "./jerarquia";
@@ -74,19 +76,92 @@ describe("jerarquía", () => {
     const as = [...asignaciones, a("a9", "p9", "t9"), { ...a("a10", "p6", "t9"), deleted_at: BORRADO }];
     expect(dotacion(unidades, ps, as, "mantencion")).toEqual({ directa: 1, total: 5, vacantes: 1 });
   });
+});
 
-  it("gerenciaYArea deriva gerencia, área y subárea de los ancestros", () => {
-    expect(gerenciaYArea(unidades, "mecanica")).toEqual({
-      gerencia: "Operaciones",
-      area: "Mantención",
-      subarea: "Mecánica",
-    });
-    expect(gerenciaYArea(unidades, "finanzas")).toEqual({ gerencia: "Finanzas", area: null, subarea: null });
+// "Superintendencia" entre Gerencia y Área; Mantención pasa a ser una.
+const SUPER = "sup";
+const conSuper: ValorCatalogo[] = [
+  ...tipos,
+  { id: SUPER, nombre: "Superintendencia", orden: 15, deleted_at: null },
+];
+const unidadesConSuper = unidades.map((x) => (x.id === "mantencion" ? { ...x, tipo_id: SUPER } : x));
+
+describe("tipos de unidad", () => {
+  const nombres = (r: ReturnType<typeof rutaPorTipo>) => r.map((x) => [x.tipo.nombre, x.unidad.id]);
+
+  it("rutaPorTipo: para cada tipo, la unidad más cercana hacia arriba, en orden del catálogo", () => {
+    expect(nombres(rutaPorTipo(unidades, tipos, "mecanica"))).toEqual([
+      ["Gerencia", "operaciones"],
+      ["Área", "mantencion"],
+      ["Subárea", "mecanica"],
+      ["Otra", "gg"],
+    ]);
+    expect(nombres(rutaPorTipo(unidades, tipos, "finanzas"))).toEqual([
+      ["Gerencia", "finanzas"],
+      ["Otra", "gg"],
+    ]);
+  });
+
+  it("rutaPorTipo con un tipo agregado entre otros", () => {
+    expect(nombres(rutaPorTipo(unidadesConSuper, conSuper, "mecanica"))).toEqual([
+      ["Gerencia", "operaciones"],
+      ["Superintendencia", "mantencion"],
+      ["Subárea", "mecanica"],
+      ["Otra", "gg"],
+    ]);
+  });
+
+  it("rutaPorTipo con un tipo renombrado y uno desactivado (sigue válido en sus unidades)", () => {
+    const cambiados = tipos.map((t) =>
+      t.id === TIPO_GERENCIA
+        ? { ...t, nombre: "Dirección" }
+        : t.id === TIPO_AREA
+          ? { ...t, deleted_at: BORRADO }
+          : t,
+    );
+    expect(nombres(rutaPorTipo(unidades, cambiados, "mantencion"))).toEqual([
+      ["Dirección", "operaciones"],
+      ["Área", "mantencion"],
+      ["Otra", "gg"],
+    ]);
+  });
+
+  it("tipoHijo: el siguiente tipo activo en orden; el último se repite; sin superior, el primero", () => {
+    expect(tipoHijo(tipos, TIPO_GERENCIA)).toBe(TIPO_AREA);
+    expect(tipoHijo(tipos, TIPO_AREA)).toBe(TIPO_SUBAREA);
+    expect(tipoHijo(tipos, TIPO_SUBAREA)).toBe(TIPO_OTRA);
+    expect(tipoHijo(tipos, TIPO_OTRA)).toBe(TIPO_OTRA);
+    expect(tipoHijo(tipos, null)).toBe(TIPO_GERENCIA);
+  });
+
+  it("tipoHijo con un tipo agregado, uno renombrado y uno reordenado", () => {
+    expect(tipoHijo(conSuper, TIPO_GERENCIA)).toBe(SUPER);
+    expect(tipoHijo(conSuper, SUPER)).toBe(TIPO_AREA);
+    const renombrado = tipos.map((t) => (t.id === TIPO_GERENCIA ? { ...t, nombre: "Dirección" } : t));
+    expect(tipoHijo(renombrado, TIPO_GERENCIA)).toBe(TIPO_AREA);
+    const otraPrimero = tipos.map((t) => (t.id === TIPO_OTRA ? { ...t, orden: 5 } : t));
+    expect(tipoHijo(otraPrimero, null)).toBe(TIPO_OTRA);
+    expect(tipoHijo(otraPrimero, TIPO_OTRA)).toBe(TIPO_GERENCIA);
+  });
+
+  it("tipoHijo salta los desactivados; sin activos, undefined", () => {
+    const sinArea = tipos.map((t) =>
+      t.id === TIPO_AREA || t.id === TIPO_OTRA ? { ...t, deleted_at: BORRADO } : t,
+    );
+    expect(tipoHijo(sinArea, TIPO_GERENCIA)).toBe(TIPO_SUBAREA);
+    expect(tipoHijo(sinArea, TIPO_SUBAREA)).toBe(TIPO_SUBAREA);
+    expect(tipoHijo(sinArea, TIPO_OTRA)).toBe(TIPO_SUBAREA);
+    expect(
+      tipoHijo(
+        tipos.map((t) => ({ ...t, deleted_at: BORRADO })),
+        null,
+      ),
+    ).toBeUndefined();
   });
 });
 
 describe("puestos y asignaciones", () => {
-  const conJefe = (jefe_puesto_id: string | null) => ({ ...u("x", "area", "X", null), jefe_puesto_id });
+  const conJefe = (jefe_puesto_id: string | null) => ({ ...u("x", TIPO_AREA, "X", null), jefe_puesto_id });
 
   it("vigentesPorPuesto ignora las cerradas y las borradas", () => {
     const v = vigentesPorPuesto([...asignaciones, { ...a("a9", "p2", "t9"), deleted_at: BORRADO }]);
@@ -124,14 +199,23 @@ describe("marcaHeredada", () => {
 
   it("toma la unidad más cercana hacia arriba, incluida ella misma, con marca y del nivel pedido", () => {
     expect(marcaHeredada(marcadas, "mecanica", "cualquiera")).toEqual({ color: "#2563eb", codigo: null });
-    expect(marcaHeredada(marcadas, "mecanica", "gerencia")).toEqual({ color: "#c2410c", codigo: "OPE" });
-    expect(marcaHeredada(marcadas, "operaciones", "gerencia")).toEqual({ color: "#c2410c", codigo: "OPE" });
+    expect(marcaHeredada(marcadas, "mecanica", TIPO_GERENCIA)).toEqual({ color: "#c2410c", codigo: "OPE" });
+    expect(marcaHeredada(marcadas, "operaciones", TIPO_GERENCIA)).toEqual({
+      color: "#c2410c",
+      codigo: "OPE",
+    });
     expect(marcaHeredada(marcadas, "electrica", "cualquiera")).toEqual({ color: "#c2410c", codigo: "OPE" });
   });
 
+  it("funciona con un tipo agregado", () => {
+    const conMarca = unidadesConSuper.map((x) => (x.id === "mantencion" ? { ...x, marca_codigo: "MAN" } : x));
+    expect(marcaHeredada(conMarca, "electrica", SUPER)).toEqual({ color: null, codigo: "MAN" });
+    expect(marcaHeredada(conMarca, "electrica", TIPO_AREA)).toBeNull();
+  });
+
   it("null si ninguna unidad de ese nivel en la ruta tiene marca", () => {
-    expect(marcaHeredada(marcadas, "mecanica", "area")).toBeNull();
-    expect(marcaHeredada(marcadas, "finanzas", "gerencia")).toBeNull();
+    expect(marcaHeredada(marcadas, "mecanica", TIPO_AREA)).toBeNull();
+    expect(marcaHeredada(marcadas, "finanzas", TIPO_GERENCIA)).toBeNull();
     expect(marcaHeredada(marcadas, "gg", "cualquiera")).toBeNull();
   });
 });

@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import * as U from "@/db/repos/unidades";
 import { useOrganizacion } from "./organizacion";
+import { TIPO_AREA, TIPO_GERENCIA } from "@/db/tipos";
 
 // antesDeLote / antesDeMeta: ganchos de los tests para pausar una llamada y forzar solapes.
 const h = vi.hoisted(() => ({
@@ -38,7 +39,7 @@ function nuevo() {
 
 /** Crea una unidad y devuelve su id (falla el test si no se pudo). */
 async function unidad(s: ReturnType<typeof nuevo>, nombre: string, parent_id: string | null = null) {
-  const r = await s.crearUnidad({ tipo: "area", nombre, parent_id });
+  const r = await s.crearUnidad({ tipo_id: TIPO_AREA, nombre, parent_id });
   if (!r.ok || !r.id) throw new Error("no se creó la unidad");
   return r.id;
 }
@@ -72,7 +73,7 @@ describe("unidades", () => {
   it("crea una raíz y una hija", async () => {
     const s = nuevo();
     const raiz = await unidad(s, "Raíz");
-    const r = await s.crearUnidad({ tipo: "area", nombre: "Hija", parent_id: raiz });
+    const r = await s.crearUnidad({ tipo_id: TIPO_AREA, nombre: "Hija", parent_id: raiz });
     expect(r.ok).toBe(true);
     expect(s.unidades).toHaveLength(2);
     expect(s.raices.map((u) => u.id)).toEqual([raiz]);
@@ -287,6 +288,16 @@ describe("puestos y asignaciones", () => {
     expect(s.usos("cargos", cargo.id)).toBe(2);
     expect(s.usos("sedes", sede.id)).toBe(1);
   });
+
+  it("carga los tipos de unidad sembrados; usos de un tipo cuenta unidades", async () => {
+    const s = nuevo();
+    await s.cargar();
+    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual(["Gerencia", "Área", "Subárea", "Otra"]);
+    await unidad(s, "A");
+    await unidad(s, "B");
+    expect(s.usos("tipos_unidad", TIPO_AREA)).toBe(2);
+    expect(s.usos("tipos_unidad", TIPO_GERENCIA)).toBe(0);
+  });
 });
 
 describe("cargarEjemplo", () => {
@@ -308,6 +319,16 @@ describe("cargarEjemplo", () => {
     expect(s.etiquetas.length).toBeGreaterThanOrEqual(3);
     for (const tabla of ["cargos", "tipos_contrato", "sedes", "jornadas"] as const)
       expect(s.activos(tabla).length).toBeGreaterThan(0);
+    // Un tipo agregado como dato, entre Gerencia y Área, y usado por alguna unidad.
+    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual([
+      "Gerencia",
+      "Superintendencia",
+      "Área",
+      "Subárea",
+      "Otra",
+    ]);
+    const sup = s.activos("tipos_unidad")[1].id;
+    expect(s.usos("tipos_unidad", sup)).toBeGreaterThan(0);
     expect(s.org.nombre).toBe("Compañía Demo");
     expect(s.unidades.some((u) => u.jefe_puesto_id)).toBe(true);
   });
@@ -396,8 +417,8 @@ describe("concurrencia", () => {
     const s = nuevo();
     const liberar: (() => void)[] = [];
     h.antesDeLote = () => new Promise<void>((resolver) => liberar.push(resolver));
-    const p1 = s.crearUnidad({ tipo: "area", nombre: "A", parent_id: null });
-    const p2 = s.crearUnidad({ tipo: "area", nombre: "B", parent_id: null });
+    const p1 = s.crearUnidad({ tipo_id: TIPO_AREA, nombre: "A", parent_id: null });
+    const p2 = s.crearUnidad({ tipo_id: TIPO_AREA, nombre: "B", parent_id: null });
     expect(s.guardando).toBe(true);
     liberar[0]();
     await p1;
@@ -415,7 +436,7 @@ describe("concurrencia", () => {
       return new Promise<void>((resolver) => (liberar = resolver));
     };
     const vieja = s.cargar(); // foto sin unidades, queda pausada
-    h.bd!.aplicar(U.crearUnidad({ tipo: "area", nombre: "Nueva", parent_id: null }).sentencias);
+    h.bd!.aplicar(U.crearUnidad({ tipo_id: TIPO_AREA, nombre: "Nueva", parent_id: null }).sentencias);
     await s.cargar(); // foto con la unidad
     expect(s.unidades).toHaveLength(1);
     liberar();
@@ -431,7 +452,7 @@ describe("errores", () => {
     const hija = await unidad(s, "Hija", padre);
     await s.moverUnidad(padre, hija);
     expect(s.error).not.toBeNull();
-    expect((await s.crearUnidad({ tipo: "area", nombre: "Otra", parent_id: null })).ok).toBe(true);
+    expect((await s.crearUnidad({ tipo_id: TIPO_AREA, nombre: "Otra", parent_id: null })).ok).toBe(true);
     expect(s.error).toBeNull();
   });
 
@@ -464,7 +485,7 @@ describe("nombre vacío en mantenedores", () => {
 describe("árboles y subárboles guardados", () => {
   it("crearArbol crea una raíz", async () => {
     const s = nuevo();
-    const r = await s.crearArbol("Nuevo", "gerencia");
+    const r = await s.crearArbol("Nuevo", TIPO_GERENCIA);
     expect(r.ok).toBe(true);
     expect(s.raices.map((u) => u.nombre)).toEqual(["Nuevo"]);
   });

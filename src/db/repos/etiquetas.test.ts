@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { crearUnidad } from "./unidades";
 import { crearEtiqueta, etiquetarUnidad, quitarEtiqueta } from "./etiquetas";
+import { TIPO_GERENCIA } from "@/db/tipos";
 
 let bd: BasePrueba;
 let unidadId: string;
@@ -10,7 +11,7 @@ const activas = () => bd.consultar("SELECT id FROM unidad_etiquetas WHERE delete
 
 beforeEach(() => {
   bd = abrirBasePrueba();
-  const u = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
+  const u = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
   const e = crearEtiqueta("Crítica", "#C8743F");
   bd.aplicar([...u.sentencias, ...e.sentencias]);
   unidadId = u.id;

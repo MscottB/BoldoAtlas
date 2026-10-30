@@ -6,9 +6,26 @@ CREATE TABLE meta (
   valor TEXT
 );
 
+-- Niveles que nombra cada organización (Gerencia, Superintendencia, Área…). orden = nivel sugerido; no restringe la estructura.
+CREATE TABLE tipos_unidad (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_tipos_unidad_nombre ON tipos_unidad(lower(trim(nombre))) WHERE deleted_at IS NULL;
+-- Semillas con ids fijos (TIPO_* en src/db/tipos.ts); el usuario las renombra, reordena o desactiva.
+INSERT INTO tipos_unidad (id, nombre, orden, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000001', 'Gerencia', 10, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('00000000-0000-7000-8000-000000000002', 'Área',     20, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('00000000-0000-7000-8000-000000000003', 'Subárea',  30, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('00000000-0000-7000-8000-000000000004', 'Otra',     40, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+
 CREATE TABLE unidades (
   id          TEXT PRIMARY KEY NOT NULL,
-  tipo        TEXT NOT NULL CHECK (tipo IN ('gerencia', 'area', 'subarea', 'otra')),
+  tipo_id     TEXT NOT NULL REFERENCES tipos_unidad(id) DEFERRABLE INITIALLY DEFERRED,
   nombre      TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
   descripcion TEXT,
   parent_id   TEXT REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
@@ -20,6 +37,7 @@ CREATE TABLE unidades (
   updated_at  TEXT NOT NULL,
   deleted_at  TEXT
 );
+CREATE INDEX idx_unidades_tipo_id ON unidades(tipo_id);
 CREATE INDEX idx_unidades_parent_id ON unidades(parent_id);
 CREATE INDEX idx_unidades_jefe_puesto_id ON unidades(jefe_puesto_id);
 

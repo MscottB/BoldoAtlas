@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
 
 const SQL = readFileSync(new URL("../../src-tauri/migrations/0001_inicial.sql", import.meta.url), "utf8");
 const AHORA = "2026-10-28T12:00:00.000Z";
@@ -30,7 +31,7 @@ beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(SQL);
-  u = ins("unidades", { tipo: "gerencia", nombre: "Operaciones" });
+  u = ins("unidades", { tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
 });
 
 describe("esquema 0001", () => {
@@ -56,8 +57,28 @@ describe("esquema 0001", () => {
     db.exec("ROLLBACK");
   });
 
-  it("rechaza tipo de unidad inválido", () =>
-    expect(() => ins("unidades", { tipo: "gerncia", nombre: "X" })).toThrow(/CHECK/));
+  it("siembra los tipos de unidad con ids fijos y en orden", () =>
+    expect(db.prepare("SELECT id, nombre FROM tipos_unidad ORDER BY orden").all()).toEqual([
+      { id: TIPO_GERENCIA, nombre: "Gerencia" },
+      { id: TIPO_AREA, nombre: "Área" },
+      { id: TIPO_SUBAREA, nombre: "Subárea" },
+      { id: TIPO_OTRA, nombre: "Otra" },
+    ]));
+
+  it("unidades.tipo_id inexistente falla al confirmar", () => {
+    db.exec("BEGIN");
+    ins("unidades", { tipo_id: randomUUID(), nombre: "X" });
+    expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
+    db.exec("ROLLBACK");
+  });
+
+  it("unidades exige tipo_id", () =>
+    expect(() => ins("unidades", { nombre: "X" })).toThrow(/NOT NULL constraint failed: unidades.tipo_id/));
+
+  it("tipos_unidad rechaza un nombre repetido sin importar mayúsculas ni espacios", () => {
+    expect(() => ins("tipos_unidad", { nombre: " GERENCIA " })).toThrow(/UNIQUE/);
+    expect(() => ins("tipos_unidad", { nombre: "Superintendencia" })).not.toThrow();
+  });
 
   it("rechaza correo duplicado sin importar mayúsculas ni espacios", () => {
     ins("trabajadores", { nombre: "A", correo: "ana@x.cl" });
@@ -88,12 +109,12 @@ describe("esquema 0001", () => {
     const nueva = randomUUID();
     db.exec("BEGIN");
     ins("puestos", { unidad_id: nueva, cargo_id: ins("cargos", { nombre: "Analista" }) });
-    ins("unidades", { id: nueva, tipo: "area", nombre: "Logística", parent_id: u });
+    ins("unidades", { id: nueva, tipo_id: TIPO_AREA, nombre: "Logística", parent_id: u });
     expect(() => db.exec("COMMIT")).not.toThrow();
   });
 
   it("rechaza id nulo", () =>
-    expect(() => ins("unidades", { id: null, tipo: "area", nombre: "X" })).toThrow(/NOT NULL/));
+    expect(() => ins("unidades", { id: null, tipo_id: TIPO_AREA, nombre: "X" })).toThrow(/NOT NULL/));
 
   it("acepta varias personas con correo vacío", () => {
     ins("trabajadores", { nombre: "A", correo: "" });
@@ -185,15 +206,19 @@ describe("esquema 0001", () => {
 
     it("marca_codigo admite hasta 4 caracteres", () => {
       expect(() =>
-        ins("unidades", { tipo: "area", nombre: "A", marca_color: "#c2410c", marca_codigo: "OPER" }),
+        ins("unidades", { tipo_id: TIPO_AREA, nombre: "A", marca_color: "#c2410c", marca_codigo: "OPER" }),
       ).not.toThrow();
-      expect(() => ins("unidades", { tipo: "area", nombre: "B", marca_codigo: "OPERA" })).toThrow(/CHECK/);
+      expect(() => ins("unidades", { tipo_id: TIPO_AREA, nombre: "B", marca_codigo: "OPERA" })).toThrow(
+        /CHECK/,
+      );
     });
 
     it("jefe_puesto_id apunta a un puesto existente", () => {
-      expect(() => ins("unidades", { tipo: "area", nombre: "A", jefe_puesto_id: puesto })).not.toThrow();
+      expect(() =>
+        ins("unidades", { tipo_id: TIPO_AREA, nombre: "A", jefe_puesto_id: puesto }),
+      ).not.toThrow();
       db.exec("BEGIN");
-      ins("unidades", { tipo: "area", nombre: "B", jefe_puesto_id: randomUUID() });
+      ins("unidades", { tipo_id: TIPO_AREA, nombre: "B", jefe_puesto_id: randomUUID() });
       expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
       db.exec("ROLLBACK");
     });

@@ -62,14 +62,9 @@
   "arbol": {
     "vacioTitulo": "There are no units yet",
     "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here.",
-    "tipos": {
-      "gerencia": "Division",
-      "area": "Area",
-      "subarea": "Sub-area",
-      "otra": "Other"
-    },
     "nuevaUnidad": "New unit",
     "nuevaSubunidad": "New sub-unit",
+    "sinTiposActivos": "There are no active unit types.",
     "abrirComoArbol": "Open as tree",
     "nombre": "Unit name",
     "ayudaNombre": "Double-click or F2 to rename",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Conexion } from "../../db/tipos";
 import { u, unidades } from "./fixture";
 import { calcularLayout, colapsadosIniciales, subgrafoVisible, unidadesDeRama } from "./layout";
+import { TIPO_GERENCIA, TIPO_OTRA } from "@/db/tipos";
 
 const lateral: Conexion = { id: "c1", origen_id: "mecanica", destino_id: "finanzas", etiqueta: null };
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id).sort();
@@ -36,7 +37,11 @@ describe("layout del árbol", () => {
   });
 
   it("soporta varias raíces", () => {
-    const dos = [...unidades, u("otra", "otra", "Otra raíz", null), u("hija", "gerencia", "Hija", "otra")];
+    const dos = [
+      ...unidades,
+      u("otra", TIPO_OTRA, "Otra raíz", null),
+      u("hija", TIPO_GERENCIA, "Hija", "otra"),
+    ];
     expect(colapsadosIniciales(dos).has("otra")).toBe(false);
     expect(colapsadosIniciales(dos).has("hija")).toBe(false);
     const g = subgrafoVisible(dos, [], colapsadosIniciales(dos));

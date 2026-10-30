@@ -6,11 +6,13 @@ El árbol es la pantalla principal: muestra tu organización como un organigrama
 
 Cada unidad es una tarjeta con:
 
-- su tipo (gerencia, área, subárea u otra) y su nombre;
+- su tipo (por ejemplo, Gerencia o Área) y su nombre;
 - la foto o las iniciales y el nombre de la jefatura, o **Sin jefatura** si no tiene;
 - la dotación total de su rama (ella y todo lo que cuelga de ella);
 - las vacantes de la rama, si hay;
 - un punto de color por cada etiqueta (pasa el puntero por encima para ver su nombre).
+
+Los tipos de unidad son una lista propia de tu organización: al comienzo trae Gerencia, Área, Subárea y Otra, que se pueden renombrar, reordenar, desactivar o complementar con otros (por ejemplo, Superintendencia o Departamento). El orden de la lista no limita la estructura: cualquier tipo puede depender de cualquier otro.
 
 Las líneas continuas unen cada unidad con su superior. Las líneas punteadas son conexiones laterales entre unidades, con su descripción.
 
@@ -21,9 +23,9 @@ Al abrir el árbol se ven las raíces y su primer nivel; el resto está plegado.
 ## Seleccionar, crear y renombrar
 
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
-- En la tarjeta seleccionada aparece **+**: crea una subunidad (gerencia → área → subárea → otra) y la deja lista para escribir su nombre.
+- En la tarjeta seleccionada aparece **+**: crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
 - **Doble clic** sobre el nombre, o `F2` con el nombre enfocado, lo edita. `Enter` guarda y `Esc` cancela.
-- **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una gerencia raíz nueva.
+- **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una raíz nueva del primer tipo de la lista.
 
 ## Mover una unidad
 

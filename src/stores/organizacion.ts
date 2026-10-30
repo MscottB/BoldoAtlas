@@ -4,6 +4,8 @@ import { leerMeta, lote, consultar, type Sentencia } from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import {
   TABLAS_CATALOGO,
+  TIPO_AREA,
+  TIPO_GERENCIA,
   type Asignacion,
   type Conexion,
   type Puesto,
@@ -40,8 +42,8 @@ export interface Borrado {
 
 const VIGENCIA_DESHACER_MS = 8000;
 const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
-// El cargo es del puesto; los demás valores, de la persona.
-const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos">, keyof Trabajador> = {
+// El cargo es del puesto y el tipo, de la unidad; los demás valores, de la persona.
+const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos" | "tipos_unidad">, keyof Trabajador> = {
   tipos_contrato: "tipo_contrato_id",
   sedes: "sede_id",
   jornadas: "jornada_id",
@@ -81,7 +83,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const usos = (tabla: TablaCatalogo, id: string) =>
     tabla === "cargos"
       ? puestos.value.filter((p) => p.cargo_id === id).length
-      : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
+      : tabla === "tipos_unidad"
+        ? unidades.value.filter((u) => u.tipo_id === id).length
+        : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
 
   function fallo(e: unknown): { ok: false; mensaje: string } {
     const mensaje = traducirError(e);
@@ -158,7 +162,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   };
 
   const crearUnidad = (datos: Parameters<typeof U.crearUnidad>[0]) => escribir(() => U.crearUnidad(datos));
-  const crearArbol = (nombre: string, tipo: Unidad["tipo"]) => crearUnidad({ tipo, nombre });
+  const crearArbol = (nombre: string, tipo_id: string) => crearUnidad({ tipo_id, nombre });
   const editarUnidad = (id: string, cambios: Parameters<typeof U.editarUnidad>[1]) =>
     escribir(() => U.editarUnidad(id, cambios));
   const asignarJefe = (id: string, puestoId: string | null) => escribir(() => U.asignarJefe(id, puestoId));
@@ -281,30 +285,33 @@ export const useOrganizacion = defineStore("organizacion", () => {
         tipos_contrato: ["Indefinido", "Plazo fijo", "Honorarios"],
         sedes: ["Casa matriz", "Planta Norte"],
         jornadas: ["Completa", "Turnos 4x3"],
+        tipos_unidad: ["Superintendencia"], // los demás tipos vienen sembrados
       };
       const cat = Object.fromEntries(
         TABLAS_CATALOGO.map((t) => [t, valores[t].map((n) => nuevo(C.crearValor(t, n)))]),
       ) as Record<TablaCatalogo, string[]>;
+      const sup = cat.tipos_unidad[0];
+      s.push(...C.moverValor("tipos_unidad", sup, 15)); // entre Gerencia (10) y Área (20)
 
       // clave, nombre, tipo, clave del superior
-      const estructura: [string, string, Unidad["tipo"], string | null][] = [
-        ["gg", "Gerencia General", "gerencia", null],
-        ["op", "Operaciones", "gerencia", "gg"],
-        ["ma", "Mantención", "area", "op"],
-        ["me", "Mecánica", "subarea", "ma"],
-        ["el", "Eléctrica", "subarea", "ma"],
-        ["pr", "Producción", "area", "op"],
-        ["fi", "Finanzas", "gerencia", "gg"],
-        ["co", "Contabilidad", "area", "fi"],
-        ["cm", "Compras", "area", "fi"],
-        ["pe", "Personas", "gerencia", "gg"],
-        ["se", "Selección", "area", "pe"],
-        ["re", "Remuneraciones", "area", "pe"],
-        ["ca", "Capacitación", "area", "pe"],
+      const estructura: [string, string, string, string | null][] = [
+        ["gg", "Gerencia General", TIPO_GERENCIA, null],
+        ["op", "Operaciones", TIPO_GERENCIA, "gg"],
+        ["ma", "Mantención", sup, "op"],
+        ["me", "Mecánica", TIPO_AREA, "ma"],
+        ["el", "Eléctrica", TIPO_AREA, "ma"],
+        ["pr", "Producción", TIPO_AREA, "op"],
+        ["fi", "Finanzas", TIPO_GERENCIA, "gg"],
+        ["co", "Contabilidad", TIPO_AREA, "fi"],
+        ["cm", "Compras", TIPO_AREA, "fi"],
+        ["pe", "Personas", TIPO_GERENCIA, "gg"],
+        ["se", "Selección", TIPO_AREA, "pe"],
+        ["re", "Remuneraciones", TIPO_AREA, "pe"],
+        ["ca", "Capacitación", TIPO_AREA, "pe"],
       ];
       const uid: Record<string, string> = {};
-      estructura.forEach(([clave, nombre, tipo, padre], orden) => {
-        uid[clave] = nuevo(U.crearUnidad({ tipo, nombre, parent_id: padre && uid[padre], orden }));
+      estructura.forEach(([clave, nombre, tipo_id, padre], orden) => {
+        uid[clave] = nuevo(U.crearUnidad({ tipo_id, nombre, parent_id: padre && uid[padre], orden }));
       });
 
       // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde

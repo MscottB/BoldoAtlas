@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
-import type { SubarbolGuardado } from "@/db/tipos";
+import { TIPO_AREA, TIPO_GERENCIA, type SubarbolGuardado } from "@/db/tipos";
 import { crearUnidad, eliminarUnidad } from "./unidades";
 import {
   guardarSubarbol,
@@ -19,9 +19,9 @@ const leer = () => bd.consultar<SubarbolGuardado>(SQL_SUBARBOLES);
 
 beforeEach(() => {
   bd = abrirBasePrueba();
-  const r = crearUnidad({ tipo: "gerencia", nombre: "Raíz" });
-  const ua = crearUnidad({ tipo: "area", nombre: "A", parent_id: r.id });
-  const ub = crearUnidad({ tipo: "area", nombre: "B", parent_id: r.id });
+  const r = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "Raíz" });
+  const ua = crearUnidad({ tipo_id: TIPO_AREA, nombre: "A", parent_id: r.id });
+  const ub = crearUnidad({ tipo_id: TIPO_AREA, nombre: "B", parent_id: r.id });
   bd.aplicar([...r.sentencias, ...ua.sentencias, ...ub.sentencias]);
   [raiz, a, b] = [r.id, ua.id, ub.id];
 });
@@ -67,7 +67,7 @@ describe("subárboles guardados", () => {
       eliminarUnidad(
         {
           id: a,
-          tipo: "area",
+          tipo_id: TIPO_AREA,
           nombre: "A",
           descripcion: null,
           parent_id: raiz,

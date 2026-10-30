@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { crearUnidad } from "./unidades";
 import { crearConexion, eliminarConexion } from "./conexiones";
+import { TIPO_GERENCIA } from "@/db/tipos";
 
 let bd: BasePrueba;
 let a: string;
@@ -9,8 +10,8 @@ let b: string;
 
 beforeEach(() => {
   bd = abrirBasePrueba();
-  const ua = crearUnidad({ tipo: "gerencia", nombre: "A" });
-  const ub = crearUnidad({ tipo: "gerencia", nombre: "B" });
+  const ua = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "A" });
+  const ub = crearUnidad({ tipo_id: TIPO_GERENCIA, nombre: "B" });
   bd.aplicar([...ua.sentencias, ...ub.sentencias]);
   a = ua.id;
   b = ub.id;

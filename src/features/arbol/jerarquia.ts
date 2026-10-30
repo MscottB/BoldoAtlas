@@ -1,4 +1,4 @@
-import type { Asignacion, Puesto, Unidad } from "../../db/tipos";
+import type { Asignacion, Puesto, Unidad, ValorCatalogo } from "../../db/tipos";
 
 // Las lecturas de repos no traen deleted_at; se acepta por si el llamador pasa filas crudas.
 type ConBorrado<T> = T & { deleted_at?: string | null };
@@ -8,7 +8,8 @@ export function indexar(unidades: Unidad[]): Map<string, Unidad> {
   return new Map(unidades.map((u) => [u.id, u]));
 }
 
-const porOrden = (a: Unidad, b: Unidad) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es");
+type Ordenable = { orden: number; nombre: string };
+const porOrden = (a: Ordenable, b: Ordenable) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es");
 
 export function hijos(unidades: U[], id: string): Unidad[] {
   return unidades.filter((u) => u.parent_id === id && !u.deleted_at).sort(porOrden);
@@ -154,20 +155,32 @@ export function unidadesDePersona(
 export function marcaHeredada(
   unidades: Unidad[],
   unidadId: string,
-  nivel: Unidad["tipo"] | "cualquiera",
+  nivel: Unidad["tipo_id"] | "cualquiera",
 ): { color: string | null; codigo: string | null } | null {
   const m = ruta(unidades, unidadId)
     .reverse()
-    .find((u) => (nivel === "cualquiera" || u.tipo === nivel) && (u.marca_color || u.marca_codigo));
+    .find((u) => (nivel === "cualquiera" || u.tipo_id === nivel) && (u.marca_color || u.marca_codigo));
   return m ? { color: m.marca_color, codigo: m.marca_codigo } : null;
 }
 
-// Gerencia y área no se guardan en el trabajador: se derivan del ancestro más cercano de cada tipo.
-export function gerenciaYArea(
+// Gerencia, área, etc. no se guardan en el trabajador: se derivan del ancestro más cercano de cada tipo.
+/** Para cada tipo (en orden del catálogo), la unidad más cercana hacia arriba, incluida ella; omite los tipos ausentes. */
+export function rutaPorTipo(
   unidades: Unidad[],
+  tipos: ValorCatalogo[],
   unidadId: string,
-): { gerencia: string | null; area: string | null; subarea: string | null } {
+): { tipo: ValorCatalogo; unidad: Unidad }[] {
   const camino = ruta(unidades, unidadId).reverse();
-  const nombreDe = (tipo: Unidad["tipo"]) => camino.find((u) => u.tipo === tipo)?.nombre ?? null;
-  return { gerencia: nombreDe("gerencia"), area: nombreDe("area"), subarea: nombreDe("subarea") };
+  return [...tipos].sort(porOrden).flatMap((tipo) => {
+    const unidad = camino.find((u) => u.tipo_id === tipo.id);
+    return unidad ? [{ tipo, unidad }] : [];
+  });
+}
+
+/** Tipo sugerido para una unidad nueva: el siguiente activo en orden tras el de su superior (el último se repite; sin superior, el primero). */
+export function tipoHijo(tipos: ValorCatalogo[], tipoPadreId: string | null): string | undefined {
+  const orden = [...tipos].sort(porOrden);
+  const activos = orden.filter((t) => !t.deleted_at);
+  const i = orden.findIndex((t) => t.id === tipoPadreId);
+  return (orden.slice(i + 1).find((t) => !t.deleted_at) ?? activos[activos.length - 1])?.id;
 }

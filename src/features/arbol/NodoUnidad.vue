@@ -27,6 +27,9 @@ const { seleccion, editando, colapsados, seleccionar, alternarRama, coincide, nu
 const seleccionada = computed(() => seleccion.value === props.id);
 const atenuada = computed(() => !coincide(props.data.unidad));
 const plegada = computed(() => colapsados.value.has(props.id));
+const tipo = computed(
+  () => org.catalogos.tipos_unidad.find((x) => x.id === props.data.unidad.tipo_id)?.nombre,
+);
 const iniciales = computed(() =>
   (props.data.jefe?.nombre ?? "")
     .split(/\s+/)
@@ -56,7 +59,7 @@ async function guardar(e: Event) {
   >
     <Handle type="target" :position="Position.Top" class="opacity-0" />
     <div class="flex items-center justify-between text-muted-foreground">
-      <span class="uppercase">{{ t(`arbol.tipos.${data.unidad.tipo}`) }}</span>
+      <span class="uppercase">{{ tipo }}</span>
       <span class="flex gap-1">
         <span
           v-for="e in data.etiquetas"

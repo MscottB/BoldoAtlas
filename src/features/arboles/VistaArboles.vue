@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
-import { dotacionPorUnidad, ruta, rutaTexto } from "@/features/arbol/jerarquia";
+import { dotacionPorUnidad, ruta, rutaTexto, tipoHijo } from "@/features/arbol/jerarquia";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -42,7 +42,12 @@ const avisar = (r: Resultado) => {
 
 const creando = ref(false);
 const nombreNuevo = ref("");
-const tipoNuevo = ref<Unidad["tipo"]>("gerencia");
+const tipoNuevo = ref("");
+const nombreTipo = (id: string) => org.catalogos.tipos_unidad.find((x) => x.id === id)?.nombre;
+function empezarCrear() {
+  tipoNuevo.value = tipoHijo(org.catalogos.tipos_unidad, null) ?? "";
+  creando.value = true;
+}
 async function crear() {
   const r = await org.crearArbol(nombreNuevo.value.trim(), tipoNuevo.value);
   avisar(r);
@@ -71,7 +76,7 @@ async function renombrar(id: string) {
   <section class="mx-auto flex max-w-4xl flex-col gap-6 p-6">
     <header class="flex flex-wrap items-center gap-2">
       <h1 class="text-lg font-semibold">{{ t("arboles.titulo") }}</h1>
-      <Button class="ml-auto" size="sm" @click="creando = true">
+      <Button class="ml-auto" size="sm" @click="empezarCrear">
         <Plus aria-hidden="true" />
         {{ t("arboles.nuevoArbol") }}
       </Button>
@@ -95,11 +100,13 @@ async function renombrar(id: string) {
         class="h-7 rounded-md border bg-background px-2 text-sm"
         :aria-label="t('arboles.tipoArbol')"
       >
-        <option v-for="tipo in ['gerencia', 'area', 'subarea', 'otra']" :key="tipo" :value="tipo">
-          {{ t(`arbol.tipos.${tipo}`) }}
+        <option v-for="tipo in org.activos('tipos_unidad')" :key="tipo.id" :value="tipo.id">
+          {{ tipo.nombre }}
         </option>
       </select>
-      <Button type="submit" size="sm" :disabled="!nombreNuevo.trim()">{{ t("arboles.crear") }}</Button>
+      <Button type="submit" size="sm" :disabled="!nombreNuevo.trim() || !tipoNuevo">{{
+        t("arboles.crear")
+      }}</Button>
       <Button type="button" variant="outline" size="sm" @click="creando = false">
         {{ t("arbol.cancelar") }}
       </Button>
@@ -110,7 +117,7 @@ async function renombrar(id: string) {
         <FolderTree class="size-5 text-muted-foreground" aria-hidden="true" />
         <div class="min-w-0">
           <h2 class="truncate font-medium">{{ r.nombre }}</h2>
-          <p class="text-xs text-muted-foreground">{{ t(`arbol.tipos.${r.tipo}`) }}</p>
+          <p class="text-xs text-muted-foreground">{{ nombreTipo(r.tipo_id) }}</p>
         </div>
         <span class="flex items-center gap-1 text-sm" :title="t('arbol.dotacion')">
           <Users class="size-3.5" aria-hidden="true" />
