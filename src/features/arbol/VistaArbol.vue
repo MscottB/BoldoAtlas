@@ -65,7 +65,7 @@ const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
-const { colapsados, seleccion, expandir } = useLienzo();
+const { colapsados, seleccion, expandir, centrarEn } = useLienzo();
 const { fitView, setCenter, updateNode, updateNodeInternals, areNodesInitialized } = useVueFlow();
 const { config } = useVista();
 
@@ -102,20 +102,22 @@ const arbol = computed(() => arbolDeVista(raiz.value, org.subarboles));
 recordarPorArbol(computed(() => (arbol.value === undefined ? null : (arbol.value ?? "completo"))));
 
 // Al cambiar de vista, tras el próximo layout: encuadrar todo, o centrar en `centrar`.
-// `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada. Al entrar con /?ver=<id> (desde Revisión)
-// parte fijado: se abre el árbol completo con esa unidad seleccionada y centrada.
-let revelar: string | null =
+// `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada. Si no, manda /?ver=<id> (desde Revisión o la
+// paleta de comandos): se abre el árbol completo con esa unidad seleccionada y centrada.
+let revelar: string | null = null;
+const verDeLaRuta = () =>
   typeof route.query.ver === "string" && org.enFecha.porId.has(route.query.ver) ? route.query.ver : null;
 let encuadrar = false;
 let centrar: string | null = null;
 watch(
   raiz,
   () => {
+    const destino = revelar ?? verDeLaRuta();
     const c = colapsadosIniciales(mostradas.value);
-    if (revelar) for (const a of ruta(org.enFecha.unidades, revelar).slice(0, -1)) c.delete(a.id);
+    if (destino) for (const a of ruta(org.enFecha.unidades, destino).slice(0, -1)) c.delete(a.id);
     colapsados.value = c;
-    seleccion.value = centrar = revelar;
-    encuadrar = !revelar;
+    seleccion.value = centrar = destino;
+    encuadrar = !destino;
     revelar = null;
   },
   { immediate: true },
@@ -150,6 +152,14 @@ watch(
   },
   { immediate: true },
 );
+
+// Piden centrar una unidad (flechas, paleta). Si su rama estaba plegada aún no tiene lugar: se centra tras el layout.
+watch(centrarEn, (id) => {
+  if (!id) return;
+  centrarEn.value = null;
+  if (vista.value?.pos.has(id)) pendiente.value = { centrar: id };
+  else centrar = id;
+});
 
 // Otra dirección o densidad cambia la forma de todo el árbol: se encuadra tras el próximo layout, y los puntos de
 // conexión (arriba/abajo o izquierda/derecha) se vuelven a medir.

@@ -449,5 +449,29 @@
     "sinEstilo": "sin estilo",
     "errorNombre": "Escribe el nombre de la entrada.",
     "deLeyenda": "Leyenda: {nombre}"
+  },
+  "paleta": {
+    "titulo": "Paleta de comandos",
+    "descripcion": "Busca unidades, personas, puestos vacantes y acciones.",
+    "buscar": "Buscar unidades, personas o acciones",
+    "ayudaVacia": "Escribe para buscar unidades, personas y puestos vacantes.",
+    "sinResultados": "Sin coincidencias.",
+    "resultados": "Sin resultados | {n} resultado | {n} resultados",
+    "mas": "Hay {n} más: sigue escribiendo para acotar.",
+    "sinCargo": "Sin cargo vigente",
+    "grupos": {
+      "unidades": "Unidades",
+      "personas": "Personas",
+      "vacantes": "Puestos vacantes",
+      "acciones": "Acciones"
+    },
+    "acciones": {
+      "nueva": "Nueva unidad",
+      "directorio": "Ir al directorio",
+      "revision": "Ir a Revisión",
+      "tema": "Cambiar tema",
+      "configuracion": "Configuración",
+      "ayuda": "Ayuda"
+    }
   }
 }

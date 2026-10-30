@@ -34,7 +34,7 @@ const emit = defineEmits<{ cerrar: [] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { editando, seleccionar, expandir } = useLienzo();
+const { editando, seleccionar, expandir, pedidoEliminar } = useLienzo();
 const puesto = usePuesto();
 const uid = useId();
 
@@ -149,6 +149,14 @@ const guardada = computed(() => org.subarboles.some((s) => s.unidad_id === props
 // Eliminar
 const decision = computed(() => decisionEliminar(org.enFecha.unidades, org.enFecha.puestos, props.unidad.id));
 const confirmando = ref(false);
+function solicitarEliminar() {
+  if (soloLectura.value) return;
+  if (decision.value.accion === "bloqueada") return void toast.warning(t("store.raizConContenido"));
+  if (decision.value.accion === "mover") confirmando.value = true;
+  else void eliminar();
+}
+// Supr en el lienzo pide lo mismo que el botón: con contenido, primero se confirma.
+watch(pedidoEliminar, solicitarEliminar);
 async function eliminar() {
   const { id, nombre } = props.unidad;
   const r = await org.eliminarUnidad(id);
@@ -164,6 +172,7 @@ async function eliminar() {
 <template>
   <aside
     ref="raiz"
+    data-panel-unidad
     tabindex="-1"
     class="flex w-96 shrink-0 flex-col overflow-y-auto border-l bg-background focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     :aria-label="t('unidad.panel')"
@@ -342,7 +351,7 @@ async function eliminar() {
               size="sm"
               :disabled="decision.accion === 'bloqueada'"
               :aria-describedby="decision.accion === 'bloqueada' ? `${uid}-bloqueada` : undefined"
-              @click="decision.accion === 'mover' ? (confirmando = true) : eliminar()"
+              @click="solicitarEliminar"
             >
               <Trash2 aria-hidden="true" />
               {{ t("unidad.eliminar") }}

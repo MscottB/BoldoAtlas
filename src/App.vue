@@ -18,7 +18,9 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BarraSuperior from "@/components/BarraSuperior.vue";
+import PaletaComandos from "@/components/PaletaComandos.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
+import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
@@ -34,6 +36,7 @@ interface Entrada {
   contador?: () => number;
 }
 const avisos = useAvisos();
+useAtajos();
 const secciones: Entrada[] = [
   { to: "/", etiqueta: "nav.arbol", icono: Network },
   { to: "/arboles", etiqueta: "nav.arboles", icono: FolderTree },
@@ -122,12 +125,17 @@ watch(
         </template>
       </nav>
       <div class="flex min-w-0 flex-1 flex-col">
-        <BarraSuperior :colapsada="colapsada" @alternar-barra="manual = !colapsada" />
+        <BarraSuperior
+          :colapsada="colapsada"
+          @alternar-barra="manual = !colapsada"
+          @buscar="paletaAbierta = true"
+        />
         <main class="min-h-0 flex-1 overflow-auto">
           <RouterView />
         </main>
       </div>
     </div>
+    <PaletaComandos v-if="!route.meta.sinMarco" v-model:open="paletaAbierta" />
     <FichaTrabajador />
     <DialogoPuesto />
     <Toaster />

@@ -10,7 +10,8 @@ export function indexar(unidades: Unidad[]): Map<string, Unidad> {
 }
 
 type Ordenable = { orden: number; nombre: string };
-const porOrden = (a: Ordenable, b: Ordenable) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es");
+export const porOrden = (a: Ordenable, b: Ordenable) =>
+  a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es");
 
 export function hijos(unidades: U[], id: string): Unidad[] {
   return unidades.filter((u) => u.parent_id === id && !u.deleted_at).sort(porOrden);

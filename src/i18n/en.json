@@ -449,5 +449,29 @@
     "sinEstilo": "no style",
     "errorNombre": "Enter the entry name.",
     "deLeyenda": "Legend: {nombre}"
+  },
+  "paleta": {
+    "titulo": "Command palette",
+    "descripcion": "Search units, people, vacant positions and actions.",
+    "buscar": "Search units, people or actions",
+    "ayudaVacia": "Type to search units, people and vacant positions.",
+    "sinResultados": "No matches.",
+    "resultados": "No results | {n} result | {n} results",
+    "mas": "{n} more: keep typing to narrow down.",
+    "sinCargo": "No current position",
+    "grupos": {
+      "unidades": "Units",
+      "personas": "People",
+      "vacantes": "Vacant positions",
+      "acciones": "Actions"
+    },
+    "acciones": {
+      "nueva": "New unit",
+      "directorio": "Go to the directory",
+      "revision": "Go to Review",
+      "tema": "Change theme",
+      "configuracion": "Settings",
+      "ayuda": "Help"
+    }
   }
 }

@@ -10,7 +10,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useTema } from "@/features/tema/useTema";
 
 defineProps<{ colapsada: boolean }>();
-// "buscar" lo atiende la paleta de comandos (Ctrl+K), que llega en la tarea de la paleta.
+// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue.
 defineEmits<{ alternarBarra: []; buscar: [] }>();
 
 const { t } = useI18n();

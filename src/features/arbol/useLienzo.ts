@@ -4,7 +4,7 @@ import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
-import { hijos, tipoHijo, type Vigentes } from "./jerarquia";
+import { hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
 import { useVista } from "./useVista";
 import type { Resaltado } from "./vista";
 
@@ -73,6 +73,10 @@ export function destinoAlSoltar(
 const colapsados = ref(new Set<string>());
 const seleccion = ref<string | null>(null);
 const editando = ref<string | null>(null);
+/** Unidad que el lienzo debe centrar en cuanto pueda (VistaArbol lo atiende y lo deja en null). */
+const centrarEn = ref<string | null>(null);
+/** Cada pedido (Supr) sube el contador; el panel de la unidad seleccionada lo atiende con su flujo de eliminar. */
+const pedidoEliminar = ref(0);
 let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
 let cumplen: ComputedRef<Set<string> | null> | undefined;
 
@@ -119,12 +123,30 @@ export function useLienzo() {
     seleccion.value = editando.value = r.id!;
   }
 
+  /** Nueva unidad hija de la seleccionada; si no hay, de la raíz enfocada; si tampoco, una raíz nueva. */
+  const nuevaHija = (raiz: string | null) => {
+    const padre = seleccion.value ?? raiz;
+    return nuevaUnidad(padre ? (org.porId.get(padre) ?? null) : null);
+  };
+
+  /** Selecciona la unidad, abre las ramas que la esconden y pide centrarla. */
+  function revelar(id: string) {
+    const abiertas = new Set(colapsados.value);
+    for (const a of ruta(org.enFecha.unidades, id).slice(0, -1)) abiertas.delete(a.id);
+    if (abiertas.size !== colapsados.value.size) colapsados.value = abiertas; // no relanzar el layout sin necesidad
+    seleccion.value = centrarEn.value = id;
+  }
+
   return {
     colapsados,
     seleccion,
     editando,
+    centrarEn,
+    pedidoEliminar,
     expandir,
     nuevaUnidad,
+    nuevaHija,
+    revelar,
     alternarRama(id: string) {
       const s = new Set(colapsados.value);
       if (!s.delete(id)) s.add(id);

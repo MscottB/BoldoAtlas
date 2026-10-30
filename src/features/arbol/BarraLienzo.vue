@@ -18,7 +18,7 @@ import MenuVistas from "./MenuVistas.vue";
 const props = defineProps<{ raiz: string | null }>();
 const { t } = useI18n();
 const org = useOrganizacion();
-const { seleccion, nuevaUnidad } = useLienzo();
+const { seleccion, nuevaHija } = useLienzo();
 const { config } = useVista();
 const { zoomIn, zoomOut, fitView } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
 
@@ -28,11 +28,7 @@ onKeyStroke("0", (e) => {
   void fitView();
 });
 
-// Hija de la seleccionada; si no hay, de la raíz enfocada; si tampoco, una raíz nueva.
-function nueva() {
-  const padre = seleccion.value ?? props.raiz;
-  void nuevaUnidad(padre ? (org.porId.get(padre) ?? null) : null);
-}
+const nueva = () => void nuevaHija(props.raiz);
 
 // La unidad seleccionada, o la raíz enfocada. Una raíz ya es un árbol en Árboles: solo se guardan ramas.
 const aGuardar = computed(() => {
@@ -82,6 +78,7 @@ async function guardarEnArboles() {
     </select>
     <Input
       v-model="config.resaltar.texto"
+      data-buscar-lienzo
       type="search"
       class="h-7 w-48"
       :placeholder="t('arbol.resaltarTexto')"
