@@ -1,4 +1,5 @@
-import type { Asignacion, Puesto, Unidad, ValorCatalogo } from "../../db/tipos";
+import type { Asignacion, Puesto, Trabajador, Unidad, ValorCatalogo } from "../../db/tipos";
+import { hoyISO } from "../puestos/puestos";
 
 // Las lecturas de repos no traen deleted_at; se acepta por si el llamador pasa filas crudas.
 type ConBorrado<T> = T & { deleted_at?: string | null };
@@ -71,13 +72,32 @@ export function creaCiclo(unidades: U[], id: string, nuevoPadre: string | null):
 
 export type Vigentes = Map<string, { titular?: Asignacion; reemplazo?: Asignacion }>;
 
-/** Titular y reemplazo vigentes (hasta = null) de cada puesto, en una pasada. */
-export function vigentesPorPuesto(asignaciones: ConBorrado<Asignacion>[]): Vigentes {
+/** Alta y baja de una fila: instantes ISO (UTC). */
+type Vida = { created_at?: string; deleted_at?: string | null };
+// El día de un instante es el local (no el UTC): a la noche en Chile el UTC ya marcaría mañana.
+const dia = (instante: string) => hoyISO(new Date(instante));
+const sinBajaEn = (f: Vida, fecha: string) => !f.deleted_at || dia(f.deleted_at) > fecha;
+
+/** Existía el día `fecha` (AAAA-MM-DD): creada ese día o antes, y no eliminada ese día ni antes. Sin created_at, desde siempre. */
+export const existiaEn = (f: Vida, fecha: string): boolean =>
+  (!f.created_at || dia(f.created_at) <= fecha) && sinBajaEn(f, fecha);
+
+/** Asignaciones vigentes el día `fecha`: `desde <= fecha` y (`hasta` NULL o `hasta > fecha`). `created_at` no cuenta: una carga tardía manda por su `desde`. */
+export const vigentesEn = <T extends Vida & Pick<Asignacion, "desde" | "hasta">>(
+  asignaciones: T[],
+  fecha: string,
+): T[] =>
+  asignaciones.filter(
+    (a) => sinBajaEn(a, fecha) && a.desde <= fecha && (a.hasta === null || a.hasta > fecha),
+  );
+
+/** Titular y reemplazo vigentes de cada puesto, en una pasada: los de hoy (hasta = null) o, con `fecha`, los de ese día. */
+export function vigentesPorPuesto(asignaciones: ConBorrado<Asignacion>[], fecha?: string): Vigentes {
   const v: Vigentes = new Map();
-  for (const a of asignaciones) {
-    if (a.deleted_at || a.hasta !== null) continue;
-    v.set(a.puesto_id, { ...v.get(a.puesto_id), [a.tipo]: a });
-  }
+  const vigentes = fecha
+    ? vigentesEn(asignaciones, fecha)
+    : asignaciones.filter((a) => !a.deleted_at && a.hasta === null);
+  for (const a of vigentes) v.set(a.puesto_id, { ...v.get(a.puesto_id), [a.tipo]: a });
   return v;
 }
 
@@ -87,9 +107,10 @@ export function dotacion(
   puestos: ConBorrado<Puesto>[],
   asignaciones: ConBorrado<Asignacion>[],
   id: string,
+  fecha?: string,
 ): { directa: number; total: number; vacantes: number } {
   const rama = descendientes(unidades, id).add(id);
-  const vigentes = vigentesPorPuesto(asignaciones);
+  const vigentes = vigentesPorPuesto(asignaciones, fecha);
   const vivos = puestos.filter((p) => !p.deleted_at);
   const ocupado = (p: Puesto) => !!vigentes.get(p.id)?.titular;
   return {
@@ -104,10 +125,11 @@ export function dotacionPorUnidad(
   unidades: U[],
   puestos: ConBorrado<Puesto>[],
   asignaciones: ConBorrado<Asignacion>[],
+  fecha?: string,
 ): Map<string, { directa: number; total: number; vacantes: number }> {
   const res = new Map<string, { directa: number; total: number; vacantes: number }>();
   for (const u of unidades) if (!u.deleted_at) res.set(u.id, { directa: 0, total: 0, vacantes: 0 });
-  const vigentes = vigentesPorPuesto(asignaciones);
+  const vigentes = vigentesPorPuesto(asignaciones, fecha);
   for (const p of puestos) {
     const d = p.deleted_at ? undefined : res.get(p.unidad_id);
     if (d && vigentes.get(p.id)?.titular) d.directa++;
@@ -134,6 +156,35 @@ export function dotacionPorUnidad(
 export function jefeVisible(unidad: Unidad, vigentes: Vigentes): Asignacion | null {
   const v = unidad.jefe_puesto_id ? vigentes.get(unidad.jefe_puesto_id) : undefined;
   return v?.titular ?? v?.reemplazo ?? null;
+}
+
+/** Lo que lee «ver a una fecha»: todas las filas, también las eliminadas. */
+export interface Historico {
+  unidades: (Unidad & Vida)[];
+  puestos: (Puesto & Vida)[];
+  asignaciones: (Asignacion & Vida)[];
+  trabajadores: Trabajador[];
+}
+
+/**
+ * El organigrama el día `fecha`: unidades y puestos que existían (lo eliminado después reaparece como vivo; si su superior
+ * no se ve, queda como raíz) y el historial completo de sus asignaciones (`vigentesPorPuesto(…, fecha)` elige las de ese día).
+ * Los cambios de superior no se registran: la forma es la de hoy. Las personas se dejan todas, solo se leen sus nombres.
+ */
+export function instantaneaEn(h: Historico, fecha: string) {
+  const vivas = h.unidades.filter((u) => existiaEn(u, fecha));
+  const vistas = new Set(vivas.map((u) => u.id));
+  const unidades = vivas.map((u) => ({
+    ...u,
+    deleted_at: null,
+    parent_id: u.parent_id && vistas.has(u.parent_id) ? u.parent_id : null,
+  }));
+  const puestos = h.puestos
+    .filter((p) => vistas.has(p.unidad_id) && existiaEn(p, fecha))
+    .map((p) => ({ ...p, deleted_at: null }));
+  const deLosPuestos = new Set(puestos.map((p) => p.id));
+  const asignaciones = h.asignaciones.filter((a) => deLosPuestos.has(a.puesto_id) && sinBajaEn(a, fecha));
+  return { unidades, puestos, asignaciones, trabajadores: h.trabajadores };
 }
 
 /** Unidades donde la persona tiene un puesto vigente (titular o reemplazo), sin repetir. */

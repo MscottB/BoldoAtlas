@@ -69,6 +69,15 @@ Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este c
 
 El botón **Vistas** guarda con nombre la configuración actual (dirección, densidad, líneas, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.
 
+## Ver a una fecha
+
+El selector de fecha de la barra del lienzo muestra el organigrama como estaba un día pasado. Elige la fecha (no se aceptan fechas futuras): arriba aparece la banda **Viendo al … · solo lectura** con el botón **Volver a hoy**; también puedes vaciar el selector.
+
+- Los **jefes**, la **dotación**, las **vacantes** y los **puestos** se calculan con las asignaciones vigentes ese día: una asignación cuenta si empieza ese día o antes y no terminó (el día en que termina ya no cuenta, y es el primer día del relevo).
+- Se ocultan las unidades y los puestos **creados después** de esa fecha o **eliminados antes**. Lo eliminado después de la fecha reaparece.
+- Es de **solo lectura**: no se puede arrastrar, renombrar, crear, pegar estilo ni cambiar nada en el panel de la unidad ni en la ficha del puesto, que muestran los datos de ese día (el historial del puesto aparece completo). La **ficha de la persona** sí se abre con normalidad: sus datos no tienen historial. El directorio y la revisión de datos siguen siendo de hoy.
+- **Límite declarado:** los cambios de superior no se registran, así que la forma del árbol es la de hoy. Una unidad que se movió sigue en su lugar actual, una unidad eliminada reaparece bajo el último superior que tuvo (o como raíz si ese superior no existía ese día), y los puestos y la unidad de jefatura son los de hoy. Las asignaciones registradas con retraso cuentan desde su fecha de inicio.
+
 ## Panel de unidad
 
 Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un panel a la derecha: el lienzo se reduce, no queda tapado. El foco pasa al panel. El botón **Cerrar el panel** (la X), `Esc` o un clic en el fondo del lienzo lo cierran; con la X o `Esc` el foco vuelve a la tarjeta, y `Esc` guarda antes lo que estabas escribiendo. Arriba aparece la ubicación completa de la unidad, con el tipo de cada tramo; cada tramo se puede pulsar para seleccionar esa unidad.

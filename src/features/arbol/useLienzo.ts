@@ -4,7 +4,7 @@ import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
-import { hijos, tipoHijo, vigentesPorPuesto, type Vigentes } from "./jerarquia";
+import { hijos, tipoHijo, type Vigentes } from "./jerarquia";
 import { useVista } from "./useVista";
 import type { Resaltado } from "./vista";
 
@@ -96,14 +96,15 @@ export function useLienzo() {
   cumplen ??= computed(() =>
     unidadesQueCumplen(
       config.value.resaltar,
-      org.puestos,
-      vigentesPorPuesto(org.asignaciones),
-      org.trabajadores,
+      org.enFecha.puestos,
+      org.enFecha.vigentes,
+      org.enFecha.trabajadores,
     ),
   );
 
   /** Crea una subunidad de `padre` (o una raíz) con nombre provisorio y la deja seleccionada y en edición. */
   async function nuevaUnidad(padre: Unidad | null) {
+    if (org.fechaVista) return; // solo lectura
     const hermanos = padre ? hijos(org.unidades, padre.id) : org.raices;
     const tipo_id = tipoHijo(org.catalogos.tipos_unidad, padre?.tipo_id ?? null);
     if (!tipo_id) return void toast.error(i18n.global.t("arbol.sinTiposActivos"));

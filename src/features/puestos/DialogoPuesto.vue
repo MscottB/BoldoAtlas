@@ -26,7 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Asignacion } from "@/db/tipos";
-import { rutaPorTipo, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { rutaPorTipo } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -42,27 +42,31 @@ const ctl = usePuesto();
 
 // null = puesto nuevo, aún sin crear.
 const puesto = computed(() =>
-  ctl.abierta.value?.id ? org.puestos.find((p) => p.id === ctl.abierta.value!.id) : undefined,
+  ctl.abierta.value?.id ? org.enFecha.puestos.find((p) => p.id === ctl.abierta.value!.id) : undefined,
 );
 // Un puesto que ya no existe (borrado) no ofrece acciones: el diálogo se cierra.
 watch([ctl.abierta, puesto], ([a, p]) => a?.id && !p && ctl.cerrar());
 
-const unidad = computed(() => org.porId.get(puesto.value?.unidad_id ?? ctl.abierta.value?.unidadId ?? ""));
+// Con una fecha elegida se ve el puesto de ese día (titular, reemplazo e historial completo) y no se puede cambiar nada.
+const soloLectura = computed(() => !!org.fechaVista);
+const unidad = computed(() =>
+  org.enFecha.porId.get(puesto.value?.unidad_id ?? ctl.abierta.value?.unidadId ?? ""),
+);
 const ubicacion = computed(
   () =>
-    rutaPorTipo(org.unidades, org.catalogos.tipos_unidad, unidad.value?.id ?? "")
+    rutaPorTipo(org.enFecha.unidades, org.catalogos.tipos_unidad, unidad.value?.id ?? "")
       .map((r) => `${r.tipo.nombre}: ${r.unidad.nombre}`)
       .join(" · ") || unidad.value?.nombre,
 );
 const cargo = computed(() => org.catalogos.cargos.find((c) => c.id === puesto.value?.cargo_id)?.nombre);
 const titulo = computed(() => cargo.value ?? t("puesto.nuevo"));
 
-const personas = computed(() => new Map(org.trabajadores.map((w) => [w.id, w.nombre])));
+const personas = computed(() => new Map(org.enFecha.trabajadores.map((w) => [w.id, w.nombre])));
 const nombre = (id: string) => personas.value.get(id) ?? "";
-const vigentes = computed(() =>
-  puesto.value ? vigentesPorPuesto(org.asignaciones).get(puesto.value.id) : undefined,
+const vigentes = computed(() => (puesto.value ? org.enFecha.vigentes.get(puesto.value.id) : undefined));
+const historial = computed(() =>
+  puesto.value ? historialPuesto(org.enFecha.asignaciones, puesto.value.id) : [],
 );
-const historial = computed(() => (puesto.value ? historialPuesto(org.asignaciones, puesto.value.id) : []));
 const esJefatura = computed(() => !!puesto.value && unidad.value?.jefe_puesto_id === puesto.value.id);
 const fecha = (iso: string) => formatearFecha(iso, locale.value);
 
@@ -170,6 +174,9 @@ async function verPersona(id: string) {
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
         <DialogDescription>{{ ubicacion }}</DialogDescription>
+        <p v-if="soloLectura" class="text-sm text-muted-foreground">
+          {{ t("arbol.fecha.dialogoSoloLectura", { fecha: fecha(org.fechaVista!) }) }}
+        </p>
       </DialogHeader>
 
       <div class="grid gap-3">
@@ -181,23 +188,32 @@ async function verPersona(id: string) {
             tabla="cargos"
             requerido
             :model-value="puesto.cargo_id"
+            :disabled="soloLectura"
             @update:model-value="cambiarCargo"
           />
           <SelectorCatalogo v-else id="puesto-cargo" v-model="cargoNuevo" tabla="cargos" requerido />
         </div>
         <div class="grid gap-1.5">
           <Label for="puesto-descripcion">{{ t("puesto.descripcion") }}</Label>
-          <Textarea id="puesto-descripcion" v-model="descripcion" @blur="puesto && guardarDescripcion()" />
+          <Textarea
+            id="puesto-descripcion"
+            v-model="descripcion"
+            :disabled="soloLectura"
+            @blur="puesto && guardarDescripcion()"
+          />
         </div>
 
         <template v-if="puesto">
-          <EstiloPuesto :puesto="puesto" />
+          <fieldset :disabled="soloLectura" class="contents">
+            <EstiloPuesto :puesto="puesto" />
+          </fieldset>
 
           <label class="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               class="size-4 accent-primary"
               :checked="esJefatura"
+              :disabled="soloLectura"
               @change="alternarJefatura"
             />
             {{ t("puesto.esJefatura") }}
@@ -223,6 +239,7 @@ async function verPersona(id: string) {
                   variant="outline"
                   class="w-fit"
                   :aria-label="t('puesto.terminarDe', { nombre: nombre(vigentes[tipo]!.trabajador_id) })"
+                  :disabled="soloLectura"
                   @click="abrirForm('terminar', vigentes[tipo])"
                 >
                   {{ t("puesto.accion.terminar") }}
@@ -236,10 +253,16 @@ async function verPersona(id: string) {
           </section>
 
           <div class="flex flex-wrap gap-2">
-            <Button type="button" size="sm" @click="abrirForm('titular')">{{
+            <Button type="button" size="sm" :disabled="soloLectura" @click="abrirForm('titular')">{{
               t("puesto.accion.titular")
             }}</Button>
-            <Button type="button" size="sm" variant="outline" @click="abrirForm('reemplazo')">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              :disabled="soloLectura"
+              @click="abrirForm('reemplazo')"
+            >
               {{ t("puesto.accion.reemplazo") }}
             </Button>
           </div>
@@ -297,7 +320,14 @@ async function verPersona(id: string) {
       </div>
 
       <DialogFooter>
-        <Button v-if="puesto" type="button" variant="destructive" class="sm:mr-auto" @click="eliminar">
+        <Button
+          v-if="puesto"
+          type="button"
+          variant="destructive"
+          class="sm:mr-auto"
+          :disabled="soloLectura"
+          @click="eliminar"
+        >
           <Trash2 aria-hidden="true" />
           {{ t("puesto.eliminar") }}
         </Button>

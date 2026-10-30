@@ -69,6 +69,15 @@ Each tree (the full one or a subtree saved in Trees) remembers on this computer 
 
 The **Views** button saves the current configuration (direction, density, lines, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
 
+## Viewing a past date
+
+The date picker in the canvas toolbar shows the org chart as it was on a past day. Pick the date (future dates are not accepted): the **Viewing as of … · read only** band appears at the top with a **Back to today** button; you can also clear the picker.
+
+- **Managers**, **headcount**, **vacancies** and **positions** are calculated with the assignments in force that day: an assignment counts if it starts that day or earlier and has not ended (the day it ends no longer counts, and is the first day of the handover).
+- Units and positions **created after** that date or **deleted before** it are hidden. Anything deleted after the date reappears.
+- It is **read only**: you cannot drag, rename, create, paste a style or change anything in the unit panel or the position card, which show that day's data (the position history is shown in full). The **person's card** opens normally: their data has no history. The directory and the data review still show today.
+- **Declared limit:** changes of parent unit are not recorded, so the shape of the tree is today's. A unit that was moved stays where it is now, a deleted unit reappears under the last parent it had (or as a root if that parent did not exist that day), and the positions and the manager position are today's. Assignments entered late count from their start date.
+
 ## Unit panel
 
 Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on the right: the canvas shrinks, it is not covered. Focus moves into the panel. The **Close the panel** button (the X), `Esc` or a click on the canvas background close it; with the X or `Esc` focus returns to the card, and `Esc` first saves whatever you were typing. At the top you see the unit's full location, with the type of each step; each step can be pressed to select that unit.

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import { leerMeta, lote, consultar, type Sentencia } from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import {
@@ -28,8 +28,15 @@ import * as V from "@/db/repos/vistas";
 import * as P from "@/db/repos/puestos";
 import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
+import { SQL_HISTORICO } from "@/db/repos/historico";
 import { guardarMeta } from "@/db/repos/meta";
-import { creaCiclo, hijos } from "@/features/arbol/jerarquia";
+import {
+  creaCiclo,
+  hijos,
+  instantaneaEn,
+  vigentesPorPuesto,
+  type Historico,
+} from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
 import { i18n } from "@/i18n";
 
@@ -79,10 +86,30 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const guardando = computed(() => pendientes.value > 0);
   const error = ref<string | null>(null);
   const ultimoBorrado = ref<Borrado | null>(null);
+  /** Día (AAAA-MM-DD) al que se ve el organigrama; null = hoy. No persiste. */
+  const fechaVista = ref<string | null>(null);
+  /** Filas con lo eliminado, cargadas solo mientras se ve una fecha: nunca se mezclan con los arreglos vivos. */
+  const historico = shallowRef<Historico | null>(null);
 
   const porId = computed(() => new Map(unidades.value.map((u) => [u.id, u])));
   const raices = computed(() => unidades.value.filter((u) => u.parent_id === null));
   const vacia = computed(() => unidades.value.length === 0);
+
+  /** Lo que muestran el lienzo y sus paneles: lo vivo de hoy o, con `fechaVista`, el organigrama de ese día. */
+  const enFecha = computed(() => {
+    const f = fechaVista.value;
+    const foto = f && historico.value ? instantaneaEn(historico.value, f) : null;
+    const us: Unidad[] = foto?.unidades ?? unidades.value;
+    const asignacionesDelDia: Asignacion[] = foto?.asignaciones ?? asignaciones.value;
+    return {
+      unidades: us,
+      puestos: (foto?.puestos ?? puestos.value) as Puesto[],
+      asignaciones: asignacionesDelDia,
+      trabajadores: (foto?.trabajadores ?? trabajadores.value) as Trabajador[],
+      porId: foto ? new Map(us.map((u) => [u.id, u])) : porId.value,
+      vigentes: vigentesPorPuesto(asignacionesDelDia, foto && f ? f : undefined),
+    };
+  });
 
   const activos = (tabla: TablaCatalogo) =>
     catalogos.value[tabla]
@@ -107,12 +134,36 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return { ok: false, mensaje };
   }
 
+  async function leerHistorico(): Promise<Historico> {
+    const [unidades, puestos, asignaciones, trabajadores] = await Promise.all([
+      consultar<Historico["unidades"][number]>(SQL_HISTORICO.unidades),
+      consultar<Historico["puestos"][number]>(SQL_HISTORICO.puestos),
+      consultar<Historico["asignaciones"][number]>(SQL_HISTORICO.asignaciones),
+      consultar<Trabajador>(SQL_HISTORICO.trabajadores),
+    ]);
+    return { unidades, puestos, asignaciones, trabajadores };
+  }
+
+  /** `fecha` null = volver a hoy (descarta lo histórico). */
+  async function verAFecha(fecha: string | null): Promise<Resultado> {
+    if (fecha && !historico.value) {
+      try {
+        historico.value = await leerHistorico();
+      } catch (e) {
+        return fallo(e);
+      }
+    }
+    if (!fecha) historico.value = null;
+    fechaVista.value = fecha;
+    return { ok: true };
+  }
+
   let ultimaCarga = 0; // solo la carga más reciente aplica su resultado
 
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      const [u, t, pu, as, et, ue, co, sa, le, vi, meta, ...cats] = await Promise.all([
+      const [u, t, pu, as, et, ue, co, sa, le, vi, meta, hist, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
         consultar<Puesto>(P.SQL_PUESTOS),
@@ -124,6 +175,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         consultar<Leyenda>(L.SQL_LEYENDAS),
         consultar<Vista>(V.SQL_VISTAS),
         leerMeta(),
+        fechaVista.value ? leerHistorico() : null, // lo histórico se mantiene al día si se escribe mientras se ve una fecha
         ...TABLAS_CATALOGO.map((tabla) => consultar<ValorCatalogo>(C.sqlValores(tabla))),
       ]);
       if (esta !== ultimaCarga) return { ok: true };
@@ -141,6 +193,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         TablaCatalogo,
         ValorCatalogo[]
       >;
+      if (hist && fechaVista.value) historico.value = hist;
       org.value = { nombre: meta.org_nombre ?? "", logo: meta.logo_png || null };
       cargado.value = true;
       error.value = null;
@@ -549,6 +602,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
     guardando,
     error,
     ultimoBorrado,
+    fechaVista,
+    enFecha,
+    verAFecha,
     porId,
     raices,
     vacia,

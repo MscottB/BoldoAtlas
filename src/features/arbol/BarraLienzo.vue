@@ -7,6 +7,7 @@ import { onKeyStroke } from "@vueuse/core";
 import { Bookmark, BookmarkCheck, Maximize, Plus, ZoomIn, ZoomOut } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { hoyISO } from "@/features/puestos/puestos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
@@ -39,6 +40,14 @@ const aGuardar = computed(() => {
   return u?.parent_id ? u : null;
 });
 const guardada = computed(() => org.subarboles.some((s) => s.unidad_id === aGuardar.value?.id));
+// Fecha elegida: vacía = hoy. No se ofrecen fechas futuras; un valor fuera de rango (tecleado) se ignora.
+async function elegirFecha(e: Event) {
+  const campo = e.target as HTMLInputElement;
+  if (campo.value > hoyISO()) return void (campo.value = org.fechaVista ?? "");
+  const v = campo.value;
+  const r = await org.verAFecha(v || null);
+  if (!r.ok) toast.error(r.mensaje);
+}
 async function guardarEnArboles() {
   const r = aGuardar.value && (await org.guardarSubarbol(aGuardar.value.id));
   if (r && !r.ok) toast.error(r.mensaje);
@@ -47,11 +56,17 @@ async function guardarEnArboles() {
 
 <template>
   <div class="flex flex-wrap items-center gap-2 border-b p-2">
-    <Button size="sm" @click="nueva">
+    <Button size="sm" :disabled="!!org.fechaVista" @click="nueva">
       <Plus aria-hidden="true" />
       {{ t("arbol.nuevaUnidad") }}
     </Button>
-    <Button v-if="aGuardar" variant="outline" size="sm" :disabled="guardada" @click="guardarEnArboles">
+    <Button
+      v-if="aGuardar"
+      variant="outline"
+      size="sm"
+      :disabled="guardada || !!org.fechaVista"
+      @click="guardarEnArboles"
+    >
       <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
       {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
     </Button>
@@ -73,6 +88,16 @@ async function guardarEnArboles() {
       :aria-label="t('arbol.resaltarTexto')"
     />
     <PanelResaltar />
+    <Input
+      data-fecha-vista
+      type="date"
+      class="h-7 w-40"
+      :max="hoyISO()"
+      :model-value="org.fechaVista ?? ''"
+      :title="t('arbol.fecha.titulo')"
+      :aria-label="t('arbol.fecha.titulo')"
+      @change="elegirFecha"
+    />
     <span class="ml-auto flex gap-1">
       <Button
         variant="outline"

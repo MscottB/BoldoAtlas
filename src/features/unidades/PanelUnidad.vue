@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { Unidad } from "@/db/tipos";
-import { dotacion, jefeVisible, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { dotacion, jefeVisible } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
@@ -48,6 +48,8 @@ function cerrar() {
   emit("cerrar");
 }
 
+// Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada.
+const soloLectura = computed(() => !!org.fechaVista);
 const pestana = ref("resumen");
 const avisar = (r: Resultado) => !r.ok && toast.error(r.mensaje);
 
@@ -65,7 +67,7 @@ watch(
   { immediate: true },
 );
 
-const migasRuta = computed(() => migas(org.unidades, org.catalogos.tipos_unidad, props.unidad.id));
+const migasRuta = computed(() => migas(org.enFecha.unidades, org.catalogos.tipos_unidad, props.unidad.id));
 // El tipo actual se ofrece aunque lo hayan desactivado.
 const tipos = computed(() => {
   const activos = org.activos("tipos_unidad");
@@ -87,7 +89,7 @@ async function guardarDescripcion() {
 // Superior
 const excluidas = computed(() => excluidasComoSuperior(org.unidades, props.unidad.id));
 const textoSuperior = computed(
-  () => org.porId.get(props.unidad.parent_id ?? "")?.nombre ?? t("unidad.sinSuperior"),
+  () => org.enFecha.porId.get(props.unidad.parent_id ?? "")?.nombre ?? t("unidad.sinSuperior"),
 );
 async function cambiarSuperior(id: string | null) {
   if (id === props.unidad.parent_id) return;
@@ -113,23 +115,31 @@ async function quitarMarca() {
 }
 
 // Jefatura, dotación y puestos
-const vigentes = computed(() => vigentesPorPuesto(org.asignaciones));
+const vigentes = computed(() => org.enFecha.vigentes);
 const filas = computed(() =>
   filasDePuestos(
     props.unidad,
-    org.puestos,
+    org.enFecha.puestos,
     vigentes.value,
-    org.trabajadores,
+    org.enFecha.trabajadores,
     org.catalogos.cargos,
     org.leyendas,
   ),
 );
 const jefe = computed(() => {
   const a = jefeVisible(props.unidad, vigentes.value);
-  const nombre = org.trabajadores.find((w) => w.id === a?.trabajador_id)?.nombre;
+  const nombre = org.enFecha.trabajadores.find((w) => w.id === a?.trabajador_id)?.nombre;
   return a && nombre ? (a.tipo === "reemplazo" ? t("arbol.reemplazo", { nombre }) : nombre) : null;
 });
-const personal = computed(() => dotacion(org.unidades, org.puestos, org.asignaciones, props.unidad.id));
+const personal = computed(() =>
+  dotacion(
+    org.enFecha.unidades,
+    org.enFecha.puestos,
+    org.enFecha.asignaciones,
+    props.unidad.id,
+    org.fechaVista ?? undefined,
+  ),
+);
 const textoPuesto = (f: (typeof filas.value)[number]) => `${f.cargo} · ${f.titular ?? t("puesto.vacante")}`;
 
 // Guardar en Árboles: una raíz ya es un árbol en Árboles, solo se guardan ramas.
@@ -137,7 +147,7 @@ const guardable = computed(() => props.unidad.parent_id !== null);
 const guardada = computed(() => org.subarboles.some((s) => s.unidad_id === props.unidad.id));
 
 // Eliminar
-const decision = computed(() => decisionEliminar(org.unidades, org.puestos, props.unidad.id));
+const decision = computed(() => decisionEliminar(org.enFecha.unidades, org.enFecha.puestos, props.unidad.id));
 const confirmando = ref(false);
 async function eliminar() {
   const { id, nombre } = props.unidad;
@@ -193,6 +203,10 @@ async function eliminar() {
       <h2 class="truncate text-base font-semibold">{{ unidad.nombre }}</h2>
     </header>
 
+    <p v-if="soloLectura" class="border-b bg-muted px-3 py-1.5 text-xs text-foreground">
+      {{ t("arbol.fecha.panelSoloLectura") }}
+    </p>
+
     <Tabs v-model="pestana" class="flex-1 p-3">
       <TabsList class="w-full">
         <TabsTrigger value="resumen">{{ t("unidad.resumen") }}</TabsTrigger>
@@ -201,7 +215,8 @@ async function eliminar() {
       </TabsList>
 
       <TabsContent value="resumen">
-        <div :key="unidad.id" class="grid gap-4 pt-2">
+        <!-- fieldset disabled: deshabilita de una vez todos los campos y botones del resumen. -->
+        <fieldset :key="unidad.id" :disabled="soloLectura" class="grid min-w-0 gap-4 pt-2">
           <div class="grid gap-1.5">
             <Label :for="`${uid}-tipo`">{{ t("unidad.tipo") }}</Label>
             <select
@@ -340,7 +355,7 @@ async function eliminar() {
               {{ t("store.raizConContenido") }}
             </p>
           </div>
-        </div>
+        </fieldset>
       </TabsContent>
 
       <TabsContent value="puestos">
@@ -387,6 +402,7 @@ async function eliminar() {
             size="sm"
             variant="outline"
             class="justify-self-start"
+            :disabled="soloLectura"
             @click="puesto.nuevo(unidad.id)"
           >
             <Plus aria-hidden="true" />

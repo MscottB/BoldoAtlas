@@ -8,7 +8,7 @@ import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
 import "@vue-flow/minimap/dist/style.css";
 import { toast } from "vue-sonner";
-import { ArrowUp, Network } from "@lucide/vue";
+import { ArrowUp, CalendarClock, Network } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +32,6 @@ import {
   rutasPorTipo,
   rutaSuperiores,
   tiposEnUso,
-  vigentesPorPuesto,
 } from "./jerarquia";
 import {
   calcularLayout,
@@ -58,10 +57,11 @@ import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
+import { formatearFecha } from "@/features/puestos/puestos";
 
 type Punto = { x: number; y: number };
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
@@ -70,16 +70,20 @@ const { fitView, setCenter, updateNode, updateNodeInternals, areNodesInitialized
 const { config } = useVista();
 
 // Opciones de «Vista» que cambian lo dibujado. Solo cuentan los tipos que alguna unidad usa.
-const tiposUso = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
+const tiposUso = computed(() => tiposEnUso(org.enFecha.unidades, org.catalogos.tipos_unidad));
 const tiposRuta = computed(
   () => new Set(tiposUso.value.filter((x) => config.value.rutaTipos.includes(x.id)).map((x) => x.id)),
 );
 const porLeyenda = computed(() => config.value.colorearPor === CRITERIO_LEYENDA);
 const tipoMarca = computed(() => tipoDeMarca(config.value.colorearPor, tiposUso.value));
 // Sobre todas las unidades, no solo la rama enfocada: la marca puede venir de un superior fuera de ella.
-const marcas = computed(() => (tipoMarca.value ? marcasPorUnidad(org.unidades, tipoMarca.value) : null));
+const marcas = computed(() =>
+  tipoMarca.value ? marcasPorUnidad(org.enFecha.unidades, tipoMarca.value) : null,
+);
 const rutas = computed(() =>
-  tiposRuta.value.size ? rutasPorTipo(org.unidades, org.catalogos.tipos_unidad, tiposRuta.value) : null,
+  tiposRuta.value.size
+    ? rutasPorTipo(org.enFecha.unidades, org.catalogos.tipos_unidad, tiposRuta.value)
+    : null,
 );
 // Igual que la tarjeta de NodoUnidad (misma función); con la ruta por tipo suma una línea, y la compacta es de una línea.
 const TAM = computed(() => tamUnidad(config.value, !!rutas.value));
@@ -87,10 +91,12 @@ const TAM = computed(() => tamUnidad(config.value, !!rutas.value));
 // Vista enfocada: /?raiz=<id>. Una raíz que ya no existe se ignora y se ve todo.
 const raiz = computed(() => {
   const r = route.query.raiz;
-  return typeof r === "string" && org.porId.has(r) ? r : null;
+  return typeof r === "string" && org.enFecha.porId.has(r) ? r : null;
 });
-const mostradas = computed(() => (raiz.value ? unidadesDeRama(org.unidades, raiz.value) : org.unidades));
-const origen = computed(() => (raiz.value ? ruta(org.unidades, raiz.value) : []));
+const mostradas = computed(() =>
+  raiz.value ? unidadesDeRama(org.enFecha.unidades, raiz.value) : org.enFecha.unidades,
+);
+const origen = computed(() => (raiz.value ? ruta(org.enFecha.unidades, raiz.value) : []));
 // Cada árbol (completo o subárbol guardado) recuerda su última configuración; una rama sin guardar usa la general.
 const arbol = computed(() => arbolDeVista(raiz.value, org.subarboles));
 recordarPorArbol(computed(() => (arbol.value === undefined ? null : (arbol.value ?? "completo"))));
@@ -99,14 +105,14 @@ recordarPorArbol(computed(() => (arbol.value === undefined ? null : (arbol.value
 // `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada. Al entrar con /?ver=<id> (desde Revisión)
 // parte fijado: se abre el árbol completo con esa unidad seleccionada y centrada.
 let revelar: string | null =
-  typeof route.query.ver === "string" && org.porId.has(route.query.ver) ? route.query.ver : null;
+  typeof route.query.ver === "string" && org.enFecha.porId.has(route.query.ver) ? route.query.ver : null;
 let encuadrar = false;
 let centrar: string | null = null;
 watch(
   raiz,
   () => {
     const c = colapsadosIniciales(mostradas.value);
-    if (revelar) for (const a of ruta(org.unidades, revelar).slice(0, -1)) c.delete(a.id);
+    if (revelar) for (const a of ruta(org.enFecha.unidades, revelar).slice(0, -1)) c.delete(a.id);
     colapsados.value = c;
     seleccion.value = centrar = revelar;
     encuadrar = !revelar;
@@ -124,7 +130,7 @@ watch(
       mostradas.value,
       org.conexiones,
       colapsados.value,
-      config.value.verPuestos ? org.puestos : [],
+      config.value.verPuestos ? org.enFecha.puestos : [],
     ),
     tam: TAM.value,
     tamDelPuesto: tamPuesto(config.value),
@@ -166,7 +172,7 @@ watch([pendiente, areNodesInitialized], ([p, medidos]) => {
   else void fitView();
 });
 
-const trabajadorPorId = computed(() => new Map(org.trabajadores.map((x) => [x.id, x])));
+const trabajadorPorId = computed(() => new Map(org.enFecha.trabajadores.map((x) => [x.id, x])));
 const etiquetasDe = computed(() => {
   const porId = new Map(org.etiquetas.map((e) => [e.id, e]));
   const m = new Map<string, Etiqueta[]>();
@@ -181,8 +187,13 @@ const nodos = computed<Node[]>(() => {
   if (!vista.value) return [];
   const { g, pos } = vista.value;
   const indice = indiceHijos(mostradas.value);
-  const dotaciones = dotacionPorUnidad(mostradas.value, org.puestos, org.asignaciones);
-  const vigentes = vigentesPorPuesto(org.asignaciones);
+  const dotaciones = dotacionPorUnidad(
+    mostradas.value,
+    org.enFecha.puestos,
+    org.enFecha.asignaciones,
+    org.fechaVista ?? undefined,
+  );
+  const vigentes = org.enFecha.vigentes;
   const unidades = g.nodos.map((u): Node<DatosNodo> => {
     const { total, vacantes } = dotaciones.get(u.id)!;
     const jefe = jefeVisible(u, vigentes);
@@ -302,7 +313,7 @@ async function mover() {
 
 // Panel de la unidad seleccionada. Al cerrarlo con el teclado o su botón, el foco vuelve a la tarjeta.
 const unidadSeleccionada = computed(() =>
-  seleccion.value ? (org.porId.get(seleccion.value) ?? null) : null,
+  seleccion.value ? (org.enFecha.porId.get(seleccion.value) ?? null) : null,
 );
 async function cerrarPanel() {
   const id = seleccion.value;
@@ -313,6 +324,13 @@ async function cerrarPanel() {
 // Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta).
 function escEnLienzo(e: KeyboardEvent) {
   if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) void cerrarPanel();
+}
+
+// La banda desaparece con el botón: el foco pasa al selector de fecha, que queda en la barra.
+async function volverAHoy() {
+  await org.verAFecha(null);
+  await nextTick();
+  document.querySelector<HTMLElement>("[data-fecha-vista]")?.focus();
 }
 
 const irA = (id: string | null) => router.push({ query: id ? { raiz: id } : {} });
@@ -347,7 +365,7 @@ function verCompleto() {
         </li>
       </ol>
       <span class="ml-auto flex gap-1">
-        <Button variant="outline" size="sm" @click="irA(org.porId.get(raiz)?.parent_id ?? null)">
+        <Button variant="outline" size="sm" @click="irA(org.enFecha.porId.get(raiz)?.parent_id ?? null)">
           <ArrowUp aria-hidden="true" />
           {{ t("arbol.subirNivel") }}
         </Button>
@@ -355,6 +373,21 @@ function verCompleto() {
       </span>
     </nav>
     <BarraLienzo :raiz="raiz" />
+    <div role="status">
+      <div
+        v-if="org.fechaVista"
+        class="flex flex-wrap items-center gap-2 border-b bg-muted px-3 py-1.5 text-sm text-foreground"
+      >
+        <CalendarClock class="size-4 shrink-0" aria-hidden="true" />
+        <span>
+          {{ t("arbol.fecha.viendo", { fecha: formatearFecha(org.fechaVista, locale) }) }}
+          <span class="text-muted-foreground">· {{ t("arbol.fecha.soloLectura") }}</span>
+        </span>
+        <Button variant="outline" size="sm" class="ml-auto" @click="volverAHoy">
+          {{ t("arbol.fecha.volver") }}
+        </Button>
+      </div>
+    </div>
     <div class="flex min-h-0 flex-1">
       <div class="relative min-w-0 flex-1" @keydown.esc="escEnLienzo">
         <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
@@ -362,6 +395,7 @@ function verCompleto() {
           :nodes="nodos"
           :edges="aristas"
           :min-zoom="0.05"
+          :nodes-draggable="!org.fechaVista"
           :elements-selectable="false"
           :nodes-connectable="false"
           :nodes-focusable="false"

@@ -43,6 +43,8 @@ const tam = computed(() => {
   return { width: `${ancho}px`, height: `${alto}px` };
 });
 
+// Con una fecha elegida el organigrama es de solo lectura: no se renombra ni se agregan subunidades.
+const soloLectura = computed(() => !!org.fechaVista);
 const seleccionada = computed(() => seleccion.value === props.id);
 const atenuada = computed(() => !coincide(props.data.unidad));
 const plegada = computed(() => colapsados.value.has(props.id));
@@ -58,6 +60,10 @@ const iniciales = computed(() =>
     .toUpperCase(),
 );
 const vFoco: Directive<HTMLInputElement> = { mounted: (el) => (el.focus(), el.select()) };
+
+function renombrar() {
+  if (!soloLectura.value) editando.value = props.id;
+}
 
 async function guardar(e: Event) {
   if (editando.value !== props.id) return; // Esc ya canceló, o Enter ya guardó antes del blur
@@ -131,9 +137,9 @@ async function guardar(e: Event) {
       class="truncate rounded text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring"
       :class="compacta && 'min-w-0 flex-1'"
       :aria-pressed="seleccionada"
-      :title="t('arbol.ayudaNombre')"
-      @dblclick="editando = id"
-      @keydown.f2="editando = id"
+      :title="soloLectura ? undefined : t('arbol.ayudaNombre')"
+      @dblclick="renombrar"
+      @keydown.f2="renombrar"
     >
       {{ data.unidad.nombre }}
     </button>
@@ -191,6 +197,7 @@ async function guardar(e: Event) {
             <SquareArrowOutUpRight class="size-3" aria-hidden="true" />
           </button>
           <button
+            v-if="!soloLectura"
             type="button"
             class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             :aria-label="t('arbol.nuevaSubunidad')"

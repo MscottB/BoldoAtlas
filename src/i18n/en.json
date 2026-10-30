@@ -69,6 +69,14 @@
     "abrirComoArbol": "Open as tree",
     "nombre": "Unit name",
     "ayudaNombre": "Double-click or F2 to rename",
+    "fecha": {
+      "titulo": "View the org chart on a date",
+      "viendo": "Viewing as of {fecha}",
+      "soloLectura": "read only",
+      "volver": "Back to today",
+      "panelSoloLectura": "Data for the chosen date: read only. Go back to today to edit.",
+      "dialogoSoloLectura": "Position as of {fecha}: read only. Go back to today in the tree to edit."
+    },
     "sinJefatura": "No manager",
     "dotacion": "Total headcount",
     "vacantes": "{n} vacancy | {n} vacancies",

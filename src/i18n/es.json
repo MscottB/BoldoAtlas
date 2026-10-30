@@ -69,6 +69,14 @@
     "abrirComoArbol": "Abrir como árbol",
     "nombre": "Nombre de la unidad",
     "ayudaNombre": "Doble clic o F2 para renombrar",
+    "fecha": {
+      "titulo": "Ver el organigrama a una fecha",
+      "viendo": "Viendo al {fecha}",
+      "soloLectura": "solo lectura",
+      "volver": "Volver a hoy",
+      "panelSoloLectura": "Datos de la fecha elegida: solo lectura. Vuelve a hoy para editar.",
+      "dialogoSoloLectura": "Puesto al {fecha}: solo lectura. Vuelve a hoy en el árbol para editar."
+    },
     "sinJefatura": "Sin jefatura",
     "dotacion": "Dotación total",
     "vacantes": "{n} vacante | {n} vacantes",

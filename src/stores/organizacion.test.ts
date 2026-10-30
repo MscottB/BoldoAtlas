@@ -779,3 +779,62 @@ describe("vistas guardadas", () => {
     expect(s.vistas.map((v) => v.arbol_id)).toEqual([null]);
   });
 });
+
+describe("organigrama a una fecha", () => {
+  /** Enero: se crean raíz, rama, puesto y persona; marzo: la rama y la persona se eliminan y llega otro titular. */
+  async function historia() {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 0, 10, 12));
+    const s = nuevo();
+    const raiz = await unidad(s, "Raíz");
+    const rama = await unidad(s, "Rama", raiz);
+    const p = await puesto(s, rama);
+    const ana = await persona(s, "Ana");
+    const beto = await persona(s, "Beto");
+    await s.asignarTitular(p, ana, "2026-01-10");
+    vi.setSystemTime(new Date(2026, 2, 10, 12));
+    await s.asignarTitular(p, beto, "2026-03-10");
+    await s.eliminarUnidad(rama);
+    await s.eliminarTrabajador(ana);
+    return { s, raiz, rama, p, ana, beto };
+  }
+
+  it("sin fecha, enFecha es lo vivo de hoy y fechaVista es null", async () => {
+    const { s, raiz, p, beto } = await historia();
+    expect(s.fechaVista).toBeNull();
+    expect(s.enFecha.unidades.map((u) => u.id)).toEqual([raiz]);
+    expect(s.enFecha.vigentes.get(p)?.titular?.trabajador_id).toBe(beto);
+  });
+
+  it("verAFecha carga lo eliminado solo mientras se ve y no toca los arreglos vivos", async () => {
+    const { s, raiz, rama, p, ana } = await historia();
+    expect((await s.verAFecha("2026-02-01")).ok).toBe(true);
+    expect(s.fechaVista).toBe("2026-02-01");
+    expect(s.enFecha.unidades.map((u) => u.id).sort()).toEqual([raiz, rama].sort());
+    expect(s.enFecha.vigentes.get(p)?.titular?.trabajador_id).toBe(ana);
+    expect(s.enFecha.trabajadores.map((w) => w.nombre).sort()).toEqual(["Ana", "Beto"]);
+    expect(s.unidades.map((u) => u.id)).toEqual([raiz]); // lo vivo no se mezcla
+    expect(s.trabajadores.map((w) => w.nombre)).toEqual(["Beto"]);
+
+    await s.verAFecha(null);
+    expect(s.fechaVista).toBeNull();
+    expect(s.enFecha.unidades.map((u) => u.id)).toEqual([raiz]);
+  });
+
+  it("cambiar de fecha cambia el titular y una fecha anterior a la creación oculta todo", async () => {
+    const { s, p, beto } = await historia();
+    await s.verAFecha("2026-02-01");
+    await s.verAFecha("2026-03-10");
+    expect(s.enFecha.vigentes.get(p)?.titular?.trabajador_id).toBe(beto);
+    await s.verAFecha("2025-12-31");
+    expect(s.enFecha.unidades).toEqual([]);
+    expect(s.enFecha.puestos).toEqual([]);
+  });
+
+  it("al escribir mientras se ve una fecha, lo histórico también se recarga", async () => {
+    const { s, beto } = await historia();
+    await s.verAFecha("2026-03-10");
+    await s.editarTrabajador(beto, { nombre: "Beto R." });
+    expect(s.enFecha.trabajadores.some((w) => w.nombre === "Beto R.")).toBe(true);
+  });
+});
