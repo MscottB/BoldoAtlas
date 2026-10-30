@@ -496,7 +496,7 @@ Orden de ejecución completo: …, 11, 11b, 11e, 11c, 11d, **11f**, 10, 12, **12
 
 ## Anexo 3 (comentarios del autor tras probar el ejemplo, 2026-10-30) — spec §7 "Comentarios del autor…"
 
-Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17a, 17b, 17c, 17f (pestañas), 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14. "Comparar dos proyectos" queda en Escenarios (Fase 5), con modo lado a lado.
+Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17g (cierre limpio, primero por ser pequeño), 17a, 17b, 17c, 17f (pestañas), 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14. "Comparar dos proyectos" queda en Escenarios (Fase 5), con modo lado a lado.
 
 ### Task 17a: Menú de la app, volver a Inicio y vistas que se cierran
 - Botón de menú de la app en la barra superior (logo + nombre de la organización) con: Inicio, Nueva organización vacía, Explorar el ejemplo, Abrir `.boldo` (deshabilitado, Fase 5), Importar Excel (deshabilitado, Fase 4), Respaldos, Configuración; las mismas acciones en la paleta Ctrl+K.
@@ -531,3 +531,8 @@ Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas
 ### Task 17e: Aplicar la propuesta de UX/UI
 - Aplicar 17d en todas las vistas, con capturas antes/después en ambos temas y contraste AA medido.
 - Commit: `feat(ui): opciones básicas y avanzadas, temas claro y oscuro refinados`
+
+### Task 17g (pedido del autor): cerrar limpio, sin procesos colgados
+- App: al salir (`RunEvent::Exit`/`ExitRequested`), cerrar la conexión SQLite de forma ordenada (checkpoint del WAL, sin `-wal`/`-shm` sobrantes); un respaldo en curso se escribe a un nombre temporal y se renombra al terminar, para que un cierre a mitad nunca deje un respaldo parcial con nombre válido. Verificar que tras cerrar la ventana no queda ningún proceso `boldo-atlas.exe` ni del WebView2 de la app.
+- Desarrollo (`npm run app`): al cerrar la ventana o con Ctrl+C se detiene todo el árbol de procesos lanzado (Tauri CLI, cargo, Vite) y el puerto elegido queda libre; si aun así queda un proceso escuchando en ese puerto y su línea de comando es el Vite de este repositorio, se detiene (nunca otro proceso). Parte pura (parseo de netstat / decisión) con tests.
+- Commit: `fix: cerrar limpio la app y el entorno de desarrollo`
