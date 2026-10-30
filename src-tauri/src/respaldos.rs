@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 const PREFIJO: &str = "boldo-";
 /// Copia de la base actual que se hace antes de restaurar: se lista (para poder deshacer) pero nunca se poda.
 const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
+const SUFIJO_TEMPORAL: &str = ".tmp";
 pub const CONSERVAR: usize = 10;
 
 /// Error con un código estable que el frontend traduce (`respaldos.error.<codigo>`); `detalle` es técnico.
@@ -124,8 +125,27 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
         })
         .find(|n| !dir.join(n).exists())
         .expect("siempre hay un sufijo libre");
-    conn.execute("VACUUM INTO ?1", [dir.join(&nombre).to_string_lossy()])?;
-    Ok(nombre)
+    // Se escribe a un nombre que no es de respaldo y se renombra al terminar: un cierre a mitad
+    // nunca deja un archivo parcial con nombre válido.
+    let temporal = dir.join(format!("{nombre}{SUFIJO_TEMPORAL}"));
+    let _ = fs::remove_file(&temporal);
+    let hecho = conn
+        .execute("VACUUM INTO ?1", [temporal.to_string_lossy()])
+        .map_err(Fallo::from)
+        .and_then(|_| fs::rename(&temporal, dir.join(&nombre)).map_err(Fallo::from));
+    if hecho.is_err() {
+        let _ = fs::remove_file(&temporal);
+    }
+    hecho.map(|_| nombre)
+}
+
+/// Borra los temporales que dejó un respaldo interrumpido. Se llama al iniciar, cuando ninguno está en curso.
+pub fn limpiar_parciales(dir: &Path) {
+    for e in fs::read_dir(dir).into_iter().flatten().flatten() {
+        if e.file_name().to_string_lossy().ends_with(SUFIJO_TEMPORAL) {
+            let _ = fs::remove_file(e.path());
+        }
+    }
 }
 
 /// `VACUUM INTO respaldos/boldo-<sello>.db` (o `-2`, `-3`… si ya existe) y poda a los últimos CONSERVAR.
@@ -354,6 +374,34 @@ mod tests {
             respaldar(&conn, &respaldos, &sello).unwrap(),
             format!("boldo-{sello}-3.db")
         );
+    }
+
+    #[test]
+    fn un_respaldo_interrumpido_no_se_lista_y_se_limpia() {
+        let dir = tempfile::tempdir().unwrap();
+        let (_, respaldos, conn) = base(dir.path());
+        // lo que deja un cierre a mitad de `VACUUM INTO`: el nombre temporal, nunca uno válido
+        fs::write(respaldos.join("boldo-20260101-0900.db.tmp"), "a medias").unwrap();
+        fs::write(respaldos.join("notas.txt"), "x").unwrap();
+        assert!(listar(&respaldos).unwrap().is_empty());
+        limpiar_parciales(&respaldos);
+        assert_eq!(archivos(&respaldos), ["notas.txt"]);
+        // uno completo sí se lista y no deja temporales
+        respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        assert_eq!(listar(&respaldos).unwrap().len(), 1);
+        assert!(archivos(&respaldos).iter().all(|n| !n.ends_with(".tmp")));
+    }
+
+    #[test]
+    fn un_temporal_viejo_no_impide_respaldar_con_ese_nombre() {
+        let dir = tempfile::tempdir().unwrap();
+        let (_, respaldos, conn) = base(dir.path());
+        fs::write(respaldos.join("boldo-20260101-0900.db.tmp"), "a medias").unwrap();
+        assert_eq!(
+            respaldar(&conn, &respaldos, "20260101-0900").unwrap(),
+            "boldo-20260101-0900.db"
+        );
+        assert_eq!(listar(&respaldos).unwrap()[0].revision, Some(0));
     }
 
     #[test]

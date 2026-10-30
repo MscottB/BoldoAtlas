@@ -71,7 +71,7 @@ Requiere Node 24+ y Rust estable.
 
 ```bash
 npm ci
-npm run app            # app en modo desarrollo (elige un puerto libre)
+npm run app            # app en modo desarrollo (elige un puerto libre; al cerrar la ventana o con Ctrl+C se detiene todo)
 npm run test           # tests del frontend
 cargo test --manifest-path src-tauri/Cargo.toml   # tests de Rust
 npm run release        # release completo de Windows en release/<versión>/
