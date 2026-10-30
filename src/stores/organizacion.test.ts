@@ -3,7 +3,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import * as U from "@/db/repos/unidades";
 import { useOrganizacion } from "./organizacion";
-import { TIPO_AREA, TIPO_GERENCIA } from "@/db/tipos";
+import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
+import { cambiarIdioma } from "@/i18n";
 import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
 
 // antesDeLote / antesDeMeta: ganchos de los tests para pausar una llamada y forzar solapes.
@@ -836,5 +837,154 @@ describe("organigrama a una fecha", () => {
     await s.verAFecha("2026-03-10");
     await s.editarTrabajador(beto, { nombre: "Beto R." });
     expect(s.enFecha.trabajadores.some((w) => w.nombre === "Beto R.")).toBe(true);
+  });
+});
+
+describe("mantenedores: usos por tabla, orden y último tipo", () => {
+  it("cada tabla cuenta lo suyo: cargos y leyendas, puestos; contrato, sede y jornada, personas; tipos, unidades", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const leyenda = await s.crearLeyenda({ nombre: "Crítico", color: "#be123c" });
+    const contrato = await s.crearValor("tipos_contrato", "Indefinido");
+    const jornada = await s.crearValor("jornadas", "Completa");
+    if (!leyenda.ok || !contrato.ok || !jornada.ok) throw new Error("no se creó");
+    const p1 = await puesto(s, u);
+    await puesto(s, u);
+    await s.asignarLeyenda(p1, leyenda.id);
+    await s.crearTrabajador({ nombre: "Ana", tipo_contrato_id: contrato.id, jornada_id: jornada.id });
+    await s.crearTrabajador({ nombre: "Beto", tipo_contrato_id: contrato.id });
+    expect(s.usos("leyendas", leyenda.id)).toBe(1);
+    expect(s.usos("tipos_contrato", contrato.id)).toBe(2);
+    expect(s.usos("jornadas", jornada.id)).toBe(1);
+  });
+
+  it("los usos no cuentan lo eliminado", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const leyenda = await s.crearLeyenda({ nombre: "Crítico", color: "#be123c" });
+    if (!leyenda.ok) throw new Error("no se creó");
+    const p = await puesto(s, u);
+    await s.asignarLeyenda(p, leyenda.id);
+    await s.eliminarPuesto(p);
+    expect(s.usos("leyendas", leyenda.id)).toBe(0);
+  });
+
+  it("no desactiva el último tipo de unidad activo", async () => {
+    const s = nuevo();
+    await s.cargar();
+    for (const t of [TIPO_GERENCIA, TIPO_AREA, TIPO_SUBAREA])
+      expect((await s.desactivarValor("tipos_unidad", t)).ok).toBe(true);
+    const antes = revision();
+    const r = await s.desactivarValor("tipos_unidad", TIPO_OTRA);
+    expect(r).toEqual({ ok: false, mensaje: "Debe quedar al menos un tipo de unidad activo." });
+    expect(revision()).toBe(antes);
+    expect(s.activos("tipos_unidad").map((v) => v.id)).toEqual([TIPO_OTRA]);
+    expect((await s.reactivarValor("tipos_unidad", TIPO_AREA)).ok).toBe(true);
+    expect((await s.desactivarValor("tipos_unidad", TIPO_OTRA)).ok).toBe(true); // ya hay otro activo
+  });
+
+  it("ordenar reescribe el orden de catálogos y leyendas en un solo lote", async () => {
+    const s = nuevo();
+    const a = await s.crearValor("sedes", "Norte");
+    const b = await s.crearValor("sedes", "Sur");
+    const c = await s.crearValor("sedes", "Este");
+    if (!a.ok || !b.ok || !c.ok) throw new Error("no se creó");
+    const antes = revision();
+    expect((await s.ordenar("sedes", [c.id, a.id, b.id])).ok).toBe(true);
+    expect(revision()).toBe(antes + 1);
+    expect(s.activos("sedes").map((v) => v.nombre)).toEqual(["Este", "Norte", "Sur"]);
+    const l1 = await s.crearLeyenda({ nombre: "A", color: "#be123c" });
+    const l2 = await s.crearLeyenda({ nombre: "B", color: "#be123c" });
+    if (!l1.ok || !l2.ok) throw new Error("no se creó");
+    await s.ordenar("leyendas", [l2.id, l1.id]);
+    expect(s.leyendasActivas.map((l) => l.nombre)).toEqual(["B", "A"]);
+  });
+
+  it("ordenar sin cambios no escribe", async () => {
+    const s = nuevo();
+    const a = await s.crearValor("sedes", "Norte");
+    if (!a.ok) throw new Error("no se creó");
+    await s.ordenar("sedes", [a.id]);
+    const antes = revision();
+    expect((await s.ordenar("sedes", [a.id])).ok).toBe(true);
+    expect(revision()).toBe(antes);
+  });
+});
+
+describe("crearOrganizacion", () => {
+  afterEach(() => cambiarIdioma("es"));
+
+  it("guarda el nombre y crea la raíz con el primer tipo activo, en un solo lote", async () => {
+    const s = nuevo();
+    await s.cargar();
+    const antes = revision();
+    const r = await s.crearOrganizacion("  Acme ", " Gerencia General ");
+    expect(r.ok).toBe(true);
+    expect(revision()).toBe(antes + 1);
+    expect(s.org.nombre).toBe("Acme");
+    expect(s.unidades).toHaveLength(1);
+    expect(s.unidades[0]).toMatchObject({
+      nombre: "Gerencia General",
+      tipo_id: TIPO_GERENCIA,
+      parent_id: null,
+    });
+    expect(s.activos("tipos_unidad")[0].nombre).toBe("Gerencia");
+  });
+
+  it("el tipo de la raíz es el primero del orden, no el sembrado", async () => {
+    const s = nuevo();
+    const t = await s.crearValor("tipos_unidad", "Holding");
+    if (!t.ok) throw new Error("no se creó");
+    await s.ordenar("tipos_unidad", [t.id, TIPO_GERENCIA, TIPO_AREA, TIPO_SUBAREA, TIPO_OTRA]);
+    await s.crearOrganizacion("Acme", "Matriz");
+    expect(s.unidades[0].tipo_id).toBe(t.id);
+  });
+
+  it("rechaza nombres vacíos sin escribir", async () => {
+    const s = nuevo();
+    await s.cargar();
+    const antes = revision();
+    expect((await s.crearOrganizacion(" ", "Raíz")).ok).toBe(false);
+    expect((await s.crearOrganizacion("Acme", " ")).ok).toBe(false);
+    expect(revision()).toBe(antes);
+  });
+
+  it("con la interfaz en inglés renombra los tipos sembrados sin uso", async () => {
+    cambiarIdioma("en");
+    const s = nuevo();
+    await s.cargar();
+    await s.crearOrganizacion("Acme", "Head office");
+    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual([
+      "Management",
+      "Area",
+      "Sub-area",
+      "Other",
+    ]);
+  });
+});
+
+describe("cargarEjemplo en inglés", () => {
+  afterEach(() => cambiarIdioma("es"));
+
+  it("escribe los textos de la demostración en inglés, con los tipos sembrados renombrados", async () => {
+    cambiarIdioma("en");
+    const s = nuevo();
+    await s.cargar(); // la app carga la base al abrir; de ahí salen los tipos sembrados
+    expect((await s.cargarEjemplo()).ok).toBe(true);
+    expect(s.org.nombre).toBe("Demo Company");
+    expect(s.unidades.map((u) => u.nombre)).toContain("General Management");
+    expect(s.unidades.some((u) => u.nombre === "Gerencia General")).toBe(false);
+    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual([
+      "Management",
+      "Superintendency",
+      "Area",
+      "Sub-area",
+      "Other",
+    ]);
+    expect(s.activos("cargos").map((v) => v.nombre)).toContain("Analyst");
+    expect(s.leyendasActivas.map((l) => l.nombre)).toContain("Critical");
+    expect(s.etiquetas.map((e) => e.nombre)).toContain("Strategic");
+    expect(s.conexiones[0].etiqueta).toBe("Spare parts supply");
+    expect(s.usos("tipos_unidad", TIPO_GERENCIA)).toBeGreaterThan(0);
   });
 });

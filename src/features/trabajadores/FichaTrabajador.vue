@@ -30,6 +30,7 @@ import type { TablaCatalogo, Trabajador } from "@/db/tipos";
 import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { asignacionesDePersona, formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { usePuesto } from "@/features/puestos/usePuesto";
+import { base64De, leerComoUrl } from "@/features/configuracion/logo";
 import { useOrganizacion } from "@/stores/organizacion";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
@@ -187,13 +188,7 @@ async function elegirFoto(e: Event) {
   errorFoto.value = validarFoto(archivo) ?? "";
   if (errorFoto.value) return;
   try {
-    const url = await new Promise<string>((ok, mal) => {
-      const lector = new FileReader();
-      lector.onload = () => ok(lector.result as string);
-      lector.onerror = () => mal(lector.error);
-      lector.readAsDataURL(archivo);
-    });
-    cambiar("foto_png", url.slice(url.indexOf(",") + 1)); // solo el base64, como en NodoUnidad
+    cambiar("foto_png", base64De(await leerComoUrl(archivo))); // solo el base64, como en NodoUnidad
   } catch {
     errorFoto.value = t("ficha.error.fotoLectura");
   }

@@ -2,8 +2,8 @@ import { ref, watch } from "vue";
 import { guardarPreferencia, leerPreferencia } from "../../lib/preferencias";
 import { ACENTOS, textoSobre, type Acento, type Escala, type Tema } from "./tema";
 
-const TEMAS: Tema[] = ["claro", "oscuro", "sistema"];
-const ESCALAS: Escala[] = [90, 100, 110, 125];
+export const TEMAS: Tema[] = ["claro", "oscuro", "sistema"];
+export const ESCALAS: Escala[] = [90, 100, 110, 125];
 
 // Estado a nivel de módulo: una sola fuente de verdad para main.ts y Configuración.
 // Se valida lo leído: una preferencia corrupta no debe dejar la interfaz rota.

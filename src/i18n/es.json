@@ -247,10 +247,6 @@
       "ayuda": "Valores activos de los mantenedores y leyendas activas que nada usa."
     }
   },
-  "provisional": {
-    "bienvenida": "Bienvenida",
-    "enConstruccion": "En construcción"
-  },
   "idioma": {
     "etiqueta": "Idioma",
     "es": "Español",
@@ -283,7 +279,8 @@
     "noSePuedeDeshacer": "Ya no se puede deshacer.",
     "valorExiste": "Ya existe «{nombre}» en la lista.",
     "puestoInexistente": "El puesto ya no existe.",
-    "nadaQuePegar": "No hay un estilo copiado que se pueda pegar."
+    "nadaQuePegar": "No hay un estilo copiado que se pueda pegar.",
+    "ultimoTipoUnidad": "Debe quedar al menos un tipo de unidad activo."
   },
   "ficha": {
     "tituloPersona": "Ficha de persona",
@@ -473,5 +470,118 @@
       "configuracion": "Configuración",
       "ayuda": "Ayuda"
     }
+  },
+  "bienvenida": {
+    "titulo": "Te damos la bienvenida a BoldoAtlas",
+    "subtitulo": "Elige cómo empezar.",
+    "vacia": {
+      "titulo": "Crear una organización vacía",
+      "texto": "Empieza desde cero: nombras la organización y su primera unidad."
+    },
+    "excel": {
+      "titulo": "Cargar desde Excel",
+      "texto": "Importa la estructura y las personas desde una planilla."
+    },
+    "boldo": {
+      "titulo": "Abrir un archivo .boldo",
+      "texto": "Continúa con una organización guardada en un archivo."
+    },
+    "ejemplo": {
+      "titulo": "Explorar un ejemplo",
+      "texto": "Una organización de muestra para recorrer la app."
+    },
+    "llegaFase4": "Fase 4",
+    "llegaFase5": "Fase 5",
+    "organizacion": "Nombre de la organización",
+    "raiz": "Nombre de la unidad raíz",
+    "raizEjemplo": "Por ejemplo: Gerencia General",
+    "crear": "Crear organización",
+    "cancelar": "Cancelar"
+  },
+  "config": {
+    "organizacion": {
+      "titulo": "Organización",
+      "nombre": "Nombre de la organización"
+    },
+    "logo": {
+      "titulo": "Logo",
+      "ayuda": "PNG, JPG o WebP de hasta 1 MB. Se usa en las exportaciones.",
+      "alt": "Logo de la organización",
+      "sin": "Sin logo",
+      "elegir": "Elegir imagen…",
+      "cambiar": "Cambiar imagen…",
+      "quitar": "Quitar logo",
+      "error": {
+        "tipo": "El archivo debe ser PNG, JPG o WebP.",
+        "tamano": "La imagen pesa más de 1 MB.",
+        "lectura": "No se pudo leer la imagen."
+      }
+    },
+    "apariencia": {
+      "titulo": "Apariencia",
+      "ayuda": "Estas preferencias valen solo para este computador."
+    },
+    "tema": {
+      "etiqueta": "Tema",
+      "claro": "Claro",
+      "oscuro": "Oscuro",
+      "sistema": "Según el sistema"
+    },
+    "acento": {
+      "etiqueta": "Color de acento",
+      "cobre": "Cobre",
+      "azul": "Azul",
+      "verde": "Verde",
+      "violeta": "Violeta"
+    },
+    "escala": {
+      "etiqueta": "Tamaño de la interfaz"
+    },
+    "mantenedores": {
+      "texto": "Cargos, tipos de contrato, sedes, jornadas, tipos de unidad y leyendas.",
+      "abrir": "Abrir mantenedores"
+    }
+  },
+  "mantenedores": {
+    "titulo": "Mantenedores",
+    "volver": "Volver a Configuración",
+    "listas": "Listas",
+    "tabs": {
+      "cargos": "Cargos",
+      "tipos_contrato": "Tipos de contrato",
+      "sedes": "Sedes",
+      "jornadas": "Jornadas",
+      "tipos_unidad": "Tipos de unidad",
+      "leyendas": "Leyendas"
+    },
+    "usos": {
+      "cargos": "Puestos",
+      "tipos_contrato": "Personas",
+      "sedes": "Personas",
+      "jornadas": "Personas",
+      "tipos_unidad": "Unidades",
+      "leyendas": "Puestos"
+    },
+    "columnas": {
+      "nombre": "Nombre",
+      "color": "Color",
+      "descripcion": "Descripción",
+      "estado": "Estado",
+      "acciones": "Acciones"
+    },
+    "activo": "Activo",
+    "inactivo": "Inactivo",
+    "nuevo": "Nombre del nuevo valor",
+    "agregar": "Agregar",
+    "vacio": "Todavía no hay valores.",
+    "renombrar": "Renombrar «{nombre}»",
+    "subir": "Subir «{nombre}»",
+    "bajar": "Bajar «{nombre}»",
+    "desactivar": "Desactivar",
+    "reactivar": "Reactivar",
+    "desactivarA": "Desactivar «{nombre}»",
+    "reactivarA": "Reactivar «{nombre}»",
+    "colorDe": "Color de «{nombre}»",
+    "descripcionDe": "Descripción de «{nombre}»"
   }
 }

@@ -33,6 +33,11 @@ export const router = createRouter({
       component: () => import("@/vistas/VistaConfiguracion.vue"),
     },
     {
+      path: "/configuracion/mantenedores",
+      name: "mantenedores",
+      component: () => import("@/vistas/VistaMantenedores.vue"),
+    },
+    {
       path: "/ayuda/:pagina?",
       name: "ayuda",
       component: () => import("@/vistas/VistaAyuda.vue"),

@@ -21,6 +21,7 @@ import {
 import * as U from "@/db/repos/unidades";
 import * as T from "@/db/repos/trabajadores";
 import * as C from "@/db/repos/catalogos";
+import type { TablaOrdenable } from "@/db/repos/catalogos";
 import * as E from "@/db/repos/etiquetas";
 import * as X from "@/db/repos/conexiones";
 import * as S from "@/db/repos/subarboles";
@@ -38,7 +39,9 @@ import {
   type Historico,
 } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
-import { i18n } from "@/i18n";
+import { tiposARenombrar } from "@/features/configuracion/semillas";
+import { i18n, type Idioma } from "@/i18n";
+import { EJEMPLO } from "./ejemplo";
 
 export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
@@ -121,12 +124,15 @@ export const useOrganizacion = defineStore("organizacion", () => {
       estiloCopiado.value !== undefined &&
       (estiloCopiado.value === null || leyendasActivas.value.some((l) => l.id === estiloCopiado.value)),
   );
-  const usos = (tabla: TablaCatalogo, id: string) =>
+  /** Cuántas filas vivas usan el valor: cargos y leyendas, puestos; tipos de unidad, unidades; el resto, personas. */
+  const usos = (tabla: TablaOrdenable, id: string) =>
     tabla === "cargos"
       ? puestos.value.filter((p) => p.cargo_id === id).length
-      : tabla === "tipos_unidad"
-        ? unidades.value.filter((u) => u.tipo_id === id).length
-        : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
+      : tabla === "leyendas"
+        ? puestos.value.filter((p) => p.leyenda_id === id).length
+        : tabla === "tipos_unidad"
+          ? unidades.value.filter((u) => u.tipo_id === id).length
+          : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
 
   function fallo(e: unknown): { ok: false; mensaje: string } {
     const mensaje = traducirError(e);
@@ -392,8 +398,24 @@ export const useOrganizacion = defineStore("organizacion", () => {
       : Promise.resolve(rechazar(t("store.nombreVacio")));
   const moverValor = (tabla: TablaCatalogo, id: string, orden: number) =>
     escribir(() => C.moverValor(tabla, id, orden));
-  const desactivarValor = (tabla: TablaCatalogo, id: string) => escribir(() => C.desactivarValor(tabla, id));
+  /** Sin tipos de unidad activos no se podría crear ninguna unidad: el último no se desactiva. */
+  const desactivarValor = async (tabla: TablaCatalogo, id: string): Promise<Resultado> => {
+    const quedan = activos("tipos_unidad");
+    if (tabla === "tipos_unidad" && quedan.length === 1 && quedan[0].id === id)
+      return rechazar(t("store.ultimoTipoUnidad"));
+    return escribir(() => C.desactivarValor(tabla, id));
+  };
   const reactivarValor = (tabla: TablaCatalogo, id: string) => escribir(() => C.reactivarValor(tabla, id));
+
+  /** Deja las filas en el orden de `ids` (10, 20, 30…) en un solo lote; solo escribe las que cambian. */
+  function ordenar(tabla: TablaOrdenable, ids: string[]): Promise<Resultado> {
+    const filas: { id: string; orden: number }[] =
+      tabla === "leyendas" ? leyendas.value : catalogos.value[tabla];
+    const cambios = ids.flatMap((id, i) =>
+      filas.find((f) => f.id === id)?.orden === (i + 1) * 10 ? [] : C.moverValor(tabla, id, (i + 1) * 10),
+    );
+    return cambios.length ? escribir(() => cambios) : Promise.resolve({ ok: true });
+  }
 
   /** Crea la entrada y, si se indica un puesto, se la asigna en el mismo lote. */
   async function crearLeyenda(
@@ -441,21 +463,44 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return asignarLeyenda(puestoId, estiloCopiado.value ?? null);
   }
 
-  /** Organización ficticia para probar la app; todo en un solo lote. */
+  /** Con la interfaz en inglés, los tipos sembrados sin uso pasan a sus nombres en inglés. */
+  const renombresSemilla = (): Sentencia[] =>
+    tiposARenombrar(
+      catalogos.value.tipos_unidad,
+      (id) => usos("tipos_unidad", id),
+      i18n.global.locale.value as Idioma,
+    ).flatMap((r) => C.renombrarValor("tipos_unidad", r.id, r.nombre));
+
+  /** Primer uso: el nombre de la organización y su unidad raíz (del primer tipo activo), en un solo lote. */
+  async function crearOrganizacion(nombre: string, nombreRaiz: string): Promise<Resultado> {
+    if (!nombre.trim() || !nombreRaiz.trim()) return rechazar(t("store.nombreVacio"));
+    const tipo = activos("tipos_unidad")[0];
+    if (!tipo) return rechazar(t("arbol.sinTiposActivos"));
+    return escribir(() => {
+      const raiz = U.crearUnidad({ tipo_id: tipo.id, nombre: nombreRaiz.trim() });
+      return {
+        id: raiz.id,
+        sentencias: [...guardarMeta("org_nombre", nombre.trim()), ...renombresSemilla(), ...raiz.sentencias],
+      };
+    });
+  }
+
+  /** Organización ficticia para probar la app (en el idioma de la interfaz); todo en un solo lote. */
   function cargarEjemplo(): Promise<Resultado> {
     return escribir(() => {
-      const s: Sentencia[] = [...guardarMeta("org_nombre", "Compañía Demo")];
+      const x = EJEMPLO[i18n.global.locale.value as Idioma];
+      const s: Sentencia[] = [...guardarMeta("org_nombre", x.organizacion), ...renombresSemilla()];
       const nuevo = <P extends { id: string; sentencias: Sentencia[] }>(p: P): string => {
         s.push(...p.sentencias);
         return p.id;
       };
 
       const valores: Record<TablaCatalogo, string[]> = {
-        cargos: ["Gerente", "Jefe de área", "Analista", "Técnico"],
-        tipos_contrato: ["Indefinido", "Plazo fijo", "Honorarios"],
-        sedes: ["Casa matriz", "Planta Norte"],
-        jornadas: ["Completa", "Turnos 4x3"],
-        tipos_unidad: ["Superintendencia"], // los demás tipos vienen sembrados
+        cargos: x.cargos,
+        tipos_contrato: x.tiposContrato,
+        sedes: x.sedes,
+        jornadas: x.jornadas,
+        tipos_unidad: [x.tipoUnidad], // los demás tipos vienen sembrados
       };
       const cat = Object.fromEntries(
         TABLAS_CATALOGO.map((t) => [t, valores[t].map((n) => nuevo(C.crearValor(t, n)))]),
@@ -463,24 +508,25 @@ export const useOrganizacion = defineStore("organizacion", () => {
       const sup = cat.tipos_unidad[0];
       s.push(...C.moverValor("tipos_unidad", sup, 15)); // entre Gerencia (10) y Área (20)
 
-      // clave, nombre, tipo, clave del superior
-      const estructura: [string, string, string, string | null][] = [
-        ["gg", "Gerencia General", TIPO_GERENCIA, null],
-        ["op", "Operaciones", TIPO_GERENCIA, "gg"],
-        ["ma", "Mantención", sup, "op"],
-        ["me", "Mecánica", TIPO_AREA, "ma"],
-        ["el", "Eléctrica", TIPO_AREA, "ma"],
-        ["pr", "Producción", TIPO_AREA, "op"],
-        ["fi", "Finanzas", TIPO_GERENCIA, "gg"],
-        ["co", "Contabilidad", TIPO_AREA, "fi"],
-        ["cm", "Compras", TIPO_AREA, "fi"],
-        ["pe", "Personas", TIPO_GERENCIA, "gg"],
-        ["se", "Selección", TIPO_AREA, "pe"],
-        ["re", "Remuneraciones", TIPO_AREA, "pe"],
-        ["ca", "Capacitación", TIPO_AREA, "pe"],
+      // clave (su nombre está en el texto de demostración), tipo, clave del superior
+      const estructura: [keyof typeof x.unidades, string, string | null][] = [
+        ["gg", TIPO_GERENCIA, null],
+        ["op", TIPO_GERENCIA, "gg"],
+        ["ma", sup, "op"],
+        ["me", TIPO_AREA, "ma"],
+        ["el", TIPO_AREA, "ma"],
+        ["pr", TIPO_AREA, "op"],
+        ["fi", TIPO_GERENCIA, "gg"],
+        ["co", TIPO_AREA, "fi"],
+        ["cm", TIPO_AREA, "fi"],
+        ["pe", TIPO_GERENCIA, "gg"],
+        ["se", TIPO_AREA, "pe"],
+        ["re", TIPO_AREA, "pe"],
+        ["ca", TIPO_AREA, "pe"],
       ];
       const uid: Record<string, string> = {};
-      estructura.forEach(([clave, nombre, tipo_id, padre], orden) => {
+      estructura.forEach(([clave, tipo_id, padre], orden) => {
+        const nombre = x.unidades[clave];
         uid[clave] = nuevo(U.crearUnidad({ tipo_id, nombre, parent_id: padre && uid[padre], orden }));
       });
       // Marcas de las gerencias y la superintendencia, para ver «Colorear por» en la demostración.
@@ -494,22 +540,22 @@ export const useOrganizacion = defineStore("organizacion", () => {
       for (const [clave, marca_color, marca_codigo] of marcas)
         s.push(...U.editarUnidad(uid[clave], { marca_color, marca_codigo }));
 
-      // Leyendas de puestos: nombre, color y descripción.
+      // Leyendas de puestos: clave y color (nombre y descripción, en el texto de demostración).
       const leyenda: Record<string, string> = {};
-      for (const [nombre, color, descripcion] of [
-        ["Crítico", "#be123c", "No puede quedar vacante ni sin reemplazo"],
-        ["En sucesión", "#b45309", "Hay un plan de sucesión en marcha"],
-        ["Alto potencial", "#0f766e", null],
+      for (const [clave, color] of [
+        ["critico", "#be123c"],
+        ["sucesion", "#b45309"],
+        ["potencial", "#0f766e"],
       ] as const)
-        leyenda[nombre] = nuevo(L.crearLeyenda({ nombre, color, descripcion }));
+        leyenda[clave] = nuevo(L.crearLeyenda({ ...x.leyendas[clave], color }));
       const leyendaDe: Record<string, string> = {
-        "Camila Rojas": "Crítico",
-        "Paula Araya": "Crítico",
-        "Daniela Herrera": "Crítico",
-        "Patricio Muñoz": "En sucesión",
-        "Tomás Bravo": "En sucesión",
-        "Elena Silva": "Alto potencial",
-        "Felipe Ibáñez": "Alto potencial",
+        "Camila Rojas": "critico",
+        "Paula Araya": "critico",
+        "Daniela Herrera": "critico",
+        "Patricio Muñoz": "sucesion",
+        "Tomás Bravo": "sucesion",
+        "Elena Silva": "potencial",
+        "Felipe Ibáñez": "potencial",
       };
 
       // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde
@@ -562,22 +608,22 @@ export const useOrganizacion = defineStore("organizacion", () => {
       nuevo(A.registrarReemplazo(compras, pid["Inés Lagos"], "2026-09-01"));
 
       const etiqueta: Record<string, string> = {};
-      for (const [nombre, color] of [
-        ["Crítica", "#c2410c"],
-        ["Turno 24×7", "#2563eb"],
-        ["Estratégica", "#7c3aed"],
-      ])
-        etiqueta[nombre] = nuevo(E.crearEtiqueta(nombre, color));
+      for (const [clave, color] of [
+        ["critica", "#c2410c"],
+        ["turnos", "#2563eb"],
+        ["estrategica", "#7c3aed"],
+      ] as const)
+        etiqueta[clave] = nuevo(E.crearEtiqueta(x.etiquetas[clave], color));
       for (const [u, e] of [
-        ["ma", "Crítica"],
-        ["ma", "Turno 24×7"],
-        ["pr", "Turno 24×7"],
-        ["gg", "Estratégica"],
-        ["fi", "Estratégica"],
+        ["ma", "critica"],
+        ["ma", "turnos"],
+        ["pr", "turnos"],
+        ["gg", "estrategica"],
+        ["fi", "estrategica"],
       ])
         s.push(...E.etiquetarUnidad(uid[u], etiqueta[e]));
 
-      nuevo(X.crearConexion(uid.ma, uid.cm, "Abastecimiento de repuestos"));
+      nuevo(X.crearConexion(uid.ma, uid.cm, x.conexion));
       return s;
     });
   }
@@ -643,11 +689,13 @@ export const useOrganizacion = defineStore("organizacion", () => {
     guardarOrg,
     deshacer,
     cargarEjemplo,
+    crearOrganizacion,
     crearValor,
     renombrarValor,
     moverValor,
     desactivarValor,
     reactivarValor,
+    ordenar,
     crearLeyenda,
     editarLeyenda,
     renombrarLeyenda,

@@ -247,10 +247,6 @@
       "ayuda": "Active values of the records and active legends that nothing uses."
     }
   },
-  "provisional": {
-    "bienvenida": "Welcome",
-    "enConstruccion": "Under construction"
-  },
   "idioma": {
     "etiqueta": "Language",
     "es": "Español",
@@ -283,7 +279,8 @@
     "noSePuedeDeshacer": "This can no longer be undone.",
     "valorExiste": "\"{nombre}\" already exists in the list.",
     "puestoInexistente": "The position no longer exists.",
-    "nadaQuePegar": "There is no copied style that can be pasted."
+    "nadaQuePegar": "There is no copied style that can be pasted.",
+    "ultimoTipoUnidad": "At least one unit type must stay active."
   },
   "ficha": {
     "tituloPersona": "Person record",
@@ -473,5 +470,118 @@
       "configuracion": "Settings",
       "ayuda": "Help"
     }
+  },
+  "bienvenida": {
+    "titulo": "Welcome to BoldoAtlas",
+    "subtitulo": "Choose how to start.",
+    "vacia": {
+      "titulo": "Create an empty organization",
+      "texto": "Start from scratch: you name the organization and its first unit."
+    },
+    "excel": {
+      "titulo": "Load from Excel",
+      "texto": "Import the structure and the people from a spreadsheet."
+    },
+    "boldo": {
+      "titulo": "Open a .boldo file",
+      "texto": "Continue with an organization saved in a file."
+    },
+    "ejemplo": {
+      "titulo": "Explore an example",
+      "texto": "A sample organization to try the app out."
+    },
+    "llegaFase4": "Phase 4",
+    "llegaFase5": "Phase 5",
+    "organizacion": "Organization name",
+    "raiz": "Root unit name",
+    "raizEjemplo": "For example: General Management",
+    "crear": "Create organization",
+    "cancelar": "Cancel"
+  },
+  "config": {
+    "organizacion": {
+      "titulo": "Organization",
+      "nombre": "Organization name"
+    },
+    "logo": {
+      "titulo": "Logo",
+      "ayuda": "PNG, JPG or WebP up to 1 MB. Used in exports.",
+      "alt": "Organization logo",
+      "sin": "No logo",
+      "elegir": "Choose image…",
+      "cambiar": "Change image…",
+      "quitar": "Remove logo",
+      "error": {
+        "tipo": "The file must be a PNG, JPG or WebP.",
+        "tamano": "The image is larger than 1 MB.",
+        "lectura": "The image could not be read."
+      }
+    },
+    "apariencia": {
+      "titulo": "Appearance",
+      "ayuda": "These preferences apply to this computer only."
+    },
+    "tema": {
+      "etiqueta": "Theme",
+      "claro": "Light",
+      "oscuro": "Dark",
+      "sistema": "Follow the system"
+    },
+    "acento": {
+      "etiqueta": "Accent color",
+      "cobre": "Copper",
+      "azul": "Blue",
+      "verde": "Green",
+      "violeta": "Violet"
+    },
+    "escala": {
+      "etiqueta": "Interface size"
+    },
+    "mantenedores": {
+      "texto": "Job titles, contract types, sites, schedules, unit types and legends.",
+      "abrir": "Open records"
+    }
+  },
+  "mantenedores": {
+    "titulo": "Records",
+    "volver": "Back to Settings",
+    "listas": "Lists",
+    "tabs": {
+      "cargos": "Job titles",
+      "tipos_contrato": "Contract types",
+      "sedes": "Sites",
+      "jornadas": "Schedules",
+      "tipos_unidad": "Unit types",
+      "leyendas": "Legends"
+    },
+    "usos": {
+      "cargos": "Positions",
+      "tipos_contrato": "People",
+      "sedes": "People",
+      "jornadas": "People",
+      "tipos_unidad": "Units",
+      "leyendas": "Positions"
+    },
+    "columnas": {
+      "nombre": "Name",
+      "color": "Color",
+      "descripcion": "Description",
+      "estado": "Status",
+      "acciones": "Actions"
+    },
+    "activo": "Active",
+    "inactivo": "Inactive",
+    "nuevo": "Name of the new value",
+    "agregar": "Add",
+    "vacio": "There are no values yet.",
+    "renombrar": "Rename \"{nombre}\"",
+    "subir": "Move \"{nombre}\" up",
+    "bajar": "Move \"{nombre}\" down",
+    "desactivar": "Deactivate",
+    "reactivar": "Reactivate",
+    "desactivarA": "Deactivate \"{nombre}\"",
+    "reactivarA": "Reactivate \"{nombre}\"",
+    "colorDe": "Color of \"{nombre}\"",
+    "descripcionDe": "Description of \"{nombre}\""
   }
 }
