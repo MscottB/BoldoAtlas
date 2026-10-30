@@ -128,6 +128,16 @@ describe("duplicarRama", () => {
     const ps = vivas<Puesto>("puestos");
     expect(ps).toHaveLength(puestosAntes + 3); // pa, pa1 y pa11; el de A2 (eliminada) y el eliminado de A1, no
     expect(ps.filter((x) => x.unidad_id === o.a.id)).toHaveLength(1); // la original no se toca
+    const original = ps.find((x) => x.id === o.pa.id)!;
+    const delaCopia = ps.find((x) => x.unidad_id === copia.id)!;
+    expect(delaCopia.id).not.toBe(original.id);
+    expect(delaCopia).toMatchObject({
+      cargo_id: original.cargo_id,
+      descripcion: "Jefa",
+      leyenda_id: original.leyenda_id,
+      orden: 3,
+    });
+    expect(delaCopia.leyenda_id).not.toBeNull();
     // nacen vacantes: ninguna asignación nueva
     expect(vivas("asignaciones")).toHaveLength(asignaciones);
   });

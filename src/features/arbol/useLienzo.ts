@@ -163,6 +163,7 @@ export function useLienzo() {
 
   /** Mayús+flecha: suma la unidad a la selección, la revela y pide centrarla. */
   function extender(id: string) {
+    if (org.fechaVista) return; // solo lectura: no hay selección múltiple
     abrirRuta(id);
     aplicar(sumar(seleccionadas.value, id, false));
     centrarEn.value = id;
@@ -205,6 +206,10 @@ export function useLienzo() {
         ids,
         foco: seleccion.value && ids.has(seleccion.value) ? seleccion.value : ([...ids].pop() ?? null),
       });
+    },
+    /** Al ver una fecha no hay selección múltiple: se deshace. */
+    limpiarMultiple() {
+      if (multi.value.size) seleccion.value = null;
     },
     plegarSeleccion() {
       colapsados.value = new Set([...colapsados.value, ...seleccionadas.value]);

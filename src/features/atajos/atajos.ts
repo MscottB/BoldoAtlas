@@ -49,7 +49,7 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl || e.altKey || e.enCampoDeTexto) return null;
   if (e.key in FLECHAS) {
     const ir = FLECHAS[e.key]![e.horizontal ? 1 : 0];
-    return e.shiftKey ? `extender:${ir}` : ir;
+    return e.shiftKey ? (e.soloLectura ? null : `extender:${ir}`) : ir;
   }
   if (e.key === "Delete") return e.soloLectura ? null : "eliminar";
   if (tecla === "n") return e.soloLectura ? null : "nuevaUnidad";

@@ -66,8 +66,16 @@ const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
-const { colapsados, seleccion, seleccionadas, expandir, centrarEn, sumarVarias, podarSeleccion } =
-  useLienzo();
+const {
+  colapsados,
+  seleccion,
+  seleccionadas,
+  expandir,
+  centrarEn,
+  sumarVarias,
+  podarSeleccion,
+  limpiarMultiple,
+} = useLienzo();
 const {
   fitView,
   setCenter,
@@ -181,6 +189,12 @@ watch(
     await nextTick();
     updateNodeInternals();
   },
+);
+
+// Con una fecha elegida no hay selección múltiple (es de solo lectura).
+watch(
+  () => org.fechaVista,
+  (f) => f && limpiarMultiple(),
 );
 
 // Otra fecha cambia qué unidades se ven: se encuadra una vez tras el próximo layout (las ramas plegadas se conservan).
@@ -453,7 +467,7 @@ function verCompleto() {
           <MiniMap pannable zoomable />
         </VueFlow>
         <div
-          v-if="seleccionadas.size >= 2"
+          v-if="seleccionadas.size >= 2 && !org.fechaVista"
           class="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-center"
         >
           <BarraSeleccion class="pointer-events-auto" />

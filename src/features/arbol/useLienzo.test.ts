@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import type { Trabajador } from "@/db/tipos";
 import { a, p, unidades } from "./fixture";
 import { vigentesPorPuesto } from "./jerarquia";
+import { useOrganizacion } from "@/stores/organizacion";
 import { coincideFiltro, destinoAlSoltar, unidadesQueCumplen, useLienzo } from "./useLienzo";
 import { VISTA_POR_DEFECTO } from "./vista";
 
@@ -184,6 +185,21 @@ describe("selección múltiple", () => {
     l.podarSeleccion(new Set(["a"]));
     expect([...l.seleccionadas.value]).toEqual(["a"]);
     expect(l.seleccion.value).toBe("a");
+  });
+
+  it("en la vista a una fecha: extender no hace nada y limpiarMultiple deshace la selección múltiple", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarASeleccion("b", false);
+    const org = useOrganizacion();
+    org.fechaVista = "2026-01-01";
+    l.extender("c");
+    expect([...l.seleccionadas.value]).toEqual(["a", "b"]);
+    l.limpiarMultiple();
+    expect(l.seleccionadas.value.size).toBe(0);
+    l.seleccionar("a");
+    l.extender("c"); // tampoco desde una sola
+    expect([...l.seleccionadas.value]).toEqual(["a"]);
   });
 
   it("plegarSeleccion pliega todas las seleccionadas y conserva las ya plegadas", () => {

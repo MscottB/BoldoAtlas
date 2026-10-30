@@ -68,6 +68,11 @@ describe("resolverAtajo", () => {
     expect(resolverAtajo(tecla("Delete", { soloLectura: true }))).toBeNull();
     expect(resolverAtajo(tecla("f", { soloLectura: true }))).toBe("buscarLienzo");
     expect(resolverAtajo(tecla("ArrowDown", { soloLectura: true }))).toBe("irPrimerHijo");
+    // Mayús+flecha extiende la selección múltiple, que no existe en solo lectura
+    expect(resolverAtajo(tecla("ArrowDown", { soloLectura: true, shiftKey: true }))).toBeNull();
+    expect(
+      resolverAtajo(tecla("ArrowLeft", { soloLectura: true, shiftKey: true, horizontal: true })),
+    ).toBeNull();
   });
 });
 
