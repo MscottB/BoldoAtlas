@@ -460,3 +460,36 @@ Va después de la 11b y antes de la 11c: el panel Vista, las marcas, el director
 - (Tras la 11e: los niveles son los tipos del catálogo, no 'gerencia'/'area' fijos.)
 - Panel **"Vista"** en la barra del lienzo (preferencias por PC): mostrar/ocultar puestos, cargo, persona y la ruta por tipo (elegir qué tipos) en las tarjetas; selector **"Colorear por"**: ninguno | marca de <cada tipo en uso> | leyenda del puesto (un solo criterio a la vez); la leyenda flotante muestra las entradas del criterio activo que están en uso (color + código + nombre).
 - Las mismas opciones se ofrecen al exportar (Fase 4).
+
+## Anexo 2 (pedido del autor): personalización, revisión de datos, fecha, selección múltiple y respaldos
+
+Orden de ejecución completo: …, 11, 11b, 11e, 11c, 11d, **11f**, 10, 12, **12b**, **12c**, 13, **13b**, **13c**, 14, 15, 16. Cada tarea: i18n es/en, página o sección de ayuda, y tests de las funciones puras.
+
+### Task 11f: Personalizar el diagrama y vistas guardadas (spec §8 "Personalizar el diagrama")
+- Lienzo: dirección vertical | horizontal (opción `elk.direction` DOWN/RIGHT y posiciones de los handles), densidad normal | compacta (espaciados de elk y tarjeta de una línea), estilo de líneas (`smoothstep` | `bezier`), y qué datos muestra la tarjeta (amplía el panel **Vista** de la 11c, no crea otro).
+- `src/features/arbol/vista.ts` puro y testeado: tipo `ConfigVista` con valores por defecto, `leerConfigVista(json): ConfigVista` que ignora claves desconocidas y valores inválidos (nunca lanza), y `opcionesElk(config)`.
+- Tabla `vistas` (misma migración no publicada; `arbol_id` NULL → `subarboles_guardados.id` o NULL = árbol completo, `nombre` NOT NULL, `config` TEXT NOT NULL + comunes; único parcial por (`coalesce(arbol_id,'')`, `lower(trim(nombre))`)); repo `vistas.ts`; store. En la barra: menú **Vistas** con "Guardar vista actual…", lista para aplicar, renombrar y eliminar (con deshacer). La última configuración usada por árbol queda en preferencias por PC.
+- Resaltar por vacantes, sede, tipo de contrato, jornada o cargo: amplía `coincideFiltro` (puro, testeado) y el filtro existente del lienzo.
+- Medir en la Task 14 la densidad compacta con 2.000 unidades.
+- Commit: `feat(arbol): personalizar el diagrama y vistas guardadas`
+
+### Task 12b: Revisión de datos (spec §8 "Revisión de datos")
+- `src/features/revision/revision.ts` puro y testeado: una función por aviso (sin jefatura, vacantes con días desde la última titular, reemplazos vigentes, personas sin puesto vigente, correos repetidos, nombres parecidos con `normalizarTexto`, unidades sin puestos ni hijos, valores de mantenedor sin uso) y `avisos(estado)` que las junta; O(n) o O(n log n) sobre 2.000 unidades.
+- Vista `/revision` con secciones plegables, cada fila abre la unidad (panel), el puesto (diálogo) o la persona (ficha); contador en la entrada del menú (grupo superior, después de Directorio).
+- Commit: `feat: revisión de datos`
+
+### Task 12c: Organigrama a una fecha (spec §8 "Organigrama a una fecha")
+- Jerarquía: `vigentesEn(asignaciones, fecha)` (`desde <= fecha` y (`hasta` NULL o `hasta > fecha`)) y `existiaEn(fila, fecha)` (creada en o antes, no eliminada antes); `dotacion`, `jefeVisible` y vacantes aceptan el conjunto de asignaciones a usar en vez de leer las vigentes de hoy. Tests con un titular cambiado y una unidad eliminada después de la fecha.
+- Store: `fechaVista: string | null` (no persiste); el lienzo y el panel pasan a solo lectura con una banda "Viendo al <fecha> · Volver a hoy"; selector de fecha en la barra del lienzo.
+- Commit: `feat(arbol): ver el organigrama a una fecha`
+
+### Task 13b: Selección múltiple y duplicar rama (spec §8 "Selección múltiple")
+- Lienzo: `Ctrl`/`Shift`+clic y recuadro (selección de Vue Flow); barra contextual con "Mover a…" (validando ciclos para cada una, en un solo lote), "Plegar", "Etiquetar", "Eliminar" (un solo "Deshacer" para todo el lote).
+- `duplicarRama(estado, unidadId)` puro y testeado → sentencias que copian la unidad y sus descendientes con ids nuevos, etiquetas y puestos sin asignaciones; nombre "<nombre> (copia)" (i18n); un lote.
+- Atajos y ayuda (`atajos.md`).
+- Commit: `feat(arbol): selección múltiple y duplicar rama`
+
+### Task 13c: Respaldos automáticos (spec §12 "Respaldos automáticos")
+- Rust: comandos `respaldar_ahora` (`VACUUM INTO respaldos/boldo-AAAAMMDD-HHMM.db`, poda a los últimos N), `listar_respaldos` (nombre, fecha, tamaño, `data_revision` leída del respaldo en solo lectura) y `restaurar_respaldo(nombre)` (valida que el nombre esté en la lista — nada de rutas arbitrarias —, respalda la base actual, reemplaza y pide reiniciar). Tests en Rust con una carpeta temporal.
+- Frontend: al iniciar, según la preferencia (nunca | al abrir | cada 24 h por defecto | cada 7 días), respalda en segundo plano sin bloquear; Configuración › Respaldos con la lista, "Respaldar ahora", "Abrir carpeta" y "Restaurar" (confirmación).
+- Commit: `feat: respaldos automáticos y restaurar`

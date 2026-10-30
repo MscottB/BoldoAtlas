@@ -255,7 +255,19 @@ crear organización vacía · cargar desde Excel (con enlace a la plantilla) · 
 Vue Flow con el árbol completo, zoom, mover, minimapa, colapsar/expandir ramas.
 Tarjeta de unidad: tipo, nombre, foto y nombre del jefe (o "Sin jefatura"), dotación total de la rama, vacantes (si hay), chips de etiquetas.
 Aristas jerárquicas sólidas; conexiones laterales punteadas con etiqueta.
-**Filtro por etiqueta o por texto:** las unidades que coinciden se resaltan y el resto se atenúa (no se ocultan, para no perder contexto).
+**Filtro por etiqueta o por texto:** las unidades que coinciden se resaltan y el resto se atenúa (no se ocultan, para no perder contexto). Además se puede resaltar por **vacantes**, **sede**, **tipo de contrato**, **jornada** o **cargo** (pedido del autor).
+
+**Personalizar el diagrama (pedido del autor; preferencias del árbol, no datos de la organización):**
+- Dirección: vertical (arriba→abajo) u horizontal (izquierda→derecha); densidad: normal o compacta (menos separación y tarjetas de una línea, para árboles gigantes).
+- Tarjeta: qué datos muestra (tipo, jefe, foto del jefe, dotación, vacantes, etiquetas, ruta por tipo, puestos) y estilo de líneas (rectas en ángulo o curvas).
+- **Vistas guardadas:** una combinación de dirección, densidad, tarjeta, "Colorear por", filtros de resaltado y ramas plegadas se guarda con nombre por árbol (raíz o subárbol guardado) y se aplica con un clic. Viajan con la base (tabla `vistas`: `arbol_id` NULL = árbol completo, `nombre`, `config` JSON validado al leer + comunes). Las exportaciones de la Fase 4 ofrecen elegir una vista guardada.
+
+**Selección múltiple (pedido del autor):** `Ctrl`/`Shift`+clic o recuadro con arrastre; mover las seleccionadas bajo otro superior en un lote (validando ciclos), plegarlas, etiquetarlas o eliminarlas (un solo "Deshacer"). **Duplicar rama:** copia una unidad con sus descendientes, etiquetas y puestos (sin asignaciones: las copias nacen vacantes), con nombre "<nombre> (copia)".
+
+**Organigrama a una fecha (pedido del autor):** selector de fecha en la barra del lienzo; con una fecha elegida, jefes, dotación, vacantes y puestos se calculan con las asignaciones vigentes ese día (`desde <= fecha` y (`hasta` NULL o `hasta > fecha`)) y se ocultan las unidades y puestos creados después o eliminados antes. Es de solo lectura (banda "Viendo al <fecha>" con "Volver a hoy"). Límite declarado: los cambios de superior de una unidad no se registran, así que la forma del árbol es la actual.
+
+### Revisión de datos (pedido del autor)
+Vista "Revisión" (entrada del menú) con listas accionables, cada fila abre la unidad, puesto o persona: unidades sin jefatura, puestos vacantes (con días desde la última titular), reemplazos vigentes, personas sin puesto vigente, correos repetidos, nombres de persona parecidos (misma normalización que los mantenedores), unidades sin puestos ni hijos, valores de mantenedor sin uso. Un contador en el menú muestra el total de avisos. Todo se calcula en memoria con funciones puras sobre el estado del store.
 
 ### Panel de unidad
 Pestañas: Resumen (datos, jefe, etiquetas, indicadores) · Procesos (con SIPOC, atributos y actividades) · Personas.
@@ -379,6 +391,7 @@ Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajus
   - `BoldoAtlas_windows_x64_setup.exe` (instalador NSIS).
   - (Nombres sin versión a propósito; ver sección 14.)
 - Requisito: WebView2 (incluido en Windows 11 y casi todo Windows 10).
+- **Respaldos automáticos (pedido del autor):** al abrir la app, si el último respaldo tiene más de 24 h (configurable: nunca, al abrir, cada 24 h, cada 7 días), se crea `respaldos/boldo-AAAAMMDD-HHMM.db` con `VACUUM INTO`, sin bloquear el uso; se conservan los últimos N (por defecto 10). En Configuración › Respaldos: lista con fecha, tamaño y revisión de datos; "Respaldar ahora", "Abrir carpeta" y "Restaurar" (confirma, respalda la base actual antes y reinicia la app sobre el respaldo elegido). Funciona igual en portable (carpeta `datos/respaldos/`) e instalado.
 - **Aviso conocido:** un `.exe` sin firmar descargado de internet también dispara SmartScreen en modo portable (no solo el instalador). Mitigación v1: instrucciones en el README ("Más información → Ejecutar de todas formas"). Mejora futura: firma gratuita para proyectos open source vía SignPath Foundation.
 
 ### Actualizar
