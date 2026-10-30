@@ -174,6 +174,45 @@ describe("trabajadores", () => {
 });
 
 describe("puestos y asignaciones", () => {
+  // Una persona borrada no debe dejar asignaciones vigentes ocultas que bloqueen el puesto.
+  async function puestoConPersonaBorrada(tipo: "titular" | "reemplazo") {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    await (tipo === "titular"
+      ? s.asignarTitular(p, ana, "2026-03-01")
+      : s.registrarReemplazo(p, ana, "2026-03-01"));
+    await s.eliminarTrabajador(ana);
+    vi.setSystemTime(Date.now() + 8_001); // vence el deshacer
+    return { s, p, beto: await persona(s, "Beto") };
+  }
+
+  it("tras borrar a la persona del reemplazo vigente, se puede registrar otro reemplazo", async () => {
+    const { s, p, beto } = await puestoConPersonaBorrada("reemplazo");
+    expect(await s.registrarReemplazo(p, beto, "2026-04-01")).toEqual({ ok: true, id: expect.any(String) });
+    expect(s.asignaciones.map((a) => a.trabajador_id)).toEqual([beto]);
+  });
+
+  it("tras borrar al titular vigente, se asigna otro titular aunque empiece antes", async () => {
+    const { s, p, beto } = await puestoConPersonaBorrada("titular");
+    expect((await s.asignarTitular(p, beto, "2026-01-01")).ok).toBe(true);
+    expect(s.asignaciones).toEqual([expect.objectContaining({ trabajador_id: beto, hasta: null })]);
+  });
+
+  it("deshacer el borrado de una persona devuelve sus asignaciones vigentes", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    await s.asignarTitular(p, ana, "2026-01-01");
+    await s.eliminarTrabajador(ana);
+    expect(s.asignaciones).toEqual([]);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.asignaciones).toEqual([
+      expect.objectContaining({ trabajador_id: ana, tipo: "titular", hasta: null }),
+    ]);
+  });
+
   it("asignar un titular nuevo cierra el anterior y deja el historial", async () => {
     const s = nuevo();
     const p = await puesto(s, await unidad(s, "Raíz"));

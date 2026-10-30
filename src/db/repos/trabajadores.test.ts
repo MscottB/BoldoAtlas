@@ -7,6 +7,10 @@ import {
   restaurarTrabajador,
   normalizarCorreo,
 } from "./trabajadores";
+import { crearUnidad } from "./unidades";
+import { crearValor } from "./catalogos";
+import { crearPuesto } from "./puestos";
+import { asignarTitular, registrarReemplazo } from "./asignaciones";
 
 let bd: BasePrueba;
 const fila = (id: string) =>
@@ -45,6 +49,32 @@ describe("trabajadores", () => {
     expect(fila(t.id)).toMatchObject({ correo: null, nombre: "Ana María" });
     bd.aplicar(editarTrabajador(t.id, { correo: " Ana@X.cl " }));
     expect(fila(t.id).correo).toBe("Ana@X.cl");
+  });
+
+  it("eliminar borra sus asignaciones con la misma marca; restaurar devuelve solo esas", () => {
+    const u = crearUnidad({ tipo: "gerencia", nombre: "Operaciones" });
+    const c = crearValor("cargos", "Analista");
+    const p = crearPuesto({ unidad_id: u.id, cargo_id: c.id });
+    const t = crearTrabajador({ nombre: "Ana" });
+    const vigente = asignarTitular(p.id, t.id, "2026-01-01");
+    const antes = registrarReemplazo(p.id, t.id, "2025-01-01", "2025-02-01");
+    bd.aplicar([u, c, p, t, antes, vigente].flatMap((x) => x.sentencias));
+    bd.db
+      .prepare("UPDATE asignaciones SET deleted_at = '2025-06-01T00:00:00.000Z' WHERE id = ?")
+      .run(antes.id);
+    const borradas = () =>
+      bd.consultar<{ id: string; deleted_at: string | null }>(
+        "SELECT id, deleted_at FROM asignaciones ORDER BY desde",
+      );
+
+    bd.aplicar(eliminarTrabajador(t.id));
+    expect(borradas().map((a) => a.deleted_at)).toEqual(["2025-06-01T00:00:00.000Z", fila(t.id).deleted_at]);
+
+    bd.aplicar(restaurarTrabajador(t.id));
+    expect(borradas()).toEqual([
+      { id: antes.id, deleted_at: "2025-06-01T00:00:00.000Z" }, // borrada antes por su cuenta: sigue borrada
+      { id: vigente.id, deleted_at: null },
+    ]);
   });
 
   it("eliminar y restaurar marcan y limpian deleted_at", () => {

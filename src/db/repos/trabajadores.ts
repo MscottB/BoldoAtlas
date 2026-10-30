@@ -57,6 +57,26 @@ export function editarTrabajador(id: string, cambios: Partial<Omit<Trabajador, "
   return actualizar("trabajadores", id, c, EDITABLES);
 }
 
-export const eliminarTrabajador = (id: string): Sentencia[] => [fijarBorrado("trabajadores", id, true)];
+/** Borra la persona y, con la misma marca, sus asignaciones: así no quedan vigentes ocultas que bloqueen el puesto. */
+export function eliminarTrabajador(id: string): Sentencia[] {
+  const t = ahora();
+  return [
+    { sql: "UPDATE trabajadores SET deleted_at = ?, updated_at = ? WHERE id = ?", params: [t, t, id] },
+    {
+      sql: "UPDATE asignaciones SET deleted_at = ?, updated_at = ? WHERE trabajador_id = ? AND deleted_at IS NULL",
+      params: [t, t, id],
+    },
+  ];
+}
 
-export const restaurarTrabajador = (id: string): Sentencia[] => [fijarBorrado("trabajadores", id, false)];
+/** Devuelve la persona y solo las asignaciones borradas con ella (las borradas antes por su cuenta siguen borradas). */
+export function restaurarTrabajador(id: string): Sentencia[] {
+  return [
+    {
+      sql: `UPDATE asignaciones SET deleted_at = NULL, updated_at = ?
+            WHERE trabajador_id = ? AND deleted_at = (SELECT deleted_at FROM trabajadores WHERE id = ?)`,
+      params: [ahora(), id, id],
+    },
+    fijarBorrado("trabajadores", id, false),
+  ];
+}
