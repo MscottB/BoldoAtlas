@@ -214,6 +214,17 @@ Tema, color de acento, columnas elegidas para Excel, filtros del directorio, úl
 - **Área central:** la vista elegida.
 - **Panel derecho contextual:** se abre al seleccionar una unidad, proceso o persona; se cierra con Esc. No tapa el lienzo: lo desplaza.
 
+### Comentarios del autor tras probar el ejemplo (2026-10-30)
+- **Menú de la app** (botón con el logo/nombre en la barra superior, también en la paleta): Inicio (vuelve a la Bienvenida en cualquier momento), Nueva organización vacía, Explorar el ejemplo, Abrir `.boldo` (Fase 5), Importar Excel (Fase 4), Respaldos, Configuración. Reemplazar los datos actuales (nueva vacía o ejemplo) pide confirmación explícita y hace antes un respaldo automático; la Bienvenida también lo advierte si ya hay datos.
+- **Configuración, Ayuda y Acerca de se comportan como interruptores:** un segundo clic en su entrada (o Esc, o el botón Cerrar visible) vuelve a la vista anterior.
+- **Todo panel lateral se puede cerrar o plegar con un control visible:** la barra izquierda tiene su botón de plegar en la propia barra (además del de la barra superior) y el panel derecho tiene "Cerrar" (×) además de Esc.
+- **Menú contextual (clic derecho)** en unidad, puesto y fondo del lienzo, con las acciones de su elemento (nueva subunidad, renombrar, abrir panel, ver personas, expandir/contraer rama, duplicar, abrir como árbol, copiar/pegar estilo, eliminar…); también se abre con `Shift+F10` o la tecla Menú.
+- **Expandir y contraer:** "Expandir todo" y "Contraer todo" en la barra del lienzo; "Expandir rama" y "Contraer rama" en el menú contextual de una unidad; "Contraer hasta el nivel N".
+- **Orden del diagrama:** el layout automático debe verse ordenado por defecto (superiores centrados sobre sus hijos, hermanos en su orden, niveles alineados, conexiones laterales sin deformar el árbol). Opción "Orden estricto por niveles" (activable) y botón "Reordenar" que vuelve a calcular y encuadrar.
+- **Personas de una unidad:** la dotación de la tarjeta es clicable y abre la lista de personas; el panel de unidad tiene la pestaña **Personas** (titulares y reemplazos vigentes, con interruptor "Incluir subunidades") y "Ver en el directorio" (directorio filtrado por esa unidad y su rama).
+- **Divulgación progresiva en toda la app:** por defecto se muestran solo las opciones básicas; las avanzadas van en secciones "Más opciones" plegables (recordadas por PC). Aplica a la barra del lienzo, panel Vista, panel de unidad, diálogo de puesto, ficha, directorio y configuración.
+- **Revisión visual de los temas claro y oscuro:** paleta de tokens refinada (superficies, bordes, texto secundario con AA real, acento), jerarquía visual más clara y consistencia de espaciado; se valida con capturas en ambos temas.
+
 ### Primer uso
 Pantalla de bienvenida con cuatro caminos, cada uno con una línea de explicación:
 crear organización vacía · cargar desde Excel (con enlace a la plantilla) · abrir/importar un `.boldo` · explorar un ejemplo (base de muestra que se puede borrar).

@@ -493,3 +493,33 @@ Orden de ejecución completo: …, 11, 11b, 11e, 11c, 11d, **11f**, 10, 12, **12
 - Rust: comandos `respaldar_ahora` (`VACUUM INTO respaldos/boldo-AAAAMMDD-HHMM.db`, poda a los últimos N), `listar_respaldos` (nombre, fecha, tamaño, `data_revision` leída del respaldo en solo lectura) y `restaurar_respaldo(nombre)` (valida que el nombre esté en la lista — nada de rutas arbitrarias —, respalda la base actual, reemplaza y pide reiniciar). Tests en Rust con una carpeta temporal.
 - Frontend: al iniciar, según la preferencia (nunca | al abrir | cada 24 h por defecto | cada 7 días), respalda en segundo plano sin bloquear; Configuración › Respaldos con la lista, "Respaldar ahora", "Abrir carpeta" y "Restaurar" (confirmación).
 - Commit: `feat: respaldos automáticos y restaurar`
+
+## Anexo 3 (comentarios del autor tras probar el ejemplo, 2026-10-30) — spec §7 "Comentarios del autor…"
+
+Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17a, 17b, 17c, 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14.
+
+### Task 17a: Menú de la app, volver a Inicio y vistas que se cierran
+- Botón de menú de la app en la barra superior (logo + nombre de la organización) con: Inicio, Nueva organización vacía, Explorar el ejemplo, Abrir `.boldo` (deshabilitado, Fase 5), Importar Excel (deshabilitado, Fase 4), Respaldos, Configuración; las mismas acciones en la paleta Ctrl+K.
+- `/bienvenida` accesible siempre; si ya hay datos, avisa y "Nueva organización"/"Explorar el ejemplo" piden confirmación, hacen un respaldo automático (Task 13c) y reemplazan los datos actuales en un lote (store: `reemplazarCon…`, guarda en el store, tests con SQLite real; corrige el minor de 13-2 "sin guarda de datos existentes").
+- Configuración, Ayuda y Acerca de: segundo clic en su entrada del menú, Esc o botón Cerrar visible → vuelve a la ruta anterior (o al Árbol si no hay historia).
+- Barra lateral izquierda con su propio botón de plegar/desplegar visible; panel derecho de unidad con botón Cerrar (×) visible.
+- Commit: `feat: menú de la app, volver a inicio y vistas que se cierran`
+
+### Task 17b: Lienzo ordenado, expandir/contraer y menú contextual
+- Diagnosticar por qué el ejemplo se ve desordenado (opciones de elk: `elk.layered.nodePlacement.strategy`, `considerModelOrder`, alineación de padres sobre hijos, conexiones laterales y puestos dentro del layout) y corregir los valores por defecto; tests de `opcionesElk` y del orden de hermanos. Opción en Vista "Orden estricto por niveles" y botón "Reordenar" (recalcula y encuadra).
+- "Expandir todo", "Contraer todo" y "Contraer hasta el nivel N" en la barra; "Expandir rama"/"Contraer rama" por unidad. Funciones puras con tests.
+- Menú contextual (clic derecho, `Shift+F10`, tecla Menú) en unidad, puesto y fondo del lienzo, con acciones según el elemento y deshabilitadas en la vista por fecha; usa el `ContextMenu` de Reka/shadcn-vue.
+- Commit: `feat(arbol): diagrama ordenado, expandir/contraer y menú contextual`
+
+### Task 17c: Personas de una unidad
+- Pestaña **Personas** en el panel de unidad: titulares y reemplazos vigentes (nombre, cargo, tipo), interruptor "Incluir subunidades"; clic abre la ficha. Dotación de la tarjeta clicable → abre esa pestaña. "Ver en el directorio" → directorio filtrado por la unidad y su rama.
+- Función pura de la lista con tests (O(n) sobre la rama).
+- Commit: `feat(unidades): personas de la unidad y su rama`
+
+### Task 17d: Propuesta de UX/UI (divulgación progresiva y temas)
+- Auditoría con capturas reales (las de T14 en `docs/capturas/fase2/`) y el código: inventario de controles por vista, cuáles son básicos y cuáles avanzados, jerarquía visual, problemas de color/contraste en claro y oscuro.
+- Entregable: `docs/superpowers/notas/2026-10-30-propuesta-ux.md` con, por vista, qué queda visible y qué va a "Más opciones"; la paleta de tokens propuesta para claro y oscuro (valores y contrastes medidos); reglas de espaciado, tamaños y estados. El controlador la resume al autor antes de aplicarla.
+
+### Task 17e: Aplicar la propuesta de UX/UI
+- Aplicar 17d en todas las vistas, con capturas antes/después en ambos temas y contraste AA medido.
+- Commit: `feat(ui): opciones básicas y avanzadas, temas claro y oscuro refinados`
