@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
+import PanelVista from "./PanelVista.vue";
 
 const props = defineProps<{ raiz: string | null }>();
 const { t } = useI18n();
@@ -50,6 +51,7 @@ async function guardarEnArboles() {
       <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
       {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
     </Button>
+    <PanelVista />
     <select
       v-model="filtroEtiqueta"
       class="h-7 rounded-md border bg-background px-2 text-sm"

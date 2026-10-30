@@ -86,7 +86,19 @@
     "confirmarMover": "¿Mover «{unidad}» dentro de «{destino}»?",
     "cancelar": "Cancelar",
     "mover": "Mover",
-    "reemplazo": "Reemplazo: {nombre}"
+    "reemplazo": "Reemplazo: {nombre}",
+    "vista": {
+      "titulo": "Vista",
+      "verPuestos": "Ver puestos",
+      "mostrarCargo": "Mostrar el cargo",
+      "mostrarPersona": "Mostrar la persona",
+      "rutaPorTipo": "Mostrar en las tarjetas el superior de tipo",
+      "colorearPor": "Colorear por",
+      "ninguno": "Ninguno",
+      "marcaDe": "Marca de {tipo}",
+      "ocultarLeyenda": "Ocultar la leyenda",
+      "mostrarLeyenda": "Mostrar la leyenda"
+    }
   },
   "arboles": {
     "titulo": "Árboles",

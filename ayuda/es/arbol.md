@@ -43,3 +43,13 @@ Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−*
 ## Abrir una rama como árbol
 
 En la tarjeta seleccionada, el botón **Abrir como árbol** muestra solo esa unidad y lo que cuelga de ella. No es una copia: lo que cambies ahí cambia en el árbol completo. Arriba aparece la ruta de origen (cada tramo se puede pulsar para abrir ese nivel), **Subir un nivel** y **Ver en el árbol completo**, que vuelve a todo el árbol con esa unidad desplegada, seleccionada y al centro.
+
+## Vista
+
+El botón **Vista**, en la barra del lienzo, abre las opciones de cómo se dibuja el árbol. Se recuerdan en este computador.
+
+- **Ver puestos** (apagado al comienzo): bajo cada unidad visible aparece una tarjeta por cada puesto, con el cargo, la persona titular o **Vacante**, y **Reemplazo: nombre** si hay un reemplazo vigente. Pulsa una tarjeta de puesto, o enfócala y presiona `Enter`, para abrir su ficha. Se puede ocultar el cargo o la persona. Con muchas unidades desplegadas, los puestos suman tarjetas: pliega las ramas que no necesitas.
+- **Mostrar en las tarjetas el superior de tipo**: marca los tipos (por ejemplo, Gerencia o Área) cuyo superior más cercano quieres leer en cada tarjeta de unidad. Solo aparecen los tipos que alguna unidad usa.
+- **Colorear por**: **Ninguno** o **Marca de** un tipo. Cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Solo se aplica un criterio a la vez.
+
+Con un criterio de color activo, abajo a la izquierda del lienzo aparece una **leyenda** con el color, el código y el nombre de la unidad que define cada marca que se ve. Se puede ocultar y volver a mostrar con su encabezado.

@@ -330,6 +330,16 @@ export const useOrganizacion = defineStore("organizacion", () => {
       estructura.forEach(([clave, nombre, tipo_id, padre], orden) => {
         uid[clave] = nuevo(U.crearUnidad({ tipo_id, nombre, parent_id: padre && uid[padre], orden }));
       });
+      // Marcas de las gerencias y la superintendencia, para ver «Colorear por» en la demostración.
+      const marcas: [string, string, string][] = [
+        ["gg", "#1e2a38", "GG"],
+        ["op", "#0f766e", "OP"],
+        ["ma", "#be123c", "MAN"],
+        ["fi", "#b45309", "FIN"],
+        ["pe", "#7c3aed", "PER"],
+      ];
+      for (const [clave, marca_color, marca_codigo] of marcas)
+        s.push(...U.editarUnidad(uid[clave], { marca_color, marca_codigo }));
 
       // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde
       const personas: [string, string, number, boolean, string][] = [

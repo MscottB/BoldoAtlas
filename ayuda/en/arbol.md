@@ -43,3 +43,13 @@ Drag the background to pan and use the mouse wheel or the **−** and **+** butt
 ## Opening a branch as a tree
 
 On the selected card, the **Open as tree** button shows only that unit and everything under it. It isn't a copy: what you change there changes in the full tree. At the top you see the origin path (press any step to open that level), **Up one level** and **View in the full tree**, which goes back to the whole tree with that unit expanded into view, selected and centered.
+
+## View
+
+The **View** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer.
+
+- **Show positions** (off at first): under each visible unit there is one card per position, with the job title, the holder or **Vacant**, and **Replacement: name** when a replacement is current. Press a position card, or focus it and press `Enter`, to open its record. You can hide the job title or the person. With many units expanded, positions add cards: collapse the branches you don't need.
+- **Show on the cards the parent of type**: tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
+- **Color by**: **None** or the **mark** of a type. Each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. Only one criterion applies at a time.
+
+With a color criterion active, a **legend** appears at the bottom left of the canvas with the color, code and name of the unit that defines each mark you can see. It can be hidden and shown again from its header.

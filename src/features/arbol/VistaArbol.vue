@@ -21,7 +21,18 @@ import {
 import { Button } from "@/components/ui/button";
 import type { Etiqueta, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
-import { creaCiclo, dotacionPorUnidad, indiceHijos, jefeVisible, ruta, vigentesPorPuesto } from "./jerarquia";
+import {
+  creaCiclo,
+  dotacionPorUnidad,
+  indiceHijos,
+  jefeVisible,
+  leyendaDeMarcas,
+  marcasPorUnidad,
+  ruta,
+  rutasPorTipo,
+  tiposEnUso,
+  vigentesPorPuesto,
+} from "./jerarquia";
 import {
   calcularLayout,
   subgrafoVisible,
@@ -30,10 +41,13 @@ import {
   type Subgrafo,
 } from "./layout";
 import { destinoAlSoltar, useLienzo } from "./useLienzo";
+import { useVista } from "./useVista";
+import { ALTO_UNIDAD, ALTO_UNIDAD_CON_RUTA, tipoDeMarca } from "./vista";
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
+import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
+import LeyendaLienzo from "./LeyendaLienzo.vue";
 
-const TAM = { ancho: 220, alto: 112 }; // igual que la tarjeta de NodoUnidad
 type Punto = { x: number; y: number };
 
 const { t } = useI18n();
@@ -42,6 +56,21 @@ const router = useRouter();
 const org = useOrganizacion();
 const { colapsados, seleccion, expandir } = useLienzo();
 const { fitView, setCenter, updateNode, areNodesInitialized } = useVueFlow();
+const { config } = useVista();
+
+// Opciones de «Vista» que cambian lo dibujado. Solo cuentan los tipos que alguna unidad usa.
+const tiposUso = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
+const tiposRuta = computed(
+  () => new Set(tiposUso.value.filter((x) => config.value.rutaTipos.includes(x.id)).map((x) => x.id)),
+);
+const tipoMarca = computed(() => tipoDeMarca(config.value.colorearPor, tiposUso.value));
+// Sobre todas las unidades, no solo la rama enfocada: la marca puede venir de un superior fuera de ella.
+const marcas = computed(() => (tipoMarca.value ? marcasPorUnidad(org.unidades, tipoMarca.value) : null));
+const rutas = computed(() =>
+  tiposRuta.value.size ? rutasPorTipo(org.unidades, org.catalogos.tipos_unidad, tiposRuta.value) : null,
+);
+// Igual que la tarjeta de NodoUnidad; con la ruta por tipo suma una línea.
+const TAM = computed(() => ({ ancho: 220, alto: rutas.value ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD }));
 
 // Vista enfocada: /?raiz=<id>. Una raíz que ya no existe se ignora y se ve todo.
 const raiz = computed(() => {
@@ -73,10 +102,18 @@ watch(
 const vista = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
 let ultimo = 0;
 watch(
-  () => subgrafoVisible(mostradas.value, org.conexiones, colapsados.value),
-  async (g) => {
+  () => ({
+    g: subgrafoVisible(
+      mostradas.value,
+      org.conexiones,
+      colapsados.value,
+      config.value.verPuestos ? org.puestos : [],
+    ),
+    tam: TAM.value,
+  }),
+  async ({ g, tam }) => {
     const este = ++ultimo;
-    const pos = await calcularLayout(g, TAM);
+    const pos = await calcularLayout(g, tam);
     if (este !== ultimo) return;
     vista.value = { g, pos };
     if (!encuadrar && !centrar) return;
@@ -95,7 +132,7 @@ watch([pendiente, areNodesInitialized], ([p, medidos]) => {
   if (!p || !medidos) return;
   pendiente.value = null;
   const c = p.centrar && vista.value?.pos.get(p.centrar);
-  if (c) void setCenter(c.x + TAM.ancho / 2, c.y + TAM.alto / 2, { zoom: 1 });
+  if (c) void setCenter(c.x + TAM.value.ancho / 2, c.y + TAM.value.alto / 2, { zoom: 1 });
   else void fitView();
 });
 
@@ -110,13 +147,13 @@ const etiquetasDe = computed(() => {
   return m;
 });
 
-const nodos = computed<Node<DatosNodo>[]>(() => {
+const nodos = computed<Node[]>(() => {
   if (!vista.value) return [];
   const { g, pos } = vista.value;
   const indice = indiceHijos(mostradas.value);
   const dotaciones = dotacionPorUnidad(mostradas.value, org.puestos, org.asignaciones);
   const vigentes = vigentesPorPuesto(org.asignaciones);
-  return g.nodos.map((u) => {
+  const unidades = g.nodos.map((u): Node<DatosNodo> => {
     const { total, vacantes } = dotaciones.get(u.id)!;
     const jefe = jefeVisible(u, vigentes);
     return {
@@ -131,10 +168,42 @@ const nodos = computed<Node<DatosNodo>[]>(() => {
         vacantes,
         etiquetas: etiquetasDe.value.get(u.id) ?? [],
         hijos: indice.get(u.id)?.length ?? 0,
+        marca: marcas.value?.get(u.id) ?? null,
+        ruta: rutas.value
+          ? (rutas.value.get(u.id) ?? [])
+              .filter((x) => x.id !== u.id)
+              .map((x) => x.nombre)
+              .join(" › ")
+          : null,
       },
     };
   });
+  const cargos = new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre]));
+  const nombre = (a?: { trabajador_id: string }) =>
+    (a && trabajadorPorId.value.get(a.trabajador_id)?.nombre) || null;
+  const delPuesto = g.puestos.map((p): Node<DatosPuesto> => ({
+    id: p.id,
+    type: "puesto",
+    position: pos.get(p.id)!,
+    draggable: false,
+    selectable: false,
+    data: {
+      cargo: cargos.get(p.cargo_id) ?? "",
+      titular: nombre(vigentes.get(p.id)?.titular),
+      reemplazo: nombre(vigentes.get(p.id)?.reemplazo),
+      mostrarCargo: config.value.mostrarCargo,
+      mostrarPersona: config.value.mostrarPersona,
+    },
+  }));
+  return [...unidades, ...delPuesto];
 });
+
+const leyenda = computed(() =>
+  marcas.value && vista.value ? leyendaDeMarcas(marcas.value, vista.value.g.nodos) : [],
+);
+const tituloLeyenda = computed(() =>
+  t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
+);
 
 const aristas = computed<Edge[]>(() => {
   if (!vista.value) return [];
@@ -158,7 +227,9 @@ const moviendo = ref<{ unidad: Unidad; destino: Unidad } | null>(null);
 function alSoltar({ node }: NodeDragEvent) {
   const pos = vista.value?.pos;
   if (!pos) return;
-  const destino = destinoAlSoltar(node.id, node.position, pos, TAM);
+  // Los puestos no reciben tarjetas: solo las unidades son destino.
+  const unidadesPos = new Map([...pos].filter(([id]) => org.porId.has(id)));
+  const destino = destinoAlSoltar(node.id, node.position, unidadesPos, TAM.value);
   const unidad = org.porId.get(node.id);
   // La tarjeta vuelve a su lugar; si se confirma el movimiento, el layout la reubica.
   updateNode(node.id, { position: pos.get(node.id) });
@@ -235,8 +306,12 @@ function verCompleto() {
         <template #node-unidad="p">
           <NodoUnidad :id="p.id" :data="p.data" />
         </template>
+        <template #node-puesto="p">
+          <NodoPuesto :id="p.id" :data="p.data" />
+        </template>
         <MiniMap pannable zoomable />
       </VueFlow>
+      <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
       <div
         v-if="org.vacia"
         class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"

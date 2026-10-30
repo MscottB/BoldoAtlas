@@ -358,6 +358,10 @@ describe("cargarEjemplo", () => {
     expect(s.usos("tipos_unidad", sup)).toBeGreaterThan(0);
     expect(s.org.nombre).toBe("Compañía Demo");
     expect(s.unidades.some((u) => u.jefe_puesto_id)).toBe(true);
+    // Marcas en las gerencias y la superintendencia, para probar «Colorear por».
+    const conMarca = s.unidades.filter((u) => u.marca_color && u.marca_codigo);
+    expect(conMarca.some((u) => u.tipo_id === TIPO_GERENCIA)).toBe(true);
+    expect(conMarca.some((u) => u.tipo_id === sup)).toBe(true);
   });
 });
 

@@ -86,7 +86,19 @@
     "confirmarMover": "Move “{unidad}” into “{destino}”?",
     "cancelar": "Cancel",
     "mover": "Move",
-    "reemplazo": "Replacement: {nombre}"
+    "reemplazo": "Replacement: {nombre}",
+    "vista": {
+      "titulo": "View",
+      "verPuestos": "Show positions",
+      "mostrarCargo": "Show the job title",
+      "mostrarPersona": "Show the person",
+      "rutaPorTipo": "Show on the cards the parent of type",
+      "colorearPor": "Color by",
+      "ninguno": "None",
+      "marcaDe": "{tipo} mark",
+      "ocultarLeyenda": "Hide the legend",
+      "mostrarLeyenda": "Show the legend"
+    }
   },
   "arboles": {
     "titulo": "Trees",

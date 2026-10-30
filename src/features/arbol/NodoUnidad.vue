@@ -8,7 +8,9 @@ import { Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import PuestosUnidad from "@/features/puestos/PuestosUnidad.vue";
+import { textoSobre } from "@/features/tema/tema";
 import { useLienzo } from "./useLienzo";
+import type { Marca } from "./jerarquia";
 
 export interface DatosNodo {
   unidad: Unidad;
@@ -19,6 +21,10 @@ export interface DatosNodo {
   vacantes: number;
   etiquetas: Etiqueta[];
   hijos: number;
+  /** Marca efectiva según «Colorear por»; null = sin color. */
+  marca: Marca | null;
+  /** Superiores por tipo elegido (texto); null = la vista no muestra la ruta. */
+  ruta: string | null;
 }
 
 const props = defineProps<{ id: string; data: DatosNodo }>();
@@ -56,14 +62,35 @@ async function guardar(e: Event) {
 <template>
   <!-- Nodo liviano: sin sombras ni transiciones (nota de rendimiento). -->
   <div
-    class="flex h-[112px] w-[220px] flex-col gap-1 rounded-lg border bg-card p-2 text-xs text-card-foreground"
-    :class="[seleccionada && 'border-marca ring-2 ring-marca', atenuada && 'opacity-35']"
+    class="flex w-[220px] flex-col gap-1 rounded-lg border bg-card p-2 text-xs text-card-foreground"
+    :class="[
+      data.ruta === null ? 'h-[112px]' : 'h-[132px]',
+      seleccionada && 'border-marca ring-2 ring-marca',
+      atenuada && 'opacity-35',
+      data.marca?.color && 'border-l-4',
+    ]"
+    :style="data.marca?.color ? { borderLeftColor: data.marca.color } : undefined"
     @click="seleccionar(id)"
   >
     <Handle type="target" :position="Position.Top" class="opacity-0" />
     <div class="flex items-center justify-between text-muted-foreground">
-      <span class="uppercase">{{ tipo }}</span>
-      <span class="flex gap-1">
+      <span class="flex min-w-0 items-center gap-1">
+        <span class="truncate uppercase">{{ tipo }}</span>
+        <span
+          v-if="data.marca?.codigo"
+          class="rounded px-1 text-[10px] font-semibold"
+          :class="!data.marca.color && 'bg-muted text-foreground'"
+          :style="
+            data.marca.color
+              ? { background: data.marca.color, color: textoSobre(data.marca.color) }
+              : undefined
+          "
+          :title="data.marca.unidad.nombre"
+        >
+          {{ data.marca.codigo }}
+        </span>
+      </span>
+      <span class="flex shrink-0 gap-1">
         <span
           v-for="e in data.etiquetas"
           :key="e.id"
@@ -95,6 +122,9 @@ async function guardar(e: Event) {
     >
       {{ data.unidad.nombre }}
     </button>
+    <span v-if="data.ruta" class="truncate text-[11px] text-muted-foreground" :title="data.ruta">
+      {{ data.ruta }}
+    </span>
     <div class="flex items-center gap-1.5">
       <template v-if="data.jefe">
         <img

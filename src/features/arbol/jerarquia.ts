@@ -184,3 +184,69 @@ export function tipoHijo(tipos: ValorCatalogo[], tipoPadreId: string | null): st
   const i = orden.findIndex((t) => t.id === tipoPadreId);
   return (orden.slice(i + 1).find((t) => !t.deleted_at) ?? activos[activos.length - 1])?.id;
 }
+
+/** Valor derivado de cada unidad viva a partir del de su superior, en una sola pasada de raíces a hojas. */
+function heredar<T>(unidades: U[], inicial: T, paso: (u: Unidad, delSuperior: T) => T): Map<string, T> {
+  const indice = indiceHijos(unidades);
+  const res = new Map<string, T>();
+  const visitar = (u: Unidad, delSuperior: T) => {
+    if (res.has(u.id)) return; // corta si los datos ya traen un ciclo
+    const v = paso(u, delSuperior);
+    res.set(u.id, v);
+    for (const h of indice.get(u.id) ?? []) visitar(h, v);
+  };
+  (indice.get(null) ?? []).forEach((r) => visitar(r, inicial));
+  return res;
+}
+
+/** Marca efectiva de una unidad y la unidad que la define. */
+export interface Marca {
+  color: string | null;
+  codigo: string | null;
+  unidad: Unidad;
+}
+
+/** `marcaHeredada` de todas las unidades vivas para un tipo, en O(n); null = sin marca. */
+export function marcasPorUnidad(unidades: U[], nivel: string): Map<string, Marca | null> {
+  return heredar<Marca | null>(unidades, null, (u, arriba) =>
+    u.tipo_id === nivel && (u.marca_color || u.marca_codigo)
+      ? { color: u.marca_color, codigo: u.marca_codigo, unidad: u }
+      : arriba,
+  );
+}
+
+/** Marcas distintas de las unidades dadas, una por unidad que la define, en el orden en que aparecen. */
+export function leyendaDeMarcas(marcas: Map<string, Marca | null>, nodos: Unidad[]): Marca[] {
+  const definidas = new Set<string>();
+  const res: Marca[] = [];
+  for (const n of nodos) {
+    const m = marcas.get(n.id);
+    if (m && !definidas.has(m.unidad.id)) {
+      definidas.add(m.unidad.id);
+      res.push(m);
+    }
+  }
+  return res;
+}
+
+/** `rutaPorTipo` de todas las unidades vivas para los tipos elegidos (en orden del catálogo), en O(n). */
+export function rutasPorTipo(
+  unidades: U[],
+  tipos: ValorCatalogo[],
+  elegidos: Set<string>,
+): Map<string, Unidad[]> {
+  const rango = new Map([...tipos].sort(porOrden).map((t, i) => [t.id, i]));
+  return heredar<Unidad[]>(unidades, [], (u, arriba) =>
+    elegidos.has(u.tipo_id)
+      ? [...arriba.filter((x) => x.tipo_id !== u.tipo_id), u].sort(
+          (a, b) => (rango.get(a.tipo_id) ?? 0) - (rango.get(b.tipo_id) ?? 0),
+        )
+      : arriba,
+  );
+}
+
+/** Tipos que alguna unidad viva usa, en el orden del catálogo. */
+export function tiposEnUso(unidades: U[], tipos: ValorCatalogo[]): ValorCatalogo[] {
+  const usados = new Set(unidades.filter((u) => !u.deleted_at).map((u) => u.tipo_id));
+  return tipos.filter((t) => usados.has(t.id)).sort(porOrden);
+}

@@ -10,11 +10,15 @@ import {
   indexar,
   indiceHijos,
   jefeVisible,
+  leyendaDeMarcas,
   marcaHeredada,
+  marcasPorUnidad,
   ruta,
   rutaPorTipo,
+  rutasPorTipo,
   rutaTexto,
   tipoHijo,
+  tiposEnUso,
   unidadesDePersona,
   vigentesPorPuesto,
 } from "./jerarquia";
@@ -217,6 +221,65 @@ describe("marcaHeredada", () => {
     expect(marcaHeredada(marcadas, "mecanica", TIPO_AREA)).toBeNull();
     expect(marcaHeredada(marcadas, "finanzas", TIPO_GERENCIA)).toBeNull();
     expect(marcaHeredada(marcadas, "gg", "cualquiera")).toBeNull();
+  });
+});
+
+describe("vista: marcas, rutas y tipos en uso", () => {
+  const marcadas = unidades.map((x) =>
+    x.id === "gg"
+      ? { ...x, marca_color: "#111111", marca_codigo: "GG" }
+      : x.id === "operaciones"
+        ? { ...x, marca_color: "#c2410c", marca_codigo: "OPE" }
+        : x.id === "finanzas"
+          ? { ...x, marca_color: null, marca_codigo: "FIN" }
+          : x,
+  );
+
+  it("marcasPorUnidad coincide con marcaHeredada para cada unidad y nivel", () => {
+    for (const nivel of [TIPO_GERENCIA, TIPO_AREA, TIPO_OTRA]) {
+      const marcas = marcasPorUnidad(marcadas, nivel);
+      for (const x of marcadas.filter((y) => !y.deleted_at)) {
+        const esperada = marcaHeredada(marcadas, x.id, nivel);
+        const m = marcas.get(x.id) ?? null;
+        expect(m && { color: m.color, codigo: m.codigo }).toEqual(esperada);
+      }
+    }
+  });
+
+  it("marcasPorUnidad apunta a la unidad que define la marca y no incluye borradas", () => {
+    const marcas = marcasPorUnidad(marcadas, TIPO_GERENCIA);
+    expect(marcas.get("mecanica")?.unidad.id).toBe("operaciones");
+    expect(marcas.get("gg")).toBeNull(); // GG es de tipo Otra: no tiene marca de Gerencia ni hereda
+    expect(marcas.has("borrada")).toBe(false);
+  });
+
+  it("leyendaDeMarcas: una entrada por unidad que define marca, solo las que se ven, en orden del árbol", () => {
+    const marcas = marcasPorUnidad(marcadas, TIPO_GERENCIA);
+    const visibles = ["gg", "finanzas", "operaciones", "mantencion"].map((id) =>
+      marcadas.find((x) => x.id === id)!,
+    );
+    expect(leyendaDeMarcas(marcas, visibles).map((m) => m.unidad.id)).toEqual(["finanzas", "operaciones"]);
+    expect(leyendaDeMarcas(marcas, [marcadas.find((x) => x.id === "gg")!])).toEqual([]);
+  });
+
+  it("rutasPorTipo coincide con rutaPorTipo restringida a los tipos elegidos", () => {
+    const elegidos = new Set([TIPO_GERENCIA, TIPO_SUBAREA]);
+    const rutas = rutasPorTipo(unidades, tipos, elegidos);
+    for (const x of unidades.filter((y) => !y.deleted_at)) {
+      const esperada = rutaPorTipo(unidades, tipos, x.id).filter((r) => elegidos.has(r.tipo.id));
+      expect(rutas.get(x.id)!.map((y) => y.id)).toEqual(esperada.map((r) => r.unidad.id));
+    }
+  });
+
+  it("tiposEnUso: tipos de alguna unidad viva, en el orden del catálogo", () => {
+    expect(tiposEnUso(unidades, tipos).map((t) => t.id)).toEqual([
+      TIPO_GERENCIA,
+      TIPO_AREA,
+      TIPO_SUBAREA,
+      TIPO_OTRA,
+    ]);
+    const solo = unidades.filter((x) => x.id === "mantencion" || x.id === "borrada");
+    expect(tiposEnUso(solo, tipos).map((t) => t.id)).toEqual([TIPO_AREA]);
   });
 });
 

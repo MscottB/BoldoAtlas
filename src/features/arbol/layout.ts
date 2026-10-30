@@ -1,5 +1,5 @@
 import ELK from "elkjs/lib/elk.bundled.js";
-import type { Conexion, Unidad } from "../../db/tipos";
+import type { Conexion, Puesto, Unidad } from "../../db/tipos";
 import { descendientes, indiceHijos } from "./jerarquia";
 
 // Las lecturas de repos no traen deleted_at; se acepta por si el llamador pasa filas crudas.
@@ -7,6 +7,8 @@ type U = Unidad & { deleted_at?: string | null };
 
 export interface Subgrafo {
   nodos: Unidad[];
+  /** Puestos de las unidades visibles; cuelgan de su unidad en `jerarquicas`. */
+  puestos: Puesto[];
   jerarquicas: [string, string][];
   laterales: Conexion[];
 }
@@ -35,15 +37,32 @@ export function unidadesDeRama(unidades: U[], raiz: string): Unidad[] {
   );
 }
 
-export function subgrafoVisible(unidades: U[], conexiones: Conexion[], colapsados: Set<string>): Subgrafo {
+// Con `puestos` (vacío = no se dibujan) cada unidad visible, plegada o no, suma los suyos como hijos.
+export function subgrafoVisible(
+  unidades: U[],
+  conexiones: Conexion[],
+  colapsados: Set<string>,
+  puestos: (Puesto & { deleted_at?: string | null })[] = [],
+): Subgrafo {
   const indice = indiceHijos(unidades);
+  const porUnidad = new Map<string, Puesto[]>();
+  for (const p of puestos.filter((x) => !x.deleted_at).sort((a, b) => a.orden - b.orden)) {
+    const lista = porUnidad.get(p.unidad_id);
+    if (lista) lista.push(p);
+    else porUnidad.set(p.unidad_id, [p]);
+  }
   const nodos: Unidad[] = [];
+  const delGrafo: Puesto[] = [];
   const jerarquicas: [string, string][] = [];
   const vistos = new Set<string>();
   const visitar = (x: Unidad) => {
     if (vistos.has(x.id)) return;
     vistos.add(x.id);
     nodos.push(x);
+    for (const p of porUnidad.get(x.id) ?? []) {
+      delGrafo.push(p);
+      jerarquicas.push([x.id, p.id]);
+    }
     if (colapsados.has(x.id)) return;
     for (const h of indice.get(x.id) ?? []) {
       jerarquicas.push([x.id, h.id]);
@@ -52,8 +71,11 @@ export function subgrafoVisible(unidades: U[], conexiones: Conexion[], colapsado
   };
   (indice.get(null) ?? []).forEach(visitar);
   const laterales = conexiones.filter((c) => vistos.has(c.origen_id) && vistos.has(c.destino_id));
-  return { nodos, jerarquicas, laterales };
+  return { nodos, puestos: delGrafo, jerarquicas, laterales };
 }
+
+/** Tamaño de la tarjeta de puesto; igual que NodoPuesto. */
+const TAM_PUESTO = { ancho: 200, alto: 68 };
 
 const elk = new ELK();
 
@@ -61,6 +83,7 @@ const elk = new ELK();
 export async function calcularLayout(
   subgrafo: Subgrafo,
   tam = { ancho: 220, alto: 112 },
+  tamPuesto = TAM_PUESTO,
 ): Promise<Map<string, { x: number; y: number }>> {
   const resultado = await elk.layout({
     id: "raiz",
@@ -70,7 +93,10 @@ export async function calcularLayout(
       "elk.spacing.nodeNode": "28",
       "elk.layered.spacing.nodeNodeBetweenLayers": "64",
     },
-    children: subgrafo.nodos.map((n) => ({ id: n.id, width: tam.ancho, height: tam.alto })),
+    children: [
+      ...subgrafo.nodos.map((n) => ({ id: n.id, width: tam.ancho, height: tam.alto })),
+      ...subgrafo.puestos.map((p) => ({ id: p.id, width: tamPuesto.ancho, height: tamPuesto.alto })),
+    ],
     edges: subgrafo.jerarquicas.map(([a, b]) => ({ id: `${a}>${b}`, sources: [a], targets: [b] })),
   });
   return new Map((resultado.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]));
