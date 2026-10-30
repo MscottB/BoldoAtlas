@@ -162,6 +162,12 @@ watch(
   },
 );
 
+// Otra fecha cambia qué unidades se ven: se encuadra una vez tras el próximo layout (las ramas plegadas se conservan).
+watch(
+  () => org.fechaVista,
+  () => (encuadrar = true),
+);
+
 // fitView ignora los nodos sin medir: se espera a que Vue Flow los mida todos (de inmediato si ya lo estaban).
 const pendiente = ref<{ centrar: string | null } | null>(null);
 watch([pendiente, areNodesInitialized], ([p, medidos]) => {

@@ -442,27 +442,70 @@ describe("organigrama a una fecha", () => {
         { ...u("vieja", TIPO_AREA, "Vieja", "ops"), ...vida([2021, 1, 1], [2025, 1, 1]) },
         { ...u("antes", TIPO_AREA, "Antes", "gg"), ...vida([2020, 1, 1], [2022, 1, 1]) },
         { ...u("huerfana", TIPO_AREA, "Huérfana", "antes"), ...vida([2021, 1, 1]) },
+        // Cargadas «hoy» (2026) con asignaciones retroactivas: abuela solo se ve por su descendiente.
+        { ...u("abuela", TIPO_AREA, "Abuela", "gg"), ...vida([2026, 1, 1]) },
+        { ...u("retro", TIPO_AREA, "Retro", "abuela"), ...vida([2026, 1, 1]) },
+        { ...u("solo", TIPO_AREA, "Solo", "gg"), ...vida([2026, 1, 1]) },
       ],
       puestos: [
         { ...p("pa", "ops"), ...vida([2021, 1, 1]) },
         { ...p("pb", "ops"), ...vida([2025, 1, 1]) },
-        { ...p("pc", "nueva"), ...vida([2020, 1, 1]) },
+        { ...p("pc", "nueva"), ...vida([2025, 1, 1]) },
         { ...p("pd", "ops"), ...vida([2021, 1, 1], [2025, 1, 1]) },
+        { ...p("pr", "retro"), ...vida([2026, 1, 1]) },
+        { ...p("pe", "antes"), ...vida([2026, 1, 1]) },
       ],
       asignaciones: [
         { ...asig("s1", "pa", "t1", "2021-02-01", null), ...vida([2026, 1, 1]) },
         { ...asig("s2", "pb", "t1", "2021-02-01", null), ...vida([2026, 1, 1]) },
         { ...asig("s3", "pd", "t2", "2021-02-01", null), ...vida([2026, 1, 1], [2026, 2, 1]) },
         { ...asig("s4", "pa", "t3", "2021-02-01", "2021-03-01"), ...vida([2026, 1, 1], [2022, 1, 1]) },
+        { ...asig("s5", "pr", "t1", "2015-01-01", null), ...vida([2026, 1, 1]) },
+        { ...asig("s6", "pe", "t1", "2015-01-01", null), ...vida([2026, 1, 1]) },
       ],
       trabajadores: [t("t2"), t("t3")],
     };
     const foto = instantaneaEn(historico, "2023-06-01");
 
     it("oculta lo creado después o eliminado antes, y muestra lo eliminado después", () => {
-      expect(foto.unidades.map((x) => x.id)).toEqual(["gg", "ops", "vieja", "huerfana"]);
-      expect(foto.puestos.map((x) => x.id)).toEqual(["pa", "pd"]);
-      expect(foto.asignaciones.map((x) => x.id)).toEqual(["s1", "s3"]);
+      expect(foto.unidades.map((x) => x.id)).toEqual(["gg", "ops", "vieja", "huerfana", "abuela", "retro"]);
+      expect(foto.puestos.map((x) => x.id)).toEqual(["pa", "pb", "pd", "pr"]);
+      expect(foto.asignaciones.map((x) => x.id)).toEqual(["s1", "s2", "s3", "s5"]);
+    });
+
+    it("carga retroactiva: un puesto creado después se ve si tiene asignación de ese día; la unidad, si tiene puesto o descendiente que se ve", () => {
+      const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+      expect(ids(foto.puestos)).toContain("pb"); // creado en 2025, pero con titular desde 2021
+      expect(ids(foto.unidades)).toContain("retro"); // creada en 2026, su puesto tiene titular desde 2015
+      expect(ids(foto.unidades)).toContain("abuela"); // creada en 2026, solo por su descendiente
+      expect(ids(foto.unidades)).not.toContain("solo"); // creada en 2026 y sin nada retroactivo
+      expect(ids(foto.unidades)).not.toContain("nueva"); // su único puesto es de 2025 y sin asignaciones
+    });
+
+    it("una unidad eliminada antes de la fecha sigue oculta aunque tenga asignaciones antiguas", () => {
+      expect(foto.unidades.map((x) => x.id)).not.toContain("antes");
+      expect(foto.puestos.map((x) => x.id)).not.toContain("pe");
+    });
+
+    it("una organización cargada hoy con asignaciones antiguas se ve entera en esa fecha", () => {
+      const hoy = vida([2026, 5, 5]);
+      const org = instantaneaEn(
+        {
+          unidades: [
+            { ...u("r", TIPO_OTRA, "R", null), ...hoy },
+            { ...u("h", TIPO_AREA, "H", "r"), ...hoy },
+          ],
+          puestos: [{ ...p("x", "h"), ...hoy }],
+          asignaciones: [{ ...asig("y", "x", "t1", "2015-03-01", null), ...hoy }],
+          trabajadores: [],
+        },
+        "2020-01-01",
+      );
+      expect(org.unidades.map((x) => x.id)).toEqual(["r", "h"]);
+      expect(org.puestos).toHaveLength(1);
+      expect(
+        instantaneaEn({ ...historico, asignaciones: [] }, "2023-06-01").unidades.map((x) => x.id),
+      ).toEqual(["gg", "ops", "vieja", "huerfana"]);
     });
 
     it("lo eliminado después reaparece como vivo; si su superior no se ve, queda como raíz", () => {

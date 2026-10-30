@@ -74,7 +74,7 @@ The **Views** button saves the current configuration (direction, density, lines,
 The date picker in the canvas toolbar shows the org chart as it was on a past day. Pick the date (future dates are not accepted): the **Viewing as of … · read only** band appears at the top with a **Back to today** button; you can also clear the picker.
 
 - **Managers**, **headcount**, **vacancies** and **positions** are calculated with the assignments in force that day: an assignment counts if it starts that day or earlier and has not ended (the day it ends no longer counts, and is the first day of the handover).
-- Units and positions **created after** that date or **deleted before** it are hidden. Anything deleted after the date reappears.
+- Units and positions **deleted before** that date and those **created after** it are hidden, unless they have an assignment in force that day (a position) or a position or sub-unit that is shown (a unit): so an organization entered today with old assignments shows in full. Anything deleted after the date reappears.
 - It is **read only**: you cannot drag, rename, create, paste a style or change anything in the unit panel or the position card, which show that day's data (the position history is shown in full). The **person's card** opens normally: their data has no history. The directory and the data review still show today.
 - **Declared limit:** changes of parent unit are not recorded, so the shape of the tree is today's. A unit that was moved stays where it is now, a deleted unit reappears under the last parent it had (or as a root if that parent did not exist that day), and the positions and the manager position are today's. Assignments entered late count from their start date.
 

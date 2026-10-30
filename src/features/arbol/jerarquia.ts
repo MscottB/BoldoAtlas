@@ -167,21 +167,43 @@ export interface Historico {
 }
 
 /**
- * El organigrama el día `fecha`: unidades y puestos que existían (lo eliminado después reaparece como vivo; si su superior
- * no se ve, queda como raíz) y el historial completo de sus asignaciones (`vigentesPorPuesto(…, fecha)` elige las de ese día).
- * Los cambios de superior no se registran: la forma es la de hoy. Las personas se dejan todas, solo se leen sus nombres.
+ * El organigrama el día `fecha`. Un puesto se ve si no estaba eliminado y fue creado ese día o antes, o tiene una asignación
+ * vigente ese día; una unidad, si no estaba eliminada y fue creada ese día o antes, o tiene un puesto o una unidad
+ * descendiente que se ven (así una organización cargada hoy con asignaciones antiguas se ve entera en fechas pasadas).
+ * Lo eliminado después reaparece como vivo; si su superior no se ve, queda como raíz. Se conserva el historial completo
+ * de las asignaciones (`vigentesPorPuesto(…, fecha)` elige las de ese día). Los cambios de superior no se registran:
+ * la forma es la de hoy. Las personas se dejan todas, solo se leen sus nombres.
  */
 export function instantaneaEn(h: Historico, fecha: string) {
-  const vivas = h.unidades.filter((u) => existiaEn(u, fecha));
-  const vistas = new Set(vivas.map((u) => u.id));
-  const unidades = vivas.map((u) => ({
-    ...u,
-    deleted_at: null,
-    parent_id: u.parent_id && vistas.has(u.parent_id) ? u.parent_id : null,
-  }));
-  const puestos = h.puestos
-    .filter((p) => vistas.has(p.unidad_id) && existiaEn(p, fecha))
-    .map((p) => ({ ...p, deleted_at: null }));
+  const conTitular = new Set(vigentesEn(h.asignaciones, fecha).map((a) => a.puesto_id));
+  const dePuestos = h.puestos.filter(
+    (p) => sinBajaEn(p, fecha) && (existiaEn({ created_at: p.created_at }, fecha) || conTitular.has(p.id)),
+  );
+  const conPuesto = new Set(dePuestos.map((p) => p.unidad_id));
+  // Una pasada hacia arriba desde cada unidad que se ve por sí misma; `recorridas` evita repetir tramos (y ciclos).
+  const porId = new Map(h.unidades.map((u) => [u.id, u]));
+  const vistas = new Set<string>();
+  const recorridas = new Set<string>();
+  for (const u of h.unidades) {
+    if (!sinBajaEn(u, fecha) || !(existiaEn({ created_at: u.created_at }, fecha) || conPuesto.has(u.id)))
+      continue;
+    for (
+      let x: (Unidad & Vida) | undefined = u;
+      x && !recorridas.has(x.id);
+      x = x.parent_id ? porId.get(x.parent_id) : undefined
+    ) {
+      recorridas.add(x.id);
+      if (sinBajaEn(x, fecha)) vistas.add(x.id);
+    }
+  }
+  const unidades = h.unidades
+    .filter((u) => vistas.has(u.id))
+    .map((u) => ({
+      ...u,
+      deleted_at: null,
+      parent_id: u.parent_id && vistas.has(u.parent_id) ? u.parent_id : null,
+    }));
+  const puestos = dePuestos.filter((p) => vistas.has(p.unidad_id)).map((p) => ({ ...p, deleted_at: null }));
   const deLosPuestos = new Set(puestos.map((p) => p.id));
   const asignaciones = h.asignaciones.filter((a) => deLosPuestos.has(a.puesto_id) && sinBajaEn(a, fecha));
   return { unidades, puestos, asignaciones, trabajadores: h.trabajadores };
