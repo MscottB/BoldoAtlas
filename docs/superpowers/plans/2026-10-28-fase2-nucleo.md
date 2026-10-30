@@ -496,7 +496,7 @@ Orden de ejecución completo: …, 11, 11b, 11e, 11c, 11d, **11f**, 10, 12, **12
 
 ## Anexo 3 (comentarios del autor tras probar el ejemplo, 2026-10-30) — spec §7 "Comentarios del autor…"
 
-Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17g (cierre limpio, primero por ser pequeño), 17a, 17b, 17c, 17f (pestañas), 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14. "Comparar dos proyectos" queda en Escenarios (Fase 5), con modo lado a lado.
+Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17g (cierre limpio, primero por ser pequeño), 17a, 17b, 17h (rendimiento), 17c, 17f (pestañas), 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14. "Comparar dos proyectos" queda en Escenarios (Fase 5), con modo lado a lado.
 
 ### Task 17a: Menú de la app, volver a Inicio y vistas que se cierran
 - Botón de menú de la app en la barra superior (logo + nombre de la organización) con: Inicio, Nueva organización vacía, Explorar el ejemplo, Abrir `.boldo` (deshabilitado, Fase 5), Importar Excel (deshabilitado, Fase 4), Respaldos, Configuración; las mismas acciones en la paleta Ctrl+K.
@@ -560,3 +560,12 @@ Reemplaza a la Task 16. Orden final: …, Anexo 3 (17g, 17a, 17b, 17c, 17f, 17d,
 - Tests: SemVer (pre-release < final; `dev` nunca ofrece bajar), selección de novedades entre dos versiones, reemplazo/restauración en Rust sobre carpetas temporales, decisión de la consulta periódica, limpieza.
 - Requiere del autor: crear la clave con `npx tauri signer generate` y guardarla como secreto `TAURI_SIGNING_PRIVATE_KEY` (+ contraseña) en GitHub.
 - Commit: `feat: actualizador con consulta periódica, novedades, limpieza y bandeja`
+
+### Task 17h (decisión del autor tras T14: "Optimizar + límite"): rendimiento del lienzo con árboles gigantes
+- Nivel de detalle por zoom: bajo un umbral de zoom (y con muchas tarjetas visibles) las tarjetas se dibujan simplificadas (un rectángulo con nombre y color, sin botones ni insignias) y el minimapa y las aristas se simplifican u ocultan; al acercarse vuelve el detalle. Umbrales en un solo lugar, medidos.
+- Layout en un Web Worker (elkjs en worker), con descarte de resultados obsoletos; la interfaz nunca se congela al reordenar, expandir o aplicar una vista; indicador "Ordenando…".
+- Recalcular solo lo necesario: no reconstruir todos los nodos cuando cambia algo que no afecta la forma (selección, resaltado, colores).
+- Límite: al expandir (Expandir todo, expandir rama, aplicar vista) si las tarjetas visibles superarían ~1.000, aviso con la cifra y opciones "Expandir igual" / "Expandir hasta el nivel N" / "Cancelar".
+- Directorio y Revisión con listas virtualizadas (solo filas visibles) para 10.000 personas (hallazgo 8 de T14).
+- Medir de nuevo con `scripts/sembrar-grande.mjs` y la técnica de la nota; objetivo: ≥ 30 FPS al arrastrar con 2.000 unidades alejadas, sin bloqueos > 200 ms al reordenar. Actualizar la nota.
+- Commit: `perf(arbol): nivel de detalle, layout en segundo plano y límite al expandir`
