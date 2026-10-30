@@ -55,6 +55,7 @@ import {
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
+import BarraSeleccion from "./BarraSeleccion.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha } from "@/features/puestos/puestos";
@@ -65,8 +66,17 @@ const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
-const { colapsados, seleccion, expandir, centrarEn } = useLienzo();
-const { fitView, setCenter, updateNode, updateNodeInternals, areNodesInitialized } = useVueFlow();
+const { colapsados, seleccion, seleccionadas, expandir, centrarEn, sumarVarias, podarSeleccion } =
+  useLienzo();
+const {
+  fitView,
+  setCenter,
+  updateNode,
+  updateNodeInternals,
+  areNodesInitialized,
+  getSelectedNodes,
+  removeSelectedElements,
+} = useVueFlow();
 const { config } = useVista();
 
 // Opciones de «Vista» que cambian lo dibujado. Solo cuentan los tipos que alguna unidad usa.
@@ -143,6 +153,7 @@ watch(
     const pos = await calcularLayout(g, tam, tamDelPuesto, opciones);
     if (este !== ultimo) return;
     vista.value = { g, pos };
+    podarSeleccion(new Set(g.nodos.map((u) => u.id))); // lo que se plegó ya no cuenta como seleccionado
     if (!encuadrar && !centrar) return;
     const id = centrar;
     encuadrar = false;
@@ -327,9 +338,17 @@ async function mover() {
   if (!r.ok) toast.error(r.mensaje);
 }
 
+// El recuadro (Mayús + arrastrar en el fondo) usa la selección de Vue Flow solo para medir qué unidades encierra: la
+// selección de verdad es la de useLienzo, así que la de Vue Flow se vacía de inmediato (si no, arrastraría a las demás).
+function alTerminarRecuadro() {
+  const ids = getSelectedNodes.value.filter((n) => n.type === "unidad").map((n) => n.id);
+  removeSelectedElements();
+  if (!org.fechaVista) sumarVarias(ids);
+}
+
 // Panel de la unidad seleccionada. Al cerrarlo con el teclado o su botón, el foco vuelve a la tarjeta.
 const unidadSeleccionada = computed(() =>
-  seleccion.value ? (org.enFecha.porId.get(seleccion.value) ?? null) : null,
+  seleccion.value && seleccionadas.value.size === 1 ? (org.enFecha.porId.get(seleccion.value) ?? null) : null,
 );
 async function cerrarPanel() {
   const id = seleccion.value;
@@ -412,7 +431,8 @@ function verCompleto() {
           :edges="aristas"
           :min-zoom="0.05"
           :nodes-draggable="!org.fechaVista"
-          :elements-selectable="false"
+          :elements-selectable="!org.fechaVista"
+          :select-nodes-on-drag="false"
           :nodes-connectable="false"
           :nodes-focusable="false"
           :edges-focusable="false"
@@ -420,6 +440,8 @@ function verCompleto() {
           :delete-key-code="null"
           class="lienzo"
           @node-drag-stop="alSoltar"
+          @node-click="removeSelectedElements()"
+          @selection-end="alTerminarRecuadro"
           @pane-click="seleccion = null"
         >
           <template #node-unidad="p">
@@ -430,6 +452,12 @@ function verCompleto() {
           </template>
           <MiniMap pannable zoomable />
         </VueFlow>
+        <div
+          v-if="seleccionadas.size >= 2"
+          class="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-center"
+        >
+          <BarraSeleccion class="pointer-events-auto" />
+        </div>
         <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
         <div
           v-if="org.vacia"

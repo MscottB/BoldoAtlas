@@ -280,7 +280,8 @@
     "valorExiste": "\"{nombre}\" already exists in the list.",
     "puestoInexistente": "The position no longer exists.",
     "nadaQuePegar": "There is no copied style that can be pasted.",
-    "ultimoTipoUnidad": "At least one unit type must stay active."
+    "ultimoTipoUnidad": "At least one unit type must stay active.",
+    "soloLectura": "You are viewing the org chart at a past date: it is read-only. Go back to today to change it."
   },
   "ficha": {
     "tituloPersona": "Person record",
@@ -426,7 +427,25 @@
     "nPuestos": "{n} position | {n} positions",
     "moverYEliminar": "Move its content to “{superior}” and delete",
     "eliminada": "Unit “{nombre}” deleted",
-    "deshacer": "Undo"
+    "deshacer": "Undo",
+    "duplicar": "Duplicate branch",
+    "copiaDe": "{nombre} (copy)",
+    "duplicada": "Branch “{nombre}” duplicated"
+  },
+  "seleccion": {
+    "barra": "Actions on the selected units",
+    "cantidad": "{n} unit selected | {n} units selected",
+    "limpiar": "Clear the selection",
+    "moverA": "Move to…",
+    "plegar": "Collapse",
+    "etiquetar": "Tag…",
+    "eliminar": "Delete…",
+    "eliminarTitulo": "Delete {n} unit? | Delete {n} units?",
+    "eliminarTexto": "What they contain (subunits and positions) will move to each one's parent unit. You can undo everything at once for 8 seconds.",
+    "eliminarOmitidas": "{n} root unit with content will not be deleted. | {n} root units with content will not be deleted.",
+    "eliminarConfirmar": "Delete {n} unit | Delete {n} units",
+    "eliminadas": "{n} unit deleted | {n} units deleted",
+    "omitidas": "{n} root unit with content was not deleted. | {n} root units with content were not deleted."
   },
   "leyenda": {
     "titulo": "Legend",

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, useId, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Bookmark, BookmarkCheck, Plus, Trash2, X } from "@lucide/vue";
+import { Bookmark, BookmarkCheck, Copy, Plus, Trash2, X } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +34,7 @@ const emit = defineEmits<{ cerrar: [] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { editando, seleccionar, expandir, pedidoEliminar } = useLienzo();
+const { editando, seleccionar, expandir, pedidoEliminar, duplicar } = useLienzo();
 const puesto = usePuesto();
 const uid = useId();
 
@@ -344,6 +344,10 @@ async function eliminar() {
             >
               <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
               {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
+            </Button>
+            <Button type="button" variant="outline" size="sm" @click="duplicar(unidad.id)">
+              <Copy aria-hidden="true" />
+              {{ t("unidad.duplicar") }}
             </Button>
             <Button
               type="button"

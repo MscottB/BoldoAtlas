@@ -988,3 +988,239 @@ describe("cargarEjemplo en inglés", () => {
     expect(s.usos("tipos_unidad", TIPO_GERENCIA)).toBeGreaterThan(0);
   });
 });
+
+describe("selección múltiple", () => {
+  /** Raíz › {A › {A1, A2}, B, C}; los ids por clave. */
+  async function arbol() {
+    const s = nuevo();
+    const raiz = await unidad(s, "Raíz");
+    const A = await unidad(s, "A", raiz);
+    const A1 = await unidad(s, "A1", A);
+    const A2 = await unidad(s, "A2", A);
+    const B = await unidad(s, "B", raiz);
+    const C = await unidad(s, "C", raiz);
+    return { s, raiz, A, A1, A2, B, C };
+  }
+  const padre = (s: ReturnType<typeof nuevo>, id: string) => s.porId.get(id)?.parent_id;
+
+  describe("moverUnidades", () => {
+    it("mueve solo las cimas, en un solo lote: las descendientes viajan con su rama", async () => {
+      const { s, A, A1, B, C } = await arbol();
+      const antes = revision();
+      const r = await s.moverUnidades([A, A1, B], C);
+      expect(r.ok).toBe(true);
+      expect(revision()).toBe(antes + 1);
+      expect(padre(s, A)).toBe(C);
+      expect(padre(s, B)).toBe(C);
+      expect(padre(s, A1)).toBe(A); // no se tocó
+    });
+
+    it("a la raíz (sin superior) también", async () => {
+      const { s, A } = await arbol();
+      expect((await s.moverUnidades([A], null)).ok).toBe(true);
+      expect(padre(s, A)).toBeNull();
+    });
+
+    it("rechaza un destino que cuelga de una seleccionada, sin escribir nada", async () => {
+      const { s, A, A1, B } = await arbol();
+      const antes = revision();
+      const r = await s.moverUnidades([B, A], A1);
+      expect(r).toEqual({ ok: false, mensaje: "No se puede mover una unidad dentro de su propia rama." });
+      expect(revision()).toBe(antes);
+      expect(padre(s, B)).not.toBe(A1);
+    });
+
+    it("rechaza mover una unidad bajo sí misma", async () => {
+      const { s, B, C } = await arbol();
+      expect((await s.moverUnidades([B, C], C)).ok).toBe(false);
+    });
+
+    it("las que ya están bajo el destino no se escriben; si no queda ninguna, no hay lote", async () => {
+      const { s, raiz, A, B } = await arbol();
+      const antes = revision();
+      expect((await s.moverUnidades([A, B], raiz)).ok).toBe(true);
+      expect(revision()).toBe(antes);
+    });
+
+    it("en la vista a una fecha no escribe", async () => {
+      const { s, A, B } = await arbol();
+      await s.verAFecha("2026-01-01");
+      const antes = revision();
+      const r = await s.moverUnidades([A], B);
+      expect(r.ok).toBe(false);
+      expect(revision()).toBe(antes);
+    });
+  });
+
+  describe("eliminarUnidades", () => {
+    it("elimina varias en un lote: su contenido pasa al superior y un solo Deshacer lo devuelve todo", async () => {
+      const { s, raiz, A, A1, B } = await arbol();
+      const p = await puesto(s, B);
+      const antes = revision();
+      const r = await s.eliminarUnidades([A, B]);
+      expect(r).toEqual({ ok: true, eliminadas: 2, omitidas: 0 });
+      expect(revision()).toBe(antes + 1);
+      expect(s.porId.has(A) || s.porId.has(B)).toBe(false);
+      expect(padre(s, A1)).toBe(raiz);
+      expect(s.puestos.find((x) => x.id === p)?.unidad_id).toBe(raiz);
+      expect(s.ultimoBorrado).toMatchObject({ tipo: "unidades" });
+
+      const d = revision();
+      expect((await s.deshacer()).ok).toBe(true);
+      expect(revision()).toBe(d + 1); // un solo Deshacer, un solo lote
+      expect(s.porId.has(A) && s.porId.has(B)).toBe(true);
+      expect(padre(s, A1)).toBe(A);
+      expect(s.puestos.find((x) => x.id === p)?.unidad_id).toBe(B);
+      expect(s.ultimoBorrado).toBeNull();
+    });
+
+    it("una y su subunidad a la vez: el contenido sube al primer superior que queda y Deshacer lo reconstruye", async () => {
+      const { s, raiz, A, A1, A2 } = await arbol();
+      const hijaDeA1 = await unidad(s, "A11", A1);
+      const p = await puesto(s, A1);
+      expect((await s.eliminarUnidades([A, A1])).ok).toBe(true);
+      expect(padre(s, hijaDeA1)).toBe(raiz);
+      expect(padre(s, A2)).toBe(raiz);
+      expect(s.puestos.find((x) => x.id === p)?.unidad_id).toBe(raiz);
+
+      expect((await s.deshacer()).ok).toBe(true);
+      expect(padre(s, hijaDeA1)).toBe(A1);
+      expect(padre(s, A1)).toBe(A);
+      expect(padre(s, A2)).toBe(A);
+      expect(s.puestos.find((x) => x.id === p)?.unidad_id).toBe(A1);
+    });
+
+    it("una raíz con contenido se omite y se informa; las demás se eliminan", async () => {
+      const { s, raiz, B } = await arbol();
+      const r = await s.eliminarUnidades([raiz, B]);
+      expect(r).toEqual({ ok: true, eliminadas: 1, omitidas: 1 });
+      expect(s.porId.has(raiz)).toBe(true);
+      expect(s.porId.has(B)).toBe(false);
+    });
+
+    it("si ninguna se puede eliminar, falla con el mensaje y no escribe", async () => {
+      const { s, raiz } = await arbol();
+      const antes = revision();
+      const r = await s.eliminarUnidades([raiz]);
+      expect(r).toEqual({
+        ok: false,
+        mensaje: "No se puede eliminar la unidad raíz mientras tenga contenido.",
+      });
+      expect(revision()).toBe(antes);
+      expect(s.ultimoBorrado).toBeNull();
+    });
+
+    it("deshacer vencido no hace nada", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const { s, A, B } = await arbol();
+      await s.eliminarUnidades([A, B]);
+      vi.setSystemTime(Date.now() + 9000);
+      expect((await s.deshacer()).ok).toBe(false);
+      expect(s.porId.has(A)).toBe(false);
+    });
+
+    it("en la vista a una fecha no escribe", async () => {
+      const { s, B } = await arbol();
+      await s.verAFecha("2026-01-01");
+      const antes = revision();
+      expect((await s.eliminarUnidades([B])).ok).toBe(false);
+      expect(revision()).toBe(antes);
+    });
+  });
+
+  describe("etiquetar varias", () => {
+    it("agrega una etiqueta existente a todas en un lote, saltando las que ya la tienen", async () => {
+      const { s, A, B, C } = await arbol();
+      const e = await s.crearEtiqueta("Crítica", "#c2410c", A);
+      if (!e.ok) throw new Error("no se creó");
+      const antes = revision();
+      expect((await s.etiquetarUnidades([A, B, C], e.id)).ok).toBe(true);
+      expect(revision()).toBe(antes + 1);
+      expect(
+        s.unidadEtiquetas
+          .filter((x) => x.etiqueta_id === e.id)
+          .map((x) => x.unidad_id)
+          .sort(),
+      ).toEqual([A, B, C].sort());
+    });
+
+    it("si todas ya la tienen no escribe", async () => {
+      const { s, A } = await arbol();
+      const e = await s.crearEtiqueta("Crítica", "#c2410c", A);
+      if (!e.ok) throw new Error("no se creó");
+      const antes = revision();
+      expect((await s.etiquetarUnidades([A], e.id)).ok).toBe(true);
+      expect(revision()).toBe(antes);
+    });
+
+    it("una etiqueta nueva se crea y se asigna a todas en un solo lote", async () => {
+      const { s, A, B, C } = await arbol();
+      const antes = revision();
+      const r = await s.crearEtiqueta("Turnos", "#2563eb", [A, B, C]);
+      expect(r.ok).toBe(true);
+      expect(revision()).toBe(antes + 1);
+      expect(s.unidadEtiquetas).toHaveLength(3);
+    });
+
+    it("en la vista a una fecha no escribe", async () => {
+      const { s, A } = await arbol();
+      const e = await s.crearEtiqueta("Crítica", "#c2410c");
+      if (!e.ok) throw new Error("no se creó");
+      await s.verAFecha("2026-01-01");
+      const antes = revision();
+      expect((await s.etiquetarUnidades([A], e.id)).ok).toBe(false);
+      expect((await s.crearEtiqueta("Otra", "#2563eb", [A])).ok).toBe(false);
+      expect(revision()).toBe(antes);
+    });
+  });
+});
+
+describe("duplicar rama", () => {
+  afterEach(() => cambiarIdioma("es"));
+
+  it("copia la rama en un solo lote, con «(copia)» solo en la raíz, y devuelve el id de la copia", async () => {
+    const s = nuevo();
+    const raiz = await unidad(s, "Raíz");
+    const A = await unidad(s, "A", raiz);
+    await unidad(s, "A1", A);
+    const p = await puesto(s, A);
+    await s.asignarJefe(A, p);
+    await s.asignarTitular(p, await persona(s, "Ana"), "2026-01-01");
+    const antes = revision();
+    const r = await s.duplicarRama(A);
+    expect(r.ok).toBe(true);
+    expect(revision()).toBe(antes + 1);
+    expect(s.unidades.map((u) => u.nombre).sort()).toEqual(["A", "A (copia)", "A1", "A1", "Raíz"]);
+    const copia = s.porId.get((r as { id: string }).id)!;
+    expect(copia.parent_id).toBe(raiz);
+    expect(s.puestos).toHaveLength(2);
+    expect(copia.jefe_puesto_id).not.toBe(p);
+    expect(s.asignaciones).toHaveLength(1); // la copia nace vacante
+  });
+
+  it("el nombre de la copia sigue el idioma de la interfaz", async () => {
+    cambiarIdioma("en");
+    const s = nuevo();
+    const A = await unidad(s, "A");
+    await s.duplicarRama(A);
+    expect(s.unidades.map((u) => u.nombre).sort()).toEqual(["A", "A (copy)"]);
+  });
+
+  it("una unidad que ya no existe falla sin escribir", async () => {
+    const s = nuevo();
+    await s.cargar();
+    const antes = revision();
+    expect((await s.duplicarRama("fantasma")).ok).toBe(false);
+    expect(revision()).toBe(antes);
+  });
+
+  it("en la vista a una fecha no escribe", async () => {
+    const s = nuevo();
+    const A = await unidad(s, "A");
+    await s.verAFecha("2026-01-01");
+    const antes = revision();
+    expect((await s.duplicarRama(A)).ok).toBe(false);
+    expect(revision()).toBe(antes);
+    expect(s.unidades).toHaveLength(1);
+  });
+});

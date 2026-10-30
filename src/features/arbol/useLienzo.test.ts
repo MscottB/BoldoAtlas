@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
 import type { Trabajador } from "@/db/tipos";
 import { a, p, unidades } from "./fixture";
 import { vigentesPorPuesto } from "./jerarquia";
-import { coincideFiltro, destinoAlSoltar, unidadesQueCumplen } from "./useLienzo";
+import { coincideFiltro, destinoAlSoltar, unidadesQueCumplen, useLienzo } from "./useLienzo";
 import { VISTA_POR_DEFECTO } from "./vista";
 
 const mantencion = unidades.find((x) => x.id === "mantencion")!;
@@ -102,5 +103,95 @@ describe("unidadesQueCumplen (resaltar por vacantes, sede, contrato, jornada, ca
     expect(r({ vacantes: true, sede: "s1" })).toEqual(new Set(["mecanica"]));
     expect(r({ vacantes: true, sede: "s2" })).toEqual(new Set());
     expect(r({ contrato: "k1", cargo: "Y" })).toEqual(new Set(["mecanica", "finanzas"]));
+  });
+});
+
+describe("selección múltiple", () => {
+  const nuevo = () => {
+    setActivePinia(createPinia());
+    const l = useLienzo();
+    l.seleccion.value = null; // el estado del lienzo es compartido: se parte de cero
+    l.colapsados.value = new Set();
+    return l;
+  };
+
+  it("Mayús+clic suma a la unidad ya seleccionada; la última tocada queda como foco", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarASeleccion("b", false);
+    expect([...l.seleccionadas.value]).toEqual(["a", "b"]);
+    expect(l.seleccion.value).toBe("b");
+    l.sumarASeleccion("c", false);
+    expect(l.seleccionadas.value.size).toBe(3);
+  });
+
+  it("Ctrl+clic quita; al quedar una sola vuelve a ser la selección simple (con panel)", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarASeleccion("b", true);
+    l.sumarASeleccion("b", true);
+    expect([...l.seleccionadas.value]).toEqual(["a"]);
+    expect(l.seleccion.value).toBe("a");
+    l.sumarASeleccion("a", true);
+    expect(l.seleccion.value).toBeNull();
+    expect(l.seleccionadas.value.size).toBe(0);
+  });
+
+  it("sin selección previa, el primer Ctrl+clic selecciona una sola", () => {
+    const l = nuevo();
+    l.sumarASeleccion("a", true);
+    expect([...l.seleccionadas.value]).toEqual(["a"]);
+  });
+
+  it("Esc o un clic en el fondo (seleccion = null) la deshacen por completo", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarASeleccion("b", false);
+    l.seleccion.value = null;
+    expect(l.seleccionadas.value.size).toBe(0);
+  });
+
+  it("elegir una unidad suelta (o revelarla, como hacen las flechas) la deja como única", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarASeleccion("b", false);
+    l.seleccionar("z");
+    expect([...l.seleccionadas.value]).toEqual(["z"]);
+
+    l.sumarASeleccion("y", false);
+    l.revelar("y"); // ya estaba en el conjunto, pero una flecha sola no extiende
+    expect([...l.seleccionadas.value]).toEqual(["y"]);
+  });
+
+  it("sumarVarias (el recuadro) agrega a lo ya seleccionado y no hace nada con una lista vacía", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarVarias([]);
+    expect([...l.seleccionadas.value]).toEqual(["a"]);
+    l.sumarVarias(["b", "c"]);
+    expect([...l.seleccionadas.value]).toEqual(["a", "b", "c"]);
+    expect(l.seleccion.value).toBe("c");
+  });
+
+  it("podarSeleccion quita lo que ya no se dibuja y vuelve a selección simple si queda una", () => {
+    const l = nuevo();
+    l.seleccionar("a");
+    l.sumarASeleccion("b", false);
+    l.sumarASeleccion("c", false);
+    l.podarSeleccion(new Set(["a", "b", "x"]));
+    expect([...l.seleccionadas.value]).toEqual(["a", "b"]);
+    expect(l.seleccion.value).toBe("b"); // el foco seguía visible
+    l.podarSeleccion(new Set(["a"]));
+    expect([...l.seleccionadas.value]).toEqual(["a"]);
+    expect(l.seleccion.value).toBe("a");
+  });
+
+  it("plegarSeleccion pliega todas las seleccionadas y conserva las ya plegadas", () => {
+    const l = nuevo();
+    l.colapsados.value = new Set(["z"]);
+    l.seleccionar("a");
+    l.sumarASeleccion("b", false);
+    l.plegarSeleccion();
+    expect([...l.colapsados.value].sort()).toEqual(["a", "b", "z"]);
   });
 });

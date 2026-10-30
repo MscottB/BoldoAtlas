@@ -1,28 +1,26 @@
 import type { Unidad } from "@/db/tipos";
 import { indiceHijos, porOrden } from "@/features/arbol/jerarquia";
 
+export type Navegacion = "irSuperior" | "irPrimerHijo" | "irHermanoAnterior" | "irHermanoSiguiente";
+
 export type Atajo =
+  | Navegacion
   | "paleta"
   | "nuevaUnidad"
   | "buscarLienzo"
   | "eliminar"
   | "cerrar"
   | "encuadrar"
-  | "irSuperior"
-  | "irPrimerHijo"
-  | "irHermanoAnterior"
-  | "irHermanoSiguiente";
-
-export type Navegacion = Extract<
-  Atajo,
-  "irSuperior" | "irPrimerHijo" | "irHermanoAnterior" | "irHermanoSiguiente"
->;
+  | "duplicar"
+  /** Mayús+flecha: suma a la selección la unidad a la que iría la flecha. */
+  | `extender:${Navegacion}`;
 
 export interface TeclaAtajo {
   key: string;
   ctrlKey: boolean;
   metaKey: boolean;
   altKey?: boolean;
+  shiftKey?: boolean;
   enCampoDeTexto: boolean;
   /** Hay un diálogo, menú o lista abiertos: ellos mandan sobre el teclado. */
   modalAbierto?: boolean;
@@ -47,8 +45,12 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && tecla === "k") return "paleta";
   if (e.key === "Escape") return "cerrar";
   if (e.ctrlKey && e.key === "0") return "encuadrar";
+  if (conControl && tecla === "d" && !e.altKey) return e.enCampoDeTexto || e.soloLectura ? null : "duplicar";
   if (conControl || e.altKey || e.enCampoDeTexto) return null;
-  if (e.key in FLECHAS) return FLECHAS[e.key]![e.horizontal ? 1 : 0];
+  if (e.key in FLECHAS) {
+    const ir = FLECHAS[e.key]![e.horizontal ? 1 : 0];
+    return e.shiftKey ? `extender:${ir}` : ir;
+  }
   if (e.key === "Delete") return e.soloLectura ? null : "eliminar";
   if (tecla === "n") return e.soloLectura ? null : "nuevaUnidad";
   if (tecla === "f") return "buscarLienzo";

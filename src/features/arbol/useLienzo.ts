@@ -1,10 +1,11 @@
-import { computed, ref, type ComputedRef } from "vue";
+import { computed, ref, shallowRef, watch, type ComputedRef } from "vue";
 import { toast } from "vue-sonner";
 import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import { hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
+import { sumar, type Seleccion } from "./multiple";
 import { useVista } from "./useVista";
 import type { Resaltado } from "./vista";
 
@@ -72,6 +73,23 @@ export function destinoAlSoltar(
 // Estado compartido por el lienzo y el panel de unidad: hay un solo lienzo en la app.
 const colapsados = ref(new Set<string>());
 const seleccion = ref<string | null>(null);
+/** Con 2 o más unidades seleccionadas, todas ellas (y `seleccion` es la última tocada); si no, vacío. */
+const multi = shallowRef<ReadonlySet<string>>(new Set());
+const seleccionadas = computed<ReadonlySet<string>>(() =>
+  multi.value.size ? multi.value : new Set(seleccion.value ? [seleccion.value] : []),
+);
+// Cambiar `seleccion` a algo fuera del conjunto (clic suelto, Esc, otra rama…) lo deshace.
+watch(
+  seleccion,
+  (id) => {
+    if (multi.value.size && (!id || !multi.value.has(id))) multi.value = new Set();
+  },
+  { flush: "sync" },
+);
+function aplicar({ ids, foco }: Seleccion) {
+  multi.value = ids.size >= 2 ? ids : new Set();
+  seleccion.value = foco;
+}
 const editando = ref<string | null>(null);
 /** Unidad que el lienzo debe centrar en cuanto pueda (VistaArbol lo atiende y lo deja en null). */
 const centrarEn = ref<string | null>(null);
@@ -129,17 +147,40 @@ export function useLienzo() {
     return nuevaUnidad(padre ? (org.porId.get(padre) ?? null) : null);
   };
 
-  /** Selecciona la unidad, abre las ramas que la esconden y pide centrarla. */
-  function revelar(id: string) {
+  /** Abre las ramas que esconden la unidad. */
+  function abrirRuta(id: string) {
     const abiertas = new Set(colapsados.value);
     for (const a of ruta(org.enFecha.unidades, id).slice(0, -1)) abiertas.delete(a.id);
     if (abiertas.size !== colapsados.value.size) colapsados.value = abiertas; // no relanzar el layout sin necesidad
+  }
+
+  /** Selecciona solo la unidad, abre las ramas que la esconden y pide centrarla. */
+  function revelar(id: string) {
+    multi.value = new Set();
+    abrirRuta(id);
     seleccion.value = centrarEn.value = id;
+  }
+
+  /** Mayús+flecha: suma la unidad a la selección, la revela y pide centrarla. */
+  function extender(id: string) {
+    abrirRuta(id);
+    aplicar(sumar(seleccionadas.value, id, false));
+    centrarEn.value = id;
+  }
+
+  /** Copia la rama y deja la copia seleccionada y centrada. */
+  async function duplicar(id: string) {
+    if (org.fechaVista) return; // solo lectura
+    const r = await org.duplicarRama(id);
+    if (!r.ok) return void toast.error(r.mensaje);
+    revelar(r.id!);
+    toast.success(i18n.global.t("unidad.duplicada", { nombre: org.porId.get(id)?.nombre }));
   }
 
   return {
     colapsados,
     seleccion,
+    seleccionadas,
     editando,
     centrarEn,
     pedidoEliminar,
@@ -147,6 +188,27 @@ export function useLienzo() {
     nuevaUnidad,
     nuevaHija,
     revelar,
+    extender,
+    duplicar,
+    /** Ctrl+clic (`alternar`) o Mayús+clic sobre una tarjeta. */
+    sumarASeleccion: (id: string, alternar: boolean) => aplicar(sumar(seleccionadas.value, id, alternar)),
+    /** El recuadro: suma varias a la vez (la última queda como foco). */
+    sumarVarias(ids: string[]) {
+      if (ids.length) aplicar({ ids: new Set([...seleccionadas.value, ...ids]), foco: ids[ids.length - 1] });
+    },
+    /** Quita de la selección múltiple lo que ya no se dibuja (por ejemplo, tras plegar su superior). */
+    podarSeleccion(visibles: ReadonlySet<string>) {
+      if (!multi.value.size) return;
+      const ids = new Set([...multi.value].filter((id) => visibles.has(id)));
+      if (ids.size === multi.value.size) return;
+      aplicar({
+        ids,
+        foco: seleccion.value && ids.has(seleccion.value) ? seleccion.value : ([...ids].pop() ?? null),
+      });
+    },
+    plegarSeleccion() {
+      colapsados.value = new Set([...colapsados.value, ...seleccionadas.value]);
+    },
     alternarRama(id: string) {
       const s = new Set(colapsados.value);
       if (!s.delete(id)) s.add(id);

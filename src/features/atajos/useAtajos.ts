@@ -5,7 +5,7 @@ import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { useOrganizacion } from "@/stores/organizacion";
-import { destinoNavegacion, resolverAtajo } from "./atajos";
+import { destinoNavegacion, resolverAtajo, type Navegacion } from "./atajos";
 
 /** Si la paleta de comandos (Ctrl+K) está abierta. La abren el atajo y el botón de la barra superior. */
 export const paletaAbierta = ref(false);
@@ -23,7 +23,7 @@ export function useAtajos() {
   const route = useRoute();
   const org = useOrganizacion();
   const { config } = useVista();
-  const { seleccion, nuevaHija, revelar, pedidoEliminar } = useLienzo();
+  const { seleccion, seleccionadas, nuevaHija, revelar, extender, duplicar, pedidoEliminar } = useLienzo();
 
   // Lo que se dibuja: el árbol completo o la rama enfocada (/?raiz=). Igual que VistaArbol.
   const mostradas = computed(() => {
@@ -51,6 +51,7 @@ export function useAtajos() {
       ctrlKey: e.ctrlKey,
       metaKey: e.metaKey,
       altKey: e.altKey,
+      shiftKey: e.shiftKey,
       enCampoDeTexto: !!destino?.closest(CAMPO),
       modalAbierto: !!document.querySelector(MODAL),
       soloLectura: !!org.fechaVista,
@@ -80,6 +81,9 @@ export function useAtajos() {
     } else if (atajo === "eliminar") {
       if (!seleccion.value) return;
       pedidoEliminar.value++;
+    } else if (atajo === "duplicar") {
+      // Con varias seleccionadas no hay una rama que duplicar. Ctrl+D se atiende igual (es «marcador» del navegador).
+      if (seleccion.value && seleccionadas.value.size === 1) void duplicar(seleccion.value);
     } else {
       const libre =
         !destino ||
@@ -87,8 +91,13 @@ export function useAtajos() {
         destino.closest(".vue-flow") ||
         destino.matches("[data-panel-unidad]");
       if (!libre) return;
-      const id = destinoNavegacion(mostradas.value, seleccion.value, atajo);
-      if (id) revelar(id);
+      const extiende = atajo.startsWith("extender:");
+      const id = destinoNavegacion(
+        mostradas.value,
+        seleccion.value,
+        (extiende ? atajo.slice("extender:".length) : atajo) as Navegacion,
+      );
+      if (id) (extiende ? extender : revelar)(id);
     }
     e.preventDefault();
   });

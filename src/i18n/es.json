@@ -280,7 +280,8 @@
     "valorExiste": "Ya existe «{nombre}» en la lista.",
     "puestoInexistente": "El puesto ya no existe.",
     "nadaQuePegar": "No hay un estilo copiado que se pueda pegar.",
-    "ultimoTipoUnidad": "Debe quedar al menos un tipo de unidad activo."
+    "ultimoTipoUnidad": "Debe quedar al menos un tipo de unidad activo.",
+    "soloLectura": "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo."
   },
   "ficha": {
     "tituloPersona": "Ficha de persona",
@@ -426,7 +427,25 @@
     "nPuestos": "{n} puesto | {n} puestos",
     "moverYEliminar": "Mover su contenido a «{superior}» y eliminar",
     "eliminada": "Unidad «{nombre}» eliminada",
-    "deshacer": "Deshacer"
+    "deshacer": "Deshacer",
+    "duplicar": "Duplicar rama",
+    "copiaDe": "{nombre} (copia)",
+    "duplicada": "Rama «{nombre}» duplicada"
+  },
+  "seleccion": {
+    "barra": "Acciones sobre las unidades seleccionadas",
+    "cantidad": "{n} unidad seleccionada | {n} unidades seleccionadas",
+    "limpiar": "Quitar la selección",
+    "moverA": "Mover a…",
+    "plegar": "Plegar",
+    "etiquetar": "Etiquetar…",
+    "eliminar": "Eliminar…",
+    "eliminarTitulo": "¿Eliminar {n} unidad? | ¿Eliminar {n} unidades?",
+    "eliminarTexto": "Lo que contengan (subunidades y puestos) pasará a la unidad superior de cada una. Podrás deshacerlo todo de una vez durante 8 segundos.",
+    "eliminarOmitidas": "No se eliminará {n} unidad raíz con contenido. | No se eliminarán {n} unidades raíz con contenido.",
+    "eliminarConfirmar": "Eliminar {n} unidad | Eliminar {n} unidades",
+    "eliminadas": "{n} unidad eliminada | {n} unidades eliminadas",
+    "omitidas": "{n} unidad raíz con contenido no se eliminó. | {n} unidades raíz con contenido no se eliminaron."
   },
   "leyenda": {
     "titulo": "Leyenda",

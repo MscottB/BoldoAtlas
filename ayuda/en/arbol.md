@@ -32,6 +32,33 @@ When the tree opens you see the roots and their first level; the rest is collaps
 
 Drag a card and drop it on another: BoldoAtlas asks "Move X into Y?" before changing its parent. A unit can't be moved inside its own branch: a warning appears and nothing changes. If you drop the card on empty space, it goes back to its place.
 
+## Selecting several units
+
+- **Ctrl + click** (or **Cmd + click**) adds the unit to the selection or, if it was already there, removes it. **Shift + click** adds it.
+- **Shift + drag** on the background draws a box: the units that fall completely inside are added (positions are not selected).
+- With the keyboard, **Shift + arrow** adds the unit the arrow would go to (see "Keyboard shortcuts"); without Shift, the arrows go back to a single unit.
+- `Esc` or a click on the background clear the selection. If you collapse a branch, the units it was hiding are no longer selected.
+
+With two or more units selected the unit panel does not open: a bar appears over the canvas with the number of units and the actions that apply to all of them at once:
+
+- **Move to…**: choose the new parent (or **No parent (root)**). The selected units and everything below them are not offered. If a selected unit is below another selected one, only the upper one moves and takes its branch with it. Everything changes in a single step.
+- **Collapse**: collapses the branches of all of them.
+- **Tag…**: adds an existing or a new tag to all of them (if the name already exists, that tag is used). Units that already have the tag are not repeated.
+- **Delete…**: asks how many units will be deleted; the content of each (subunits and positions) moves to its parent. A root unit with content is not deleted: the notice afterwards says how many were skipped. The notice has a single **Undo** (8 seconds) that puts everything back. `Del` does the same as the button.
+- The **X** clears the selection.
+
+While viewing the chart at a past date there is no multiple selection.
+
+## Duplicating a branch
+
+The **Duplicate branch** button (at the bottom of the unit panel's Summary and on the selected card) and `Ctrl` + `D` copy the unit with everything under it:
+
+- The copy goes right after the original, named "X (copy)" (only the top unit; the ones below keep their names), and ends up selected. A root can be duplicated too: the copy is another root.
+- The type, description, mark, tags and positions (job title, description and legend) are copied. Each copy's head points to the copied position.
+- Lateral connections whose two ends are both inside the branch are copied.
+- Copied positions are born **vacant**: holders, replacements and history are not copied.
+- It is a single change, with no **Undo** notice: if you don't want the copy, delete it.
+
 ## Highlighting
 
 In the canvas bar you can highlight by tag, by text (part of the name, ignoring accents and case) or both at once. Units that don't match are dimmed, not hidden.
@@ -75,7 +102,7 @@ The date picker in the canvas toolbar shows the org chart as it was on a past da
 
 - **Managers**, **headcount**, **vacancies** and **positions** are calculated with the assignments in force that day: an assignment counts if it starts that day or earlier and has not ended (the day it ends no longer counts, and is the first day of the handover).
 - Units and positions **deleted before** that date and those **created after** it are hidden, unless they have an assignment in force that day (a position) or a position or sub-unit that is shown (a unit): so an organization entered today with old assignments shows in full. Anything deleted after the date reappears.
-- It is **read only**: you cannot drag, rename, create, paste a style or change anything in the unit panel or the position card, which show that day's data (the position history is shown in full). The **person's card** opens normally: their data has no history. The directory and the data review still show today.
+- It is **read only**: you cannot drag, rename, create, duplicate, select several units, paste a style or change anything in the unit panel or the position card, which show that day's data (the position history is shown in full). The **person's card** opens normally: their data has no history. The directory and the data review still show today.
 - **Declared limit:** changes of parent unit are not recorded, so the shape of the tree is today's. A unit that was moved stays where it is now, a deleted unit reappears under the last parent it had (or as a root if that parent did not exist that day), and the positions and the manager position are today's. Assignments entered late count from their start date.
 
 ## Unit panel
@@ -91,7 +118,7 @@ The **Summary** tab holds:
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
 - **Lateral connections**: type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible.
-- **Save in Trees** (not shown on roots, which already are a tree) and **Delete unit**.
+- **Save in Trees** (not shown on roots, which already are a tree), **Duplicate branch** and **Delete unit**.
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements"). The **Processes** tab arrives in Phase 3.
 

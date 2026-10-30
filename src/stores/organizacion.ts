@@ -38,6 +38,8 @@ import {
   vigentesPorPuesto,
   type Historico,
 } from "@/features/arbol/jerarquia";
+import { duplicarRama as copiarRama } from "@/features/arbol/duplicar";
+import { planEliminar, soloCimas } from "@/features/arbol/multiple";
 import { normalizarTexto } from "@/lib/texto";
 import { tiposARenombrar } from "@/features/configuracion/semillas";
 import { i18n, type Idioma } from "@/i18n";
@@ -46,10 +48,17 @@ import { EJEMPLO } from "./ejemplo";
 export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
+export type ResultadoEliminar =
+  { ok: true; eliminadas: number; omitidas: number } | { ok: false; mensaje: string };
+
+type Contenido = { hijos: string[]; puestos: string[] };
+
 export interface Borrado {
-  tipo: "unidad" | "trabajador" | "puesto" | "vista";
+  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista";
   id: string;
-  contenido?: { hijos: string[]; puestos: string[] };
+  contenido?: Contenido;
+  /** `unidades`: lo que contenía cada una de las eliminadas en el mismo lote. */
+  lote?: { id: string; contenido: Contenido }[];
   /** Epoch en ms hasta el que se puede deshacer. */
   vence: number;
 }
@@ -249,6 +258,33 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return escribir(() => U.moverUnidad(id, nuevoPadre));
   }
 
+  /** Mueve las seleccionadas bajo `nuevoPadre` en un lote. Solo se mueven las cimas: su rama las acompaña. */
+  async function moverUnidades(ids: string[], nuevoPadre: string | null): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const cimas = soloCimas(unidades.value, ids);
+    if (cimas.some((id) => creaCiclo(unidades.value, id, nuevoPadre))) return rechazar(t("store.cicloRama"));
+    const mover = cimas.filter((id) => porId.value.get(id)?.parent_id !== nuevoPadre);
+    return mover.length ? escribir(() => mover.flatMap((id) => U.moverUnidad(id, nuevoPadre))) : { ok: true };
+  }
+
+  /** Elimina varias en un lote (un solo Deshacer). Las raíces con contenido se omiten: ver `planEliminar`. */
+  async function eliminarUnidades(ids: string[]): Promise<ResultadoEliminar> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const { bajas, omitidas } = planEliminar(unidades.value, puestos.value, ids);
+    if (!bajas.length) return rechazar(t("store.raizConContenido"));
+    const r = await escribir(
+      () => bajas.flatMap((b) => U.eliminarUnidad(porId.value.get(b.id)!, b.contenido, b.destino)),
+      () =>
+        (ultimoBorrado.value = {
+          tipo: "unidades",
+          id: bajas[0].id,
+          lote: bajas.map(({ id, contenido }) => ({ id, contenido })),
+          vence: Date.now() + VIGENCIA_DESHACER_MS,
+        }),
+    );
+    return r.ok ? { ok: true, eliminadas: bajas.length, omitidas: omitidas.length } : r;
+  }
+
   async function eliminarUnidad(id: string): Promise<Resultado> {
     const u = porId.value.get(id);
     if (!u) return rechazar(t("store.unidadInexistente"));
@@ -312,6 +348,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   const RESTAURAR = {
     unidad: (b: Borrado) => U.restaurarUnidad(b.id, b.contenido!),
+    unidades: (b: Borrado) => b.lote!.flatMap((x) => U.restaurarUnidad(x.id, x.contenido)),
     trabajador: (b: Borrado) => T.restaurarTrabajador(b.id),
     puesto: (b: Borrado) => P.restaurarPuesto(b.id),
     vista: (b: Borrado) => V.restaurarVista(b.id),
@@ -333,8 +370,24 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));
   const quitarEtiqueta = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.quitarEtiqueta(unidadId, etiquetaId));
-  /** Crea la etiqueta y, si se indica una unidad, se la asigna en el mismo lote. Un nombre repetido sugiere la existente. */
-  async function crearEtiqueta(nombre: string, color: string, paraUnidad?: string): Promise<ResultadoValor> {
+  /** Agrega la etiqueta a todas en un lote; las que ya la tienen se saltan (el índice no admite repetirla). */
+  async function etiquetarUnidades(ids: string[], etiquetaId: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const tienen = new Set(
+      unidadEtiquetas.value.filter((x) => x.etiqueta_id === etiquetaId).map((x) => x.unidad_id),
+    );
+    const faltan = ids.filter((id) => !tienen.has(id));
+    return faltan.length
+      ? escribir(() => faltan.flatMap((id) => E.etiquetarUnidad(id, etiquetaId)))
+      : { ok: true };
+  }
+  /** Crea la etiqueta y, si se indican unidades, se la asigna en el mismo lote. Un nombre repetido sugiere la existente. */
+  async function crearEtiqueta(
+    nombre: string,
+    color: string,
+    paraUnidad?: string | string[],
+  ): Promise<ResultadoValor> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
     if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
     const c = L.normalizarColor(color);
     if (!c) return rechazar(t("errores.colorInvalido"));
@@ -347,7 +400,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     }
     const r = await escribir(() => {
       const nueva = E.crearEtiqueta(nombre, c);
-      const asignar = paraUnidad ? E.etiquetarUnidad(paraUnidad, nueva.id) : [];
+      const asignar = [paraUnidad ?? []].flat().flatMap((u) => E.etiquetarUnidad(u, nueva.id));
       return { id: nueva.id, sentencias: [...nueva.sentencias, ...asignar] };
     });
     return r.ok ? { ok: true, id: r.id! } : r;
@@ -355,6 +408,20 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const crearConexion = (origen: string, destino: string, etiqueta: string | null = null) =>
     escribir(() => X.crearConexion(origen, destino, etiqueta));
   const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));
+
+  /** Copia la unidad con su rama (ver `duplicarRama`) y devuelve el id de la copia. */
+  async function duplicarRama(id: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const u = porId.value.get(id);
+    if (!u) return rechazar(t("store.unidadInexistente"));
+    const estado = {
+      unidades: unidades.value,
+      puestos: puestos.value,
+      unidadEtiquetas: unidadEtiquetas.value,
+      conexiones: conexiones.value,
+    };
+    return escribir(() => copiarRama(estado, id, t("unidad.copiaDe", { nombre: u.nombre })));
+  }
 
   const guardarSubarbol = (unidadId: string) => escribir(() => S.guardarSubarbol(unidadId));
   const renombrarSubarbol = (id: string, nombre: string | null) =>
@@ -663,6 +730,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
     moverUnidad,
     asignarJefe,
     eliminarUnidad,
+    moverUnidades,
+    eliminarUnidades,
+    duplicarRama,
     crearTrabajador,
     editarTrabajador,
     eliminarTrabajador,
@@ -675,6 +745,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     terminarAsignacion,
     asignarNuevaPersona,
     etiquetar,
+    etiquetarUnidades,
     quitarEtiqueta,
     crearEtiqueta,
     crearConexion,

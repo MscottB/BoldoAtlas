@@ -81,8 +81,9 @@ function reubicar(destino: string | null, { hijos, puestos }: Contenido): Senten
   return s;
 }
 
-export function eliminarUnidad(u: Unidad, contenido: Contenido): Sentencia[] {
-  return [...reubicar(u.parent_id, contenido), fijarBorrado("unidades", u.id, true)];
+/** El contenido pasa a `destino` (por omisión, el superior de la unidad). */
+export function eliminarUnidad(u: Unidad, contenido: Contenido, destino = u.parent_id): Sentencia[] {
+  return [...reubicar(destino, contenido), fijarBorrado("unidades", u.id, true)];
 }
 
 export function restaurarUnidad(id: string, contenido: Contenido): Sentencia[] {

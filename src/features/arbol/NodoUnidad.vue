@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { Handle, Position } from "@vue-flow/core";
 import { toast } from "vue-sonner";
-import { Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
+import { Copy, Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { textoSobre } from "@/features/tema/tema";
@@ -32,7 +32,17 @@ const props = defineProps<{ id: string; data: DatosNodo }>();
 const { t } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
-const { seleccion, editando, colapsados, seleccionar, alternarRama, coincide, nuevaUnidad } = useLienzo();
+const {
+  seleccionadas,
+  editando,
+  colapsados,
+  seleccionar,
+  sumarASeleccion,
+  alternarRama,
+  coincide,
+  nuevaUnidad,
+  duplicar,
+} = useLienzo();
 const { config } = useVista();
 
 const compacta = computed(() => config.value.densidad === "compacta");
@@ -45,7 +55,16 @@ const tam = computed(() => {
 
 // Con una fecha elegida el organigrama es de solo lectura: no se renombra ni se agregan subunidades.
 const soloLectura = computed(() => !!org.fechaVista);
-const seleccionada = computed(() => seleccion.value === props.id);
+const seleccionada = computed(() => seleccionadas.value.has(props.id));
+// Los botones de la tarjeta son de la selección simple; con varias, mandan la barra y sus atajos.
+const sola = computed(() => seleccionada.value && seleccionadas.value.size === 1);
+
+// Ctrl+clic alterna la unidad en la selección; Mayús+clic la suma. Con una fecha elegida no hay selección múltiple.
+function alHacerClic(e: MouseEvent) {
+  if (!soloLectura.value && (e.ctrlKey || e.metaKey || e.shiftKey))
+    sumarASeleccion(props.id, e.ctrlKey || e.metaKey);
+  else seleccionar(props.id);
+}
 const atenuada = computed(() => !coincide(props.data.unidad));
 const plegada = computed(() => colapsados.value.has(props.id));
 const tipo = computed(
@@ -86,7 +105,7 @@ async function guardar(e: Event) {
       data.marca?.color && 'border-l-4',
     ]"
     :style="[tam, data.marca?.color ? { borderLeftColor: data.marca.color } : {}]"
-    @click="seleccionar(id)"
+    @click="alHacerClic"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
     <div
@@ -170,7 +189,7 @@ async function guardar(e: Event) {
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->
       <span
-        v-if="config.mostrarDotacion && !(compacta && seleccionada)"
+        v-if="config.mostrarDotacion && !(compacta && sola)"
         class="flex items-center gap-1"
         :title="t('arbol.dotacion')"
       >
@@ -178,7 +197,7 @@ async function guardar(e: Event) {
         <span class="sr-only">{{ t("arbol.dotacion") }}:</span>{{ data.total }}
       </span>
       <span
-        v-if="config.mostrarVacantes && data.vacantes && !(compacta && seleccionada)"
+        v-if="config.mostrarVacantes && data.vacantes && !(compacta && sola)"
         class="rounded-full bg-marca px-1.5 text-marca-foreground"
         :title="t('arbol.vacantes', data.vacantes)"
       >
@@ -186,7 +205,7 @@ async function guardar(e: Event) {
         <span v-if="compacta" aria-hidden="true">{{ data.vacantes }}</span>
       </span>
       <span class="ml-auto flex gap-1">
-        <template v-if="seleccionada">
+        <template v-if="sola">
           <button
             type="button"
             class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
@@ -205,6 +224,16 @@ async function guardar(e: Event) {
             @click.stop="nuevaUnidad(data.unidad)"
           >
             <Plus class="size-3" aria-hidden="true" />
+          </button>
+          <button
+            v-if="!soloLectura"
+            type="button"
+            class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            :aria-label="t('unidad.duplicar')"
+            :title="t('unidad.duplicar')"
+            @click.stop="duplicar(id)"
+          >
+            <Copy class="size-3" aria-hidden="true" />
           </button>
         </template>
         <button

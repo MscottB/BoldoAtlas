@@ -71,6 +71,53 @@ describe("resolverAtajo", () => {
   });
 });
 
+describe("resolverAtajo: selección múltiple y duplicar", () => {
+  it("Mayús+flecha extiende la selección hacia donde iría la flecha", () => {
+    const m = { shiftKey: true };
+    expect(resolverAtajo(tecla("ArrowUp", m))).toBe("extender:irSuperior");
+    expect(resolverAtajo(tecla("ArrowDown", m))).toBe("extender:irPrimerHijo");
+    expect(resolverAtajo(tecla("ArrowLeft", m))).toBe("extender:irHermanoAnterior");
+    expect(resolverAtajo(tecla("ArrowRight", m))).toBe("extender:irHermanoSiguiente");
+  });
+
+  it("con el árbol en horizontal Mayús+flecha sigue el dibujo, igual que la flecha sola", () => {
+    const m = { shiftKey: true, horizontal: true };
+    expect(resolverAtajo(tecla("ArrowLeft", m))).toBe("extender:irSuperior");
+    expect(resolverAtajo(tecla("ArrowRight", m))).toBe("extender:irPrimerHijo");
+    expect(resolverAtajo(tecla("ArrowUp", m))).toBe("extender:irHermanoAnterior");
+    expect(resolverAtajo(tecla("ArrowDown", m))).toBe("extender:irHermanoSiguiente");
+  });
+
+  it("Mayús+flecha no actúa escribiendo, con Ctrl/Alt ni con un diálogo abierto", () => {
+    expect(resolverAtajo(tecla("ArrowUp", { shiftKey: true, enCampoDeTexto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("ArrowUp", { shiftKey: true, ctrlKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("ArrowUp", { shiftKey: true, altKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("ArrowUp", { shiftKey: true, modalAbierto: true }))).toBeNull();
+  });
+
+  it("Mayús no cambia N ni Supr (la N mayúscula sigue siendo N)", () => {
+    expect(resolverAtajo(tecla("N", { shiftKey: true }))).toBe("nuevaUnidad");
+    expect(resolverAtajo(tecla("Delete", { shiftKey: true }))).toBe("eliminar");
+  });
+
+  it("Ctrl+D (y Cmd+D) duplica la rama, también con la letra en mayúscula", () => {
+    expect(resolverAtajo(tecla("d", { ctrlKey: true }))).toBe("duplicar");
+    expect(resolverAtajo(tecla("D", { ctrlKey: true }))).toBe("duplicar");
+    expect(resolverAtajo(tecla("d", { metaKey: true }))).toBe("duplicar");
+  });
+
+  it("D sola, o con Alt, no duplica", () => {
+    expect(resolverAtajo(tecla("d"))).toBeNull();
+    expect(resolverAtajo(tecla("d", { ctrlKey: true, altKey: true }))).toBeNull();
+  });
+
+  it("Ctrl+D no actúa escribiendo, con un diálogo abierto ni viendo una fecha (solo lectura)", () => {
+    expect(resolverAtajo(tecla("d", { ctrlKey: true, enCampoDeTexto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("d", { ctrlKey: true, modalAbierto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("d", { ctrlKey: true, soloLectura: true }))).toBeNull();
+  });
+});
+
 describe("destinoNavegacion", () => {
   // GG › {Operaciones (orden 0) › Mantención › {Mecánica, Eléctrica}, Finanzas (orden 1)}
   const ir = (actual: string | null, a: Parameters<typeof destinoNavegacion>[2], lista = unidades) =>
