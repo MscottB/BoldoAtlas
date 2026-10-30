@@ -496,13 +496,14 @@ Orden de ejecución completo: …, 11, 11b, 11e, 11c, 11d, **11f**, 10, 12, **12
 
 ## Anexo 3 (comentarios del autor tras probar el ejemplo, 2026-10-30) — spec §7 "Comentarios del autor…"
 
-Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17a, 17b, 17c, 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14.
+Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas del sitio ya muestren la versión mejorada. Orden: 17a, 17b, 17c, 17f (pestañas), 17d (propuesta), 17e (aplicar), y luego los hallazgos de T14. "Comparar dos proyectos" queda en Escenarios (Fase 5), con modo lado a lado.
 
 ### Task 17a: Menú de la app, volver a Inicio y vistas que se cierran
 - Botón de menú de la app en la barra superior (logo + nombre de la organización) con: Inicio, Nueva organización vacía, Explorar el ejemplo, Abrir `.boldo` (deshabilitado, Fase 5), Importar Excel (deshabilitado, Fase 4), Respaldos, Configuración; las mismas acciones en la paleta Ctrl+K.
 - `/bienvenida` accesible siempre; si ya hay datos, avisa y "Nueva organización"/"Explorar el ejemplo" piden confirmación, hacen un respaldo automático (Task 13c) y reemplazan los datos actuales en un lote (store: `reemplazarCon…`, guarda en el store, tests con SQLite real; corrige el minor de 13-2 "sin guarda de datos existentes").
 - Configuración, Ayuda y Acerca de: segundo clic en su entrada del menú, Esc o botón Cerrar visible → vuelve a la ruta anterior (o al Árbol si no hay historia).
 - Barra lateral izquierda con su propio botón de plegar/desplegar visible; panel derecho de unidad con botón Cerrar (×) visible.
+- Qué proyecto está abierto: título de la ventana y barra superior con el nombre de la organización y el tipo de base (por ahora siempre "principal"); un clic muestra la ubicación de los datos (portable o perfil, ruta, tamaño, última modificación) con "Abrir carpeta" y "Copiar ruta" (comando Rust que devuelve la ruta conocida; nunca una ruta desde la interfaz).
 - Commit: `feat: menú de la app, volver a inicio y vistas que se cierran`
 
 ### Task 17b: Lienzo ordenado, expandir/contraer y menú contextual
@@ -513,8 +514,15 @@ Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas
 
 ### Task 17c: Personas de una unidad
 - Pestaña **Personas** en el panel de unidad: titulares y reemplazos vigentes (nombre, cargo, tipo), interruptor "Incluir subunidades"; clic abre la ficha. Dotación de la tarjeta clicable → abre esa pestaña. "Ver en el directorio" → directorio filtrado por la unidad y su rama.
-- Función pura de la lista con tests (O(n) sobre la rama).
+- Lista con foto, cargo, tipo (titular/reemplazo) y unidad; búsqueda y orden; resumen por cargo (cuántos y vacantes); vista previa de la ficha individual dentro del panel (foto, contacto, puestos vigentes e historial) con "Abrir ficha"; "Copiar correos".
+- Funciones puras (lista de la rama, resumen por cargo, filtro/orden) con tests (O(n) sobre la rama).
 - Commit: `feat(unidades): personas de la unidad y su rama`
+
+### Task 17f: Pestañas de trabajo
+- Barra de pestañas sobre el área central (spec §7 "Pestañas de trabajo"): cada pestaña = ruta + estado (ramas plegadas, selección, encuadre, filtros) en un store; solo la activa montada; título automático (nombre del árbol/subárbol, "Directorio", nombre de la persona…).
+- "Abrir en pestaña nueva" desde el menú contextual (17b), la paleta, Ctrl+clic y clic central; Ctrl+T, Ctrl+W, Ctrl+Tab/Ctrl+Shift+Tab (agregar a `resolverAtajo` con tests); reordenar arrastrando y con teclado; recordar por PC (validado al leer; pestañas cuya unidad ya no existe se cierran).
+- Funciones puras del modelo de pestañas (abrir, cerrar, activar la vecina, mover, serializar) con tests.
+- Commit: `feat: pestañas de trabajo`
 
 ### Task 17d: Propuesta de UX/UI (divulgación progresiva y temas)
 - Auditoría con capturas reales (las de T14 en `docs/capturas/fase2/`) y el código: inventario de controles por vista, cuáles son básicos y cuáles avanzados, jerarquía visual, problemas de color/contraste en claro y oscuro.
