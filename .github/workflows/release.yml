@@ -1,0 +1,41 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe necesita historia y etiquetas
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: cargo test
+        working-directory: src-tauri
+      # mismo comando que `npm run release` en local; falla si la versión no coincide con la etiqueta
+      - run: node scripts/release.mjs --etiqueta ${{ github.ref_name }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["site/**", "docs/**", "**/*.md"]
+  pull_request:
+    paths-ignore: ["site/**", "docs/**", "**/*.md"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
