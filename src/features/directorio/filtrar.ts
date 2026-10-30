@@ -57,18 +57,29 @@ export interface FilaDirectorio {
 interface Candidata {
   fila: FilaDirectorio;
   cargoId: string | null;
-  /** Titular y reemplazo vigentes (o la persona sin puesto): los filtros de persona aceptan a cualquiera. */
-  personas: Trabajador[];
+  /** La persona cuyos datos muestra la fila (titular, o la persona sin puesto): contra ella se filtran contrato, sede y jornada. */
+  titular: Trabajador | undefined;
   rutaTexto: string;
 }
 
 const collator = new Intl.Collator("es");
 
-function candidatas(e: EstadoDirectorio): Candidata[] {
+/** Las filas ya armadas, listas para filtrar y ordenar muchas veces: se recalculan solo cuando cambia el estado. */
+export interface Candidatas {
+  filas: Candidata[];
+  unidades: EstadoDirectorio["unidades"];
+  unidadEtiquetas: EstadoDirectorio["unidadEtiquetas"];
+}
+
+export function candidatasDirectorio(e: EstadoDirectorio): Candidatas {
+  return { filas: armar(e), unidades: e.unidades, unidadEtiquetas: e.unidadEtiquetas };
+}
+
+function armar(e: EstadoDirectorio): Candidata[] {
   const nombres = (tabla: TablaCatalogo) => new Map(e.catalogos[tabla].map((v) => [v.id, v.nombre]));
-  const [cargos, contratos, sedes, jornadas] = (["cargos", "tipos_contrato", "sedes", "jornadas"] as const).map(
-    nombres,
-  );
+  const [cargos, contratos, sedes, jornadas] = (
+    ["cargos", "tipos_contrato", "sedes", "jornadas"] as const
+  ).map(nombres);
   const nombre = (m: Map<string, string>, id: string | null) => (id && m.get(id)) || null;
   const personas = new Map(e.trabajadores.map((t) => [t.id, t]));
   const vivas = new Set(e.unidades.filter((u) => !u.deleted_at).map((u) => u.id));
@@ -88,7 +99,7 @@ function candidatas(e: EstadoDirectorio): Candidata[] {
     const ruta = (puesto && rutas.get(puesto.unidad_id)) || [];
     return {
       cargoId: puesto?.cargo_id ?? null,
-      personas: [titular, reemplazo].filter((t) => !!t),
+      titular,
       rutaTexto: ruta.map((u) => u.nombre).join(" › "),
       fila: {
         clave,
@@ -129,29 +140,31 @@ function candidatas(e: EstadoDirectorio): Candidata[] {
 const comparar = (a: string | null, b: string | null, asc: boolean) =>
   !a || !b ? Number(!a) - Number(!b) : (asc ? 1 : -1) * collator.compare(a, b);
 
-export function filtrarDirectorio(e: EstadoDirectorio, f: Filtros, orden: Orden): FilaDirectorio[] {
+/** Aplica filtros y orden a las candidatas ya armadas. */
+export function filtrarYOrdenar(c: Candidatas, f: Filtros, orden: Orden): FilaDirectorio[] {
   const buscado = normalizarTexto(f.texto);
-  const rama = f.unidad ? descendientes(e.unidades, f.unidad).add(f.unidad) : null;
+  const rama = f.unidad ? descendientes(c.unidades, f.unidad).add(f.unidad) : null;
   const conEtiqueta = f.etiqueta
-    ? new Set(e.unidadEtiquetas.filter((x) => x.etiqueta_id === f.etiqueta).map((x) => x.unidad_id))
+    ? new Set(c.unidadEtiquetas.filter((x) => x.etiqueta_id === f.etiqueta).map((x) => x.unidad_id))
     : null;
 
-  const pasa = ({ fila, cargoId, personas }: Candidata) =>
+  // Contrato, sede, jornada y correo son los del titular (lo que muestran las columnas); una vacante no los cumple.
+  const pasa = ({ fila, cargoId, titular }: Candidata) =>
     (!f.estado || fila.estado === f.estado) &&
     (!rama || (!!fila.unidadId && rama.has(fila.unidadId))) &&
     (!conEtiqueta || (!!fila.unidadId && conEtiqueta.has(fila.unidadId))) &&
     (!f.cargo_id || cargoId === f.cargo_id) &&
-    (!f.tipo_contrato_id || personas.some((t) => t.tipo_contrato_id === f.tipo_contrato_id)) &&
-    (!f.sede_id || personas.some((t) => t.sede_id === f.sede_id)) &&
-    (!f.jornada_id || personas.some((t) => t.jornada_id === f.jornada_id)) &&
+    (!f.tipo_contrato_id || titular?.tipo_contrato_id === f.tipo_contrato_id) &&
+    (!f.sede_id || titular?.sede_id === f.sede_id) &&
+    (!f.jornada_id || titular?.jornada_id === f.jornada_id) &&
     (!buscado ||
-      [fila.persona, fila.reemplazo, fila.cargo, ...personas.map((t) => t.correo)].some(
+      [fila.persona, fila.reemplazo, fila.cargo, fila.correo].some(
         (campo) => !!campo && normalizarTexto(campo).includes(buscado),
       ));
 
   const clave = (c: Candidata) =>
     orden.campo === "unidad" ? c.rutaTexto : orden.campo === "cargo" ? c.fila.cargo : c.fila.persona;
-  return candidatas(e)
+  return c.filas
     .filter(pasa)
     .sort(
       (a, b) =>
@@ -161,3 +174,6 @@ export function filtrarDirectorio(e: EstadoDirectorio, f: Filtros, orden: Orden)
     )
     .map((c) => c.fila);
 }
+
+export const filtrarDirectorio = (e: EstadoDirectorio, f: Filtros, orden: Orden) =>
+  filtrarYOrdenar(candidatasDirectorio(e), f, orden);

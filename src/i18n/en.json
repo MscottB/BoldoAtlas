@@ -186,7 +186,6 @@
     "persona": "Person",
     "reemplazo": "Replacement",
     "correo": "Email",
-    "ordenarPor": "Sort by {columna}",
     "ordenarUnidad": "Sort by unit",
     "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",

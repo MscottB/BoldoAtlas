@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TIPO_AREA, type Trabajador, type ValorCatalogo } from "@/db/tipos";
 import { a, asignaciones, p, puestos as puestosBase, tipos, unidades } from "@/features/arbol/fixture";
-import { filtrarDirectorio, type EstadoDirectorio, type Filtros, type Orden } from "./filtrar";
+import { candidatasDirectorio, filtrarDirectorio, filtrarYOrdenar, type EstadoDirectorio, type Filtros, type Orden } from "./filtrar";
 
 const BORRADO = "2026-01-01T00:00:00.000Z";
 const cat = (id: string, nombre: string, deleted_at: string | null = null): ValorCatalogo => ({
@@ -124,14 +124,24 @@ describe("filtrarDirectorio", () => {
 
   it("ruta: la unidad más cercana de cada tipo, incluida la propia", () => {
     const f = filtrarDirectorio(estado, sinFiltros, porPersona).find((x) => x.puestoId === "p4")!;
-    expect(f.ruta.map((r) => r.nombre)).toEqual(["Operaciones", "Mantención", "Mecánica", "Gerencia General"]);
+    expect(f.ruta.map((r) => r.nombre)).toEqual([
+      "Operaciones",
+      "Mantención",
+      "Mecánica",
+      "Gerencia General",
+    ]);
     expect(f.ruta[1].tipoId).toBe(TIPO_AREA);
   });
 
   it("filtrar por unidad incluye su rama", () => {
-    expect(claves({ unidad: "mantencion" }).sort()).toEqual(
-      ["puesto:p3", "puesto:p4", "puesto:p5", "puesto:p6", "puesto:p7", "puesto:p8"],
-    );
+    expect(claves({ unidad: "mantencion" }).sort()).toEqual([
+      "puesto:p3",
+      "puesto:p4",
+      "puesto:p5",
+      "puesto:p6",
+      "puesto:p7",
+      "puesto:p8",
+    ]);
     expect(claves({ unidad: "electrica" }).sort()).toEqual(["puesto:p7", "puesto:p8"]);
   });
 
@@ -140,11 +150,11 @@ describe("filtrarDirectorio", () => {
     expect(claves({ etiqueta: "e-turnos" })).toEqual(["puesto:p3"]);
   });
 
-  it("cargo, tipo de contrato, sede y jornada filtran por id exacto (titular o reemplazo)", () => {
+  it("cargo, tipo de contrato, sede y jornada filtran por id exacto; contrato, sede y jornada, solo los del titular", () => {
     expect(claves({ cargo_id: "c-jefe" }).sort()).toEqual(["puesto:p1", "puesto:p3"]);
-    expect(claves({ sede_id: "s-sur" }).sort()).toEqual(["puesto:p3", "puesto:p4", "puesto:p6"]);
+    expect(claves({ sede_id: "s-sur" }).sort()).toEqual(["puesto:p3", "puesto:p4"]); // p6 solo tiene a Carlos de reemplazo
     expect(claves({ tipo_contrato_id: "k-ind" }).sort()).toEqual(["puesto:p1", "puesto:p4"]);
-    expect(claves({ jornada_id: "j-completa" }).sort()).toEqual(["puesto:p3", "puesto:p6"]);
+    expect(claves({ jornada_id: "j-completa" })).toEqual(["puesto:p3"]);
     expect(claves({ sede_id: "s-norte" }).sort()).toEqual(["persona:t9", "puesto:p1", "puesto:p5"]);
   });
 
@@ -163,10 +173,15 @@ describe("filtrarDirectorio", () => {
 
   it("el texto busca en persona, reemplazo, cargo y correo sin tildes ni mayúsculas", () => {
     expect(claves({ texto: "munoz" }).sort()).toEqual(["puesto:p3", "puesto:p6"]);
-    expect(claves({ texto: "TECNICO" }).sort()).toEqual(
-      ["puesto:p2", "puesto:p4", "puesto:p5", "puesto:p6", "puesto:p8"],
-    );
+    expect(claves({ texto: "TECNICO" }).sort()).toEqual([
+      "puesto:p2",
+      "puesto:p4",
+      "puesto:p5",
+      "puesto:p6",
+      "puesto:p8",
+    ]);
     expect(claves({ texto: "ana@x" })).toEqual(["puesto:p1"]);
+    expect(claves({ texto: "carlos@x" })).toEqual(["puesto:p3"]); // el correo es el del titular; el nombre del reemplazo sí cuenta
     expect(claves({ texto: "  " })).toHaveLength(10);
   });
 
@@ -176,13 +191,25 @@ describe("filtrarDirectorio", () => {
     const desc = claves({}, { campo: "persona", asc: false });
     expect(desc[0]).toBe("persona:t9");
     expect(desc.slice(-2).sort()).toEqual(["puesto:p2", "puesto:p6"]);
-    expect(claves({}, { campo: "cargo", asc: true }).slice(0, 3)).toEqual(["puesto:p7", "puesto:p1", "puesto:p3"]);
+    expect(claves({}, { campo: "cargo", asc: true }).slice(0, 3)).toEqual([
+      "puesto:p7",
+      "puesto:p1",
+      "puesto:p3",
+    ]);
     // Rutas: «Finanzas › …» < «Gerencia General» < «Operaciones › … › Eléctrica › …» < «Operaciones › … › Mecánica › …».
     const porUnidad = claves({}, { campo: "unidad", asc: true });
     expect(porUnidad.slice(0, 2)).toEqual(["puesto:p2", "puesto:p1"]);
     expect(porUnidad.indexOf("puesto:p7")).toBeLessThan(porUnidad.indexOf("puesto:p4"));
     expect(porUnidad.slice(-2).sort()).toEqual(["persona:t2", "persona:t9"]);
     expect(claves({}, { campo: "unidad", asc: false })[0]).toBe("puesto:p4");
+  });
+
+  it("las candidatas se arman una vez y sirven para cualquier filtro y orden", () => {
+    const c = candidatasDirectorio(estado);
+    for (const f of [{ texto: "munoz" }, { unidad: "mantencion" }, { estado: "vacante" as const }]) {
+      const filtros = { ...sinFiltros, ...f };
+      expect(filtrarYOrdenar(c, filtros, porPersona)).toEqual(filtrarDirectorio(estado, filtros, porPersona));
+    }
   });
 
   it("ignora puestos y asignaciones borrados y puestos de unidades borradas", () => {

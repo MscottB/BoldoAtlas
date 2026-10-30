@@ -12,7 +12,7 @@ import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
-import { filtrarDirectorio, type FilaDirectorio, type Filtros, type Orden } from "./filtrar";
+import { candidatasDirectorio, filtrarYOrdenar, type FilaDirectorio, type Filtros, type Orden } from "./filtrar";
 
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -38,7 +38,9 @@ watch([filtros, orden], () => guardarPreferencia("directorio", { filtros: filtro
 });
 const hayFiltros = computed(() => JSON.stringify(filtros.value) !== JSON.stringify(SIN_FILTROS));
 
-const filas = computed(() => filtrarDirectorio(org, filtros.value, orden.value));
+// Las filas se arman una vez por cambio del store; teclear o ordenar solo filtra y ordena.
+const candidatas = computed(() => candidatasDirectorio(org));
+const filas = computed(() => filtrarYOrdenar(candidatas.value, filtros.value, orden.value));
 const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
 const sinDatos = computed(() => !org.puestos.length && !org.trabajadores.length);
 

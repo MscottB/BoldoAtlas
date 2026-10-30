@@ -145,7 +145,11 @@ describe("tipos de unidad", () => {
       ["Subárea", "detalle"],
       ["Otra", "interna"],
     ]);
-    expect(nombres(rutaPorTipo(repetidas, tipos, "areaInterna"))).toContainEqual(["Área", "areaInterna"]);
+    expect(nombres(rutaPorTipo(repetidas, tipos, "areaInterna"))).toEqual([
+      ["Gerencia", "operaciones"],
+      ["Área", "areaInterna"],
+      ["Otra", "gg"],
+    ]);
   });
 
   it("rutaSuperiores: los superiores por tipo, sin la unidad; un Área dentro de un Área muestra la externa", () => {

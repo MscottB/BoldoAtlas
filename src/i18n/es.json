@@ -186,7 +186,6 @@
     "persona": "Persona",
     "reemplazo": "Reemplazo",
     "correo": "Correo",
-    "ordenarPor": "Ordenar por {columna}",
     "ordenarUnidad": "Ordenar por unidad",
     "exportar": "Exportar esta lista a Excel",
     "vacio": "Aún no hay puestos ni personas. Crea unidades y puestos en el árbol.",

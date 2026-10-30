@@ -13,8 +13,8 @@ After **Replacement** there is one column for each unit type you use (for exampl
 
 ## Search and filter
 
-- The search box looks in person, replacement, job title and email, ignoring case and accents ("munoz" finds "Muñoz").
-- **Unit** includes its whole branch. **Job title**, **contract type**, **site** and **schedule** filter by exact value (deactivated ones too); for the person-related ones, either the holder or the replacement of the position counts. **Tag** uses the tags of the position's unit. **Status** separates filled positions, vacancies and people with no position.
+- The search box looks in the names of the person and the replacement, the job title and the holder's email, ignoring case and accents ("munoz" finds "Muñoz").
+- **Unit** includes its whole branch. **Job title**, **contract type**, **site** and **schedule** filter by exact value (deactivated ones too); contract type, site and schedule are the holder's, so a vacancy never matches them. **Tag** uses the tags of the position's unit. **Status** separates filled positions, vacancies and people with no position.
 - **Clear filters** removes them all. Filters and sort order are remembered on this computer.
 
 ## Sort and open
