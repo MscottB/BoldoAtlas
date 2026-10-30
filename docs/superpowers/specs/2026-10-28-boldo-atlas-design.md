@@ -28,10 +28,10 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 - Funciones "premium" del modelo open core (solo se elige la licencia ahora).
 - Historial de cambios (auditoría) y deshacer/rehacer general → candidatos a v2. (v1 sí tiene "Deshacer" al eliminar; ver sección 7.)
 - Campos personalizados definidos por el usuario.
-- Actualizaciones automáticas o en segundo plano: la app solo busca actualizaciones cuando el usuario lo pide (ver §12, "Buscar actualizaciones").
+- Instalar actualizaciones sin preguntar: la app solo **consulta** si hay versión nueva (a pedido o cada cierto tiempo según Configuración, ver §12 "Actualizar") y siempre pide confirmación antes de descargar e instalar.
 - Envío por correo desde la app (se guarda el archivo y se ofrece "Abrir carpeta").
 - Idiomas distintos al español y al inglés.
-- Builds de macOS/Linux (el workflow queda preparado; v1 publica Windows).
+- Firma de código de pago (certificado de Windows, cuenta de desarrollador de Apple): los binarios salen sin firmar y el README explica cómo abrirlos (SmartScreen, Gatekeeper). Windows, Linux y macOS sí se publican (pedido del autor, ver §14).
 
 ## 3. Stack
 
@@ -411,9 +411,16 @@ Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajus
 
 ### Actualizar
 - **Manual (siempre posible):** descargar el zip nuevo y reemplazar `BoldoAtlas.exe`; `datos/` no se toca. Al abrir, si el esquema cambió, la app respalda y migra (§6). Se explica en la Ayuda y en el README.
-- **"Buscar actualizaciones"** (en Acerca de): solo cuando el usuario lo pide; la app nunca se conecta sola. Consulta la última versión publicada en GitHub Releases (`releases/latest`) y, si es más nueva (comparación SemVer), muestra la versión y sus notas y ofrece "Descargar e instalar".
+- **Consulta periódica (pedido del autor):** en Configuración › Actualizaciones: "Buscar automáticamente" con frecuencia nunca | al abrir | cada día | cada semana. Por defecto: **cada día**, igual en la versión instalada y en la portable (la portable es la principal para el autor y tiene todas las funciones de actualización). La consulta solo descarga el manifiesto público de la versión; no envía datos de la organización ni identificadores. Si hay versión nueva: aviso discreto en la barra superior y en el icono de la bandeja; nunca se descarga ni instala sin confirmación.
+- **Dónde se busca a mano:** botón "Buscar actualizaciones" en Acerca de, en el menú de la app, en la paleta Ctrl+K y en el menú del icono de la bandeja.
+- **Ventana de actualización con el estilo de la app:** muestra la versión actual y la nueva y **las novedades de todas las versiones intermedias** (si se saltó una o más, se listan todas, agrupadas por versión: novedades, correcciones). Distingue el tipo de instalación: instalado ("Se descargará el instalador, se instalará y BoldoAtlas se reiniciará") o portable ("Se reemplazará BoldoAtlas en esta carpeta; tus datos en `datos/` no se tocan"); en Linux `.deb`/`.rpm` (gestionado por el sistema) ofrece descargar el paquete nuevo en vez de instalarlo. Progreso de descarga con opción de cancelar.
+- **Después de actualizar:** al primer arranque de la versión nueva, diálogo "Novedades de la versión X" con lo nuevo desde la última versión que se usó en este PC (también varias versiones); se puede volver a ver desde Acerca de. Las novedades viajan dentro de la app (generadas en el build desde los commits convencionales entre etiquetas), así se ven sin conexión.
+- **Limpieza:** se borran los archivos temporales de la actualización (instalador o paquete descargado, `BoldoAtlas.old.exe`, caché del actualizador) al terminar o en el siguiente arranque, para no acumular espacio.
+- **Icono en la bandeja del sistema** (instalado y portable, mientras la app está abierta): menú contextual con Abrir BoldoAtlas, "Actualizar a vX" (solo si hay versión nueva) o "Buscar actualizaciones", Respaldar ahora, Abrir carpeta de datos, Ayuda y Salir. Cerrar la ventana cierra la app (no queda en segundo plano).
+- **La portable no deja rastro fuera de su carpeta:** todo lo que escribe (datos, respaldos, temporales de la actualización y la carpeta de datos del WebView: caché, almacenamiento local, preferencias) va dentro de `datos/`; nada en `%APPDATA%`, `%LOCALAPPDATA%` ni en el temporal del sistema. Así se puede llevar en un pendrive y actualizarse en el mismo lugar.
+- **Cómo funciona la consulta:** consulta la última versión publicada en GitHub Releases (`releases/latest`) y, si es más nueva (comparación SemVer), muestra la versión y sus notas y ofrece "Descargar e instalar".
   - Usa `tauri-plugin-updater` con un manifiesto `latest.json` que publica el workflow de release, **firmado** con una clave del autor (`tauri signer`; la clave privada vive solo como secreto `TAURI_SIGNING_PRIVATE_KEY` en GitHub y la pública va en `tauri.conf.json`). Se rechaza cualquier descarga con firma inválida.
-  - Instalado: corre el instalador NSIS nuevo. Portable: descarga el zip firmado, renombra el `.exe` en uso a `BoldoAtlas.old.exe`, escribe el nuevo en su lugar y pide reiniciar; el `.old` se borra en el siguiente arranque. Si algo falla, se restaura el `.exe` anterior y se informa el error.
+  - Instalado: Windows corre el instalador NSIS nuevo; macOS reemplaza el `.app` (actualizador de Tauri); Linux AppImage se reemplaza a sí mismo; `.deb`/`.rpm` solo ofrecen descargar el paquete. Portable: Windows descarga el zip firmado, renombra el `.exe` en uso a `BoldoAtlas.old.exe`, escribe el nuevo en su lugar y pide reiniciar; el `.old` se borra en el siguiente arranque; Linux portable = el AppImage junto a `portable.flag` (mismo reemplazo); macOS portable = `BoldoAtlas.app` junto a `portable.flag` (reemplaza el `.app`). Si algo falla, se restaura lo anterior y se informa el error. Los temporales de la portable van en `datos/actualizacion/`.
   - Sin conexión o sin versión nueva: un mensaje claro ("Ya tienes la última versión" / "No se pudo consultar: revisa tu conexión").
 
 ## 13. Marca, tema y "Acerca de"
@@ -432,7 +439,7 @@ Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajus
 - `README.md` (qué es, capturas, enlace al sitio y a la descarga, cómo compilar) y `CONTRIBUTING.md` con CLA para contribuciones externas (permite al autor licenciar comercialmente en el futuro).
 - **Flujo de versiones:** se trabaja en `main` con Conventional Commits; publicar = crear la etiqueta `vX.Y.Z` y empujarla (`git tag v1.2.0 && git push origin v1.2.0`).
 
-### CI/CD (GitHub Actions, solo Windows por ahora)
+### CI/CD (GitHub Actions: Windows, Linux y macOS)
 Optimizaciones comunes a todos los workflows: `concurrency` con `cancel-in-progress` (un push nuevo cancela el anterior en la misma rama), caché de npm (`actions/setup-node` con `cache: npm`) y de Rust (`Swatinem/rust-cache`), filtros por ruta, y `permissions` mínimos por workflow.
 
 | Workflow | Disparo | Runner | Pasos |
@@ -441,10 +448,17 @@ Optimizaciones comunes a todos los workflows: `concurrency` con `cancel-in-progr
 | `release.yml` | push de etiqueta `v*` | windows-latest | Mismos checks → `scripts/version.mjs` → `tauri build --bundles nsis` → arma zip portable (`.exe` + `portable.flag` + `datos/`) → calcula `SHA256SUMS.txt` → crea el Release (`softprops/action-gh-release`, para controlar los nombres de archivo) con notas autogeneradas desde los commits y los 3 archivos adjuntos. Las etiquetas con `-` (ej. `v1.3.0-beta.1`) se publican como *pre-release*. |
 | `pages.yml` | push a `main` con cambios en `site/`, o Release publicado | ubuntu-latest | `npm ci` en `site/` → `vitepress build` → despliegue a GitHub Pages. |
 
+**Windows, Linux y macOS, cada uno con instalador y portable (pedido del autor).** `release.yml` pasa a una matriz (`windows-latest`, `ubuntu-22.04`, `macos-latest` con binario universal x64+arm64); los checks corren una sola vez en un job previo y los builds de cada sistema dependen de él. Optimizaciones adicionales para no descargar lo mismo en cada ejecución:
+- caché de Rust por sistema (`Swatinem/rust-cache` con `shared-key` por SO, compartida entre `build-prueba` y `release`), caché de npm, caché de las herramientas que Tauri descarga al empaquetar (NSIS/WiX en `%LOCALAPPDATA%\tauri`, `linuxdeploy`/AppImage en `~/.cache/tauri`) y caché de los paquetes apt de WebKitGTK en Linux;
+- `build-prueba` en los PR compila solo Windows (el más usado por el autor); Linux y macOS se compilan a pedido (`workflow_dispatch` o etiqueta `build-todas` en el PR) y siempre en el release;
+- `ci-rust` corre `clippy` y los tests en los tres sistemas solo si cambió `src-tauri/`;
+- se cancela lo anterior de la misma rama y los artefactos de prueba duran 14 días.
+
 Nombres de los archivos del Release **sin número de versión**, para que el enlace "última versión" del sitio nunca cambie:
-- `BoldoAtlas_windows_x64_portable.zip`
-- `BoldoAtlas_windows_x64_setup.exe`
-- `SHA256SUMS.txt`
+- `BoldoAtlas_windows_x64_portable.zip`, `BoldoAtlas_windows_x64_setup.exe`
+- `BoldoAtlas_linux_x64_portable.zip` (AppImage + `portable.flag` + `datos/`), `BoldoAtlas_linux_x64.AppImage`, `BoldoAtlas_linux_x64.deb`, `BoldoAtlas_linux_x64.rpm`
+- `BoldoAtlas_macos_universal_portable.zip` (`BoldoAtlas.app` + `portable.flag` + `datos/`), `BoldoAtlas_macos_universal.dmg`
+- `latest.json` (manifiesto firmado del actualizador), `novedades.json` (notas por versión) y `SHA256SUMS.txt`
 
 Enlace estable: `https://github.com/MscottB/BoldoAtlas/releases/latest/download/<archivo>`.
 

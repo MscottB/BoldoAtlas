@@ -391,7 +391,7 @@ Pedido del autor: página de GitHub al cerrar la Fase 2, en español e inglés, 
 - Requiere que el autor active *Settings → Pages → Source: GitHub Actions*.
 - Commit: `feat(site): sitio bilingüe con presentación, descargas y ayuda`
 
-### Task 16: Buscar actualizaciones (spec §12 "Actualizar")
+### Task 16: Buscar actualizaciones (spec §12 "Actualizar") — REEMPLAZADA por 16a y 16b del Anexo 4
 
 - `tauri-plugin-updater` + manifiesto `latest.json` firmado generado por `scripts/release.mjs` (también en local con `npm run release`, si hay clave) y subido al Release; clave pública en `tauri.conf.json`.
 - Botón "Buscar actualizaciones" en Acerca de; nada se consulta sin que el usuario lo pida.
@@ -536,3 +536,27 @@ Se ejecuta después de la Task 14 y antes del sitio (T15), para que las capturas
 - App: al salir (`RunEvent::Exit`/`ExitRequested`), cerrar la conexión SQLite de forma ordenada (checkpoint del WAL, sin `-wal`/`-shm` sobrantes); un respaldo en curso se escribe a un nombre temporal y se renombra al terminar, para que un cierre a mitad nunca deje un respaldo parcial con nombre válido. Verificar que tras cerrar la ventana no queda ningún proceso `boldo-atlas.exe` ni del WebView2 de la app.
 - Desarrollo (`npm run app`): al cerrar la ventana o con Ctrl+C se detiene todo el árbol de procesos lanzado (Tauri CLI, cargo, Vite) y el puerto elegido queda libre; si aun así queda un proceso escuchando en ese puerto y su línea de comando es el Vite de este repositorio, se detiene (nunca otro proceso). Parte pura (parseo de netstat / decisión) con tests.
 - Commit: `fix: cerrar limpio la app y el entorno de desarrollo`
+
+## Anexo 4 (pedido del autor): tres sistemas, CI/CD optimizado y actualizador completo — spec §12 "Actualizar" y §14
+
+Reemplaza a la Task 16. Orden final: …, Anexo 3 (17g, 17a, 17b, 17c, 17f, 17d, 17e), **16a**, 15 (sitio, ya con descargas de los tres sistemas), **16b**, revisión final. La portable es la versión principal para el autor: toda función debe funcionar igual en ella.
+
+### Task 16a: Release para Windows, Linux y macOS con instalador y portable; CI/CD con cachés
+- `release.yml` en matriz (windows-latest, ubuntu-22.04, macos-latest universal); un job de checks previo; artefactos con los nombres de la spec §14; `SHA256SUMS.txt` único que cubre todos.
+- `scripts/release.mjs` generaliza `empaquetar` por sistema (zip portable con `portable.flag` + `datos/` para los tres; en Linux el AppImage, en macOS el `.app`); `npm run release` en local sigue armando la del sistema actual.
+- `rutas.rs`: modo portable en Linux (flag junto al AppImage, vía `$APPIMAGE`) y en macOS (flag junto a `BoldoAtlas.app`); **la portable no escribe fuera de su carpeta**: la carpeta de datos del WebView (`data_directory` de la ventana) y los temporales van dentro de `datos/`. Tests en Rust.
+- Cachés: Rust por SO con `shared-key`, npm, herramientas de empaquetado de Tauri (NSIS/WiX y linuxdeploy/AppImage), paquetes apt de WebKitGTK; `build-prueba` solo Windows en PR y los tres a pedido (`workflow_dispatch` o etiqueta `build-todas`); `ci-rust` en los tres SO solo con cambios en `src-tauri/`.
+- README/ayuda: descargas por sistema y cómo abrir binarios sin firmar (SmartScreen, Gatekeeper `xattr`/"Abrir", AppImage `chmod +x`).
+- Commit: `ci: release para Windows, Linux y macOS con instalador y portable`
+
+### Task 16b: Actualizador completo (periódico, novedades, limpieza, bandeja)
+- `tauri-plugin-updater` + `latest.json` firmado (clave del autor en secretos de GitHub; sin clave, el release no firma y la app lo informa) para las plataformas que lo admiten; reemplazo propio para la portable de Windows (`.old.exe`), AppImage y `.app` con restauración si falla; `.deb`/`.rpm` solo ofrecen descargar.
+- Consulta periódica configurable (nunca | al abrir | cada día por defecto | cada semana) en instalado y portable; aviso discreto en la barra superior y en la bandeja; nunca instala sin confirmar.
+- Ventana de actualización con el estilo de la app: versión actual y nueva, novedades de todas las versiones intermedias (de `novedades.json`), texto distinto para instalado/portable/paquete del sistema, progreso con cancelar.
+- Novedades dentro de la app generadas en el build (`scripts/novedades.mjs` desde los commits convencionales entre etiquetas); diálogo "Novedades" al primer arranque de una versión nueva (desde la última usada en el PC) y a pedido en Acerca de.
+- Limpieza de temporales de la actualización al terminar o en el siguiente arranque (portable: dentro de `datos/actualizacion/`).
+- Icono en la bandeja (instalado y portable) con menú: Abrir, Actualizar a vX / Buscar actualizaciones, Respaldar ahora, Abrir carpeta de datos, Ayuda, Salir. Cerrar la ventana cierra la app.
+- Botón "Buscar actualizaciones" en Acerca de, menú de la app y paleta.
+- Tests: SemVer (pre-release < final; `dev` nunca ofrece bajar), selección de novedades entre dos versiones, reemplazo/restauración en Rust sobre carpetas temporales, decisión de la consulta periódica, limpieza.
+- Requiere del autor: crear la clave con `npx tauri signer generate` y guardarla como secreto `TAURI_SIGNING_PRIVATE_KEY` (+ contraseña) en GitHub.
+- Commit: `feat: actualizador con consulta periódica, novedades, limpieza y bandeja`
