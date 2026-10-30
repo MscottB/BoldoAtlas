@@ -4,6 +4,7 @@ import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import * as U from "@/db/repos/unidades";
 import { useOrganizacion } from "./organizacion";
 import { TIPO_AREA, TIPO_GERENCIA } from "@/db/tipos";
+import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
 
 // antesDeLote / antesDeMeta: ganchos de los tests para pausar una llamada y forzar solapes.
 const h = vi.hoisted(() => ({
@@ -265,6 +266,8 @@ describe("puestos y asignaciones", () => {
     ]);
     expect((await s.asignarNuevaPersona(p, "reemplazo", "Beto", "2026-02-01")).ok).toBe(true);
     expect(s.asignaciones.map((a) => a.tipo)).toEqual(["titular", "reemplazo"]);
+    // Un reemplazo queda vigente (hasta NULL) hasta "Terminar asignación".
+    expect(vigentesPorPuesto(s.asignaciones).get(p)?.reemplazo).toMatchObject({ hasta: null });
   });
 
   it("asignarNuevaPersona que falla no deja a la persona creada", async () => {

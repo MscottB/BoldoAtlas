@@ -219,7 +219,6 @@ export const useOrganizacion = defineStore("organizacion", () => {
     tipo: Asignacion["tipo"],
     nombre: string,
     desde: string,
-    hasta?: string | null,
   ): Promise<Resultado> =>
     nombre.trim()
       ? escribir(() => {
@@ -227,7 +226,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
           const a =
             tipo === "titular"
               ? A.asignarTitular(puestoId, p.id, desde)
-              : A.registrarReemplazo(puestoId, p.id, desde, hasta);
+              : A.registrarReemplazo(puestoId, p.id, desde); // vigente hasta "Terminar asignación"
           return { id: p.id, sentencias: [...p.sentencias, ...a.sentencias] };
         })
       : Promise.resolve(rechazar(t("store.nombreVacio")));

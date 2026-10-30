@@ -17,7 +17,7 @@ Muestra la ubicación del puesto (el tipo y nombre de las unidades que lo contie
 ## Asignar, reemplazar y terminar
 
 - **Asignar titular**: elige la persona y la fecha de inicio (por defecto, hoy). Si el puesto ya tenía titular, esa asignación se cierra el mismo día y queda en el historial; nunca se borra. Si eliges a quien ya es titular, no se cambia nada.
-- **Registrar reemplazo**: igual que lo anterior, pero el titular sigue siéndolo. El reemplazo queda vigente hasta que lo termines con **Terminar asignación**, o hasta la fecha **Hasta** si la indicas. Un puesto tiene como máximo un titular y un reemplazo vigentes.
+- **Registrar reemplazo**: igual que lo anterior, pero el titular sigue siéndolo. El reemplazo queda vigente hasta que lo termines con **Terminar asignación**. Un puesto tiene como máximo un titular y un reemplazo vigentes.
 - **Terminar asignación**: indica la fecha de término y, si quieres, el motivo. No puede ser anterior al inicio.
 
 Al elegir la persona puedes buscarla por nombre o pulsar **Crear persona «texto»**: se crea con ese nombre y se asigna de una vez; sus demás datos se completan después en su ficha.

@@ -48,6 +48,16 @@ export function asignacionesDePersona(
   };
 }
 
+/** Descripción a guardar: `undefined` si no cambió (nada que escribir); `null` si quedó vacía. */
+export function descripcionPorGuardar(guardada: string | null, escrita: string): string | null | undefined {
+  const nueva = escrita.trim() || null;
+  return nueva === guardada ? undefined : nueva;
+}
+
+/** Un puesto aún sin crear tiene cargo o descripción escritos que se perderían al cerrar. */
+export const hayPuestoNuevoPendiente = (cargoId: string | null, descripcion: string): boolean =>
+  !!cargoId || !!descripcion.trim();
+
 const dos = (n: number) => String(n).padStart(2, "0");
 /** AAAA-MM-DD del día local (no UTC: a la noche en Chile `toISOString` ya marcaría mañana). */
 export const hoyISO = (d = new Date()): string =>

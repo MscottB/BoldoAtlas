@@ -216,7 +216,6 @@
     "persona": "Person",
     "desde": "From",
     "hasta": "To",
-    "hastaOpcional": "To (optional)",
     "motivo": "Reason",
     "vigente": "Current",
     "elegirPersona": "Choose a person…",
@@ -236,6 +235,8 @@
       "fecha": "Enter the date.",
       "persona": "Choose a person.",
       "cargo": "Choose the job title."
-    }
+    },
+    "sinGuardarTitulo": "You have unsaved changes",
+    "sinGuardarTexto": "The position hasn't been created yet. If you discard, what you entered will be lost."
   }
 }

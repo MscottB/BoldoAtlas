@@ -216,7 +216,6 @@
     "persona": "Persona",
     "desde": "Desde",
     "hasta": "Hasta",
-    "hastaOpcional": "Hasta (opcional)",
     "motivo": "Motivo",
     "vigente": "Vigente",
     "elegirPersona": "Elegir persona…",
@@ -236,6 +235,8 @@
       "fecha": "Indica la fecha.",
       "persona": "Elige una persona.",
       "cargo": "Elige el cargo."
-    }
+    },
+    "sinGuardarTitulo": "Hay cambios sin guardar",
+    "sinGuardarTexto": "El puesto aún no se creó. Si descartas, se perderá lo que escribiste."
   }
 }

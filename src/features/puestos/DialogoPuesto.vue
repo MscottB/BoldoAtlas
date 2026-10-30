@@ -3,6 +3,16 @@ import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Trash2 } from "@lucide/vue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +31,7 @@ import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useOrganizacion } from "@/stores/organizacion";
 import FormAsignacion from "./FormAsignacion.vue";
-import { formatearFecha, historialPuesto } from "./puestos";
+import { descripcionPorGuardar, formatearFecha, hayPuestoNuevoPendiente, historialPuesto } from "./puestos";
 import { usePuesto } from "./usePuesto";
 
 const { t, locale } = useI18n();
@@ -101,11 +111,23 @@ async function cambiarCargo(id: string | null) {
   if (!r.ok) toast.error(r.mensaje);
 }
 
-async function guardarDescripcion() {
-  const nueva = descripcion.value.trim() || null;
-  if (!puesto.value || nueva === puesto.value.descripcion) return;
-  const r = await org.editarPuesto(puesto.value.id, { descripcion: nueva });
+/** Guarda la descripción si cambió. Toma el puesto antes de esperar: así sirve también al cerrar. false = falló. */
+async function guardarDescripcion(): Promise<boolean> {
+  const p = puesto.value;
+  const nueva = p ? descripcionPorGuardar(p.descripcion, descripcion.value) : undefined;
+  if (!p || nueva === undefined) return true;
+  const r = await org.editarPuesto(p.id, { descripcion: nueva });
   if (!r.ok) toast.error(r.mensaje);
+  return r.ok;
+}
+
+// Esc, clic fuera y "Cerrar" pasan por aquí: no se pierde lo escrito (un puesto nuevo pregunta antes de descartar).
+const confirmando = ref(false);
+async function pedirCerrar() {
+  if (!puesto.value) {
+    if (hayPuestoNuevoPendiente(cargoNuevo.value, descripcion.value)) confirmando.value = true;
+    else ctl.cerrar();
+  } else if (await guardarDescripcion()) ctl.cerrar();
 }
 
 async function alternarJefatura(e: Event) {
@@ -133,15 +155,16 @@ async function eliminar() {
   });
 }
 
-// Dos diálogos apilados no se pueden intercambiar: se cierra este y se abre la ficha.
-function verPersona(id: string) {
+// Dos diálogos apilados no se pueden intercambiar: se cierra este y se abre la ficha (con su aviso si tiene cambios sin guardar).
+async function verPersona(id: string) {
+  if (!(await guardarDescripcion())) return;
   ctl.cerrar();
-  ficha.abrir(id);
+  void ficha.intentarAbrir(id);
 }
 </script>
 
 <template>
-  <Dialog :open="!!ctl.abierta.value" @update:open="(v) => !v && ctl.cerrar()">
+  <Dialog :open="!!ctl.abierta.value" @update:open="(v) => !v && pedirCerrar()">
     <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-2xl" :show-close-button="false">
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
@@ -282,4 +305,16 @@ function verPersona(id: string) {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  <AlertDialog v-model:open="confirmando">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ t("puesto.sinGuardarTitulo") }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ t("puesto.sinGuardarTexto") }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>{{ t("ficha.seguirEditando") }}</AlertDialogCancel>
+        <AlertDialogAction @click="ctl.cerrar()">{{ t("ficha.descartar") }}</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

@@ -3,10 +3,12 @@ import type { Asignacion, Puesto, Trabajador } from "@/db/tipos";
 import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import {
   asignacionesDePersona,
+  descripcionPorGuardar,
   esTitularVigente,
   filtrarPersonas,
   formatearFecha,
   historialPuesto,
+  hayPuestoNuevoPendiente,
   hoyISO,
   puedeCrearPersona,
 } from "./puestos";
@@ -92,5 +94,22 @@ describe("fechas", () => {
   it("formatearFecha sigue el idioma", () => {
     expect(formatearFecha("2026-03-05", "es")).toMatch(/5.*mar.*2026/i);
     expect(formatearFecha("2026-03-05", "en")).toMatch(/Mar.*5.*2026/);
+  });
+});
+
+describe("descripcionPorGuardar", () => {
+  it("undefined si no cambió (ignorando espacios); null si quedó vacía; el texto recortado si cambió", () => {
+    expect(descripcionPorGuardar("Turno noche", "  Turno noche ")).toBeUndefined();
+    expect(descripcionPorGuardar(null, "   ")).toBeUndefined();
+    expect(descripcionPorGuardar("Turno noche", " ")).toBeNull();
+    expect(descripcionPorGuardar(null, " Nueva ")).toBe("Nueva");
+  });
+});
+
+describe("hayPuestoNuevoPendiente", () => {
+  it("hay algo por perder si se eligió cargo o se escribió descripción", () => {
+    expect(hayPuestoNuevoPendiente(null, "  ")).toBe(false);
+    expect(hayPuestoNuevoPendiente("c", "")).toBe(true);
+    expect(hayPuestoNuevoPendiente(null, "Turno")).toBe(true);
   });
 });

@@ -26,7 +26,6 @@ const uid = useId();
 
 const eleccion = ref<EleccionPersona | null>(null);
 const fecha = ref(hoyISO());
-const hasta = ref(""); // solo reemplazo; vacío = sigue vigente hasta "Terminar asignación"
 const motivo = ref("");
 const error = ref("");
 const enviando = ref(false);
@@ -56,14 +55,13 @@ async function confirmar() {
     toast.info(t("puesto.yaEsTitular"));
     return emit("listo"); // sin escribir: no deja una fila nueva en el historial
   }
-  const h = props.tipo === "reemplazo" ? hasta.value || null : null;
   enviando.value = true;
   const r =
     "id" in e
       ? await (props.tipo === "titular"
           ? org.asignarTitular(props.puestoId, e.id, fecha.value)
-          : org.registrarReemplazo(props.puestoId, e.id, fecha.value, h))
-      : await org.asignarNuevaPersona(props.puestoId, props.tipo, e.nombre, fecha.value, h);
+          : org.registrarReemplazo(props.puestoId, e.id, fecha.value))
+      : await org.asignarNuevaPersona(props.puestoId, props.tipo, e.nombre, fecha.value);
   enviando.value = false;
   resolver(r);
 }
@@ -97,10 +95,6 @@ function resolver(r: { ok: boolean; mensaje?: string }) {
     <div class="grid gap-1.5">
       <Label :for="`${uid}-fecha`">{{ t(tipo === "terminar" ? "puesto.hasta" : "puesto.desde") }}</Label>
       <Input :id="`${uid}-fecha`" v-model="fecha" type="date" required />
-    </div>
-    <div v-if="tipo === 'reemplazo'" class="grid gap-1.5">
-      <Label :for="`${uid}-hasta`">{{ t("puesto.hastaOpcional") }}</Label>
-      <Input :id="`${uid}-hasta`" v-model="hasta" type="date" />
     </div>
     <div v-if="tipo === 'terminar'" class="grid gap-1.5">
       <Label :for="`${uid}-motivo`">{{ t("puesto.motivo") }}</Label>

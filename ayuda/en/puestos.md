@@ -17,7 +17,7 @@ It shows where the position sits (the type and name of the units that contain it
 ## Assigning, replacing and ending
 
 - **Assign holder**: choose the person and the start date (today by default). If the position already had a holder, that assignment is closed the same day and stays in the history; it is never deleted. If you choose the person who is already the holder, nothing changes.
-- **Register replacement**: like the above, but the holder stays the holder. The replacement remains current until you end it with **End assignment**, or until the **To** date if you give one. A position has at most one current holder and one current replacement.
+- **Register replacement**: like the above, but the holder stays the holder. The replacement remains current until you end it with **End assignment**. A position has at most one current holder and one current replacement.
 - **End assignment**: give the end date and, if you wish, the reason. It cannot be earlier than the start.
 
 When choosing the person you can search by name or press **Create person "text"**: it is created with that name and assigned in one go; fill in their other details later in their record.

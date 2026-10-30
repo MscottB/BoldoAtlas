@@ -145,12 +145,26 @@ async function guardarAhora() {
   }
 }
 
-async function pedirCerrar() {
+async function hayCambios() {
   await cola; // que termine lo que se está guardando antes de decidir
-  const a = ficha.abierta.value;
-  if (!a) return;
   const base = id.value ? org.trabajadores.find((x) => x.id === id.value) : vacio();
-  if (base && hayCambiosSinGuardar(form, base)) confirmando.value = true;
+  return !!base && hayCambiosSinGuardar(form, base);
+}
+// Quien quiera abrir otra ficha (p. ej. el diálogo de un puesto) pasa por esta misma comprobación.
+ficha.registrarGuardia(hayCambios);
+
+async function pedirCerrar() {
+  if (!ficha.abierta.value) return;
+  if (await hayCambios()) confirmando.value = true;
+  else ficha.cerrar();
+}
+
+// Hay una ficha esperando: se pregunta lo mismo que al cerrar. Descartar la abre; Seguir editando la olvida.
+watch(ficha.pendiente, (p) => p && (confirmando.value = true));
+watch(confirmando, (c) => c || (ficha.pendiente.value = null));
+function descartar() {
+  const p = ficha.pendiente.value; // el diálogo ya se cerró, pero el watcher que la borra corre después
+  if (p) ficha.abrir(p);
   else ficha.cerrar();
 }
 
@@ -394,7 +408,7 @@ const alAbrir = (e: Event) => {
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel>{{ t("ficha.seguirEditando") }}</AlertDialogCancel>
-        <AlertDialogAction @click="ficha.cerrar()">{{ t("ficha.descartar") }}</AlertDialogAction>
+        <AlertDialogAction @click="descartar">{{ t("ficha.descartar") }}</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
