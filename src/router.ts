@@ -23,6 +23,11 @@ export const router = createRouter({
       component: () => import("@/features/directorio/VistaDirectorio.vue"),
     },
     {
+      path: "/revision",
+      name: "revision",
+      component: () => import("@/features/revision/VistaRevision.vue"),
+    },
+    {
       path: "/configuracion",
       name: "configuracion",
       component: () => import("@/vistas/VistaConfiguracion.vue"),

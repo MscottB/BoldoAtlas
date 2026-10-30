@@ -4,7 +4,7 @@ import type { Puesto } from "@/db/tipos";
 import { actualizar, fijarBorrado } from "./comun";
 
 export const SQL_PUESTOS =
-  "SELECT id, unidad_id, cargo_id, descripcion, leyenda_id, orden FROM puestos WHERE deleted_at IS NULL ORDER BY orden";
+  "SELECT id, unidad_id, cargo_id, descripcion, leyenda_id, orden, created_at FROM puestos WHERE deleted_at IS NULL ORDER BY orden";
 
 type DatosPuesto = Pick<Puesto, "unidad_id" | "cargo_id"> &
   Partial<Pick<Puesto, "descripcion" | "leyenda_id" | "orden">>;

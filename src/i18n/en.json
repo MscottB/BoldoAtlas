@@ -4,6 +4,7 @@
     "arbol": "Tree",
     "arboles": "Trees",
     "directorio": "Directory",
+    "revision": "Review",
     "indicadores": "Indicators",
     "escenarios": "Scenarios",
     "importarExportar": "Import/Export",
@@ -190,6 +191,53 @@
     "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",
     "sinResultados": "No rows match the filters."
+  },
+  "revision": {
+    "titulo": "Data review",
+    "avisos": "{n} warning | {n} warnings",
+    "todoEnOrden": "All in order",
+    "dias": "{n} day without a holder | {n} days without a holder",
+    "nombresGrupo": "{n} people with a similar name",
+    "tablas": {
+      "cargos": "Job title",
+      "tipos_contrato": "Contract type",
+      "sedes": "Site",
+      "jornadas": "Schedule",
+      "tipos_unidad": "Unit type",
+      "leyendas": "Legend"
+    },
+    "sinJefatura": {
+      "titulo": "Units without a head",
+      "ayuda": "Units with no head position, or whose position has no current holder or replacement."
+    },
+    "vacantes": {
+      "titulo": "Vacant positions",
+      "ayuda": "Positions with no current holder, longest without a holder first."
+    },
+    "reemplazos": {
+      "titulo": "Current replacements",
+      "ayuda": "For information only: not counted in the menu counter."
+    },
+    "sinPuesto": {
+      "titulo": "People without a current position",
+      "ayuda": "Registered people who do not hold or replace any position today."
+    },
+    "correos": {
+      "titulo": "Repeated emails",
+      "ayuda": "People who share the same email."
+    },
+    "nombres": {
+      "titulo": "Similar names",
+      "ayuda": "The same name ignoring case and accents, or the same words in another order: possible duplicates."
+    },
+    "vacias": {
+      "titulo": "Empty units",
+      "ayuda": "Units with no positions and no subunits."
+    },
+    "sinUso": {
+      "titulo": "Unused values",
+      "ayuda": "Active values of the records and active legends that nothing uses."
+    }
   },
   "provisional": {
     "bienvenida": "Welcome",

@@ -4,6 +4,7 @@
     "arbol": "Árbol",
     "arboles": "Árboles",
     "directorio": "Directorio",
+    "revision": "Revisión",
     "indicadores": "Indicadores",
     "escenarios": "Escenarios",
     "importarExportar": "Importar/Exportar",
@@ -190,6 +191,53 @@
     "exportar": "Exportar esta lista a Excel",
     "vacio": "Aún no hay puestos ni personas. Crea unidades y puestos en el árbol.",
     "sinResultados": "Ninguna fila coincide con los filtros."
+  },
+  "revision": {
+    "titulo": "Revisión de datos",
+    "avisos": "{n} aviso | {n} avisos",
+    "todoEnOrden": "Todo en orden",
+    "dias": "{n} día sin titular | {n} días sin titular",
+    "nombresGrupo": "{n} personas con nombre parecido",
+    "tablas": {
+      "cargos": "Cargo",
+      "tipos_contrato": "Tipo de contrato",
+      "sedes": "Sede",
+      "jornadas": "Jornada",
+      "tipos_unidad": "Tipo de unidad",
+      "leyendas": "Leyenda"
+    },
+    "sinJefatura": {
+      "titulo": "Unidades sin jefatura",
+      "ayuda": "Unidades sin puesto de jefatura, o cuyo puesto no tiene titular ni reemplazo vigente."
+    },
+    "vacantes": {
+      "titulo": "Puestos vacantes",
+      "ayuda": "Puestos sin titular vigente, de más a menos tiempo sin titular."
+    },
+    "reemplazos": {
+      "titulo": "Reemplazos vigentes",
+      "ayuda": "Solo informativo: no suma al contador del menú."
+    },
+    "sinPuesto": {
+      "titulo": "Personas sin puesto vigente",
+      "ayuda": "Personas registradas que hoy no ocupan ni reemplazan ningún puesto."
+    },
+    "correos": {
+      "titulo": "Correos repetidos",
+      "ayuda": "Personas que comparten el mismo correo."
+    },
+    "nombres": {
+      "titulo": "Nombres parecidos",
+      "ayuda": "Mismo nombre sin considerar mayúsculas ni tildes, o con las mismas palabras en otro orden: posibles duplicados."
+    },
+    "vacias": {
+      "titulo": "Unidades vacías",
+      "ayuda": "Unidades sin puestos ni subunidades."
+    },
+    "sinUso": {
+      "titulo": "Valores sin uso",
+      "ayuda": "Valores activos de los mantenedores y leyendas activas que nada usa."
+    }
   },
   "provisional": {
     "bienvenida": "Bienvenida",

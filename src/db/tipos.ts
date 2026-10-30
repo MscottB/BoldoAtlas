@@ -36,6 +36,8 @@ export interface Puesto {
   /** → `leyendas`: el color con nombre del puesto. */
   leyenda_id: string | null;
   orden: number;
+  /** ISO. Lo trae la lectura del store; los datos de prueba pueden omitirlo. */
+  created_at?: string;
 }
 
 export interface Asignacion {

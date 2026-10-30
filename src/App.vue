@@ -10,6 +10,7 @@ import {
   GitBranch,
   FolderTree,
   Info,
+  ListChecks,
   Network,
   Settings,
   Users,
@@ -18,22 +19,26 @@ import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BarraSuperior from "@/components/BarraSuperior.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
+import { useAvisos } from "@/features/revision/useAvisos";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: se muestra deshabilitada con el aviso de la fase en que llega.
-// `etiqueta` y `aviso` son claves de i18n.
+// `etiqueta` y `aviso` son claves de i18n. `contador`, si da más de 0, se muestra como insignia.
 interface Entrada {
   to?: string;
   etiqueta: string;
   icono: Component;
   aviso?: string;
+  contador?: () => number;
 }
+const avisos = useAvisos();
 const secciones: Entrada[] = [
   { to: "/", etiqueta: "nav.arbol", icono: Network },
   { to: "/arboles", etiqueta: "nav.arboles", icono: FolderTree },
   { to: "/directorio", etiqueta: "nav.directorio", icono: Users },
+  { to: "/revision", etiqueta: "nav.revision", icono: ListChecks, contador: () => avisos.value.total },
   { etiqueta: "nav.indicadores", icono: ChartColumn, aviso: "nav.llegaFase3" },
   { etiqueta: "nav.escenarios", icono: GitBranch, aviso: "nav.llegaFase5" },
   { etiqueta: "nav.importarExportar", icono: ArrowLeftRight, aviso: "nav.llegaFases45" },
@@ -46,6 +51,11 @@ const utilidades: Entrada[] = [
 ];
 
 const { t } = useI18n();
+// Con avisos pendientes, el nombre accesible de la entrada incluye cuántos son.
+const nombre = (item: Entrada) => {
+  const n = item.contador?.() ?? 0;
+  return n ? `${t(item.etiqueta)}, ${t("revision.avisos", n)}` : t(item.etiqueta);
+};
 const route = useRoute();
 const { width } = useWindowSize();
 const manual = ref<boolean | null>(null);
@@ -80,12 +90,21 @@ watch(
               <RouterLink
                 v-if="item.to"
                 :to="item.to"
-                :aria-label="colapsada ? t(item.etiqueta) : undefined"
-                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
+                :aria-label="colapsada ? nombre(item) : undefined"
+                class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
                 active-class="bg-sidebar-accent font-medium"
               >
                 <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
                 <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
+                <template v-if="item.contador?.()">
+                  <span
+                    class="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums"
+                    :class="colapsada ? 'absolute -top-1 -right-1' : 'ml-auto'"
+                    aria-hidden="true"
+                    >{{ item.contador() }}</span
+                  >
+                  <span v-if="!colapsada" class="sr-only">{{ t("revision.avisos", item.contador()) }}</span>
+                </template>
               </RouterLink>
               <button
                 v-else

@@ -96,8 +96,10 @@ const arbol = computed(() => arbolDeVista(raiz.value, org.subarboles));
 recordarPorArbol(computed(() => (arbol.value === undefined ? null : (arbol.value ?? "completo"))));
 
 // Al cambiar de vista, tras el próximo layout: encuadrar todo, o centrar en `centrar`.
-// `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada.
-let revelar: string | null = null;
+// `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada. Al entrar con /?ver=<id> (desde Revisión)
+// parte fijado: se abre el árbol completo con esa unidad seleccionada y centrada.
+let revelar: string | null =
+  typeof route.query.ver === "string" && org.porId.has(route.query.ver) ? route.query.ver : null;
 let encuadrar = false;
 let centrar: string | null = null;
 watch(
