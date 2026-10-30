@@ -1,10 +1,12 @@
 use crate::db::{self, Sentencia};
+use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 
 /// Si iniciar falla, la app no se cierra: guarda el error y el frontend lo muestra.
 pub struct Estado {
@@ -46,10 +48,10 @@ impl Estado {
         }
     }
 
-    fn con_conexion<T>(
+    fn con_conexion<T, E: From<String>>(
         &self,
-        f: impl FnOnce(&mut Connection) -> Result<T, String>,
-    ) -> Result<T, String> {
+        f: impl FnOnce(&mut Connection) -> Result<T, E>,
+    ) -> Result<T, E> {
         let mut guardia = self
             .conn
             .lock()
@@ -60,6 +62,12 @@ impl Estado {
                 .unwrap_or_else(|| "La base de datos no está abierta.".into())
         })?;
         f(conn)
+    }
+
+    fn rutas(&self) -> Result<&Rutas, Fallo> {
+        self.rutas
+            .as_ref()
+            .ok_or_else(|| "No se ubicó la carpeta de datos.".to_string().into())
     }
 }
 
@@ -101,4 +109,47 @@ pub fn db_lote(
     version_app: String,
 ) -> Result<(), String> {
     estado.con_conexion(|c| db::lote(c, &sentencias, &version_app))
+}
+
+#[tauri::command]
+pub async fn listar_respaldos(estado: State<'_, Estado>) -> Result<Vec<Respaldo>, Fallo> {
+    respaldos::listar(&estado.rutas()?.respaldos)
+}
+
+/// En un hilo aparte: el VACUUM INTO no congela la ventana.
+#[tauri::command]
+pub async fn respaldar_ahora(app: AppHandle) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let dir = &estado.rutas()?.respaldos;
+        estado.con_conexion(|c| respaldos::respaldar(c, dir, &respaldos::sello_local(c)?))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Si sale bien, reinicia la app: todo el estado (Rust y frontend) se vuelve a cargar desde la base restaurada.
+#[tauri::command]
+pub async fn restaurar_respaldo(app: AppHandle, nombre: String) -> Result<(), Fallo> {
+    let app2 = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app2.state::<Estado>();
+        let r = estado.rutas()?;
+        let mut conexion = estado
+            .conn
+            .lock()
+            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
+        respaldos::restaurar(&mut conexion, &r.bd, &r.respaldos, &nombre, db::MIGRACIONES)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    app.restart()
+}
+
+/// Abre la carpeta conocida por Rust; la interfaz nunca envía una ruta.
+#[tauri::command]
+pub fn abrir_carpeta_respaldos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
+    app.opener()
+        .open_path(estado.rutas()?.respaldos.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string().into())
 }

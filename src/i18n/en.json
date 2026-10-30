@@ -602,5 +602,42 @@
     "reactivarA": "Reactivate \"{nombre}\"",
     "colorDe": "Color of \"{nombre}\"",
     "descripcionDe": "Description of \"{nombre}\""
+  },
+  "respaldos": {
+    "titulo": "Backups",
+    "ayuda": "Copies of your data in the backups folder on this computer. The 10 most recent automatic backups are kept.",
+    "frecuencia": {
+      "etiqueta": "Automatic backup on open",
+      "nunca": "Never",
+      "abrir": "Every time",
+      "24h": "Every 24 hours",
+      "7d": "Every 7 days"
+    },
+    "ahora": "Back up now",
+    "carpeta": "Open folder",
+    "hecho": "Backup created.",
+    "vacio": "No backups yet.",
+    "columnas": {
+      "fecha": "Date",
+      "tamano": "Size",
+      "revision": "Data revision",
+      "acciones": "Actions"
+    },
+    "seguridad": "Before restore",
+    "ilegible": "Unreadable",
+    "restaurar": "Restore",
+    "restaurarDe": "Restore the backup from {fecha}",
+    "confirmarTitulo": "Restore the backup from {fecha}?",
+    "confirmarTexto": "Your current data is backed up first (it appears in the list as “Before restore”). Then it is replaced with this backup and BoldoAtlas restarts.",
+    "confirmar": "Restore and restart",
+    "cancelar": "Cancel",
+    "automaticoFallo": "The automatic backup could not be made.",
+    "error": {
+      "desconocido": "That backup is no longer in the folder. Reopen Settings and try again.",
+      "danado": "The backup is damaged or is not a BoldoAtlas database. Nothing was changed.",
+      "esquema_nuevo": "This backup was made with a newer version of BoldoAtlas. Update BoldoAtlas to restore it.",
+      "en_uso": "Another BoldoAtlas window is using the data. Close it and try again; nothing was changed.",
+      "fallo": "The operation could not be completed: {detalle}"
+    }
   }
 }

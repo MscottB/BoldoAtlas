@@ -602,5 +602,42 @@
     "reactivarA": "Reactivar «{nombre}»",
     "colorDe": "Color de «{nombre}»",
     "descripcionDe": "Descripción de «{nombre}»"
+  },
+  "respaldos": {
+    "titulo": "Respaldos",
+    "ayuda": "Copias de tus datos en la carpeta de respaldos de este computador. Se conservan los 10 respaldos automáticos más recientes.",
+    "frecuencia": {
+      "etiqueta": "Respaldo automático al abrir",
+      "nunca": "Nunca",
+      "abrir": "Cada vez",
+      "24h": "Cada 24 horas",
+      "7d": "Cada 7 días"
+    },
+    "ahora": "Respaldar ahora",
+    "carpeta": "Abrir carpeta",
+    "hecho": "Respaldo creado.",
+    "vacio": "Todavía no hay respaldos.",
+    "columnas": {
+      "fecha": "Fecha",
+      "tamano": "Tamaño",
+      "revision": "Revisión de datos",
+      "acciones": "Acciones"
+    },
+    "seguridad": "Antes de restaurar",
+    "ilegible": "No se puede leer",
+    "restaurar": "Restaurar",
+    "restaurarDe": "Restaurar el respaldo del {fecha}",
+    "confirmarTitulo": "¿Restaurar el respaldo del {fecha}?",
+    "confirmarTexto": "Primero se respaldan tus datos actuales (quedan en la lista como «Antes de restaurar»). Luego se reemplazan por los de este respaldo y BoldoAtlas se reinicia.",
+    "confirmar": "Restaurar y reiniciar",
+    "cancelar": "Cancelar",
+    "automaticoFallo": "No se pudo hacer el respaldo automático.",
+    "error": {
+      "desconocido": "Ese respaldo ya no está en la carpeta. Vuelve a abrir Configuración e inténtalo de nuevo.",
+      "danado": "El respaldo está dañado o no es una base de BoldoAtlas. No se cambió nada.",
+      "esquema_nuevo": "Este respaldo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para restaurarlo.",
+      "en_uso": "Otra ventana de BoldoAtlas está usando los datos. Ciérrala e inténtalo de nuevo; no se cambió nada.",
+      "fallo": "No se pudo completar la operación: {detalle}"
+    }
   }
 }

@@ -34,3 +34,36 @@ export async function leerMeta(): Promise<Record<string, string>> {
   const filas = await consultar<{ clave: string; valor: string | null }>("SELECT clave, valor FROM meta");
   return Object.fromEntries(filas.map((f) => [f.clave, f.valor ?? ""]));
 }
+
+// Respaldos: Rust conoce la carpeta; la interfaz solo maneja nombres de la lista.
+export interface Respaldo {
+  nombre: string;
+  fecha: string;
+  bytes: number;
+  revision: number | null;
+  legible: boolean;
+  seguridad: boolean;
+}
+
+/** Error de los comandos de respaldos: `codigo` se traduce con `respaldos.error.<codigo>`. */
+export interface FalloRespaldo {
+  codigo: string;
+  detalle: string;
+}
+
+export function listarRespaldos(): Promise<Respaldo[]> {
+  return invoke<Respaldo[]>("listar_respaldos");
+}
+
+export function respaldarAhora(): Promise<string> {
+  return invoke<string>("respaldar_ahora");
+}
+
+/** Si sale bien, la app se reinicia y la promesa no se resuelve. */
+export function restaurarRespaldo(nombre: string): Promise<void> {
+  return invoke("restaurar_respaldo", { nombre });
+}
+
+export function abrirCarpetaRespaldos(): Promise<void> {
+  return invoke("abrir_carpeta_respaldos");
+}

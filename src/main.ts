@@ -7,6 +7,7 @@ import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
+import { respaldoAutomatico } from "./features/respaldos/respaldos";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
 import "./styles/main.css";
 
@@ -27,6 +28,7 @@ infoApp()
     const destino = destinoInicial(org.cargado, org.vacia);
     if (destino) await router.replace(destino);
     app.mount("#app");
+    void respaldoAutomatico();
   })
   .catch((e: unknown) => {
     const info = { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
+import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
 import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { cambiarIdioma, IDIOMAS, type Idioma } from "@/i18n";
@@ -169,5 +170,7 @@ const selector =
         </RouterLink>
       </Button>
     </section>
+
+    <SeccionRespaldos />
   </section>
 </template>
