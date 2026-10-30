@@ -5,6 +5,7 @@ import { crearUnidad } from "@/db/repos/unidades";
 import { crearTrabajador } from "@/db/repos/trabajadores";
 import { crearEtiqueta, etiquetarUnidad } from "@/db/repos/etiquetas";
 import { guardarSubarbol } from "@/db/repos/subarboles";
+import { guardarVista } from "@/db/repos/vistas";
 import { crearValor } from "@/db/repos/catalogos";
 import { crearPuesto } from "@/db/repos/puestos";
 import { crearLeyenda } from "@/db/repos/leyendas";
@@ -78,6 +79,10 @@ describe("traducirError", () => {
     bd.aplicar(guardarSubarbol(unidad.id).sentencias);
     const ramaDuplicada = capturar(() => bd.aplicar(guardarSubarbol(unidad.id).sentencias));
     expect(ramaDuplicada).toBe("Esa rama ya está guardada en Árboles.");
+
+    bd.aplicar(guardarVista(null, "Compacta", {}).sentencias);
+    const vistaDuplicada = capturar(() => bd.aplicar(guardarVista(null, " COMPACTA ", {}).sentencias));
+    expect(vistaDuplicada).toBe("Ya hay una vista con ese nombre en este árbol.");
 
     const tipoDuplicado = capturar(() => bd.aplicar(crearValor("tipos_unidad", " gerencia ").sentencias));
     expect(tipoDuplicado).toBe("Ese valor ya existe en la lista.");

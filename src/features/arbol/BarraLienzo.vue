@@ -9,12 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
+import { useVista } from "./useVista";
 import PanelVista from "./PanelVista.vue";
+import PanelResaltar from "./PanelResaltar.vue";
+import MenuVistas from "./MenuVistas.vue";
 
 const props = defineProps<{ raiz: string | null }>();
 const { t } = useI18n();
 const org = useOrganizacion();
-const { seleccion, filtroEtiqueta, filtroTexto, nuevaUnidad } = useLienzo();
+const { seleccion, nuevaUnidad } = useLienzo();
+const { config } = useVista();
 const { zoomIn, zoomOut, fitView } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
 
 onKeyStroke("0", (e) => {
@@ -52,8 +56,9 @@ async function guardarEnArboles() {
       {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
     </Button>
     <PanelVista />
+    <MenuVistas :raiz="raiz" />
     <select
-      v-model="filtroEtiqueta"
+      v-model="config.resaltar.etiqueta"
       class="h-7 rounded-md border bg-background px-2 text-sm"
       :aria-label="t('arbol.resaltarEtiqueta')"
     >
@@ -61,12 +66,13 @@ async function guardarEnArboles() {
       <option v-for="e in org.etiquetas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
     </select>
     <Input
-      v-model="filtroTexto"
+      v-model="config.resaltar.texto"
       type="search"
       class="h-7 w-48"
       :placeholder="t('arbol.resaltarTexto')"
       :aria-label="t('arbol.resaltarTexto')"
     />
+    <PanelResaltar />
     <span class="ml-auto flex gap-1">
       <Button
         variant="outline"

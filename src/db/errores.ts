@@ -9,6 +9,7 @@ const reglas: [(texto: string) => boolean, string][] = [
   // Índice sobre columnas simples: SQLite informa las columnas, no el nombre del índice.
   [(t) => t.includes("UNIQUE constraint failed: unidad_etiquetas."), "errores.unidadYaEtiquetada"],
   [(t) => t.includes("UNIQUE constraint failed: subarboles_guardados."), "errores.ramaYaGuardada"],
+  [(t) => t.includes("ux_vistas_nombre"), "errores.vistaDuplicada"],
   [
     (t) => /ux_(cargos|tipos_contrato|sedes|jornadas|tipos_unidad|leyendas)_nombre/.test(t),
     "errores.valorDuplicado",

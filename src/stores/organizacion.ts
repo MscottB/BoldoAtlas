@@ -10,6 +10,7 @@ import {
   type Conexion,
   type Puesto,
   type SubarbolGuardado,
+  type Vista,
   type Etiqueta,
   type Leyenda,
   type TablaCatalogo,
@@ -23,6 +24,7 @@ import * as C from "@/db/repos/catalogos";
 import * as E from "@/db/repos/etiquetas";
 import * as X from "@/db/repos/conexiones";
 import * as S from "@/db/repos/subarboles";
+import * as V from "@/db/repos/vistas";
 import * as P from "@/db/repos/puestos";
 import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
@@ -35,7 +37,7 @@ export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
 export interface Borrado {
-  tipo: "unidad" | "trabajador" | "puesto";
+  tipo: "unidad" | "trabajador" | "puesto" | "vista";
   id: string;
   contenido?: { hijos: string[]; puestos: string[] };
   /** Epoch en ms hasta el que se puede deshacer. */
@@ -66,6 +68,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const unidadEtiquetas = ref<{ unidad_id: string; etiqueta_id: string }[]>([]);
   const conexiones = ref<Conexion[]>([]);
   const subarboles = ref<SubarbolGuardado[]>([]);
+  const vistas = ref<Vista[]>([]);
   const leyendas = ref<Leyenda[]>([]);
   /** Estilo copiado (id de leyenda; null = «sin estilo»). Solo en memoria; undefined = nada copiado. */
   const estiloCopiado = ref<string | null | undefined>(undefined);
@@ -109,7 +112,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      const [u, t, pu, as, et, ue, co, sa, le, meta, ...cats] = await Promise.all([
+      const [u, t, pu, as, et, ue, co, sa, le, vi, meta, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
         consultar<Puesto>(P.SQL_PUESTOS),
@@ -119,6 +122,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         consultar<Conexion>(X.SQL_CONEXIONES),
         consultar<SubarbolGuardado>(S.SQL_SUBARBOLES),
         consultar<Leyenda>(L.SQL_LEYENDAS),
+        consultar<Vista>(V.SQL_VISTAS),
         leerMeta(),
         ...TABLAS_CATALOGO.map((tabla) => consultar<ValorCatalogo>(C.sqlValores(tabla))),
       ]);
@@ -132,6 +136,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       conexiones.value = co;
       subarboles.value = sa;
       leyendas.value = le;
+      vistas.value = vi;
       catalogos.value = Object.fromEntries(TABLAS_CATALOGO.map((tabla, i) => [tabla, cats[i]])) as Record<
         TablaCatalogo,
         ValorCatalogo[]
@@ -250,6 +255,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     unidad: (b: Borrado) => U.restaurarUnidad(b.id, b.contenido!),
     trabajador: (b: Borrado) => T.restaurarTrabajador(b.id),
     puesto: (b: Borrado) => P.restaurarPuesto(b.id),
+    vista: (b: Borrado) => V.restaurarVista(b.id),
   };
 
   async function deshacer(): Promise<Resultado> {
@@ -278,6 +284,21 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => S.renombrarSubarbol(id, nombre));
   const moverSubarbol = (id: string, orden: number) => escribir(() => S.moverSubarbol(id, orden));
   const quitarSubarbol = (id: string) => escribir(() => S.quitarSubarbol(id));
+
+  /** `arbolId` null = árbol completo. El nombre no se repite dentro del mismo árbol (lo exige el índice). */
+  const guardarVista = (arbolId: string | null, nombre: string, config: unknown): Promise<Resultado> =>
+    nombre.trim()
+      ? escribir(() => V.guardarVista(arbolId, nombre, config))
+      : Promise.resolve(rechazar(t("store.nombreVacio")));
+  const renombrarVista = (id: string, nombre: string): Promise<Resultado> =>
+    nombre.trim()
+      ? escribir(() => V.renombrarVista(id, nombre))
+      : Promise.resolve(rechazar(t("store.nombreVacio")));
+  const eliminarVista = (id: string) =>
+    escribir(
+      () => V.eliminarVista(id),
+      () => (ultimoBorrado.value = { tipo: "vista", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
+    );
 
   const guardarOrg = (nombre: string, logo: string | null) =>
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
@@ -499,6 +520,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     unidadEtiquetas,
     conexiones,
     subarboles,
+    vistas,
     leyendas,
     leyendasActivas,
     estiloCopiado,
@@ -541,6 +563,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
     renombrarSubarbol,
     moverSubarbol,
     quitarSubarbol,
+    guardarVista,
+    renombrarVista,
+    eliminarVista,
     guardarOrg,
     deshacer,
     cargarEjemplo,

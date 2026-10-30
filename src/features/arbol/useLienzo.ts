@@ -1,16 +1,56 @@
 import { computed, ref, type ComputedRef } from "vue";
 import { toast } from "vue-sonner";
-import type { Unidad } from "@/db/tipos";
+import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
-import { hijos, tipoHijo } from "./jerarquia";
+import { hijos, tipoHijo, vigentesPorPuesto, type Vigentes } from "./jerarquia";
+import { useVista } from "./useVista";
+import type { Resaltado } from "./vista";
 
-/** Sin filtros todo coincide; con texto y etiqueta deben cumplirse ambos. */
-export function coincideFiltro(u: Unidad, texto: string, etiquetadas: Set<string> | null): boolean {
+/** Sin filtros todo coincide; con texto, etiqueta y criterios de puestos (`cumplen`) deben cumplirse todos. */
+export function coincideFiltro(
+  u: Unidad,
+  texto: string,
+  etiquetadas: Set<string> | null,
+  cumplen: Set<string> | null = null,
+): boolean {
   if (etiquetadas && !etiquetadas.has(u.id)) return false;
+  if (cumplen && !cumplen.has(u.id)) return false;
   const buscado = normalizarTexto(texto);
   return !buscado || normalizarTexto(u.nombre).includes(buscado);
+}
+
+/**
+ * Unidades que cumplen todos los criterios de resaltado ligados a puestos y personas, o null si no hay ninguno activo.
+ * Cada criterio se mira solo en los puestos de la propia unidad (no en su rama): vacantes = puesto sin titular vigente;
+ * sede, contrato y jornada = titular vigente con ese valor (un reemplazo no cuenta); cargo = puesto con ese cargo.
+ */
+export function unidadesQueCumplen(
+  r: Omit<Resaltado, "etiqueta" | "texto">,
+  puestos: (Puesto & { deleted_at?: string | null })[],
+  vigentes: Vigentes,
+  trabajadores: Trabajador[],
+): Set<string> | null {
+  const pruebas: [unknown, (p: Puesto, t: Trabajador | undefined) => boolean][] = [
+    [r.vacantes, (_, t) => !t],
+    [r.sede, (_, t) => t?.sede_id === r.sede],
+    [r.contrato, (_, t) => t?.tipo_contrato_id === r.contrato],
+    [r.jornada, (_, t) => t?.jornada_id === r.jornada],
+    [r.cargo, (p) => p.cargo_id === r.cargo],
+  ];
+  const activas = pruebas.filter(([criterio]) => criterio).map(([, prueba]) => prueba);
+  if (!activas.length) return null;
+  const persona = new Map(trabajadores.map((t) => [t.id, t]));
+  const cubiertos = new Map<string, boolean[]>();
+  for (const p of puestos) {
+    if (p.deleted_at) continue;
+    const t = persona.get(vigentes.get(p.id)?.titular?.trabajador_id ?? "");
+    const ok = cubiertos.get(p.unidad_id) ?? activas.map(() => false);
+    activas.forEach((prueba, i) => (ok[i] ||= prueba(p, t)));
+    cubiertos.set(p.unidad_id, ok);
+  }
+  return new Set([...cubiertos].filter(([, ok]) => ok.every(Boolean)).map(([id]) => id));
 }
 
 type Punto = { x: number; y: number };
@@ -33,9 +73,8 @@ export function destinoAlSoltar(
 const colapsados = ref(new Set<string>());
 const seleccion = ref<string | null>(null);
 const editando = ref<string | null>(null);
-const filtroEtiqueta = ref<string | null>(null);
-const filtroTexto = ref("");
 let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
+let cumplen: ComputedRef<Set<string> | null> | undefined;
 
 function expandir(id: string) {
   if (!colapsados.value.has(id)) return;
@@ -46,12 +85,21 @@ function expandir(id: string) {
 
 export function useLienzo() {
   const org = useOrganizacion();
-  etiquetadas ??= computed(() =>
-    filtroEtiqueta.value
-      ? new Set(
-          org.unidadEtiquetas.filter((x) => x.etiqueta_id === filtroEtiqueta.value).map((x) => x.unidad_id),
-        )
-      : null,
+  const { config } = useVista();
+  // El resaltado vive en la configuración de la vista (así lo guardan las vistas nombradas).
+  etiquetadas ??= computed(() => {
+    const id = config.value.resaltar.etiqueta;
+    return id
+      ? new Set(org.unidadEtiquetas.filter((x) => x.etiqueta_id === id).map((x) => x.unidad_id))
+      : null;
+  });
+  cumplen ??= computed(() =>
+    unidadesQueCumplen(
+      config.value.resaltar,
+      org.puestos,
+      vigentesPorPuesto(org.asignaciones),
+      org.trabajadores,
+    ),
   );
 
   /** Crea una subunidad de `padre` (o una raíz) con nombre provisorio y la deja seleccionada y en edición. */
@@ -74,8 +122,6 @@ export function useLienzo() {
     colapsados,
     seleccion,
     editando,
-    filtroEtiqueta,
-    filtroTexto,
     expandir,
     nuevaUnidad,
     alternarRama(id: string) {
@@ -86,6 +132,7 @@ export function useLienzo() {
     seleccionar(id: string | null) {
       seleccion.value = id;
     },
-    coincide: (u: Unidad) => coincideFiltro(u, filtroTexto.value, etiquetadas!.value),
+    coincide: (u: Unidad) =>
+      coincideFiltro(u, config.value.resaltar.texto, etiquetadas!.value, cumplen!.value),
   };
 }

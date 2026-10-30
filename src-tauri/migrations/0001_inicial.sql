@@ -246,3 +246,17 @@ CREATE TABLE subarboles_guardados (
 );
 CREATE INDEX idx_subarboles_guardados_unidad_id ON subarboles_guardados(unidad_id);
 CREATE UNIQUE INDEX ux_subarboles_unidad ON subarboles_guardados(unidad_id) WHERE deleted_at IS NULL;
+
+-- Vistas del lienzo guardadas con nombre. arbol_id NULL = árbol completo; si no, un subárbol guardado.
+-- `config` es JSON (dirección, densidad, tarjeta, colorear por, resaltado y ramas plegadas); se valida al leer.
+CREATE TABLE vistas (
+  id         TEXT PRIMARY KEY NOT NULL,
+  arbol_id   TEXT REFERENCES subarboles_guardados(id) DEFERRABLE INITIALLY DEFERRED,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  config     TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE INDEX idx_vistas_arbol_id ON vistas(arbol_id);
+CREATE UNIQUE INDEX ux_vistas_nombre ON vistas(coalesce(arbol_id, ''), lower(trim(nombre))) WHERE deleted_at IS NULL;

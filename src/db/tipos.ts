@@ -97,6 +97,14 @@ export interface SubarbolGuardado {
   orden: number;
 }
 
+/** Vista guardada del lienzo. `arbol_id` null = árbol completo; `config` es JSON y se valida al leer (vista.ts). */
+export interface Vista {
+  id: string;
+  arbol_id: string | null;
+  nombre: string;
+  config: string;
+}
+
 export interface Conexion {
   id: string;
   origen_id: string;

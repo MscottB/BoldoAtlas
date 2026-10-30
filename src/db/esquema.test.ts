@@ -128,6 +128,36 @@ describe("esquema 0001", () => {
     expect(() => ins("subarboles_guardados", { unidad_id: u })).not.toThrow();
   });
 
+  describe("vistas guardadas", () => {
+    const vista = (fila: Record<string, string | number | null> = {}) =>
+      ins("vistas", { nombre: "Compacta", config: "{}", ...fila });
+
+    it("el nombre es único por árbol sin importar mayúsculas ni espacios, también para el árbol completo (arbol_id NULL)", () => {
+      vista();
+      expect(() => vista({ nombre: " COMPACTA " })).toThrow(/UNIQUE/);
+      const arbol = ins("subarboles_guardados", { unidad_id: u });
+      expect(() => vista({ arbol_id: arbol })).not.toThrow(); // otro árbol, mismo nombre
+      expect(() => vista({ arbol_id: arbol, nombre: "compacta" })).toThrow(/UNIQUE/);
+    });
+
+    it("una vista eliminada libera su nombre", () => {
+      vista({ nombre: "Antigua", deleted_at: AHORA });
+      expect(() => vista({ nombre: "antigua" })).not.toThrow();
+    });
+
+    it("exige nombre y config", () => {
+      expect(() => vista({ nombre: "  " })).toThrow(/CHECK/);
+      expect(() => vista({ nombre: "X", config: null })).toThrow(/NOT NULL constraint failed: vistas.config/);
+    });
+
+    it("arbol_id debe apuntar a un subárbol guardado al confirmar", () => {
+      db.exec("BEGIN");
+      vista({ arbol_id: randomUUID() });
+      expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
+      db.exec("ROLLBACK");
+    });
+  });
+
   it("toda clave foránea tiene un índice completo que empieza por ella", () => {
     const tablas = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as {
       name: string;

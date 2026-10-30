@@ -704,3 +704,48 @@ describe("árboles y subárboles guardados", () => {
     expect(s.subarboles).toHaveLength(1);
   });
 });
+
+describe("vistas guardadas", () => {
+  it("guarda, renombra y elimina una vista; deshacer la devuelve", async () => {
+    const s = nuevo();
+    const r = await s.guardarVista(null, " Compacta ", { densidad: "compacta" });
+    expect(r.ok).toBe(true);
+    expect(s.vistas).toEqual([
+      { id: r.ok ? r.id : "", arbol_id: null, nombre: "Compacta", config: '{"densidad":"compacta"}' },
+    ]);
+    const id = s.vistas[0].id;
+    expect((await s.renombrarVista(id, "Densa")).ok).toBe(true);
+    expect(s.vistas[0].nombre).toBe("Densa");
+    expect((await s.eliminarVista(id)).ok).toBe(true);
+    expect(s.vistas).toEqual([]);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.vistas.map((v) => v.nombre)).toEqual(["Densa"]);
+  });
+
+  it("un nombre vacío o repetido en el mismo árbol devuelve el mensaje y no escribe", async () => {
+    const s = nuevo();
+    await s.guardarVista(null, "Una", {});
+    const antes = revision();
+    expect(await s.guardarVista(null, "   ", {})).toEqual({ ok: false, mensaje: "Escribe un nombre." });
+    expect(revision()).toBe(antes);
+    expect(await s.guardarVista(null, " UNA ", {})).toEqual({
+      ok: false,
+      mensaje: "Ya hay una vista con ese nombre en este árbol.",
+    });
+    const otra = await s.guardarVista(null, "Otra", {});
+    expect(await s.renombrarVista(otra.ok ? otra.id! : "", "una")).toMatchObject({ ok: false });
+    expect(s.vistas.map((v) => v.nombre)).toEqual(["Otra", "Una"]);
+  });
+
+  it("el mismo nombre vale en otro árbol; quitar el subárbol oculta sus vistas", async () => {
+    const s = nuevo();
+    const hija = await unidad(s, "Hija", await unidad(s, "Raíz"));
+    await s.guardarSubarbol(hija);
+    const arbol = s.subarboles[0].id;
+    await s.guardarVista(null, "Compacta", {});
+    expect((await s.guardarVista(arbol, "Compacta", {})).ok).toBe(true);
+    expect(s.vistas).toHaveLength(2);
+    await s.quitarSubarbol(arbol);
+    expect(s.vistas.map((v) => v.arbol_id)).toEqual([null]);
+  });
+});

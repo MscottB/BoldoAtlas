@@ -99,7 +99,52 @@
       "ocultarLeyenda": "Hide the legend",
       "mostrarLeyenda": "Show the legend",
       "leyendaPuesto": "Position legend",
-      "activaVerPuestos": "Turn on “Show positions” to see the legend colors."
+      "activaVerPuestos": "Turn on “Show positions” to see the legend colors.",
+      "direccion": "Direction",
+      "densidad": "Density",
+      "lineas": "Lines",
+      "opciones": {
+        "vertical": "Vertical (top to bottom)",
+        "horizontal": "Horizontal (left to right)",
+        "normal": "Normal",
+        "compacta": "Compact",
+        "smoothstep": "Right-angle lines",
+        "bezier": "Curves"
+      },
+      "compactaAviso": "The compact card is one line: name, headcount and vacancies. The other card details are not shown.",
+      "tarjeta": "Card details",
+      "campos": {
+        "mostrarTipo": "Unit type",
+        "mostrarJefe": "Head",
+        "mostrarFoto": "Head's photo",
+        "mostrarDotacion": "Headcount",
+        "mostrarVacantes": "Vacancies",
+        "mostrarEtiquetas": "Tags"
+      }
+    },
+    "resaltar": {
+      "titulo": "Highlight by…",
+      "activos": "{n} active criterion | {n} active criteria",
+      "vacantes": "With vacancies",
+      "sede": "Site",
+      "contrato": "Contract type",
+      "jornada": "Shift",
+      "cargo": "Job title",
+      "cualquiera": "Any",
+      "ayuda": "Units that have the chosen value in their own positions are highlighted. This adds to the tag and the text."
+    },
+    "vistas": {
+      "titulo": "Views",
+      "sinArbol": "This branch is not saved in Trees. Save it there to have views of its own.",
+      "nombre": "View name",
+      "guardar": "Save current view",
+      "sinVistas": "There are no saved views in this tree yet.",
+      "lista": "Saved views",
+      "aplicar": "Apply “{nombre}”",
+      "renombrar": "Rename “{nombre}”",
+      "eliminar": "Delete “{nombre}”",
+      "eliminada": "View deleted",
+      "deshacer": "Undo"
     }
   },
   "arboles": {
@@ -144,6 +189,7 @@
     "conexionConsigoMisma": "A unit cannot be connected to itself.",
     "relacionInexistente": "The related unit or person no longer exists.",
     "ramaYaGuardada": "That branch is already saved in Trees.",
+    "vistaDuplicada": "This tree already has a view with that name.",
     "colorInvalido": "The color must use the #rrggbb format (for example, #be123c)."
   },
   "store": {

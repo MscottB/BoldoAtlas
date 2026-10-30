@@ -3,6 +3,7 @@ import type { Conexion } from "../../db/tipos";
 import { p, puestos, u, unidades } from "./fixture";
 import { calcularLayout, colapsadosIniciales, subgrafoVisible, unidadesDeRama } from "./layout";
 import { TIPO_GERENCIA, TIPO_OTRA } from "@/db/tipos";
+import { opcionesElk, tamPuesto, tamUnidad } from "./vista";
 
 const lateral: Conexion = { id: "c1", origen_id: "mecanica", destino_id: "finanzas", etiqueta: null };
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id).sort();
@@ -92,5 +93,26 @@ describe("layout del árbol", () => {
     const pos = await calcularLayout(g);
     expect(pos.size).toBe(g.nodos.length + g.puestos.length);
     for (const x of g.puestos) expect(pos.get(x.id)!.y).toBeGreaterThan(pos.get(x.unidad_id)!.y);
+  });
+
+  it("calcularLayout horizontal pone los hijos a la derecha de su unidad", async () => {
+    const g = subgrafoVisible(unidades, [], new Set(), puestos);
+    const pos = await calcularLayout(
+      g,
+      undefined,
+      undefined,
+      opcionesElk({ direccion: "horizontal", densidad: "normal" }),
+    );
+    for (const [a, b] of g.jerarquicas) expect(pos.get(b)!.x).toBeGreaterThan(pos.get(a)!.x);
+  });
+
+  it("calcularLayout compacto con tarjetas de una línea ocupa menos alto que el normal", async () => {
+    const g = subgrafoVisible(unidades, [], new Set(), puestos);
+    const alto = async (densidad: "normal" | "compacta") => {
+      const c = { direccion: "vertical", densidad } as const;
+      const pos = await calcularLayout(g, tamUnidad(c, false), tamPuesto(c), opcionesElk(c));
+      return Math.max(...[...pos.values()].map((x) => x.y));
+    };
+    expect(await alto("compacta")).toBeLessThan((await alto("normal")) / 2);
   });
 });

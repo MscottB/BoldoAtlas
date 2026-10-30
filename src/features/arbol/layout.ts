@@ -1,6 +1,7 @@
 import ELK from "elkjs/lib/elk.bundled.js";
 import type { Conexion, Puesto, Unidad } from "../../db/tipos";
 import { descendientes, indiceHijos } from "./jerarquia";
+import { VISTA_POR_DEFECTO, opcionesElk, tamPuesto, tamUnidad } from "./vista";
 
 // Las lecturas de repos no traen deleted_at; se acepta por si el llamador pasa filas crudas.
 type U = Unidad & { deleted_at?: string | null };
@@ -74,28 +75,22 @@ export function subgrafoVisible(
   return { nodos, puestos: delGrafo, jerarquicas, laterales };
 }
 
-/** Tamaño de la tarjeta de puesto; igual que NodoPuesto. */
-const TAM_PUESTO = { ancho: 200, alto: 68 };
-
 const elk = new ELK();
 
 // Devuelve la esquina superior izquierda de cada nodo, tal como la entrega elk. Solo las aristas jerárquicas entran.
+// Los tamaños deben ser los de las tarjetas dibujadas (tamUnidad/tamPuesto); `opciones`, las de opcionesElk.
 export async function calcularLayout(
   subgrafo: Subgrafo,
-  tam = { ancho: 220, alto: 112 },
-  tamPuesto = TAM_PUESTO,
+  tam = tamUnidad(VISTA_POR_DEFECTO, false),
+  tamDelPuesto = tamPuesto(VISTA_POR_DEFECTO),
+  opciones = opcionesElk(VISTA_POR_DEFECTO),
 ): Promise<Map<string, { x: number; y: number }>> {
   const resultado = await elk.layout({
     id: "raiz",
-    layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.direction": "DOWN",
-      "elk.spacing.nodeNode": "28",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "64",
-    },
+    layoutOptions: opciones,
     children: [
       ...subgrafo.nodos.map((n) => ({ id: n.id, width: tam.ancho, height: tam.alto })),
-      ...subgrafo.puestos.map((p) => ({ id: p.id, width: tamPuesto.ancho, height: tamPuesto.alto })),
+      ...subgrafo.puestos.map((p) => ({ id: p.id, width: tamDelPuesto.ancho, height: tamDelPuesto.alto })),
     ],
     edges: subgrafo.jerarquicas.map(([a, b]) => ({ id: `${a}>${b}`, sources: [a], targets: [b] })),
   });

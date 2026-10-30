@@ -36,6 +36,8 @@ Arrastra una tarjeta y suéltala sobre otra: BoldoAtlas pregunta "¿Mover X dent
 
 En la barra del lienzo puedes resaltar por etiqueta, por texto (parte del nombre, sin importar tildes ni mayúsculas) o por ambos a la vez. Las unidades que no coinciden quedan atenuadas, pero no se ocultan.
 
+El botón **Resaltar por…** suma más criterios: **Con vacantes**, **Sede**, **Tipo de contrato**, **Jornada** y **Cargo**. Una unidad se resalta cuando, en sus propios puestos (no en los de su rama), tiene una vacante, una persona titular vigente con esa sede, tipo de contrato o jornada, o un puesto con ese cargo. Si eliges varios criterios, deben cumplirse todos. El resaltado dura mientras la app está abierta; las vistas guardadas sí lo incluyen.
+
 ## Moverse por el lienzo
 
 Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** para alejar o acercar. **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El minimapa de la esquina muestra dónde estás.
@@ -53,3 +55,16 @@ El botón **Vista**, en la barra del lienzo, abre las opciones de cómo se dibuj
 - **Colorear por**: **Ninguno** o **Marca de** un tipo. Cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Solo se aplica un criterio a la vez.
 
 Con un criterio de color activo, abajo a la izquierda del lienzo aparece una **leyenda** con el color, el código y el nombre de la unidad que define cada marca que se ve. Se puede ocultar y volver a mostrar con su encabezado.
+
+Además de lo anterior, el botón **Vista** permite elegir:
+
+- **Dirección**: vertical (de arriba a abajo) u horizontal (de izquierda a derecha).
+- **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
+- **Líneas**: rectas en ángulo o curvas.
+- **Datos de la tarjeta**: tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
+
+Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador la última configuración que usaste en él.
+
+## Vistas guardadas
+
+El botón **Vistas** guarda con nombre la configuración actual (dirección, densidad, líneas, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.

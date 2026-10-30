@@ -10,6 +10,8 @@ import { useOrganizacion } from "@/stores/organizacion";
 import PuestosUnidad from "@/features/puestos/PuestosUnidad.vue";
 import { textoSobre } from "@/features/tema/tema";
 import { useLienzo } from "./useLienzo";
+import { useVista } from "./useVista";
+import { tamUnidad } from "./vista";
 import type { Marca } from "./jerarquia";
 
 export interface DatosNodo {
@@ -32,6 +34,15 @@ const { t } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
 const { seleccion, editando, colapsados, seleccionar, alternarRama, coincide, nuevaUnidad } = useLienzo();
+const { config } = useVista();
+
+const compacta = computed(() => config.value.densidad === "compacta");
+const horizontal = computed(() => config.value.direccion === "horizontal");
+// Misma función que usa el layout: la tarjeta dibujada mide lo que elk reservó.
+const tam = computed(() => {
+  const { ancho, alto } = tamUnidad(config.value, props.data.ruta !== null);
+  return { width: `${ancho}px`, height: `${alto}px` };
+});
 
 const seleccionada = computed(() => seleccion.value === props.id);
 const atenuada = computed(() => !coincide(props.data.unidad));
@@ -62,20 +73,23 @@ async function guardar(e: Event) {
 <template>
   <!-- Nodo liviano: sin sombras ni transiciones (nota de rendimiento). -->
   <div
-    class="flex w-[220px] flex-col gap-1 rounded-lg border bg-card p-2 text-xs text-card-foreground"
+    class="flex rounded-lg border bg-card text-xs text-card-foreground"
     :class="[
-      data.ruta === null ? 'h-[112px]' : 'h-[132px]',
+      compacta ? 'items-center gap-1.5 px-2' : 'flex-col gap-1 p-2',
       seleccionada && 'border-marca ring-2 ring-marca',
       atenuada && 'opacity-35',
       data.marca?.color && 'border-l-4',
     ]"
-    :style="data.marca?.color ? { borderLeftColor: data.marca.color } : undefined"
+    :style="[tam, data.marca?.color ? { borderLeftColor: data.marca.color } : {}]"
     @click="seleccionar(id)"
   >
-    <Handle type="target" :position="Position.Top" class="opacity-0" />
-    <div class="flex items-center justify-between text-muted-foreground">
+    <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+    <div
+      v-if="!compacta && (config.mostrarTipo || config.mostrarEtiquetas || data.marca?.codigo)"
+      class="flex items-center justify-between text-muted-foreground"
+    >
       <span class="flex min-w-0 items-center gap-1">
-        <span class="truncate uppercase">{{ tipo }}</span>
+        <span v-if="config.mostrarTipo" class="truncate uppercase">{{ tipo }}</span>
         <span
           v-if="data.marca?.codigo"
           class="rounded px-1 text-[10px] font-semibold"
@@ -90,7 +104,7 @@ async function guardar(e: Event) {
           {{ data.marca.codigo }}
         </span>
       </span>
-      <span class="flex shrink-0 gap-1">
+      <span v-if="config.mostrarEtiquetas" class="flex shrink-0 gap-1">
         <span
           v-for="e in data.etiquetas"
           :key="e.id"
@@ -105,6 +119,7 @@ async function guardar(e: Event) {
       v-if="editando === id"
       v-foco
       class="nodrag rounded border bg-background px-1 text-sm font-semibold"
+      :class="compacta && 'min-w-0 flex-1'"
       :value="data.unidad.nombre"
       :aria-label="t('arbol.nombre')"
       @keydown.enter="guardar"
@@ -115,6 +130,7 @@ async function guardar(e: Event) {
       v-else
       type="button"
       class="truncate rounded text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring"
+      :class="compacta && 'min-w-0 flex-1'"
       :aria-pressed="seleccionada"
       :title="t('arbol.ayudaNombre')"
       @dblclick="editando = id"
@@ -122,42 +138,55 @@ async function guardar(e: Event) {
     >
       {{ data.unidad.nombre }}
     </button>
-    <span v-if="data.ruta" class="truncate text-[11px] text-muted-foreground" :title="data.ruta">
+    <span v-if="data.ruta && !compacta" class="truncate text-[11px] text-muted-foreground" :title="data.ruta">
       {{ data.ruta }}
     </span>
-    <div class="flex items-center gap-1.5">
-      <template v-if="data.jefe">
-        <img
-          v-if="data.jefe.foto_png"
-          :src="`data:image/png;base64,${data.jefe.foto_png}`"
-          alt=""
-          class="size-5 rounded-full object-cover"
-        />
-        <span
-          v-else
-          class="grid size-5 place-items-center rounded-full bg-muted text-[10px]"
-          aria-hidden="true"
-        >
-          {{ iniciales }}
-        </span>
-        <span class="truncate">
-          {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
-        </span>
+    <div v-if="!compacta && (config.mostrarJefe || seleccionada)" class="flex items-center gap-1.5">
+      <template v-if="config.mostrarJefe">
+        <template v-if="data.jefe">
+          <img
+            v-if="data.jefe.foto_png && config.mostrarFoto"
+            :src="`data:image/png;base64,${data.jefe.foto_png}`"
+            alt=""
+            class="size-5 rounded-full object-cover"
+          />
+          <span
+            v-else-if="config.mostrarFoto"
+            class="grid size-5 place-items-center rounded-full bg-muted text-[10px]"
+            aria-hidden="true"
+          >
+            {{ iniciales }}
+          </span>
+          <span class="truncate">
+            {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
+          </span>
+        </template>
+        <span v-else class="text-amber-700 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
       </template>
-      <span v-else class="text-amber-700 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
       <!-- En esta fila y no en la del pie: ahí ya no cabe junto a la dotación y las vacantes. -->
       <span v-if="seleccionada" class="nodrag ml-auto shrink-0"><PuestosUnidad :unidad-id="id" /></span>
     </div>
-    <div class="mt-auto flex items-center gap-1.5">
-      <span class="flex items-center gap-1" :title="t('arbol.dotacion')">
+    <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
+      <!-- Seleccionada y compacta: el lugar es de los botones. -->
+      <span
+        v-if="config.mostrarDotacion && !(compacta && seleccionada)"
+        class="flex items-center gap-1"
+        :title="t('arbol.dotacion')"
+      >
         <Users class="size-3.5" aria-hidden="true" />
         <span class="sr-only">{{ t("arbol.dotacion") }}:</span>{{ data.total }}
       </span>
-      <span v-if="data.vacantes" class="rounded-full bg-marca px-1.5 text-marca-foreground">
-        {{ t("arbol.vacantes", data.vacantes) }}
+      <span
+        v-if="config.mostrarVacantes && data.vacantes && !(compacta && seleccionada)"
+        class="rounded-full bg-marca px-1.5 text-marca-foreground"
+        :title="t('arbol.vacantes', data.vacantes)"
+      >
+        <span :class="compacta && 'sr-only'">{{ t("arbol.vacantes", data.vacantes) }}</span>
+        <span v-if="compacta" aria-hidden="true">{{ data.vacantes }}</span>
       </span>
       <span class="ml-auto flex gap-1">
         <template v-if="seleccionada">
+          <span v-if="compacta" class="nodrag"><PuestosUnidad :unidad-id="id" /></span>
           <button
             type="button"
             class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
@@ -190,6 +219,6 @@ async function guardar(e: Event) {
         </button>
       </span>
     </div>
-    <Handle type="source" :position="Position.Bottom" class="opacity-0" />
+    <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   </div>
 </template>

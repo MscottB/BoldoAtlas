@@ -41,8 +41,16 @@ import {
   type Subgrafo,
 } from "./layout";
 import { destinoAlSoltar, useLienzo } from "./useLienzo";
-import { useVista } from "./useVista";
-import { ALTO_UNIDAD, ALTO_UNIDAD_CON_RUTA, CRITERIO_LEYENDA, leyendasEnUso, tipoDeMarca } from "./vista";
+import { recordarPorArbol, useVista } from "./useVista";
+import {
+  CRITERIO_LEYENDA,
+  arbolDeVista,
+  leyendasEnUso,
+  opcionesElk,
+  tamPuesto,
+  tamUnidad,
+  tipoDeMarca,
+} from "./vista";
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
@@ -55,7 +63,7 @@ const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
 const { colapsados, seleccion, expandir } = useLienzo();
-const { fitView, setCenter, updateNode, areNodesInitialized } = useVueFlow();
+const { fitView, setCenter, updateNode, updateNodeInternals, areNodesInitialized } = useVueFlow();
 const { config } = useVista();
 
 // Opciones de «Vista» que cambian lo dibujado. Solo cuentan los tipos que alguna unidad usa.
@@ -70,8 +78,8 @@ const marcas = computed(() => (tipoMarca.value ? marcasPorUnidad(org.unidades, t
 const rutas = computed(() =>
   tiposRuta.value.size ? rutasPorTipo(org.unidades, org.catalogos.tipos_unidad, tiposRuta.value) : null,
 );
-// Igual que la tarjeta de NodoUnidad; con la ruta por tipo suma una línea.
-const TAM = computed(() => ({ ancho: 220, alto: rutas.value ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD }));
+// Igual que la tarjeta de NodoUnidad (misma función); con la ruta por tipo suma una línea, y la compacta es de una línea.
+const TAM = computed(() => tamUnidad(config.value, !!rutas.value));
 
 // Vista enfocada: /?raiz=<id>. Una raíz que ya no existe se ignora y se ve todo.
 const raiz = computed(() => {
@@ -80,6 +88,9 @@ const raiz = computed(() => {
 });
 const mostradas = computed(() => (raiz.value ? unidadesDeRama(org.unidades, raiz.value) : org.unidades));
 const origen = computed(() => (raiz.value ? ruta(org.unidades, raiz.value) : []));
+// Cada árbol (completo o subárbol guardado) recuerda su última configuración; una rama sin guardar usa la general.
+const arbol = computed(() => arbolDeVista(raiz.value, org.subarboles));
+recordarPorArbol(computed(() => (arbol.value === undefined ? null : (arbol.value ?? "completo"))));
 
 // Al cambiar de vista, tras el próximo layout: encuadrar todo, o centrar en `centrar`.
 // `revelar` lo fija "Ver en el árbol completo": la unidad que estaba enfocada.
@@ -111,10 +122,12 @@ watch(
       config.value.verPuestos ? org.puestos : [],
     ),
     tam: TAM.value,
+    tamDelPuesto: tamPuesto(config.value),
+    opciones: opcionesElk(config.value),
   }),
-  async ({ g, tam }) => {
+  async ({ g, tam, tamDelPuesto, opciones }) => {
     const este = ++ultimo;
-    const pos = await calcularLayout(g, tam);
+    const pos = await calcularLayout(g, tam, tamDelPuesto, opciones);
     if (este !== ultimo) return;
     vista.value = { g, pos };
     if (!encuadrar && !centrar) return;
@@ -125,6 +138,17 @@ watch(
     pendiente.value = { centrar: id };
   },
   { immediate: true },
+);
+
+// Otra dirección o densidad cambia la forma de todo el árbol: se encuadra tras el próximo layout, y los puntos de
+// conexión (arriba/abajo o izquierda/derecha) se vuelven a medir.
+watch(
+  () => [config.value.direccion, config.value.densidad],
+  async () => {
+    encuadrar = true;
+    await nextTick();
+    updateNodeInternals();
+  },
 );
 
 // fitView ignora los nodos sin medir: se espera a que Vue Flow los mida todos (de inmediato si ya lo estaban).
@@ -229,7 +253,7 @@ const aristas = computed<Edge[]>(() => {
   if (!vista.value) return [];
   const { g } = vista.value;
   return [
-    ...g.jerarquicas.map(([a, b]) => ({ id: `${a}>${b}`, source: a, target: b, type: "smoothstep" })),
+    ...g.jerarquicas.map(([a, b]) => ({ id: `${a}>${b}`, source: a, target: b, type: config.value.lineas })),
     ...g.laterales.map((c) => ({
       id: c.id,
       source: c.origen_id,

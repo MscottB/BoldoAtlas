@@ -36,6 +36,8 @@ Drag a card and drop it on another: BoldoAtlas asks "Move X into Y?" before chan
 
 In the canvas bar you can highlight by tag, by text (part of the name, ignoring accents and case) or both at once. Units that don't match are dimmed, not hidden.
 
+The **Highlight by…** button adds more criteria: **With vacancies**, **Site**, **Contract type**, **Shift** and **Job title**. A unit is highlighted when, in its own positions (not those of its branch), it has a vacancy, a current holder with that site, contract type or shift, or a position with that job title. If you choose several criteria, all must be met. Highlighting lasts while the app is open; saved views do include it.
+
 ## Moving around the canvas
 
 Drag the background to pan and use the mouse wheel or the **−** and **+** buttons to zoom out or in. **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The minimap in the corner shows where you are.
@@ -53,3 +55,16 @@ The **View** button, in the canvas bar, opens the options for how the tree is dr
 - **Color by**: **None** or the **mark** of a type. Each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. Only one criterion applies at a time.
 
 With a color criterion active, a **legend** appears at the bottom left of the canvas with the color, code and name of the unit that defines each mark you can see. It can be hidden and shown again from its header.
+
+In addition, the **View** button lets you choose:
+
+- **Direction**: vertical (top to bottom) or horizontal (left to right).
+- **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
+- **Lines**: right-angle or curved.
+- **Card details**: unit type, head, head's photo, headcount, vacancies and tags.
+
+Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.
+
+## Saved views
+
+The **Views** button saves the current configuration (direction, density, lines, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.

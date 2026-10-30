@@ -24,6 +24,20 @@ const criterio = computed({
   set: (v: string) => (config.value.colorearPor = v),
 });
 
+const selectores = [
+  { clave: "direccion", opciones: ["vertical", "horizontal"] },
+  { clave: "densidad", opciones: ["normal", "compacta"] },
+  { clave: "lineas", opciones: ["smoothstep", "bezier"] },
+] as const;
+const camposTarjeta = [
+  "mostrarTipo",
+  "mostrarJefe",
+  "mostrarFoto",
+  "mostrarDotacion",
+  "mostrarVacantes",
+  "mostrarEtiquetas",
+] as const;
+
 // El criterio por leyenda solo se ve en los puestos: se avisa si siguen ocultos.
 const pidePuestos = computed(() => config.value.colorearPor === CRITERIO_LEYENDA && !config.value.verPuestos);
 
@@ -41,7 +55,28 @@ function alternarTipo(id: string, marcado: boolean) {
         {{ t("arbol.vista.titulo") }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" class="w-72 gap-3 text-sm">
+    <PopoverContent align="start" class="max-h-[80vh] w-72 gap-3 overflow-y-auto text-sm">
+      <label v-for="sel in selectores" :key="sel.clave" class="grid gap-1">
+        <span class="font-medium">{{ t(`arbol.vista.${sel.clave}`) }}</span>
+        <select v-model="config[sel.clave]" class="h-7 rounded-md border bg-background px-2 text-sm">
+          <option v-for="o in sel.opciones" :key="o" :value="o">{{ t(`arbol.vista.opciones.${o}`) }}</option>
+        </select>
+      </label>
+      <p v-if="config.densidad === 'compacta'" class="text-xs text-muted-foreground">
+        {{ t("arbol.vista.compactaAviso") }}
+      </p>
+      <fieldset class="grid gap-1.5">
+        <legend class="mb-1 font-medium">{{ t("arbol.vista.tarjeta") }}</legend>
+        <label v-for="campo in camposTarjeta" :key="campo" class="flex items-center gap-2">
+          <input
+            v-model="config[campo]"
+            type="checkbox"
+            class="size-4 accent-primary"
+            :disabled="campo === 'mostrarFoto' && !config.mostrarJefe"
+          />
+          {{ t(`arbol.vista.campos.${campo}`) }}
+        </label>
+      </fieldset>
       <label class="flex items-center gap-2">
         <input v-model="config.verPuestos" type="checkbox" class="size-4 accent-primary" />
         {{ t("arbol.vista.verPuestos") }}

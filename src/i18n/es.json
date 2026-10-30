@@ -99,7 +99,52 @@
       "ocultarLeyenda": "Ocultar la leyenda",
       "mostrarLeyenda": "Mostrar la leyenda",
       "leyendaPuesto": "Leyenda del puesto",
-      "activaVerPuestos": "Activa «Ver puestos» para ver los colores de las leyendas."
+      "activaVerPuestos": "Activa «Ver puestos» para ver los colores de las leyendas.",
+      "direccion": "Dirección",
+      "densidad": "Densidad",
+      "lineas": "Líneas",
+      "opciones": {
+        "vertical": "Vertical (de arriba a abajo)",
+        "horizontal": "Horizontal (de izquierda a derecha)",
+        "normal": "Normal",
+        "compacta": "Compacta",
+        "smoothstep": "Rectas en ángulo",
+        "bezier": "Curvas"
+      },
+      "compactaAviso": "La tarjeta compacta es de una línea: nombre, dotación y vacantes. Los demás datos de la tarjeta no se ven.",
+      "tarjeta": "Datos de la tarjeta",
+      "campos": {
+        "mostrarTipo": "Tipo de unidad",
+        "mostrarJefe": "Jefatura",
+        "mostrarFoto": "Foto de la jefatura",
+        "mostrarDotacion": "Dotación",
+        "mostrarVacantes": "Vacantes",
+        "mostrarEtiquetas": "Etiquetas"
+      }
+    },
+    "resaltar": {
+      "titulo": "Resaltar por…",
+      "activos": "{n} criterio activo | {n} criterios activos",
+      "vacantes": "Con vacantes",
+      "sede": "Sede",
+      "contrato": "Tipo de contrato",
+      "jornada": "Jornada",
+      "cargo": "Cargo",
+      "cualquiera": "Cualquiera",
+      "ayuda": "Se resaltan las unidades que tienen, en sus propios puestos, lo elegido. Se suma a la etiqueta y al texto."
+    },
+    "vistas": {
+      "titulo": "Vistas",
+      "sinArbol": "Esta rama no está guardada en Árboles. Guárdala allí para tener vistas propias.",
+      "nombre": "Nombre de la vista",
+      "guardar": "Guardar vista actual",
+      "sinVistas": "Aún no hay vistas guardadas en este árbol.",
+      "lista": "Vistas guardadas",
+      "aplicar": "Aplicar «{nombre}»",
+      "renombrar": "Renombrar «{nombre}»",
+      "eliminar": "Eliminar «{nombre}»",
+      "eliminada": "Vista eliminada",
+      "deshacer": "Deshacer"
     }
   },
   "arboles": {
@@ -144,6 +189,7 @@
     "conexionConsigoMisma": "Una unidad no puede conectarse consigo misma.",
     "relacionInexistente": "La unidad o persona relacionada ya no existe.",
     "ramaYaGuardada": "Esa rama ya está guardada en Árboles.",
+    "vistaDuplicada": "Ya hay una vista con ese nombre en este árbol.",
     "colorInvalido": "El color debe tener el formato #rrggbb (por ejemplo, #be123c)."
   },
   "store": {

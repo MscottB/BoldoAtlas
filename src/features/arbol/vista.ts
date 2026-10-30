@@ -1,7 +1,30 @@
 import type { Leyenda } from "@/db/tipos";
 
-// Opciones del panel «Vista»: una sola configuración tipada por PC. La Task 11f suma aquí dirección, densidad y trazo.
+/** Qué unidades se resaltan (las demás se atenúan): texto, etiqueta, vacantes y datos de sus puestos/personas. Sin criterios, todas. */
+export interface Resaltado {
+  etiqueta: string | null;
+  texto: string;
+  /** La unidad tiene al menos un puesto sin titular vigente. */
+  vacantes: boolean;
+  /** Ids de mantenedor; la unidad tiene un titular vigente con ese valor (cargo: un puesto con ese cargo). */
+  sede: string | null;
+  contrato: string | null;
+  jornada: string | null;
+  cargo: string | null;
+}
+
+// Opciones del panel «Vista»: una sola configuración tipada por PC, y lo que guarda cada vista nombrada.
 export interface ConfigVista {
+  direccion: "vertical" | "horizontal";
+  densidad: "normal" | "compacta";
+  /** Tipo de arista jerárquica de Vue Flow: rectas en ángulo o curvas. */
+  lineas: "smoothstep" | "bezier";
+  mostrarTipo: boolean;
+  mostrarJefe: boolean;
+  mostrarFoto: boolean;
+  mostrarDotacion: boolean;
+  mostrarVacantes: boolean;
+  mostrarEtiquetas: boolean;
   verPuestos: boolean;
   mostrarCargo: boolean;
   mostrarPersona: boolean;
@@ -11,16 +34,56 @@ export interface ConfigVista {
   colorearPor: string;
   /** Leyenda flotante visible (solo se dibuja si hay criterio de color). */
   leyenda: boolean;
+  resaltar: Resaltado;
 }
 
 export const VISTA_POR_DEFECTO: ConfigVista = {
+  direccion: "vertical",
+  densidad: "normal",
+  lineas: "smoothstep",
+  mostrarTipo: true,
+  mostrarJefe: true,
+  mostrarFoto: true,
+  mostrarDotacion: true,
+  mostrarVacantes: true,
+  mostrarEtiquetas: true,
   verPuestos: false,
   mostrarCargo: true,
   mostrarPersona: true,
   rutaTipos: [],
   colorearPor: "ninguno",
   leyenda: true,
+  resaltar: {
+    etiqueta: null,
+    texto: "",
+    vacantes: false,
+    sede: null,
+    contrato: null,
+    jornada: null,
+    cargo: null,
+  },
 };
+
+/** Tamaño de las tarjetas: lo usan el layout y los nodos (una sola fuente). Compacta = una línea. */
+export function tamUnidad(c: Pick<ConfigVista, "densidad">, conRuta: boolean) {
+  if (c.densidad === "compacta") return { ancho: 220, alto: 40 };
+  return { ancho: 220, alto: conRuta ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD };
+}
+export const tamPuesto = (c: Pick<ConfigVista, "densidad">) => ({
+  ancho: 200,
+  alto: c.densidad === "compacta" ? 32 : 68,
+});
+
+/** Opciones de elk: dirección y separaciones. El tamaño de las tarjetas va aparte (tamUnidad/tamPuesto). */
+export function opcionesElk(c: Pick<ConfigVista, "direccion" | "densidad">): Record<string, string> {
+  const compacta = c.densidad === "compacta";
+  return {
+    "elk.algorithm": "layered",
+    "elk.direction": c.direccion === "horizontal" ? "RIGHT" : "DOWN",
+    "elk.spacing.nodeNode": compacta ? "10" : "28",
+    "elk.layered.spacing.nodeNodeBetweenLayers": compacta ? "28" : "64",
+  };
+}
 
 export const ALTO_UNIDAD = 112;
 /** Con la ruta por tipo la tarjeta suma una línea. */
@@ -31,16 +94,30 @@ export const CRITERIO_LEYENDA = "leyenda";
 
 export const criterioMarca = (tipoId: string) => `marca:${tipoId}`;
 
-/** Lo guardado en localStorage puede venir de otra versión o dañado: cada campo inválido vuelve a su valor por defecto. */
+/** Lo guardado (preferencia o vista nombrada) puede venir de otra versión o dañado: cada campo inválido vuelve a su valor por defecto. */
 export function leerVista(crudo: unknown): ConfigVista {
-  const c = (typeof crudo === "object" && crudo !== null ? crudo : {}) as Record<string, unknown>;
+  const objeto = (x: unknown) => (typeof x === "object" && x !== null ? x : {}) as Record<string, unknown>;
+  const c = objeto(crudo);
+  const r = objeto(c.resaltar);
   const d = VISTA_POR_DEFECTO;
-  const bool = (k: "verPuestos" | "mostrarCargo" | "mostrarPersona" | "leyenda") =>
-    typeof c[k] === "boolean" ? c[k] : d[k];
+  const bool = <T extends object>(o: Record<string, unknown>, def: T, k: keyof T & string): boolean =>
+    typeof o[k] === "boolean" ? o[k] : (def[k] as boolean);
+  const opcion = <T extends string>(v: unknown, validos: readonly T[], def: T): T =>
+    validos.includes(v as T) ? (v as T) : def;
+  const id = (k: keyof Resaltado) => (typeof r[k] === "string" && r[k] ? (r[k] as string) : null);
   return {
-    verPuestos: bool("verPuestos"),
-    mostrarCargo: bool("mostrarCargo"),
-    mostrarPersona: bool("mostrarPersona"),
+    direccion: opcion(c.direccion, ["vertical", "horizontal"], d.direccion),
+    densidad: opcion(c.densidad, ["normal", "compacta"], d.densidad),
+    lineas: opcion(c.lineas, ["smoothstep", "bezier"], d.lineas),
+    mostrarTipo: bool(c, d, "mostrarTipo"),
+    mostrarJefe: bool(c, d, "mostrarJefe"),
+    mostrarFoto: bool(c, d, "mostrarFoto"),
+    mostrarDotacion: bool(c, d, "mostrarDotacion"),
+    mostrarVacantes: bool(c, d, "mostrarVacantes"),
+    mostrarEtiquetas: bool(c, d, "mostrarEtiquetas"),
+    verPuestos: bool(c, d, "verPuestos"),
+    mostrarCargo: bool(c, d, "mostrarCargo"),
+    mostrarPersona: bool(c, d, "mostrarPersona"),
     rutaTipos:
       Array.isArray(c.rutaTipos) && c.rutaTipos.every((t) => typeof t === "string")
         ? c.rutaTipos
@@ -49,9 +126,55 @@ export function leerVista(crudo: unknown): ConfigVista {
       typeof c.colorearPor === "string" && /^(ninguno|leyenda|marca:.+)$/.test(c.colorearPor)
         ? c.colorearPor
         : d.colorearPor,
-    leyenda: bool("leyenda"),
+    leyenda: bool(c, d, "leyenda"),
+    // Siempre un objeto nuevo: la app lo muta y no debe tocar el valor por defecto.
+    resaltar: {
+      etiqueta: id("etiqueta"),
+      texto: typeof r.texto === "string" ? r.texto : "",
+      vacantes: bool(r, d.resaltar, "vacantes"),
+      sede: id("sede"),
+      contrato: id("contrato"),
+      jornada: id("jornada"),
+      cargo: id("cargo"),
+    },
   };
 }
+
+/** El resaltado es de la sesión: no se recuerda por PC ni por árbol (solo las vistas guardadas lo incluyen). */
+export const sinResaltar = (c: ConfigVista): ConfigVista => ({
+  ...c,
+  resaltar: { ...VISTA_POR_DEFECTO.resaltar },
+});
+
+/** Lo que guarda una vista nombrada: la configuración completa y las ramas plegadas en ese momento. */
+export const configDeVista = (vista: ConfigVista, colapsados: Set<string>) => ({
+  vista,
+  colapsados: [...colapsados],
+});
+
+/** Lee lo guardado en `vistas.config` (nunca lanza). `colapsados` null = la vista no dice nada: no se tocan las ramas. */
+export function aplicarVista(
+  texto: string,
+  unidadesVivas: Set<string>,
+): { vista: ConfigVista; colapsados: Set<string> | null } {
+  let crudo: unknown;
+  try {
+    crudo = JSON.parse(texto);
+  } catch {
+    crudo = null;
+  }
+  const c = (typeof crudo === "object" && crudo !== null ? crudo : {}) as Record<string, unknown>;
+  return {
+    vista: leerVista(c.vista),
+    colapsados: Array.isArray(c.colapsados)
+      ? new Set(c.colapsados.filter((x): x is string => typeof x === "string" && unidadesVivas.has(x)))
+      : null,
+  };
+}
+
+/** Árbol de las vistas del lienzo: null = completo; el id del subárbol guardado cuya raíz se ve; undefined = una rama que no está guardada. */
+export const arbolDeVista = (raiz: string | null, subarboles: { id: string; unidad_id: string }[]) =>
+  raiz ? subarboles.find((s) => s.unidad_id === raiz)?.id : null;
 
 /** Tipo cuya marca se dibuja; null si no se colorea por marca o ese tipo ya no lo usa ninguna unidad. */
 export function tipoDeMarca(colorearPor: string, enUso: { id: string }[]): string | null {
