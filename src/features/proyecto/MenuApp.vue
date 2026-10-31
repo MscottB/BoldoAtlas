@@ -7,14 +7,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import icono from "../../../assets/brand/icono.png";
+import { IDIOMAS, cambiarIdioma, type Idioma } from "@/i18n";
 import { GRUPOS_MENU, irAEntrada } from "./menuApp";
 
 // Menú de la app: el logo en la barra superior. Cada entrada es una ruta; las de fases futuras salen deshabilitadas.
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 </script>
 
@@ -35,6 +39,17 @@ const router = useRouter();
           <span v-if="e.fase" class="ml-auto text-xs">{{ t(e.fase) }}</span>
         </DropdownMenuItem>
       </template>
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel>{{ t("idioma.etiqueta") }}</DropdownMenuLabel>
+      <DropdownMenuRadioGroup
+        :model-value="locale"
+        :aria-label="t('idioma.etiqueta')"
+        @update:model-value="cambiarIdioma($event as Idioma)"
+      >
+        <DropdownMenuRadioItem v-for="i in IDIOMAS" :key="i" :value="i" :lang="i">
+          {{ t(`idioma.${i}`) }}
+        </DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>
