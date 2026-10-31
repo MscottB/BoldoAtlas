@@ -1,11 +1,12 @@
 name: ci
 
+# ayuda/**/*.md va dentro de la app: solo se ignoran los .md de la raíz y de .github
 on:
   push:
     branches: [main]
-    paths-ignore: ["site/**", "docs/**", "**/*.md"]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
   pull_request:
-    paths-ignore: ["site/**", "docs/**", "**/*.md"]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,11 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/preparar-node
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test

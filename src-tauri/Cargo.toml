@@ -34,5 +34,12 @@ opt-level = 3
 panic = "abort"
 strip = true
 
+# Portable de prueba de los PR (scripts/release.mjs --perfil prueba): como release pero sin LTO
+# y con más paralelismo; compila mucho más rápido. Los releases publicados usan [profile.release].
+[profile.prueba]
+inherits = "release"
+lto = false
+codegen-units = 16
+
 [dev-dependencies]
 tempfile = "3.27.0"

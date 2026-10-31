@@ -1,5 +1,28 @@
 import { describe, it, expect } from "vitest";
-import { parsearDescribe, fechaDDMMAAAA, formatearVersion, verificarEtiqueta } from "./version.mjs";
+import {
+  parsearDescribe,
+  fechaDDMMAAAA,
+  formatearVersion,
+  verificarEtiqueta,
+  versionForzada,
+} from "./version.mjs";
+
+describe("versionForzada", () => {
+  it("versión de prueba de un PR: la fecha se suma a la metadata", () =>
+    expect(versionForzada("0.1.0-alpha.3+pr4", "31102026")).toEqual({
+      completa: "0.1.0-alpha.3+pr4.31102026",
+      base: "0.1.0-alpha.3+pr4",
+      numerica: "0.1.0",
+    }));
+  it("versión de release, con o sin v", () =>
+    expect(versionForzada("v0.1.0-alpha.3", "31102026")).toEqual({
+      completa: "0.1.0-alpha.3+31102026",
+      base: "0.1.0-alpha.3",
+      numerica: "0.1.0",
+    }));
+  it("pasa la verificación de la etiqueta del release", () =>
+    expect(verificarEtiqueta(versionForzada("0.1.0-alpha.3", "x").base, "v0.1.0-alpha.3")).toBeNull());
+});
 
 describe("verificarEtiqueta", () => {
   it("acepta cuando la versión calculada es la de la etiqueta publicada", () =>

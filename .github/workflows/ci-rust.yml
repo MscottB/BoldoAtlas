@@ -22,9 +22,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      # Cachés de Rust: una por perfil Cargo (boldo-debug, boldo-prueba, boldo-release), compartidas por
+      # todos los workflows de Windows y guardadas solo desde main; los PR las leen y no las llenan.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          shared-key: boldo-debug
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       # generate_context! exige que exista la carpeta del frontend compilado
       - run: mkdir dist
       - run: cargo fmt --check
