@@ -3,6 +3,8 @@ import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
+import BloquePlegable from "@/components/BloquePlegable.vue";
+import { Button } from "@/components/ui/button";
 import { infoApp, leerMeta, type InfoApp } from "@/db/cliente";
 import { AUTOR, LICENCIA, REPO } from "@/app/about";
 import { infoParaCopiar, versionVisible } from "@/app/version";
@@ -39,28 +41,28 @@ async function copiar() {
       <p class="mt-1 select-all font-mono text-xs text-muted-foreground">{{ versionCompleta }}</p>
     </div>
 
-    <dl v-if="info" class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-      <dt class="text-muted-foreground">{{ t("acerca.esquema") }}</dt>
-      <dd>{{ info.versionEsquema }}</dd>
-      <dt class="text-muted-foreground">{{ t("acerca.idBase") }}</dt>
-      <dd class="select-all font-mono text-xs leading-5">{{ meta.db_id }}</dd>
-      <dt class="text-muted-foreground">{{ t("acerca.revision") }}</dt>
-      <dd>{{ meta.data_revision }}</dd>
-      <dt class="text-muted-foreground">{{ t("acerca.baseCreada") }}</dt>
-      <dd>{{ meta.db_creada }}</dd>
-      <dt class="text-muted-foreground">{{ t("acerca.modo") }}</dt>
-      <dd>{{ info.portable ? t("acerca.portable") : t("acerca.instalado") }}</dd>
-      <dt class="text-muted-foreground">{{ t("acerca.carpetaDatos") }}</dt>
-      <dd class="select-all break-all text-xs leading-5">{{ info.dirDatos }}</dd>
-    </dl>
+    <BloquePlegable clave="acerca.detalles" :titulo="t('acerca.detalles')" class="text-sm">
+      <div class="pt-2 pl-5">
+        <dl v-if="info" class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
+          <dt class="text-muted-foreground">{{ t("acerca.esquema") }}</dt>
+          <dd>{{ info.versionEsquema }}</dd>
+          <dt class="text-muted-foreground">{{ t("acerca.idBase") }}</dt>
+          <dd class="select-all font-mono text-xs leading-5">{{ meta.db_id }}</dd>
+          <dt class="text-muted-foreground">{{ t("acerca.revision") }}</dt>
+          <dd>{{ meta.data_revision }}</dd>
+          <dt class="text-muted-foreground">{{ t("acerca.baseCreada") }}</dt>
+          <dd>{{ meta.db_creada }}</dd>
+          <dt class="text-muted-foreground">{{ t("acerca.modo") }}</dt>
+          <dd>{{ info.portable ? t("acerca.portable") : t("acerca.instalado") }}</dd>
+          <dt class="text-muted-foreground">{{ t("acerca.carpetaDatos") }}</dt>
+          <dd class="select-all break-all text-xs leading-5">{{ info.dirDatos }}</dd>
+        </dl>
 
-    <button
-      type="button"
-      class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ring"
-      @click="copiar"
-    >
-      {{ copiado ? t("acerca.copiado") : t("acerca.copiar") }}
-    </button>
+        <Button type="button" variant="outline" size="sm" class="mt-4" @click="copiar">
+          {{ copiado ? t("acerca.copiado") : t("acerca.copiar") }}
+        </Button>
+      </div>
+    </BloquePlegable>
 
     <div class="space-y-1 border-t pt-6 text-sm">
       <p>

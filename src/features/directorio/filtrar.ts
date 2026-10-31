@@ -1,4 +1,13 @@
-import type { Asignacion, Puesto, TablaCatalogo, Trabajador, Unidad, ValorCatalogo } from "@/db/tipos";
+import {
+  TIPO_AREA,
+  TIPO_GERENCIA,
+  type Asignacion,
+  type Puesto,
+  type TablaCatalogo,
+  type Trabajador,
+  type Unidad,
+  type ValorCatalogo,
+} from "@/db/tipos";
 import { descendientes, rutasPorTipo, tiposEnUso, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
 
@@ -221,3 +230,31 @@ export function filtrarYOrdenar(c: Candidatas, f: Filtros, orden: Orden): FilaDi
 
 export const filtrarDirectorio = (e: EstadoDirectorio, f: Filtros, orden: Orden) =>
   filtrarYOrdenar(candidatasDirectorio(e), f, orden);
+
+/** Los filtros que van dentro de «Filtros» (el texto, la unidad y la persona quedan a la vista). */
+export const FILTROS_PLEGADOS = [
+  "cargo_id",
+  "tipo_contrato_id",
+  "sede_id",
+  "jornada_id",
+  "etiqueta",
+  "estado",
+] as const;
+
+/** Columnas que se pueden mostrar u ocultar: clave → visible, como las dejó el usuario (validado al leer). */
+export type Columnas = Record<string, boolean>;
+export const leerColumnas = (crudo: unknown): Columnas =>
+  typeof crudo === "object" && crudo !== null && !Array.isArray(crudo)
+    ? Object.fromEntries(Object.entries(crudo).filter(([, v]) => typeof v === "boolean"))
+    : {};
+
+/**
+ * ¿Se ve la columna? Lo que eligió el usuario manda. Si no eligió: de las unidades, Gerencia y Área (o el primer tipo en
+ * uso si no se usa ninguna de las dos); Reemplazo, contrato, sede y jornada quedan ocultas.
+ */
+export function columnaVisible(columnas: Columnas, clave: string, tiposEnUso: { id: string }[]): boolean {
+  const elegida = columnas[clave];
+  if (elegida !== undefined) return elegida;
+  const base = tiposEnUso.filter((t) => t.id === TIPO_GERENCIA || t.id === TIPO_AREA);
+  return (base.length ? base : tiposEnUso.slice(0, 1)).some((t) => clave === `tipo:${t.id}`);
+}

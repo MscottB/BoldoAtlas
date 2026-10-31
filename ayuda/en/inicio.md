@@ -8,7 +8,7 @@ BoldoAtlas is a Windows desktop app for building your organization's org chart: 
 
 ## First use
 
-When you open a database with no units, BoldoAtlas shows the welcome screen with two paths:
+When you open a database with no units, BoldoAtlas shows the welcome screen with two paths; the first, highlighted, is the main one:
 
 - **Create an empty organization:** asks for the organization name and the name of its root unit (of the first active unit type) and takes you to the tree.
 - **Explore an example:** creates a sample organization, in the interface language, to look around the app.
@@ -37,7 +37,7 @@ The window title and the top bar show the organization name with the **Main** ba
 - **Portable:** extract `BoldoAtlas_windows_x64_portable.zip` into any folder (or onto a USB drive) and run `BoldoAtlas.exe`. It works because a `portable.flag` file sits next to the program. Extract the zip before running: opening it from inside the zip prevents data from being saved.
 - **Installed:** install it with `BoldoAtlas_windows_x64_setup.exe` and the data goes to your Windows user's data folder.
 
-_About_ (at the bottom of the menu) shows the mode it is running in and the exact data folder.
+_About_ (at the bottom of the menu) shows the version. **Technical details**, which opens with a click, has the mode it is running in, the exact data folder and **Copy information**, to paste when asking for help.
 
 ## Where your data lives
 

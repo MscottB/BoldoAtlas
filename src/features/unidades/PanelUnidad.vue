@@ -23,6 +23,7 @@ import { dotacion, jefeVisible } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import BloquePlegable from "@/components/BloquePlegable.vue";
 import EditorConexiones from "./EditorConexiones.vue";
 import EditorEtiquetas from "./EditorEtiquetas.vue";
 import PersonasUnidad from "./PersonasUnidad.vue";
@@ -264,47 +265,6 @@ async function eliminar() {
             <Input :id="`${uid}-nombre`" v-model="nombre" autocomplete="off" @change="guardarNombre" />
           </div>
           <div class="grid gap-1.5">
-            <Label :for="`${uid}-descripcion`">{{ t("puesto.descripcion") }}</Label>
-            <Textarea :id="`${uid}-descripcion`" v-model="descripcion" @change="guardarDescripcion" />
-          </div>
-          <div class="grid gap-1.5">
-            <Label :for="`${uid}-superior`">{{ t("unidad.superior") }}</Label>
-            <SelectorUnidad
-              :id="`${uid}-superior`"
-              :excluidas="excluidas"
-              :texto="textoSuperior"
-              :ninguna="t('unidad.sinSuperior')"
-              @elegir="cambiarSuperior"
-            />
-          </div>
-
-          <fieldset class="grid gap-1.5">
-            <legend class="mb-1.5 text-sm font-medium">{{ t("unidad.marca") }}</legend>
-            <div class="flex flex-wrap items-center gap-2">
-              <input
-                type="color"
-                class="h-8 w-12 cursor-pointer rounded-lg border bg-transparent p-0.5 focus-visible:outline-2 focus-visible:outline-ring"
-                :value="unidad.marca_color ?? '#808080'"
-                :aria-label="t('unidad.marcaColor')"
-                @change="(e) => guardarMarca((e.target as HTMLInputElement).value)"
-              />
-              <Input
-                v-model="codigo"
-                class="w-28"
-                maxlength="4"
-                autocomplete="off"
-                :aria-label="t('unidad.marcaCodigo')"
-                :placeholder="t('unidad.marcaCodigo')"
-                @change="guardarMarca(unidad.marca_color)"
-              />
-              <Button type="button" variant="outline" size="sm" :disabled="sinMarca" @click="quitarMarca">
-                {{ t("unidad.quitarMarca") }}
-              </Button>
-            </div>
-            <p v-if="!unidad.marca_color" class="text-xs text-muted-foreground">{{ t("unidad.sinColor") }}</p>
-          </fieldset>
-
-          <div class="grid gap-1.5">
             <Label :for="`${uid}-jefatura`">{{ t("unidad.jefatura") }}</Label>
             <select
               :id="`${uid}-jefatura`"
@@ -343,27 +303,77 @@ async function eliminar() {
             <h3 :id="`${uid}-etiquetas`" class="text-sm font-medium">{{ t("unidad.etiquetas") }}</h3>
             <EditorEtiquetas :unidad-id="unidad.id" />
           </section>
-          <section class="grid gap-1.5" :aria-labelledby="`${uid}-conexiones`">
-            <h3 :id="`${uid}-conexiones`" class="text-sm font-medium">{{ t("unidad.conexiones") }}</h3>
-            <EditorConexiones :unidad-id="unidad.id" />
-          </section>
+          <BloquePlegable clave="unidad.avanzado" :titulo="t('unidad.avanzado')" class="text-sm">
+            <div class="grid gap-4 pt-2">
+              <div class="grid gap-1.5">
+                <Label :for="`${uid}-descripcion`">{{ t("puesto.descripcion") }}</Label>
+                <Textarea :id="`${uid}-descripcion`" v-model="descripcion" @change="guardarDescripcion" />
+              </div>
+              <div class="grid gap-1.5">
+                <Label :for="`${uid}-superior`">{{ t("unidad.superior") }}</Label>
+                <SelectorUnidad
+                  :id="`${uid}-superior`"
+                  :excluidas="excluidas"
+                  :texto="textoSuperior"
+                  :ninguna="t('unidad.sinSuperior')"
+                  @elegir="cambiarSuperior"
+                />
+              </div>
+
+              <fieldset class="grid gap-1.5">
+                <legend class="mb-1.5 text-sm font-medium">{{ t("unidad.marca") }}</legend>
+                <div class="flex flex-wrap items-center gap-2">
+                  <input
+                    type="color"
+                    class="h-8 w-12 cursor-pointer rounded-lg border bg-transparent p-0.5 focus-visible:outline-2 focus-visible:outline-ring"
+                    :value="unidad.marca_color ?? '#808080'"
+                    :aria-label="t('unidad.marcaColor')"
+                    @change="(e) => guardarMarca((e.target as HTMLInputElement).value)"
+                  />
+                  <Input
+                    v-model="codigo"
+                    class="w-28"
+                    maxlength="4"
+                    autocomplete="off"
+                    :aria-label="t('unidad.marcaCodigo')"
+                    :placeholder="t('unidad.marcaCodigo')"
+                    @change="guardarMarca(unidad.marca_color)"
+                  />
+                  <Button type="button" variant="outline" size="sm" :disabled="sinMarca" @click="quitarMarca">
+                    {{ t("unidad.quitarMarca") }}
+                  </Button>
+                </div>
+                <p v-if="!unidad.marca_color" class="text-xs text-muted-foreground">
+                  {{ t("unidad.sinColor") }}
+                </p>
+              </fieldset>
+
+              <section class="grid gap-1.5" :aria-labelledby="`${uid}-conexiones`">
+                <h3 :id="`${uid}-conexiones`" class="text-sm font-medium">{{ t("unidad.conexiones") }}</h3>
+                <EditorConexiones :unidad-id="unidad.id" />
+              </section>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <Button
+                  v-if="guardable"
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  :disabled="guardada"
+                  @click="async () => avisar(await org.guardarSubarbol(unidad.id))"
+                >
+                  <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
+                  {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
+                </Button>
+                <Button type="button" variant="outline" size="sm" @click="duplicar(unidad.id)">
+                  <Copy aria-hidden="true" />
+                  {{ t("unidad.duplicar") }}
+                </Button>
+              </div>
+            </div>
+          </BloquePlegable>
 
           <div class="flex flex-wrap items-center gap-2 border-t pt-3">
-            <Button
-              v-if="guardable"
-              type="button"
-              variant="outline"
-              size="sm"
-              :disabled="guardada"
-              @click="async () => avisar(await org.guardarSubarbol(unidad.id))"
-            >
-              <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
-              {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
-            </Button>
-            <Button type="button" variant="outline" size="sm" @click="duplicar(unidad.id)">
-              <Copy aria-hidden="true" />
-              {{ t("unidad.duplicar") }}
-            </Button>
             <Button
               type="button"
               variant="destructive"

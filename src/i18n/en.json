@@ -58,7 +58,8 @@
       "base": "Database {id} · revision {revision} · created {creada}",
       "modoPortable": "Portable mode",
       "modoInstalado": "Installed mode"
-    }
+    },
+    "detalles": "Technical details"
   },
   "arbol": {
     "vacioTitulo": "There are no units yet",
@@ -187,7 +188,9 @@
       "jornada": "Schedule",
       "cargo": "Job title",
       "cualquiera": "Any",
-      "ayuda": "Units that meet everything chosen are highlighted: the tag and, in their own positions, the rest. This adds to “Search the diagram”."
+      "ayuda": "Units that meet everything chosen are highlighted: the tag and, in their own positions, the rest. This adds to “Search the diagram”.",
+      "masFiltros": "More filters",
+      "quitar": "Clear filters"
     },
     "vistas": {
       "titulo": "Saved views",
@@ -277,7 +280,11 @@
     "ordenarUnidad": "Sort by unit",
     "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",
-    "sinResultados": "No rows match the filters."
+    "sinResultados": "No rows match the filters.",
+    "filtrosBoton": "Filters",
+    "filtrosActivos": "{n} active filter | {n} active filters",
+    "quitarFiltros": "Clear filters",
+    "columnas": "Columns"
   },
   "revision": {
     "titulo": "Data review",
@@ -324,7 +331,8 @@
     "sinUso": {
       "titulo": "Unused values",
       "ayuda": "Active values of the lists and active legends that nothing uses."
-    }
+    },
+    "sinAvisos": "No warnings:"
   },
   "idioma": {
     "etiqueta": "Language",
@@ -413,7 +421,8 @@
     "sinPuestos": "No current positions.",
     "historialPuestos": "History ({n})",
     "puestoVigente": "{cargo} · {unidad} · {tipo} · since {desde}",
-    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}"
+    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}",
+    "masDatos": "More details"
   },
   "puesto": {
     "nuevo": "New position",
@@ -517,7 +526,8 @@
     "deshacer": "Undo",
     "duplicar": "Duplicate branch",
     "copiaDe": "{nombre} (copy)",
-    "duplicada": "Branch “{nombre}” duplicated"
+    "duplicada": "Branch “{nombre}” duplicated",
+    "avanzado": "Advanced"
   },
   "personas": {
     "pestana": "People",
@@ -674,7 +684,8 @@
     },
     "apariencia": {
       "titulo": "Appearance",
-      "ayuda": "These preferences apply to this computer only."
+      "ayuda": "These preferences apply to this computer only.",
+      "mas": "More appearance options"
     },
     "barra": {
       "abrirAlPasar": "Open the sidebar on mouse hover"
@@ -778,7 +789,9 @@
       "esquema_nuevo": "This backup was made with a newer version of BoldoAtlas. Update BoldoAtlas to restore it.",
       "en_uso": "Another BoldoAtlas window is using the data. Close it and try again; nothing was changed.",
       "fallo": "The operation could not be completed: {detalle}"
-    }
+    },
+    "ultimo": "Last backup: {fecha}",
+    "verLista": "View and restore backups"
   },
   "vista": {
     "cerrar": "Close"

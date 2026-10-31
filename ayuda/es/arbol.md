@@ -78,7 +78,7 @@ Viendo el organigrama a una fecha no hay selección múltiple.
 
 ## Duplicar una rama
 
-El botón **Duplicar rama** (en el pie del Resumen del panel de la unidad y en la tarjeta seleccionada) y `Ctrl` + `D` copian la unidad con todo lo que cuelga de ella:
+El botón **Duplicar rama** (en **Avanzado**, en el Resumen del panel de la unidad, y en la tarjeta seleccionada) y `Ctrl` + `D` copian la unidad con todo lo que cuelga de ella:
 
 - La copia queda a continuación de la original, con el nombre «X (copia)» (solo la unidad de arriba; las de abajo conservan su nombre), y queda seleccionada. También se puede duplicar una raíz: la copia es otra raíz.
 - Se copian el tipo, la descripción, la marca, las etiquetas y los puestos (cargo, descripción y leyenda). La jefatura de cada copia apunta al puesto copiado.
@@ -90,7 +90,7 @@ El botón **Duplicar rama** (en el pie del Resumen del panel de la unidad y en l
 
 En la barra del lienzo, **Buscar en el diagrama** (`F` lleva a ese campo) resalta las unidades cuyo nombre contiene el texto, sin importar tildes ni mayúsculas. Las unidades que no coinciden quedan atenuadas, pero no se ocultan.
 
-El botón **Resaltar** suma más criterios: **Etiqueta**, **Con vacantes**, **Sede**, **Tipo de contrato**, **Jornada** y **Cargo**; el número en el botón cuenta los que están activos. Una unidad se resalta solo si cumple todos los criterios elegidos (también el texto): tiene la etiqueta y, en sus propios puestos (no en los de su rama; no hace falta que sea el mismo puesto), tiene una vacante, una persona titular vigente con esa sede, una con ese tipo de contrato, una con esa jornada y un puesto con ese cargo; los criterios que no elijas no cuentan. El resaltado dura mientras la app está abierta; las vistas guardadas sí lo incluyen.
+El botón **Resaltar** suma más criterios: **Etiqueta** y **Con vacantes** a la vista, y **Sede**, **Tipo de contrato**, **Jornada** y **Cargo** en **Más filtros** (se abre solo si alguno está elegido); el número en el botón cuenta los que están activos y **Quitar filtros** los vacía (el texto de **Buscar en el diagrama** queda). Una unidad se resalta solo si cumple todos los criterios elegidos (también el texto): tiene la etiqueta y, en sus propios puestos (no en los de su rama; no hace falta que sea el mismo puesto), tiene una vacante, una persona titular vigente con esa sede, una con ese tipo de contrato, una con esa jornada y un puesto con ese cargo; los criterios que no elijas no cuentan. El resaltado dura mientras la app está abierta; las vistas guardadas sí lo incluyen.
 
 ## Moverse por el lienzo
 
@@ -143,16 +143,16 @@ El botón **Ver en otra fecha** de la barra del lienzo (con poco ancho dice solo
 
 Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un panel a la derecha: el lienzo se reduce, no queda tapado. El foco pasa al panel. El botón **Cerrar el panel** (la X), `Esc` o un clic en el fondo del lienzo lo cierran; con la X o `Esc` el foco vuelve a la tarjeta, y `Esc` guarda antes lo que estabas escribiendo. Arriba aparece la ubicación completa de la unidad, con el tipo de cada tramo; cada tramo se puede pulsar para seleccionar esa unidad.
 
-La pestaña **Resumen** reúne:
+La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las cifras y las etiquetas. Lo demás está en **Avanzado**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes. **Eliminar unidad** va al pie, aparte. Reúne:
 
-- **Tipo**, **nombre** y **descripción**. Se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo).
-- **Superior**: un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
-- **Marca**: un color y un código de hasta 4 caracteres, que se ven al elegir «Colorear por» en **Personalizar**. **Quitar marca** borra ambos.
+- **Tipo**, **nombre** y **descripción** (en **Avanzado**). Se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo).
+- **Superior** (en **Avanzado**): un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
+- **Marca** (en **Avanzado**): un color y un código de hasta 4 caracteres, que se ven al elegir «Colorear por» en **Personalizar**. **Quitar marca** borra ambos.
 - **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.
 - La **dotación** directa (puestos con titular en la propia unidad), la total (con toda la rama) y las **vacantes** de la rama.
 - **Etiquetas**: quita una con la X, agrega una existente o elige **Nueva etiqueta…** para crearla con su color. Si el nombre ya existe, se usa esa etiqueta en vez de duplicarla.
-- **Conexiones laterales**: escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles.
-- **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol), **Duplicar rama** y **Eliminar unidad**.
+- **Conexiones laterales** (en **Avanzado**): escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles.
+- **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol) y **Duplicar rama**, en **Avanzado**; **Eliminar unidad**, al pie.
 
 La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»). La pestaña **Procesos** llega en la Fase 3.
 

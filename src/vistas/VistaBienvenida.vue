@@ -128,11 +128,19 @@ onMounted(() => {
           :aria-disabled="c.fase ? 'true' : undefined"
           :disabled="!c.fase && (org.guardando || ocupado)"
           class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring"
-          :class="c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent'"
+          :class="[
+            c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent',
+            c.id === 'vacia' && 'border-2 border-marca bg-card',
+          ]"
           @click="elegir(c)"
         >
           <span class="flex items-center gap-2 font-medium">
-            <component :is="c.icono" class="size-4 shrink-0" aria-hidden="true" />
+            <component
+              :is="c.icono"
+              class="size-4 shrink-0"
+              :class="c.id === 'vacia' && 'text-marca-texto'"
+              aria-hidden="true"
+            />
             {{ t(`bienvenida.${c.id}.titulo`) }}
             <span v-if="c.fase" class="ml-auto rounded-full border px-2 text-xs font-normal">{{
               t(c.fase)

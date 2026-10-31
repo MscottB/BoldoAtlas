@@ -15,4 +15,4 @@ The number next to **Review** in the menu is the total of pending warnings. It d
 - **Empty units**: units with no positions and no subunits.
 - **Unused values**: active job titles, contract types, sites, schedules, unit types and legends that nothing uses. For now they are for information only; you will be able to edit them from the lists.
 
-A list with no warnings shows "All in order". Deleted or deactivated items are never reported.
+Lists with warnings come first. Those that are in order are grouped at the end in a single line, **No warnings:** and their names, which unfolds with a click (and stays as you leave it) to show each one with "All in order". Deleted or deactivated items are never reported.

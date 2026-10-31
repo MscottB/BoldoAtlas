@@ -141,7 +141,12 @@ const valorDe = (e: Event) => (e.target as HTMLInputElement).value;
           </tr>
         </thead>
         <tbody class="divide-y">
-          <tr v-for="(f, i) in filas" :key="f.id" :class="{ 'bg-accent': existente === f.id }">
+          <tr
+            v-for="(f, i) in filas"
+            :key="f.id"
+            class="group/fila"
+            :class="{ 'bg-accent': existente === f.id }"
+          >
             <td class="py-2 pr-2" :class="{ 'text-muted-foreground': f.deleted_at }">
               <Input
                 v-if="editando === f.id"
@@ -185,26 +190,32 @@ const valorDe = (e: Event) => (e.target as HTMLInputElement).value;
                 >
                   <Pencil aria-hidden="true" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  :disabled="i === 0"
-                  :aria-label="t('mantenedores.subir', { nombre: f.nombre })"
-                  :title="t('mantenedores.subir', { nombre: f.nombre })"
-                  @click="mover(f, -1)"
+                <!-- Las flechas aparecen al pasar el mouse por la fila o con el foco en ella (siguen en el orden de Tab). Sin
+                     mouse (pantalla táctil) se ven siempre. -->
+                <span
+                  class="flex gap-1 group-focus-within/fila:opacity-100 group-hover/fila:opacity-100 [@media(hover:hover)]:opacity-0"
                 >
-                  <ArrowUp aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  :disabled="i === filas.length - 1"
-                  :aria-label="t('mantenedores.bajar', { nombre: f.nombre })"
-                  :title="t('mantenedores.bajar', { nombre: f.nombre })"
-                  @click="mover(f, 1)"
-                >
-                  <ArrowDown aria-hidden="true" />
-                </Button>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    :disabled="i === 0"
+                    :aria-label="t('mantenedores.subir', { nombre: f.nombre })"
+                    :title="t('mantenedores.subir', { nombre: f.nombre })"
+                    @click="mover(f, -1)"
+                  >
+                    <ArrowUp aria-hidden="true" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    :disabled="i === filas.length - 1"
+                    :aria-label="t('mantenedores.bajar', { nombre: f.nombre })"
+                    :title="t('mantenedores.bajar', { nombre: f.nombre })"
+                    @click="mover(f, 1)"
+                  >
+                    <ArrowDown aria-hidden="true" />
+                  </Button>
+                </span>
                 <Button
                   variant="outline"
                   size="sm"

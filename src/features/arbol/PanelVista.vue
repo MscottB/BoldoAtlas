@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, ChevronRight, SlidersHorizontal } from "@lucide/vue";
+import { ChevronDown, SlidersHorizontal } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import BloquePlegable from "@/components/BloquePlegable.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import { tiposEnUso } from "./jerarquia";
 import { useVista } from "./useVista";
@@ -55,13 +55,6 @@ function alternarTipo(id: string, marcado: boolean) {
 
 // Lo resaltado es de la sesión (y está en «Resaltar»): restablecer no lo toca.
 const restablecer = () => (config.value = { ...leerVista(null), resaltar: config.value.resaltar });
-
-// Bloques plegados: solo un true guardado los deja abiertos.
-const guardado = leerPreferencia<Partial<Record<string, unknown>> | null>("personalizar", null);
-const abiertos = ref({ tarjeta: guardado?.tarjeta === true, avanzado: guardado?.avanzado === true });
-watch(abiertos, (a) => guardarPreferencia("personalizar", a), { deep: true });
-const alPlegar = (bloque: "tarjeta" | "avanzado", e: Event) =>
-  (abiertos.value[bloque] = (e.target as HTMLDetailsElement).open);
 </script>
 
 <template>
@@ -122,17 +115,11 @@ const alPlegar = (bloque: "tarjeta" | "avanzado", e: Event) =>
         {{ t("arbol.vista.verPuestos") }}
       </label>
 
-      <details
-        class="group/bloque border-t pt-2"
-        :open="abiertos.tarjeta"
-        @toggle="alPlegar('tarjeta', $event)"
+      <BloquePlegable
+        clave="personalizar.tarjeta"
+        :titulo="t('arbol.vista.tarjeta', { n: camposActivos, total: camposTarjeta.length })"
+        class="border-t pt-2"
       >
-        <summary
-          class="flex cursor-pointer list-none items-center gap-1 rounded-md py-1 font-medium focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
-        >
-          <ChevronRight class="size-4 transition-transform group-open/bloque:rotate-90" aria-hidden="true" />
-          {{ t("arbol.vista.tarjeta", { n: camposActivos, total: camposTarjeta.length }) }}
-        </summary>
         <div class="grid gap-1.5 pt-2 pl-5">
           <label v-for="campo in camposTarjeta" :key="campo" class="flex items-center gap-2">
             <input
@@ -144,19 +131,9 @@ const alPlegar = (bloque: "tarjeta" | "avanzado", e: Event) =>
             {{ t(`arbol.vista.campos.${campo}`) }}
           </label>
         </div>
-      </details>
+      </BloquePlegable>
 
-      <details
-        class="group/bloque border-t pt-2"
-        :open="abiertos.avanzado"
-        @toggle="alPlegar('avanzado', $event)"
-      >
-        <summary
-          class="flex cursor-pointer list-none items-center gap-1 rounded-md py-1 font-medium focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
-        >
-          <ChevronRight class="size-4 transition-transform group-open/bloque:rotate-90" aria-hidden="true" />
-          {{ t("arbol.vista.avanzado") }}
-        </summary>
+      <BloquePlegable clave="personalizar.avanzado" :titulo="t('arbol.vista.avanzado')" class="border-t pt-2">
         <div class="grid gap-3 pt-2 pl-5">
           <label class="grid gap-1">
             <span class="font-medium">{{ t("arbol.vista.lineas") }}</span>
@@ -198,7 +175,7 @@ const alPlegar = (bloque: "tarjeta" | "avanzado", e: Event) =>
             </label>
           </fieldset>
         </div>
-      </details>
+      </BloquePlegable>
 
       <Button variant="outline" size="sm" class="self-start" @click="restablecer">
         {{ t("arbol.vista.restablecer") }}

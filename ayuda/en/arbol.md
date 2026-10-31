@@ -78,7 +78,7 @@ While viewing the chart at a past date there is no multiple selection.
 
 ## Duplicating a branch
 
-The **Duplicate branch** button (at the bottom of the unit panel's Summary and on the selected card) and `Ctrl` + `D` copy the unit with everything under it:
+The **Duplicate branch** button (under **Advanced** in the unit panel's Summary, and on the selected card) and `Ctrl` + `D` copy the unit with everything under it:
 
 - The copy goes right after the original, named "X (copy)" (only the top unit; the ones below keep their names), and ends up selected. A root can be duplicated too: the copy is another root.
 - The type, description, mark, tags and positions (job title, description and legend) are copied. Each copy's head points to the copied position.
@@ -90,7 +90,7 @@ The **Duplicate branch** button (at the bottom of the unit panel's Summary and o
 
 In the canvas bar, **Search the diagram** (`F` takes you to that field) highlights the units whose name contains the text, ignoring accents and case. Units that don't match are dimmed, not hidden.
 
-The **Highlight** button adds more criteria: **Tag**, **With vacancies**, **Site**, **Contract type**, **Schedule** and **Job title**; the number on the button counts the active ones. A unit is highlighted only if it meets every criterion you chose (the text too): it has the tag and, in its own positions (not those of its branch; they need not be the same position), it has a vacancy, a current holder with that site, one with that contract type, one with that schedule and a position with that job title; criteria you don't choose don't count. Highlighting lasts while the app is open; saved views do include it.
+The **Highlight** button adds more criteria: **Tag** and **With vacancies** in plain view, and **Site**, **Contract type**, **Schedule** and **Job title** under **More filters** (it opens by itself if any of them is chosen); the number on the button counts the active ones and **Clear filters** empties them (the **Search the diagram** text stays). A unit is highlighted only if it meets every criterion you chose (the text too): it has the tag and, in its own positions (not those of its branch; they need not be the same position), it has a vacancy, a current holder with that site, one with that contract type, one with that schedule and a position with that job title; criteria you don't choose don't count. Highlighting lasts while the app is open; saved views do include it.
 
 ## Moving around the canvas
 
@@ -143,16 +143,16 @@ The **View on another date** button in the canvas toolbar (just **Date** when sp
 
 Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on the right: the canvas shrinks, it is not covered. Focus moves into the panel. The **Close the panel** button (the X), `Esc` or a click on the canvas background close it; with the X or `Esc` focus returns to the card, and `Esc` first saves whatever you were typing. At the top you see the unit's full location, with the type of each step; each step can be pressed to select that unit.
 
-The **Summary** tab holds:
+The **Summary** tab shows the type, name, head, figures and tags in plain view. The rest is under **Advanced**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it. **Delete unit** sits apart at the bottom. It holds:
 
-- **Type**, **name** and **description**. They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
-- **Parent unit**: a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
-- **Mark**: a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
+- **Type**, **name** and **description** (under **Advanced**). They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
+- **Parent unit** (under **Advanced**): a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
+- **Mark** (under **Advanced**): a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
 - **Head**: choose which of the unit's positions is the head (or **No head**). Below you see who holds it: the holder or, if there is none, **Replacement: name**.
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
-- **Lateral connections**: type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible.
-- **Save in Trees** (not shown on roots, which already are a tree), **Duplicate branch** and **Delete unit**.
+- **Lateral connections** (under **Advanced**): type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible.
+- **Save in Trees** (not shown on roots, which already are a tree) and **Duplicate branch**, under **Advanced**; **Delete unit**, at the bottom.
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements"). The **Processes** tab arrives in Phase 3.
 

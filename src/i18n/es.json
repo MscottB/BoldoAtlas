@@ -58,7 +58,8 @@
       "base": "Base {id} · revisión {revision} · creada {creada}",
       "modoPortable": "Modo portable",
       "modoInstalado": "Modo instalado"
-    }
+    },
+    "detalles": "Detalles técnicos"
   },
   "arbol": {
     "vacioTitulo": "Aún no hay unidades",
@@ -187,7 +188,9 @@
       "jornada": "Jornada",
       "cargo": "Cargo",
       "cualquiera": "Cualquiera",
-      "ayuda": "Se resaltan las unidades que cumplen todo lo elegido: la etiqueta y, en sus propios puestos, lo demás. Se suma a «Buscar en el diagrama»."
+      "ayuda": "Se resaltan las unidades que cumplen todo lo elegido: la etiqueta y, en sus propios puestos, lo demás. Se suma a «Buscar en el diagrama».",
+      "masFiltros": "Más filtros",
+      "quitar": "Quitar filtros"
     },
     "vistas": {
       "titulo": "Vistas guardadas",
@@ -277,7 +280,11 @@
     "ordenarUnidad": "Ordenar por unidad",
     "exportar": "Exportar esta lista a Excel",
     "vacio": "Aún no hay puestos ni personas. Crea unidades y puestos en el árbol.",
-    "sinResultados": "Ninguna fila coincide con los filtros."
+    "sinResultados": "Ninguna fila coincide con los filtros.",
+    "filtrosBoton": "Filtros",
+    "filtrosActivos": "{n} filtro activo | {n} filtros activos",
+    "quitarFiltros": "Quitar filtros",
+    "columnas": "Columnas"
   },
   "revision": {
     "titulo": "Revisión de datos",
@@ -324,7 +331,8 @@
     "sinUso": {
       "titulo": "Valores sin uso",
       "ayuda": "Valores activos de los mantenedores y leyendas activas que nada usa."
-    }
+    },
+    "sinAvisos": "Sin avisos:"
   },
   "idioma": {
     "etiqueta": "Idioma",
@@ -413,7 +421,8 @@
     "sinPuestos": "Sin puestos vigentes.",
     "historialPuestos": "Historial ({n})",
     "puestoVigente": "{cargo} · {unidad} · {tipo} · desde {desde}",
-    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} a {hasta}"
+    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} a {hasta}",
+    "masDatos": "Más datos"
   },
   "puesto": {
     "nuevo": "Nuevo puesto",
@@ -517,7 +526,8 @@
     "deshacer": "Deshacer",
     "duplicar": "Duplicar rama",
     "copiaDe": "{nombre} (copia)",
-    "duplicada": "Rama «{nombre}» duplicada"
+    "duplicada": "Rama «{nombre}» duplicada",
+    "avanzado": "Avanzado"
   },
   "personas": {
     "pestana": "Personas",
@@ -674,7 +684,8 @@
     },
     "apariencia": {
       "titulo": "Apariencia",
-      "ayuda": "Estas preferencias valen solo para este computador."
+      "ayuda": "Estas preferencias valen solo para este computador.",
+      "mas": "Más opciones de apariencia"
     },
     "barra": {
       "abrirAlPasar": "Abrir la barra lateral al pasar el mouse"
@@ -778,7 +789,9 @@
       "esquema_nuevo": "Este respaldo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para restaurarlo.",
       "en_uso": "Otra ventana de BoldoAtlas está usando los datos. Ciérrala e inténtalo de nuevo; no se cambió nada.",
       "fallo": "No se pudo completar la operación: {detalle}"
-    }
+    },
+    "ultimo": "Último respaldo: {fecha}",
+    "verLista": "Ver respaldos y restaurar"
   },
   "vista": {
     "cerrar": "Cerrar"
