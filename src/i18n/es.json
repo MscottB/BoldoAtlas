@@ -273,6 +273,7 @@
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
+    "hayDatos": "Ya hay datos en esta base: para reemplazarlos usa «Nueva organización vacía» o «Explorar el ejemplo» desde el menú de la app.",
     "cicloRama": "No se puede mover una unidad dentro de su propia rama.",
     "unidadInexistente": "La unidad ya no existe.",
     "raizConContenido": "No se puede eliminar la unidad raíz mientras tenga contenido.",
@@ -486,7 +487,6 @@
       "directorio": "Ir al directorio",
       "revision": "Ir a Revisión",
       "tema": "Cambiar tema",
-      "configuracion": "Configuración",
       "ayuda": "Ayuda"
     }
   },
@@ -515,7 +515,15 @@
     "raiz": "Nombre de la unidad raíz",
     "raizEjemplo": "Por ejemplo: Gerencia General",
     "crear": "Crear organización",
-    "cancelar": "Cancelar"
+    "cancelar": "Cancelar",
+    "hayDatos": "Esta base ya tiene datos («{nombre}»). Si eliges una organización vacía o el ejemplo, se reemplazan los datos actuales; antes se hace un respaldo automático.",
+    "volver": "Volver a mi organización",
+    "reemplazarTitulo": {
+      "vacia": "¿Reemplazar los datos actuales por una organización vacía?",
+      "ejemplo": "¿Reemplazar los datos actuales por el ejemplo?"
+    },
+    "reemplazarTexto": "Se borrarán las unidades, personas, puestos y demás datos de «{nombre}». Antes se hace un respaldo automático que puedes restaurar desde Configuración › Respaldos.",
+    "reemplazar": "Respaldar y reemplazar"
   },
   "config": {
     "organizacion": {
@@ -605,7 +613,7 @@
   },
   "respaldos": {
     "titulo": "Respaldos",
-    "ayuda": "Copias de tus datos en la carpeta de respaldos de este computador. Se conservan los 10 respaldos automáticos más recientes.",
+    "ayuda": "Copias de tus datos en la carpeta de respaldos de este computador. Se conservan los 10 respaldos más recientes, automáticos o hechos a mano.",
     "frecuencia": {
       "etiqueta": "Respaldo automático al abrir",
       "nunca": "Nunca",
@@ -639,5 +647,30 @@
       "en_uso": "Otra ventana de BoldoAtlas está usando los datos. Ciérrala e inténtalo de nuevo; no se cambió nada.",
       "fallo": "No se pudo completar la operación: {detalle}"
     }
+  },
+  "vista": {
+    "cerrar": "Cerrar"
+  },
+  "menu": {
+    "abrir": "Menú de la app",
+    "inicio": "Inicio",
+    "vacia": "Nueva organización vacía…",
+    "ejemplo": "Explorar el ejemplo…",
+    "boldo": "Abrir archivo .boldo",
+    "excel": "Importar Excel",
+    "respaldos": "Respaldos",
+    "configuracion": "Configuración",
+    "datos": "Datos del proyecto"
+  },
+  "proyecto": {
+    "titulo": "Datos del proyecto",
+    "principal": "Principal",
+    "abrir": "Datos del proyecto «{nombre}»",
+    "archivo": "Archivo de la base",
+    "tamano": "Tamaño",
+    "modificado": "Última modificación",
+    "copiar": "Copiar ruta",
+    "copiada": "Ruta copiada.",
+    "abrirCarpeta": "Abrir carpeta"
   }
 }

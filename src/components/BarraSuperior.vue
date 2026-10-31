@@ -4,10 +4,13 @@ import { useMediaQuery } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
 import { Download, Moon, PanelLeft, Search, Sun } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import IndicadorGuardado from "@/components/IndicadorGuardado.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useTema } from "@/features/tema/useTema";
+import MenuApp from "@/features/proyecto/MenuApp.vue";
+import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 
 defineProps<{ colapsada: boolean }>();
 // "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue.
@@ -34,10 +37,25 @@ const etiquetaTema = computed(() => (oscuro.value ? t("barra.temaClaro") : t("ba
     >
       <PanelLeft aria-hidden="true" />
     </Button>
-    <p class="min-w-0 truncate text-sm font-semibold">{{ org.org.nombre || t("barra.sinNombre") }}</p>
+    <MenuApp />
+    <!-- Qué proyecto está abierto (por ahora siempre el principal); un clic muestra dónde están sus datos. -->
+    <button
+      type="button"
+      class="flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+      :aria-label="t('proyecto.abrir', { nombre: org.org.nombre || t('barra.sinNombre') })"
+      @click="datosProyectoAbierto = true"
+    >
+      <span class="min-w-0 truncate text-sm font-semibold">{{ org.org.nombre || t("barra.sinNombre") }}</span>
+      <Badge variant="outline" class="shrink-0">{{ t("proyecto.principal") }}</Badge>
+    </button>
 
     <div class="ml-auto flex items-center gap-2">
-      <Button variant="outline" class="w-48 justify-start text-muted-foreground" @click="$emit('buscar')">
+      <Button
+        variant="outline"
+        class="w-48 justify-start text-muted-foreground"
+        data-buscar-paleta
+        @click="$emit('buscar')"
+      >
         <Search aria-hidden="true" />
         <span>{{ t("barra.buscar") }}</span>
         <kbd class="ml-auto rounded border px-1 font-sans text-xs">Ctrl K</kbd>

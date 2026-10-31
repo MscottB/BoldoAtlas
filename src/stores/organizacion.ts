@@ -31,6 +31,7 @@ import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
 import { SQL_HISTORICO } from "@/db/repos/historico";
 import { guardarMeta } from "@/db/repos/meta";
+import { TIPOS_SEMILLA, vaciarOrganizacion } from "@/db/repos/reemplazo";
 import {
   creaCiclo,
   hijos,
@@ -531,168 +532,210 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
 
   /** Con la interfaz en inglés, los tipos sembrados sin uso pasan a sus nombres en inglés. */
-  const renombresSemilla = (): Sentencia[] =>
-    tiposARenombrar(
-      catalogos.value.tipos_unidad,
-      (id) => usos("tipos_unidad", id),
-      i18n.global.locale.value as Idioma,
-    ).flatMap((r) => C.renombrarValor("tipos_unidad", r.id, r.nombre));
+  const renombresSemilla = (
+    tipos: readonly ValorCatalogo[] = catalogos.value.tipos_unidad,
+    uso = (id: string) => usos("tipos_unidad", id),
+  ): Sentencia[] =>
+    tiposARenombrar(tipos, uso, i18n.global.locale.value as Idioma).flatMap((r) =>
+      C.renombrarValor("tipos_unidad", r.id, r.nombre),
+    );
+
+  /** Nombre de la organización y su unidad raíz, de `tipo`. */
+  function sentenciasRaiz(nombre: string, nombreRaiz: string, tipo: string, renombres: Sentencia[]) {
+    const raiz = U.crearUnidad({ tipo_id: tipo, nombre: nombreRaiz.trim() });
+    return {
+      id: raiz.id,
+      sentencias: [...guardarMeta("org_nombre", nombre.trim()), ...renombres, ...raiz.sentencias],
+    };
+  }
 
   /** Primer uso: el nombre de la organización y su unidad raíz (del primer tipo activo), en un solo lote. */
   async function crearOrganizacion(nombre: string, nombreRaiz: string): Promise<Resultado> {
+    if (!vacia.value) return rechazar(t("store.hayDatos"));
     if (!nombre.trim() || !nombreRaiz.trim()) return rechazar(t("store.nombreVacio"));
     const tipo = activos("tipos_unidad")[0];
     if (!tipo) return rechazar(t("arbol.sinTiposActivos"));
-    return escribir(() => {
-      const raiz = U.crearUnidad({ tipo_id: tipo.id, nombre: nombreRaiz.trim() });
-      return {
-        id: raiz.id,
-        sentencias: [...guardarMeta("org_nombre", nombre.trim()), ...renombresSemilla(), ...raiz.sentencias],
-      };
-    });
+    return escribir(() => sentenciasRaiz(nombre, nombreRaiz, tipo.id, renombresSemilla()));
   }
 
-  /** Organización ficticia para probar la app (en el idioma de la interfaz); todo en un solo lote. */
-  function cargarEjemplo(): Promise<Resultado> {
-    return escribir(() => {
-      const x = EJEMPLO[i18n.global.locale.value as Idioma];
-      const s: Sentencia[] = [...guardarMeta("org_nombre", x.organizacion), ...renombresSemilla()];
-      const nuevo = <P extends { id: string; sentencias: Sentencia[] }>(p: P): string => {
-        s.push(...p.sentencias);
-        return p.id;
-      };
+  /** Organización ficticia para probar la app (en el idioma de la interfaz). */
+  function sentenciasEjemplo(renombres: Sentencia[]): Sentencia[] {
+    const x = EJEMPLO[i18n.global.locale.value as Idioma];
+    const s: Sentencia[] = [...guardarMeta("org_nombre", x.organizacion), ...renombres];
+    const nuevo = <P extends { id: string; sentencias: Sentencia[] }>(p: P): string => {
+      s.push(...p.sentencias);
+      return p.id;
+    };
 
-      const valores: Record<TablaCatalogo, string[]> = {
-        cargos: x.cargos,
-        tipos_contrato: x.tiposContrato,
-        sedes: x.sedes,
-        jornadas: x.jornadas,
-        tipos_unidad: [x.tipoUnidad], // los demás tipos vienen sembrados
-      };
-      const cat = Object.fromEntries(
-        TABLAS_CATALOGO.map((t) => [t, valores[t].map((n) => nuevo(C.crearValor(t, n)))]),
-      ) as Record<TablaCatalogo, string[]>;
-      const sup = cat.tipos_unidad[0];
-      s.push(...C.moverValor("tipos_unidad", sup, 15)); // entre Gerencia (10) y Área (20)
+    const valores: Record<TablaCatalogo, string[]> = {
+      cargos: x.cargos,
+      tipos_contrato: x.tiposContrato,
+      sedes: x.sedes,
+      jornadas: x.jornadas,
+      tipos_unidad: [x.tipoUnidad], // los demás tipos vienen sembrados
+    };
+    const cat = Object.fromEntries(
+      TABLAS_CATALOGO.map((t) => [t, valores[t].map((n) => nuevo(C.crearValor(t, n)))]),
+    ) as Record<TablaCatalogo, string[]>;
+    const sup = cat.tipos_unidad[0];
+    s.push(...C.moverValor("tipos_unidad", sup, 15)); // entre Gerencia (10) y Área (20)
 
-      // clave (su nombre está en el texto de demostración), tipo, clave del superior
-      const estructura: [keyof typeof x.unidades, string, string | null][] = [
-        ["gg", TIPO_GERENCIA, null],
-        ["op", TIPO_GERENCIA, "gg"],
-        ["ma", sup, "op"],
-        ["me", TIPO_AREA, "ma"],
-        ["el", TIPO_AREA, "ma"],
-        ["pr", TIPO_AREA, "op"],
-        ["fi", TIPO_GERENCIA, "gg"],
-        ["co", TIPO_AREA, "fi"],
-        ["cm", TIPO_AREA, "fi"],
-        ["pe", TIPO_GERENCIA, "gg"],
-        ["se", TIPO_AREA, "pe"],
-        ["re", TIPO_AREA, "pe"],
-        ["ca", TIPO_AREA, "pe"],
-      ];
-      const uid: Record<string, string> = {};
-      estructura.forEach(([clave, tipo_id, padre], orden) => {
-        const nombre = x.unidades[clave];
-        uid[clave] = nuevo(U.crearUnidad({ tipo_id, nombre, parent_id: padre && uid[padre], orden }));
-      });
-      // Marcas de las gerencias y la superintendencia, para ver «Colorear por» en la demostración.
-      const marcas: [string, string, string][] = [
-        ["gg", "#1e2a38", "GG"],
-        ["op", "#0f766e", "OP"],
-        ["ma", "#be123c", "MAN"],
-        ["fi", "#b45309", "FIN"],
-        ["pe", "#7c3aed", "PER"],
-      ];
-      for (const [clave, marca_color, marca_codigo] of marcas)
-        s.push(...U.editarUnidad(uid[clave], { marca_color, marca_codigo }));
-
-      // Leyendas de puestos: clave y color (nombre y descripción, en el texto de demostración).
-      const leyenda: Record<string, string> = {};
-      for (const [clave, color] of [
-        ["critico", "#be123c"],
-        ["sucesion", "#b45309"],
-        ["potencial", "#0f766e"],
-      ] as const)
-        leyenda[clave] = nuevo(L.crearLeyenda({ ...x.leyendas[clave], color }));
-      const leyendaDe: Record<string, string> = {
-        "Camila Rojas": "critico",
-        "Paula Araya": "critico",
-        "Daniela Herrera": "critico",
-        "Patricio Muñoz": "sucesion",
-        "Tomás Bravo": "sucesion",
-        "Elena Silva": "potencial",
-        "Felipe Ibáñez": "potencial",
-      };
-
-      // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde
-      const personas: [string, string, number, boolean, string][] = [
-        ["gg", "Camila Rojas", 0, true, "2015-03-02"],
-        ["op", "Andrés Soto", 0, true, "2023-07-01"],
-        ["ma", "Patricio Muñoz", 1, true, "2023-07-01"],
-        ["me", "Luis Fuentes", 3, true, "2017-05-02"],
-        ["me", "Marta Díaz", 3, false, "2021-01-04"],
-        ["el", "Rosa Vera", 3, true, "2019-08-01"],
-        ["pr", "Jorge Pizarro", 1, true, "2016-10-03"],
-        ["pr", "Elena Silva", 2, false, "2022-04-01"],
-        ["fi", "Paula Araya", 0, true, "2018-01-02"],
-        ["co", "Tomás Bravo", 1, true, "2020-06-01"],
-        ["co", "Inés Lagos", 2, false, "2024-02-01"],
-        ["cm", "Sofía Contreras", 1, true, "2019-11-04"],
-        ["pe", "Daniela Herrera", 0, true, "2017-09-01"],
-        ["se", "Matías Núñez", 2, true, "2021-03-01"],
-        ["re", "Carolina Parra", 2, true, "2018-07-02"],
-        ["ca", "Felipe Ibáñez", 2, true, "2022-08-01"],
-      ];
-      // Historial: Andrés Soto fue jefe de Mantención hasta que Patricio Muñoz tomó el puesto.
-      const anterior: Record<string, [string, string]> = { ma: ["Andrés Soto", "2018-04-02"] };
-      const pid: Record<string, string> = {};
-      personas.forEach(([u, nombre, cargo, jefe, desde], i) => {
-        pid[nombre] = nuevo(
-          T.crearTrabajador({
-            nombre,
-            correo: `${normalizarTexto(nombre).replace(/ /g, ".")}@ejemplo.test`,
-            tipo_contrato_id: cat.tipos_contrato[i % 3],
-            sede_id: cat.sedes[i % 2],
-            jornada_id: cat.jornadas[u === "me" || u === "el" ? 1 : 0],
-          }),
-        );
-        const puesto = nuevo(
-          P.crearPuesto({
-            unidad_id: uid[u],
-            cargo_id: cat.cargos[cargo],
-            leyenda_id: leyenda[leyendaDe[nombre]],
-            orden: i,
-          }),
-        );
-        if (anterior[u]) nuevo(A.asignarTitular(puesto, pid[anterior[u][0]], anterior[u][1]));
-        nuevo(A.asignarTitular(puesto, pid[nombre], desde));
-        if (jefe) s.push(...U.asignarJefe(uid[u], puesto));
-      });
-      // Vacantes: puestos sin titular; la de Compras la cubre Inés Lagos como reemplazo.
-      nuevo(P.crearPuesto({ unidad_id: uid.me, cargo_id: cat.cargos[3], orden: 90 }));
-      const compras = nuevo(P.crearPuesto({ unidad_id: uid.cm, cargo_id: cat.cargos[2], orden: 91 }));
-      nuevo(A.registrarReemplazo(compras, pid["Inés Lagos"], "2026-09-01"));
-
-      const etiqueta: Record<string, string> = {};
-      for (const [clave, color] of [
-        ["critica", "#c2410c"],
-        ["turnos", "#2563eb"],
-        ["estrategica", "#7c3aed"],
-      ] as const)
-        etiqueta[clave] = nuevo(E.crearEtiqueta(x.etiquetas[clave], color));
-      for (const [u, e] of [
-        ["ma", "critica"],
-        ["ma", "turnos"],
-        ["pr", "turnos"],
-        ["gg", "estrategica"],
-        ["fi", "estrategica"],
-      ])
-        s.push(...E.etiquetarUnidad(uid[u], etiqueta[e]));
-
-      nuevo(X.crearConexion(uid.ma, uid.cm, x.conexion));
-      return s;
+    // clave (su nombre está en el texto de demostración), tipo, clave del superior
+    const estructura: [keyof typeof x.unidades, string, string | null][] = [
+      ["gg", TIPO_GERENCIA, null],
+      ["op", TIPO_GERENCIA, "gg"],
+      ["ma", sup, "op"],
+      ["me", TIPO_AREA, "ma"],
+      ["el", TIPO_AREA, "ma"],
+      ["pr", TIPO_AREA, "op"],
+      ["fi", TIPO_GERENCIA, "gg"],
+      ["co", TIPO_AREA, "fi"],
+      ["cm", TIPO_AREA, "fi"],
+      ["pe", TIPO_GERENCIA, "gg"],
+      ["se", TIPO_AREA, "pe"],
+      ["re", TIPO_AREA, "pe"],
+      ["ca", TIPO_AREA, "pe"],
+    ];
+    const uid: Record<string, string> = {};
+    estructura.forEach(([clave, tipo_id, padre], orden) => {
+      const nombre = x.unidades[clave];
+      uid[clave] = nuevo(U.crearUnidad({ tipo_id, nombre, parent_id: padre && uid[padre], orden }));
     });
+    // Marcas de las gerencias y la superintendencia, para ver «Colorear por» en la demostración.
+    const marcas: [string, string, string][] = [
+      ["gg", "#1e2a38", "GG"],
+      ["op", "#0f766e", "OP"],
+      ["ma", "#be123c", "MAN"],
+      ["fi", "#b45309", "FIN"],
+      ["pe", "#7c3aed", "PER"],
+    ];
+    for (const [clave, marca_color, marca_codigo] of marcas)
+      s.push(...U.editarUnidad(uid[clave], { marca_color, marca_codigo }));
+
+    // Leyendas de puestos: clave y color (nombre y descripción, en el texto de demostración).
+    const leyenda: Record<string, string> = {};
+    for (const [clave, color] of [
+      ["critico", "#be123c"],
+      ["sucesion", "#b45309"],
+      ["potencial", "#0f766e"],
+    ] as const)
+      leyenda[clave] = nuevo(L.crearLeyenda({ ...x.leyendas[clave], color }));
+    const leyendaDe: Record<string, string> = {
+      "Camila Rojas": "critico",
+      "Paula Araya": "critico",
+      "Daniela Herrera": "critico",
+      "Patricio Muñoz": "sucesion",
+      "Tomás Bravo": "sucesion",
+      "Elena Silva": "potencial",
+      "Felipe Ibáñez": "potencial",
+    };
+
+    // unidad, nombre, cargo (índice en cat.cargos), ¿jefe?, titular desde
+    const personas: [string, string, number, boolean, string][] = [
+      ["gg", "Camila Rojas", 0, true, "2015-03-02"],
+      ["op", "Andrés Soto", 0, true, "2023-07-01"],
+      ["ma", "Patricio Muñoz", 1, true, "2023-07-01"],
+      ["me", "Luis Fuentes", 3, true, "2017-05-02"],
+      ["me", "Marta Díaz", 3, false, "2021-01-04"],
+      ["el", "Rosa Vera", 3, true, "2019-08-01"],
+      ["pr", "Jorge Pizarro", 1, true, "2016-10-03"],
+      ["pr", "Elena Silva", 2, false, "2022-04-01"],
+      ["fi", "Paula Araya", 0, true, "2018-01-02"],
+      ["co", "Tomás Bravo", 1, true, "2020-06-01"],
+      ["co", "Inés Lagos", 2, false, "2024-02-01"],
+      ["cm", "Sofía Contreras", 1, true, "2019-11-04"],
+      ["pe", "Daniela Herrera", 0, true, "2017-09-01"],
+      ["se", "Matías Núñez", 2, true, "2021-03-01"],
+      ["re", "Carolina Parra", 2, true, "2018-07-02"],
+      ["ca", "Felipe Ibáñez", 2, true, "2022-08-01"],
+    ];
+    // Historial: Andrés Soto fue jefe de Mantención hasta que Patricio Muñoz tomó el puesto.
+    const anterior: Record<string, [string, string]> = { ma: ["Andrés Soto", "2018-04-02"] };
+    const pid: Record<string, string> = {};
+    personas.forEach(([u, nombre, cargo, jefe, desde], i) => {
+      pid[nombre] = nuevo(
+        T.crearTrabajador({
+          nombre,
+          correo: `${normalizarTexto(nombre).replace(/ /g, ".")}@ejemplo.test`,
+          tipo_contrato_id: cat.tipos_contrato[i % 3],
+          sede_id: cat.sedes[i % 2],
+          jornada_id: cat.jornadas[u === "me" || u === "el" ? 1 : 0],
+        }),
+      );
+      const puesto = nuevo(
+        P.crearPuesto({
+          unidad_id: uid[u],
+          cargo_id: cat.cargos[cargo],
+          leyenda_id: leyenda[leyendaDe[nombre]],
+          orden: i,
+        }),
+      );
+      if (anterior[u]) nuevo(A.asignarTitular(puesto, pid[anterior[u][0]], anterior[u][1]));
+      nuevo(A.asignarTitular(puesto, pid[nombre], desde));
+      if (jefe) s.push(...U.asignarJefe(uid[u], puesto));
+    });
+    // Vacantes: puestos sin titular; la de Compras la cubre Inés Lagos como reemplazo.
+    nuevo(P.crearPuesto({ unidad_id: uid.me, cargo_id: cat.cargos[3], orden: 90 }));
+    const compras = nuevo(P.crearPuesto({ unidad_id: uid.cm, cargo_id: cat.cargos[2], orden: 91 }));
+    nuevo(A.registrarReemplazo(compras, pid["Inés Lagos"], "2026-09-01"));
+
+    const etiqueta: Record<string, string> = {};
+    for (const [clave, color] of [
+      ["critica", "#c2410c"],
+      ["turnos", "#2563eb"],
+      ["estrategica", "#7c3aed"],
+    ] as const)
+      etiqueta[clave] = nuevo(E.crearEtiqueta(x.etiquetas[clave], color));
+    for (const [u, e] of [
+      ["ma", "critica"],
+      ["ma", "turnos"],
+      ["pr", "turnos"],
+      ["gg", "estrategica"],
+      ["fi", "estrategica"],
+    ])
+      s.push(...E.etiquetarUnidad(uid[u], etiqueta[e]));
+
+    nuevo(X.crearConexion(uid.ma, uid.cm, x.conexion));
+    return s;
+  }
+
+  /** Solo con la base sin unidades: reemplazar datos existentes es `reemplazarCon`. Todo en un solo lote. */
+  function cargarEjemplo(): Promise<Resultado> {
+    if (!vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
+    return escribir(() => sentenciasEjemplo(renombresSemilla()));
+  }
+
+  /**
+   * Borra todos los datos de la organización y escribe en su lugar una organización vacía o el ejemplo, en un solo lote
+   * (si algo falla no cambia nada). Quien llama debe haber hecho antes un respaldo y pedido confirmación.
+   */
+  function reemplazarCon(
+    tipo: "vacia" | "ejemplo",
+    datos?: { nombre: string; nombreRaiz: string },
+  ): Promise<Resultado> {
+    if (tipo === "vacia" && (!datos?.nombre.trim() || !datos.nombreRaiz.trim()))
+      return Promise.resolve(rechazar(t("store.nombreVacio")));
+    // Tras vaciar, los tipos de unidad son los sembrados y sin uso.
+    const renombres = renombresSemilla(
+      TIPOS_SEMILLA.map((s) => ({ ...s, deleted_at: null })),
+      () => 0,
+    );
+    return escribir(
+      () => {
+        const nuevo =
+          tipo === "ejemplo"
+            ? sentenciasEjemplo(renombres)
+            : sentenciasRaiz(datos!.nombre, datos!.nombreRaiz, TIPO_GERENCIA, renombres).sentencias;
+        return [...vaciarOrganizacion(), ...nuevo];
+      },
+      () => {
+        // Nada de lo anterior existe ya: ni deshacer, ni la fecha vista, ni el estilo copiado.
+        ultimoBorrado.value = null;
+        fechaVista.value = null;
+        historico.value = null;
+        estiloCopiado.value = undefined;
+      },
+    );
   }
 
   return {
@@ -761,6 +804,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     deshacer,
     cargarEjemplo,
     crearOrganizacion,
+    reemplazarCon,
     crearValor,
     renombrarValor,
     moverValor,

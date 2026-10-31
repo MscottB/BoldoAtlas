@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
 import { infoApp, leerMeta, type InfoApp } from "@/db/cliente";
 import { AUTOR, LICENCIA, REPO } from "@/app/about";
 import { infoParaCopiar, versionVisible } from "@/app/version";
@@ -28,7 +29,10 @@ async function copiar() {
 
 <template>
   <section class="mx-auto max-w-2xl space-y-8 p-10">
-    <img :src="logo" alt="BoldoAtlas" class="h-16 w-auto" />
+    <div class="flex items-start justify-between gap-2">
+      <img :src="logo" alt="BoldoAtlas" class="h-16 w-auto" />
+      <BotonCerrarVista />
+    </div>
 
     <div>
       <p class="text-2xl font-semibold">{{ versionVisible() }}</p>

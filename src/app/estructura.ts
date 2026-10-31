@@ -15,3 +15,16 @@ export const barraColapsada = (ancho: number, manual: boolean | null): boolean =
 /** Si la carga inicial falló, los datos para la pantalla de error (misma forma que la de `infoApp` con error); si no, null. */
 export const infoSiFalloCarga = (r: Resultado): InfoApp | null =>
   r.ok ? null : { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: r.mensaje };
+
+/** Vistas que se cierran con su botón Cerrar, con Esc o con un segundo clic en su entrada del menú (nombres de ruta). */
+const VISTAS_CERRABLES = ["configuracion", "ayuda", "acerca"];
+export const esVistaCerrable = (nombre: unknown): boolean =>
+  typeof nombre === "string" && VISTAS_CERRABLES.includes(nombre);
+
+/** `anterior` es `history.state.back` de vue-router: la ruta anterior dentro de la app, o null si se abrió directo. */
+export const destinoAlCerrar = (anterior: unknown): "atras" | "/" =>
+  typeof anterior === "string" && anterior ? "atras" : "/";
+
+/** Título de la ventana: el programa y la organización abierta. */
+export const tituloVentana = (organizacion: string): string =>
+  organizacion.trim() ? `BoldoAtlas — ${organizacion.trim()}` : "BoldoAtlas";

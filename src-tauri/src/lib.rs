@@ -17,7 +17,9 @@ pub fn run() {
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
             comandos::restaurar_respaldo,
-            comandos::abrir_carpeta_respaldos
+            comandos::abrir_carpeta_respaldos,
+            comandos::info_proyecto,
+            comandos::abrir_carpeta_datos
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

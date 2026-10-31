@@ -2,6 +2,7 @@ import { toast } from "vue-sonner";
 import { listarRespaldos, respaldarAhora, type FalloRespaldo } from "@/db/cliente";
 import { i18n } from "@/i18n";
 import { leerPreferencia } from "@/lib/preferencias";
+import type { Resultado } from "@/stores/organizacion";
 import { FRECUENCIA_POR_DEFECTO, tocaRespaldar, ultimoRespaldo } from "./programa";
 
 export const PREFERENCIA = "respaldos";
@@ -23,4 +24,17 @@ export async function respaldoAutomatico(): Promise<void> {
   } catch (e) {
     toast(i18n.global.t("respaldos.automaticoFallo"), { description: mensajeFallo(e) });
   }
+}
+
+/** Hace un respaldo y solo si sale bien ejecuta `accion` (que reemplaza datos): sin respaldo no se reemplaza nada. */
+export async function conRespaldoPrevio(
+  respaldar: () => Promise<unknown>,
+  accion: () => Promise<Resultado>,
+): Promise<Resultado> {
+  try {
+    await respaldar();
+  } catch (e) {
+    return { ok: false, mensaje: mensajeFallo(e) };
+  }
+  return accion();
 }

@@ -1,6 +1,6 @@
 # Person records
 
-The record is the form for a person: their contact details, contract, site, shift, photo and notes. It opens from a unit's panel or from the Directory.
+The record is the form for a person: their contact details, contract, site, shift, photo and notes. It opens from the **Directory**, from **Review**, from the command palette (`Ctrl+K`, searching for the person) or from a position's dialog, by clicking the name of its holder. When you close it, focus returns to where you were; if that place no longer exists, to the **Search** button in the top bar.
 
 Job title and unit are not edited in the record: they belong to the **position** the person holds (as holder or as a replacement). A vacancy is a position without a holder.
 

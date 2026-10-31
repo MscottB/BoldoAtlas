@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Check, ImagePlus, ListChecks, X } from "@lucide/vue";
+import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +59,10 @@ const selector =
 
 <template>
   <section class="mx-auto flex max-w-3xl flex-col gap-8 p-6">
-    <h1 class="text-lg font-semibold">{{ t("nav.configuracion") }}</h1>
+    <header class="flex items-center justify-between gap-2">
+      <h1 class="text-lg font-semibold">{{ t("nav.configuracion") }}</h1>
+      <BotonCerrarVista />
+    </header>
 
     <section class="grid gap-4" aria-labelledby="cfg-organizacion">
       <h2 id="cfg-organizacion" class="font-medium">{{ t("config.organizacion.titulo") }}</h2>

@@ -4,6 +4,8 @@ import { useEventListener } from "@vueuse/core";
 import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { useLienzo } from "@/features/arbol/useLienzo";
+import { esVistaCerrable } from "@/app/estructura";
+import { useCerrarVista } from "@/app/useCerrarVista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { destinoNavegacion, resolverAtajo, type Navegacion } from "./atajos";
 
@@ -22,6 +24,7 @@ const LIENZO_O_PANEL = ".vue-flow, [data-panel-unidad]";
 export function useAtajos() {
   const route = useRoute();
   const org = useOrganizacion();
+  const cerrarVista = useCerrarVista();
   const { config } = useVista();
   const { seleccion, seleccionadas, nuevaHija, revelar, extender, duplicar, pedidoEliminar } = useLienzo();
 
@@ -62,6 +65,14 @@ export function useAtajos() {
     if (atajo === "paleta") {
       e.preventDefault();
       paletaAbierta.value = true;
+      return;
+    }
+    // Esc en Configuración, Ayuda o Acerca de las cierra (salvo que se esté escribiendo; los diálogos ya mandaron arriba).
+    if (atajo === "cerrar" && esVistaCerrable(route.name)) {
+      if (!destino?.closest(CAMPO)) {
+        cerrarVista();
+        e.preventDefault();
+      }
       return;
     }
     // Ctrl+0 (encuadrar) lo atiende la barra del lienzo. El resto solo vale sobre el árbol.

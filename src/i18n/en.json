@@ -273,6 +273,7 @@
   },
   "store": {
     "nombreVacio": "Enter a name.",
+    "hayDatos": "This database already has data: to replace it use “New empty organization” or “Explore the example” from the app menu.",
     "cicloRama": "A unit cannot be moved inside its own branch.",
     "unidadInexistente": "The unit no longer exists.",
     "raizConContenido": "The root unit cannot be deleted while it has content.",
@@ -486,7 +487,6 @@
       "directorio": "Go to the directory",
       "revision": "Go to Review",
       "tema": "Change theme",
-      "configuracion": "Settings",
       "ayuda": "Help"
     }
   },
@@ -515,7 +515,15 @@
     "raiz": "Root unit name",
     "raizEjemplo": "For example: General Management",
     "crear": "Create organization",
-    "cancelar": "Cancel"
+    "cancelar": "Cancel",
+    "hayDatos": "This database already has data (“{nombre}”). Choosing an empty organization or the example replaces the current data; an automatic backup is made first.",
+    "volver": "Back to my organization",
+    "reemplazarTitulo": {
+      "vacia": "Replace the current data with an empty organization?",
+      "ejemplo": "Replace the current data with the example?"
+    },
+    "reemplazarTexto": "The units, people, positions and other data of “{nombre}” will be deleted. An automatic backup is made first, and you can restore it from Settings › Backups.",
+    "reemplazar": "Back up and replace"
   },
   "config": {
     "organizacion": {
@@ -605,7 +613,7 @@
   },
   "respaldos": {
     "titulo": "Backups",
-    "ayuda": "Copies of your data in the backups folder on this computer. The 10 most recent automatic backups are kept.",
+    "ayuda": "Copies of your data in the backups folder on this computer. The 10 most recent backups are kept, automatic or manual.",
     "frecuencia": {
       "etiqueta": "Automatic backup on open",
       "nunca": "Never",
@@ -639,5 +647,30 @@
       "en_uso": "Another BoldoAtlas window is using the data. Close it and try again; nothing was changed.",
       "fallo": "The operation could not be completed: {detalle}"
     }
+  },
+  "vista": {
+    "cerrar": "Close"
+  },
+  "menu": {
+    "abrir": "App menu",
+    "inicio": "Home",
+    "vacia": "New empty organization…",
+    "ejemplo": "Explore the example…",
+    "boldo": "Open .boldo file",
+    "excel": "Import Excel",
+    "respaldos": "Backups",
+    "configuracion": "Settings",
+    "datos": "Project data"
+  },
+  "proyecto": {
+    "titulo": "Project data",
+    "principal": "Main",
+    "abrir": "Project data for “{nombre}”",
+    "archivo": "Database file",
+    "tamano": "Size",
+    "modificado": "Last modified",
+    "copiar": "Copy path",
+    "copiada": "Path copied.",
+    "abrirCarpeta": "Open folder"
   }
 }

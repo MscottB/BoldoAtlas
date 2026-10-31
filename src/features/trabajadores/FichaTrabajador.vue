@@ -32,6 +32,7 @@ import { asignacionesDePersona, formatearFecha, type FilaPersona } from "@/featu
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { base64De, leerComoUrl } from "@/features/configuracion/logo";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useRetornoFoco } from "@/lib/foco";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
 import {
@@ -235,7 +236,9 @@ async function eliminar() {
 }
 
 const titulo = computed(() => t(id.value ? "ficha.tituloPersona" : "ficha.nuevaPersona"));
+const retorno = useRetornoFoco();
 const alAbrir = (e: Event) => {
+  retorno.alAbrir();
   e.preventDefault();
   document.getElementById("ficha-nombre")?.focus();
 };
@@ -247,6 +250,7 @@ const alAbrir = (e: Event) => {
       class="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
       :show-close-button="false"
       @open-auto-focus="alAbrir"
+      @close-auto-focus="retorno.alCerrar"
     >
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>

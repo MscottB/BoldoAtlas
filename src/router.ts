@@ -10,6 +10,8 @@ declare module "vue-router" {
 
 export const router = createRouter({
   history: createWebHashHistory(),
+  // Solo para los enlaces con ancla (p. ej. Configuración › Respaldos); el resto conserva el comportamiento por defecto.
+  scrollBehavior: (to) => (to.hash ? { el: to.hash, behavior: "smooth" } : undefined),
   routes: [
     { path: "/", name: "arbol", component: VistaArbol },
     {

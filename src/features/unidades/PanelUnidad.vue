@@ -30,7 +30,8 @@ import { decisionEliminar, excluidasComoSuperior, filasDePuestos, migas, validar
 
 // Panel lateral de la unidad seleccionada: junto al lienzo (no lo tapa). Esc lo cierra y guarda lo que se estaba escribiendo.
 const props = defineProps<{ unidad: Unidad }>();
-const emit = defineEmits<{ cerrar: [] }>();
+// `foco`: tarjeta a la que vuelve el foco; sin él, la de la unidad seleccionada.
+const emit = defineEmits<{ cerrar: [foco?: string | null] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -158,10 +159,10 @@ function solicitarEliminar() {
 // Supr en el lienzo pide lo mismo que el botón: con contenido, primero se confirma.
 watch(pedidoEliminar, solicitarEliminar);
 async function eliminar() {
-  const { id, nombre } = props.unidad;
+  const { id, nombre, parent_id } = props.unidad;
   const r = await org.eliminarUnidad(id);
   if (!r.ok) return void toast.error(r.mensaje);
-  emit("cerrar");
+  emit("cerrar", parent_id); // la tarjeta de la unidad ya no existe: el foco va a su superior
   toast(t("unidad.eliminada", { nombre }), {
     duration: 8000,
     action: { label: t("unidad.deshacer"), onClick: async () => avisar(await org.deshacer()) },

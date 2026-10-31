@@ -30,6 +30,7 @@ import { rutaPorTipo } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useRetornoFoco } from "@/lib/foco";
 import EstiloPuesto from "./EstiloPuesto.vue";
 import FormAsignacion from "./FormAsignacion.vue";
 import { descripcionPorGuardar, formatearFecha, hayPuestoNuevoPendiente, historialPuesto } from "./puestos";
@@ -39,6 +40,7 @@ const { t, locale } = useI18n();
 const org = useOrganizacion();
 const ficha = useFicha();
 const ctl = usePuesto();
+const retorno = useRetornoFoco();
 
 // null = puesto nuevo, aún sin crear.
 const puesto = computed(() =>
@@ -170,7 +172,12 @@ async function verPersona(id: string) {
 
 <template>
   <Dialog :open="!!ctl.abierta.value" @update:open="(v) => !v && pedirCerrar()">
-    <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-2xl" :show-close-button="false">
+    <DialogContent
+      class="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+      :show-close-button="false"
+      @open-auto-focus="retorno.alAbrir"
+      @close-auto-focus="retorno.alCerrar"
+    >
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
         <DialogDescription>{{ ubicacion }}</DialogDescription>

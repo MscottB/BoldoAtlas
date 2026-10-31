@@ -2,18 +2,7 @@
 import { computed, ref, watch, type Component } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import {
-  CircleHelp,
-  ListChecks,
-  Network,
-  Palette,
-  Plus,
-  Search,
-  Settings,
-  User,
-  UserRoundX,
-  Users,
-} from "@lucide/vue";
+import { CircleHelp, ListChecks, Network, Palette, Plus, Search, User, UserRoundX, Users } from "@lucide/vue";
 import { ListboxFilter } from "reka-ui";
 import { CommandDialog, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { unidadesDeRama } from "@/features/arbol/layout";
@@ -21,6 +10,7 @@ import { useLienzo } from "@/features/arbol/useLienzo";
 import { buscarEnPaleta, indexarPaleta, type Accion, type Grupo } from "@/features/atajos/paleta";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
+import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useOrganizacion } from "@/stores/organizacion";
 
@@ -53,6 +43,7 @@ const indice = computed(() =>
 
 interface AccionPaleta extends Accion {
   icono: Component;
+  deshabilitada?: boolean;
   ejecutar: () => unknown;
 }
 const enArbol = computed(() => route.name === "arbol");
@@ -87,12 +78,14 @@ const acciones = computed<AccionPaleta[]>(() => [
     // `aplicar` deja la clase `dark` según el tema efectivo, también con «sistema».
     ejecutar: () => (tema.value = document.documentElement.classList.contains("dark") ? "claro" : "oscuro"),
   },
-  {
-    id: "configuracion",
-    etiqueta: t("paleta.acciones.configuracion"),
-    icono: Settings,
-    ejecutar: () => router.push("/configuracion"),
-  },
+  // Las mismas del menú de la app (Inicio, organización nueva o de ejemplo, Respaldos, Configuración…).
+  ...GRUPOS_MENU.flat().map((e) => ({
+    id: e.id,
+    etiqueta: e.fase ? `${t(`menu.${e.id}`)} (${t(e.fase)})` : t(`menu.${e.id}`),
+    icono: e.icono,
+    deshabilitada: !!e.fase,
+    ejecutar: () => irAEntrada(e, router),
+  })),
   {
     id: "ayuda",
     etiqueta: t("paleta.acciones.ayuda"),
@@ -203,6 +196,7 @@ function elegir(accion: () => unknown) {
           v-for="a in r.acciones.items"
           :key="a.id"
           :value="`accion:${a.id}`"
+          :disabled="a.deshabilitada"
           @select="elegir(a.ejecutar)"
         >
           <component :is="a.icono" aria-hidden="true" />

@@ -23,6 +23,7 @@ import {
   restaurarRespaldo,
   type Respaldo,
 } from "@/db/cliente";
+import { tamano } from "@/lib/formato";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { FRECUENCIA_POR_DEFECTO, FRECUENCIAS } from "./programa";
 import { mensajeFallo, PREFERENCIA } from "./respaldos";
@@ -81,14 +82,6 @@ const fecha = (r: Respaldo) =>
   new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(
     new Date(r.fecha),
   );
-const tamano = (bytes: number) => {
-  const mb = bytes >= 1024 * 1024;
-  return new Intl.NumberFormat(locale.value, {
-    style: "unit",
-    unit: mb ? "megabyte" : "kilobyte",
-    maximumFractionDigits: 1,
-  }).format(bytes / (mb ? 1024 * 1024 : 1024));
-};
 
 const selector =
   "h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring";
@@ -136,7 +129,7 @@ const selector =
               {{ fecha(r) }}
               <Badge v-if="r.seguridad" variant="outline" class="ml-2">{{ t("respaldos.seguridad") }}</Badge>
             </td>
-            <td class="px-2 text-right tabular-nums">{{ tamano(r.bytes) }}</td>
+            <td class="px-2 text-right tabular-nums">{{ tamano(r.bytes, locale) }}</td>
             <td class="px-2 text-right tabular-nums">
               <span v-if="r.legible">{{ r.revision }}</span>
               <Badge v-else variant="destructive">{{ t("respaldos.ilegible") }}</Badge>

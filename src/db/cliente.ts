@@ -67,3 +67,21 @@ export function restaurarRespaldo(nombre: string): Promise<void> {
 export function abrirCarpetaRespaldos(): Promise<void> {
   return invoke("abrir_carpeta_respaldos");
 }
+
+// Datos del proyecto abierto: Rust conoce la ruta; la interfaz solo la muestra.
+export interface InfoProyecto {
+  portable: boolean;
+  dirDatos: string;
+  rutaBd: string;
+  bytes: number;
+  /** Milisegundos desde 1970; null si el sistema no lo informa. */
+  modificado: number | null;
+}
+
+export function infoProyecto(): Promise<InfoProyecto> {
+  return invoke<InfoProyecto>("info_proyecto");
+}
+
+export function abrirCarpetaDatos(): Promise<void> {
+  return invoke("abrir_carpeta_datos");
+}

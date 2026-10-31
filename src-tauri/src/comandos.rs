@@ -1,6 +1,6 @@
 use crate::db::{self, Sentencia};
 use crate::respaldos::{self, Fallo, Respaldo};
-use crate::rutas::{self, Rutas};
+use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -181,6 +181,20 @@ pub async fn restaurar_respaldo(app: AppHandle, nombre: String) -> Result<(), Fa
 pub fn abrir_carpeta_respaldos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
     app.opener()
         .open_path(estado.rutas()?.respaldos.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string().into())
+}
+
+/// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust.
+#[tauri::command]
+pub fn info_proyecto(estado: State<Estado>) -> Result<InfoProyecto, Fallo> {
+    Ok(rutas::info_proyecto(estado.rutas()?)?)
+}
+
+/// Abre la carpeta de datos conocida por Rust; la interfaz nunca envía una ruta.
+#[tauri::command]
+pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
+    app.opener()
+        .open_path(estado.rutas()?.datos.to_string_lossy(), None::<&str>)
         .map_err(|e| e.to_string().into())
 }
 

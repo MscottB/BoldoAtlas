@@ -12,9 +12,12 @@ import {
   Info,
   ListChecks,
   Network,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Users,
 } from "@lucide/vue";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BarraSuperior from "@/components/BarraSuperior.vue";
@@ -22,8 +25,12 @@ import PaletaComandos from "@/components/PaletaComandos.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
+import DatosProyecto from "@/features/proyecto/DatosProyecto.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
+import { useOrganizacion } from "@/stores/organizacion";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
+import { useCerrarVista } from "@/app/useCerrarVista";
+import { ponerTitulo } from "@/app/ventana";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: se muestra deshabilitada con el aviso de la fase en que llega.
@@ -34,6 +41,8 @@ interface Entrada {
   icono: Component;
   aviso?: string;
   contador?: () => number;
+  /** Nombre de la ruta que esta entrada abre y que se cierra con un segundo clic (Configuración, Ayuda, Acerca de). */
+  cierra?: string;
 }
 const avisos = useAvisos();
 useAtajos();
@@ -48,9 +57,9 @@ const secciones: Entrada[] = [
 ];
 // Abajo, separadas de las secciones del programa.
 const utilidades: Entrada[] = [
-  { to: "/configuracion", etiqueta: "nav.configuracion", icono: Settings },
-  { to: "/ayuda", etiqueta: "nav.ayuda", icono: CircleHelp },
-  { to: "/acerca", etiqueta: "nav.acerca", icono: Info },
+  { to: "/configuracion", etiqueta: "nav.configuracion", icono: Settings, cierra: "configuracion" },
+  { to: "/ayuda", etiqueta: "nav.ayuda", icono: CircleHelp, cierra: "ayuda" },
+  { to: "/acerca", etiqueta: "nav.acerca", icono: Info, cierra: "acerca" },
 ];
 
 const { t } = useI18n();
@@ -60,6 +69,15 @@ const nombre = (item: Entrada) => {
   return n ? `${t(item.etiqueta)}, ${t("revision.avisos", n)}` : t(item.etiqueta);
 };
 const route = useRoute();
+const org = useOrganizacion();
+watch(() => org.org.nombre, ponerTitulo, { immediate: true });
+const cerrarVista = useCerrarVista();
+// Un segundo clic en la entrada de la vista que ya se está viendo la cierra (en captura: antes de que el enlace navegue).
+function alPulsar(e: MouseEvent, item: Entrada) {
+  if (!item.cierra || route.name !== item.cierra) return;
+  e.preventDefault();
+  cerrarVista();
+}
 const { width } = useWindowSize();
 const manual = ref<boolean | null>(null);
 const colapsada = computed(() => barraColapsada(width.value, manual.value));
@@ -96,6 +114,7 @@ watch(
                 :aria-label="colapsada ? nombre(item) : undefined"
                 class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
                 active-class="bg-sidebar-accent font-medium"
+                @click.capture="alPulsar($event, item)"
               >
                 <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
                 <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
@@ -123,6 +142,17 @@ watch(
             <TooltipContent side="right">{{ t(item.aviso ?? item.etiqueta) }}</TooltipContent>
           </Tooltip>
         </template>
+        <Button
+          variant="ghost"
+          class="justify-start px-2 font-normal"
+          :aria-label="colapsada ? t('barra.mostrarBarra') : undefined"
+          :title="colapsada ? t('barra.mostrarBarra') : undefined"
+          :aria-expanded="!colapsada"
+          @click="manual = !colapsada"
+        >
+          <component :is="colapsada ? PanelLeftOpen : PanelLeftClose" aria-hidden="true" />
+          <span v-if="!colapsada">{{ t("barra.ocultarBarra") }}</span>
+        </Button>
       </nav>
       <div class="flex min-w-0 flex-1 flex-col">
         <BarraSuperior
@@ -138,6 +168,7 @@ watch(
     <PaletaComandos v-if="!route.meta.sinMarco" v-model:open="paletaAbierta" />
     <FichaTrabajador />
     <DialogoPuesto />
+    <DatosProyecto v-if="!route.meta.sinMarco" />
     <Toaster />
   </TooltipProvider>
 </template>

@@ -364,11 +364,17 @@ function alTerminarRecuadro() {
 const unidadSeleccionada = computed(() =>
   seleccion.value && seleccionadas.value.size === 1 ? (org.enFecha.porId.get(seleccion.value) ?? null) : null,
 );
-async function cerrarPanel() {
-  const id = seleccion.value;
+// `destino`: tarjeta que recibe el foco (al eliminar, la del superior; null = una raíz, sirve la primera); sin él, la seleccionada.
+async function cerrarPanel(destino?: string | null) {
+  const id = destino === undefined ? seleccion.value : destino;
   seleccion.value = null;
   await nextTick();
-  if (id) document.querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"] button`)?.focus();
+  const tarjeta = id
+    ? document.querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"] button`)
+    : destino === null
+      ? document.querySelector<HTMLElement>(".vue-flow__node button")
+      : null;
+  tarjeta?.focus();
 }
 // Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta).
 function escEnLienzo(e: KeyboardEvent) {
