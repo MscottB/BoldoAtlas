@@ -73,7 +73,9 @@ function hallazgos(ruta: string): string[] {
 
 describe("textos fijos en plantillas", () => {
   it("ninguna plantilla .vue tiene texto visible fuera de i18n", () => {
-    const todos = archivos(RAIZ).flatMap(hallazgos);
+    const vue = archivos(RAIZ);
+    expect(vue.length).toBeGreaterThan(50); // si la ruta falla, el test no debe pasar vacío
+    const todos = vue.flatMap(hallazgos);
     expect(todos).toEqual([]);
   });
 });
