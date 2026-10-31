@@ -7,7 +7,7 @@ En **Configuración** (abajo en el menú) ajustas:
 - **Nombre de la organización:** se guarda al salir del campo o con `Enter`.
 - **Logo:** PNG, JPG o WebP de hasta 1 MB. Se guarda como PNG (y se reduce si es muy grande) junto con tus datos. **Quitar logo** lo borra.
 - **Tema, color de acento y tamaño de la interfaz:** valen solo para este computador.
-- **Idioma:** Español o English. Cambia al instante todos los textos de la app; los nombres que escribiste no se traducen.
+- **Idioma:** Español o English. Cambia al instante todos los textos de la app (también desde la pantalla de bienvenida y el menú de la app); los nombres que escribiste no se traducen.
 
 ## Mantenedores
 

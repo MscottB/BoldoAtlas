@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { TriangleAlert } from "@lucide/vue";
 import type { InfoApp } from "@/db/cliente";
+import { traducirError } from "@/db/errores";
 
 const props = defineProps<{ info: InfoApp }>();
 const { t } = useI18n();
 const copiado = ref(false);
+// Los mensajes de arranque nacen en Rust (en español): se muestran en el idioma activo; lo que se copia es el original.
+const mensaje = computed(() => (props.info.error ? traducirError(props.info.error) : ""));
 
 async function copiar() {
   await navigator.clipboard.writeText(
@@ -23,7 +26,7 @@ async function copiar() {
         <TriangleAlert class="size-7 text-destructive" aria-hidden="true" />
         <h1 class="text-xl font-semibold">{{ t("pantallaError.titulo") }}</h1>
       </div>
-      <p class="text-sm leading-relaxed">{{ info.error }}</p>
+      <p class="text-sm leading-relaxed">{{ mensaje }}</p>
       <p v-if="info.dirDatos" class="text-sm text-muted-foreground">
         {{ t("pantallaError.carpetaDatos") }}: <code class="select-all">{{ info.dirDatos }}</code>
       </p>

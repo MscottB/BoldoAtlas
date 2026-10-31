@@ -24,6 +24,7 @@ El botón con el logo, a la izquierda de la barra superior, abre el **menú de l
 - **Nueva organización vacía…** y **Explorar el ejemplo…** reemplazan los datos actuales. Antes piden confirmación y hacen un **respaldo automático** (si el respaldo falla, no se reemplaza nada); el respaldo queda en la lista de **Configuración › Respaldos** para restaurarlo.
 - **Abrir archivo .boldo** (Fase 5) e **Importar Excel** (Fase 4) aparecen deshabilitados por ahora.
 - **Respaldos** y **Configuración** abren esas secciones; **Datos del proyecto** muestra dónde están tus datos.
+- **Idioma** cambia al instante toda la app entre Español y English. La pantalla de bienvenida tiene el mismo selector **ES / EN**; tu elección se recuerda en este equipo y, la primera vez, la app sigue el idioma del sistema.
 
 Las mismas acciones están en la paleta de comandos (`Ctrl+K`). **Configuración**, **Ayuda** y **Acerca de** se cierran con su botón **Cerrar**, con `Esc` o con un segundo clic en su entrada del menú lateral, y vuelves a la vista anterior (o al árbol si no hay ninguna). La barra lateral se pliega y se vuelve a fijar abierta con el botón bajo el logo **BoldoAtlas**. Plegada, se despliega sobre el contenido al dejar el mouse encima un momento (o al llegar a ella con `Tab`) y se vuelve a plegar al salir o con `Esc`; esto se apaga en **Configuración › Apariencia › Abrir la barra lateral al pasar el mouse**. Con la ventana angosta (menos de 1100 px) la barra se pliega sola. El panel de una unidad se cierra con la **×** de su encabezado.
 

@@ -1,15 +1,15 @@
 # Person records
 
-The record is the form for a person: their contact details, contract, site, shift, photo and notes. It opens from the **Directory**, from **Review**, from the command palette (`Ctrl+K`, searching for the person) or from a position's dialog, by clicking the name of its holder. When you close it, focus returns to where you were; if that place no longer exists, to the **Search** button in the top bar.
+The record is the form for a person: their contact details, contract, site, schedule, photo and notes. It opens from the **Directory**, from **Review**, from the command palette (`Ctrl+K`, searching for the person) or from a position's dialog, by clicking the name of its holder. When you close it, focus returns to where you were; if that place no longer exists, to the **Search** button in the top bar.
 
 Job title and unit are not edited in the record: they belong to the **position** the person holds (as holder or as a replacement). A vacancy is a position without a holder.
 
 ## Value lists
 
-**Contract type**, **Site** and **Shift** are chosen from lists, so data stays tidy and free of duplicates.
+**Contract type**, **Site** and **Schedule** are chosen from lists, so data stays tidy and free of duplicates.
 
 - Type in the search box to filter the list.
-- If the value does not exist, **Add «text» to the list** appears: it creates the value and selects it.
+- If the value does not exist, **Add “text” to the list** appears: it creates the value and selects it.
 - If one already exists that is the same (ignoring case and accents), adding is not offered: pick the one shown in the list.
 - If a value was deactivated in the list but the record still uses it, it keeps showing with the **(inactive)** mark. **No value** leaves the field empty.
 

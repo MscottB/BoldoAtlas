@@ -328,7 +328,13 @@
     "relacionInexistente": "La unidad o persona relacionada ya no existe.",
     "ramaYaGuardada": "Esa rama ya está guardada en Árboles.",
     "vistaDuplicada": "Ya hay una vista con ese nombre en este árbol.",
-    "colorInvalido": "El color debe tener el formato #rrggbb (por ejemplo, #be123c)."
+    "colorInvalido": "El color debe tener el formato #rrggbb (por ejemplo, #be123c).",
+    "desdeZip": "BoldoAtlas se está ejecutando desde dentro de un .zip ({ruta}). Ciérralo, extráelo primero a una carpeta y ábrelo desde ahí; si no, los datos quedarían en una carpeta temporal y se perderían.",
+    "esquemaNuevo": "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla.",
+    "sinPermiso": "No se puede escribir en {ruta}. Mueve BoldoAtlas a una carpeta con permiso de escritura (por ejemplo, Documentos) o revisa los permisos de esa carpeta. Detalle: {detalle}",
+    "sinAppdata": "No se encontró la carpeta APPDATA de Windows.",
+    "sinCarpeta": "No se encontró la carpeta de datos de BoldoAtlas.",
+    "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas."
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
@@ -754,6 +760,11 @@
   },
   "vista": {
     "cerrar": "Cerrar"
+  },
+  "comun": {
+    "cerrar": "Cerrar",
+    "avisos": "Avisos",
+    "suprimir": "Supr"
   },
   "menu": {
     "abrir": "Menú de la app",

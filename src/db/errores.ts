@@ -23,8 +23,24 @@ const reglas: [(texto: string) => boolean, string][] = [
   [(t) => t.includes("FOREIGN KEY constraint failed"), "errores.relacionInexistente"],
 ];
 
+// Mensajes de arranque de la parte nativa (Rust, escritos en español): se reconocen por su texto y se vuelven a
+// decir en el idioma activo con sus datos (ruta, versiones). El detalle del sistema operativo se deja como llega.
+const nativos: [RegExp, string][] = [
+  [/dentro de un \.zip \((?<ruta>.+?)\)\./s, "errores.desdeZip"],
+  [/esquema (?<actual>\d+); esta app conoce hasta el (?<conocida>\d+)/, "errores.esquemaNuevo"],
+  [/^No se puede escribir en (?<ruta>.+?)\. Mueve .*Detalle: (?<detalle>.*)$/s, "errores.sinPermiso"],
+  [/^No se encontró la carpeta APPDATA/, "errores.sinAppdata"],
+  [/^No se pudo ubicar la carpeta del programa|^No se ubicó la carpeta de datos/, "errores.sinCarpeta"],
+  [/^La base de datos no está abierta|estado inválido/, "errores.baseNoDisponible"],
+];
+
 export function traducirError(e: unknown): string {
   const texto = typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
   const clave = reglas.find(([coincide]) => coincide(texto))?.[1];
-  return clave ? i18n.global.t(clave) : texto;
+  if (clave) return i18n.global.t(clave);
+  for (const [re, k] of nativos) {
+    const m = re.exec(texto);
+    if (m) return i18n.global.t(k, { ...m.groups });
+  }
+  return texto;
 }
