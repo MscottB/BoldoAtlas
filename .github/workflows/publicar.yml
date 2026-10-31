@@ -1,13 +1,15 @@
 name: publicar
 
 # Cada PR fusionado a main es una versión: calcula la siguiente (scripts/publicacion.mjs), y release.yml
-# crea la etiqueta anotada, compila y publica la prerelease con las notas del PR.
-# Un push a main que no viene de un PR, o que solo toca documentación, no publica nada.
-# workflow_dispatch es un ensayo: muestra versión y notas sin etiquetar ni publicar.
+# crea la etiqueta anotada, compila y publica la prerelease con las notas de todos los PR fusionados
+# desde la última etiqueta (así no se pierden las de un run cancelado o fallido).
+# Un push a main que no viene de un PR, o que solo toca documentación o CI (.github/**), no publica
+# nada; esos cambios salen en el siguiente release. workflow_dispatch es un ensayo: muestra versión y
+# notas sin etiquetar ni publicar.
 on:
   push:
     branches: [main]
-    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/**"]
   workflow_dispatch:
     inputs:
       pr:
@@ -18,9 +20,10 @@ on:
 permissions:
   contents: read
 
-# un release a la vez, en orden: el siguiente calcula su versión con la etiqueta del anterior ya creada
+# un release a la vez, en orden: el siguiente calcula su versión con la etiqueta del anterior ya creada.
+# Los ensayos van en otro grupo para no cancelar nunca un release pendiente.
 concurrency:
-  group: publicar
+  group: publicar-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -41,20 +44,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: PR fusionado en este commit
+      # PR del asunto del merge (o de la API) más los fusionados desde la última etiqueta. Falla si un
+      # asunto dice que es un PR y no se puede leer; no publica si el commit ya tiene etiqueta.
+      - id: v
         env:
           GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
           PR: ${{ inputs.pr }}
-        run: |
-          if [ -n "$PR" ]; then
-            gh api "repos/$REPO/pulls/$PR" > pr.json
-          else
-            gh api "repos/$REPO/commits/$GITHUB_SHA/pulls" \
-              --jq "[.[] | select(.merge_commit_sha == \"$GITHUB_SHA\")][0] // empty" > pr.json
-          fi
-      - id: v
-        run: node scripts/publicacion.mjs pr.json
+        run: node scripts/publicacion.mjs --publicar ${PR:+"$PR"}
       - name: Resumen
         env:
           PUBLICAR: ${{ steps.v.outputs.publicar }}
@@ -65,10 +61,10 @@ jobs:
         run: |
           {
             if [ "$PUBLICAR" != "true" ]; then
-              echo "Este commit no viene de un PR fusionado: no se publica nada."
+              echo "Este commit no viene de un PR fusionado, o ya está publicado: no se publica nada."
             else
               [ "$ENSAYO" = "true" ] && echo "**Ensayo:** no se etiqueta ni se publica."
-              echo "Se publica **$ETIQUETA** (PR #$PR)."
+              echo "Se publica **$ETIQUETA** con los PR $PR."
               echo
               echo "### Notas de la versión"
               echo

@@ -55,7 +55,8 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
-            --jq '.[] | select(.body | startswith("<!-- boldoatlas:version-pr -->")) | .id' | head -n 1)
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- boldoatlas:version-pr -->"))) | .id' \
+            | head -n 1)
           if [ -n "$id" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@comentario.md > /dev/null
           else

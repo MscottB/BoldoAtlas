@@ -81,7 +81,7 @@ npm run release        # full Windows release in release/<version>/
 
 ### Versions and releases
 
-Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the PR's **Notas de la versión** section (or its title). The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
+Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the **Notas de la versión** section of every PR merged since the previous release (or its title). Docs-only or CI-only merges don't publish; they ship with the next release. The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
 
 ## Roadmap
 

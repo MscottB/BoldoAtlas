@@ -81,7 +81,7 @@ npm run release        # release completo de Windows en release/<versión>/
 
 ### Versiones y releases
 
-Cada PR fusionado a `main` es una versión. Mientras dure la alpha, al fusionar se crea la etiqueta siguiente (`v0.1.0-alpha.N+1`) y se publica la prerelease con la sección **Notas de la versión** del PR (si falta, el título). Los labels `version:parche`, `version:menor` y `version:mayor` publican en cambio una versión X.Y.Z normal. Cada PR dice en un comentario con qué versión saldrá, y su portable de prueba (artefacto de `build-prueba`) lleva esa versión con el número del PR, p. ej. `0.1.0-alpha.3+pr4`. También se puede publicar a mano empujando una etiqueta: `git tag v1.2.0 && git push origin v1.2.0`.
+Cada PR fusionado a `main` es una versión. Mientras dure la alpha, al fusionar se crea la etiqueta siguiente (`v0.1.0-alpha.N+1`) y se publica la prerelease con la sección **Notas de la versión** de cada PR fusionado desde el release anterior (si falta, su título). Los cambios que solo tocan documentación o CI no publican: salen en el siguiente release. Los labels `version:parche`, `version:menor` y `version:mayor` publican en cambio una versión X.Y.Z normal. Cada PR dice en un comentario con qué versión saldrá, y su portable de prueba (artefacto de `build-prueba`) lleva esa versión con el número del PR, p. ej. `0.1.0-alpha.3+pr4`. También se puede publicar a mano empujando una etiqueta: `git tag v1.2.0 && git push origin v1.2.0`.
 
 ## Hoja de ruta
 
