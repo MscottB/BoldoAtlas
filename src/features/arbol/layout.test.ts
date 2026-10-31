@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { Conexion } from "../../db/tipos";
-import { p, puestos, u, unidades } from "./fixture";
+import { p, puestos, tipos, u, unidades } from "./fixture";
 import {
   calcularLayout,
   colapsadosIniciales,
   contraerRama,
   expandirRama,
+  filasPorTipo,
   subgrafoVisible,
   unidadesDeRama,
   type Subgrafo,
 } from "./layout";
-import { TIPO_GERENCIA, TIPO_OTRA } from "@/db/tipos";
+import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, type ValorCatalogo } from "@/db/tipos";
 import { VISTA_POR_DEFECTO, separaciones, tamPuesto, tamUnidad, type ConfigVista } from "./vista";
 
 const lateral: Conexion = { id: "c1", origen_id: "mecanica", destino_id: "finanzas", etiqueta: null };
@@ -124,10 +125,10 @@ describe("layout del árbol", () => {
 });
 
 // Dibuja el subgrafo y mide cada tarjeta: `centro` en el eje de los hermanos y `nivel` (borde inicial) en el de los niveles.
-async function dibujar(g: Subgrafo, c: ConfigVista = VISTA_POR_DEFECTO) {
+async function dibujar(g: Subgrafo, c: ConfigVista = VISTA_POR_DEFECTO, catalogo: ValorCatalogo[] = []) {
   const tam = tamUnidad(c, false);
   const tp = tamPuesto(c);
-  const pos = await calcularLayout(g, tam, tp, c);
+  const pos = await calcularLayout(g, tam, tp, c, catalogo);
   const h = c.direccion === "horizontal";
   const medida = (id: string) => (g.puestos.some((x) => x.id === id) ? tp : tam);
   const centro = (id: string) => {
@@ -186,21 +187,62 @@ describe("layout ordenado", () => {
     const con = await calcularLayout(subgrafoVisible(unidades, [lateral], abierto));
     expect(con).toEqual(sin);
   });
+});
 
-  it("orden estricto por niveles: toda tarjeta de un nivel empieza en la misma línea, también los puestos", async () => {
-    const g = subgrafoVisible(unidades, [], new Set(), puestos);
-    // p2 es puesto de Finanzas: mismo nivel que Mantención, pero más corto; sin la opción queda centrado en la fila.
-    const libre = await dibujar(g);
-    expect(libre.nivel("p2") + libre.largo("p2") / 2).toBeCloseTo(
-      libre.nivel("mantencion") + libre.largo("mantencion") / 2,
-      0,
-    );
-    for (const direccion of ["vertical", "horizontal"] as const) {
-      const { nivel } = await dibujar(g, { ...VISTA_POR_DEFECTO, direccion, nivelesEstrictos: true });
-      expect(nivel("p2")).toBe(nivel("mantencion"));
-      expect(nivel("p1")).toBe(nivel("operaciones"));
-      expect(nivel("p4")).toBe(nivel("p7"));
-    }
+// Como el ejemplo: Superintendencia (orden 15, aquí desactivada: conserva su fila) entre Gerencia y Área.
+const conSuper: ValorCatalogo[] = [
+  ...tipos,
+  { id: "sup", nombre: "Superintendencia", orden: 15, deleted_at: "2026-01-01T00:00:00.000Z" },
+];
+// GG › Operaciones › {Mantención (Sup) › Mecánica, Producción}; GG › Finanzas › Contabilidad › Invertida (una Gerencia bajo un Área).
+const porTipo = [
+  u("gg", TIPO_GERENCIA, "Gerencia General", null),
+  u("op", TIPO_GERENCIA, "Operaciones", "gg", 0),
+  u("ma", "sup", "Mantención", "op", 0),
+  u("me", TIPO_AREA, "Mecánica", "ma"),
+  u("pr", TIPO_AREA, "Producción", "op", 1),
+  u("fi", TIPO_GERENCIA, "Finanzas", "gg", 1),
+  u("co", TIPO_AREA, "Contabilidad", "fi"),
+  u("inv", TIPO_GERENCIA, "Invertida", "co"),
+];
+
+describe("alinear por tipo de unidad", () => {
+  it("filasPorTipo: una fila por tipo en el orden del catálogo; anidar el mismo tipo o invertirlo empuja bajo el superior", () => {
+    const g = subgrafoVisible(porTipo, [], new Set());
+    expect(Object.fromEntries(filasPorTipo(g.nodos, conSuper))).toEqual({
+      gg: 0,
+      op: 1, // Gerencia bajo Gerencia: una fila más abajo
+      fi: 1,
+      ma: 2, // la fila de Superintendencia empieza después de las Gerencias
+      me: 3, // todas las Áreas en una fila, a distintas profundidades
+      pr: 3,
+      co: 3,
+      inv: 4, // una Gerencia bajo un Área queda bajo su superior y no corre las filas de los tipos
+    });
+  });
+
+  for (const direccion of ["vertical", "horizontal"] as const)
+    it(`con elk (${direccion}): las Áreas comparten fila, Mantención y Producción no; superior centrado`, async () => {
+      const g = subgrafoVisible(porTipo, [], new Set(), [p("pp", "pr")]);
+      const c = { ...VISTA_POR_DEFECTO, direccion, alinearPorTipo: true };
+      const { nivel, centro, largo } = await dibujar(g, c, conSuper);
+      expect(nivel("op")).toBe(nivel("fi"));
+      expect(nivel("ma")).toBeGreaterThan(nivel("op"));
+      expect(nivel("pr")).toBeGreaterThan(nivel("ma"));
+      expect(nivel("me")).toBe(nivel("pr"));
+      expect(nivel("co")).toBe(nivel("pr"));
+      expect(nivel("inv")).toBeGreaterThan(nivel("co"));
+      // el puesto cuelga en la fila siguiente a la de su unidad (la de «inv»), centrado en ella como todo puesto
+      expect(nivel("pp") + largo("pp") / 2).toBeCloseTo(nivel("inv") + largo("inv") / 2, 0);
+      // hermanos en su orden y el superior centrado aunque un hijo baje más filas
+      expect(centro("ma")).toBeLessThan(centro("pr"));
+      expect(Math.abs(centro("op") - (centro("ma") + centro("pr")) / 2)).toBeLessThanOrEqual(1);
+    });
+
+  it("sin la opción manda la profundidad: Mantención y Producción en la misma fila", async () => {
+    const { nivel } = await dibujar(subgrafoVisible(porTipo, [], new Set()), VISTA_POR_DEFECTO, conSuper);
+    expect(nivel("ma")).toBe(nivel("pr"));
+    expect(nivel("me")).toBeGreaterThan(nivel("pr"));
   });
 });
 

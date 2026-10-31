@@ -130,7 +130,7 @@
         "mostrarVacantes": "Vacantes",
         "mostrarEtiquetas": "Etiquetas"
       },
-      "nivelesEstrictos": "Orden estricto por niveles"
+      "alinearPorTipo": "Alinear por tipo de unidad"
     },
     "resaltar": {
       "titulo": "Resaltar por…",

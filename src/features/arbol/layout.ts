@@ -1,6 +1,6 @@
 import ELK from "elkjs/lib/elk.bundled.js";
-import type { Conexion, Puesto, Unidad } from "../../db/tipos";
-import { descendientes, indiceHijos } from "./jerarquia";
+import type { Conexion, Puesto, Unidad, ValorCatalogo } from "../../db/tipos";
+import { descendientes, indiceHijos, porOrden } from "./jerarquia";
 import {
   VISTA_POR_DEFECTO,
   opcionesElk,
@@ -96,17 +96,54 @@ export function subgrafoVisible(
   return { nodos, puestos: delGrafo, jerarquicas, laterales };
 }
 
+/**
+ * Fila de cada unidad al alinear por tipo (0 = la primera). Cada tipo tiene su fila, en el orden del catálogo (también
+ * los desactivados, que conservan su lugar). Una unidad cuyo tipo la dejaría en la fila de su superior o más arriba baja
+ * a la fila siguiente a la de él, para que las líneas siempre bajen. Si eso pasa con un tipo igual o anterior al de su
+ * superior (una Gerencia dentro de una Gerencia), los tipos que siguen empiezan más abajo; si su superior es de un tipo
+ * posterior (una Gerencia bajo un Área), solo baja esa rama. `nodos` en orden de recorrido (superior antes que hijos),
+ * como los entrega subgrafoVisible.
+ */
+export function filasPorTipo(nodos: Unidad[], tipos: ValorCatalogo[]): Map<string, number> {
+  const rango = new Map([...tipos].sort(porOrden).map((t, i) => [t.id, i]));
+  const rangoDe = (u: Unidad) => rango.get(u.tipo_id) ?? 0;
+  const porId = new Map(nodos.map((u) => [u.id, u]));
+  // Primero, el inicio de cada tipo: tras las filas que ocupan los tipos anteriores, sin contar las ramas invertidas.
+  const inicio: number[] = [];
+  const propia = new Map<string, number>();
+  let ultima = -1;
+  for (let k = 0; k < rango.size; k++) {
+    inicio[k] = Math.max((inicio[k - 1] ?? -1) + 1, ultima + 1);
+    for (const u of nodos) {
+      if (rangoDe(u) !== k) continue;
+      const padre = porId.get(u.parent_id ?? "");
+      const fila =
+        padre && rangoDe(padre) <= k ? Math.max(inicio[k]!, (propia.get(padre.id) ?? 0) + 1) : inicio[k]!;
+      propia.set(u.id, fila);
+      ultima = Math.max(ultima, fila);
+    }
+  }
+  const filas = new Map<string, number>();
+  for (const u of nodos) {
+    const padre = filas.get(u.parent_id ?? "");
+    filas.set(u.id, Math.max(inicio[rangoDe(u)] ?? 0, padre === undefined ? 0 : padre + 1));
+  }
+  return filas;
+}
+
 const elk = new ELK();
 // Superior invisible de todas las raíces: mrtree pide un solo árbol, y así las raíces quedan lado a lado en una fila.
 const RAIZ_VIRTUAL = "raiz-virtual"; // los ids de las unidades son UUID: no choca
 
 // Devuelve la esquina superior izquierda de cada nodo. Solo las aristas jerárquicas entran: las laterales no deforman
-// el árbol. Los tamaños deben ser los de las tarjetas dibujadas (tamUnidad/tamPuesto).
+// el árbol. Los tamaños deben ser los de las tarjetas dibujadas (tamUnidad/tamPuesto); `tipos`, el catálogo completo
+// (solo se usa al alinear por tipo).
 export async function calcularLayout(
   subgrafo: Subgrafo,
   tam = tamUnidad(VISTA_POR_DEFECTO, false),
   tamDelPuesto = tamPuesto(VISTA_POR_DEFECTO),
-  vista: Pick<ConfigVista, "direccion" | "densidad" | "nivelesEstrictos"> = VISTA_POR_DEFECTO,
+  vista: Pick<ConfigVista, "direccion" | "densidad" | "alinearPorTipo"> = VISTA_POR_DEFECTO,
+  tipos: ValorCatalogo[] = [],
 ): Promise<Map<string, { x: number; y: number }>> {
   const horizontal = vista.direccion === "horizontal";
   const sep = separaciones(vista);
@@ -118,12 +155,26 @@ export async function calcularLayout(
   const raices = subgrafo.nodos
     .filter((n) => !hijos.has(n.id))
     .map((n): [string, string] => [RAIZ_VIRTUAL, n.id]);
-  const aristas = [...raices, ...subgrafo.jerarquicas];
-  // mrtree ordena a los hermanos según el orden de los nodos: el de las aristas, que ya viene por `orden`.
   const medida = new Map([
     ...subgrafo.nodos.map((n) => [n.id, caja(tam)] as const),
     ...subgrafo.puestos.map((p) => [p.id, caja(tamDelPuesto)] as const),
   ]);
+  // mrtree pone cada profundidad en una fila. Al alinear por tipo, una unidad que debe bajar más de una fila cuelga de
+  // huecos invisibles del tamaño de una tarjeta: así su superior sigue centrado y las filas siguen alineadas. mrtree ordena
+  // a los hermanos según el orden de los nodos: el de las aristas, que ya viene por `orden`.
+  const filas = vista.alinearPorTipo ? filasPorTipo(subgrafo.nodos, tipos) : null;
+  const aristas: [string, string][] = [];
+  for (const [a, b] of [...raices, ...subgrafo.jerarquicas]) {
+    const salto = filas?.has(b) ? (filas.get(b) ?? 0) - (a === RAIZ_VIRTUAL ? -1 : (filas.get(a) ?? 0)) : 1;
+    let desde = a;
+    for (let i = 1; i < salto; i++) {
+      const hueco = `${b}:hueco${i}`;
+      medida.set(hueco, caja(tam));
+      aristas.push([desde, hueco]);
+      desde = hueco;
+    }
+    aristas.push([desde, b]);
+  }
   const resultado = await elk.layout({
     id: "lienzo",
     layoutOptions: opcionesElk(vista),
@@ -133,28 +184,10 @@ export async function calcularLayout(
     ],
     edges: aristas.map(([a, b]) => ({ id: `${a}>${b}`, sources: [a], targets: [b] })),
   });
-  const pos = new Map(
+  const dibujados = new Set([...subgrafo.nodos, ...subgrafo.puestos].map((n) => n.id));
+  return new Map(
     (resultado.children ?? [])
-      .filter((n) => n.id !== RAIZ_VIRTUAL)
+      .filter((n) => dibujados.has(n.id))
       .map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]),
   );
-  if (vista.nivelesEstrictos) alinearNiveles(pos, aristas, horizontal);
-  return pos;
-}
-
-// mrtree centra cada tarjeta en la fila de su profundidad: con la opción, todas empiezan donde empieza la fila.
-function alinearNiveles(
-  pos: Map<string, { x: number; y: number }>,
-  aristas: [string, string][],
-  horizontal: boolean,
-) {
-  const eje = horizontal ? "x" : "y";
-  const profundidad = new Map([[RAIZ_VIRTUAL, 0]]);
-  for (const [a, b] of aristas) profundidad.set(b, profundidad.get(a)! + 1); // cada superior llega antes que sus hijos
-  const inicio = new Map<number, number>();
-  for (const [id, p] of pos) {
-    const d = profundidad.get(id)!;
-    inicio.set(d, Math.min(inicio.get(d) ?? Infinity, p[eje]));
-  }
-  for (const [id, p] of pos) p[eje] = inicio.get(profundidad.get(id)!)!;
 }

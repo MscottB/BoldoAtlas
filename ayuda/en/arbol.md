@@ -49,7 +49,7 @@ While viewing the chart at a past date, actions that change something are disabl
 - **Click** a card to select it. Click the background to clear the selection.
 - The selected card shows **+**: it creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
 - Selecting a card opens the **unit panel**, to the right of the canvas (see "Unit panel"): its positions and all its data are there.
-- **Double-click** the name, or press `F2` with the name focused, to edit it. `Enter` saves and `Esc` cancels.
+- **Double-click** the name, or press `F2` with the card focused or selected, to edit it. `Enter` saves and `Esc` cancels.
 - **+ New unit**, in the canvas bar, creates a sub-unit of the selected card; if none is selected, of the root of the focused view, or a new root of the first type in the list.
 
 ## Moving a unit
@@ -112,7 +112,7 @@ In addition, the **View** button lets you choose:
 - **Direction**: vertical (top to bottom) or horizontal (left to right).
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
 - **Lines**: right-angle or curved.
-- **Strict level alignment**: every card of a level starts on the same line, positions included (they are shorter and, without this option, sit centred in the row).
+- **Align by unit type**: each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Deactivated types keep their row. If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions go in the row right after their unit.
 - **Card details**: unit type, head, head's photo, headcount, vacancies and tags.
 
 Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.

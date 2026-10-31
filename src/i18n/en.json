@@ -130,7 +130,7 @@
         "mostrarVacantes": "Vacancies",
         "mostrarEtiquetas": "Tags"
       },
-      "nivelesEstrictos": "Strict level alignment"
+      "alinearPorTipo": "Align by unit type"
     },
     "resaltar": {
       "titulo": "Highlight by…",

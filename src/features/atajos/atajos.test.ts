@@ -140,6 +140,17 @@ describe("resolverAtajo: menú contextual", () => {
   });
 });
 
+describe("resolverAtajo: renombrar", () => {
+  it("F2 renombra la unidad seleccionada, fuera de campos, sin modificadores ni diálogos, y no viendo una fecha", () => {
+    expect(resolverAtajo(tecla("F2"))).toBe("renombrar");
+    expect(resolverAtajo(tecla("F2", { enCampoDeTexto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F2", { ctrlKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F2", { shiftKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F2", { modalAbierto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F2", { soloLectura: true }))).toBeNull();
+  });
+});
+
 describe("destinoNavegacion", () => {
   // GG › {Operaciones (orden 0) › Mantención › {Mecánica, Eléctrica}, Finanzas (orden 1)}
   const ir = (actual: string | null, a: Parameters<typeof destinoNavegacion>[2], lista = unidades) =>

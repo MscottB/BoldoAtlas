@@ -49,7 +49,7 @@ Viendo el organigrama a una fecha, las acciones que cambian algo aparecen desact
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
 - En la tarjeta seleccionada aparece **+**: crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
 - Al seleccionar una tarjeta se abre el **panel de la unidad**, a la derecha del lienzo (ver «Panel de unidad»): ahí están sus puestos y todos sus datos.
-- **Doble clic** sobre el nombre, o `F2` con el nombre enfocado, lo edita. `Enter` guarda y `Esc` cancela.
+- **Doble clic** sobre el nombre, o `F2` con la tarjeta enfocada o seleccionada, lo edita. `Enter` guarda y `Esc` cancela.
 - **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una raíz nueva del primer tipo de la lista.
 
 ## Mover una unidad
@@ -112,7 +112,7 @@ Además de lo anterior, el botón **Vista** permite elegir:
 - **Dirección**: vertical (de arriba a abajo) u horizontal (de izquierda a derecha).
 - **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
 - **Líneas**: rectas en ángulo o curvas.
-- **Orden estricto por niveles**: todas las tarjetas de un mismo nivel empiezan en la misma línea, también los puestos (que son más bajos y, sin esta opción, quedan centrados en la fila).
+- **Alinear por tipo de unidad**: cada unidad va en la fila (o columna, en horizontal) de su tipo, en el orden de la lista de tipos; por ejemplo, todas las Áreas quedan en una misma fila aunque cuelguen a distinta profundidad. Los tipos desactivados conservan su fila. Si el tipo de una unidad la dejaría en la fila de su superior o más arriba, baja a la fila siguiente a la de su superior, para que las líneas siempre vayan hacia abajo (o hacia la derecha): con una Gerencia dentro de otra Gerencia, las filas de los tipos que siguen empiezan más abajo; con una Gerencia bajo un Área, solo baja esa rama. Los puestos quedan en la fila siguiente a su unidad.
 - **Datos de la tarjeta**: tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
 
 Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador la última configuración que usaste en él.

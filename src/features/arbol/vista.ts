@@ -26,8 +26,8 @@ export interface ConfigVista {
   mostrarVacantes: boolean;
   mostrarEtiquetas: boolean;
   verPuestos: boolean;
-  /** Toda tarjeta de un mismo nivel empieza en la misma línea (también los puestos, que son más bajos). */
-  nivelesEstrictos: boolean;
+  /** Cada unidad en la fila (o columna) de su tipo, en el orden del catálogo de tipos (ver filasPorTipo). */
+  alinearPorTipo: boolean;
   mostrarCargo: boolean;
   mostrarPersona: boolean;
   /** Tipos de unidad cuyo superior más cercano se muestra en cada tarjeta. */
@@ -50,7 +50,7 @@ export const VISTA_POR_DEFECTO: ConfigVista = {
   mostrarVacantes: true,
   mostrarEtiquetas: true,
   verPuestos: false,
-  nivelesEstrictos: false,
+  alinearPorTipo: false,
   mostrarCargo: true,
   mostrarPersona: true,
   rutaTipos: [],
@@ -134,7 +134,13 @@ export function leerVista(crudo: unknown): ConfigVista {
     mostrarVacantes: bool(c, d, "mostrarVacantes"),
     mostrarEtiquetas: bool(c, d, "mostrarEtiquetas"),
     verPuestos: bool(c, d, "verPuestos"),
-    nivelesEstrictos: bool(c, d, "nivelesEstrictos"),
+    // Antes se llamaba nivelesEstrictos: se acepta en preferencias y vistas guardadas con ese nombre.
+    alinearPorTipo:
+      typeof c.alinearPorTipo === "boolean"
+        ? c.alinearPorTipo
+        : typeof c.nivelesEstrictos === "boolean"
+          ? c.nivelesEstrictos
+          : d.alinearPorTipo,
     mostrarCargo: bool(c, d, "mostrarCargo"),
     mostrarPersona: bool(c, d, "mostrarPersona"),
     rutaTipos:

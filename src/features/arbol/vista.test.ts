@@ -22,7 +22,7 @@ describe("leerVista", () => {
     for (const crudo of [null, undefined, 3, "x", [], true])
       expect(leerVista(crudo)).toEqual(VISTA_POR_DEFECTO);
     expect(VISTA_POR_DEFECTO.verPuestos).toBe(false);
-    expect(VISTA_POR_DEFECTO.nivelesEstrictos).toBe(false);
+    expect(VISTA_POR_DEFECTO.alinearPorTipo).toBe(false);
   });
 
   it("acepta una configuración válida y descarta claves desconocidas", () => {
@@ -35,7 +35,7 @@ describe("leerVista", () => {
       mostrarEtiquetas: false,
       resaltar: { ...VISTA_POR_DEFECTO.resaltar, texto: "ope", vacantes: true, sede: "s1", cargo: "c1" },
       verPuestos: true,
-      nivelesEstrictos: true,
+      alinearPorTipo: true,
       mostrarCargo: false,
       mostrarPersona: true,
       rutaTipos: ["a", "b"],
@@ -54,6 +54,13 @@ describe("leerVista", () => {
       leyenda: 0,
     });
     expect(r).toEqual({ ...VISTA_POR_DEFECTO, mostrarCargo: false });
+  });
+
+  it("alinearPorTipo acepta la clave anterior (nivelesEstrictos) de preferencias y vistas guardadas", () => {
+    expect(leerVista({ nivelesEstrictos: true }).alinearPorTipo).toBe(true);
+    expect(leerVista({ nivelesEstrictos: true, alinearPorTipo: false }).alinearPorTipo).toBe(false);
+    expect(leerVista({ nivelesEstrictos: "si" }).alinearPorTipo).toBe(false);
+    expect(leerVista({ nivelesEstrictos: true })).not.toHaveProperty("nivelesEstrictos");
   });
 
   it("dirección, densidad y líneas solo aceptan sus valores", () => {

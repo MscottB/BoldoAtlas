@@ -107,6 +107,21 @@ describe("unidadesQueCumplen (resaltar por vacantes, sede, contrato, jornada, ca
   });
 });
 
+describe("expandir y contraer devuelven cuántas unidades quedan a la vista", () => {
+  it("expandirTodo, contraerHasta, contraerRama y expandirRama", () => {
+    setActivePinia(createPinia());
+    const l = useLienzo();
+    l.colapsados.value = new Set();
+    // fixture: 6 unidades vivas (GG › Operaciones › Mantención › Mecánica/Eléctrica; GG › Finanzas)
+    expect(l.contraerHasta(unidades, 1)).toBe(1);
+    expect(l.contraerHasta(unidades, 2)).toBe(3);
+    expect(l.expandirTodo(unidades)).toBe(6);
+    expect(l.contraerRama(unidades, "operaciones")).toBe(3);
+    expect(l.expandirRama(unidades, "operaciones")).toBe(6);
+    expect(l.colapsados.value).toEqual(new Set());
+  });
+});
+
 describe("selección múltiple", () => {
   const nuevo = () => {
     setActivePinia(createPinia());

@@ -26,7 +26,8 @@ export function useAtajos() {
   const org = useOrganizacion();
   const cerrarVista = useCerrarVista();
   const { config } = useVista();
-  const { seleccion, seleccionadas, nuevaHija, revelar, extender, duplicar, pedidoEliminar } = useLienzo();
+  const { seleccion, seleccionadas, editando, nuevaHija, revelar, extender, duplicar, pedidoEliminar } =
+    useLienzo();
 
   // Lo que se dibuja: el árbol completo o la rama enfocada (/?raiz=). Igual que VistaArbol.
   const mostradas = computed(() => {
@@ -111,6 +112,12 @@ export function useAtajos() {
       const r = el.getBoundingClientRect();
       const centro = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
       el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, ...centro }));
+    } else if (atajo === "renombrar") {
+      // La unidad de la tarjeta enfocada; si no, la única seleccionada.
+      const enfocada = destino?.closest<HTMLElement>(".vue-flow__node")?.dataset.id;
+      const id = enfocada ?? (seleccionadas.value.size === 1 ? seleccion.value : null);
+      if (!libre || !id || !org.enFecha.porId.has(id)) return; // un puesto no se renombra
+      editando.value = id;
     } else if (atajo === "duplicar") {
       // Con varias seleccionadas no hay una rama que duplicar. Ctrl+D se atiende igual (es «marcador» del navegador).
       if (seleccion.value && seleccionadas.value.size === 1) void duplicar(seleccion.value);

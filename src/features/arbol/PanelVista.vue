@@ -66,8 +66,8 @@ function alternarTipo(id: string, marcado: boolean) {
         {{ t("arbol.vista.compactaAviso") }}
       </p>
       <label class="flex items-center gap-2">
-        <input v-model="config.nivelesEstrictos" type="checkbox" class="size-4 accent-primary" />
-        {{ t("arbol.vista.nivelesEstrictos") }}
+        <input v-model="config.alinearPorTipo" type="checkbox" class="size-4 accent-primary" />
+        {{ t("arbol.vista.alinearPorTipo") }}
       </label>
       <fieldset class="grid gap-1.5">
         <legend class="mb-1 font-medium">{{ t("arbol.vista.tarjeta") }}</legend>

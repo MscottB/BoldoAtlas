@@ -165,13 +165,14 @@ watch(
     opciones: {
       direccion: config.value.direccion,
       densidad: config.value.densidad,
-      nivelesEstrictos: config.value.nivelesEstrictos,
+      alinearPorTipo: config.value.alinearPorTipo,
     },
+    tipos: config.value.alinearPorTipo ? org.catalogos.tipos_unidad : [],
     reordenado: reordenado.value,
   }),
-  async ({ g, tam, tamDelPuesto, opciones }) => {
+  async ({ g, tam, tamDelPuesto, opciones, tipos }) => {
     const este = ++ultimo;
-    const pos = await calcularLayout(g, tam, tamDelPuesto, opciones);
+    const pos = await calcularLayout(g, tam, tamDelPuesto, opciones, tipos);
     if (este !== ultimo) return;
     vista.value = { g, pos };
     podarSeleccion(new Set(g.nodos.map((u) => u.id))); // lo que se plegó ya no cuenta como seleccionado

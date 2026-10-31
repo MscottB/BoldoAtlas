@@ -14,6 +14,8 @@ export type Atajo =
   | "duplicar"
   /** Mayús+F10 o la tecla Menú: el menú contextual de la tarjeta enfocada o seleccionada. */
   | "menuContextual"
+  /** F2: renombrar la unidad enfocada o seleccionada. */
+  | "renombrar"
   /** Mayús+flecha: suma a la selección la unidad a la que iría la flecha. */
   | `extender:${Navegacion}`;
 
@@ -50,6 +52,7 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && tecla === "d" && !e.altKey) return e.enCampoDeTexto || e.soloLectura ? null : "duplicar";
   if (conControl || e.altKey || e.enCampoDeTexto) return null;
   if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) return "menuContextual";
+  if (e.key === "F2" && !e.shiftKey) return e.soloLectura ? null : "renombrar";
   if (e.key in FLECHAS) {
     const ir = FLECHAS[e.key]![e.horizontal ? 1 : 0];
     return e.shiftKey ? (e.soloLectura ? null : `extender:${ir}`) : ir;
