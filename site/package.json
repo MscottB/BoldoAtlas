@@ -1,0 +1,18 @@
+{
+  "name": "boldoatlas-sitio",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Sitio de BoldoAtlas (VitePress). Dependencias aparte de las de la app.",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "npm run sync && vitepress dev",
+    "build": "npm run sync && vitepress build",
+    "preview": "vitepress preview",
+    "test": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4",
+    "vue": "^3.5.13"
+  }
+}

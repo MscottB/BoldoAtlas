@@ -1,0 +1,44 @@
+/* Marca de BoldoAtlas: cobre #c8743f y azul pizarra #1e2a38 (--marca y --primary en src/styles/main.css).
+   Como texto, el cobre oscuro (--marca-texto) en claro; sobre fondo oscuro, el cobre tal cual. */
+:root {
+  --vp-c-brand-1: #9e511e;
+  --vp-c-brand-2: #874218;
+  --vp-c-brand-3: #c8743f;
+  --vp-c-brand-soft: rgba(200, 116, 63, 0.14);
+  /* el blanco sobre el cobre da 3,5:1; el texto oscuro, 5,1:1 (igual que en la app) */
+  --vp-button-brand-bg: #c8743f;
+  --vp-button-brand-text: #111827;
+  --vp-button-brand-hover-bg: #d4854f;
+  --vp-button-brand-hover-text: #111827;
+  --vp-button-brand-active-bg: #b8672f;
+  --vp-button-brand-active-text: #111827;
+  --vp-home-hero-name-color: var(--vp-c-brand-1);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #c8743f 40%, #1e2a38 60%);
+  --vp-home-hero-image-filter: blur(44px);
+}
+.dark {
+  --vp-c-brand-1: #d98a58;
+  --vp-c-brand-2: #c8743f;
+  --vp-c-brand-3: #c8743f;
+  --vp-c-brand-soft: rgba(200, 116, 63, 0.16);
+}
+
+/* cuadrícula de capturas (ver Captura.vue) */
+.capturas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+/* El azul del logo no se ve sobre fondo oscuro: igual que la app, va sobre un fondo claro (--primary del tema oscuro). */
+.dark .VPImage.logo,
+.dark .VPHero .image-src {
+  background: #e6ebf1;
+  border-radius: 6px;
+  padding: 2px;
+}
+.dark .VPHero .image-src {
+  border-radius: 24px;
+  padding: 12px;
+}
