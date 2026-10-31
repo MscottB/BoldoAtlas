@@ -20,8 +20,10 @@ on:
         type: boolean
         default: false
 
+# Una etiqueta que no es build-todas (p. ej. version:menor) va a un grupo propio: si compartiera el de la rama,
+# cancelaría el build en curso y su job quedaría omitido por el `if`, sin portable de prueba para ese commit.
 concurrency:
-  group: build-prueba-${{ github.ref }}
+  group: build-prueba-${{ github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'build-todas' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 permissions:
