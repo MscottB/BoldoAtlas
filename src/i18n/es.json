@@ -360,7 +360,8 @@
     "desdeZip": "BoldoAtlas se está ejecutando desde dentro de un .zip ({ruta}). Ciérralo, extráelo primero a una carpeta y ábrelo desde ahí; si no, los datos quedarían en una carpeta temporal y se perderían.",
     "esquemaNuevo": "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla.",
     "sinPermiso": "No se puede escribir en {ruta}. Mueve BoldoAtlas a una carpeta con permiso de escritura (por ejemplo, Documentos) o revisa los permisos de esa carpeta. Detalle: {detalle}",
-    "sinAppdata": "No se encontró la carpeta APPDATA de Windows.",
+    "translocado": "macOS abrió BoldoAtlas en una copia temporal de solo lectura ({ruta}). Si es la versión portable, quita la cuarentena de su carpeta (xattr -dr com.apple.quarantine <carpeta>) y ábrela de nuevo; si la instalaste con el .dmg, arrástrala a Aplicaciones y ábrela desde ahí.",
+    "sinAppdata": "No se encontró la carpeta de datos del usuario.",
     "sinCarpeta": "No se encontró la carpeta de datos de BoldoAtlas.",
     "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas.",
     "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura."

@@ -2,8 +2,8 @@
 
 BoldoAtlas guarda copias de tus datos en la carpeta **respaldos**, dentro de la carpeta de datos:
 
-- **Portable:** `datos\respaldos\`, junto a `BoldoAtlas.exe`.
-- **Instalado:** `%APPDATA%\io.github.mscottb.boldoatlas\respaldos\`.
+- **Portable:** `datos/respaldos/`, junto al programa.
+- **Instalado:** `respaldos` dentro de la carpeta de datos de tu usuario; en Windows, `%APPDATA%\io.github.mscottb.boldoatlas\respaldos\` (en Linux y macOS, ver **Inicio › Modo portable e instalado**).
 
 Cada respaldo es un archivo `boldo-AAAAMMDD-HHMM.db` con la fecha y hora en que se hizo. Si se hacen dos en el mismo minuto, el segundo termina en `-2`.
 

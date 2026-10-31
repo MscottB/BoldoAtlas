@@ -360,7 +360,8 @@
     "desdeZip": "BoldoAtlas is running from inside a .zip file ({ruta}). Close it, extract it to a folder first and open it from there; otherwise your data would end up in a temporary folder and be lost.",
     "esquemaNuevo": "This database was created with a newer version of BoldoAtlas (schema {actual}; this app supports up to {conocida}). Update BoldoAtlas to open it.",
     "sinPermiso": "BoldoAtlas can't write to {ruta}. Move it to a folder you have write access to (for example, Documents) or check that folder's permissions. Details: {detalle}",
-    "sinAppdata": "The Windows APPDATA folder was not found.",
+    "translocado": "macOS opened BoldoAtlas from a temporary read-only copy ({ruta}). If this is the portable version, remove the quarantine from its folder (xattr -dr com.apple.quarantine <folder>) and open it again; if you installed it from the .dmg, drag it to Applications and open it from there.",
+    "sinAppdata": "Your user data folder was not found.",
     "sinCarpeta": "BoldoAtlas' data folder was not found.",
     "baseNoDisponible": "The database is not available. Close BoldoAtlas and open it again.",
     "baseSoloLectura": "The database is read-only: check that the boldo.db file and its folder are writable."

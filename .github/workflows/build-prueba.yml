@@ -2,48 +2,69 @@ name: build-prueba
 
 # Portable de prueba en cada PR, descargable desde la pestaña Actions (artefacto privado al repo, sin
 # release pública). Solo portable y con el perfil Cargo `prueba` (sin LTO): lint y tests los corre ci.yml.
-# En main no sube nada: compila para dejar la caché de Rust caliente para los PR, y solo cuando cambian
-# Rust o las dependencias (si la clave de la caché ya existe, rust-cache no vuelve a guardarla).
+# En los PR compila solo Windows; Linux y macOS, a pedido: «Run workflow» (workflow_dispatch) o la etiqueta
+# `build-todas` en el PR. En main no sube nada: compila Windows para dejar caliente la caché de Rust de los
+# PR, y solo cuando cambian Rust o las dependencias (si la clave de la caché ya existe, no se vuelve a guardar).
+# «Run workflow» con «instaladores» arma también los instaladores, para probarlos sin publicar un release.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
   push:
     branches: [main]
     paths: ["src-tauri/**", "src-tauri/Cargo.lock", "package-lock.json"]
   workflow_dispatch:
+    inputs:
+      instaladores:
+        description: "También los instaladores (NSIS, AppImage/deb/rpm, dmg)"
+        type: boolean
+        default: false
 
+# Una etiqueta que no es build-todas (p. ej. version:menor) va a un grupo propio: si compartiera el de la rama,
+# cancelaría el build en curso y su job quedaría omitido por el `if`, sin portable de prueba para ese commit.
 concurrency:
-  group: build-prueba-${{ github.ref }}
+  group: build-prueba-${{ github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'build-todas' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  portable:
+    # poner otra etiqueta (p. ej. version:menor) no recompila
+    if: github.event.action != 'labeled' || github.event.label.name == 'build-todas'
+    strategy:
+      fail-fast: false
+      matrix:
+        sistema: ${{ fromJSON((github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'build-todas')) && '["windows","linux","macos"]' || '["windows"]') }}
+    runs-on: ${{ matrix.sistema == 'windows' && 'windows-latest' || matrix.sistema == 'linux' && 'ubuntu-22.04' || 'macos-latest' }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # etiquetas para calcular la versión
       - uses: ./.github/actions/preparar-node
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/preparar-rust
         with:
-          workspaces: src-tauri
-          shared-key: boldo-prueba
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache: boldo-prueba
+          objetivos: ${{ matrix.sistema == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      # linuxdeploy y sus plugins, que el bundler de Tauri descarga para armar el AppImage
+      - if: matrix.sistema == 'linux'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tauri
+          key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-herramientas-${{ runner.os }}-
       # en un PR: la versión que tendrá al fusionarse, con el número del PR (p. ej. 0.1.0-alpha.3+pr4)
       - id: v
         run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
         shell: bash
-      - run: node scripts/release.mjs --solo-portable --perfil prueba
+      - run: node scripts/release.mjs ${{ !inputs.instaladores && '--solo-portable' || '' }} --perfil prueba
         env:
           BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
       - if: github.event_name != 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: BoldoAtlas_${{ steps.v.outputs.version_prueba || github.sha }}_portable
+          name: BoldoAtlas_${{ steps.v.outputs.version_prueba || github.sha }}_${{ matrix.sistema }}_${{ inputs.instaladores && 'completo' || 'portable' }}
           path: release/*/*
           retention-days: 14
           if-no-files-found: error

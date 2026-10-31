@@ -76,11 +76,18 @@ describe("mensajes de arranque de la parte nativa", () => {
       conserva: ["C:\\Datos\\Boldo", "acceso denegado"],
     },
     {
+      nombre: "translocado",
+      archivo: "rutas.rs",
+      marca: "copia temporal de solo lectura",
+      datos: { "{}": "/private/var/folders/x/AppTranslocation/1/d" },
+      conserva: ["/private/var/folders/x/AppTranslocation/1/d", "xattr -dr com.apple.quarantine"],
+    },
+    {
       nombre: "sinAppdata",
       archivo: "rutas.rs",
-      marca: "No se encontró la carpeta APPDATA",
+      marca: "No se encontró la carpeta de datos del usuario",
       datos: {},
-      conserva: ["APPDATA"],
+      conserva: [],
     },
     {
       nombre: "sinCarpeta (programa)",

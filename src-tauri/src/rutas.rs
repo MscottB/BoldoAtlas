@@ -14,8 +14,57 @@ pub struct Rutas {
     pub portable: bool,
 }
 
-/// Portable si existe `portable.flag` junto al exe; si no, carpeta de la app en APPDATA.
+/// Carpeta donde se busca `portable.flag`: la del AppImage en Linux (`$APPIMAGE`; el exe corre desde su
+/// montaje temporal, `$APPDIR`), la que contiene `BoldoAtlas.app` en macOS y la del exe en los demás casos.
+pub fn carpeta_programa(
+    exe: &Path,
+    appimage: Option<&Path>,
+    appdir: Option<&Path>,
+) -> Option<PathBuf> {
+    // $APPIMAGE vale solo si este exe corre dentro de ese montaje: un .deb abierto desde otro AppImage lo hereda
+    if let (Some(a), Some(d)) = (appimage, appdir)
+        && exe.starts_with(d)
+    {
+        return a.parent().map(Path::to_path_buf);
+    }
+    let dir = exe.parent()?;
+    let app = dir.parent().and_then(Path::parent);
+    match app {
+        Some(app) if dir.ends_with("Contents/MacOS") && app.extension() == Some("app".as_ref()) => {
+            app.parent().map(Path::to_path_buf)
+        }
+        _ => Some(dir.to_path_buf()),
+    }
+}
+
+/// Variables de entorno que la portable apunta a `datos/` para que los temporales y las cachés del sistema
+/// (WebView, GTK, fuentes) no se escriban fuera de su carpeta. `os` es `std::env::consts::OS`.
+pub fn entorno_portable(os: &str, datos: &Path) -> Vec<(&'static str, PathBuf)> {
+    let tmp = datos.join("temporales");
+    match os {
+        "windows" => vec![("TEMP", tmp.clone()), ("TMP", tmp)],
+        // XDG_CONFIG_HOME no: ahí está dconf, y la app perdería el tema del escritorio
+        "linux" => vec![
+            ("TMPDIR", tmp),
+            ("XDG_CACHE_HOME", datos.join("cache")),
+            ("XDG_DATA_HOME", datos.join("compartidos")),
+        ],
+        _ => vec![("TMPDIR", tmp)],
+    }
+}
+
+/// Portable si existe `portable.flag` en `carpeta` (ver `carpeta_programa`); si no, la carpeta de la app
+/// dentro de `appdata`, la carpeta de datos del usuario (APPDATA en Windows, ~/.local/share en Linux, ~/Library/Application Support en macOS).
 pub fn dir_datos(exe_dir: &Path, appdata: Option<&Path>) -> Result<Rutas, String> {
+    if exe_dir
+        .components()
+        .any(|c| c.as_os_str() == "AppTranslocation")
+    {
+        return Err(format!(
+            "macOS abrió BoldoAtlas en una copia temporal de solo lectura ({}). Si es la versión portable, quita la cuarentena de su carpeta (xattr -dr com.apple.quarantine <carpeta>) y ábrela de nuevo; si la instalaste con el .dmg, arrástrala a Aplicaciones y ábrela desde ahí.",
+            exe_dir.display()
+        ));
+    }
     if abierto_desde_zip(exe_dir) {
         return Err(format!(
             "BoldoAtlas se está ejecutando desde dentro de un .zip ({}). Ciérralo, extráelo primero a una carpeta y ábrelo desde ahí; si no, los datos quedarían en una carpeta temporal y se perderían.",
@@ -27,7 +76,7 @@ pub fn dir_datos(exe_dir: &Path, appdata: Option<&Path>) -> Result<Rutas, String
         exe_dir.join("datos")
     } else {
         appdata
-            .ok_or("No se encontró la carpeta APPDATA de Windows.")?
+            .ok_or("No se encontró la carpeta de datos del usuario.")?
             .join(IDENTIFICADOR)
     };
     let respaldos = datos.join("respaldos");
@@ -114,6 +163,101 @@ mod tests {
         let err = dir_datos(&exe, None).unwrap_err();
         assert!(err.contains("extráelo primero a una carpeta"), "{err}");
         assert!(!exe.join("datos").exists());
+    }
+
+    #[test]
+    fn carpeta_programa_windows_es_la_del_exe() {
+        // con / para que el test corra igual en los tres sistemas (\ solo separa en Windows)
+        let exe = Path::new("C:/Portables/BoldoAtlas/BoldoAtlas.exe");
+        assert_eq!(
+            carpeta_programa(exe, None, None),
+            Some(PathBuf::from("C:/Portables/BoldoAtlas"))
+        );
+    }
+
+    #[test]
+    fn carpeta_programa_linux_es_la_del_appimage() {
+        // el exe corre desde el montaje temporal del AppImage; el flag está junto al .AppImage
+        let exe = Path::new("/tmp/.mount_BoldoAxYz/usr/bin/boldo-atlas");
+        let appimage = Path::new("/home/ana/pendrive/BoldoAtlas/BoldoAtlas.AppImage");
+        let appdir = Path::new("/tmp/.mount_BoldoAxYz");
+        assert_eq!(
+            carpeta_programa(exe, Some(appimage), Some(appdir)),
+            Some(PathBuf::from("/home/ana/pendrive/BoldoAtlas"))
+        );
+        // .deb y .rpm: sin $APPIMAGE, la carpeta del exe (sin flag: modo instalado)
+        assert_eq!(
+            carpeta_programa(Path::new("/usr/bin/boldo-atlas"), None, None),
+            Some(PathBuf::from("/usr/bin"))
+        );
+    }
+
+    #[test]
+    fn carpeta_programa_ignora_appimage_heredado() {
+        // un .deb abierto desde otro AppImage (un lanzador) hereda su $APPIMAGE y su $APPDIR
+        let exe = Path::new("/usr/bin/boldo-atlas");
+        let otro = Path::new("/home/ana/Apps/Lanzador.AppImage");
+        let su_montaje = Path::new("/tmp/.mount_LanzaQwe");
+        assert_eq!(
+            carpeta_programa(exe, Some(otro), Some(su_montaje)),
+            Some(PathBuf::from("/usr/bin"))
+        );
+        // sin $APPDIR tampoco se confía en $APPIMAGE
+        assert_eq!(
+            carpeta_programa(exe, Some(otro), None),
+            Some(PathBuf::from("/usr/bin"))
+        );
+    }
+
+    #[test]
+    fn carpeta_programa_macos_es_la_que_contiene_el_app() {
+        let exe = Path::new("/Users/ana/BoldoAtlas/BoldoAtlas.app/Contents/MacOS/boldo-atlas");
+        assert_eq!(
+            carpeta_programa(exe, None, None),
+            Some(PathBuf::from("/Users/ana/BoldoAtlas"))
+        );
+        // un exe suelto en una carpeta llamada MacOS no es un .app
+        let suelto = Path::new("/Users/ana/Contents/MacOS/boldo-atlas");
+        assert_eq!(
+            carpeta_programa(suelto, None, None),
+            Some(PathBuf::from("/Users/ana/Contents/MacOS"))
+        );
+    }
+
+    #[test]
+    fn dir_datos_rechaza_app_translocada() {
+        // macOS abre una copia de solo lectura si el .app tiene cuarentena
+        let temp = tempfile::tempdir().unwrap();
+        let dir = temp.path().join("AppTranslocation").join("ABCD").join("d");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("portable.flag"), "").unwrap();
+        let err = dir_datos(&dir, None).unwrap_err();
+        assert!(err.contains("xattr -dr com.apple.quarantine"), "{err}");
+        assert!(!dir.join("datos").exists());
+    }
+
+    #[test]
+    fn entorno_portable_apunta_dentro_de_datos() {
+        let datos = Path::new("/p/datos");
+        for os in ["windows", "linux", "macos"] {
+            let vars = entorno_portable(os, datos);
+            assert!(!vars.is_empty(), "{os}");
+            for (nombre, ruta) in &vars {
+                assert!(ruta.starts_with(datos), "{os} {nombre} {}", ruta.display());
+            }
+        }
+        let nombres = |os| {
+            entorno_portable(os, datos)
+                .into_iter()
+                .map(|(n, _)| n)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(nombres("windows"), ["TEMP", "TMP"]);
+        assert_eq!(
+            nombres("linux"),
+            ["TMPDIR", "XDG_CACHE_HOME", "XDG_DATA_HOME"]
+        );
+        assert_eq!(nombres("macos"), ["TMPDIR"]);
     }
 
     #[test]

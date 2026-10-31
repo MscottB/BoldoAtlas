@@ -1,0 +1,34 @@
+name: preparar-rust
+description: Rust estable con caché por perfil y por SO y, en Linux, las bibliotecas de sistema de Tauri (WebKitGTK) en caché.
+inputs:
+  cache:
+    description: "Caché de Rust por perfil Cargo: boldo-debug, boldo-prueba o boldo-release (rust-cache agrega el SO y la arquitectura)"
+    required: true
+  componentes:
+    description: "Componentes de rustup (p. ej. clippy, rustfmt)"
+    required: false
+    default: ""
+  objetivos:
+    description: "Objetivos extra de rustup (macOS universal: aarch64-apple-darwin,x86_64-apple-darwin)"
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ${{ inputs.componentes }}
+        targets: ${{ inputs.objetivos }}
+    # Una caché por perfil, compartida por todos los workflows del mismo SO y guardada solo desde main:
+    # los PR las leen y no las llenan.
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: src-tauri
+        shared-key: ${{ inputs.cache }}
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+    # https://v2.tauri.app/start/prerequisites/#linux (sin appindicator: la app no usa bandeja)
+    - if: runner.os == 'Linux'
+      uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
+      with:
+        packages: libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev patchelf
+        version: tauri2-1
