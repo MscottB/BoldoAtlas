@@ -529,6 +529,13 @@ Cada punto lleva textos en `es.json` y `en.json` y su línea de ayuda en `ayuda/
 
 ---
 
+### Decidido por el autor (2026-10-31)
+
+- **A. Campos:** blancos en modo claro, con el borde nuevo de 3:1.
+- **B. Lo «Próximamente»:** ocultarlo; una línea «Próximamente: …» en la Bienvenida y en la Ayuda.
+- **C. Barra del árbol:** aprobada tal como se propone (7 controles, «Más ▾», «Personalizar», leyenda en franja, minimapa apagado al inicio).
+- **D. Botón de la barra lateral:** al pie, sobre Configuración.
+
 ## Anexo: índice de capturas (`docs/capturas/fase2/`)
 
 Todas con el proyecto de ejemplo, en `-claro` y `-oscuro` salvo que se indique:
