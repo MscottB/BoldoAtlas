@@ -610,3 +610,15 @@ Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del
 - Junto al calendario, la lista **«Cambios de este día»** en frases simples («Ana Rojas asumió como Gerente de Finanzas», «Se creó la unidad Logística»); clic en un cambio selecciona y encuadra la tarjeta. Botones «Cambio anterior» / «Cambio siguiente» para saltar entre fechas con cambios.
 - Respeta el rango de la fecha mínima y hoy; cálculo en una pasada (O(n)) y solo al abrir el calendario. Teclado completo (el calendario de Reka ya lo trae) e i18n es/en.
 - Commit: `feat(arbol): calendario con los días que tuvieron cambios`
+
+### Task 17e (ajustada tras la propuesta, 2026-10-31): colores, foco y lienzo
+- Aplicar los puntos 1, 2, 3 y 5 de §6 de `docs/superpowers/notas/2026-10-30-propuesta-ux.md` con las decisiones de §7 (campos blancos; ocultar lo «Próximamente»; botón de la barra lateral al pie).
+- Commit: `feat(ui): foco visible, colores AA y lienzo más limpio`
+
+### Task 17i: Barra del árbol y «Personalizar»
+- Punto 4 de §6 de la propuesta (aprobado por el autor): barra de 7 controles en una fila, zoom en el lienzo, «Más ▾», «Personalizar» con 4 opciones a la vista y el resto plegado, «Vistas guardadas».
+- Commit: `feat(arbol): barra del árbol más simple y «Personalizar»`
+
+### Task 17j: Divulgación progresiva en el resto de la app
+- El «Trabajo posterior» de §6 de la propuesta: Configuración, Directorio, Revisión, panel de unidad, ficha, Acerca, Bienvenida y Mantenedores (bloques plegables que recuerdan su estado por PC).
+- Commit: `feat(ui): opciones avanzadas plegadas en toda la app`

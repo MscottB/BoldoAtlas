@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useVueFlow } from "@vue-flow/core";
@@ -30,10 +30,12 @@ import type { Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
+import { CONTEXTO_LIENZO } from "./contexto";
 import PanelVista from "./PanelVista.vue";
 import PanelResaltar from "./PanelResaltar.vue";
 import MenuVistas from "./MenuVistas.vue";
 import SelectorFecha from "./SelectorFecha.vue";
+import { claseSelect, cn } from "@/lib/utils";
 
 // `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
 const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
@@ -43,12 +45,13 @@ const org = useOrganizacion();
 const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
 const NIVELES = [1, 2, 3, 4, 5, 6];
 const { config } = useVista();
-const { zoomIn, zoomOut, fitView } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
+const { zoomIn, zoomOut } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
+const { encuadrar } = inject(CONTEXTO_LIENZO)!;
 
 onKeyStroke("0", (e) => {
   if (!e.ctrlKey) return;
   e.preventDefault(); // en WebView2, Ctrl+0 restablecería el zoom de la página
-  void fitView();
+  void encuadrar();
 });
 
 const nueva = () => void nuevaHija(props.raiz);
@@ -85,7 +88,7 @@ async function guardarEnArboles() {
     <MenuVistas :raiz="raiz" :unidades="unidades" />
     <select
       v-model="config.resaltar.etiqueta"
-      class="h-7 rounded-md border bg-background px-2 text-sm"
+      :class="cn(claseSelect, 'h-7')"
       :aria-label="t('arbol.resaltarEtiqueta')"
     >
       <option :value="null">{{ t("arbol.todasEtiquetas") }}</option>
@@ -150,7 +153,7 @@ async function guardarEnArboles() {
       >
         <ZoomIn aria-hidden="true" />
       </Button>
-      <Button variant="outline" size="sm" :title="t('arbol.encuadrarAtajo')" @click="fitView()">
+      <Button variant="outline" size="sm" :title="t('arbol.encuadrarAtajo')" @click="encuadrar()">
         <Maximize aria-hidden="true" />
         {{ t("arbol.encuadrar") }}
       </Button>

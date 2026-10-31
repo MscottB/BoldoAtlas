@@ -1,6 +1,6 @@
 import { ref, watch } from "vue";
 import { guardarPreferencia, leerPreferencia } from "../../lib/preferencias";
-import { ACENTOS, textoSobre, type Acento, type Escala, type Tema } from "./tema";
+import { ACENTOS, MARCA_TEXTO, textoSobre, type Acento, type Escala, type Tema } from "./tema";
 
 export const TEMAS: Tema[] = ["claro", "oscuro", "sistema"];
 export const ESCALAS: Escala[] = [90, 100, 110, 125];
@@ -15,17 +15,20 @@ const leerValido = <T>(clave: string, validos: readonly T[], porDefecto: T): T =
 const tema = ref<Tema>(leerValido("tema", TEMAS, "sistema"));
 const acento = ref<Acento>(leerValido("acento", Object.keys(ACENTOS) as Acento[], "cobre"));
 const escala = ref<Escala>(leerValido("escala", ESCALAS, 100));
+/** El tema que se ve (resuelve «sistema»); lo fija aplicar(). */
+const oscuro = ref(false);
 
 let mediaOscuro: MediaQueryList | undefined; // se crea en iniciar(): importar el módulo no debe tocar window
 
 export function aplicar(): void {
   const raiz = document.documentElement;
-  const oscuro = tema.value === "oscuro" || (tema.value === "sistema" && !!mediaOscuro?.matches);
-  raiz.classList.toggle("dark", oscuro);
-  raiz.style.colorScheme = oscuro ? "dark" : "light";
+  oscuro.value = tema.value === "oscuro" || (tema.value === "sistema" && !!mediaOscuro?.matches);
+  raiz.classList.toggle("dark", oscuro.value);
+  raiz.style.colorScheme = oscuro.value ? "dark" : "light";
   const color = ACENTOS[acento.value];
   raiz.style.setProperty("--marca", color);
   raiz.style.setProperty("--marca-foreground", textoSobre(color));
+  raiz.style.setProperty("--marca-texto", MARCA_TEXTO[acento.value][oscuro.value ? "oscuro" : "claro"]);
   raiz.style.fontSize = `${escala.value}%`;
 }
 
@@ -46,5 +49,5 @@ function iniciar(): void {
 
 export function useTema() {
   iniciar();
-  return { tema, acento, escala, aplicar };
+  return { tema, acento, escala, oscuro, aplicar };
 }

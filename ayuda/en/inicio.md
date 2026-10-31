@@ -4,15 +4,16 @@
 
 BoldoAtlas is a Windows desktop app for building your organization's org chart: divisions, areas and sub-areas connected to each other, plus a record for each person who works in them. You can explore the result on the tree canvas or in the directory.
 
-Processes, indicators and export arrive in later phases.
+**Coming soon:** processes, indicators, scenarios, Excel import and export, and opening .boldo files. Until they exist, their buttons don't appear in the app (the unit panel's «Processes» tab only says they are coming later).
 
 ## First use
 
-When you open a database with no units, BoldoAtlas shows the welcome screen with four paths:
+When you open a database with no units, BoldoAtlas shows the welcome screen with two paths:
 
 - **Create an empty organization:** asks for the organization name and the name of its root unit (of the first active unit type) and takes you to the tree.
-- **Load from Excel** (arrives in Phase 4) and **open a .boldo file** (Phase 5): shown disabled for now.
 - **Explore an example:** creates a sample organization, in the interface language, to look around the app.
+
+Below them, one line says what is coming: loading from Excel and opening a .boldo file.
 
 Afterwards you can adjust the name, logo, theme and language in **Settings**, and the lists of job titles, sites and the rest in **Settings › Manage lists**.
 
@@ -22,11 +23,10 @@ The logo button on the left of the top bar opens the **app menu**:
 
 - **Home** returns to the welcome screen at any time, also with data loaded.
 - **New empty organization…** and **Explore the example…** replace the current data. They ask for confirmation first and make an **automatic backup** (if the backup fails, nothing is replaced); the backup stays in the **Settings › Backups** list so you can restore it.
-- **Open .boldo file** (Phase 5) and **Import Excel** (Phase 4) are disabled for now.
 - **Backups** and **Settings** open those sections; **Project data** shows where your data lives.
 - **Language** switches the whole app between Español and English at once. The welcome screen has the same **ES / EN** switch; your choice is remembered on this computer, and on the first run the app follows your system language.
 
-The same actions are in the command palette (`Ctrl+K`). **Settings**, **Help** and **About** close with their **Close** button, with `Esc`, or with a second click on their side-menu entry, and you return to the previous view (or to the tree if there is none). The sidebar folds, and is pinned open again, with the button under the **BoldoAtlas** logo. When folded, it opens over the content when you rest the mouse on it for a moment (or reach it with `Tab`) and folds again when you leave or press `Esc`; turn this off in **Settings › Appearance › Open the sidebar on mouse hover**. In a narrow window (under 1100 px) the sidebar folds by itself. A unit's panel closes with the **×** in its header.
+The same actions are in the command palette (`Ctrl+K`). **Settings**, **Help** and **About** close with their **Close** button, with `Esc`, or with a second click on their side-menu entry, and you return to the previous view (or to the tree if there is none). The sidebar folds, and is pinned open again, with the button at the foot of the bar, above **Settings** (**Hide sidebar** / **Show sidebar**); it stays in the same place open or folded. When folded, it opens over the content when you rest the mouse on it for a moment (or reach it with `Tab`) and folds again when you leave or press `Esc`; turn this off in **Settings › Appearance › Open the sidebar on mouse hover**. In a narrow window (under 1100 px) the sidebar folds by itself. A unit's panel closes with the **×** in its header.
 
 ## Which project is open
 

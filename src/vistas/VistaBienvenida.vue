@@ -21,6 +21,7 @@ import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import { respaldarAntesDeReemplazar } from "@/db/cliente";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import icono from "../../assets/brand/icono.png";
 
 const { t } = useI18n();
@@ -34,12 +35,13 @@ interface Camino {
   icono: Component;
   fase?: string;
 }
-const caminos: Camino[] = [
+const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
   { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
   { id: "boldo", icono: FolderOpen, fase: "bienvenida.llegaFase5" },
   { id: "ejemplo", icono: Sparkles },
 ];
+const caminos = todos.filter((c) => MOSTRAR_PROXIMAMENTE || !c.fase);
 
 async function entrar(r: Resultado) {
   if (r.ok) await router.replace("/");
@@ -99,7 +101,7 @@ onMounted(() => {
   <section class="mx-auto flex max-w-3xl flex-col gap-6 p-8">
     <header class="flex flex-col gap-2">
       <div class="flex items-start justify-between gap-4">
-        <img :src="icono" alt="" class="size-12" />
+        <img :src="icono" alt="" class="size-12 dark:rounded-lg dark:bg-primary dark:p-1" />
         <SelectorIdioma />
       </div>
       <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
@@ -142,6 +144,10 @@ onMounted(() => {
         </button>
       </li>
     </ul>
+
+    <p v-if="!MOSTRAR_PROXIMAMENTE" class="text-sm text-muted-foreground">
+      {{ t("bienvenida.proximamente") }}
+    </p>
 
     <form
       v-if="creando"

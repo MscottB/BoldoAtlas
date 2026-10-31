@@ -8,7 +8,7 @@ import { Copy, Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { iniciales } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
-import { textoSobre } from "@/features/tema/tema";
+import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
@@ -44,10 +44,12 @@ const {
   verPersonas,
 } = useLienzo();
 const { config } = useVista();
-const { escala } = useTema();
+const { escala, oscuro } = useTema();
 const contexto = inject(CONTEXTO_LIENZO)!;
 // Marca efectiva según «Colorear por» (null = sin color) y superiores por tipo elegido (null = la vista no los muestra).
 const marca = computed(() => contexto.marcas.value?.get(props.id) ?? null);
+// Una marca que casi no se distingue de la tarjeta (azul marino en oscuro) lleva contorno en la franja y el código.
+const tenue = computed(() => !!marca.value?.color && marcaTenue(marca.value.color, oscuro.value));
 const ruta = computed(() =>
   contexto.rutas.value
     ? rutaSuperiores(contexto.rutas.value, props.data.unidad)
@@ -140,7 +142,7 @@ async function guardar(e: Event) {
   <div
     v-else
     ref="raiz"
-    class="flex rounded-lg border bg-card text-xs text-card-foreground"
+    class="relative flex rounded-lg border bg-card text-xs text-card-foreground"
     :class="[
       compacta ? 'items-center gap-1.5 px-2' : 'flex-col gap-1 p-2',
       seleccionada && 'border-marca ring-2 ring-marca',
@@ -151,6 +153,12 @@ async function guardar(e: Event) {
     @click="alHacerClic"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+    <!-- Contorno sobre la franja de la marca (el borde izquierdo de 4 px). -->
+    <span
+      v-if="tenue"
+      class="pointer-events-none absolute -inset-y-px -left-1 w-1 rounded-l-lg border border-muted-foreground"
+      aria-hidden="true"
+    />
     <div
       v-if="!compacta && (config.mostrarTipo || config.mostrarEtiquetas || marca?.codigo)"
       class="flex items-center justify-between text-muted-foreground"
@@ -160,7 +168,7 @@ async function guardar(e: Event) {
         <span
           v-if="marca?.codigo"
           class="rounded px-1 text-[10px] font-semibold"
-          :class="!marca.color && 'bg-muted text-foreground'"
+          :class="[!marca.color && 'bg-muted text-foreground', tenue && 'outline-1 outline-muted-foreground']"
           :style="marca.color ? { background: marca.color, color: textoSobre(marca.color) } : undefined"
           :title="marca.unidad.nombre"
         >
@@ -271,11 +279,12 @@ async function guardar(e: Event) {
       </button>
       <span
         v-if="config.mostrarVacantes && data.vacantes && !(compacta && sola)"
-        class="rounded-full bg-marca px-1.5 text-marca-foreground"
+        class="shrink-0 rounded-full bg-marca px-1.5 whitespace-nowrap text-marca-foreground"
         :title="t('arbol.vacantes', data.vacantes)"
       >
-        <span :class="compacta && 'sr-only'">{{ t("arbol.vacantes", data.vacantes) }}</span>
-        <span v-if="compacta" aria-hidden="true">{{ data.vacantes }}</span>
+        <!-- Compacta o seleccionada (con sus botones), solo el número: así la píldora no se parte en dos líneas. -->
+        <span :class="(compacta || sola) && 'sr-only'">{{ t("arbol.vacantes", data.vacantes) }}</span>
+        <span v-if="compacta || sola" aria-hidden="true">{{ data.vacantes }}</span>
       </span>
       <span class="ml-auto flex gap-1">
         <template v-if="sola">

@@ -158,7 +158,8 @@
         "mostrarVacantes": "Vacancies",
         "mostrarEtiquetas": "Tags"
       },
-      "alinearPorTipo": "Align by unit type"
+      "alinearPorTipo": "Align by unit type",
+      "minimapa": "Show minimap"
     },
     "resaltar": {
       "titulo": "Highlight by…",
@@ -602,6 +603,7 @@
   "bienvenida": {
     "titulo": "Welcome to BoldoAtlas",
     "subtitulo": "Choose how to start.",
+    "proximamente": "Coming soon: load from Excel and open a .boldo file.",
     "vacia": {
       "titulo": "Create an empty organization",
       "texto": "Start from scratch: you name the organization and its first unit."

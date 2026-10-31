@@ -21,4 +21,4 @@ El color se guarda en formato `#rrggbb`, por ejemplo `#be123c`.
 1. Pulsa **Vista** y activa **Ver puestos**.
 2. En **Colorear por**, elige **Leyenda del puesto**.
 
-Cada puesto muestra su color en el borde y en una franja a la izquierda; las unidades no cambian. Abajo a la izquierda aparece la **leyenda flotante** con las entradas que se están usando (pasa el cursor sobre una para leer su descripción); puedes ocultarla con su encabezado.
+Cada puesto muestra su color en el borde y en una franja a la izquierda; las unidades no cambian. Bajo el lienzo aparece la franja de la **leyenda** con las entradas que se están usando (pasa el cursor sobre una para leer su descripción); puedes plegarla con su encabezado.

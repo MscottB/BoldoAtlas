@@ -46,7 +46,7 @@ function elegir(e: EleccionPersona) {
         type="button"
         variant="outline"
         role="combobox"
-        class="w-full justify-between font-normal"
+        class="w-full justify-between border-campo-borde font-normal dark:border-campo-borde"
       >
         <span class="truncate" :class="{ 'text-muted-foreground': !actual }">
           {{ actual || t("puesto.elegirPersona") }}
@@ -57,7 +57,9 @@ function elegir(e: EleccionPersona) {
     <PopoverContent align="start" class="w-(--reka-popover-trigger-width) min-w-64 p-0">
       <Command>
         <!-- Filtro propio (como SelectorCatalogo): así "Crear persona" sigue lo escrito. -->
-        <div class="flex items-center gap-2 border-b px-2">
+        <div
+          class="flex items-center gap-2 border-b px-2 focus-within:border-b-ring focus-within:shadow-[inset_0_-1px_0_var(--ring)]"
+        >
           <Search class="size-4 shrink-0 opacity-50" aria-hidden="true" />
           <ListboxFilter
             v-model="busqueda"

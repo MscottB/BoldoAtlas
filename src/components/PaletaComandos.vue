@@ -153,7 +153,10 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
 
 <template>
   <CommandDialog v-model:open="abierto" :title="t('paleta.titulo')" :description="t('paleta.descripcion')">
-    <div class="flex items-center gap-2 border-b px-3">
+    <!-- El campo no lleva borde propio: el foco se ve como una línea de 2 px en el color de foco bajo la fila. -->
+    <div
+      class="flex items-center gap-2 border-b px-3 focus-within:border-b-ring focus-within:shadow-[inset_0_-1px_0_var(--ring)]"
+    >
       <Search class="size-4 shrink-0 opacity-50" aria-hidden="true" />
       <ListboxFilter
         v-model="busqueda"
