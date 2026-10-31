@@ -105,6 +105,11 @@ function abrir(e: MouseEvent, f: FilaDirectorio) {
   if (f.personaId) void ficha.intentarAbrir(f.personaId);
   else if (f.puestoId) puesto.abrir(f.puestoId);
 }
+// El botón desaparece con la etiqueta: el foco pasa al buscador para no quedar en el body.
+function quitarPersona() {
+  filtros.value.persona = null;
+  document.querySelector<HTMLInputElement>("[data-buscar-directorio]")?.focus();
+}
 const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipoId === tipoId)?.nombre;
 </script>
 
@@ -134,6 +139,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
       >
         <Input
           v-model="filtros.texto"
+          data-buscar-directorio
           type="search"
           class="h-8 w-64"
           :aria-label="t('directorio.buscar')"
@@ -177,7 +183,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
             class="rounded-full p-1 hover:bg-background focus-visible:outline-2 focus-visible:outline-ring"
             :aria-label="t('directorio.quitarPersona', { nombre: nombrePersona })"
             :title="t('directorio.quitarPersona', { nombre: nombrePersona })"
-            @click="filtros.persona = null"
+            @click="quitarPersona"
           >
             <X class="size-3.5" aria-hidden="true" />
           </button>
