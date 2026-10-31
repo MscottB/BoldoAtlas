@@ -129,7 +129,10 @@ jobs:
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ env.ETIQUETA }}
-          files: salida/*
+          name: BoldoAtlas ${{ env.ETIQUETA }}
+          # el artefacto trae una subcarpeta con la versión; sin archivos, falla en vez de publicar vacío
+          files: salida/**/*
+          fail_on_unmatched_files: true
           body: ${{ inputs.notes }}
           generate_release_notes: ${{ !inputs.tag }}
           prerelease: ${{ inputs.tag && inputs.prerelease || !inputs.tag && contains(github.ref_name, '-') }}
