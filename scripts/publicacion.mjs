@@ -90,6 +90,7 @@ export function seccionNotas(cuerpo) {
   for (const l of lineas.slice(i + 1)) {
     if (/^\s*(```|~~~)/.test(l)) enCodigo = !enCodigo;
     else if (!enCodigo && fin.test(l)) break;
+    else if (!enCodigo && /^\s*🤖 Generated with/.test(l)) continue; // pie de los PR, no es nota
     notas.push(l);
   }
   return notas.join("\n").trim();

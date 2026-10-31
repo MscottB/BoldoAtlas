@@ -108,6 +108,12 @@ describe("notasDeVersion", () => {
 
 describe("seccionNotas", () => {
   it("vacía cuando falta (el CLI avisa y usa el título)", () => expect(seccionNotas("## Otra\nx")).toBe(""));
+  it("sin el pie de Claude Code del PR", () =>
+    expect(
+      seccionNotas(
+        "## Notas de la versión\n\n- Algo nuevo.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      ),
+    ).toBe("- Algo nuevo."));
 });
 
 describe("prDeAsunto", () => {
