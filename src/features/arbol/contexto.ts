@@ -15,6 +15,8 @@ export interface ContextoLienzo {
   leyendas: ComputedRef<Map<string, Leyenda> | null>;
   /** Tarjetas ligeras: alejado y con muchas tarjetas (rendimiento.ts). */
   ligera: ComputedRef<boolean>;
+  /** Encuadra todo el árbol; con el minimapa a la vista deja libre su franja, para que no tape tarjetas. */
+  encuadrar: () => Promise<boolean>;
 }
 
 export const CONTEXTO_LIENZO: InjectionKey<ContextoLienzo> = Symbol("contextoLienzo");

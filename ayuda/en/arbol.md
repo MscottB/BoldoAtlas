@@ -94,7 +94,7 @@ The **Highlight by…** button adds more criteria: **With vacancies**, **Site**,
 
 ## Moving around the canvas
 
-Drag the background to pan and use the mouse wheel or the **−** and **+** buttons to zoom out or in. **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The minimap in the corner shows where you are.
+Drag the background to pan and use the mouse wheel or the **−** and **+** buttons to zoom out or in. **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The **minimap** shows where you are: it starts off and is turned on in **View › Show minimap**. It sits at the bottom right, in the theme colors, and fitting the tree leaves its space free so it doesn't cover cards.
 
 With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the color of its mark, and the lines become steps. This keeps the canvas smooth. Zoom back in and all the detail returns; with the keyboard, each simplified card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent color.
 
@@ -110,13 +110,14 @@ The **View** button, in the canvas bar, opens the options for how the tree is dr
 - **Show on cards the parent unit of type**: tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
 - **Color by**: **None**, the **mark** of a type, or **Position legend**. With the mark of a type, each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. With **Position legend**, position cards take the color of their legend (turn on **Show positions**; see "Legends and position colors"). Only one criterion applies at a time.
 
-With a color criterion active, a **legend** appears at the bottom left of the canvas with the color, code and name of the unit that defines each mark you can see. It can be hidden and shown again from its header.
+With a color criterion active, a **legend** appears in a strip below the canvas with the color, code and name of the unit that defines each mark you can see. If it doesn't fit, the row scrolls sideways. It can be folded and opened again from its header. A very dark (or very light) mark that barely stands out from the card gets a gray outline on its stripe and code.
 
 In addition, the **View** button lets you choose:
 
 - **Direction**: vertical (top to bottom) or horizontal (left to right).
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
 - **Lines**: right-angle or curved.
+- **Show minimap** (off at first): remembered on this computer, apart from each tree's configuration.
 - **Align by unit type**: each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions are stacked under their unit and take no row.
 - **Card details**: people on the cards, unit type, head, head's photo, headcount, vacancies and tags.
 - **People on the cards** (on at first): the head shows with their job title and, below, the faces of the unit's team. The card gets a little taller. Since the head is already on the card, with **Show positions** their position isn't repeated underneath, as in a classic org chart; the other positions still show. The compact card and the simplified card (zoomed out with many cards) don't show people. On a past date you see the people of that day. The faces open the **People** tab with **Include sub-units** off, so the list is the same people they count. With **Head** off the head isn't shown on the card, but still counts in the team number (the name of the faces button).

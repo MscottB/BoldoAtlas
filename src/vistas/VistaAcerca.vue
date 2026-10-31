@@ -30,7 +30,7 @@ async function copiar() {
 <template>
   <section class="mx-auto max-w-2xl space-y-8 p-10">
     <div class="flex items-start justify-between gap-2">
-      <img :src="logo" alt="BoldoAtlas" class="h-16 w-auto" />
+      <img :src="logo" alt="BoldoAtlas" class="h-16 w-auto dark:rounded-lg dark:bg-primary dark:p-2" />
       <BotonCerrarVista />
     </div>
 
@@ -67,7 +67,7 @@ async function copiar() {
         {{ t("acerca.creadoPor") }}
         <button
           type="button"
-          class="font-medium text-marca underline-offset-4 hover:underline"
+          class="font-medium text-marca-texto underline-offset-4 hover:underline"
           @click="openUrl(AUTOR.enlace)"
         >
           {{ AUTOR.nombre }}

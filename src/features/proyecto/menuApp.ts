@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "@lucide/vue";
 import { RUTA_BIENVENIDA } from "@/app/estructura";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 
 /** Si el diálogo «Datos del proyecto» está abierto. Lo abren el nombre en la barra superior, el menú y la paleta. */
 export const datosProyectoAbierto = ref(false);
@@ -37,7 +38,7 @@ export const GRUPOS_MENU: EntradaMenu[][] = [
     { id: "ejemplo", icono: Sparkles, destino: { path: RUTA_BIENVENIDA, query: { accion: "ejemplo" } } },
     { id: "boldo", icono: FolderOpen, fase: "bienvenida.llegaFase5" },
     { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
-  ],
+  ].filter((e) => MOSTRAR_PROXIMAMENTE || !e.fase),
   [
     { id: "respaldos", icono: DatabaseBackup, destino: { path: "/configuracion", hash: "#cfg-respaldos" } },
     { id: "configuracion", icono: Settings, destino: "/configuracion" },

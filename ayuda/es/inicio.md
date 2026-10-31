@@ -4,15 +4,16 @@
 
 BoldoAtlas es una app de escritorio para Windows con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
 
-Los procesos, los indicadores y la exportación llegan en fases posteriores.
+**Próximamente:** procesos, indicadores, escenarios, importar y exportar a Excel y abrir archivos .boldo. Mientras no existan, no aparecen en la app.
 
 ## Primer uso
 
-Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con cuatro caminos:
+Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con dos caminos:
 
 - **Crear una organización vacía:** te pide el nombre de la organización y el de su unidad raíz (del primer tipo de unidad activo) y te lleva al árbol.
-- **Cargar desde Excel** (llega en la Fase 4) y **abrir un archivo .boldo** (Fase 5): por ahora aparecen deshabilitados.
 - **Explorar un ejemplo:** crea una organización de muestra, en el idioma de la interfaz, para recorrer la app.
+
+Debajo, una línea avisa lo que viene: cargar desde Excel y abrir un archivo .boldo.
 
 Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuración**, y las listas de cargos, sedes y demás en **Configuración › Mantenedores**.
 
@@ -22,11 +23,10 @@ El botón con el logo, a la izquierda de la barra superior, abre el **menú de l
 
 - **Inicio** vuelve a la bienvenida en cualquier momento, también con datos cargados.
 - **Nueva organización vacía…** y **Explorar el ejemplo…** reemplazan los datos actuales. Antes piden confirmación y hacen un **respaldo automático** (si el respaldo falla, no se reemplaza nada); el respaldo queda en la lista de **Configuración › Respaldos** para restaurarlo.
-- **Abrir archivo .boldo** (Fase 5) e **Importar Excel** (Fase 4) aparecen deshabilitados por ahora.
 - **Respaldos** y **Configuración** abren esas secciones; **Datos del proyecto** muestra dónde están tus datos.
 - **Idioma** cambia al instante toda la app entre Español y English. La pantalla de bienvenida tiene el mismo selector **ES / EN**; tu elección se recuerda en este equipo y, la primera vez, la app sigue el idioma del sistema.
 
-Las mismas acciones están en la paleta de comandos (`Ctrl+K`). **Configuración**, **Ayuda** y **Acerca de** se cierran con su botón **Cerrar**, con `Esc` o con un segundo clic en su entrada del menú lateral, y vuelves a la vista anterior (o al árbol si no hay ninguna). La barra lateral se pliega y se vuelve a fijar abierta con el botón bajo el logo **BoldoAtlas**. Plegada, se despliega sobre el contenido al dejar el mouse encima un momento (o al llegar a ella con `Tab`) y se vuelve a plegar al salir o con `Esc`; esto se apaga en **Configuración › Apariencia › Abrir la barra lateral al pasar el mouse**. Con la ventana angosta (menos de 1100 px) la barra se pliega sola. El panel de una unidad se cierra con la **×** de su encabezado.
+Las mismas acciones están en la paleta de comandos (`Ctrl+K`). **Configuración**, **Ayuda** y **Acerca de** se cierran con su botón **Cerrar**, con `Esc` o con un segundo clic en su entrada del menú lateral, y vuelves a la vista anterior (o al árbol si no hay ninguna). La barra lateral se pliega y se vuelve a fijar abierta con el botón del pie de la barra, sobre **Configuración** (**Ocultar barra lateral** / **Mostrar barra lateral**); queda en el mismo lugar abierta o plegada. Plegada, se despliega sobre el contenido al dejar el mouse encima un momento (o al llegar a ella con `Tab`) y se vuelve a plegar al salir o con `Esc`; esto se apaga en **Configuración › Apariencia › Abrir la barra lateral al pasar el mouse**. Con la ventana angosta (menos de 1100 px) la barra se pliega sola. El panel de una unidad se cierra con la **×** de su encabezado.
 
 ## Qué proyecto está abierto
 

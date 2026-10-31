@@ -8,10 +8,11 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { tiposEnUso } from "./jerarquia";
 import { useVista } from "./useVista";
 import { CRITERIO_LEYENDA, criterioMarca, tipoDeMarca } from "./vista";
+import { claseSelect, cn } from "@/lib/utils";
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { config, panelAbierto } = useVista();
+const { config, panelAbierto, minimapa } = useVista();
 
 const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
 // Una preferencia guardada con un tipo que ya nadie usa se ve como «ninguno», sin pisar lo guardado.
@@ -59,7 +60,7 @@ function alternarTipo(id: string, marcado: boolean) {
     <PopoverContent align="start" class="max-h-[80vh] w-72 gap-3 overflow-y-auto text-sm">
       <label v-for="sel in selectores" :key="sel.clave" class="grid gap-1">
         <span class="font-medium">{{ t(`arbol.vista.${sel.clave}`) }}</span>
-        <select v-model="config[sel.clave]" class="h-7 rounded-md border bg-background px-2 text-sm">
+        <select v-model="config[sel.clave]" :class="cn(claseSelect, 'h-7')">
           <option v-for="o in sel.opciones" :key="o" :value="o">{{ t(`arbol.vista.opciones.${o}`) }}</option>
         </select>
       </label>
@@ -69,6 +70,11 @@ function alternarTipo(id: string, marcado: boolean) {
       <label class="flex items-center gap-2">
         <input v-model="config.alinearPorTipo" type="checkbox" class="size-4 accent-primary" />
         {{ t("arbol.vista.alinearPorTipo") }}
+      </label>
+      <!-- Hasta que exista el menú «Más ▾» de la barra del lienzo (Task 17i), el minimapa se enciende aquí. -->
+      <label class="flex items-center gap-2">
+        <input v-model="minimapa" type="checkbox" class="size-4 accent-primary" />
+        {{ t("arbol.vista.minimapa") }}
       </label>
       <fieldset class="grid gap-1.5">
         <legend class="mb-1 font-medium">{{ t("arbol.vista.tarjeta") }}</legend>
@@ -122,7 +128,7 @@ function alternarTipo(id: string, marcado: boolean) {
         <span class="font-medium">{{ t("arbol.vista.colorearPor") }}</span>
         <select
           v-model="criterio"
-          class="h-7 rounded-md border bg-background px-2 text-sm"
+          :class="cn(claseSelect, 'h-7')"
           :aria-describedby="pidePuestos ? 'vista-pide-puestos' : undefined"
         >
           <option value="ninguno">{{ t("arbol.vista.ninguno") }}</option>

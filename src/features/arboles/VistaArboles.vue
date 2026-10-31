@@ -10,6 +10,7 @@ import type { Unidad } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { clicNuevaPestana } from "@/features/pestanas/usePestanas";
 import { dotacionPorUnidad, ruta, rutaTexto, tipoHijo } from "@/features/arbol/jerarquia";
+import { claseSelect, cn } from "@/lib/utils";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -100,11 +101,7 @@ async function renombrar(id: string) {
         :placeholder="t('arboles.nombreArbol')"
         autofocus
       />
-      <select
-        v-model="tipoNuevo"
-        class="h-7 rounded-md border bg-background px-2 text-sm"
-        :aria-label="t('arboles.tipoArbol')"
-      >
+      <select v-model="tipoNuevo" :class="cn(claseSelect, 'h-7')" :aria-label="t('arboles.tipoArbol')">
         <option v-for="tipo in org.activos('tipos_unidad')" :key="tipo.id" :value="tipo.id">
           {{ tipo.nombre }}
         </option>

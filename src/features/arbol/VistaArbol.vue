@@ -104,7 +104,7 @@ const {
   setViewport,
   viewport,
 } = useVueFlow();
-const { config } = useVista();
+const { config, minimapa } = useVista();
 const { escala } = useTema();
 
 // Opciones de «Vista» que cambian lo dibujado. Solo cuentan los tipos que alguna unidad usa.
@@ -340,7 +340,7 @@ watch([pendiente, areNodesInitialized], ([p, medidos]) => {
   const c = p.centrar && vista.value?.pos.get(p.centrar);
   if (c) void setCenter(c.x + TAM.value.ancho / 2, c.y + TAM.value.alto / 2, { zoom: 1 });
   else if (encuadre) void setViewport(encuadre);
-  else void fitView();
+  else void encuadrarTodo();
   encuadre = null;
 });
 
@@ -433,11 +433,18 @@ const nodos = computed<Node[]>(() => {
 
 // Nivel de detalle (rendimiento.ts): alejado y con muchas tarjetas, tarjetas y aristas ligeras y sin minimapa.
 const ligera = computed(() => tarjetasLigeras(viewport.value.zoom, nodos.value.length));
+// El minimapa (abajo a la derecha, MINIMAPA más el margen de 15 px de los paneles de Vue Flow) no tapa tarjetas al
+// encuadrar: se deja libre esa franja a la derecha.
+const MINIMAPA = { ancho: 160, alto: 100 };
+const conMapa = computed(() => minimapa.value && conMinimapa(nodos.value.length));
+const encuadrarTodo = () =>
+  fitView(conMapa.value ? { padding: { x: 0.1, y: 0.1, right: `${MINIMAPA.ancho + 30}px` } } : undefined);
 provide(CONTEXTO_LIENZO, {
   marcas,
   rutas,
   leyendas: computed(() => (porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null)),
   ligera,
+  encuadrar: encuadrarTodo,
 });
 
 const leyenda = computed<EntradaLeyenda[]>(() => {
@@ -653,7 +660,7 @@ function verCompleto() {
             <template #node-puesto="p">
               <NodoPuesto :id="p.id" :data="p.data" />
             </template>
-            <MiniMap v-if="conMinimapa(nodos.length)" pannable zoomable />
+            <MiniMap v-if="conMapa" pannable zoomable :width="MINIMAPA.ancho" :height="MINIMAPA.alto" />
           </VueFlow>
         </MenuLienzo>
         <div
@@ -662,7 +669,6 @@ function verCompleto() {
         >
           <BarraSeleccion class="pointer-events-auto" />
         </div>
-        <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
         <div role="status" class="pointer-events-none absolute top-2 right-2 z-10">
           <span
             v-if="ordenando"
@@ -681,8 +687,11 @@ function verCompleto() {
           <p class="max-w-sm text-sm text-muted-foreground">{{ t("arbol.vacioTexto") }}</p>
         </div>
       </div>
+
       <PanelUnidad v-if="unidadSeleccionada" :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
     </div>
+    <!-- La leyenda va en una franja fija bajo el lienzo: así no tapa tarjetas. -->
+    <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
     <AlertDialog v-model:open="confirmando">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -726,7 +735,10 @@ function verCompleto() {
 </template>
 
 <style scoped>
-/* Etiquetas de las conexiones laterales y minimapa legibles en ambos temas. */
+/* Líneas, etiquetas de las conexiones laterales y minimapa con los colores del tema (las laterales traen su color). */
+.lienzo :deep(.vue-flow__edge-path) {
+  stroke: var(--arista);
+}
 .lienzo :deep(.vue-flow__edge-textbg) {
   fill: var(--background);
 }
@@ -735,9 +747,13 @@ function verCompleto() {
 }
 .lienzo :deep(.vue-flow__minimap) {
   background: var(--card);
+  border: 1px solid var(--border);
+}
+.lienzo :deep(.vue-flow__minimap-node) {
+  fill: var(--minimapa-nodo);
 }
 .lienzo :deep(.vue-flow__minimap-mask) {
-  fill: color-mix(in oklab, var(--muted) 60%, transparent);
+  fill: color-mix(in oklab, var(--background) 60%, transparent);
 }
 /* Ligero: el navegador no revisa aristas ni puntos de conexión bajo el puntero (nota de rendimiento: HitTest). */
 .lienzo-ligero :deep(.vue-flow__edge),

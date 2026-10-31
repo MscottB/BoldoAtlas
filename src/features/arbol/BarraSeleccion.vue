@@ -21,6 +21,7 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { planEliminar } from "./multiple";
 import { useLienzo } from "./useLienzo";
+import { claseSelect } from "@/lib/utils";
 
 // Barra de 2 o más unidades seleccionadas: mover, plegar, etiquetar y eliminar todas de una vez.
 const { t } = useI18n();
@@ -124,11 +125,7 @@ async function eliminar() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" class="grid w-72 gap-2 p-3">
-        <select
-          class="h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
-          :aria-label="t('unidad.agregarEtiqueta')"
-          @change="elegirEtiqueta"
-        >
+        <select :class="claseSelect" :aria-label="t('unidad.agregarEtiqueta')" @change="elegirEtiqueta">
           <option value="">{{ t("unidad.agregarEtiqueta") }}</option>
           <option v-for="e in org.etiquetas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
           <option :value="NUEVA">{{ t("unidad.nuevaEtiqueta") }}</option>
