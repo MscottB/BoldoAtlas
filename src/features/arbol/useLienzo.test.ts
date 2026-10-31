@@ -130,16 +130,19 @@ describe("expandir y contraer devuelven cuántas unidades quedan a la vista", ()
     l.colapsados.value = new Set(["a"]);
     expect(l.expandirTodo(grande)).toBe(1102);
     expect(l.colapsados.value).toEqual(new Set(["a"])); // sin cambios hasta que se elija
-    expect(l.avisoExpansion.value).toEqual({
-      tarjetas: 1102,
-      nivel: 2,
-      todo: new Set(),
-      hasta: new Set(["a"]),
-    });
+    // «Hasta el nivel 2» dejaría todo como está: no se ofrece.
+    expect(l.avisoExpansion.value).toEqual({ tarjetas: 1102, nivel: 2, todo: new Set(), hasta: null });
     l.avisoExpansion.value = null;
-    expect(l.aplicarPlegado(grande, new Set())).toBe(1102); // aplicar una vista avisa igual
+    // Aplicar una vista avisa igual; cancelar deshace lo que la vista ya cambió (su configuración).
+    let revertida = 0;
+    expect(l.aplicarPlegado(grande, new Set(), () => revertida++)).toBe(1102);
     expect(l.avisoExpansion.value).toMatchObject({ tarjetas: 1102 });
-    l.avisoExpansion.value = null;
+    l.cancelarExpansion();
+    expect(revertida).toBe(1);
+    expect(l.avisoExpansion.value).toBeNull();
+    expect(l.colapsados.value).toEqual(new Set(["a"]));
+    l.cancelarExpansion(); // sin aviso pendiente no hace nada
+    expect(revertida).toBe(1);
     l.colapsados.value = new Set();
     expect(l.contraerHasta(grande, 1)).toBe(1); // contraer nunca avisa
     expect(l.avisoExpansion.value).toBeNull();

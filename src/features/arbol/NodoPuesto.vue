@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, nextTick, useTemplateRef, watch } from "vue";
 import { Handle, Position } from "@vue-flow/core";
 import { Briefcase } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
@@ -28,6 +28,13 @@ const contexto = inject(CONTEXTO_LIENZO)!;
 const leyenda = computed(
   () => (props.data.leyendaId && contexto.leyendas.value?.get(props.data.leyendaId)) || null,
 );
+// Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).
+const raiz = useTemplateRef<HTMLElement>("raiz");
+watch(contexto.ligera, async () => {
+  if (raiz.value !== document.activeElement) return;
+  await nextTick();
+  raiz.value?.focus();
+});
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");
 // Misma función que usa el layout.
@@ -43,15 +50,23 @@ const tam = computed(() => {
   <!-- Ligera (rendimiento.ts): un solo elemento con el cargo y el color de la leyenda. -->
   <div
     v-if="contexto.ligera.value"
-    class="nodrag content-center truncate rounded-md border bg-card px-2 text-xl leading-tight font-medium text-card-foreground"
+    ref="raiz"
+    role="button"
+    tabindex="0"
+    class="nodrag content-center truncate rounded-md border bg-card px-2 text-xl leading-tight font-medium text-card-foreground focus-visible:outline-4 focus-visible:outline-ring"
     :class="leyenda && 'border-l-[12px]'"
     :style="[tam, leyenda ? { borderColor: leyenda.color } : {}]"
     @click.stop="abrir(id)"
+    @keydown.enter.prevent="abrir(id)"
+    @keydown.space.prevent="abrir(id)"
+    @keydown.ctrl.c.exact="copiar(id)"
+    @keydown.ctrl.v.exact="pegar(id)"
   >
     {{ data.cargo }}
   </div>
   <button
     v-else
+    ref="raiz"
     type="button"
     class="nodrag flex items-center gap-2 rounded-md border bg-card px-2 text-left text-xs text-card-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
     :class="leyenda && 'border-l-[6px]'"

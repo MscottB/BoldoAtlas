@@ -107,7 +107,10 @@ export interface AvisoExpansion {
   tarjetas: number;
   nivel: number | null;
   todo: Set<string>;
+  /** null si ni el nivel 1 cabe o si dejaría todo como está. */
   hasta: Set<string> | null;
+  /** Deshace lo que el llamador ya cambió (una vista guardada aplica su configuración antes de preguntar). */
+  revertir?: () => void;
 }
 const avisoExpansion = shallowRef<AvisoExpansion | null>(null);
 
@@ -144,7 +147,7 @@ export function useLienzo() {
   };
   // Expandir y contraer reemplazan las ramas plegadas y devuelven cuántas tarjetas quedan a la vista. Si abren de más,
   // no se aplican: queda el aviso para que se elija.
-  function plegar(unidades: Unidad[], nuevas: Set<string>): number {
+  function plegar(unidades: Unidad[], nuevas: Set<string>, revertir?: () => void): number {
     const despues = tarjetas(unidades, nuevas);
     if (!debeAvisar(tarjetas(unidades, colapsados.value), despues)) {
       colapsados.value = nuevas;
@@ -152,12 +155,9 @@ export function useLienzo() {
     }
     const actual = colapsados.value;
     const nivel = nivelBajoLimite(unidades, actual, nuevas, (c) => tarjetas(unidades, c));
-    avisoExpansion.value = {
-      tarjetas: despues,
-      nivel,
-      todo: nuevas,
-      hasta: nivel === null ? null : hastaNivel(unidades, actual, nuevas, nivel),
-    };
+    const hasta = nivel === null ? null : hastaNivel(unidades, actual, nuevas, nivel);
+    const igual = hasta && hasta.size === actual.size && [...hasta].every((id) => actual.has(id));
+    avisoExpansion.value = { tarjetas: despues, nivel, todo: nuevas, hasta: igual ? null : hasta, revertir };
     return despues;
   }
 
@@ -225,8 +225,13 @@ export function useLienzo() {
     pestanaPanel,
     avisoExpansion,
     expandir,
-    /** Las ramas plegadas de una vista guardada (avisa igual si abren de más). */
+    /** Las ramas plegadas de una vista guardada (avisa igual si abren de más; `revertir` deshace la vista si se cancela). */
     aplicarPlegado: plegar,
+    /** «Cancelar» (o Esc) en el aviso: no se expande y se deshace lo que el llamador ya había cambiado. */
+    cancelarExpansion() {
+      avisoExpansion.value?.revertir?.();
+      avisoExpansion.value = null;
+    },
     expandirTodo: (unidades: Unidad[]) => plegar(unidades, new Set()),
     /** 1 = solo las raíces (contraer todo). */
     contraerHasta: (unidades: Unidad[], nivel: number) =>

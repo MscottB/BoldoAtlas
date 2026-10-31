@@ -95,7 +95,7 @@ El botón **Resaltar por…** suma más criterios: **Con vacantes**, **Sede**, *
 
 Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** para alejar o acercar. **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El minimapa de la esquina muestra dónde estás.
 
-Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Así el lienzo se mueve con fluidez. Al acercarte vuelve todo el detalle. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. En ese caso el minimapa no se muestra. La tarjeta seleccionada se ve rellena con el color de acento.
+Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Así el lienzo se mueve con fluidez. Al acercarte vuelve todo el detalle; con el teclado, cada tarjeta ligera se enfoca con `Tab` y se elige con `Enter` o la barra espaciadora. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. Con más de 300 tarjetas no hay minimapa, con cualquier zoom. La tarjeta seleccionada se ve rellena con el color de acento.
 
 ## Abrir una rama como árbol
 

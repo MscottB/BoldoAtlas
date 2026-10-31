@@ -87,4 +87,20 @@ describe("pedidos de layout al worker", () => {
     cola.recibir(2, "B");
     expect(await b).toBe("B");
   });
+
+  it("fallar (el worker murió sin responder) libera el pedido en curso y manda el siguiente", async () => {
+    const { enviados, cola } = preparar();
+    const a = cola.pedir("a");
+    const b = cola.pedir("b");
+    cola.fallar("murió");
+    expect(await a).toBeNull(); // ya había uno más nuevo: no sirve, no es error
+    expect(enviados[enviados.length - 1]).toEqual([2, "b"]);
+    cola.fallar("otra vez");
+    await expect(b).rejects.toBe("otra vez");
+    cola.fallar("sin nada en curso"); // no hace nada
+    const c = cola.pedir("c");
+    expect(enviados[enviados.length - 1]).toEqual([3, "c"]);
+    cola.recibir(3, "C");
+    expect(await c).toBe("C");
+  });
 });

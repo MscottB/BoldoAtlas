@@ -95,7 +95,7 @@ The **Highlight by…** button adds more criteria: **With vacancies**, **Site**,
 
 Drag the background to pan and use the mouse wheel or the **−** and **+** buttons to zoom out or in. **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The minimap in the corner shows where you are.
 
-With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the colour of its mark, and the lines become steps. This keeps the canvas smooth. Zoom back in and all the detail returns. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. In that case the minimap is not shown. The selected card is filled with the accent colour.
+With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the colour of its mark, and the lines become steps. This keeps the canvas smooth. Zoom back in and all the detail returns; with the keyboard, each light card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent colour.
 
 ## Opening a branch as a tree
 

@@ -158,6 +158,7 @@
     },
     "reordenar": "Rearrange",
     "ordenando": "Arranging…",
+    "errorOrdenar": "The diagram could not be arranged. Try “Rearrange”.",
     "limite": {
       "titulo": "{n} cards would be shown",
       "texto": "With more than {limite} cards in view the canvas gets slow. You can expand only some levels.",

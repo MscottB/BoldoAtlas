@@ -41,8 +41,10 @@ async function guardar() {
 
 function aplicar(texto: string) {
   const r = aplicarVista(texto, new Set(org.unidades.map((u) => u.id)));
-  config.value = r.vista;
-  if (r.colapsados) aplicarPlegado(props.unidades, r.colapsados);
+  const previa = config.value;
+  config.value = r.vista; // antes de plegar: la cuenta de tarjetas usa «Ver puestos» de la vista
+  // Si abre de más y se cancela el aviso, la vista no queda a medias: vuelve la configuración de antes.
+  if (r.colapsados) aplicarPlegado(props.unidades, r.colapsados, () => (config.value = previa));
   abierto.value = false;
 }
 

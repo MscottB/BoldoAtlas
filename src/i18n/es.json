@@ -158,6 +158,7 @@
     },
     "reordenar": "Reordenar",
     "ordenando": "Ordenando…",
+    "errorOrdenar": "No se pudo ordenar el diagrama. Prueba con «Reordenar».",
     "limite": {
       "titulo": "Se verían {n} tarjetas",
       "texto": "Con más de {limite} tarjetas a la vista el lienzo se vuelve lento. Puedes expandir solo algunos niveles.",

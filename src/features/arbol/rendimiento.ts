@@ -76,6 +76,14 @@ export function colaDeUltimo<E, S>(enviar: (id: number, datos: E) => void) {
     siguiente = null;
     if (enCurso) enviar(enCurso.id, enCurso.datos);
   };
+  function recibir(id: number, resultado: S | undefined, error?: unknown) {
+    if (enCurso?.id !== id) return;
+    const p = enCurso;
+    arrancar();
+    if (p.id !== ultimo) p.resolver(null);
+    else if (error !== undefined) p.rechazar(error);
+    else p.resolver(resultado ?? null);
+  }
   return {
     pedir: (datos: E) =>
       new Promise<S | null>((resolver, rechazar) => {
@@ -83,13 +91,8 @@ export function colaDeUltimo<E, S>(enviar: (id: number, datos: E) => void) {
         siguiente = { id: ++ultimo, datos, resolver, rechazar };
         if (!enCurso) arrancar();
       }),
-    recibir(id: number, resultado: S | undefined, error?: unknown) {
-      if (enCurso?.id !== id) return;
-      const p = enCurso;
-      arrancar();
-      if (p.id !== ultimo) p.resolver(null);
-      else if (error !== undefined) p.rechazar(error);
-      else p.resolver(resultado ?? null);
-    },
+    recibir,
+    /** El worker falló sin responder (error al cargar, sin memoria…): el pedido en curso falla y sale el siguiente. */
+    fallar: (error: unknown) => enCurso && recibir(enCurso.id, undefined, error),
   };
 }

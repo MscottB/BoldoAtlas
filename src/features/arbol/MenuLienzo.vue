@@ -65,7 +65,7 @@ function apuntar(e: MouseEvent) {
   if (el.closest("input, textarea")) return void e.stopPropagation(); // el campo conserva su menú (copiar, pegar)
   const nodo = el.closest<HTMLElement>(".vue-flow__node");
   id.value = nodo?.dataset.id ?? "";
-  foco = (nodo?.matches("button") ? nodo : nodo?.querySelector("button")) ?? null;
+  foco = nodo?.querySelector<HTMLElement>("button, [role=button]") ?? null; // la tarjeta ligera es [role=button]
   accion = null;
 }
 

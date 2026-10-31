@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, type Directive } from "vue";
+import { computed, inject, nextTick, useTemplateRef, watch, type Directive } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { Handle, Position } from "@vue-flow/core";
@@ -55,6 +55,13 @@ const ruta = computed(() =>
 );
 // Alejado y con muchas tarjetas, la ligera (rendimiento.ts); la que se está renombrando conserva su campo.
 const ligera = computed(() => contexto.ligera.value && editando.value !== props.id);
+// Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).
+const raiz = useTemplateRef<HTMLElement>("raiz");
+watch(ligera, async (l) => {
+  if (!raiz.value?.contains(document.activeElement)) return;
+  await nextTick();
+  (l ? raiz.value : raiz.value?.querySelector("button"))?.focus();
+});
 
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");
@@ -109,7 +116,11 @@ async function guardar(e: Event) {
   <!-- Ligera: un solo elemento con el nombre y el color de la marca (más los puntos de conexión, que no reciben el puntero). -->
   <div
     v-if="ligera"
-    class="line-clamp-2 rounded-lg border px-2 py-1 text-2xl leading-tight font-semibold break-words"
+    ref="raiz"
+    role="button"
+    tabindex="0"
+    :aria-pressed="seleccionada"
+    class="line-clamp-2 rounded-lg border px-2 py-1 text-2xl leading-tight font-semibold break-words focus-visible:outline-4 focus-visible:outline-ring"
     :class="[
       seleccionada
         ? 'border-marca bg-marca text-marca-foreground ring-8 ring-marca'
@@ -121,6 +132,8 @@ async function guardar(e: Event) {
       marca?.color && !seleccionada ? { background: marca.color, color: textoSobre(marca.color) } : {},
     ]"
     @click="alHacerClic"
+    @keydown.enter.self.prevent="seleccionar(id)"
+    @keydown.space.self.prevent="seleccionar(id)"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
     {{ data.unidad.nombre }}
@@ -129,6 +142,7 @@ async function guardar(e: Event) {
   <!-- Nodo liviano: sin sombras ni transiciones (nota de rendimiento). -->
   <div
     v-else
+    ref="raiz"
     class="flex rounded-lg border bg-card text-xs text-card-foreground"
     :class="[
       compacta ? 'items-center gap-1.5 px-2' : 'flex-col gap-1 p-2',

@@ -82,6 +82,7 @@ const {
   podarSeleccion,
   limpiarMultiple,
   avisoExpansion,
+  cancelarExpansion,
 } = useLienzo();
 const {
   fitView,
@@ -166,21 +167,40 @@ const forma = (g: Subgrafo) =>
     g.jerarquicas,
     g.laterales.map((c) => [c.id, c.origen_id, c.destino_id, c.etiqueta]),
   ]);
-const worker = new LayoutWorker();
+let worker: Worker;
 const cola = colaDeUltimo<ReturnType<typeof grafoElk>, NodoUbicado[]>((id, grafo) =>
   worker.postMessage({ id, grafo }),
 );
-worker.onmessage = ({ data }: MessageEvent<{ id: number; ubicados?: NodoUbicado[]; error?: string }>) =>
-  cola.recibir(data.id, data.ubicados, data.error);
-onBeforeUnmount(() => worker.terminate());
+// Si el worker muere sin responder (no cargó, sin memoria…), se crea otro y el pedido en curso falla: si no, ningún
+// layout más saldría nunca.
+function crearWorker() {
+  worker = new LayoutWorker();
+  worker.onmessage = ({ data }: MessageEvent<{ id: number; ubicados?: NodoUbicado[]; error?: string }>) =>
+    cola.recibir(data.id, data.ubicados, data.error);
+  worker.onerror = worker.onmessageerror = (e: Event) => {
+    e.preventDefault();
+    worker.terminate();
+    crearWorker();
+    cola.fallar(e instanceof ErrorEvent ? e.message : e.type);
+  };
+}
+crearWorker();
 // El aviso aparece solo si el layout tarda: uno rápido no parpadea ni se anuncia.
 const ordenando = ref(false);
 let demora: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => {
+  worker.terminate();
+  clearTimeout(demora);
+});
 function avisarOrdenando(si: boolean) {
   clearTimeout(demora);
   if (si) demora = setTimeout(() => (ordenando.value = true), 300);
   else ordenando.value = false;
 }
+// Solo el valor: reemplazar toda la configuración (aplicar una vista) no rehace los nodos si «Ver puestos» no cambió.
+const verPuestos = computed(() => config.value.verPuestos);
+// Cada layout pedido lleva su número: tras esperar, solo sigue si no llegó otro (ver el encuadre antes de dibujar).
+let secuencia = 0;
 // «Reordenar»: vuelve a calcular el layout y encuadra.
 const reordenado = ref(0);
 function reordenar() {
@@ -193,7 +213,7 @@ watch(
       mostradas.value,
       org.conexiones,
       colapsados.value,
-      config.value.verPuestos ? org.enFecha.puestos : [],
+      verPuestos.value ? org.enFecha.puestos : [],
     ),
     tam: TAM.value,
     tamDelPuesto: tamPuesto(config.value, escala.value),
@@ -206,12 +226,15 @@ watch(
     reordenado: reordenado.value,
   }),
   async ({ g, tam, tamDelPuesto, opciones, tipos }) => {
+    const este = ++secuencia;
     avisarOrdenando(true);
     const ubicados = await cola.pedir(grafoElk(g, tam, tamDelPuesto, opciones, tipos)).catch((e) => {
+      console.error(e);
+      toast.error(t("arbol.errorOrdenar"));
       avisarOrdenando(false);
-      throw e;
+      return null;
     });
-    if (!ubicados) return; // llegó otro cambio: manda ese
+    if (!ubicados) return; // llegó otro cambio (manda ese) o falló (ya se avisó)
     avisarOrdenando(false);
     const pos = posiciones(g, ubicados);
     // Al pasar a muchas tarjetas se encuadra antes de dibujarlas: así nacen ligeras, sin montar antes el detalle de todas
@@ -229,6 +252,7 @@ watch(
         width: Math.max(...ps.map((p) => p.x)) + ancho - x,
         height: Math.max(...ps.map((p) => p.y)) + alto - y,
       });
+      if (este !== secuencia) return; // mientras se encuadraba llegó otro cambio
     }
     const antes = dibujo.value;
     vista.value = { g, pos };
@@ -340,7 +364,7 @@ const datosPuesto = computed(() => {
   const nombre = (a?: { trabajador_id: string }) =>
     (a && trabajadorPorId.value.get(a.trabajador_id)?.nombre) || null;
   return new Map(
-    (config.value.verPuestos ? org.enFecha.puestos : []).map((p): [string, DatosPuesto] => [
+    (verPuestos.value ? org.enFecha.puestos : []).map((p): [string, DatosPuesto] => [
       p.id,
       {
         cargo: cargos.get(p.cargo_id) ?? "",
@@ -403,31 +427,40 @@ const tituloLeyenda = computed(() =>
     : t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
 );
 
+// Solo entre tarjetas que están en `nodos` (una recién eliminada se omite hasta el próximo layout).
 const aristas = computed<Edge[]>(() => {
   if (!dibujo.value) return [];
   const { g } = dibujo.value;
+  const ids = new Set(nodos.value.map((n) => n.id));
+  const entre = (a: string, b: string) => ids.has(a) && ids.has(b);
   return [
-    ...g.jerarquicas.map(([a, b]) => ({
-      id: `${a}>${b}`,
-      source: a,
-      target: b,
-      // Ligeras: en escalón y sin el trazo invisible que el navegador revisa bajo el puntero en cada evento.
-      type: ligera.value ? "step" : tipoArista(config.value.lineas),
-      interactionWidth: ligera.value ? 0 : undefined,
-    })),
-    ...g.laterales.map((c) => ({
-      id: c.id,
-      source: c.origen_id,
-      target: c.destino_id,
-      label: c.etiqueta ?? undefined,
-      style: { stroke: "var(--marca)", strokeDasharray: "6 4" },
-    })),
+    ...g.jerarquicas
+      .filter(([a, b]) => entre(a, b))
+      .map(([a, b]) => ({
+        id: `${a}>${b}`,
+        source: a,
+        target: b,
+        // Ligeras: en escalón y sin el trazo invisible que el navegador revisa bajo el puntero en cada evento.
+        type: ligera.value ? "step" : tipoArista(config.value.lineas),
+        interactionWidth: ligera.value ? 0 : undefined,
+      })),
+    ...g.laterales
+      .filter((c) => entre(c.origen_id, c.destino_id))
+      .map((c) => ({
+        id: c.id,
+        source: c.origen_id,
+        target: c.destino_id,
+        label: c.etiqueta ?? undefined,
+        style: { stroke: "var(--marca)", strokeDasharray: "6 4" },
+      })),
   ];
 });
 
 // Expandir de más (useLienzo): el diálogo propone expandir igual, solo hasta un nivel, o nada.
 const avisoAbierto = ref(false);
 watch(avisoExpansion, (a) => (avisoAbierto.value = !!a));
+// Cerrado sin elegir (Cancelar, Esc): nada cambia. Los botones de acción ya dejaron el aviso en null antes de esto.
+watch(avisoAbierto, (abierto) => abierto || cancelarExpansion());
 function expandirConAviso(colapsadosNuevos: Set<string> | null | undefined) {
   if (colapsadosNuevos) colapsados.value = colapsadosNuevos;
   avisoExpansion.value = null;
@@ -478,9 +511,11 @@ async function cerrarPanel(destino?: string | null) {
   seleccion.value = null;
   await nextTick();
   const tarjeta = id
-    ? document.querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"] button`)
+    ? document.querySelector<HTMLElement>(
+        `.vue-flow__node[data-id="${CSS.escape(id)}"] :is(button, [role=button])`,
+      )
     : destino === null
-      ? document.querySelector<HTMLElement>(".vue-flow__node button")
+      ? document.querySelector<HTMLElement>(".vue-flow__node :is(button, [role=button])")
       : null;
   tarjeta?.focus();
 }
