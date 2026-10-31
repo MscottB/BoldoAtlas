@@ -19,9 +19,17 @@ function archivos(dir: string): string[] {
 
 // Marcas y símbolos que no se traducen: el nombre del programa, teclas y el código de idioma.
 const PERMITIDOS = new Set(["BoldoAtlas", "Boldo", "Atlas", "Ctrl", "Esc", "Enter", "Shift", "Alt", "K", "T", "ES", "EN"]);
-const ATRIBUTOS = ["aria-label", "title", "placeholder", "alt", "aria-description", "aria-roledescription"];
+const ATRIBUTOS = ["aria-label", "title", "placeholder", "alt", "label", "description", "aria-description", "aria-roledescription", "aria-valuetext"];
 const ATAJO = /^(Ctrl|Alt|Shift)[ +]\S+$/; // «Ctrl K», «Ctrl+D»: teclas, no se traducen
 const conLetras = (s: string) => /\p{L}{2,}/u.test(s) && !PERMITIDOS.has(s.trim()) && !ATAJO.test(s.trim());
+
+// Literal suelto o rama de un ternario / || / ?? / &&: `x ? "Sí" : "No"`. Se saltan las claves de i18n («a.b»), los
+// literales con ${} y los que no tienen letras.
+function literales(exp: string): string[] {
+  const entero = /^\s*(["'`])((?:(?!\1).)*)\1\s*$/.exec(exp);
+  const ramas = [...exp.matchAll(/(?:\?\?|\|\||&&|[?:])\s*(["'`])((?:(?!\1).)*?)\1/g)].map((m) => m[2]!);
+  return [...(entero ? [entero[2]!] : []), ...ramas].filter((l) => !l.includes("${") && !/^\w+(\.\w+)+$/.test(l) && conLetras(l));
+}
 
 interface Nodo {
   type: number;
@@ -42,13 +50,17 @@ function hallazgos(ruta: string): string[] {
       // Atributo estático (type 6) o enlace con un literal entre comillas (type 7).
       if (p.type === 6 && ATRIBUTOS.includes(p.name) && p.value && conLetras(p.value.content))
         salida.push(`${donde} ${p.name}="${p.value.content}"`);
-      const literal = p.type === 7 && p.exp && /^\s*(["'`])[^"'`]*\1\s*$/.exec(p.exp.content);
-      if (literal && p.arg && ATRIBUTOS.includes(p.arg.content) && conLetras(p.exp!.content.slice(1, -1)))
-        salida.push(`${donde} :${p.arg.content}=${p.exp!.content}`);
+      if (p.type === 7 && p.exp) {
+        if (p.arg && ATRIBUTOS.includes(p.arg.content))
+          for (const l of literales(p.exp.content)) salida.push(`${donde} :${p.arg.content} «${l}»`);
+        // Toasts en un manejador de evento (@click="toast('texto')").
+        for (const m of p.exp.content.matchAll(/toast(?:\.\w+)?\(\s*(["'`])([^"'`]*\p{L}{2,}[^"'`]*)\1/gu))
+          salida.push(`${donde} toast «${m[2]}»`);
+      }
     }
-    // Interpolaciones con un literal suelto: {{ "texto" }}
-    if (n.type === 5 && typeof n.content === "object" && n.content?.content && /^\s*(["'`])[^"'`]*\1\s*$/.test(n.content.content) && conLetras(n.content.content.replace(/["'`]/g, "")))
-      salida.push(`${donde} {{ ${n.content.content} }}`);
+    // Interpolaciones: {{ "texto" }} o {{ cond ? "Sí" : "No" }}
+    if (n.type === 5 && typeof n.content === "object" && n.content?.content)
+      for (const l of literales(n.content.content)) salida.push(`${donde} {{ «${l}» }}`);
     n.children?.forEach(ver);
   };
   if (descriptor.template?.ast) ver(descriptor.template.ast as unknown as Nodo);

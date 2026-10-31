@@ -40,10 +40,10 @@ const router = useRouter();
         </DropdownMenuItem>
       </template>
       <DropdownMenuSeparator />
-      <DropdownMenuLabel>{{ t("idioma.etiqueta") }}</DropdownMenuLabel>
+      <DropdownMenuLabel id="menu-idioma">{{ t("idioma.etiqueta") }}</DropdownMenuLabel>
       <DropdownMenuRadioGroup
         :model-value="locale"
-        :aria-label="t('idioma.etiqueta')"
+        aria-labelledby="menu-idioma"
         @update:model-value="cambiarIdioma($event as Idioma)"
       >
         <DropdownMenuRadioItem v-for="i in IDIOMAS" :key="i" :value="i" :lang="i">

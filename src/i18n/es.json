@@ -334,7 +334,8 @@
     "sinPermiso": "No se puede escribir en {ruta}. Mueve BoldoAtlas a una carpeta con permiso de escritura (por ejemplo, Documentos) o revisa los permisos de esa carpeta. Detalle: {detalle}",
     "sinAppdata": "No se encontró la carpeta APPDATA de Windows.",
     "sinCarpeta": "No se encontró la carpeta de datos de BoldoAtlas.",
-    "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas."
+    "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas.",
+    "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura."
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",

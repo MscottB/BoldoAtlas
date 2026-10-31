@@ -1,6 +1,7 @@
 import type { Puesto, Trabajador, Unidad, ValorCatalogo } from "@/db/tipos";
 import { rutasPorTipo, rutaSuperiores, tiposEnUso, type Vigentes } from "@/features/arbol/jerarquia";
 import { normalizarTexto } from "@/lib/texto";
+import { i18n } from "@/i18n";
 
 export interface ItemUnidad {
   id: string;
@@ -45,7 +46,6 @@ export interface IndicePaleta {
   vacantes: Fila<ItemVacante>[];
 }
 
-const colador = new Intl.Collator("es");
 const fila = <T>(texto: string, item: T): Fila<T> => ({
   norm: normalizarTexto(texto),
   item,
@@ -78,6 +78,8 @@ export function indexarPaleta(d: {
         cargosDe.set(a.trabajador_id, [...(cargosDe.get(a.trabajador_id) ?? []), `${cargo} · ${unidad}`]);
   }
 
+  // Etiquetas de la interfaz: se ordenan según el idioma activo al indexar (se rehace al cambiar los datos).
+  const colador = new Intl.Collator(i18n.global.locale.value);
   const porNombre = (a: Fila<{ nombre: string }>, b: Fila<{ nombre: string }>) =>
     colador.compare(a.item.nombre, b.item.nombre);
   return {

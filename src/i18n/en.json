@@ -101,7 +101,7 @@
       "panelSoloLectura": "Data for the chosen date: read only. Go back to today to edit.",
       "dialogoSoloLectura": "Position as of {fecha}: read only. Go back to today in the tree to edit."
     },
-    "sinJefatura": "No head",
+    "sinJefatura": "No unit head",
     "dotacion": "Total headcount",
     "verPersonasDotacion": "View the unit's people",
     "dotacionPersonas": "Total headcount: {n}. View the people",
@@ -334,7 +334,8 @@
     "sinPermiso": "BoldoAtlas can't write to {ruta}. Move it to a folder you have write access to (for example, Documents) or check that folder's permissions. Details: {detalle}",
     "sinAppdata": "The Windows APPDATA folder was not found.",
     "sinCarpeta": "BoldoAtlas' data folder was not found.",
-    "baseNoDisponible": "The database is not available. Close BoldoAtlas and open it again."
+    "baseNoDisponible": "The database is not available. Close BoldoAtlas and open it again.",
+    "baseSoloLectura": "The database is read-only: check that the boldo.db file and its folder are writable."
   },
   "store": {
     "nombreVacio": "Enter a name.",
@@ -343,7 +344,7 @@
     "unidadInexistente": "The unit no longer exists.",
     "raizConContenido": "The root unit cannot be deleted while it has content.",
     "noSePuedeDeshacer": "This can no longer be undone.",
-    "valorExiste": "\"{nombre}\" already exists in the list.",
+    "valorExiste": "“{nombre}” already exists in the list.",
     "puestoInexistente": "The position no longer exists.",
     "nadaQuePegar": "There is no copied style that can be pasted.",
     "ultimoTipoUnidad": "At least one unit type must stay active.",

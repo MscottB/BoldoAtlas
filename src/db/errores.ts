@@ -32,6 +32,7 @@ const nativos: [RegExp, string][] = [
   [/^No se encontró la carpeta APPDATA/, "errores.sinAppdata"],
   [/^No se pudo ubicar la carpeta del programa|^No se ubicó la carpeta de datos/, "errores.sinCarpeta"],
   [/^La base de datos no está abierta|estado inválido/, "errores.baseNoDisponible"],
+  [/modo solo lectura/, "errores.baseSoloLectura"],
 ];
 
 export function traducirError(e: unknown): string {

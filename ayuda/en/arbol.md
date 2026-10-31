@@ -7,7 +7,7 @@ The tree is the main screen: it shows your organization as an org chart you can 
 Each unit is a card with:
 
 - its type (for example, Gerencia or Área) and its name;
-- the photo or initials and name of its head (**Replacement: name** if its position only has a replacement), or **No head** if it has none;
+- the photo or initials and name of its head (**Replacement: name** if its position only has a replacement), or **No unit head** if it has none;
 - the total headcount of its branch (the unit and everything under it); press it (or `Tab` to it and `Enter`) to see who they are on the panel's **People** tab;
 - the branch's vacancies, if any;
 - a colored dot for each tag (hover over it to see its name).

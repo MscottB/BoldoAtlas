@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cambiarIdioma, i18n, idiomaInicial } from "./index";
 import es from "./es.json";
@@ -41,20 +43,36 @@ describe("traducción fuera de componentes", () => {
 });
 
 describe("mensajes de arranque de la parte nativa", () => {
-  const nuevo =
-    "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema 9; esta app conoce hasta el 3). Actualiza BoldoAtlas para abrirla.";
-  const sinPermiso =
-    "No se puede escribir en C:\Datos\Boldo. Mueve BoldoAtlas a una carpeta con permiso de escritura (por ejemplo, Documentos) o revisa los permisos de esa carpeta. Detalle: acceso denegado";
+  // La entrada de cada caso es el literal REAL de Rust (se lee del código fuente) con sus datos puestos: si alguien
+  // lo reescribe en Rust, este test falla en vez de dejar la interfaz en español sin aviso.
+  const rust = (f: string) => readFileSync(join(process.cwd(), "src-tauri", "src", f), "utf8");
+  const escapar = (t: string) => t.replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
+  const casos: { nombre: string; archivo: string; marca: string; datos: Record<string, string>; conserva: string[] }[] = [
+    { nombre: "desdeZip", archivo: "rutas.rs", marca: "ejecutando desde dentro de un .zip", datos: { "{}": "C:\Descargas\boldo.zip" }, conserva: ["C:\Descargas\boldo.zip"] },
+    { nombre: "esquemaNuevo", archivo: "db.rs", marca: "creada con una versión más nueva", datos: { "{actual}": "9", "{conocida}": "3" }, conserva: ["9", "3"] },
+    { nombre: "sinPermiso", archivo: "rutas.rs", marca: "No se puede escribir en", datos: { "{}": "C:\Datos\Boldo", "{e}": "acceso denegado" }, conserva: ["C:\Datos\Boldo", "acceso denegado"] },
+    { nombre: "sinAppdata", archivo: "rutas.rs", marca: "No se encontró la carpeta APPDATA", datos: {}, conserva: ["APPDATA"] },
+    { nombre: "sinCarpeta (programa)", archivo: "comandos.rs", marca: "No se pudo ubicar la carpeta del programa", datos: {}, conserva: [] },
+    { nombre: "sinCarpeta (datos)", archivo: "comandos.rs", marca: "No se ubicó la carpeta de datos", datos: {}, conserva: [] },
+    { nombre: "baseNoDisponible (cerrada)", archivo: "comandos.rs", marca: "La base de datos no está abierta", datos: {}, conserva: [] },
+    { nombre: "baseNoDisponible (estado)", archivo: "comandos.rs", marca: "estado inválido", datos: {}, conserva: [] },
+    { nombre: "baseSoloLectura", archivo: "db.rs", marca: "modo solo lectura", datos: {}, conserva: ["boldo.db"] },
+  ];
 
-  it("se muestran en el idioma activo con sus datos", () => {
-    expect(traducirError(nuevo)).toBe(nuevo);
-    cambiarIdioma("en");
-    expect(traducirError(nuevo)).toContain("schema 9; this app supports up to 3");
-    expect(traducirError(sinPermiso)).toContain("can't write to C:\Datos\Boldo");
-    expect(traducirError(sinPermiso)).toContain("Details: acceso denegado");
+  it.each(casos)("$nombre: el texto de Rust se traduce y conserva sus datos", ({ archivo, marca, datos, conserva }) => {
+    const literal = new RegExp(`"([^"\n]*${escapar(marca)}[^"\n]*)"`).exec(rust(archivo))?.[1];
+    expect(literal, `no está «${marca}» en ${archivo}`).toBeDefined();
+    const entrada = Object.entries(datos).reduce((t, [marcador, dato]) => t.replace(marcador, () => dato), literal!);
+    for (const idioma of ["es", "en"] as const) {
+      cambiarIdioma(idioma);
+      const salida = traducirError(entrada);
+      if (idioma === "en") expect(salida).not.toBe(entrada);
+      for (const dato of conserva) expect(salida).toContain(dato);
+    }
   });
 
   it("lo que no se reconoce llega tal cual", () => {
+    cambiarIdioma("en");
     expect(traducirError("algo raro")).toBe("algo raro");
   });
 });
