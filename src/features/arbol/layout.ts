@@ -59,12 +59,14 @@ export function unidadesDeRama(unidades: U[], raiz: string): Unidad[] {
   );
 }
 
-// Con `puestos` (vacío = no se dibujan) cada unidad visible, plegada o no, suma los suyos como hijos.
+// Con `puestos` (vacío = no se dibujan) cada unidad visible, plegada o no, suma los suyos como hijos. `sinJefe`: el de
+// jefatura no, porque la tarjeta de la unidad ya muestra a quien la ejerce (ver jefeEnTarjeta).
 export function subgrafoVisible(
   unidades: U[],
   conexiones: Conexion[],
   colapsados: Set<string>,
   puestos: (Puesto & { deleted_at?: string | null })[] = [],
+  sinJefe = false,
 ): Subgrafo {
   const indice = indiceHijos(unidades);
   const porUnidad = new Map<string, Puesto[]>();
@@ -84,7 +86,8 @@ export function subgrafoVisible(
     // El puesto de jefatura encabeza la pila (las líneas bajan por los puestos en este orden); los demás, por `orden`.
     const propios = porUnidad.get(x.id) ?? [];
     const jefe = propios.find((p) => p.id === x.jefe_puesto_id);
-    for (const p of jefe ? [jefe, ...propios.filter((q) => q !== jefe)] : propios) {
+    const resto = jefe ? propios.filter((q) => q !== jefe) : propios;
+    for (const p of jefe && !sinJefe ? [jefe, ...resto] : resto) {
       delGrafo.push(p);
       jerarquicas.push([x.id, p.id]);
     }

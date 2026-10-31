@@ -7,7 +7,8 @@ The tree is the main screen: it shows your organization as an org chart you can 
 Each unit is a card with:
 
 - its type (for example, Gerencia or Área) and its name;
-- the photo or initials and name of its head (**Replacement: name** if its position only has a replacement), or **No unit head** if it has none;
+- the photo or initials and name of its head (**Replacement: name** if its position only has a replacement), or **No head assigned** if it has none; with **People on the cards**, also the head's job title;
+- with **People on the cards**, a row with the faces (photo or initials) of up to 4 more people in the unit and **+N** for those that don't fit. It counts only the unit itself, without its sub-units, and each person once. Press the faces (or `Tab` to them and `Enter`) to see the list on the panel's **People** tab;
 - the total headcount of its branch (the unit and everything under it); press it (or `Tab` to it and `Enter`) to see who they are on the panel's **People** tab;
 - the branch's vacancies, if any;
 - a colored dot for each tag (hover over it to see its name).
@@ -117,7 +118,8 @@ In addition, the **View** button lets you choose:
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
 - **Lines**: right-angle or curved.
 - **Align by unit type**: each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions are stacked under their unit and take no row.
-- **Card details**: unit type, head, head's photo, headcount, vacancies and tags.
+- **Card details**: people on the cards, unit type, head, head's photo, headcount, vacancies and tags.
+- **People on the cards** (on at first): the head shows with their job title and, below, the faces of the unit's team. The card gets a little taller. Since the head is already on the card, with **Show positions** their position isn't repeated underneath, as in a classic org chart; the other positions still show. The compact card and the simplified card (zoomed out with many cards) don't show people. On a past date you see the people of that day. The faces open the **People** tab with **Include sub-units** off, so the list is the same people they count. With **Head** off the head isn't shown on the card, but still counts in the team number (the name of the faces button).
 
 Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.
 

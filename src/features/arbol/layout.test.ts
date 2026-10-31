@@ -110,6 +110,17 @@ describe("layout del árbol", () => {
     ]);
   });
 
+  it("con la jefatura en la tarjeta, su puesto no se dibuja y la pila sigue con los demás", () => {
+    const conJefe = unidades.map((x) => (x.id === "gg" ? { ...x, jefe_puesto_id: "pj" } : x));
+    const de = (id: string, orden: number) => ({ ...p(id, "gg"), orden });
+    const g = subgrafoVisible(conJefe, [], new Set(), [de("pb", 2), de("pj", 3), de("pa", 1)], true);
+    expect(g.puestos.map((x) => x.id)).toEqual(["pa", "pb"]);
+    expect(aristasDibujadas(g).filter(([, b]) => ["pa", "pb"].includes(b))).toEqual([
+      ["gg", "pa"],
+      ["pa", "pb"],
+    ]);
+  });
+
   it("calcularLayout ubica los puestos debajo de su unidad", async () => {
     const g = subgrafoVisible(unidades, [], new Set(), puestos);
     const pos = await calcularLayout(g);

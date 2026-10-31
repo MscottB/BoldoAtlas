@@ -29,6 +29,7 @@ import {
   jefeVisible,
   leyendaDeMarcas,
   marcasPorUnidad,
+  personasPorUnidad,
   ruta,
   rutasPorTipo,
   tiposEnUso,
@@ -52,6 +53,7 @@ import { recordarPorArbol, useVista } from "./useVista";
 import {
   CRITERIO_LEYENDA,
   arbolDeVista,
+  jefeEnTarjeta,
   leerVista,
   leyendasEnUso,
   tamPuesto,
@@ -226,6 +228,7 @@ function avisarOrdenando(si: boolean) {
 }
 // Solo el valor: reemplazar toda la configuración (aplicar una vista) no rehace los nodos si «Ver puestos» no cambió.
 const verPuestos = computed(() => config.value.verPuestos);
+const sinPuestoJefe = computed(() => jefeEnTarjeta(config.value));
 // Cada layout pedido lleva su número: tras esperar, solo sigue si no llegó otro (ver el encuadre antes de dibujar).
 let secuencia = 0;
 // «Reordenar»: vuelve a calcular el layout y encuadra.
@@ -241,6 +244,7 @@ watch(
       org.conexiones,
       colapsados.value,
       verPuestos.value ? org.enFecha.puestos : [],
+      sinPuestoJefe.value,
     ),
     tam: TAM.value,
     tamDelPuesto: tamPuesto(config.value, escala.value),
@@ -364,6 +368,13 @@ const datosUnidad = computed(() => {
     org.fechaVista ?? undefined,
   );
   const vigentes = org.enFecha.vigentes;
+  const personas = personasPorUnidad(
+    mostradas.value,
+    org.enFecha.puestos,
+    vigentes,
+    trabajadorPorId.value,
+    new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre])),
+  );
   return new Map(
     mostradas.value.map((u): [string, DatosNodo] => {
       const { total, vacantes } = dotaciones.get(u.id) ?? { total: 0, vacantes: 0 };
@@ -371,6 +382,7 @@ const datosUnidad = computed(() => {
       return [
         u.id,
         {
+          ...personas.get(u.id)!,
           unidad: u,
           jefe: (jefe && trabajadorPorId.value.get(jefe.trabajador_id)) || null,
           jefeReemplazo: jefe?.tipo === "reemplazo",

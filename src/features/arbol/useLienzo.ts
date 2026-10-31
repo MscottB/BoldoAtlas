@@ -9,7 +9,7 @@ import { colapsadosIniciales, contraerRama, expandirRama, subgrafoVisible } from
 import { sumar, type Seleccion } from "./multiple";
 import { debeAvisar, hastaNivel, nivelBajoLimite } from "./rendimiento";
 import { useVista } from "./useVista";
-import type { Resaltado } from "./vista";
+import { jefeEnTarjeta, type Resaltado } from "./vista";
 
 /** Sin filtros todo coincide; con texto, etiqueta y criterios de puestos (`cumplen`) deben cumplirse todos. */
 export function coincideFiltro(
@@ -99,6 +99,8 @@ const centrarEn = ref<string | null>(null);
 const pedidoEliminar = ref(0);
 /** Pestaña que el panel de la unidad debe mostrar (lo atiende y la deja en null). */
 const pestanaPanel = ref<string | null>(null);
+/** Alcance que la pestaña Personas debe usar (true = con subunidades; la atiende y lo deja en null). */
+const ramaPersonas = ref<boolean | null>(null);
 let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
 let cumplen: ComputedRef<Set<string> | null> | undefined;
 
@@ -142,7 +144,8 @@ export function useLienzo() {
 
   // Tarjetas a la vista con esas ramas plegadas (de `unidades`, las que se dibujan), con sus puestos si se ven.
   const tarjetas = (unidades: Unidad[], c: Set<string>) => {
-    const g = subgrafoVisible(unidades, [], c, config.value.verPuestos ? org.enFecha.puestos : []);
+    const puestos = config.value.verPuestos ? org.enFecha.puestos : [];
+    const g = subgrafoVisible(unidades, [], c, puestos, jefeEnTarjeta(config.value));
     return g.nodos.length + g.puestos.length;
   };
   // Expandir y contraer reemplazan las ramas plegadas y devuelven cuántas tarjetas quedan a la vista. Si abren de más,
@@ -223,6 +226,7 @@ export function useLienzo() {
     centrarEn,
     pedidoEliminar,
     pestanaPanel,
+    ramaPersonas,
     avisoExpansion,
     expandir,
     /** Las ramas plegadas de una vista guardada (avisa igual si abren de más; `revertir` deshace la vista si se cancela). */
@@ -276,8 +280,12 @@ export function useLienzo() {
     seleccionar(id: string | null) {
       seleccion.value = id;
     },
-    /** Abre el panel de la unidad en la pestaña Personas (dotación de la tarjeta y menú contextual). */
-    verPersonas(id: string) {
+    /**
+     * Abre el panel de la unidad en la pestaña Personas: con `rama`, también sus subunidades (dotación de la tarjeta y
+     * menú contextual); sin ella, solo la unidad (las caras de la tarjeta).
+     */
+    verPersonas(id: string, rama = true) {
+      ramaPersonas.value = rama;
       pestanaPanel.value = "personas";
       seleccion.value = id;
     },

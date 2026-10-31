@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { normalizarTexto } from "./texto";
+import { iniciales, normalizarTexto } from "./texto";
+
+describe("iniciales", () => {
+  it("las de las dos primeras palabras, en mayúsculas; sin nombre, vacío", () => {
+    expect(iniciales("ana maría rojas")).toBe("AM");
+    expect(iniciales("  Luis  ")).toBe("L");
+    expect(iniciales("")).toBe("");
+  });
+});
 
 describe("normalizarTexto", () => {
   it("colapsa espacios y pasa a minúsculas", () =>

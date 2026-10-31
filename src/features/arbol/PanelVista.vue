@@ -30,6 +30,7 @@ const selectores = [
   { clave: "lineas", opciones: ["smoothstep", "bezier"] },
 ] as const;
 const camposTarjeta = [
+  "personasEnTarjetas",
   "mostrarTipo",
   "mostrarJefe",
   "mostrarFoto",

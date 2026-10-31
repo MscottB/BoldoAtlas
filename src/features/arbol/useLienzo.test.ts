@@ -253,3 +253,14 @@ describe("selección múltiple", () => {
     expect([...l.colapsados.value].sort()).toEqual(["a", "b", "z"]);
   });
 });
+
+describe("ver personas", () => {
+  it("verPersonas pide la pestaña Personas con la rama (dotación, menú) o solo la unidad (caras de la tarjeta)", () => {
+    setActivePinia(createPinia());
+    const l = useLienzo();
+    l.verPersonas("mantencion");
+    expect([l.pestanaPanel.value, l.seleccion.value, l.ramaPersonas.value]).toEqual(["personas", "mantencion", true]);
+    l.verPersonas("mecanica", false);
+    expect([l.pestanaPanel.value, l.seleccion.value, l.ramaPersonas.value]).toEqual(["personas", "mecanica", false]);
+  });
+});
