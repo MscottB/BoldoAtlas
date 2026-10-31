@@ -2,10 +2,13 @@ name: pages
 
 # Construye el sitio (site/, VitePress) y lo publica en GitHub Pages: https://mscottb.github.io/BoldoAtlas/
 # - push a main con cambios en el sitio, en el manual (ayuda/, que el sitio publica sin duplicarlo) o en las
-#   capturas que usa (docs/capturas/);
-# - release publicado (OJO: un release creado con GITHUB_TOKEN no dispara este evento; el número de versión
-#   de la página de descargas lo consulta el navegador a la API de GitHub, así que no hace falta redesplegar);
+#   capturas que usa (docs/capturas/): construye y publica;
+# - pull_request con los mismos cambios: solo construye (npm run build falla con enlaces muertos o errores de
+#   plantilla), no sube el artefacto ni despliega;
 # - a mano (workflow_dispatch).
+# Sin disparo en «release publicado» (el spec §14 lo menciona): las releases de release.yml las crea el GITHUB_TOKEN
+# y no disparan otros workflows, y una publicada a mano correría con la ref de la etiqueta (árbol viejo, y el entorno
+# github-pages la rechaza). El número de versión de Descargas lo consulta el navegador a la API de GitHub.
 # Un cambio solo en site/ no publica una versión de la app: publicar.yml ignora site/** (ayuda/** sí la publica,
 # porque el manual va dentro de la app).
 # Requiere que el autor active Settings → Pages → Source: GitHub Actions. Mientras no esté activo, el job
@@ -14,17 +17,18 @@ on:
   push:
     branches: [main]
     paths: ["site/**", "ayuda/**", "docs/capturas/**", ".github/workflows/pages.yml"]
-  release:
-    types: [published]
+  pull_request:
+    paths: ["site/**", "ayuda/**", "docs/capturas/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# un despliegue a la vez; el que está en curso termina (no se corta a medias)
+# un despliegue a la vez; el que está en curso termina (no se corta a medias). Los PR van en su propio grupo
+# para no desplazar un despliegue pendiente.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   construir:
@@ -47,6 +51,7 @@ jobs:
       - run: npm run build
         working-directory: site
       - id: pages
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,14 +65,14 @@ jobs:
             echo "activado=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "activado=false" >> "$GITHUB_OUTPUT"
-      - if: steps.pages.outputs.activado == 'true'
+      - if: github.event_name != 'pull_request' && steps.pages.outputs.activado == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/.vitepress/dist
 
   desplegar:
     needs: construir
-    if: needs.construir.outputs.pages == 'true'
+    if: github.event_name != 'pull_request' && needs.construir.outputs.pages == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write
