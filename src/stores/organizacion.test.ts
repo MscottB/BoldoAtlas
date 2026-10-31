@@ -832,6 +832,21 @@ describe("organigrama a una fecha", () => {
     expect(s.enFecha.puestos).toEqual([]);
   });
 
+  it("leerCambios arma los cambios por día una vez (también lo eliminado) y una carga los descarta", async () => {
+    const { s } = await historia();
+    expect(s.cambios).toBeNull();
+    expect(await s.leerCambios()).toEqual({ ok: true });
+    expect(s.cambios?.get("2026-03-10")?.map((c) => [c.tipo, c.persona, c.anterior])).toEqual([
+      ["unidadEliminada", undefined, undefined],
+      ["relevo", "Beto", "Ana"], // Ana (eliminada) sigue con su nombre
+    ]);
+    const antes = s.cambios;
+    await s.leerCambios();
+    expect(s.cambios).toBe(antes); // memoizado
+    await s.cargar();
+    expect(s.cambios).toBeNull();
+  });
+
   it("al escribir mientras se ve una fecha, lo histórico también se recarga", async () => {
     const { s, beto } = await historia();
     await s.verAFecha("2026-03-10");

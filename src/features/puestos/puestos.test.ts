@@ -5,7 +5,6 @@ import {
   asignacionesDePersona,
   descripcionPorGuardar,
   esTitularVigente,
-  fechaElegible,
   filtrarPersonas,
   formatearFecha,
   historialPuesto,
@@ -106,14 +105,6 @@ describe("fechas", () => {
   it("formatearFecha respeta años de menos de cuatro cifras (no los lleva a 19xx)", () => {
     expect(formatearFecha("0002-03-05", "en")).not.toMatch(/1902/);
     expect(formatearFecha("0099-12-31", "en")).toMatch(/, 99$/);
-  });
-  it("fechaElegible: solo una fecha completa entre 1900-01-01 y hoy (lo que deja a medias el teclado no cuenta)", () => {
-    const hoy = "2026-10-30";
-    expect(fechaElegible("2026-10-30", hoy)).toBe(true);
-    expect(fechaElegible("1900-01-01", hoy)).toBe(true);
-    expect(fechaElegible("2020-02-29", hoy)).toBe(true);
-    for (const v of ["", "0002-03-05", "0202-03-05", "1899-12-31", "2026-10-31", "2026-3-5", "202603-05"])
-      expect(fechaElegible(v, hoy)).toBe(false);
   });
 });
 

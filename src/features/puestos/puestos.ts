@@ -74,9 +74,5 @@ export function formatearFecha(iso: string, idioma: string): string {
 /** Primer día que se puede ver en el lienzo. */
 export const FECHA_MINIMA = "1900-01-01";
 
-/** Una fecha completa (AAAA-MM-DD) entre FECHA_MINIMA y hoy. Mientras se teclea el año, el campo da 0002-…, 0020-… */
-export const fechaElegible = (v: string, hoy: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= FECHA_MINIMA && v <= hoy;
-
 /** Quien recibe la asignación: una persona existente o el nombre de una por crear. */
 export type EleccionPersona = { id: string } | { nombre: string };
