@@ -1,0 +1,16 @@
+name: preparar-node
+description: Node 24 y node_modules en caché por package-lock.json (npm ci solo si cambió).
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+    - id: modulos
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
+    - if: steps.modulos.outputs.cache-hit != 'true'
+      run: npm ci
+      shell: bash

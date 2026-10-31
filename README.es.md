@@ -77,7 +77,11 @@ cargo test --manifest-path src-tauri/Cargo.toml   # tests de Rust
 npm run release        # release completo de Windows en release/<versión>/
 ```
 
-`npm run release` es el mismo comando que usa GitHub Actions, así que lo que genera en local es lo que se publicaría. Para publicar una versión, empuja una etiqueta: `git tag v1.2.0 && git push origin v1.2.0`.
+`npm run release` es el mismo comando que usa GitHub Actions, así que lo que genera en local es lo que se publicaría.
+
+### Versiones y releases
+
+Cada PR fusionado a `main` es una versión. Mientras dure la alpha, al fusionar se crea la etiqueta siguiente (`v0.1.0-alpha.N+1`) y se publica la prerelease con la sección **Notas de la versión** de cada PR fusionado desde el release anterior (si falta, su título). Los cambios que solo tocan documentación o CI no publican: salen en el siguiente release. Los labels `version:parche`, `version:menor` y `version:mayor` publican en cambio una versión X.Y.Z normal. Cada PR dice en un comentario con qué versión saldrá, y su portable de prueba (artefacto de `build-prueba`) lleva esa versión con el número del PR, p. ej. `0.1.0-alpha.3+pr4`. También se puede publicar a mano empujando una etiqueta: `git tag v1.2.0 && git push origin v1.2.0`.
 
 ## Hoja de ruta
 

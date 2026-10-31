@@ -60,13 +60,29 @@ export function verificarEtiqueta(base, etiqueta) {
     : `La versión calculada (${base}) no coincide con la etiqueta publicada (${etiqueta}).`;
 }
 
+/**
+ * Versión impuesta por el CI (BOLDO_VERSION): la del release que se publica o la de prueba de un PR
+ * (`0.1.0-alpha.3+pr4`). La fecha se suma a la metadata.
+ * @param {string} valor
+ * @param {string} fecha
+ * @returns {{ completa: string, base: string, numerica: string }}
+ */
+export function versionForzada(valor, fecha) {
+  const base = valor.trim().replace(/^v/, "");
+  return {
+    completa: `${base}${base.includes("+") ? "." : "+"}${fecha}`,
+    base,
+    numerica: base.split(/[-+]/)[0],
+  };
+}
+
 /** @param {string[]} args @param {string} cwd */
 function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
 /**
- * Nunca lanza: sin etiquetas cae a 0.0.0-dev.N, sin git a 0.0.0-dev.0.
+ * Nunca lanza: sin etiquetas cae a 0.0.0-dev.N, sin git a 0.0.0-dev.0. BOLDO_VERSION la impone.
  * @param {string} [cwd]
  */
 export function obtenerVersion(cwd = process.cwd()) {
@@ -92,7 +108,9 @@ export function obtenerVersion(cwd = process.cwd()) {
     info.sucio = false;
   }
   const fecha = fechaDDMMAAAA(new Date());
-  return { ...formatearVersion({ ...info, fecha }), fecha, commit: info.sha };
+  const forzada = process.env.BOLDO_VERSION;
+  const v = forzada ? versionForzada(forzada, fecha) : formatearVersion({ ...info, fecha });
+  return { ...v, fecha, commit: info.sha };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
