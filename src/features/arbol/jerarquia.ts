@@ -76,7 +76,7 @@ export type Vigentes = Map<string, { titular?: Asignacion; reemplazo?: Asignacio
 /** Alta y baja de una fila: instantes ISO (UTC). */
 type Vida = { created_at?: string; deleted_at?: string | null };
 // El día de un instante es el local (no el UTC): a la noche en Chile el UTC ya marcaría mañana.
-const dia = (instante: string) => hoyISO(new Date(instante));
+export const dia = (instante: string) => hoyISO(new Date(instante));
 const sinBajaEn = (f: Vida, fecha: string) => !f.deleted_at || dia(f.deleted_at) > fecha;
 
 /** Existía el día `fecha` (AAAA-MM-DD): creada ese día o antes, y no eliminada ese día ni antes. Sin created_at, desde siempre. */

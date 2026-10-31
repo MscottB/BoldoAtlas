@@ -39,6 +39,7 @@ import {
   vigentesPorPuesto,
   type Historico,
 } from "@/features/arbol/jerarquia";
+import { cambiosPorDia, type Cambio } from "@/features/arbol/cambios";
 import { duplicarRama as copiarRama } from "@/features/arbol/duplicar";
 import { planEliminar, soloCimas } from "@/features/arbol/multiple";
 import { normalizarTexto } from "@/lib/texto";
@@ -103,6 +104,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const fechaVista = ref<string | null>(null);
   /** Filas con lo eliminado, cargadas solo mientras se ve una fecha: nunca se mezclan con los arreglos vivos. */
   const historico = shallowRef<Historico | null>(null);
+  /** Cambios de cada día para el calendario: se calculan al pedirlos (`leerCambios`) y se descartan en cada carga. */
+  const cambios = shallowRef<Map<string, Cambio[]> | null>(null);
 
   const porId = computed(() => new Map(unidades.value.map((u) => [u.id, u])));
   const raices = computed(() => unidades.value.filter((u) => u.parent_id === null));
@@ -174,6 +177,19 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return { ok: true };
   }
 
+  /** Calcula `cambios` si no están: con lo histórico ya cargado (viendo una fecha) o leyéndolo una vez. */
+  async function leerCambios(): Promise<Resultado> {
+    if (cambios.value) return { ok: true };
+    const carga = ultimaCarga; // si mientras se lee llega una carga, lo leído ya es viejo
+    try {
+      const h = historico.value ?? (await leerHistorico());
+      if (carga === ultimaCarga) cambios.value = cambiosPorDia(h, catalogos.value.cargos);
+      return { ok: true };
+    } catch (e) {
+      return fallo(e);
+    }
+  }
+
   let ultimaCarga = 0; // solo la carga más reciente aplica su resultado
 
   async function cargar(): Promise<Resultado> {
@@ -210,6 +226,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         ValorCatalogo[]
       >;
       if (hist && fechaVista.value) historico.value = hist;
+      cambios.value = null;
       org.value = { nombre: meta.org_nombre ?? "", logo: meta.logo_png || null };
       cargado.value = true;
       error.value = null;
@@ -761,6 +778,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     fechaVista,
     enFecha,
     verAFecha,
+    cambios,
+    leerCambios,
     porId,
     raices,
     vacia,
