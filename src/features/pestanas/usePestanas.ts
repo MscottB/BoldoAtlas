@@ -1,4 +1,4 @@
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { defineStore } from "pinia";
 import {
   NavigationFailureType,
@@ -227,13 +227,16 @@ export function useEstadoPestana(leer: () => unknown): unknown {
   const guardar = () => pestanas.guardarEstado(id, ruta, leer());
   // También mientras se usa (tras una pausa): al cerrar la ventana, Tauri puede no avisar con beforeunload.
   let espera: ReturnType<typeof setTimeout> | undefined;
-  watch(
-    leer,
-    () => {
-      clearTimeout(espera);
-      espera = setTimeout(guardar, 500);
-    },
-    { deep: true },
+  // Al montar: `leer` suele usar refs que la vista declara después de llamar a esta función.
+  onMounted(() =>
+    watch(
+      leer,
+      () => {
+        clearTimeout(espera);
+        espera = setTimeout(guardar, 500);
+      },
+      { deep: true },
+    ),
   );
   onBeforeUnmount(() => {
     clearTimeout(espera); // lo pendiente leería el estado compartido de la vista siguiente

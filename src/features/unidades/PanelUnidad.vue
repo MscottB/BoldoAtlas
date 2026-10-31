@@ -318,7 +318,7 @@ async function eliminar() {
               <option v-for="f in filas" :key="f.id" :value="f.id">{{ textoPuesto(f) }}</option>
             </select>
             <p v-if="jefe" class="text-sm">{{ jefe }}</p>
-            <p v-else class="text-sm text-amber-700 dark:text-amber-400">
+            <p v-else class="text-sm text-amber-800 dark:text-amber-400">
               {{ filas.length ? t("arbol.sinJefatura") : t("unidad.sinPuestosJefatura") }}
             </p>
           </div>
@@ -410,7 +410,7 @@ async function eliminar() {
                   </span>
                   <span
                     class="truncate text-xs"
-                    :class="f.titular ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-400'"
+                    :class="f.titular ? 'text-muted-foreground' : 'text-amber-800 dark:text-amber-400'"
                   >
                     {{ f.titular || t("puesto.vacante") }}
                     <template v-if="f.reemplazo">

@@ -32,9 +32,9 @@ If expanding (with **Branches**, the context menu or a saved view) would leave m
 
 ## Tidy diagram
 
-The tree is drawn tidy: each parent sits centred over its sub-units (and its positions, if shown), sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they are only drawn on top.
+The tree is drawn tidy: each parent sits centred over its sub-units, sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they are only drawn on top. With **Show positions**, each unit's positions are stacked right under its card (to its right, when horizontal), in their order, and the lines to the sub-units leave from the last position.
 
-**Rearrange**, in the canvas toolbar, lays out the drawing again and fits it to the window. With a large tree this takes a few seconds: meanwhile **Arranging…** shows at the top right and you can keep using the canvas.
+**Rearrange**, in the canvas toolbar, lays out the drawing again, puts back any card that was left out of place and fits it to the window. With a large tree this takes a few seconds: meanwhile **Arranging…** shows at the top right and you can keep using the canvas.
 
 ## Context menu
 
@@ -116,7 +116,7 @@ In addition, the **View** button lets you choose:
 - **Direction**: vertical (top to bottom) or horizontal (left to right).
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
 - **Lines**: right-angle or curved.
-- **Align by unit type**: each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions go in the row right after their unit.
+- **Align by unit type**: each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions are stacked under their unit and take no row.
 - **Card details**: unit type, head, head's photo, headcount, vacancies and tags.
 
 Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.
@@ -127,7 +127,7 @@ The **Views** button saves the current configuration (direction, density, lines,
 
 ## Viewing a past date
 
-The date picker in the canvas toolbar shows the org chart as it was on a past day. Pick the date or type it in full (from 1 January 1900 up to today; nothing changes while you type the year, and when you leave the field anything left half-typed is discarded): the **Viewing as of … · read only** band appears at the top with a **Back to today** button; you can also clear the picker.
+The **View on another date** button in the canvas toolbar shows the org chart as it was on a past day. Pressing it opens the picker: pick the date or type it in full (from 1 January 1900 up to today; nothing changes while you type the year, and when you leave the field anything left half-typed is discarded): the **Viewing as of … · read only** band appears at the top with a **Back to today** button, and the toolbar button shows the chosen date; you can also clear the picker.
 
 - **Managers**, **headcount**, **vacancies** and **positions** are calculated with the assignments in force that day: an assignment counts if it starts that day or earlier and has not ended (the day it ends no longer counts, and is the first day of the handover).
 - Units and positions **deleted before** that date and those **created after** it are hidden, unless they have an assignment in force that day (a position) or a position or sub-unit that is shown (a unit): so an organization entered today with old assignments shows in full. Anything deleted after the date reappears.

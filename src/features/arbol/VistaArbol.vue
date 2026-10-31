@@ -34,8 +34,10 @@ import {
   tiposEnUso,
 } from "./jerarquia";
 import {
+  aristasDibujadas,
   grafoElk,
   posiciones,
+  reubicar,
   subgrafoVisible,
   colapsadosIniciales,
   unidadesDeRama,
@@ -261,7 +263,7 @@ watch(
     });
     if (!ubicados) return; // llegó otro cambio (manda ese) o falló (ya se avisó)
     avisarOrdenando(false);
-    const pos = posiciones(g, ubicados);
+    const pos = posiciones(g, ubicados, tam, tamDelPuesto, opciones);
     // Al pasar a muchas tarjetas se encuadra antes de dibujarlas: así nacen ligeras, sin montar antes el detalle de todas
     // (con 2.000, 1,3 s de interfaz congelada). Las medidas de las tarjetas ya se conocen: no hace falta esperar a Vue Flow.
     if (!centrar && !conMinimapa(g.nodos.length + g.puestos.length) && conMinimapa(nodos.value.length)) {
@@ -281,12 +283,8 @@ watch(
     }
     const antes = dibujo.value;
     vista.value = { g, pos };
-    if (antes && forma(antes.g) === forma(g))
-      for (const [id, p] of pos) {
-        antes.pos.set(id, p); // sin avisar a `nodos`: si se rehace por otra razón, ya usa la posición nueva
-        const n = findNode(id);
-        if (n) n.position = p;
-      }
+    // Sin avisar a `nodos`: las tarjetas se mueven en su lugar.
+    if (antes && forma(antes.g) === forma(g)) reubicar(pos, antes.pos, findNode);
     else dibujo.value = vista.value;
     podarSeleccion(new Set(g.nodos.map((u) => u.id))); // lo que se plegó ya no cuenta como seleccionado
     if (!encuadrar && !centrar) return;
@@ -461,7 +459,8 @@ const aristas = computed<Edge[]>(() => {
   const ids = new Set(nodos.value.map((n) => n.id));
   const entre = (a: string, b: string) => ids.has(a) && ids.has(b);
   return [
-    ...g.jerarquicas
+    // La unidad baja por sus puestos apilados y de su último puesto salen las líneas a sus hijas (aristasDibujadas).
+    ...aristasDibujadas(g)
       .filter(([a, b]) => entre(a, b))
       .map(([a, b]) => ({
         id: `${a}>${b}`,
@@ -551,7 +550,7 @@ function escEnLienzo(e: KeyboardEvent) {
   if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) void cerrarPanel();
 }
 
-// La banda desaparece con el botón: el foco pasa al selector de fecha, que queda en la barra.
+// La banda desaparece con el botón: el foco pasa al botón «Ver en otra fecha», que queda en la barra.
 async function volverAHoy() {
   await org.verAFecha(null);
   await nextTick();

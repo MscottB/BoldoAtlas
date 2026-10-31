@@ -71,6 +71,9 @@
     "ayudaNombre": "Doble clic o F2 para renombrar",
     "fecha": {
       "titulo": "Ver el organigrama a una fecha",
+      "verOtra": "Ver en otra fecha",
+      "cambiar": "Viendo al {fecha}. Cambiar la fecha",
+      "ayuda": "Muestra cómo estaba la organización ese día, en solo lectura. Déjalo vacío para volver a hoy.",
       "viendo": "Viendo al {fecha}",
       "soloLectura": "solo lectura",
       "volver": "Volver a hoy",
@@ -623,6 +626,9 @@
     "apariencia": {
       "titulo": "Apariencia",
       "ayuda": "Estas preferencias valen solo para este computador."
+    },
+    "barra": {
+      "abrirAlPasar": "Abrir la barra lateral al pasar el mouse"
     },
     "tema": {
       "etiqueta": "Tema",

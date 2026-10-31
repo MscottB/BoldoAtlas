@@ -572,12 +572,18 @@ Reemplaza a la Task 16. Orden final: …, Anexo 3 (17g, 17a, 17b, 17c, 17f, 17d,
 
 ## Anexo 5 (pedido del autor tras publicar v0.1.0-alpha.1, 2026-10-31): entregas cortas
 
-Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del CI para que el autor la pruebe y comente antes de fusionar. Orden: 17f (pestañas, en curso), **18d**, **18e**, **18a**, **18b**, **18c**, 17d, 17e, 16a, 15, 16b, revisión final.
+Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del CI para que el autor la pruebe y comente antes de fusionar. Orden: 17f (pestañas, en curso), **18d** y **18a** (en paralelo, archivos distintos), **18e**, **18b**, **18c**, 17d, 17e, 16a, 15, 16b, revisión final.
 
-### Task 18a: CI rápido para la portable
-- `build-prueba.yml` (PR) construye **solo la portable** (`tauri build --no-bundle` + zip, vía una opción de `scripts/release.mjs`, p. ej. `--solo-portable`), sin el instalador; `release.yml` sigue publicando ambos.
-- Mantener caché compartida de Rust y npm; no repetir lint/tests ya cubiertos por `ci.yml`/`ci-rust.yml` en el build de prueba. Medir el tiempo antes/después (objetivo: claramente menor que ~4 min) y anotarlo en el informe.
-- Commit: `ci: build de prueba solo portable y más rápido`
+### Task 18a: PRs versionados y CI/CD optimizado (pedido del autor, 2026-10-31)
+- **Cada PR es una versión.** Mientras siga la alpha, cada PR fusionado a `main` publica la siguiente prerelease: `v0.1.0-alpha.N+1` (N tomado de la última etiqueta). Una etiqueta del PR (`version:menor`, `version:mayor`, `version:parche`) cambia el salto cuando se salga de la alpha. Funciones puras (siguiente versión, notas) con tests.
+- **El PR muestra su versión:** un check o comentario del CI dice «Se publicará como v0.1.0-alpha.N»; la portable de prueba lleva esa versión con el sufijo del PR (p. ej. `0.1.0-alpha.3+pr4`), visible en Acerca de, y el artefacto se llama con ella.
+- **Al fusionar:** un workflow en `push` a `main` crea la etiqueta y publica la prerelease con las notas tomadas de la sección «## Notas de la versión» del cuerpo del PR (si falta, el título). Las etiquetas creadas con `GITHUB_TOKEN` no disparan otros workflows: el release se llama como workflow reutilizable (`workflow_call`) o va en el mismo workflow. Plantilla de PR (`.github/pull_request_template.md`) con esa sección. Esto deja listo lo que necesita el actualizador (16b).
+- **CI más rápido** (hoy: build de prueba 3–4 min, release ~9 min, `ci-rust` aparte):
+  - build de prueba solo portable (`tauri build --no-bundle` + zip) con un perfil Cargo rápido para pruebas (sin LTO, más `codegen-units`); el release mantiene el perfil optimizado;
+  - una sola caché de Rust compartida por todos los workflows de Windows (misma `shared-key`, guardada solo desde `main` para no llenarla con ramas), caché de `node_modules` por `package-lock.json` (saltar `npm ci` si coincide) y de las herramientas que descarga el bundler de Tauri (NSIS/WiX);
+  - no repetir lint/tests en el build de prueba ni en el release si ya pasaron en ese mismo commit; `ci-rust` solo con cambios en `src-tauri/**` (ya), el build de prueba solo con cambios de app;
+  - medir antes/después (minutos por workflow) y anotarlo en el informe y en el PR.
+- Commit(s): `ci: PRs versionados y publicación al fusionar`, `ci: build de prueba más rápido y cachés compartidas`
 
 ### Task 18b: Español e inglés a la vista
 - El selector de idioma (hoy solo en Configuración) también en la Bienvenida y en el menú de la app; cambio inmediato, recordado por PC; el primer arranque sigue el idioma del sistema (`idiomaInicial`).

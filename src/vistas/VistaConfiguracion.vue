@@ -11,6 +11,7 @@ import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
 import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
 import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
+import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
 import { cambiarIdioma, IDIOMAS, type Idioma } from "@/i18n";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 
@@ -162,6 +163,15 @@ const selector =
           </button>
         </div>
       </div>
+      <label class="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          class="size-4 accent-primary"
+          :checked="abrirAlPasar"
+          @change="guardarAbrirAlPasar(($event.target as HTMLInputElement).checked)"
+        />
+        {{ t("config.barra.abrirAlPasar") }}
+      </label>
     </section>
 
     <section class="grid gap-2" aria-labelledby="cfg-mantenedores">

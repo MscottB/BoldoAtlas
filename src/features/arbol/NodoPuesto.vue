@@ -47,6 +47,8 @@ const tam = computed(() => {
 <template>
   <!-- Nodo liviano; su tamaño sale de tamPuesto, igual que en el layout. Lo oculto por «Vista» queda solo para lectores de pantalla. -->
   <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+  <!-- Del puesto sale la línea al siguiente puesto de su unidad o, si es el último, a las unidades hijas. -->
+  <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   <!-- Ligera (rendimiento.ts): un solo elemento con el cargo y el color de la leyenda. -->
   <div
     v-if="contexto.ligera.value"
@@ -81,7 +83,7 @@ const tam = computed(() => {
     <span class="min-w-0" :class="compacta ? 'flex gap-1.5' : 'grid'">
       <span :class="config.mostrarCargo ? 'truncate font-medium' : 'sr-only'">{{ data.cargo }}</span>
       <span :class="config.mostrarPersona ? (compacta ? 'flex min-w-0' : 'grid') : 'sr-only'">
-        <span class="truncate" :class="!data.titular && 'text-amber-700 dark:text-amber-400'">
+        <span class="truncate" :class="!data.titular && 'text-amber-800 dark:text-amber-400'">
           {{ data.titular || t("puesto.vacante") }}
         </span>
         <span v-if="data.reemplazo && !compacta" class="truncate text-muted-foreground">

@@ -73,6 +73,9 @@
       "titulo": "View the org chart on a date",
       "viendo": "Viewing as of {fecha}",
       "soloLectura": "read only",
+      "verOtra": "View on another date",
+      "cambiar": "Viewing {fecha}. Change the date",
+      "ayuda": "Shows the organization as it was on that day, read-only. Leave it empty to go back to today.",
       "volver": "Back to today",
       "panelSoloLectura": "Data for the chosen date: read only. Go back to today to edit.",
       "dialogoSoloLectura": "Position as of {fecha}: read only. Go back to today in the tree to edit."
@@ -623,6 +626,9 @@
     "apariencia": {
       "titulo": "Appearance",
       "ayuda": "These preferences apply to this computer only."
+    },
+    "barra": {
+      "abrirAlPasar": "Open the sidebar on mouse hover"
     },
     "tema": {
       "etiqueta": "Theme",

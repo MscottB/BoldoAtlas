@@ -191,7 +191,7 @@ watch(persona, (w) => previa.value && !w && void volver());
               {{ t("personas.nPuestos", r.puestos) }}
               <template v-if="r.vacantes">
                 ·
-                <span class="text-amber-700 dark:text-amber-400">{{
+                <span class="text-amber-800 dark:text-amber-400">{{
                   t("personas.nVacantes", r.vacantes)
                 }}</span>
                 <template v-if="r.cubiertas"> ({{ t("personas.nCubiertas", r.cubiertas) }})</template>
