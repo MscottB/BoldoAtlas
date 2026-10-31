@@ -30,4 +30,18 @@ describe.skipIf(process.platform !== "win32")("empaquetar", () => {
       `${sha256(join(salida, NOMBRES.zip))}  ${NOMBRES.zip}\n${sha256(join(salida, NOMBRES.setup))}  ${NOMBRES.setup}\n`,
     );
   });
+
+  it("solo portable (build de prueba): sin instalador", () => {
+    const dir = mkdtempSync(join(tmpdir(), "release-"));
+    const exe = join(dir, "boldo-atlas.exe");
+    writeFileSync(exe, "EXE");
+    const salida = join(dir, "salida");
+
+    empaquetar({ exe, salida });
+
+    expect(readdirSync(salida).sort()).toEqual([NOMBRES.zip, NOMBRES.sumas].sort());
+    expect(readFileSync(join(salida, NOMBRES.sumas), "utf8")).toBe(
+      `${sha256(join(salida, NOMBRES.zip))}  ${NOMBRES.zip}\n`,
+    );
+  });
 });
