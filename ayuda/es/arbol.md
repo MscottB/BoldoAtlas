@@ -32,9 +32,9 @@ Si al expandir (con **Ramas**, el menú contextual o una vista guardada) quedar�
 
 ## Diagrama ordenado
 
-El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades (y sus puestos, si se ven), las unidades hermanas van en su orden y cada nivel ocupa una misma fila (o columna, en horizontal). Si hay varias raíces, quedan lado a lado. Las conexiones laterales no cambian el dibujo: solo se trazan encima.
+El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades, las unidades hermanas van en su orden y cada nivel ocupa una misma fila (o columna, en horizontal). Si hay varias raíces, quedan lado a lado. Las conexiones laterales no cambian el dibujo: solo se trazan encima. Con **Ver puestos**, los puestos de cada unidad van apilados justo debajo de su tarjeta (a su derecha, en horizontal), en su orden, y las líneas a las subunidades salen del último puesto.
 
-**Reordenar**, en la barra del lienzo, vuelve a calcular el dibujo y lo encuadra en la ventana. Con un árbol grande el cálculo tarda unos segundos: mientras tanto se ve **Ordenando…** arriba a la derecha y puedes seguir usando el lienzo.
+**Reordenar**, en la barra del lienzo, vuelve a calcular el dibujo, devuelve a su lugar cualquier tarjeta que haya quedado fuera de él y lo encuadra en la ventana. Con un árbol grande el cálculo tarda unos segundos: mientras tanto se ve **Ordenando…** arriba a la derecha y puedes seguir usando el lienzo.
 
 ## Menú contextual
 
@@ -116,7 +116,7 @@ Además de lo anterior, el botón **Vista** permite elegir:
 - **Dirección**: vertical (de arriba a abajo) u horizontal (de izquierda a derecha).
 - **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
 - **Líneas**: rectas en ángulo o curvas.
-- **Alinear por tipo de unidad**: cada unidad va en la fila (o columna, en horizontal) de su tipo, en el orden de la lista de tipos; por ejemplo, todas las Áreas quedan en una misma fila aunque cuelguen a distinta profundidad. Solo ocupan fila los tipos de las unidades que se ven (un tipo sin unidades a la vista, o cuyas unidades están en ramas plegadas, no deja una fila vacía). Si el tipo de una unidad la dejaría en la fila de su superior o más arriba, baja a la fila siguiente a la de su superior, para que las líneas siempre vayan hacia abajo (o hacia la derecha): con una Gerencia dentro de otra Gerencia, las filas de los tipos que siguen empiezan más abajo; con una Gerencia bajo un Área, solo baja esa rama. Los puestos quedan en la fila siguiente a su unidad.
+- **Alinear por tipo de unidad**: cada unidad va en la fila (o columna, en horizontal) de su tipo, en el orden de la lista de tipos; por ejemplo, todas las Áreas quedan en una misma fila aunque cuelguen a distinta profundidad. Solo ocupan fila los tipos de las unidades que se ven (un tipo sin unidades a la vista, o cuyas unidades están en ramas plegadas, no deja una fila vacía). Si el tipo de una unidad la dejaría en la fila de su superior o más arriba, baja a la fila siguiente a la de su superior, para que las líneas siempre vayan hacia abajo (o hacia la derecha): con una Gerencia dentro de otra Gerencia, las filas de los tipos que siguen empiezan más abajo; con una Gerencia bajo un Área, solo baja esa rama. Los puestos van apilados bajo su unidad y no ocupan fila.
 - **Datos de la tarjeta**: tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
 
 Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador la última configuración que usaste en él.
@@ -127,7 +127,7 @@ El botón **Vistas** guarda con nombre la configuración actual (dirección, den
 
 ## Ver a una fecha
 
-El selector de fecha de la barra del lienzo muestra el organigrama como estaba un día pasado. Elige la fecha o escríbela completa (se acepta desde el 1 de enero de 1900 hasta hoy; mientras escribes el año no cambia nada, y al salir del campo lo que quedó a medias se descarta): arriba aparece la banda **Viendo al … · solo lectura** con el botón **Volver a hoy**; también puedes vaciar el selector.
+El botón **Ver en otra fecha** de la barra del lienzo muestra el organigrama como estaba un día pasado. Al pulsarlo se abre el selector: elige la fecha o escríbela completa (se acepta desde el 1 de enero de 1900 hasta hoy; mientras escribes el año no cambia nada, y al salir del campo lo que quedó a medias se descarta): arriba aparece la banda **Viendo al … · solo lectura** con el botón **Volver a hoy**, y el botón de la barra muestra la fecha elegida; también puedes vaciar el selector.
 
 - Los **jefes**, la **dotación**, las **vacantes** y los **puestos** se calculan con las asignaciones vigentes ese día: una asignación cuenta si empieza ese día o antes y no terminó (el día en que termina ya no cuenta, y es el primer día del relevo).
 - Se ocultan las unidades y los puestos **eliminados antes** de esa fecha y los **creados después**, salvo que tengan una asignación vigente ese día (un puesto) o un puesto o una subunidad que se vea (una unidad): así una organización ingresada hoy con asignaciones antiguas se ve completa. Lo eliminado después de la fecha reaparece.

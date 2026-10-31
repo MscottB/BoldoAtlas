@@ -29,6 +29,7 @@ import DatosProyecto from "@/features/proyecto/DatosProyecto.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
+import { useBarraFlotante } from "@/app/barraLateral";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
@@ -93,6 +94,20 @@ watch(
   () => width.value < ANCHO_COLAPSO,
   () => (manual.value = null),
 );
+// Contraída, se despliega sobre el contenido al pasar el mouse o entrar el foco (opción de Configuración); `angosta` es
+// lo que se ve: solo íconos.
+const { flotando, entrar, salir, enfocar, cerrar } = useBarraFlotante(colapsada);
+const angosta = computed(() => colapsada.value && !flotando.value);
+const navegacion = ref<HTMLElement | null>(null);
+function alSalirFoco(e: FocusEvent) {
+  if (!navegacion.value?.contains(e.relatedTarget as Node | null)) cerrar();
+}
+// Esc pliega la barra desplegada (y no cierra además la vista abierta).
+function escEnBarra(e: KeyboardEvent) {
+  if (!flotando.value) return;
+  e.stopPropagation();
+  cerrar();
+}
 </script>
 
 <template>
@@ -101,74 +116,82 @@ watch(
       <RouterView />
     </div>
     <div v-else class="flex h-screen bg-background text-foreground">
-      <nav
-        class="flex shrink-0 flex-col gap-1 border-r bg-sidebar p-3 text-sidebar-foreground"
-        :class="colapsada ? 'w-14' : 'w-56'"
-        :aria-label="t('nav.principal')"
-      >
-        <p class="flex items-center gap-2 px-1 pb-3 text-base font-semibold tracking-tight">
-          <img :src="icono" alt="" class="size-6 shrink-0" />
-          <span v-if="!colapsada">Boldo<span class="text-marca">Atlas</span></span>
-          <span v-else class="sr-only">BoldoAtlas</span>
-        </p>
-        <template v-for="(grupo, i) in [secciones, utilidades]" :key="i">
-          <div v-if="i === 1" class="mt-auto border-t" role="separator" />
-          <Tooltip v-for="item in grupo" :key="item.etiqueta" :disabled="!colapsada && !item.aviso">
-            <TooltipTrigger as-child>
-              <RouterLink
-                v-if="item.to"
-                :to="item.to"
-                :aria-label="colapsada ? nombre(item) : undefined"
-                class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
-                active-class="bg-sidebar-accent font-medium"
-                @click.capture="alPulsar($event, item)"
-                @auxclick="clicNuevaPestana($event, item.to)"
-                @mousedown.middle.prevent
-              >
-                <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
-                <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
-                <template v-if="item.contador?.()">
-                  <span
-                    class="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums"
-                    :class="colapsada ? 'absolute -top-1 -right-1' : 'ml-auto'"
-                    aria-hidden="true"
-                    >{{ item.contador() }}</span
-                  >
-                  <span v-if="!colapsada" class="sr-only">, {{ t("revision.avisos", item.contador()) }}</span>
-                </template>
-              </RouterLink>
-              <button
-                v-else
-                type="button"
-                aria-disabled="true"
-                :aria-label="colapsada ? t(item.etiqueta) : undefined"
-                class="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
-                <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{{ t(item.aviso ?? item.etiqueta) }}</TooltipContent>
-          </Tooltip>
-        </template>
-        <Button
-          variant="ghost"
-          class="justify-start px-2 font-normal"
-          :aria-label="colapsada ? t('barra.mostrarBarra') : undefined"
-          :title="colapsada ? t('barra.mostrarBarra') : undefined"
-          :aria-expanded="!colapsada"
-          @click="manual = !colapsada"
+      <!-- El hueco guarda el ancho de la barra fija; desplegada sobre el contenido, la barra lo excede sin correr nada. -->
+      <div class="relative shrink-0" :class="colapsada ? 'w-14' : 'w-56'">
+        <nav
+          ref="navegacion"
+          class="absolute inset-y-0 left-0 z-40 flex flex-col gap-1 overflow-y-auto border-r bg-sidebar p-3 text-sidebar-foreground"
+          :class="[angosta ? 'w-14' : 'w-56', flotando && 'shadow-lg']"
+          :aria-label="t('nav.principal')"
+          @mouseenter="entrar"
+          @mouseleave="salir"
+          @focusin="enfocar"
+          @focusout="alSalirFoco"
+          @keydown.esc="escEnBarra"
         >
-          <component :is="colapsada ? PanelLeftOpen : PanelLeftClose" aria-hidden="true" />
-          <span v-if="!colapsada">{{ t("barra.ocultarBarra") }}</span>
-        </Button>
-      </nav>
+          <div class="flex items-center gap-2 pb-3" :class="angosta ? 'flex-col' : 'pl-1'">
+            <p class="flex items-center gap-2 text-base font-semibold tracking-tight">
+              <img :src="icono" alt="" class="size-6 shrink-0" />
+              <span v-if="!angosta">Boldo<span class="text-marca">Atlas</span></span>
+              <span v-else class="sr-only">BoldoAtlas</span>
+            </p>
+            <!-- El único botón para fijar la barra abierta o contraída. -->
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :class="!angosta && 'ml-auto'"
+              :aria-label="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
+              :title="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
+              :aria-expanded="!colapsada"
+              @click="manual = !colapsada"
+            >
+              <component :is="colapsada ? PanelLeftOpen : PanelLeftClose" aria-hidden="true" />
+            </Button>
+          </div>
+          <template v-for="(grupo, i) in [secciones, utilidades]" :key="i">
+            <div v-if="i === 1" class="mt-auto border-t" role="separator" />
+            <Tooltip v-for="item in grupo" :key="item.etiqueta" :disabled="!angosta && !item.aviso">
+              <TooltipTrigger as-child>
+                <RouterLink
+                  v-if="item.to"
+                  :to="item.to"
+                  :aria-label="angosta ? nombre(item) : undefined"
+                  class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
+                  active-class="bg-sidebar-accent font-medium"
+                  @click.capture="alPulsar($event, item)"
+                  @auxclick="clicNuevaPestana($event, item.to)"
+                  @mousedown.middle.prevent
+                >
+                  <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
+                  <span v-if="!angosta">{{ t(item.etiqueta) }}</span>
+                  <template v-if="item.contador?.()">
+                    <span
+                      class="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums"
+                      :class="angosta ? 'absolute -top-1 -right-1' : 'ml-auto'"
+                      aria-hidden="true"
+                      >{{ item.contador() }}</span
+                    >
+                    <span v-if="!angosta" class="sr-only">, {{ t("revision.avisos", item.contador()) }}</span>
+                  </template>
+                </RouterLink>
+                <button
+                  v-else
+                  type="button"
+                  aria-disabled="true"
+                  :aria-label="angosta ? t(item.etiqueta) : undefined"
+                  class="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
+                  <span v-if="!angosta">{{ t(item.etiqueta) }}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{{ t(item.aviso ?? item.etiqueta) }}</TooltipContent>
+            </Tooltip>
+          </template>
+        </nav>
+      </div>
       <div class="flex min-w-0 flex-1 flex-col">
-        <BarraSuperior
-          :colapsada="colapsada"
-          @alternar-barra="manual = !colapsada"
-          @buscar="paletaAbierta = true"
-        />
+        <BarraSuperior @buscar="paletaAbierta = true" />
         <BarraPestanas v-if="conPestanas" />
         <!-- La key es la pestaña: cambiar de pestaña monta su vista de cero (solo la activa está montada). -->
         <main

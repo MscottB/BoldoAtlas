@@ -25,7 +25,7 @@ The logo button on the left of the top bar opens the **app menu**:
 - **Open .boldo file** (Phase 5) and **Import Excel** (Phase 4) are disabled for now.
 - **Backups** and **Settings** open those sections; **Project data** shows where your data lives.
 
-The same actions are in the command palette (`Ctrl+K`). **Settings**, **Help** and **About** close with their **Close** button, with `Esc`, or with a second click on their side-menu entry, and you return to the previous view (or to the tree if there is none). The sidebar folds with the button at its bottom and a unit's panel closes with the **×** in its header.
+The same actions are in the command palette (`Ctrl+K`). **Settings**, **Help** and **About** close with their **Close** button, with `Esc`, or with a second click on their side-menu entry, and you return to the previous view (or to the tree if there is none). The sidebar folds, and is pinned open again, with the button next to the **BoldoAtlas** logo. When folded, it opens over the content when you rest the mouse on it for a moment (or reach it with `Tab`) and folds again when you leave or press `Esc`; turn this off in **Settings › Appearance › Open the sidebar on mouse hover**. In a narrow window (under 1100 px) the sidebar folds by itself. A unit's panel closes with the **×** in its header.
 
 ## Which project is open
 

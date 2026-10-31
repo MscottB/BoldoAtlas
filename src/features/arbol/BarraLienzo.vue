@@ -27,13 +27,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
-import { FECHA_MINIMA, fechaElegible, hoyISO } from "@/features/puestos/puestos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import PanelVista from "./PanelVista.vue";
 import PanelResaltar from "./PanelResaltar.vue";
 import MenuVistas from "./MenuVistas.vue";
+import SelectorFecha from "./SelectorFecha.vue";
 
 // `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
 const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
@@ -59,24 +59,6 @@ const aGuardar = computed(() => {
   return u?.parent_id ? u : null;
 });
 const guardada = computed(() => org.subarboles.some((s) => s.unidad_id === aGuardar.value?.id));
-// Fecha elegida: vacía = hoy. Solo se aplica una fecha completa y en rango: al teclear el año el campo pasa por 0002-…,
-// 0020-…, que no se aplican. Al salir del campo (o con Enter) el vacío vuelve a hoy y lo que quedó a medias se descarta.
-async function verFecha(v: string | null) {
-  if (v === org.fechaVista) return;
-  const r = await org.verAFecha(v);
-  if (!r.ok) toast.error(r.mensaje);
-}
-function cambiarFecha(e: Event) {
-  const v = (e.target as HTMLInputElement).value;
-  if (fechaElegible(v, hoyISO())) void verFecha(v);
-}
-function terminarFecha(e: Event) {
-  const campo = e.target as HTMLInputElement;
-  const v = campo.value;
-  if (fechaElegible(v, hoyISO())) return; // ya se aplicó al cambiar
-  campo.value = v ? (org.fechaVista ?? "") : ""; // borra también los segmentos a medias
-  if (!v) void verFecha(null);
-}
 async function guardarEnArboles() {
   const r = aGuardar.value && (await org.guardarSubarbol(aGuardar.value.id));
   if (r && !r.ok) toast.error(r.mensaje);
@@ -118,19 +100,7 @@ async function guardarEnArboles() {
       :aria-label="t('arbol.resaltarTexto')"
     />
     <PanelResaltar />
-    <Input
-      data-fecha-vista
-      type="date"
-      class="h-7 w-40"
-      :min="FECHA_MINIMA"
-      :max="hoyISO()"
-      :model-value="org.fechaVista ?? ''"
-      :title="t('arbol.fecha.titulo')"
-      :aria-label="t('arbol.fecha.titulo')"
-      @change="cambiarFecha"
-      @blur="terminarFecha"
-      @keydown.enter="terminarFecha"
-    />
+    <SelectorFecha />
     <span class="ml-auto flex gap-1">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>

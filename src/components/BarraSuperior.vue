@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { Download, Moon, PanelLeft, Search, Sun } from "@lucide/vue";
+import { Download, Moon, Search, Sun } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,9 +12,8 @@ import { useTema } from "@/features/tema/useTema";
 import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 
-defineProps<{ colapsada: boolean }>();
-// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue.
-defineEmits<{ alternarBarra: []; buscar: [] }>();
+// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, junto al logo.
+defineEmits<{ buscar: [] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -28,15 +27,6 @@ const etiquetaTema = computed(() => (oscuro.value ? t("barra.temaClaro") : t("ba
 
 <template>
   <header class="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-3">
-    <Button
-      variant="ghost"
-      size="icon"
-      :aria-label="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
-      :aria-expanded="!colapsada"
-      @click="$emit('alternarBarra')"
-    >
-      <PanelLeft aria-hidden="true" />
-    </Button>
     <MenuApp />
     <!-- Qué proyecto está abierto (por ahora siempre el principal); un clic muestra dónde están sus datos. -->
     <button

@@ -553,7 +553,7 @@ function escEnLienzo(e: KeyboardEvent) {
   if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) void cerrarPanel();
 }
 
-// La banda desaparece con el botón: el foco pasa al selector de fecha, que queda en la barra.
+// La banda desaparece con el botón: el foco pasa al botón «Ver en otra fecha», que queda en la barra.
 async function volverAHoy() {
   await org.verAFecha(null);
   await nextTick();
