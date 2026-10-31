@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Conexion } from "../../db/tipos";
 import { p, puestos, tipos, u, unidades } from "./fixture";
 import {
+  aristasDibujadas,
   calcularLayout,
   colapsadosIniciales,
   contraerRama,
@@ -95,6 +96,18 @@ describe("layout del árbol", () => {
     expect(colapsados.has("operaciones")).toBe(true);
     const g = subgrafoVisible(unidades, [], colapsados, [p("px", "operaciones")]);
     expect(ids(g.puestos)).toEqual(["px"]);
+  });
+
+  it("el puesto de jefatura encabeza la pila de su unidad; los demás siguen por orden", () => {
+    const conJefe = unidades.map((x) => (x.id === "gg" ? { ...x, jefe_puesto_id: "pj" } : x));
+    const de = (id: string, orden: number) => ({ ...p(id, "gg"), orden });
+    const g = subgrafoVisible(conJefe, [], new Set(), [de("pb", 2), de("pj", 3), de("pa", 1)]);
+    expect(g.puestos.map((x) => x.id)).toEqual(["pj", "pa", "pb"]);
+    expect(aristasDibujadas(g).filter(([, b]) => ["pj", "pa", "pb"].includes(b))).toEqual([
+      ["gg", "pj"],
+      ["pj", "pa"],
+      ["pa", "pb"],
+    ]);
   });
 
   it("calcularLayout ubica los puestos debajo de su unidad", async () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { useOrganizacion } from "@/stores/organizacion";
-import { aristasDibujadas, calcularLayout, subgrafoVisible, type Subgrafo } from "./layout";
+import { aristasDibujadas, calcularLayout, reubicar, subgrafoVisible, type Subgrafo } from "./layout";
 import { VISTA_POR_DEFECTO, separaciones, tamPuesto, tamUnidad, type ConfigVista } from "./vista";
 
 const h = vi.hoisted(() => ({ bd: null as BasePrueba | null }));
@@ -64,11 +64,19 @@ describe("layout del ejemplo con puestos", () => {
               if (!alinearPorTipo) expect(nivel(x.id)).toBe(nivel(hijas[0]!.id));
             }
           }
-          // Las unidades de una misma fila empiezan a la misma altura, tengan o no puestos.
+          // Las unidades de una misma fila (misma profundidad) empiezan a la misma altura, sean o no del mismo superior y
+          // tengan o no puestos (p. ej. Mantención, bajo Operaciones, y Selección, bajo Personas).
           if (!alinearPorTipo) {
-            const op = g.nodos.find((x) => x.parent_id === null)!;
-            const hijas = g.nodos.filter((x) => x.parent_id === op.id).map((x) => nivel(x.id));
-            expect(new Set(hijas).size).toBe(1);
+            const porId = new Map(g.nodos.map((x) => [x.id, x]));
+            const hondura = (id: string): number => {
+              const padre = porId.get(id)?.parent_id;
+              return padre ? hondura(padre) + 1 : 0;
+            };
+            const inicios = new Map<number, Set<number>>();
+            for (const x of g.nodos)
+              inicios.set(hondura(x.id), (inicios.get(hondura(x.id)) ?? new Set()).add(nivel(x.id)));
+            expect(inicios.size).toBeGreaterThanOrEqual(4); // el ejemplo tiene filas de primos (nivel 2 y 3)
+            for (const [, s] of inicios) expect(s.size).toBe(1);
           }
           // Ningún puesto se cruza con una tarjeta de otra unidad.
           const cajas = [...pos].map(([id, q]) => ({ id, ...q, w: t(id).ancho, h: t(id).alto }));
@@ -92,5 +100,20 @@ describe("layout del ejemplo con puestos", () => {
     for (const x of hijas) expect(aristas).toContainEqual([propios[propios.length - 1], x]);
     expect(aristas).toHaveLength(g.jerarquicas.length); // una línea por cada relación: ninguna se pierde ni se repite
     expect(new Set(aristas.map(([, b]) => b)).size).toBe(aristas.length);
+  });
+
+  it("reubicar («Reordenar» con la misma forma): devuelve a su lugar una tarjeta movida a mano y actualiza lo dibujado", async () => {
+    const pos = await calcularLayout(g);
+    const dibujadas = new Map([...pos].map(([id, q]) => [id, { position: { ...q } }]));
+    const guardadas = new Map(pos);
+    const movida = g.nodos[1]!.id;
+    dibujadas.get(movida)!.position = { x: 9999, y: -9999 };
+    guardadas.set(movida, { x: 1, y: 1 });
+    reubicar(pos, guardadas, (id) => dibujadas.get(id));
+    for (const [id, q] of pos) {
+      expect(dibujadas.get(id)!.position).toEqual(q);
+      expect(guardadas.get(id)).toEqual(q);
+    }
+    reubicar(pos, guardadas, () => undefined); // una tarjeta que aún no está en el lienzo no falla
   });
 });

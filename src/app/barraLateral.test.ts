@@ -51,6 +51,24 @@ describe("barra lateral flotante", () => {
     expect(b.flotando.value).toBe(false);
   });
 
+  it("con el foco del teclado dentro, salir con el mouse no la pliega (Esc sí)", () => {
+    const colapsada = ref(true);
+    let teclado = true;
+    const b = effectScope().run(() => useBarraFlotante(colapsada, () => teclado))!;
+    b.enfocar();
+    b.salir();
+    vi.advanceTimersByTime(DEMORA_CERRAR * 2);
+    expect(b.flotando.value).toBe(true);
+    teclado = false; // foco puesto con un clic: no cuenta como del teclado
+    b.salir();
+    vi.advanceTimersByTime(DEMORA_CERRAR);
+    expect(b.flotando.value).toBe(false);
+    teclado = true;
+    b.enfocar();
+    b.cerrar();
+    expect(b.flotando.value).toBe(false);
+  });
+
   it("no se despliega si está fija abierta o si la opción está apagada; fijarla termina el despliegue", async () => {
     const abierta = barra(false);
     abierta.entrar();

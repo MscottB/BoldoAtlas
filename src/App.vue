@@ -96,9 +96,13 @@ watch(
 );
 // Contraída, se despliega sobre el contenido al pasar el mouse o entrar el foco (opción de Configuración); `angosta` es
 // lo que se ve: solo íconos.
-const { flotando, entrar, salir, enfocar, cerrar } = useBarraFlotante(colapsada);
-const angosta = computed(() => colapsada.value && !flotando.value);
 const navegacion = ref<HTMLElement | null>(null);
+// :focus-visible = foco del teclado (un clic con el mouse no lo marca): mientras esté dentro, salir con el mouse no la pliega.
+const { flotando, entrar, salir, enfocar, cerrar } = useBarraFlotante(
+  colapsada,
+  () => !!navegacion.value?.matches(":has(:focus-visible)"),
+);
+const angosta = computed(() => colapsada.value && !flotando.value);
 function alSalirFoco(e: FocusEvent) {
   if (!navegacion.value?.contains(e.relatedTarget as Node | null)) cerrar();
 }
@@ -129,8 +133,10 @@ function escEnBarra(e: KeyboardEvent) {
           @focusout="alSalirFoco"
           @keydown.esc="escEnBarra"
         >
-          <div class="flex items-center gap-2 pb-3" :class="angosta ? 'flex-col' : 'pl-1'">
-            <p class="flex items-center gap-2 text-base font-semibold tracking-tight">
+          <!-- El botón va bajo el logo, igual contraída, desplegada o fija: abrirla solo revela los textos y nada se mueve
+               bajo el puntero (en la barra angosta no cabe al lado). -->
+          <div class="flex flex-col items-start gap-2 pb-3">
+            <p class="flex h-6 items-center gap-2 px-1 text-base font-semibold tracking-tight">
               <img :src="icono" alt="" class="size-6 shrink-0" />
               <span v-if="!angosta">Boldo<span class="text-marca">Atlas</span></span>
               <span v-else class="sr-only">BoldoAtlas</span>
@@ -139,7 +145,6 @@ function escEnBarra(e: KeyboardEvent) {
             <Button
               variant="ghost"
               size="icon-sm"
-              :class="!angosta && 'ml-auto'"
               :aria-label="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
               :title="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
               :aria-expanded="!colapsada"
@@ -156,7 +161,7 @@ function escEnBarra(e: KeyboardEvent) {
                   v-if="item.to"
                   :to="item.to"
                   :aria-label="angosta ? nombre(item) : undefined"
-                  class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
+                  class="relative flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
                   active-class="bg-sidebar-accent font-medium"
                   @click.capture="alPulsar($event, item)"
                   @auxclick="clicNuevaPestana($event, item.to)"
@@ -179,7 +184,7 @@ function escEnBarra(e: KeyboardEvent) {
                   type="button"
                   aria-disabled="true"
                   :aria-label="angosta ? t(item.etiqueta) : undefined"
-                  class="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                  class="flex h-8 shrink-0 cursor-not-allowed items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
                   <span v-if="!angosta">{{ t(item.etiqueta) }}</span>

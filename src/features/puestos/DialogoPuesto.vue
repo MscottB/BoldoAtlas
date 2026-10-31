@@ -252,7 +252,7 @@ async function verPersona(id: string) {
                   {{ t("puesto.accion.terminar") }}
                 </Button>
               </template>
-              <p v-else-if="tipo === 'titular'" class="text-sm text-amber-700 dark:text-amber-400">
+              <p v-else-if="tipo === 'titular'" class="text-sm text-amber-800 dark:text-amber-400">
                 {{ t("puesto.vacante") }}
               </p>
               <p v-else class="text-sm text-muted-foreground">{{ t("puesto.sinReemplazo") }}</p>

@@ -81,7 +81,10 @@ export function subgrafoVisible(
     if (vistos.has(x.id)) return;
     vistos.add(x.id);
     nodos.push(x);
-    for (const p of porUnidad.get(x.id) ?? []) {
+    // El puesto de jefatura encabeza la pila (las líneas bajan por los puestos en este orden); los demás, por `orden`.
+    const propios = porUnidad.get(x.id) ?? [];
+    const jefe = propios.find((p) => p.id === x.jefe_puesto_id);
+    for (const p of jefe ? [jefe, ...propios.filter((q) => q !== jefe)] : propios) {
       delGrafo.push(p);
       jerarquicas.push([x.id, p.id]);
     }
@@ -261,6 +264,22 @@ export function posiciones(
     siguiente.set(p.unidad_id, desde + m.largo(tamDelPuesto) + m.sep.puestos);
   }
   return res;
+}
+
+/**
+ * Lleva cada tarjeta dibujada a su lugar del layout sin rehacer los nodos (camino rápido cuando la forma no cambió): así
+ * «Reordenar» devuelve también las que se hayan movido. `guardadas` (lo dibujado) queda con las posiciones nuevas.
+ */
+export function reubicar(
+  pos: Map<string, { x: number; y: number }>,
+  guardadas: Map<string, { x: number; y: number }>,
+  nodo: (id: string) => { position: { x: number; y: number } } | undefined,
+): void {
+  for (const [id, p] of pos) {
+    guardadas.set(id, p); // si los nodos se rehacen por otra razón, ya usan la posición nueva
+    const n = nodo(id);
+    if (n) n.position = p;
+  }
 }
 
 /**

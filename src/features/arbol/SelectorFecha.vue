@@ -60,12 +60,13 @@ function terminarFecha(e: Event) {
           :min="FECHA_MINIMA"
           :max="hoyISO()"
           :model-value="org.fechaVista ?? ''"
+          aria-describedby="ayuda-fecha-vista"
           @change="cambiarFecha"
           @blur="terminarFecha"
           @keydown.enter="terminarFecha"
         />
       </label>
-      <p class="text-xs text-muted-foreground">{{ t("arbol.fecha.ayuda") }}</p>
+      <p id="ayuda-fecha-vista" class="text-xs text-muted-foreground">{{ t("arbol.fecha.ayuda") }}</p>
     </PopoverContent>
   </Popover>
 </template>

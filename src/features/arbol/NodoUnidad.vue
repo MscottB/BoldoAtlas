@@ -228,7 +228,7 @@ async function guardar(e: Event) {
           {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
         </span>
       </template>
-      <span v-else class="text-amber-700 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
+      <span v-else class="text-amber-800 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
     </div>
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->

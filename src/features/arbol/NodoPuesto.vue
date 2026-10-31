@@ -83,7 +83,7 @@ const tam = computed(() => {
     <span class="min-w-0" :class="compacta ? 'flex gap-1.5' : 'grid'">
       <span :class="config.mostrarCargo ? 'truncate font-medium' : 'sr-only'">{{ data.cargo }}</span>
       <span :class="config.mostrarPersona ? (compacta ? 'flex min-w-0' : 'grid') : 'sr-only'">
-        <span class="truncate" :class="!data.titular && 'text-amber-700 dark:text-amber-400'">
+        <span class="truncate" :class="!data.titular && 'text-amber-800 dark:text-amber-400'">
           {{ data.titular || t("puesto.vacante") }}
         </span>
         <span v-if="data.reemplazo && !compacta" class="truncate text-muted-foreground">

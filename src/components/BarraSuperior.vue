@@ -12,7 +12,7 @@ import { useTema } from "@/features/tema/useTema";
 import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 
-// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, junto al logo.
+// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, bajo el logo.
 defineEmits<{ buscar: [] }>();
 
 const { t } = useI18n();

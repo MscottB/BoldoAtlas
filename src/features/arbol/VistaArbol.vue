@@ -37,6 +37,7 @@ import {
   aristasDibujadas,
   grafoElk,
   posiciones,
+  reubicar,
   subgrafoVisible,
   colapsadosIniciales,
   unidadesDeRama,
@@ -282,12 +283,8 @@ watch(
     }
     const antes = dibujo.value;
     vista.value = { g, pos };
-    if (antes && forma(antes.g) === forma(g))
-      for (const [id, p] of pos) {
-        antes.pos.set(id, p); // sin avisar a `nodos`: si se rehace por otra razón, ya usa la posición nueva
-        const n = findNode(id);
-        if (n) n.position = p;
-      }
+    // Sin avisar a `nodos`: las tarjetas se mueven en su lugar.
+    if (antes && forma(antes.g) === forma(g)) reubicar(pos, antes.pos, findNode);
     else dibujo.value = vista.value;
     podarSeleccion(new Set(g.nodos.map((u) => u.id))); // lo que se plegó ya no cuenta como seleccionado
     if (!encuadrar && !centrar) return;

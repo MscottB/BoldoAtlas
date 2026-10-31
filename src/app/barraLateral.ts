@@ -16,10 +16,11 @@ export function guardarAbrirAlPasar(si: boolean): void {
 
 /**
  * Barra lateral contraída que se despliega sobre el contenido (sin correrlo): con el mouse tras DEMORA_ABRIR y se pliega
- * DEMORA_CERRAR después de salir; con el teclado, al entrar el foco, y se pliega al salir el foco o con Esc. Solo si la
+ * DEMORA_CERRAR después de salir (salvo con el foco del teclado dentro); con el teclado, al entrar el foco, y se pliega al
+ * salir el foco o con Esc. Solo si la
  * barra está contraída y la opción de Configuración está activa.
  */
-export function useBarraFlotante(colapsada: Ref<boolean>) {
+export function useBarraFlotante(colapsada: Ref<boolean>, focoDelTeclado: () => boolean = () => false) {
   const flotando = ref(false);
   let reloj: ReturnType<typeof setTimeout> | undefined;
   const fijar = (abierta: boolean, demora = 0) => {
@@ -35,7 +36,8 @@ export function useBarraFlotante(colapsada: Ref<boolean>) {
     flotando,
     abrirAlPasar,
     entrar: () => puede() && fijar(true, DEMORA_ABRIR),
-    salir: () => fijar(false, DEMORA_CERRAR),
+    // Con el foco del teclado dentro sigue abierta (WCAG 1.4.13): se pliega al salir el foco o con Esc.
+    salir: () => !focoDelTeclado() && fijar(false, DEMORA_CERRAR),
     enfocar: () => puede() && fijar(true),
     cerrar: () => fijar(false),
   };
