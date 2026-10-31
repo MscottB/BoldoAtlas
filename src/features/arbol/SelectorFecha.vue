@@ -119,11 +119,16 @@ function irA(id: string) {
         :aria-label="
           org.fechaVista
             ? t('arbol.fecha.cambiar', { fecha: formatearFecha(org.fechaVista, locale) })
-            : undefined
+            : t('arbol.fecha.verOtra')
         "
       >
         <CalendarDays aria-hidden="true" />
-        {{ org.fechaVista ? formatearFecha(org.fechaVista, locale) : t("arbol.fecha.verOtra") }}
+        <template v-if="org.fechaVista">{{ formatearFecha(org.fechaVista, locale) }}</template>
+        <!-- Con poco ancho en la barra (BarraLienzo es @container), solo «Fecha». -->
+        <template v-else>
+          <span class="hidden @min-[62rem]:inline">{{ t("arbol.fecha.verOtra") }}</span>
+          <span class="@min-[62rem]:hidden">{{ t("arbol.fecha.corta") }}</span>
+        </template>
       </Button>
     </PopoverTrigger>
     <!-- El foco entra al día elegido (o a hoy), no al botón del mes anterior. -->

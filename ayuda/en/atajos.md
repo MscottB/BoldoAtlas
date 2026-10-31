@@ -6,7 +6,7 @@ BoldoAtlas's own shortcuts:
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Ctrl` + `K`                              | Opens the command palette: search units, people, vacant positions and actions (works even while typing in a field)                                                     |
 | `N`                                       | New child unit of the selected unit                                                                                                                                    |
-| `F`                                       | Search on the canvas                                                                                                                                                   |
+| `F`                                       | Goes to the **Search the diagram** field in the canvas bar                                                                                                             |
 | `Del`                                     | Deletes the selection (you have 8 seconds to undo); with several units selected, deletes them all at once                                                              |
 | `Esc`                                     | Closes the open panel or dialog; with several units selected, clears the selection                                                                                     |
 | `Ctrl` + `0`                              | Fits the whole tree in the window                                                                                                                                      |

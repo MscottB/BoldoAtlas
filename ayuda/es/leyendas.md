@@ -18,7 +18,7 @@ El color se guarda en formato `#rrggbb`, por ejemplo `#be123c`.
 
 ## Verlas en el árbol
 
-1. Pulsa **Vista** y activa **Ver puestos**.
+1. Pulsa **Personalizar** y activa **Ver puestos**.
 2. En **Colorear por**, elige **Leyenda del puesto**.
 
 Cada puesto muestra su color en el borde y en una franja a la izquierda; las unidades no cambian. Bajo el lienzo aparece la franja de la **leyenda** con las entradas que se están usando (pasa el cursor sobre una para leer su descripción); puedes plegarla con su encabezado.

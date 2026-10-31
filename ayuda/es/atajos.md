@@ -6,7 +6,7 @@ Atajos propios de BoldoAtlas:
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Ctrl` + `K`                              | Abre la paleta de comandos: busca unidades, personas, puestos vacantes y acciones (funciona incluso escribiendo en un campo)                                  |
 | `N`                                       | Nueva unidad hija de la unidad seleccionada                                                                                                                   |
-| `F`                                       | Buscar en el lienzo                                                                                                                                           |
+| `F`                                       | Va al campo **Buscar en el diagrama** de la barra del lienzo                                                                                                  |
 | `Supr`                                    | Elimina lo seleccionado (hay 8 segundos para deshacer); con varias unidades seleccionadas, las elimina todas a la vez                                         |
 | `Esc`                                     | Cierra el panel o el diálogo abierto; con varias unidades seleccionadas, quita la selección                                                                   |
 | `Ctrl` + `0`                              | Encuadra todo el árbol en la ventana                                                                                                                          |

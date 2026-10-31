@@ -21,7 +21,7 @@ Solid lines join each unit to its parent. Dotted lines are lateral connections b
 
 When the tree opens you see the roots and their first level; the rest is collapsed. The button at the bottom right of a card shows how many sub-units are hidden (for example `+3`): press it to expand them and again to collapse them.
 
-The **Branches** button in the canvas toolbar expands or collapses everything at once:
+In **More** (the last button of the canvas toolbar), the **Branches** group expands or collapses everything at once:
 
 - **Expand all** opens every branch.
 - **Collapse all** leaves only the roots.
@@ -29,13 +29,13 @@ The **Branches** button in the canvas toolbar expands or collapses everything at
 
 In a unit's context menu, **Expand branch** opens the unit and everything under it, and **Collapse branch** folds it together with its sub-branches: when you open it again you see one level. In a branch opened as a tree, levels are counted from its root.
 
-If expanding (with **Branches**, the context menu or a saved view) would leave more than 1,000 cards in view, you are warned first with the number: **Expand anyway**, **Expand to level** (the deepest level that still fits) or **Cancel**. With that many cards the canvas gets slow.
+If expanding (with **More › Branches**, the context menu or a saved view) would leave more than 1,000 cards in view, you are warned first with the number: **Expand anyway**, **Expand to level** (the deepest level that still fits) or **Cancel**. With that many cards the canvas gets slow.
 
 ## Tidy diagram
 
 The tree is drawn tidy: each parent sits centered over its sub-units, sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they are only drawn on top. With **Show positions**, each unit's positions are stacked right under its card (to its right, when horizontal), in their order, and the lines to the sub-units leave from the last position.
 
-**Rearrange**, in the canvas toolbar, lays out the drawing again, puts back any card that was left out of place and fits it to the window. With a large tree this takes a few seconds: meanwhile **Arranging…** shows at the top right and you can keep using the canvas.
+**Rearrange**, in **More**, lays out the drawing again, puts back any card that was left out of place and fits it to the window. With a large tree this takes a few seconds: meanwhile **Arranging…** shows at the top right and you can keep using the canvas.
 
 ## Context menu
 
@@ -43,7 +43,7 @@ Right-click a card or the canvas background to open a menu with what you can do 
 
 - **Unit**: Open panel, New sub-unit, Rename, View people (opens the panel on the People tab), Expand branch, Collapse branch, Select branch (the unit and what is visible of its branch), Duplicate branch, Open as tree, Save in Trees and Delete… (with the usual confirmation).
 - **Position** (with **Show positions** on): Open position, Assign holder, Register replacement, Copy style, Paste style and Remove style.
-- **Background**: New root unit, Expand all, Collapse all, Rearrange, Fit view and View….
+- **Background**: New root unit, Expand all, Collapse all, Rearrange, Fit view and Customize….
 
 While viewing the chart at a past date, actions that change something are disabled.
 
@@ -88,13 +88,13 @@ The **Duplicate branch** button (at the bottom of the unit panel's Summary and o
 
 ## Highlighting
 
-In the canvas bar you can highlight by tag, by text (part of the name, ignoring accents and case) or both at once. Units that don't match are dimmed, not hidden.
+In the canvas bar, **Search the diagram** (`F` takes you to that field) highlights the units whose name contains the text, ignoring accents and case. Units that don't match are dimmed, not hidden.
 
-The **Highlight by…** button adds more criteria: **With vacancies**, **Site**, **Contract type**, **Schedule** and **Job title**. A unit is highlighted when, in its own positions (not those of its branch), it has a vacancy, a current holder with that site, contract type or schedule, or a position with that job title. If you choose several criteria, all must be met. Highlighting lasts while the app is open; saved views do include it.
+The **Highlight** button adds more criteria: **Tag**, **With vacancies**, **Site**, **Contract type**, **Schedule** and **Job title**; the number on the button counts the active ones. A unit is highlighted when it has the tag or when, in its own positions (not those of its branch), it has a vacancy, a current holder with that site, contract type or schedule, or a position with that job title. If you choose several criteria (the text too), all must be met. Highlighting lasts while the app is open; saved views do include it.
 
 ## Moving around the canvas
 
-Drag the background to pan and use the mouse wheel or the **−** and **+** buttons to zoom out or in. **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The **minimap** shows where you are: it starts off and is turned on in **View › Show minimap**. It sits at the bottom right, in the theme colors, and fitting the tree leaves its space free so it doesn't cover cards.
+Drag the background to pan and use the mouse wheel or the **−** and **+** buttons in the bottom-right corner of the canvas to zoom out or in. Next to them, **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The **minimap** shows where you are: it starts off and is turned on in **More › Show minimap**; turning it on fits the tree once. It sits at the bottom right, above the zoom buttons, in the theme colors, and fitting the tree leaves its space free so it doesn't cover cards.
 
 With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the color of its mark, and the lines become steps. This keeps the canvas smooth. Zoom back in and all the detail returns; with the keyboard, each simplified card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent color.
 
@@ -102,35 +102,34 @@ With many cards in view (more than 300), zooming out simplifies the cards: just 
 
 On the selected card, the **Open as tree** button shows only that unit and everything under it. It isn't a copy: what you change there changes in the full tree. At the top you see the origin path (press any step to open that level), **Up one level** and **View in the full tree**, which goes back to the whole tree with that unit expanded into view, selected and centered.
 
-## View
+## Customize
 
-The **View** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer.
+The **Customize** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer. **Direction**, **Density**, **Color by** and **Show positions** are in plain view; the rest is in two folded blocks, **What to show on cards** and **Advanced**, which open with a click (or `Enter`) and remember on this computer whether you left them open. **Reset** puts everything back as it was at first, except the highlighting.
 
-- **Show positions** (off at first): under each visible unit there is one card per position, with the job title, the holder or **Vacant**, and **Replacement: name** when a replacement is current. Press a position card, or focus it and press `Enter`, to open its record. You can hide the job title or the person. With many units expanded, positions add cards: collapse the branches you don't need.
-- **Show on cards the parent unit of type**: tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
+- **Show positions** (off at first): under each visible unit there is one card per position, with the job title, the holder or **Vacant**, and **Replacement: name** when a replacement is current. Press a position card, or focus it and press `Enter`, to open its record. In **Advanced** you can hide the job title or the person. With many units expanded, positions add cards: collapse the branches you don't need.
+- **Show on cards the parent unit of type** (in **Advanced**): tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
 - **Color by**: **None**, the **mark** of a type, or **Position legend**. With the mark of a type, each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. With **Position legend**, position cards take the color of their legend (turn on **Show positions**; see "Legends and position colors"). Only one criterion applies at a time.
 
 With a color criterion active, a **legend** appears in a strip below the canvas with the color, code and name of the unit that defines each mark you can see. If it doesn't fit, the row scrolls sideways. It can be folded and opened again from its header. A very dark (or very light) mark that barely stands out from the card gets a gray outline on its stripe and code.
 
-In addition, the **View** button lets you choose:
+In addition, **Customize** lets you choose:
 
 - **Direction**: vertical (top to bottom) or horizontal (left to right).
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
-- **Lines**: right-angle or curved.
-- **Show minimap** (off at first): remembered on this computer, apart from each tree's configuration.
-- **Align by unit type**: each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions are stacked under their unit and take no row.
-- **Card details**: people on the cards, unit type, head, head's photo, headcount, vacancies and tags.
+- **Lines** (in **Advanced**): right-angle or curved.
+- **Align by unit type** (in **Advanced**): each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions are stacked under their unit and take no row.
+- **What to show on cards** (with how many are on): people on the cards, unit type, head, head's photo, headcount, vacancies and tags.
 - **People on the cards** (on at first): the head shows with their job title and, below, the faces of the unit's team. The card gets a little taller. Since the head is already on the card, with **Show positions** their position isn't repeated underneath, as in a classic org chart; the other positions still show. The compact card and the simplified card (zoomed out with many cards) don't show people. On a past date you see the people of that day. The faces open the **People** tab with **Include sub-units** off, so the list is the same people they count. With **Head** off the head isn't shown on the card, but still counts in the team number (the name of the faces button).
 
 Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.
 
 ## Saved views
 
-The **Views** button saves the current configuration (direction, density, lines, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
+The **Saved views** button saves the current configuration (direction, density, lines, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
 
 ## Viewing a past date
 
-The **View on another date** button in the canvas toolbar shows the org chart as it was on a past day. Pressing it opens the picker (from 1 January 1900 up to today). At the top you can type the date in full (nothing changes while you type the year, anything left half-typed is discarded when you leave the field, and clearing it goes back to today); below, the calendar moves to that month, and its **month** and **year** lists jump to any month in two clicks. In the calendar, days **highlighted with a dot** had changes, and screen readers announce how many ("3 changes"). Pick a day: the **Viewing as of … · read only** band appears at the top with a **Back to today** button, the toolbar button shows the chosen date and, below the calendar, the **Changes on this day** list tells them in plain sentences ("Ana Rojas took the Manager position in Finance", "Unit Logistics was created"). Press a change to select and center its unit on the canvas. **Previous change** and **Next change** jump to the nearest day with changes.
+The **View on another date** button in the canvas toolbar (just **Date** when space is short) shows the org chart as it was on a past day. Pressing it opens the picker (from 1 January 1900 up to today). At the top you can type the date in full (nothing changes while you type the year, anything left half-typed is discarded when you leave the field, and clearing it goes back to today); below, the calendar moves to that month, and its **month** and **year** lists jump to any month in two clicks. In the calendar, days **highlighted with a dot** had changes, and screen readers announce how many ("3 changes"). Pick a day: the **Viewing as of … · read only** band appears at the top with a **Back to today** button, the toolbar button shows the chosen date and, below the calendar, the **Changes on this day** list tells them in plain sentences ("Ana Rojas took the Manager position in Finance", "Unit Logistics was created"). Press a change to select and center its unit on the canvas. **Previous change** and **Next change** jump to the nearest day with changes.
 
 - With the keyboard: the arrows move between days, **Home** and **End** go to the start and end of the week, **Page Up** and **Page Down** change the month, with **Shift** they change the year, and **Enter** or **Space** pick the day. **Esc** closes the calendar and focus goes back to the button.
 - **What counts as a change:** an assignment that starts (someone took a position or started a replacement) or ends (someone left the position or ended a replacement), and units and positions created or deleted that day. If a holder leaves and another one starts the same day in the same position, it shows as a handover. Deleting a person counts as **leaving the position** that day. A unit or position is created on the day it was entered in BoldoAtlas, unless it has an earlier assignment: then the canvas already showed it and it does not appear as created. **Moving a unit or renaming it is not recorded**, so it does not appear.
@@ -148,7 +147,7 @@ The **Summary** tab holds:
 
 - **Type**, **name** and **description**. They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
 - **Parent unit**: a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
-- **Mark**: a color and a code of up to 4 characters, shown when you pick "Color by" in **View**. **Remove mark** clears both.
+- **Mark**: a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
 - **Head**: choose which of the unit's positions is the head (or **No head**). Below you see who holds it: the holder or, if there is none, **Replacement: name**.
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.

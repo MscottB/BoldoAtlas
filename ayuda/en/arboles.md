@@ -12,7 +12,7 @@ Each tree is a root unit (one with no parent). Its block shows the name, the typ
 
 A branch of a tree can be saved so you can open it as a tree of its own, while it stays attached to the unit it comes from. It appears under the block of the tree it belongs to, with its path of origin.
 
-To save a branch, select it on the canvas (or open a branch as a tree) and press **Save in Trees** in the canvas bar. If it is already saved, the button says **Saved**. A root does not need saving: it already is a tree.
+To save a branch, select it on the canvas (or open a branch as a tree) and choose **Save in Trees** in **More**, in the canvas bar (it is also in the card's context menu and in the unit panel). If it is already saved, it says **Saved**. A root does not need saving: it already is a tree.
 
 On each subtree you can:
 
