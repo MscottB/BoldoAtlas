@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "BoldoAtlas",
+        "create": false,
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
@@ -29,6 +30,9 @@
     "targets": [
       "nsis"
     ],
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

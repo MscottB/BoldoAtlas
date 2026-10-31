@@ -4,6 +4,7 @@ use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::path::PathBuf;
 use std::sync::{Mutex, TryLockError};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, State};
@@ -18,15 +19,25 @@ pub struct Estado {
 }
 
 impl Estado {
+    /// Se llama al comienzo de `run()`, antes de que existan otros hilos: la portable ajusta aquí
+    /// variables de entorno del proceso.
     pub fn iniciar() -> Self {
         let mut rutas_ok = None;
         let resultado = (|| {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            let exe_dir = exe
-                .parent()
+            let appimage = std::env::var_os("APPIMAGE")
+                .filter(|_| cfg!(target_os = "linux"))
+                .map(PathBuf::from);
+            let exe_dir = rutas::carpeta_programa(&exe, appimage.as_deref())
                 .ok_or("No se pudo ubicar la carpeta del programa.")?;
-            let appdata = std::env::var_os("APPDATA").map(std::path::PathBuf::from);
-            let r = rutas::dir_datos(exe_dir, appdata.as_deref())?;
+            let r = rutas::dir_datos(&exe_dir, dirs::data_dir().as_deref())?;
+            if r.portable {
+                for (nombre, ruta) in rutas::entorno_portable(std::env::consts::OS, &r.datos) {
+                    std::fs::create_dir_all(&ruta).map_err(|e| e.to_string())?;
+                    // SAFETY: aún no hay otros hilos que lean el entorno (ver la nota de la función)
+                    unsafe { std::env::set_var(nombre, ruta) };
+                }
+            }
             rutas_ok = Some(r.clone());
             respaldos::limpiar_parciales(&r.respaldos);
             let mut conn = db::abrir(&r.bd)?;
@@ -88,6 +99,13 @@ impl Estado {
                 Err(TryLockError::WouldBlock) => return false,
             }
         }
+    }
+
+    /// Perfil del WebView (localStorage, caché) de la portable: dentro de `datos/`. Instalada: el de Tauri.
+    /// macOS no permite elegirlo: WKWebView usa siempre ~/Library/WebKit.
+    pub fn dir_webview(&self) -> Option<PathBuf> {
+        let r = self.rutas.as_ref().filter(|r| r.portable)?;
+        Some(r.datos.join("webview"))
     }
 
     fn rutas(&self) -> Result<&Rutas, Fallo> {
