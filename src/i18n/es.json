@@ -532,6 +532,7 @@
     "descripcion": "Busca unidades, personas, puestos vacantes y acciones.",
     "buscar": "Buscar unidades, personas o acciones",
     "ayudaVacia": "Escribe para buscar unidades, personas y puestos vacantes.",
+    "ayudaPestana": "Ctrl+Enter o Ctrl+clic: abrir unidades, personas y vistas en una pestaña nueva.",
     "sinResultados": "Sin coincidencias.",
     "resultados": "Sin resultados | {n} resultado | {n} resultados",
     "mas": "Hay {n} más: sigue escribiendo para acotar.",
@@ -549,6 +550,18 @@
       "tema": "Cambiar tema",
       "ayuda": "Ayuda"
     }
+  },
+  "pestanas": {
+    "barra": "Pestañas de trabajo",
+    "cerrar": "Cerrar {titulo}",
+    "nueva": "Nueva pestaña",
+    "nuevaAtajo": "Nueva pestaña (Ctrl+T)",
+    "abrirNueva": "Abrir en pestaña nueva",
+    "limite": "Puedes tener hasta {n} pestañas abiertas. Cierra alguna para abrir otra.",
+    "ultima": "La última pestaña no se cierra.",
+    "noAbre": "Eso no se puede abrir en una pestaña.",
+    "movida": "{titulo}: posición {posicion} de {total}",
+    "ayudaTeclado": "Enter abre la pestaña, Supr la cierra, Control+Mayús+flechas la mueven."
   },
   "bienvenida": {
     "titulo": "Te damos la bienvenida a BoldoAtlas",

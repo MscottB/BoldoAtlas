@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { clicNuevaPestana } from "@/features/pestanas/usePestanas";
 import { dotacionPorUnidad, ruta, rutaTexto, tipoHijo } from "@/features/arbol/jerarquia";
 
 const { t } = useI18n();
@@ -35,7 +36,11 @@ const porRaiz = computed(() => {
 });
 const titulo = (s: Rama) => s.nombre ?? s.unidad.nombre;
 
-const abrir = (id: string) => router.push({ path: "/", query: { raiz: id } });
+// Ctrl+clic o clic central: en una pestaña nueva.
+function abrir(e: MouseEvent, id: string) {
+  const destino = { path: "/", query: { raiz: id } };
+  if (!clicNuevaPestana(e, destino) && e.type === "click") void router.push(destino);
+}
 const avisar = (r: Resultado) => {
   if (!r.ok) toast.error(r.mensaje);
 };
@@ -128,7 +133,9 @@ async function renombrar(id: string) {
           variant="outline"
           size="sm"
           :aria-label="t('arboles.abrirNombre', { nombre: r.nombre })"
-          @click="abrir(r.id)"
+          @click="abrir($event, r.id)"
+          @auxclick="abrir($event, r.id)"
+          @mousedown.middle.prevent
         >
           {{ t("arboles.abrir") }}
         </Button>
@@ -163,7 +170,9 @@ async function renombrar(id: string) {
               variant="outline"
               size="sm"
               :aria-label="t('arboles.abrirNombre', { nombre: titulo(s) })"
-              @click="abrir(s.unidad.id)"
+              @click="abrir($event, s.unidad.id)"
+              @auxclick="abrir($event, s.unidad.id)"
+              @mousedown.middle.prevent
             >
               {{ t("arboles.abrir") }}
             </Button>

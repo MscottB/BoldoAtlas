@@ -16,6 +16,11 @@ export type Atajo =
   | "menuContextual"
   /** F2: renombrar la unidad enfocada o seleccionada. */
   | "renombrar"
+  /** Ctrl+T, Ctrl+W, Ctrl+Tab y Ctrl+Mayús+Tab: pestañas de trabajo. */
+  | "nuevaPestana"
+  | "cerrarPestana"
+  | "pestanaSiguiente"
+  | "pestanaAnterior"
   /** Mayús+flecha: suma a la selección la unidad a la que iría la flecha. */
   | `extender:${Navegacion}`;
 
@@ -49,6 +54,10 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && tecla === "k") return "paleta";
   if (e.key === "Escape") return "cerrar";
   if (e.ctrlKey && e.key === "0") return "encuadrar";
+  // Pestañas: valen también escribiendo en un campo (no tienen otro uso ahí), como Ctrl+K.
+  if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return "nuevaPestana";
+  if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";
+  if (e.ctrlKey && !e.altKey && e.key === "Tab") return e.shiftKey ? "pestanaAnterior" : "pestanaSiguiente";
   if (conControl && tecla === "d" && !e.altKey) return e.enCampoDeTexto || e.soloLectura ? null : "duplicar";
   if (conControl || e.altKey || e.enCampoDeTexto) return null;
   if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) return "menuContextual";

@@ -18,6 +18,27 @@ describe("resolverAtajo", () => {
     expect(resolverAtajo(tecla("k"))).toBeNull();
   });
 
+  it("Ctrl+T, Ctrl+W y Ctrl+(Mayús+)Tab manejan las pestañas, también escribiendo en un campo", () => {
+    expect(resolverAtajo(tecla("t", { ctrlKey: true }))).toBe("nuevaPestana");
+    expect(resolverAtajo(tecla("T", { ctrlKey: true, enCampoDeTexto: true }))).toBe("nuevaPestana");
+    expect(resolverAtajo(tecla("w", { ctrlKey: true }))).toBe("cerrarPestana");
+    expect(resolverAtajo(tecla("w", { metaKey: true, enCampoDeTexto: true }))).toBe("cerrarPestana");
+    expect(resolverAtajo(tecla("Tab", { ctrlKey: true }))).toBe("pestanaSiguiente");
+    expect(resolverAtajo(tecla("Tab", { ctrlKey: true, shiftKey: true }))).toBe("pestanaAnterior");
+  });
+
+  it("las de pestañas no valen sin Ctrl, con Alt o Mayús de más, ni con un diálogo abierto", () => {
+    expect(resolverAtajo(tecla("t"))).toBeNull();
+    expect(resolverAtajo(tecla("w"))).toBeNull();
+    expect(resolverAtajo(tecla("Tab"))).toBeNull();
+    expect(resolverAtajo(tecla("Tab", { shiftKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("t", { ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("w", { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("Tab", { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("w", { ctrlKey: true, modalAbierto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("Tab", { ctrlKey: true, modalAbierto: true }))).toBeNull();
+  });
+
   it("N y F solo fuera de campos de texto, y sin modificadores", () => {
     expect(resolverAtajo(tecla("n"))).toBe("nuevaUnidad");
     expect(resolverAtajo(tecla("N"))).toBe("nuevaUnidad");

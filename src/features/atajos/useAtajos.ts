@@ -6,6 +6,8 @@ import { unidadesDeRama } from "@/features/arbol/layout";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { esVistaCerrable } from "@/app/estructura";
 import { useCerrarVista } from "@/app/useCerrarVista";
+import { RUTA_INICIO } from "@/features/pestanas/pestanas";
+import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { destinoNavegacion, resolverAtajo, type Navegacion } from "./atajos";
 
@@ -25,6 +27,7 @@ export function useAtajos() {
   const route = useRoute();
   const org = useOrganizacion();
   const cerrarVista = useCerrarVista();
+  const pestanas = usePestanas();
   const { config } = useVista();
   const { seleccion, seleccionadas, editando, nuevaHija, revelar, extender, duplicar, pedidoEliminar } =
     useLienzo();
@@ -38,6 +41,8 @@ export function useAtajos() {
   });
 
   useEventListener(window, "keydown", (e: KeyboardEvent) => {
+    // Ctrl+W nunca llega a la ventana (cerrarla o lo que haga el WebView), ni con un diálogo abierto.
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") e.preventDefault();
     if (route.meta.sinMarco || e.isComposing) return;
     const destino = e.target instanceof Element ? e.target : null;
 
@@ -68,6 +73,12 @@ export function useAtajos() {
       paletaAbierta.value = true;
       return;
     }
+    // Pestañas de trabajo: valen en cualquier vista del proyecto.
+    if (atajo === "nuevaPestana") abrirEnPestanaNueva(RUTA_INICIO);
+    else if (atajo === "cerrarPestana") pestanas.cerrar(pestanas.activa); // con una sola pestaña no hace nada
+    else if (atajo === "pestanaSiguiente" || atajo === "pestanaAnterior")
+      pestanas.siguiente(atajo === "pestanaSiguiente" ? 1 : -1);
+    if (atajo.endsWith("Pestana") || atajo.startsWith("pestana")) return void e.preventDefault();
     // Esc en Configuración, Ayuda o Acerca de las cierra (salvo que se esté escribiendo; los diálogos ya mandaron arriba).
     if (atajo === "cerrar" && esVistaCerrable(route.name)) {
       if (!destino?.closest(CAMPO)) {

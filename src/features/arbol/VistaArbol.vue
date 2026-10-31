@@ -50,6 +50,7 @@ import { recordarPorArbol, useVista } from "./useVista";
 import {
   CRITERIO_LEYENDA,
   arbolDeVista,
+  leerVista,
   leyendasEnUso,
   tamPuesto,
   tamUnidad,
@@ -65,6 +66,8 @@ import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha } from "@/features/puestos/puestos";
 import { useTema } from "@/features/tema/useTema";
+import { leerEstadoArbol, type EstadoArbol } from "@/features/pestanas/pestanas";
+import { useEstadoPestana } from "@/features/pestanas/usePestanas";
 
 type Punto = { x: number; y: number };
 
@@ -94,6 +97,7 @@ const {
   areNodesInitialized,
   getSelectedNodes,
   removeSelectedElements,
+  setViewport,
   viewport,
 } = useVueFlow();
 const { config } = useVista();
@@ -152,6 +156,27 @@ watch(
   },
   { immediate: true },
 );
+
+// Al volver a una pestaña (o a esta ruta dentro de ella): sus ramas plegadas, selección, encuadre y resaltado. Sin estado
+// guardado rige lo de siempre (ramas iniciales, encuadrar todo, el resaltado de la sesión).
+// `encuadre`: el guardado, hasta que se aplica (si la pestaña se deja antes, se conserva ese y no el de por defecto).
+let encuadre: EstadoArbol["encuadre"] = null;
+const previo = leerEstadoArbol(
+  useEstadoPestana(() => ({
+    colapsados: [...colapsados.value],
+    seleccion: seleccion.value,
+    encuadre: encuadre ?? { ...viewport.value },
+    resaltar: { ...config.value.resaltar },
+  })),
+);
+encuadre = previo?.encuadre ?? null;
+if (previo) {
+  colapsados.value = previo.colapsados;
+  seleccion.value = previo.seleccion && org.enFecha.porId.has(previo.seleccion) ? previo.seleccion : null;
+  config.value = { ...config.value, resaltar: leerVista({ resaltar: previo.resaltar }).resaltar };
+  centrar = null;
+  encuadrar = true; // tras el primer layout se aplica `encuadre` (o se encuadra todo si no había)
+}
 
 // El layout corre en un worker (la interfaz sigue respondiendo): solo aplica el del último cambio, junto con el subgrafo
 // que lo produjo; mientras tanto se avisa «Ordenando…».
@@ -312,7 +337,9 @@ watch([pendiente, areNodesInitialized], ([p, medidos]) => {
   pendiente.value = null;
   const c = p.centrar && vista.value?.pos.get(p.centrar);
   if (c) void setCenter(c.x + TAM.value.ancho / 2, c.y + TAM.value.alto / 2, { zoom: 1 });
+  else if (encuadre) void setViewport(encuadre);
   else void fitView();
+  encuadre = null;
 });
 
 const visibles = computed(() => new Set(vista.value?.g.nodos.map((u) => u.id)));

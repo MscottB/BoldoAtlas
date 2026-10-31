@@ -13,6 +13,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { candidatasDirectorio, filtrarYOrdenar, type FilaDirectorio, type Filtros, type Orden } from "./filtrar";
 
@@ -31,13 +32,18 @@ const SIN_FILTROS: Filtros = {
   etiqueta: null,
   estado: null,
 };
-// Los filtros y el orden se recuerdan por PC.
-const guardado = leerPreferencia<{ filtros?: Partial<Filtros>; orden?: Orden } | null>("directorio", null);
+// Los filtros y el orden se recuerdan por PC; cada pestaña, además, recuerda los suyos.
+type Guardado = { filtros?: Partial<Filtros>; orden?: Orden } | null;
+const dePestana = useEstadoPestana(() => ({ filtros: { ...filtros.value }, orden: { ...orden.value } })) as Guardado;
+const guardado = dePestana ?? leerPreferencia<Guardado>("directorio", null);
 const filtros = ref<Filtros>({ ...SIN_FILTROS, ...guardado?.filtros });
 const orden = ref<Orden>({ campo: "persona", asc: true, ...guardado?.orden });
-// «Ver en el directorio» del panel de una unidad: solo esa unidad y su rama, sin los demás filtros.
-const pedida = useRoute().query.unidad;
-if (typeof pedida === "string") filtros.value = { ...SIN_FILTROS, unidad: pedida };
+// «Ver en el directorio» del panel de una unidad: solo esa unidad y su rama, sin los demás filtros. Una persona abierta en
+// una pestaña nueva (?persona=): buscada por su nombre.
+const { unidad: pedida, persona } = useRoute().query;
+const nombrePersona = org.trabajadores.find((x) => x.id === persona)?.nombre;
+if (!dePestana && typeof pedida === "string") filtros.value = { ...SIN_FILTROS, unidad: pedida };
+else if (!dePestana && nombrePersona) filtros.value = { ...SIN_FILTROS, texto: nombrePersona };
 watch([filtros, orden], () => guardarPreferencia("directorio", { filtros: filtros.value, orden: orden.value }), {
   deep: true,
 });
@@ -93,7 +99,10 @@ const ariaSort = (campo: Orden["campo"]) =>
   orden.value.campo !== campo ? "none" : orden.value.asc ? "ascending" : "descending";
 
 // Clic en la fila (o Enter sobre el nombre, que es un botón dentro de ella): la ficha de la persona o, en una vacante, el puesto.
-function abrir(f: FilaDirectorio) {
+// Ctrl+clic o clic central sobre una persona: ella sola en una pestaña nueva.
+function abrir(e: MouseEvent, f: FilaDirectorio) {
+  if (f.personaId && clicNuevaPestana(e, { name: "directorio", query: { persona: f.personaId } })) return;
+  if (e.type === "auxclick") return;
   if (f.personaId) void ficha.intentarAbrir(f.personaId);
   else if (f.puestoId) puesto.abrir(f.puestoId);
 }
@@ -228,7 +237,9 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
                 :key="f.clave"
                 :aria-rowindex="index + 2"
                 class="cursor-pointer border-t hover:bg-accent"
-                @click="abrir(f)"
+                @click="abrir($event, f)"
+                @auxclick="abrir($event, f)"
+                @mousedown.middle.prevent
               >
                 <th scope="row" class="px-3 py-1.5 font-normal whitespace-nowrap">
                   <button

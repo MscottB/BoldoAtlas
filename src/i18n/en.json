@@ -532,6 +532,7 @@
     "descripcion": "Search units, people, vacant positions and actions.",
     "buscar": "Search units, people or actions",
     "ayudaVacia": "Type to search units, people and vacant positions.",
+    "ayudaPestana": "Ctrl+Enter or Ctrl+click: open units, people and views in a new tab.",
     "sinResultados": "No matches.",
     "resultados": "No results | {n} result | {n} results",
     "mas": "{n} more: keep typing to narrow down.",
@@ -549,6 +550,18 @@
       "tema": "Change theme",
       "ayuda": "Help"
     }
+  },
+  "pestanas": {
+    "barra": "Work tabs",
+    "cerrar": "Close {titulo}",
+    "nueva": "New tab",
+    "nuevaAtajo": "New tab (Ctrl+T)",
+    "abrirNueva": "Open in new tab",
+    "limite": "You can have up to {n} tabs open. Close one to open another.",
+    "ultima": "The last tab can't be closed.",
+    "noAbre": "That can't be opened in a tab.",
+    "movida": "{titulo}: position {posicion} of {total}",
+    "ayudaTeclado": "Enter opens the tab, Delete closes it, Control+Shift+arrows move it."
   },
   "bienvenida": {
     "titulo": "Welcome to BoldoAtlas",
