@@ -58,7 +58,8 @@ const ligera = computed(() => contexto.ligera.value && editando.value !== props.
 // Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).
 const raiz = useTemplateRef<HTMLElement>("raiz");
 watch(ligera, async (l) => {
-  if (!raiz.value?.contains(document.activeElement)) return;
+  // al renombrar, el foco es del campo (v-foco): no moverlo
+  if (editando.value === props.id || !raiz.value?.contains(document.activeElement)) return;
   await nextTick();
   (l ? raiz.value : raiz.value?.querySelector("button"))?.focus();
 });
