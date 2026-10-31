@@ -25,10 +25,13 @@ impl Estado {
         let mut rutas_ok = None;
         let resultado = (|| {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            let appimage = std::env::var_os("APPIMAGE")
-                .filter(|_| cfg!(target_os = "linux"))
-                .map(PathBuf::from);
-            let exe_dir = rutas::carpeta_programa(&exe, appimage.as_deref())
+            let linux = |v| {
+                std::env::var_os(v)
+                    .filter(|_| cfg!(target_os = "linux"))
+                    .map(PathBuf::from)
+            };
+            let (appimage, appdir) = (linux("APPIMAGE"), linux("APPDIR"));
+            let exe_dir = rutas::carpeta_programa(&exe, appimage.as_deref(), appdir.as_deref())
                 .ok_or("No se pudo ubicar la carpeta del programa.")?;
             let r = rutas::dir_datos(&exe_dir, dirs::data_dir().as_deref())?;
             if r.portable {
@@ -103,6 +106,9 @@ impl Estado {
 
     /// Perfil del WebView (localStorage, caché) de la portable: dentro de `datos/`. Instalada: el de Tauri.
     /// macOS no permite elegirlo: WKWebView usa siempre ~/Library/WebKit.
+    /// Si no se pudo usar `datos/` (abierta desde el zip, pendrive de solo lectura, app translocada…), la
+    /// pantalla de error usa el perfil por defecto de Tauri, fuera de la carpeta: es solo para mostrar el
+    /// error, y una carpeta del sistema que se puede escribir es mejor que no poder mostrarlo.
     pub fn dir_webview(&self) -> Option<PathBuf> {
         let r = self.rutas.as_ref().filter(|r| r.portable)?;
         Some(r.datos.join("webview"))
@@ -208,12 +214,34 @@ pub async fn restaurar_respaldo(app: AppHandle, nombre: String) -> Result<(), Fa
     app.restart()
 }
 
+/// Abre una carpeta en el gestor de archivos. En la portable de Linux, xdg-open se lanza sin las variables que
+/// la app apunta a `datos/` (ver `rutas::entorno_portable`): un gestor de archivos lanzado directamente las
+/// heredaría y pondría su papelera y sus recientes en el pendrive. Quedan sin definir, o sea, las por defecto.
+fn abrir_carpeta(app: &AppHandle, r: &Rutas, carpeta: &std::path::Path) -> Result<(), Fallo> {
+    #[cfg(target_os = "linux")]
+    if r.portable {
+        let mut xdg = std::process::Command::new("xdg-open");
+        for (nombre, _) in rutas::entorno_portable("linux", &r.datos) {
+            xdg.env_remove(nombre);
+        }
+        if let Ok(mut hijo) = xdg.arg(carpeta).spawn() {
+            // se espera en otro hilo para no dejar un proceso zombi
+            std::thread::spawn(move || hijo.wait());
+            return Ok(());
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = r;
+    app.opener()
+        .open_path(carpeta.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string().into())
+}
+
 /// Abre la carpeta conocida por Rust; la interfaz nunca envía una ruta.
 #[tauri::command]
 pub fn abrir_carpeta_respaldos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
-    app.opener()
-        .open_path(estado.rutas()?.respaldos.to_string_lossy(), None::<&str>)
-        .map_err(|e| e.to_string().into())
+    let r = estado.rutas()?;
+    abrir_carpeta(&app, r, &r.respaldos)
 }
 
 /// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust.
@@ -225,9 +253,8 @@ pub fn info_proyecto(estado: State<Estado>) -> Result<InfoProyecto, Fallo> {
 /// Abre la carpeta de datos conocida por Rust; la interfaz nunca envía una ruta.
 #[tauri::command]
 pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
-    app.opener()
-        .open_path(estado.rutas()?.datos.to_string_lossy(), None::<&str>)
-        .map_err(|e| e.to_string().into())
+    let r = estado.rutas()?;
+    abrir_carpeta(&app, r, &r.datos)
 }
 
 #[cfg(test)]

@@ -14,10 +14,17 @@ pub struct Rutas {
     pub portable: bool,
 }
 
-/// Carpeta donde se busca `portable.flag`: la del AppImage en Linux (`$APPIMAGE`: el exe corre desde un
-/// montaje temporal), la que contiene `BoldoAtlas.app` en macOS y la del exe en los demás casos.
-pub fn carpeta_programa(exe: &Path, appimage: Option<&Path>) -> Option<PathBuf> {
-    if let Some(a) = appimage {
+/// Carpeta donde se busca `portable.flag`: la del AppImage en Linux (`$APPIMAGE`; el exe corre desde su
+/// montaje temporal, `$APPDIR`), la que contiene `BoldoAtlas.app` en macOS y la del exe en los demás casos.
+pub fn carpeta_programa(
+    exe: &Path,
+    appimage: Option<&Path>,
+    appdir: Option<&Path>,
+) -> Option<PathBuf> {
+    // $APPIMAGE vale solo si este exe corre dentro de ese montaje: un .deb abierto desde otro AppImage lo hereda
+    if let (Some(a), Some(d)) = (appimage, appdir)
+        && exe.starts_with(d)
+    {
         return a.parent().map(Path::to_path_buf);
     }
     let dir = exe.parent()?;
@@ -163,7 +170,7 @@ mod tests {
         // con / para que el test corra igual en los tres sistemas (\ solo separa en Windows)
         let exe = Path::new("C:/Portables/BoldoAtlas/BoldoAtlas.exe");
         assert_eq!(
-            carpeta_programa(exe, None),
+            carpeta_programa(exe, None, None),
             Some(PathBuf::from("C:/Portables/BoldoAtlas"))
         );
     }
@@ -173,13 +180,31 @@ mod tests {
         // el exe corre desde el montaje temporal del AppImage; el flag está junto al .AppImage
         let exe = Path::new("/tmp/.mount_BoldoAxYz/usr/bin/boldo-atlas");
         let appimage = Path::new("/home/ana/pendrive/BoldoAtlas/BoldoAtlas.AppImage");
+        let appdir = Path::new("/tmp/.mount_BoldoAxYz");
         assert_eq!(
-            carpeta_programa(exe, Some(appimage)),
+            carpeta_programa(exe, Some(appimage), Some(appdir)),
             Some(PathBuf::from("/home/ana/pendrive/BoldoAtlas"))
         );
         // .deb y .rpm: sin $APPIMAGE, la carpeta del exe (sin flag: modo instalado)
         assert_eq!(
-            carpeta_programa(Path::new("/usr/bin/boldo-atlas"), None),
+            carpeta_programa(Path::new("/usr/bin/boldo-atlas"), None, None),
+            Some(PathBuf::from("/usr/bin"))
+        );
+    }
+
+    #[test]
+    fn carpeta_programa_ignora_appimage_heredado() {
+        // un .deb abierto desde otro AppImage (un lanzador) hereda su $APPIMAGE y su $APPDIR
+        let exe = Path::new("/usr/bin/boldo-atlas");
+        let otro = Path::new("/home/ana/Apps/Lanzador.AppImage");
+        let su_montaje = Path::new("/tmp/.mount_LanzaQwe");
+        assert_eq!(
+            carpeta_programa(exe, Some(otro), Some(su_montaje)),
+            Some(PathBuf::from("/usr/bin"))
+        );
+        // sin $APPDIR tampoco se confía en $APPIMAGE
+        assert_eq!(
+            carpeta_programa(exe, Some(otro), None),
             Some(PathBuf::from("/usr/bin"))
         );
     }
@@ -188,13 +213,13 @@ mod tests {
     fn carpeta_programa_macos_es_la_que_contiene_el_app() {
         let exe = Path::new("/Users/ana/BoldoAtlas/BoldoAtlas.app/Contents/MacOS/boldo-atlas");
         assert_eq!(
-            carpeta_programa(exe, None),
+            carpeta_programa(exe, None, None),
             Some(PathBuf::from("/Users/ana/BoldoAtlas"))
         );
         // un exe suelto en una carpeta llamada MacOS no es un .app
         let suelto = Path::new("/Users/ana/Contents/MacOS/boldo-atlas");
         assert_eq!(
-            carpeta_programa(suelto, None),
+            carpeta_programa(suelto, None, None),
             Some(PathBuf::from("/Users/ana/Contents/MacOS"))
         );
     }
