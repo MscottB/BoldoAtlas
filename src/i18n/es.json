@@ -113,7 +113,9 @@
     "buscarDiagrama": "Buscar en el diagrama",
     "buscarAtajo": "Buscar en el diagrama (F)",
     "alejar": "Alejar",
+    "alejarAtajo": "Alejar (Ctrl+-)",
     "acercar": "Acercar",
+    "acercarAtajo": "Acercar (Ctrl+=)",
     "encuadrar": "Encuadrar",
     "encuadrarAtajo": "Encuadrar todo (Ctrl+0)",
     "zoom": "Zoom",
@@ -185,7 +187,7 @@
       "jornada": "Jornada",
       "cargo": "Cargo",
       "cualquiera": "Cualquiera",
-      "ayuda": "Se resaltan las unidades con la etiqueta elegida o que tienen, en sus propios puestos, lo elegido. Se suma a «Buscar en el diagrama»."
+      "ayuda": "Se resaltan las unidades que cumplen todo lo elegido: la etiqueta y, en sus propios puestos, lo demás. Se suma a «Buscar en el diagrama»."
     },
     "vistas": {
       "titulo": "Vistas guardadas",

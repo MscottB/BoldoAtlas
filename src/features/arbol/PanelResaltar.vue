@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { Highlighter } from "@lucide/vue";
+import { ChevronDown, Highlighter } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -33,6 +33,7 @@ const activos = computed(() => {
       <Button variant="outline" size="sm">
         <Highlighter aria-hidden="true" />
         {{ t("arbol.resaltar.titulo") }}
+        <ChevronDown class="-ml-0.5 hidden size-3 opacity-60 @min-[62rem]:block" aria-hidden="true" />
         <span v-if="activos" class="rounded-full bg-marca px-1.5 text-xs text-marca-foreground">
           {{ activos }}
           <span class="sr-only">{{ t("arbol.resaltar.activos", activos) }}</span>

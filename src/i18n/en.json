@@ -113,7 +113,9 @@
     "buscarDiagrama": "Search the diagram",
     "buscarAtajo": "Search the diagram (F)",
     "alejar": "Zoom out",
+    "alejarAtajo": "Zoom out (Ctrl+-)",
     "acercar": "Zoom in",
+    "acercarAtajo": "Zoom in (Ctrl+=)",
     "encuadrar": "Fit view",
     "encuadrarAtajo": "Fit everything (Ctrl+0)",
     "zoom": "Zoom",
@@ -185,7 +187,7 @@
       "jornada": "Schedule",
       "cargo": "Job title",
       "cualquiera": "Any",
-      "ayuda": "Units with the chosen tag, or with the chosen value in their own positions, are highlighted. This adds to “Search the diagram”."
+      "ayuda": "Units that meet everything chosen are highlighted: the tag and, in their own positions, the rest. This adds to “Search the diagram”."
     },
     "vistas": {
       "titulo": "Saved views",

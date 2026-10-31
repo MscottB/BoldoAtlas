@@ -2,13 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, provide, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { Panel, VueFlow, useVueFlow, type Edge, type Node, type NodeDragEvent } from "@vue-flow/core";
+import { VueFlow, useVueFlow, type Edge, type Node, type NodeDragEvent } from "@vue-flow/core";
 import { MiniMap } from "@vue-flow/minimap";
 import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
 import "@vue-flow/minimap/dist/style.css";
 import { toast } from "vue-sonner";
-import { ArrowUp, CalendarClock, LoaderCircle, Maximize, Network, ZoomIn, ZoomOut } from "@lucide/vue";
+import { ArrowUp, CalendarClock, LoaderCircle, Network } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +67,7 @@ import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
 import MenuLienzo from "./MenuLienzo.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
+import ZoomLienzo from "./ZoomLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha } from "@/features/puestos/puestos";
 import { useTema } from "@/features/tema/useTema";
@@ -103,8 +104,6 @@ const {
   removeSelectedElements,
   setViewport,
   viewport,
-  zoomIn,
-  zoomOut,
 } = useVueFlow();
 const { config, minimapa } = useVista();
 const { escala } = useTema();
@@ -638,6 +637,7 @@ function verCompleto() {
     <!-- Lienzo y leyenda en la primera columna; el panel de la unidad ocupa la segunda a todo el alto. -->
     <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)_auto]">
       <div class="relative min-w-0" @keydown.esc="escEnLienzo">
+        <ZoomLienzo />
         <MenuLienzo :unidades="mostradas" :visibles="visibles" :raiz="raiz" @reordenar="reordenar">
           <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
           <VueFlow
@@ -666,36 +666,6 @@ function verCompleto() {
               <NodoPuesto :id="p.id" :data="p.data" />
             </template>
             <MiniMap v-if="conMapa" pannable zoomable :width="MINIMAPA.ancho" :height="MINIMAPA.alto" />
-            <!-- Zoom en la esquina, como en un mapa (el minimapa va encima). -->
-            <Panel position="bottom-right" class="flex gap-1" role="group" :aria-label="t('arbol.zoom')">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                :aria-label="t('arbol.alejar')"
-                :title="t('arbol.alejar')"
-                @click="zoomOut()"
-              >
-                <ZoomOut aria-hidden="true" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                :aria-label="t('arbol.acercar')"
-                :title="t('arbol.acercar')"
-                @click="zoomIn()"
-              >
-                <ZoomIn aria-hidden="true" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                :aria-label="t('arbol.encuadrar')"
-                :title="t('arbol.encuadrarAtajo')"
-                @click="encuadrarTodo()"
-              >
-                <Maximize aria-hidden="true" />
-              </Button>
-            </Panel>
           </VueFlow>
         </MenuLienzo>
         <div
@@ -786,7 +756,7 @@ function verCompleto() {
 .lienzo :deep(.vue-flow__minimap) {
   background: var(--card);
   border: 1px solid var(--border);
-  /* Sobre el grupo de zoom: su alto (botón icon-sm) más un respiro. */
+  /* Sobre el grupo de zoom (ZoomLienzo, en la misma esquina): su alto (botón icon-sm) más un respiro. */
   margin-bottom: calc(15px + 1.75rem + 0.5rem);
 }
 .lienzo :deep(.vue-flow__minimap-node) {

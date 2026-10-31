@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronRight, SlidersHorizontal } from "@lucide/vue";
+import { ChevronDown, ChevronRight, SlidersHorizontal } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
@@ -70,6 +70,7 @@ const alPlegar = (bloque: "tarjeta" | "avanzado", e: Event) =>
       <Button variant="outline" size="sm">
         <SlidersHorizontal aria-hidden="true" />
         {{ t("arbol.vista.titulo") }}
+        <ChevronDown class="-ml-0.5 hidden size-3 opacity-60 @min-[62rem]:block" aria-hidden="true" />
       </Button>
     </PopoverTrigger>
     <PopoverContent align="start" class="max-h-[80vh] w-80 gap-3 overflow-x-hidden overflow-y-auto text-sm">

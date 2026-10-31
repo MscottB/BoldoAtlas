@@ -6,6 +6,7 @@ import { onKeyStroke } from "@vueuse/core";
 import {
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
   ChevronsDownUp,
   ChevronsUpDown,
   Ellipsis,
@@ -110,6 +111,7 @@ async function guardarEnArboles() {
           >
             <Ellipsis aria-hidden="true" />
             <span class="hidden @min-[62rem]:inline">{{ t("arbol.mas.titulo") }}</span>
+            <ChevronDown class="-ml-0.5 hidden size-3 opacity-60 @min-[62rem]:block" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-60">
@@ -120,7 +122,7 @@ async function guardarEnArboles() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </template>
-          <DropdownMenuGroup>
+          <DropdownMenuGroup :aria-label="t('arbol.ramas.titulo')">
             <DropdownMenuLabel>{{ t("arbol.ramas.titulo") }}</DropdownMenuLabel>
             <DropdownMenuItem @select="expandirTodo(unidades)">
               <ChevronsUpDown aria-hidden="true" />

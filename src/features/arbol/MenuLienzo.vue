@@ -63,7 +63,8 @@ const pedir = (f: () => unknown) => (accion = f);
 
 function apuntar(e: MouseEvent) {
   const el = e.target as Element;
-  if (el.closest("input, textarea")) return void e.stopPropagation(); // el campo conserva su menú (copiar, pegar)
+  // El campo conserva su menú (copiar, pegar); el minimapa no es el fondo del lienzo.
+  if (el.closest("input, textarea, .vue-flow__panel")) return void e.stopPropagation();
   const nodo = el.closest<HTMLElement>(".vue-flow__node");
   id.value = nodo?.dataset.id ?? "";
   foco = nodo?.querySelector<HTMLElement>("button, [role=button]") ?? null; // la tarjeta ligera es [role=button]

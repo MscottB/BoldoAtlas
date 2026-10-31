@@ -95,6 +95,8 @@ function aplicar({ ids, foco }: Seleccion) {
 const editando = ref<string | null>(null);
 /** Unidad que el lienzo debe centrar en cuanto pueda (VistaArbol lo atiende y lo deja en null). */
 const centrarEn = ref<string | null>(null);
+/** Zoom pedido por teclado (Ctrl+±): el grupo de zoom del lienzo lo atiende y lo deja en null. */
+const pedidoZoom = ref<"acercar" | "alejar" | null>(null);
 /** Cada pedido (Supr) sube el contador; el panel de la unidad seleccionada lo atiende con su flujo de eliminar. */
 const pedidoEliminar = ref(0);
 /** Pestaña que el panel de la unidad debe mostrar (lo atiende y la deja en null). */
@@ -225,6 +227,7 @@ export function useLienzo() {
     editando,
     centrarEn,
     pedidoEliminar,
+    pedidoZoom,
     pestanaPanel,
     ramaPersonas,
     avisoExpansion,

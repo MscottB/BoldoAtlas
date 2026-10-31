@@ -35,8 +35,17 @@ export function useAtajos() {
   const cerrarVista = useCerrarVista();
   const pestanas = usePestanas();
   const { config } = useVista();
-  const { seleccion, seleccionadas, editando, nuevaHija, revelar, extender, duplicar, pedidoEliminar } =
-    useLienzo();
+  const {
+    seleccion,
+    seleccionadas,
+    editando,
+    nuevaHija,
+    revelar,
+    extender,
+    duplicar,
+    pedidoEliminar,
+    pedidoZoom,
+  } = useLienzo();
 
   // Lo que se dibuja: el árbol completo o la rama enfocada (/?raiz=). Igual que VistaArbol.
   const mostradas = computed(() => {
@@ -98,6 +107,12 @@ export function useAtajos() {
     }
     // Ctrl+0 (encuadrar) lo atiende la barra del lienzo. El resto solo vale sobre el árbol.
     if (atajo === "encuadrar" || route.name !== "arbol") return;
+
+    if (atajo === "acercar" || atajo === "alejar") {
+      e.preventDefault(); // en WebView2 cambiaría el zoom de la página
+      pedidoZoom.value = atajo;
+      return;
+    }
 
     if (atajo === "cerrar") {
       // Dentro del lienzo o del panel, quien tiene el foco ya atiende Esc (p. ej. cancelar un renombrado).
