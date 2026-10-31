@@ -8,7 +8,7 @@ Cada unidad es una tarjeta con:
 
 - su tipo (por ejemplo, Gerencia o Área) y su nombre;
 - la foto o las iniciales y el nombre de la jefatura (**Reemplazo: nombre** si su puesto solo tiene reemplazo), o **Sin jefatura** si no tiene;
-- la dotación total de su rama (ella y todo lo que cuelga de ella);
+- la dotación total de su rama (ella y todo lo que cuelga de ella); púlsala (o `Tab` hasta ella y `Enter`) para ver quiénes son en la pestaña **Personas** del panel;
 - las vacantes de la rama, si hay;
 - un punto de color por cada etiqueta (pasa el puntero por encima para ver su nombre).
 
@@ -40,7 +40,7 @@ El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades
 
 Clic derecho sobre una tarjeta o sobre el fondo del lienzo abre un menú con lo que se puede hacer ahí. Con el teclado se abre con `Mayús` + `F10` o con la tecla Menú, sobre la tarjeta enfocada o, si no hay, la seleccionada (si tampoco hay, el del fondo). Se recorre con las flechas, `Enter` elige y `Esc` lo cierra y devuelve el foco a la tarjeta.
 
-- **Unidad**: Abrir panel, Nueva subunidad, Renombrar, Ver personas (abre el panel en la pestaña Puestos), Expandir rama, Contraer rama, Seleccionar rama (la unidad y lo que se ve de su rama), Duplicar rama, Abrir como árbol, Guardar en Árboles y Eliminar… (con la misma confirmación de siempre).
+- **Unidad**: Abrir panel, Nueva subunidad, Renombrar, Ver personas (abre el panel en la pestaña Personas), Expandir rama, Contraer rama, Seleccionar rama (la unidad y lo que se ve de su rama), Duplicar rama, Abrir como árbol, Guardar en Árboles y Eliminar… (con la misma confirmación de siempre).
 - **Puesto** (con **Ver puestos** activo): Abrir puesto, Asignar titular, Registrar reemplazo, Copiar estilo, Pegar estilo y Quitar estilo.
 - **Fondo**: Nueva unidad raíz, Expandir todo, Contraer todo, Reordenar, Encuadrar y Vista….
 
@@ -150,6 +150,16 @@ La pestaña **Resumen** reúne:
 - **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol), **Duplicar rama** y **Eliminar unidad**.
 
 La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»). La pestaña **Procesos** llega en la Fase 3.
+
+La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reemplazos vigentes, con su foto (o iniciales), nombre, cargo, tipo (**Titular** o **Reemplazo**) y unidad. Una persona con dos puestos aparece una vez por puesto. Arriba de la lista:
+
+- El buscador (nombre, cargo, unidad o correo, sin importar tildes ni mayúsculas) y el orden **Por nombre**, **Por cargo** o **Por unidad**.
+- **Incluir subunidades** (encendido al abrir la pestaña): suma a las personas de toda la rama, como la dotación de la tarjeta. Apagado, solo los puestos de la propia unidad.
+- **Copiar correos**: copia los correos de la lista que se ve (con la búsqueda aplicada), sin repetir y separados por `; `, listos para pegar en un correo.
+- **Ver en el directorio**: abre el Directorio filtrado por esta unidad y su rama.
+- **Resumen por cargo** (se despliega al pulsarlo): cuántos puestos de cada cargo hay y cuántos están vacantes (sin titular); entre paréntesis, las vacantes que cubre un reemplazo.
+
+Pulsa una persona para ver su **vista previa** en el mismo panel: foto, correo, teléfono, puestos vigentes e historial. **Abrir ficha** abre su ficha completa para editarla; **Volver a la lista** (o `Esc`) vuelve a la lista en el mismo lugar, con el foco en la persona que abriste. Con una fecha elegida, la lista y la vista previa muestran a quienes estaban asignados ese día.
 
 ### Eliminar una unidad
 

@@ -14,5 +14,10 @@ export function useRetornoFoco() {
       e.preventDefault();
       document.querySelector<HTMLElement>("[data-buscar-paleta]")?.focus();
     },
+    /** Fuera de un diálogo (p. ej. una vista previa dentro de un panel): el foco vuelve a quien lo tenía o a `respaldo`. */
+    restaurar: (respaldo: HTMLElement | null | undefined) => {
+      const vuelve = previo?.isConnected && previo !== document.body ? (previo as HTMLElement) : respaldo;
+      vuelve?.focus();
+    },
   };
 }

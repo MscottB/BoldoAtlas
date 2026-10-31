@@ -8,7 +8,7 @@ Each unit is a card with:
 
 - its type (for example, Gerencia or Área) and its name;
 - the photo or initials and name of its manager (**Replacement: name** if its position only has a replacement), or **No manager** if it has none;
-- the total headcount of its branch (the unit and everything under it);
+- the total headcount of its branch (the unit and everything under it); press it (or `Tab` to it and `Enter`) to see who they are on the panel's **People** tab;
 - the branch's vacancies, if any;
 - a colored dot for each tag (hover over it to see its name).
 
@@ -40,7 +40,7 @@ The tree is drawn tidy: each parent sits centred over its sub-units (and its pos
 
 Right-click a card or the canvas background to open a menu with what you can do there. With the keyboard, open it with `Shift` + `F10` or the Menu key, on the focused card or, if there is none, the selected one (if there is none either, the background menu). Move with the arrow keys, `Enter` picks and `Esc` closes it and returns focus to the card.
 
-- **Unit**: Open panel, New sub-unit, Rename, View people (opens the panel on the Positions tab), Expand branch, Collapse branch, Select branch (the unit and what is visible of its branch), Duplicate branch, Open as tree, Save in Trees and Delete… (with the usual confirmation).
+- **Unit**: Open panel, New sub-unit, Rename, View people (opens the panel on the People tab), Expand branch, Collapse branch, Select branch (the unit and what is visible of its branch), Duplicate branch, Open as tree, Save in Trees and Delete… (with the usual confirmation).
 - **Position** (with **Show positions** on): Open position, Assign holder, Register replacement, Copy style, Paste style and Remove style.
 - **Background**: New root unit, Expand all, Collapse all, Rearrange, Fit view and View….
 
@@ -150,6 +150,16 @@ The **Summary** tab holds:
 - **Save in Trees** (not shown on roots, which already are a tree), **Duplicate branch** and **Delete unit**.
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements"). The **Processes** tab arrives in Phase 3.
+
+The **People** tab lists who holds the positions: current holders and replacements, with their photo (or initials), name, job title, type (**Holder** or **Replacement**) and unit. A person with two positions appears once per position. Above the list:
+
+- The search box (name, job title, unit or email, ignoring accents and case) and the order **By name**, **By job title** or **By unit**.
+- **Include sub-units** (on when the tab opens): adds the people of the whole branch, like the card's headcount. Off, only the unit's own positions.
+- **Copy emails**: copies the emails of the list you see (with the search applied), without repeats and separated by `; `, ready to paste into an email.
+- **View in the directory**: opens the Directory filtered by this unit and its branch.
+- **Summary by job title** (expands when pressed): how many positions of each job title there are and how many are vacant (no holder); in brackets, the vacancies covered by a replacement.
+
+Press a person to see their **preview** in the same panel: photo, email, phone, current positions and history. **Open record** opens their full record to edit it; **Back to the list** (or `Esc`) returns to the list at the same place, with focus on the person you opened. With a date chosen, the list and the preview show who was assigned that day.
 
 ### Deleting a unit
 

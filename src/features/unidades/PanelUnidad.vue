@@ -25,6 +25,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import EditorConexiones from "./EditorConexiones.vue";
 import EditorEtiquetas from "./EditorEtiquetas.vue";
+import PersonasUnidad from "./PersonasUnidad.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 import { decisionEliminar, excluidasComoSuperior, filasDePuestos, migas, validarMarca } from "./panel";
 
@@ -227,10 +228,12 @@ async function eliminar() {
       {{ t("arbol.fecha.panelSoloLectura") }}
     </p>
 
-    <Tabs v-model="pestana" class="flex-1 p-3">
+    <!-- En Personas la lista ocupa el alto que queda (y se desplaza ella); las demás pestañas desplazan el panel. -->
+    <Tabs v-model="pestana" class="flex-1 p-3" :class="pestana === 'personas' && 'min-h-0'">
       <TabsList class="w-full">
         <TabsTrigger value="resumen">{{ t("unidad.resumen") }}</TabsTrigger>
         <TabsTrigger value="puestos">{{ t("puesto.puestos", { n: filas.length }) }}</TabsTrigger>
+        <TabsTrigger value="personas">{{ t("personas.pestana") }}</TabsTrigger>
         <TabsTrigger value="procesos">{{ t("unidad.procesos") }}</TabsTrigger>
       </TabsList>
 
@@ -433,6 +436,10 @@ async function eliminar() {
             {{ t("puesto.nuevoPuesto") }}
           </Button>
         </div>
+      </TabsContent>
+
+      <TabsContent value="personas" class="flex min-h-0 flex-col">
+        <PersonasUnidad :unidad="unidad" />
       </TabsContent>
 
       <TabsContent value="procesos">

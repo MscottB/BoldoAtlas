@@ -93,10 +93,6 @@ function seleccionarRama(id: string) {
   lienzo.seleccionar(null);
   lienzo.sumarVarias([...rama, id]); // la última queda como foco
 }
-function verPersonas(id: string) {
-  lienzo.pestanaPanel.value = "puestos"; // la pestaña Personas llega después; por ahora, Puestos
-  lienzo.seleccionar(id);
-}
 function renombrar(id: string) {
   lienzo.seleccionar(id);
   lienzo.editando.value = id;
@@ -127,7 +123,7 @@ const abrirVista = () => (panelAbierto.value = true);
           {{ t("arbol.menu.renombrar") }}
           <ContextMenuShortcut>F2</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem @select="pedir(() => verPersonas(id))">
+        <ContextMenuItem @select="pedir(() => lienzo.verPersonas(id))">
           {{ t("arbol.menu.verPersonas") }}
         </ContextMenuItem>
         <ContextMenuSeparator />

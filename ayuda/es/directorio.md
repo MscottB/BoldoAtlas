@@ -14,7 +14,7 @@ Después de **Reemplazo** hay una columna por cada tipo de unidad que usas (por 
 ## Buscar y filtrar
 
 - El cuadro de búsqueda busca en el nombre de la persona y del reemplazo, el cargo y el correo del titular, sin distinguir mayúsculas ni tildes («munoz» encuentra «Muñoz»).
-- **Unidad** incluye toda su rama. **Cargo**, **tipo de contrato**, **sede** y **jornada** filtran por valor exacto (también los desactivados); contrato, sede y jornada son los del titular, así que una vacante no los cumple. **Etiqueta** usa las etiquetas de la unidad del puesto. **Estado** separa ocupados, vacantes y personas sin puesto.
+- **Unidad** incluye toda su rama. **Ver en el directorio**, en la pestaña Personas del panel de una unidad, abre el directorio con solo ese filtro. **Cargo**, **tipo de contrato**, **sede** y **jornada** filtran por valor exacto (también los desactivados); contrato, sede y jornada son los del titular, así que una vacante no los cumple. **Etiqueta** usa las etiquetas de la unidad del puesto. **Estado** separa ocupados, vacantes y personas sin puesto.
 - **Limpiar filtros** los quita todos. Los filtros y el orden se recuerdan en este computador.
 
 ## Ordenar y abrir

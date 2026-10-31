@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
 import { useVirtualList } from "@vueuse/core";
 import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,9 @@ const SIN_FILTROS: Filtros = {
 const guardado = leerPreferencia<{ filtros?: Partial<Filtros>; orden?: Orden } | null>("directorio", null);
 const filtros = ref<Filtros>({ ...SIN_FILTROS, ...guardado?.filtros });
 const orden = ref<Orden>({ campo: "persona", asc: true, ...guardado?.orden });
+// «Ver en el directorio» del panel de una unidad: solo esa unidad y su rama, sin los demás filtros.
+const pedida = useRoute().query.unidad;
+if (typeof pedida === "string") filtros.value = { ...SIN_FILTROS, unidad: pedida };
 watch([filtros, orden], () => guardarPreferencia("directorio", { filtros: filtros.value, orden: orden.value }), {
   deep: true,
 });

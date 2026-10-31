@@ -79,6 +79,8 @@
     },
     "sinJefatura": "Sin jefatura",
     "dotacion": "Dotación total",
+    "verPersonasDotacion": "Ver las personas de la unidad",
+    "dotacionPersonas": "Dotación total: {n}. Ver las personas",
     "vacantes": "{n} vacante | {n} vacantes",
     "expandir": "Mostrar {n} subunidad | Mostrar {n} subunidades",
     "plegar": "Plegar rama",
@@ -463,6 +465,33 @@
     "duplicar": "Duplicar rama",
     "copiaDe": "{nombre} (copia)",
     "duplicada": "Rama «{nombre}» duplicada"
+  },
+  "personas": {
+    "pestana": "Personas",
+    "filtros": "Buscar y ordenar personas",
+    "buscar": "Buscar persona, cargo, unidad o correo",
+    "ordenar": "Ordenar por",
+    "orden": {
+      "nombre": "Por nombre",
+      "cargo": "Por cargo",
+      "unidad": "Por unidad"
+    },
+    "incluirSubunidades": "Incluir subunidades",
+    "copiarCorreos": "Copiar correos",
+    "correosCopiados": "Se copió {n} correo | Se copiaron {n} correos",
+    "sinCorreos": "Nadie de la lista tiene correo.",
+    "errorCopiar": "No se pudieron copiar los correos: {detalle}",
+    "verEnDirectorio": "Ver en el directorio",
+    "resumenCargo": "Resumen por cargo",
+    "nPuestos": "{n} puesto | {n} puestos",
+    "nVacantes": "{n} vacante | {n} vacantes",
+    "nCubiertas": "{n} con reemplazo | {n} con reemplazo",
+    "cantidad": "Nadie | {n} persona en la lista | {n} personas en la lista",
+    "lista": "Personas de la unidad",
+    "vacia": "Nadie ocupa sus puestos.",
+    "sinResultados": "Nadie coincide con la búsqueda.",
+    "volver": "Volver a la lista",
+    "abrirFicha": "Abrir ficha"
   },
   "seleccion": {
     "barra": "Acciones sobre las unidades seleccionadas",

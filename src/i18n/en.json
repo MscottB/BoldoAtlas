@@ -79,6 +79,8 @@
     },
     "sinJefatura": "No manager",
     "dotacion": "Total headcount",
+    "verPersonasDotacion": "View the unit's people",
+    "dotacionPersonas": "Total headcount: {n}. View the people",
     "vacantes": "{n} vacancy | {n} vacancies",
     "expandir": "Show {n} sub-unit | Show {n} sub-units",
     "plegar": "Collapse branch",
@@ -463,6 +465,33 @@
     "duplicar": "Duplicate branch",
     "copiaDe": "{nombre} (copy)",
     "duplicada": "Branch “{nombre}” duplicated"
+  },
+  "personas": {
+    "pestana": "People",
+    "filtros": "Search and sort people",
+    "buscar": "Search person, job title, unit or email",
+    "ordenar": "Sort by",
+    "orden": {
+      "nombre": "By name",
+      "cargo": "By job title",
+      "unidad": "By unit"
+    },
+    "incluirSubunidades": "Include sub-units",
+    "copiarCorreos": "Copy emails",
+    "correosCopiados": "Copied {n} email | Copied {n} emails",
+    "sinCorreos": "Nobody on the list has an email.",
+    "errorCopiar": "Could not copy the emails: {detalle}",
+    "verEnDirectorio": "View in the directory",
+    "resumenCargo": "Summary by job title",
+    "nPuestos": "{n} position | {n} positions",
+    "nVacantes": "{n} vacancy | {n} vacancies",
+    "nCubiertas": "{n} covered by a replacement | {n} covered by a replacement",
+    "cantidad": "Nobody | {n} person on the list | {n} people on the list",
+    "lista": "People in the unit",
+    "vacia": "Nobody holds its positions.",
+    "sinResultados": "Nobody matches the search.",
+    "volver": "Back to the list",
+    "abrirFicha": "Open record"
   },
   "seleccion": {
     "barra": "Actions on the selected units",

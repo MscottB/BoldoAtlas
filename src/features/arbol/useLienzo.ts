@@ -276,6 +276,11 @@ export function useLienzo() {
     seleccionar(id: string | null) {
       seleccion.value = id;
     },
+    /** Abre el panel de la unidad en la pestaña Personas (dotación de la tarjeta y menú contextual). */
+    verPersonas(id: string) {
+      pestanaPanel.value = "personas";
+      seleccion.value = id;
+    },
     coincide: (u: Unidad) =>
       coincideFiltro(u, config.value.resaltar.texto, etiquetadas!.value, cumplen!.value),
   };

@@ -40,6 +40,7 @@ const {
   coincide,
   nuevaUnidad,
   duplicar,
+  verPersonas,
 } = useLienzo();
 const { config } = useVista();
 const { escala } = useTema();
@@ -231,14 +232,17 @@ async function guardar(e: Event) {
     </div>
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->
-      <span
+      <!-- La dotación abre el panel en la pestaña Personas. -->
+      <button
         v-if="config.mostrarDotacion && !(compacta && sola)"
-        class="flex items-center gap-1"
-        :title="t('arbol.dotacion')"
+        type="button"
+        class="nodrag flex items-center gap-1 rounded hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+        :title="t('arbol.verPersonasDotacion')"
+        :aria-label="t('arbol.dotacionPersonas', { n: data.total })"
+        @click.stop="verPersonas(id)"
       >
-        <Users class="size-3.5" aria-hidden="true" />
-        <span class="sr-only">{{ t("arbol.dotacion") }}:</span>{{ data.total }}
-      </span>
+        <Users class="size-3.5" aria-hidden="true" />{{ data.total }}
+      </button>
       <span
         v-if="config.mostrarVacantes && data.vacantes && !(compacta && sola)"
         class="rounded-full bg-marca px-1.5 text-marca-foreground"
