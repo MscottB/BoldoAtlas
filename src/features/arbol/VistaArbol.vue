@@ -67,6 +67,7 @@ import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
 import MenuLienzo from "./MenuLienzo.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
+import ZoomLienzo from "./ZoomLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha } from "@/features/puestos/puestos";
 import { useTema } from "@/features/tema/useTema";
@@ -439,6 +440,8 @@ const MINIMAPA = { ancho: 160, alto: 100 };
 const conMapa = computed(() => minimapa.value && conMinimapa(nodos.value.length));
 const encuadrarTodo = () =>
   fitView(conMapa.value ? { padding: { x: 0.1, y: 0.1, right: `${MINIMAPA.ancho + 30}px` } } : undefined);
+// Al encender el minimapa se encuadra una vez, para que no tape tarjetas.
+watch(minimapa, (si) => si && conMapa.value && void encuadrarTodo());
 provide(CONTEXTO_LIENZO, {
   marcas,
   rutas,
@@ -631,8 +634,10 @@ function verCompleto() {
         </Button>
       </div>
     </div>
-    <div class="flex min-h-0 flex-1">
-      <div class="relative min-w-0 flex-1" @keydown.esc="escEnLienzo">
+    <!-- Lienzo y leyenda en la primera columna; el panel de la unidad ocupa la segunda a todo el alto. -->
+    <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)_auto]">
+      <div class="relative min-w-0" @keydown.esc="escEnLienzo">
+        <ZoomLienzo />
         <MenuLienzo :unidades="mostradas" :visibles="visibles" :raiz="raiz" @reordenar="reordenar">
           <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
           <VueFlow
@@ -688,10 +693,13 @@ function verCompleto() {
         </div>
       </div>
 
-      <PanelUnidad v-if="unidadSeleccionada" :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
+      <!-- PanelUnidad tiene dos raíces (el panel y su diálogo): la fila doble va en este envoltorio. -->
+      <div v-if="unidadSeleccionada" class="row-span-2 flex min-h-0">
+        <PanelUnidad :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
+      </div>
+      <!-- La leyenda va en una franja fija bajo el lienzo (no bajo el panel): así no tapa tarjetas. -->
+      <LeyendaLienzo v-if="leyenda.length" class="col-start-1" :titulo="tituloLeyenda" :entradas="leyenda" />
     </div>
-    <!-- La leyenda va en una franja fija bajo el lienzo: así no tapa tarjetas. -->
-    <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
     <AlertDialog v-model:open="confirmando">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -748,6 +756,8 @@ function verCompleto() {
 .lienzo :deep(.vue-flow__minimap) {
   background: var(--card);
   border: 1px solid var(--border);
+  /* Sobre el grupo de zoom (ZoomLienzo, en la misma esquina): su alto (botón icon-sm) más un respiro. */
+  margin-bottom: calc(15px + 1.75rem + 0.5rem);
 }
 .lienzo :deep(.vue-flow__minimap-node) {
   fill: var(--minimapa-nodo);

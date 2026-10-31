@@ -72,6 +72,7 @@
     "fecha": {
       "titulo": "Ver el organigrama a una fecha",
       "verOtra": "Ver en otra fecha",
+      "corta": "Fecha",
       "cambiar": "Viendo al {fecha}. Cambiar la fecha",
       "ayuda": "Muestra cómo estaba la organización ese día, en solo lectura. Escríbela o elígela; los días resaltados con un punto tuvieron cambios. Déjala vacía para volver a hoy.",
       "mes": "Mes",
@@ -109,13 +110,18 @@
     "vacantes": "{n} vacante | {n} vacantes",
     "expandir": "Mostrar {n} subunidad | Mostrar {n} subunidades",
     "plegar": "Plegar rama",
-    "resaltarEtiqueta": "Resaltar por etiqueta",
-    "todasEtiquetas": "Resaltar etiqueta: ninguna",
-    "resaltarTexto": "Resaltar por texto",
+    "buscarDiagrama": "Buscar en el diagrama",
+    "buscarAtajo": "Buscar en el diagrama (F)",
     "alejar": "Alejar",
+    "alejarAtajo": "Alejar (Ctrl+-)",
     "acercar": "Acercar",
+    "acercarAtajo": "Acercar (Ctrl+=)",
     "encuadrar": "Encuadrar",
     "encuadrarAtajo": "Encuadrar todo (Ctrl+0)",
+    "zoom": "Zoom",
+    "mas": {
+      "titulo": "Más"
+    },
     "rutaOrigen": "Ruta de origen",
     "subirNivel": "Subir un nivel",
     "verCompleto": "Ver en el árbol completo",
@@ -124,7 +130,7 @@
     "mover": "Mover",
     "reemplazo": "Reemplazo: {nombre}",
     "vista": {
-      "titulo": "Vista",
+      "titulo": "Personalizar",
       "verPuestos": "Ver puestos",
       "mostrarCargo": "Mostrar el cargo",
       "mostrarPersona": "Mostrar la persona",
@@ -147,8 +153,14 @@
         "smoothstep": "Rectas en ángulo",
         "bezier": "Curvas"
       },
+      "cortas": {
+        "vertical": "Vertical",
+        "horizontal": "Horizontal",
+        "normal": "Normal",
+        "compacta": "Compacta"
+      },
       "compactaAviso": "La tarjeta compacta es de una línea: nombre, dotación y vacantes. Los demás datos de la tarjeta no se ven.",
-      "tarjeta": "Datos de la tarjeta",
+      "tarjeta": "Qué mostrar en las tarjetas ({n} de {total})",
       "campos": {
         "personasEnTarjetas": "Personas en las tarjetas",
         "mostrarTipo": "Tipo de unidad",
@@ -159,21 +171,26 @@
         "mostrarEtiquetas": "Etiquetas"
       },
       "alinearPorTipo": "Alinear por tipo de unidad",
-      "minimapa": "Mostrar minimapa"
+      "minimapa": "Mostrar minimapa",
+      "avanzado": "Avanzado",
+      "enPuestos": "En las tarjetas de puesto",
+      "restablecer": "Restablecer",
+      "filaLeyenda": "Colores: {titulo}"
     },
     "resaltar": {
-      "titulo": "Resaltar por…",
+      "titulo": "Resaltar",
       "activos": "{n} criterio activo | {n} criterios activos",
+      "etiqueta": "Etiqueta",
       "vacantes": "Con vacantes",
       "sede": "Sede",
       "contrato": "Tipo de contrato",
       "jornada": "Jornada",
       "cargo": "Cargo",
       "cualquiera": "Cualquiera",
-      "ayuda": "Se resaltan las unidades que tienen, en sus propios puestos, lo elegido. Se suma a la etiqueta y al texto."
+      "ayuda": "Se resaltan las unidades que cumplen todo lo elegido: la etiqueta y, en sus propios puestos, lo demás. Se suma a «Buscar en el diagrama»."
     },
     "vistas": {
-      "titulo": "Vistas",
+      "titulo": "Vistas guardadas",
       "sinArbol": "Esta rama no está guardada en Árboles. Guárdala allí para tener vistas propias.",
       "nombre": "Nombre de la vista",
       "guardar": "Guardar vista actual",
@@ -213,7 +230,7 @@
       "eliminar": "Eliminar…",
       "abrirPuesto": "Abrir puesto",
       "nuevaRaiz": "Nueva unidad raíz",
-      "vista": "Vista…"
+      "vista": "Personalizar…"
     }
   },
   "arboles": {

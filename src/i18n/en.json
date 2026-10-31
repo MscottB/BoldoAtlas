@@ -74,6 +74,7 @@
       "viendo": "Viewing as of {fecha}",
       "soloLectura": "read only",
       "verOtra": "View on another date",
+      "corta": "Date",
       "cambiar": "Viewing {fecha}. Change the date",
       "ayuda": "Shows the organization as it was on that day, read-only. Type it or pick it; days highlighted with a dot had changes. Leave it empty to go back to today.",
       "mes": "Month",
@@ -109,13 +110,18 @@
     "vacantes": "{n} vacancy | {n} vacancies",
     "expandir": "Show {n} sub-unit | Show {n} sub-units",
     "plegar": "Collapse branch",
-    "resaltarEtiqueta": "Highlight by tag",
-    "todasEtiquetas": "Highlight tag: none",
-    "resaltarTexto": "Highlight by text",
+    "buscarDiagrama": "Search the diagram",
+    "buscarAtajo": "Search the diagram (F)",
     "alejar": "Zoom out",
+    "alejarAtajo": "Zoom out (Ctrl+-)",
     "acercar": "Zoom in",
+    "acercarAtajo": "Zoom in (Ctrl+=)",
     "encuadrar": "Fit view",
     "encuadrarAtajo": "Fit everything (Ctrl+0)",
+    "zoom": "Zoom",
+    "mas": {
+      "titulo": "More"
+    },
     "rutaOrigen": "Origin path",
     "subirNivel": "Up one level",
     "verCompleto": "View in the full tree",
@@ -124,7 +130,7 @@
     "mover": "Move",
     "reemplazo": "Replacement: {nombre}",
     "vista": {
-      "titulo": "View",
+      "titulo": "Customize",
       "verPuestos": "Show positions",
       "mostrarCargo": "Show the job title",
       "mostrarPersona": "Show the person",
@@ -147,8 +153,14 @@
         "smoothstep": "Right-angle lines",
         "bezier": "Curves"
       },
+      "cortas": {
+        "vertical": "Vertical",
+        "horizontal": "Horizontal",
+        "normal": "Normal",
+        "compacta": "Compact"
+      },
       "compactaAviso": "The compact card is one line: name, headcount and vacancies. The other card details are not shown.",
-      "tarjeta": "Card details",
+      "tarjeta": "What to show on cards ({n} of {total})",
       "campos": {
         "personasEnTarjetas": "People on the cards",
         "mostrarTipo": "Unit type",
@@ -159,21 +171,26 @@
         "mostrarEtiquetas": "Tags"
       },
       "alinearPorTipo": "Align by unit type",
-      "minimapa": "Show minimap"
+      "minimapa": "Show minimap",
+      "avanzado": "Advanced",
+      "enPuestos": "On position cards",
+      "restablecer": "Reset",
+      "filaLeyenda": "Colors: {titulo}"
     },
     "resaltar": {
-      "titulo": "Highlight by…",
+      "titulo": "Highlight",
       "activos": "{n} active criterion | {n} active criteria",
+      "etiqueta": "Tag",
       "vacantes": "With vacancies",
       "sede": "Site",
       "contrato": "Contract type",
       "jornada": "Schedule",
       "cargo": "Job title",
       "cualquiera": "Any",
-      "ayuda": "Units that have the chosen value in their own positions are highlighted. This adds to the tag and the text."
+      "ayuda": "Units that meet everything chosen are highlighted: the tag and, in their own positions, the rest. This adds to “Search the diagram”."
     },
     "vistas": {
-      "titulo": "Views",
+      "titulo": "Saved views",
       "sinArbol": "This branch is not saved in Trees. Save it there to have views of its own.",
       "nombre": "View name",
       "guardar": "Save current view",
@@ -213,7 +230,7 @@
       "eliminar": "Delete…",
       "abrirPuesto": "Open position",
       "nuevaRaiz": "New root unit",
-      "vista": "View…"
+      "vista": "Customize…"
     }
   },
   "arboles": {

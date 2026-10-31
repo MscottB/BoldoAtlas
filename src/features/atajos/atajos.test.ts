@@ -61,6 +61,16 @@ describe("resolverAtajo", () => {
     expect(resolverAtajo(tecla("0"))).toBeNull();
   });
 
+  it("Ctrl+= o Ctrl++ acercan y Ctrl+- aleja, salvo escribiendo, sin Ctrl o con un diálogo abierto", () => {
+    expect(resolverAtajo(tecla("=", { ctrlKey: true }))).toBe("acercar");
+    expect(resolverAtajo(tecla("+", { ctrlKey: true, shiftKey: true }))).toBe("acercar");
+    expect(resolverAtajo(tecla("-", { ctrlKey: true }))).toBe("alejar");
+    expect(resolverAtajo(tecla("-", { ctrlKey: true, enCampoDeTexto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("=", { ctrlKey: true, modalAbierto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("+"))).toBeNull();
+    expect(resolverAtajo(tecla("-", { ctrlKey: true, altKey: true }))).toBeNull();
+  });
+
   it("las flechas recorren el árbol fuera de campos de texto", () => {
     expect(resolverAtajo(tecla("ArrowUp"))).toBe("irSuperior");
     expect(resolverAtajo(tecla("ArrowDown"))).toBe("irPrimerHijo");

@@ -2,24 +2,29 @@
 import { computed, inject } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { useVueFlow } from "@vue-flow/core";
 import { onKeyStroke } from "@vueuse/core";
 import {
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
   ChevronsDownUp,
   ChevronsUpDown,
+  Ellipsis,
   LayoutGrid,
-  Maximize,
+  ListCollapse,
+  MapIcon,
   Plus,
-  ZoomIn,
-  ZoomOut,
+  Search,
 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -35,17 +40,16 @@ import PanelVista from "./PanelVista.vue";
 import PanelResaltar from "./PanelResaltar.vue";
 import MenuVistas from "./MenuVistas.vue";
 import SelectorFecha from "./SelectorFecha.vue";
-import { claseSelect, cn } from "@/lib/utils";
 
+// Una fila de 7 controles: lo frecuente a la vista y lo ocasional en «Más». El zoom está en la esquina del lienzo.
 // `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
 const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
-defineEmits<{ reordenar: [] }>();
+const emit = defineEmits<{ reordenar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
 const NIVELES = [1, 2, 3, 4, 5, 6];
-const { config } = useVista();
-const { zoomIn, zoomOut } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
+const { config, minimapa } = useVista();
 const { encuadrar } = inject(CONTEXTO_LIENZO)!;
 
 onKeyStroke("0", (e) => {
@@ -69,94 +73,88 @@ async function guardarEnArboles() {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2 border-b p-2">
-    <Button size="sm" :disabled="!!org.fechaVista" @click="nueva">
-      <Plus aria-hidden="true" />
-      {{ t("arbol.nuevaUnidad") }}
-    </Button>
-    <Button
-      v-if="aGuardar"
-      variant="outline"
-      size="sm"
-      :disabled="guardada || !!org.fechaVista"
-      @click="guardarEnArboles"
-    >
-      <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
-      {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
-    </Button>
-    <PanelVista />
-    <MenuVistas :raiz="raiz" :unidades="unidades" />
-    <select
-      v-model="config.resaltar.etiqueta"
-      :class="cn(claseSelect, 'h-7')"
-      :aria-label="t('arbol.resaltarEtiqueta')"
-    >
-      <option :value="null">{{ t("arbol.todasEtiquetas") }}</option>
-      <option v-for="e in org.etiquetas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
-    </select>
-    <Input
-      v-model="config.resaltar.texto"
-      data-buscar-lienzo
-      type="search"
-      class="h-7 w-48"
-      :placeholder="t('arbol.resaltarTexto')"
-      :aria-label="t('arbol.resaltarTexto')"
-    />
-    <PanelResaltar />
-    <SelectorFecha />
-    <span class="ml-auto flex gap-1">
+  <!-- @container: bajo 62rem de ancho, la búsqueda, «Ver en otra fecha» y «Más» se acortan (la fila cabe en la ventana mínima). -->
+  <div class="@container border-b">
+    <div class="flex flex-wrap items-center gap-2 p-2">
+      <Button size="sm" :disabled="!!org.fechaVista" @click="nueva">
+        <Plus aria-hidden="true" />
+        {{ t("arbol.nuevaUnidad") }}
+      </Button>
+      <span class="relative">
+        <Search
+          class="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          v-model="config.resaltar.texto"
+          data-buscar-lienzo
+          type="search"
+          class="h-7 w-48 pr-1.5 pl-7 text-ellipsis @min-[62rem]:w-52"
+          :placeholder="t('arbol.buscarDiagrama')"
+          :aria-label="t('arbol.buscarDiagrama')"
+          :title="t('arbol.buscarAtajo')"
+        />
+      </span>
+      <PanelResaltar />
+      <PanelVista />
+      <MenuVistas :raiz="raiz" :unidades="unidades" />
+      <SelectorFecha />
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button variant="outline" size="sm">
-            <ChevronsUpDown aria-hidden="true" />
-            {{ t("arbol.ramas.titulo") }}
+          <!-- Con poco ancho, solo el ícono: el nombre sigue en aria-label y title. -->
+          <Button
+            variant="outline"
+            size="sm"
+            class="ml-auto"
+            :aria-label="t('arbol.mas.titulo')"
+            :title="t('arbol.mas.titulo')"
+          >
+            <Ellipsis aria-hidden="true" />
+            <span class="hidden @min-[62rem]:inline">{{ t("arbol.mas.titulo") }}</span>
+            <ChevronDown class="-ml-0.5 hidden size-3 opacity-60 @min-[62rem]:block" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="w-56">
-          <DropdownMenuItem @select="expandirTodo(unidades)">
-            <ChevronsUpDown aria-hidden="true" />
-            {{ t("arbol.ramas.expandirTodo") }}
+        <DropdownMenuContent align="end" class="w-60">
+          <template v-if="aGuardar">
+            <DropdownMenuItem :disabled="guardada || !!org.fechaVista" @select="guardarEnArboles">
+              <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
+              {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </template>
+          <DropdownMenuGroup :aria-label="t('arbol.ramas.titulo')">
+            <DropdownMenuLabel>{{ t("arbol.ramas.titulo") }}</DropdownMenuLabel>
+            <DropdownMenuItem @select="expandirTodo(unidades)">
+              <ChevronsUpDown aria-hidden="true" />
+              {{ t("arbol.ramas.expandirTodo") }}
+            </DropdownMenuItem>
+            <DropdownMenuItem @select="contraerHasta(unidades, 1)">
+              <ChevronsDownUp aria-hidden="true" />
+              {{ t("arbol.ramas.contraerTodo") }}
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <ListCollapse aria-hidden="true" />
+                {{ t("arbol.ramas.contraerHasta") }}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem v-for="n in NIVELES" :key="n" @select="contraerHasta(unidades, n)">
+                  {{ t("arbol.ramas.nivel", { n }) }}
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem :title="t('arbol.reordenarAyuda')" @select="emit('reordenar')">
+            <LayoutGrid aria-hidden="true" />
+            {{ t("arbol.reordenar") }}
           </DropdownMenuItem>
-          <DropdownMenuItem @select="contraerHasta(unidades, 1)">
-            <ChevronsDownUp aria-hidden="true" />
-            {{ t("arbol.ramas.contraerTodo") }}
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>{{ t("arbol.ramas.contraerHasta") }}</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem v-for="n in NIVELES" :key="n" @select="contraerHasta(unidades, n)">
-                {{ t("arbol.ramas.nivel", { n }) }}
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <DropdownMenuCheckboxItem v-model="minimapa">
+            <MapIcon aria-hidden="true" />
+            {{ t("arbol.vista.minimapa") }}
+          </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button variant="outline" size="sm" :title="t('arbol.reordenarAyuda')" @click="$emit('reordenar')">
-        <LayoutGrid aria-hidden="true" />
-        {{ t("arbol.reordenar") }}
-      </Button>
-      <Button
-        variant="outline"
-        size="icon-sm"
-        :aria-label="t('arbol.alejar')"
-        :title="t('arbol.alejar')"
-        @click="zoomOut()"
-      >
-        <ZoomOut aria-hidden="true" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon-sm"
-        :aria-label="t('arbol.acercar')"
-        :title="t('arbol.acercar')"
-        @click="zoomIn()"
-      >
-        <ZoomIn aria-hidden="true" />
-      </Button>
-      <Button variant="outline" size="sm" :title="t('arbol.encuadrarAtajo')" @click="encuadrar()">
-        <Maximize aria-hidden="true" />
-        {{ t("arbol.encuadrar") }}
-      </Button>
-    </span>
+    </div>
   </div>
 </template>

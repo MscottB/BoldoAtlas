@@ -36,10 +36,11 @@ const { oscuro } = useTema();
       <component :is="config.leyenda ? ChevronDown : ChevronRight" class="size-3.5" aria-hidden="true" />
       {{ titulo }}
     </button>
-    <!-- Con el teclado se llega a la fila para desplazarla si no cabe. -->
+    <!-- Con el teclado se llega a la fila para desplazarla si no cabe; con nombre, para que el foco diga dónde está. -->
     <ul
       v-if="config.leyenda"
       tabindex="0"
+      :aria-label="t('arbol.vista.filaLeyenda', { titulo })"
       class="flex min-w-0 items-center gap-3 overflow-x-auto rounded-md py-1.5 focus-visible:outline-2 focus-visible:outline-ring"
     >
       <li

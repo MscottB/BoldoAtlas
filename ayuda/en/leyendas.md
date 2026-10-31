@@ -18,7 +18,7 @@ The color is stored in `#rrggbb` format, for example `#be123c`.
 
 ## See them in the tree
 
-1. Click **View** and turn on **Show positions**.
+1. Click **Customize** and turn on **Show positions**.
 2. Under **Color by**, choose **Position legend**.
 
 Each position shows its color on the border and on a stripe at the left; units do not change. Below the canvas, the **legend** strip lists the entries in use (hover over one to read its description); you can fold it with its header.

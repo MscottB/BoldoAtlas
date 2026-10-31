@@ -11,6 +11,9 @@ export type Atajo =
   | "eliminar"
   | "cerrar"
   | "encuadrar"
+  /** Ctrl+= (o Ctrl++) y Ctrl+-: acercar y alejar el lienzo. */
+  | "acercar"
+  | "alejar"
   | "duplicar"
   /** Mayús+F10 o la tecla Menú: el menú contextual de la tarjeta enfocada o seleccionada. */
   | "menuContextual"
@@ -54,6 +57,9 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && tecla === "k") return "paleta";
   if (e.key === "Escape") return "cerrar";
   if (e.ctrlKey && e.key === "0") return "encuadrar";
+  // Escribiendo, Ctrl+± queda para el campo (o el navegador).
+  if (e.ctrlKey && !e.altKey && (e.key === "=" || e.key === "+" || e.key === "-"))
+    return e.enCampoDeTexto ? null : e.key === "-" ? "alejar" : "acercar";
   // Pestañas: valen también escribiendo en un campo (no tienen otro uso ahí), como Ctrl+K.
   if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return "nuevaPestana";
   if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";

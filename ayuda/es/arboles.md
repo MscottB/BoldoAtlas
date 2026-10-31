@@ -12,7 +12,7 @@ Cada árbol es una unidad raíz (la que no tiene superior). Su bloque muestra el
 
 Una rama del árbol se puede guardar para abrirla como si fuera un árbol propio, sin dejar de colgar de la unidad de la que viene. Aparece bajo el bloque del árbol al que pertenece, con su ruta de origen.
 
-Para guardar una rama, selecciónala en el lienzo (o abre una rama como árbol) y pulsa **Guardar en Árboles**, en la barra del lienzo. Si ya está guardada, el botón dice **Guardado**. Una raíz no necesita guardarse: ya es un árbol.
+Para guardar una rama, selecciónala en el lienzo (o abre una rama como árbol) y elige **Guardar en Árboles** en **Más**, en la barra del lienzo (también está en el menú contextual de la tarjeta y en el panel de la unidad). Si ya está guardada, dice **Guardado**. Una raíz no necesita guardarse: ya es un árbol.
 
 En cada subárbol puedes:
 

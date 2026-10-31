@@ -2,7 +2,7 @@
 import { computed, nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Eye, Pencil, Trash2 } from "@lucide/vue";
+import { ChevronDown, Eye, Pencil, Trash2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -80,6 +80,7 @@ async function eliminar(id: string) {
       <Button variant="outline" size="sm">
         <Eye aria-hidden="true" />
         {{ t("arbol.vistas.titulo") }}
+        <ChevronDown class="-ml-0.5 hidden size-3 opacity-60 @min-[62rem]:block" aria-hidden="true" />
       </Button>
     </PopoverTrigger>
     <PopoverContent align="start" class="w-80 gap-3 text-sm">
