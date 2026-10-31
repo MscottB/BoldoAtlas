@@ -83,7 +83,9 @@ describe("esViteDeEsteRepo", () => {
   });
 
   it("acepta el binario vite.cmd y el paquete vite", () => {
-    expect(esViteDeEsteRepo(String.raw`cmd /c ${repo}\node_modules\.bin\vite.cmd --port 1420`, repo)).toBe(true);
+    expect(esViteDeEsteRepo(String.raw`cmd /c ${repo}\node_modules\.bin\vite.cmd --port 1420`, repo)).toBe(
+      true,
+    );
     expect(esViteDeEsteRepo(String.raw`node ${repo}\node_modules\.bin\vite --port 1420`, repo)).toBe(true);
   });
 
