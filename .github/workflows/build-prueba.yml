@@ -2,13 +2,14 @@ name: build-prueba
 
 # Portable de prueba en cada PR, descargable desde la pestaña Actions (artefacto privado al repo, sin
 # release pública). Solo portable y con el perfil Cargo `prueba` (sin LTO): lint y tests los corre ci.yml.
-# En main no sube nada: compila para dejar la caché de Rust caliente para los PR.
+# En main no sube nada: compila para dejar la caché de Rust caliente para los PR, y solo cuando cambian
+# Rust o las dependencias (si la clave de la caché ya existe, rust-cache no vuelve a guardarla).
 on:
   pull_request:
     paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
   push:
     branches: [main]
-    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
+    paths: ["src-tauri/**", "src-tauri/Cargo.lock", "package-lock.json"]
   workflow_dispatch:
 
 concurrency:
