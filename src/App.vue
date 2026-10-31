@@ -100,7 +100,7 @@ const navegacion = ref<HTMLElement | null>(null);
 // :focus-visible = foco del teclado (un clic con el mouse no lo marca): mientras esté dentro, salir con el mouse no la pliega.
 const { flotando, entrar, salir, enfocar, cerrar } = useBarraFlotante(
   colapsada,
-  () => !!navegacion.value?.matches(":has(:focus-visible)"),
+  () => !!navegacion.value?.querySelector(":focus-visible"),
 );
 const angosta = computed(() => colapsada.value && !flotando.value);
 function alSalirFoco(e: FocusEvent) {
