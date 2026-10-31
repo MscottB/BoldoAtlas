@@ -3,9 +3,9 @@ name: ci-rust
 on:
   push:
     branches: [main]
-    paths: ["src-tauri/**"]
+    paths: ["src-tauri/**", ".github/workflows/ci-rust.yml", ".github/actions/preparar-rust/**"]
   pull_request:
-    paths: ["src-tauri/**"]
+    paths: ["src-tauri/**", ".github/workflows/ci-rust.yml", ".github/actions/preparar-rust/**"]
 
 concurrency:
   group: ci-rust-${{ github.ref }}
@@ -16,19 +16,20 @@ permissions:
 
 jobs:
   rust:
-    runs-on: windows-latest
+    # los tres sistemas: rutas.rs tiene lógica propia de cada uno (portable junto al AppImage o al .app)
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Cachés de Rust: una por perfil Cargo (boldo-debug, boldo-prueba, boldo-release) y por SO, compartidas
+      # por todos los workflows y guardadas solo desde main (ver .github/actions/preparar-rust).
+      - uses: ./.github/actions/preparar-rust
         with:
-          components: clippy, rustfmt
-      # Cachés de Rust: una por perfil Cargo (boldo-debug, boldo-prueba, boldo-release), compartidas por
-      # todos los workflows de Windows y guardadas solo desde main; los PR las leen y no las llenan.
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-          shared-key: boldo-debug
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache: boldo-debug
+          componentes: clippy, rustfmt
       # generate_context! exige que exista la carpeta del frontend compilado
       - run: mkdir dist
       - run: cargo fmt --check
