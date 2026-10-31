@@ -81,9 +81,11 @@ export function tamUnidad(c: Pick<ConfigVista, "densidad">, conRuta: boolean, es
 export const tamPuesto = (c: Pick<ConfigVista, "densidad">, escala = 100) =>
   escalar(200, c.densidad === "compacta" ? 32 : 68, escala);
 
-/** Separación (px) entre tarjetas hermanas y entre un nivel y el siguiente. */
+/** Separación (px) entre tarjetas hermanas, entre un nivel y el siguiente y entre los puestos apilados bajo su unidad. */
 export const separaciones = (c: Pick<ConfigVista, "densidad">) =>
-  c.densidad === "compacta" ? { hermanos: 10, niveles: 28 } : { hermanos: 28, niveles: 64 };
+  c.densidad === "compacta"
+    ? { hermanos: 10, niveles: 28, puestos: 6 }
+    : { hermanos: 28, niveles: 64, puestos: 12 };
 
 /**
  * Opciones de elk. mrtree es un árbol ordenado: cada superior centrado sobre sus hijos, los hermanos en el orden en que

@@ -34,6 +34,7 @@ import {
   tiposEnUso,
 } from "./jerarquia";
 import {
+  aristasDibujadas,
   grafoElk,
   posiciones,
   subgrafoVisible,
@@ -261,7 +262,7 @@ watch(
     });
     if (!ubicados) return; // llegó otro cambio (manda ese) o falló (ya se avisó)
     avisarOrdenando(false);
-    const pos = posiciones(g, ubicados);
+    const pos = posiciones(g, ubicados, tam, tamDelPuesto, opciones);
     // Al pasar a muchas tarjetas se encuadra antes de dibujarlas: así nacen ligeras, sin montar antes el detalle de todas
     // (con 2.000, 1,3 s de interfaz congelada). Las medidas de las tarjetas ya se conocen: no hace falta esperar a Vue Flow.
     if (!centrar && !conMinimapa(g.nodos.length + g.puestos.length) && conMinimapa(nodos.value.length)) {
@@ -461,7 +462,8 @@ const aristas = computed<Edge[]>(() => {
   const ids = new Set(nodos.value.map((n) => n.id));
   const entre = (a: string, b: string) => ids.has(a) && ids.has(b);
   return [
-    ...g.jerarquicas
+    // La unidad baja por sus puestos apilados y de su último puesto salen las líneas a sus hijas (aristasDibujadas).
+    ...aristasDibujadas(g)
       .filter(([a, b]) => entre(a, b))
       .map(([a, b]) => ({
         id: `${a}>${b}`,

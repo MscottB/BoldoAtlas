@@ -163,7 +163,7 @@ describe("opcionesElk y tamaños", () => {
     expect(h["elk.spacing.nodeNode"]).toBe("28");
     expect(c["elk.direction"]).toBe("DOWN");
     expect(Number(c["elk.spacing.nodeNode"])).toBeLessThan(28);
-    expect(separaciones({ densidad: "normal" })).toEqual({ hermanos: 28, niveles: 64 });
+    expect(separaciones({ densidad: "normal" })).toEqual({ hermanos: 28, niveles: 64, puestos: 12 });
     expect(separaciones({ densidad: "compacta" }).niveles).toBeLessThan(64);
   });
 

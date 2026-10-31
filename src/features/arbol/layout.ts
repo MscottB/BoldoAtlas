@@ -141,46 +141,67 @@ export function filasPorTipo(nodos: Unidad[], tipos: ValorCatalogo[]): Map<strin
 const RAIZ_VIRTUAL = "raiz-virtual"; // los ids de las unidades son UUID: no choca
 
 type Tam = { ancho: number; alto: number };
+type Vista = Pick<ConfigVista, "direccion" | "densidad" | "alinearPorTipo">;
 /** Posición que elk dio a cada nodo (la app la pide a un worker: solo viajan id, x e y). */
 export type NodoUbicado = { id: string; x?: number; y?: number };
 
 /**
- * El grafo que se le pasa a elk (objetos planos: puede ir a un worker). Solo las aristas jerárquicas entran: las laterales
- * no deforman el árbol. Los tamaños deben ser los de las tarjetas dibujadas (tamUnidad/tamPuesto); `tipos`, el catálogo
- * completo (solo se usa al alinear por tipo).
+ * Medidas del layout. Cada unidad es un bloque: su tarjeta y, tras ella en el eje de los niveles, sus puestos apilados en
+ * su orden. Así los puestos no son hermanos de las unidades hijas (mrtree los mezclaba en la fila de ellas) y las líneas a
+ * las hijas salen del final del bloque. `largo`: en el eje de los niveles; `cruce`: en el de los hermanos.
+ */
+function medidas(subgrafo: Subgrafo, tam: Tam, tamDelPuesto: Tam, vista: Vista) {
+  const horizontal = vista.direccion === "horizontal";
+  const sep = separaciones(vista);
+  const largo = (t: Tam) => (horizontal ? t.ancho : t.alto);
+  const cruceDe = (t: Tam) => (horizontal ? t.alto : t.ancho);
+  const cuantos = new Map<string, number>();
+  for (const p of subgrafo.puestos) cuantos.set(p.unidad_id, (cuantos.get(p.unidad_id) ?? 0) + 1);
+  return {
+    horizontal,
+    sep,
+    largo,
+    cruceDe,
+    cruce: Math.max(cruceDe(tam), cruceDe(tamDelPuesto)),
+    // mrtree separa los niveles como a los hermanos: cada bloque reserva el resto detrás de sí, en el eje de los niveles.
+    extra: sep.niveles - sep.hermanos,
+    bloque: (id: string) => largo(tam) + (cuantos.get(id) ?? 0) * (sep.puestos + largo(tamDelPuesto)),
+  };
+}
+
+/**
+ * El grafo que se le pasa a elk (objetos planos: puede ir a un worker). Solo las unidades y sus aristas jerárquicas entran:
+ * los puestos van dentro del bloque de su unidad (ver `medidas`) y las laterales no deforman el árbol. Los tamaños deben
+ * ser los de las tarjetas dibujadas (tamUnidad/tamPuesto); `tipos`, el catálogo completo (solo se usa al alinear por tipo).
  */
 export function grafoElk(
   subgrafo: Subgrafo,
   tam: Tam = tamUnidad(VISTA_POR_DEFECTO, false),
   tamDelPuesto: Tam = tamPuesto(VISTA_POR_DEFECTO),
-  vista: Pick<ConfigVista, "direccion" | "densidad" | "alinearPorTipo"> = VISTA_POR_DEFECTO,
+  vista: Vista = VISTA_POR_DEFECTO,
   tipos: ValorCatalogo[] = [],
 ): ElkNode {
-  const horizontal = vista.direccion === "horizontal";
-  const sep = separaciones(vista);
-  // mrtree separa los niveles como a los hermanos: cada tarjeta reserva el resto detrás de sí, en el eje de los niveles.
-  const extra = sep.niveles - sep.hermanos;
-  const caja = (t: Tam) =>
-    horizontal ? { width: t.ancho + extra, height: t.alto } : { width: t.ancho, height: t.alto + extra };
-  const hijos = new Set(subgrafo.jerarquicas.map(([, b]) => b));
+  const m = medidas(subgrafo, tam, tamDelPuesto, vista);
+  const caja = (largo: number) =>
+    m.horizontal ? { width: largo + m.extra, height: m.cruce } : { width: m.cruce, height: largo + m.extra };
+  const unidades = new Set(subgrafo.nodos.map((n) => n.id));
+  const jerarquicas = subgrafo.jerarquicas.filter(([, b]) => unidades.has(b));
+  const hijos = new Set(jerarquicas.map(([, b]) => b));
   const raices = subgrafo.nodos
     .filter((n) => !hijos.has(n.id))
     .map((n): [string, string] => [RAIZ_VIRTUAL, n.id]);
-  const medida = new Map([
-    ...subgrafo.nodos.map((n) => [n.id, caja(tam)] as const),
-    ...subgrafo.puestos.map((p) => [p.id, caja(tamDelPuesto)] as const),
-  ]);
+  const medida = new Map(subgrafo.nodos.map((n) => [n.id, caja(m.bloque(n.id))] as const));
   // mrtree pone cada profundidad en una fila. Al alinear por tipo, una unidad que debe bajar más de una fila cuelga de
   // huecos invisibles del tamaño de una tarjeta: así su superior sigue centrado y las filas siguen alineadas. mrtree ordena
   // a los hermanos según el orden de los nodos: el de las aristas, que ya viene por `orden`.
   const filas = vista.alinearPorTipo ? filasPorTipo(subgrafo.nodos, tipos) : null;
   const aristas: [string, string][] = [];
-  for (const [a, b] of [...raices, ...subgrafo.jerarquicas]) {
+  for (const [a, b] of [...raices, ...jerarquicas]) {
     const salto = filas?.has(b) ? (filas.get(b) ?? 0) - (a === RAIZ_VIRTUAL ? -1 : (filas.get(a) ?? 0)) : 1;
     let desde = a;
     for (let i = 1; i < salto; i++) {
       const hueco = `${b}:hueco${i}`;
-      medida.set(hueco, caja(tam));
+      medida.set(hueco, caja(m.largo(tam)));
       aristas.push([desde, hueco]);
       desde = hueco;
     }
@@ -197,15 +218,64 @@ export function grafoElk(
   };
 }
 
-/** Esquina superior izquierda de cada unidad y puesto dibujados (sin la raíz virtual ni los huecos). */
+/**
+ * Esquina superior izquierda de cada unidad y puesto dibujados (sin la raíz virtual ni los huecos), a partir de lo que elk
+ * dio a cada bloque. Mismos tamaños y vista que en grafoElk.
+ */
 export function posiciones(
   subgrafo: Subgrafo,
   ubicados: NodoUbicado[],
+  tam: Tam = tamUnidad(VISTA_POR_DEFECTO, false),
+  tamDelPuesto: Tam = tamPuesto(VISTA_POR_DEFECTO),
+  vista: Vista = VISTA_POR_DEFECTO,
 ): Map<string, { x: number; y: number }> {
-  const dibujados = new Set([...subgrafo.nodos, ...subgrafo.puestos].map((n) => n.id));
-  return new Map(
-    ubicados.filter((n) => dibujados.has(n.id)).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]),
-  );
+  const m = medidas(subgrafo, tam, tamDelPuesto, vista);
+  const porId = new Map(ubicados.map((n) => [n.id, n]));
+  const nivelDe = (n: NodoUbicado) => (m.horizontal ? n.x : n.y) ?? 0;
+  const cruceDe = (n: NodoUbicado) => (m.horizontal ? n.y : n.x) ?? 0;
+  const punto = (nivel: number, cruce: number) =>
+    m.horizontal ? { x: nivel, y: cruce } : { x: cruce, y: nivel };
+  // mrtree centra en su fila los bloques de distinto largo: se alinean al inicio de la fila, para que las tarjetas de una
+  // fila empiecen juntas y las líneas de un superior a sus hijas bajen a una sola altura. La fila: el centro del bloque.
+  const fila = (id: string, n: NodoUbicado) => Math.round(nivelDe(n) + (m.bloque(id) + m.extra) / 2);
+  const mayor = new Map<number, number>();
+  for (const u of subgrafo.nodos) {
+    const n = porId.get(u.id);
+    if (n) mayor.set(fila(u.id, n), Math.max(mayor.get(fila(u.id, n)) ?? 0, m.bloque(u.id)));
+  }
+  const res = new Map<string, { x: number; y: number }>();
+  const siguiente = new Map<string, number>(); // dónde empieza el próximo puesto de cada unidad
+  for (const u of subgrafo.nodos) {
+    const n = porId.get(u.id);
+    if (!n) continue;
+    const c = fila(u.id, n);
+    const inicio = c - (mayor.get(c)! + m.extra) / 2;
+    res.set(u.id, punto(inicio, cruceDe(n) + (m.cruce - m.cruceDe(tam)) / 2));
+    siguiente.set(u.id, inicio + m.largo(tam) + m.sep.puestos);
+  }
+  for (const p of subgrafo.puestos) {
+    const desde = siguiente.get(p.unidad_id);
+    if (desde === undefined) continue;
+    const cruce = cruceDe(porId.get(p.unidad_id)!) + (m.cruce - m.cruceDe(tamDelPuesto)) / 2;
+    res.set(p.id, punto(desde, cruce));
+    siguiente.set(p.unidad_id, desde + m.largo(tamDelPuesto) + m.sep.puestos);
+  }
+  return res;
+}
+
+/**
+ * Las líneas jerárquicas como se dibujan: la unidad baja por sus puestos apilados (unidad → 1.º → 2.º…) y las líneas a sus
+ * hijas salen del último, bajo el bloque. Pide `jerarquicas` en el orden de subgrafoVisible (los puestos de una unidad
+ * antes que sus hijas).
+ */
+export function aristasDibujadas(g: Subgrafo): [string, string][] {
+  const puestos = new Set(g.puestos.map((p) => p.id));
+  const ultimo = new Map<string, string>();
+  return g.jerarquicas.map(([a, b]) => {
+    const desde = ultimo.get(a) ?? a;
+    if (puestos.has(b)) ultimo.set(a, b);
+    return [desde, b];
+  });
 }
 
 /**
@@ -215,5 +285,5 @@ export function posiciones(
 export async function calcularLayout(...args: Parameters<typeof grafoElk>) {
   const { default: ELK } = await import("elkjs/lib/elk.bundled.js");
   const resultado = await new ELK().layout(grafoElk(...args));
-  return posiciones(args[0], resultado.children ?? []);
+  return posiciones(args[0], resultado.children ?? [], args[1], args[2], args[3]);
 }

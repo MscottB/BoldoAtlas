@@ -47,6 +47,8 @@ const tam = computed(() => {
 <template>
   <!-- Nodo liviano; su tamaño sale de tamPuesto, igual que en el layout. Lo oculto por «Vista» queda solo para lectores de pantalla. -->
   <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+  <!-- Del puesto sale la línea al siguiente puesto de su unidad o, si es el último, a las unidades hijas. -->
+  <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   <!-- Ligera (rendimiento.ts): un solo elemento con el cargo y el color de la leyenda. -->
   <div
     v-if="contexto.ligera.value"

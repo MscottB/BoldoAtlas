@@ -149,7 +149,9 @@ describe("layout ordenado", () => {
         expect(centro("operaciones")).toBeLessThan(centro("finanzas"));
         expect(centro("electrica")).toBeLessThan(centro("mecanica"));
         const hijos = new Map<string, string[]>();
-        for (const [a, b] of g.jerarquicas) hijos.set(a, [...(hijos.get(a) ?? []), b]);
+        // Los puestos no son hermanos de las hijas: van apilados en el bloque de su unidad (ver layout.ejemplo.test.ts).
+        const unidadesG = new Set(g.nodos.map((x) => x.id));
+        for (const [a, b] of g.jerarquicas) if (unidadesG.has(b)) hijos.set(a, [...(hijos.get(a) ?? []), b]);
         for (const [padre, hs] of hijos) {
           const cs = hs.map(centro);
           for (let i = 1; i < cs.length; i++) expect(cs[i]).toBeGreaterThan(cs[i - 1]!);
@@ -250,8 +252,9 @@ describe("alinear por tipo de unidad", () => {
       expect(nivel("me")).toBe(nivel("pr"));
       expect(nivel("co")).toBe(nivel("pr"));
       expect(nivel("inv")).toBeGreaterThan(nivel("co"));
-      // el puesto cuelga en la fila siguiente a la de su unidad (la de «inv»), centrado en ella como todo puesto
-      expect(nivel("pp") + largo("pp") / 2).toBeCloseTo(nivel("inv") + largo("inv") / 2, 0);
+      // el puesto va apilado tras su unidad, centrado con ella, sin correr la fila de las Áreas
+      expect(nivel("pp")).toBeGreaterThan(nivel("pr") + largo("pr"));
+      expect(centro("pp")).toBeCloseTo(centro("pr"), 0);
       // hermanos en su orden y el superior centrado aunque un hijo baje más filas
       expect(centro("ma")).toBeLessThan(centro("pr"));
       expect(Math.abs(centro("op") - (centro("ma") + centro("pr")) / 2)).toBeLessThanOrEqual(1);
