@@ -569,3 +569,24 @@ Reemplaza a la Task 16. Orden final: …, Anexo 3 (17g, 17a, 17b, 17c, 17f, 17d,
 - Directorio y Revisión con listas virtualizadas (solo filas visibles) para 10.000 personas (hallazgo 8 de T14).
 - Medir de nuevo con `scripts/sembrar-grande.mjs` y la técnica de la nota; objetivo: ≥ 30 FPS al arrastrar con 2.000 unidades alejadas, sin bloqueos > 200 ms al reordenar. Actualizar la nota.
 - Commit: `perf(arbol): nivel de detalle, layout en segundo plano y límite al expandir`
+
+## Anexo 5 (pedido del autor tras publicar v0.1.0-alpha.1, 2026-10-31): entregas cortas
+
+Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del CI para que el autor la pruebe y comente antes de fusionar. Orden: 17f (pestañas, en curso), **18a**, **18b**, **18c**, 17d, 17e, 16a, 15, 16b, revisión final.
+
+### Task 18a: CI rápido para la portable
+- `build-prueba.yml` (PR) construye **solo la portable** (`tauri build --no-bundle` + zip, vía una opción de `scripts/release.mjs`, p. ej. `--solo-portable`), sin el instalador; `release.yml` sigue publicando ambos.
+- Mantener caché compartida de Rust y npm; no repetir lint/tests ya cubiertos por `ci.yml`/`ci-rust.yml` en el build de prueba. Medir el tiempo antes/después (objetivo: claramente menor que ~4 min) y anotarlo en el informe.
+- Commit: `ci: build de prueba solo portable y más rápido`
+
+### Task 18b: Español e inglés a la vista
+- El selector de idioma (hoy solo en Configuración) también en la Bienvenida y en el menú de la app; cambio inmediato, recordado por PC; el primer arranque sigue el idioma del sistema (`idiomaInicial`).
+- Auditoría: ningún texto visible fijo en plantillas/código (todo por i18n); test que exige las mismas páginas de ayuda en `ayuda/es` y `ayuda/en`; revisar textos en inglés (naturales, no literales).
+- El sitio web (T15) es bilingüe desde el inicio con selector de idioma.
+- Commit: `feat(i18n): idioma a la vista y textos completos en español e inglés`
+
+### Task 18c: Personas dentro del diagrama (jefe + caritas)
+- La tarjeta de unidad muestra al **jefe** (foto o iniciales, nombre y cargo; según `jefe_puesto_id` y su titular vigente, o "Sin jefe asignado") y debajo hasta 4 fotos pequeñas del equipo con "+N"; clic/Enter en las fotos abre la pestaña Personas (17c). Respeta el organigrama a una fecha.
+- Interruptor "Personas en las tarjetas" en Personalizar diagrama (activo por defecto); el tamaño de tarjeta lo calcula la misma función que usa el layout; las tarjetas livianas (17h) no lo muestran.
+- Sin perder rendimiento: datos precalculados por unidad en una pasada; medir con 2.000 unidades.
+- Commit: `feat(arbol): jefe y equipo en la tarjeta de unidad`
