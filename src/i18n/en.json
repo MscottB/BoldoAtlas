@@ -101,7 +101,8 @@
       "panelSoloLectura": "Data for the chosen date: read only. Go back to today to edit.",
       "dialogoSoloLectura": "Position as of {fecha}: read only. Go back to today in the tree to edit."
     },
-    "sinJefatura": "No unit head",
+    "sinJefatura": "No head assigned",
+    "verEquipo": "View {n} person in {unidad} (not counting sub-units) | View {n} people in {unidad} (not counting sub-units)",
     "dotacion": "Total headcount",
     "verPersonasDotacion": "View the unit's people",
     "dotacionPersonas": "Total headcount: {n}. View the people",
@@ -149,6 +150,7 @@
       "compactaAviso": "The compact card is one line: name, headcount and vacancies. The other card details are not shown.",
       "tarjeta": "Card details",
       "campos": {
+        "personasEnTarjetas": "People on the cards",
         "mostrarTipo": "Unit type",
         "mostrarJefe": "Head",
         "mostrarFoto": "Head's photo",

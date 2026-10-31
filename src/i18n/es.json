@@ -101,7 +101,8 @@
       "panelSoloLectura": "Datos de la fecha elegida: solo lectura. Vuelve a hoy para editar.",
       "dialogoSoloLectura": "Puesto al {fecha}: solo lectura. Vuelve a hoy en el árbol para editar."
     },
-    "sinJefatura": "Sin jefatura",
+    "sinJefatura": "Sin jefe asignado",
+    "verEquipo": "Ver {n} persona de {unidad} (sin subunidades) | Ver {n} personas de {unidad} (sin subunidades)",
     "dotacion": "Dotación total",
     "verPersonasDotacion": "Ver las personas de la unidad",
     "dotacionPersonas": "Dotación total: {n}. Ver las personas",
@@ -149,6 +150,7 @@
       "compactaAviso": "La tarjeta compacta es de una línea: nombre, dotación y vacantes. Los demás datos de la tarjeta no se ven.",
       "tarjeta": "Datos de la tarjeta",
       "campos": {
+        "personasEnTarjetas": "Personas en las tarjetas",
         "mostrarTipo": "Tipo de unidad",
         "mostrarJefe": "Jefatura",
         "mostrarFoto": "Foto de la jefatura",

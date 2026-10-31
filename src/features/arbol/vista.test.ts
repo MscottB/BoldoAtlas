@@ -6,6 +6,7 @@ import {
   aplicarVista,
   arbolDeVista,
   configDeVista,
+  jefeEnTarjeta,
   leerVista,
   leyendasEnUso,
   opcionesElk,
@@ -33,6 +34,7 @@ describe("leerVista", () => {
       lineas: "bezier",
       mostrarJefe: false,
       mostrarEtiquetas: false,
+      personasEnTarjetas: false,
       resaltar: { ...VISTA_POR_DEFECTO.resaltar, texto: "ope", vacantes: true, sede: "s1", cargo: "c1" },
       verPuestos: true,
       alinearPorTipo: true,
@@ -54,6 +56,14 @@ describe("leerVista", () => {
       leyenda: 0,
     });
     expect(r).toEqual({ ...VISTA_POR_DEFECTO, mostrarCargo: false });
+  });
+
+  it("«Personas en las tarjetas»: lo guardado antes de existir la opción la deja activa", () => {
+    const anterior: Partial<typeof VISTA_POR_DEFECTO> = { ...VISTA_POR_DEFECTO, mostrarTipo: false };
+    delete anterior.personasEnTarjetas;
+    expect(leerVista(anterior)).toEqual({ ...VISTA_POR_DEFECTO, mostrarTipo: false, personasEnTarjetas: true });
+    expect(leerVista({ personasEnTarjetas: false }).personasEnTarjetas).toBe(false);
+    expect(leerVista({ personasEnTarjetas: "no" }).personasEnTarjetas).toBe(true);
   });
 
   it("alinearPorTipo acepta la clave anterior (nivelesEstrictos) de preferencias y vistas guardadas", () => {
@@ -168,19 +178,36 @@ describe("opcionesElk y tamaños", () => {
   });
 
   it("la tarjeta compacta es de una línea y no crece con la ruta; la normal crece", () => {
-    expect(tamUnidad({ densidad: "normal" }, false)).toEqual({ ancho: 220, alto: 112 });
-    expect(tamUnidad({ densidad: "normal" }, true)).toEqual({ ancho: 220, alto: 132 });
-    expect(tamUnidad({ densidad: "compacta" }, true)).toEqual(tamUnidad({ densidad: "compacta" }, false));
-    expect(tamUnidad({ densidad: "compacta" }, false).alto).toBeLessThan(60);
+    expect(tamUnidad({ densidad: "normal", personasEnTarjetas: false }, false)).toEqual({ ancho: 220, alto: 112 });
+    expect(tamUnidad({ densidad: "normal", personasEnTarjetas: false }, true)).toEqual({ ancho: 220, alto: 132 });
+    expect(tamUnidad({ densidad: "compacta", personasEnTarjetas: true }, true)).toEqual(tamUnidad({ densidad: "compacta", personasEnTarjetas: true }, false));
+    expect(tamUnidad({ densidad: "compacta", personasEnTarjetas: true }, false).alto).toBeLessThan(60);
     expect(tamPuesto({ densidad: "normal" })).toEqual({ ancho: 200, alto: 68 });
     expect(tamPuesto({ densidad: "compacta" }).alto).toBeLessThan(40);
   });
 
+  it("«Personas en las tarjetas» suma la jefatura con cargo y la fila de caras; la compacta no cambia", () => {
+    const con = { densidad: "normal", personasEnTarjetas: true } as const;
+    expect(tamUnidad(con, false)).toEqual({ ancho: 220, alto: 152 });
+    expect(tamUnidad(con, true)).toEqual({ ancho: 220, alto: 172 });
+    expect(tamUnidad(VISTA_POR_DEFECTO, false)).toEqual(tamUnidad(con, false)); // activa por defecto
+    expect(tamUnidad({ ...con, densidad: "compacta" }, false)).toEqual(
+      tamUnidad({ densidad: "compacta", personasEnTarjetas: false }, false),
+    );
+  });
+
+  it("el puesto de jefatura no se repite solo si la tarjeta muestra la jefatura", () => {
+    expect(jefeEnTarjeta(VISTA_POR_DEFECTO)).toBe(true);
+    expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, personasEnTarjetas: false })).toBe(false);
+    expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, mostrarJefe: false })).toBe(false);
+    expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, densidad: "compacta" })).toBe(false); // la compacta no la muestra
+  });
+
   it("las tarjetas crecen con la escala de la interfaz (el texto es rem): layout y tarjeta usan la misma medida", () => {
-    expect(tamUnidad({ densidad: "normal" }, false, 100)).toEqual({ ancho: 220, alto: 112 });
-    expect(tamUnidad({ densidad: "normal" }, false, 125)).toEqual({ ancho: 275, alto: 140 });
-    expect(tamUnidad({ densidad: "compacta" }, false, 125)).toEqual({ ancho: 275, alto: 50 });
-    expect(tamUnidad({ densidad: "normal" }, true, 90)).toEqual({ ancho: 198, alto: 119 });
+    expect(tamUnidad({ densidad: "normal", personasEnTarjetas: false }, false, 100)).toEqual({ ancho: 220, alto: 112 });
+    expect(tamUnidad({ densidad: "normal", personasEnTarjetas: false }, false, 125)).toEqual({ ancho: 275, alto: 140 });
+    expect(tamUnidad({ densidad: "compacta", personasEnTarjetas: true }, false, 125)).toEqual({ ancho: 275, alto: 50 });
+    expect(tamUnidad({ densidad: "normal", personasEnTarjetas: false }, true, 90)).toEqual({ ancho: 198, alto: 119 });
     expect(tamPuesto({ densidad: "normal" }, 125)).toEqual({ ancho: 250, alto: 85 });
   });
 });

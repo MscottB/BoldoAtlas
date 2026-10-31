@@ -25,6 +25,8 @@ export interface ConfigVista {
   mostrarDotacion: boolean;
   mostrarVacantes: boolean;
   mostrarEtiquetas: boolean;
+  /** Jefatura con su cargo y caras del equipo en la tarjeta (más alta); la jefatura ya no se repite como puesto. */
+  personasEnTarjetas: boolean;
   verPuestos: boolean;
   /** Cada unidad en la fila (o columna) de su tipo, en el orden del catálogo de tipos (ver filasPorTipo). */
   alinearPorTipo: boolean;
@@ -49,6 +51,7 @@ export const VISTA_POR_DEFECTO: ConfigVista = {
   mostrarDotacion: true,
   mostrarVacantes: true,
   mostrarEtiquetas: true,
+  personasEnTarjetas: true,
   verPuestos: false,
   alinearPorTipo: false,
   mostrarCargo: true,
@@ -73,11 +76,23 @@ const escalar = (ancho: number, alto: number, escala: number) => ({
   alto: Math.round((alto * escala) / 100),
 });
 
-/** Tamaño de las tarjetas: lo usan el layout y los nodos (una sola fuente). Compacta = una línea. */
-export function tamUnidad(c: Pick<ConfigVista, "densidad">, conRuta: boolean, escala = 100) {
+/** Tamaño de las tarjetas: lo usan el layout y los nodos (una sola fuente). Compacta = una línea (sin personas). */
+export function tamUnidad(
+  c: Pick<ConfigVista, "densidad" | "personasEnTarjetas">,
+  conRuta: boolean,
+  escala = 100,
+) {
   if (c.densidad === "compacta") return escalar(220, 40, escala);
-  return escalar(220, conRuta ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD, escala);
+  const alto = (conRuta ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD) + (c.personasEnTarjetas ? ALTO_PERSONAS : 0);
+  return escalar(220, alto, escala);
 }
+
+/**
+ * La jefatura se ve en la tarjeta de la unidad (personas y jefatura activas, densidad normal): su puesto no se dibuja
+ * aparte, como en un organigrama clásico. En la compacta la jefatura no se ve: el puesto sigue.
+ */
+export const jefeEnTarjeta = (c: Pick<ConfigVista, "densidad" | "personasEnTarjetas" | "mostrarJefe">) =>
+  c.densidad === "normal" && c.personasEnTarjetas && c.mostrarJefe;
 export const tamPuesto = (c: Pick<ConfigVista, "densidad">, escala = 100) =>
   escalar(200, c.densidad === "compacta" ? 32 : 68, escala);
 
@@ -104,6 +119,8 @@ export function opcionesElk(c: Pick<ConfigVista, "direccion" | "densidad">): Rec
 export const ALTO_UNIDAD = 112;
 /** Con la ruta por tipo la tarjeta suma una línea. */
 export const ALTO_UNIDAD_CON_RUTA = 132;
+/** «Personas en las tarjetas»: la jefatura en dos líneas (nombre y cargo) y la fila de caras del equipo. */
+export const ALTO_PERSONAS = 40;
 
 /** Criterio «Colorear por»: cada puesto usa el color de su entrada de leyenda. */
 export const CRITERIO_LEYENDA = "leyenda";
@@ -135,6 +152,7 @@ export function leerVista(crudo: unknown): ConfigVista {
     mostrarDotacion: bool(c, d, "mostrarDotacion"),
     mostrarVacantes: bool(c, d, "mostrarVacantes"),
     mostrarEtiquetas: bool(c, d, "mostrarEtiquetas"),
+    personasEnTarjetas: bool(c, d, "personasEnTarjetas"),
     verPuestos: bool(c, d, "verPuestos"),
     // Antes se llamaba nivelesEstrictos: se acepta en preferencias y vistas guardadas con ese nombre.
     alinearPorTipo:

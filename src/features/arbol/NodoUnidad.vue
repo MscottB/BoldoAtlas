@@ -12,10 +12,10 @@ import { useTema } from "@/features/tema/useTema";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
-import { rutaSuperiores } from "./jerarquia";
+import { rutaSuperiores, type PersonasDeUnidad } from "./jerarquia";
 import { CONTEXTO_LIENZO } from "./contexto";
 
-export interface DatosNodo {
+export interface DatosNodo extends PersonasDeUnidad {
   unidad: Unidad;
   jefe: Trabajador | null;
   /** La jefatura la cubre un reemplazo: el puesto no tiene titular vigente. */
@@ -90,14 +90,15 @@ const plegada = computed(() => colapsados.value.has(props.id));
 const tipo = computed(
   () => org.catalogos.tipos_unidad.find((x) => x.id === props.data.unidad.tipo_id)?.nombre,
 );
-const iniciales = computed(() =>
-  (props.data.jefe?.nombre ?? "")
+// Jefatura con cargo y caras del equipo; la tarjeta compacta (una línea) no las muestra.
+const personas = computed(() => config.value.personasEnTarjetas && !compacta.value);
+const iniciales = (nombre: string) =>
+  nombre
     .split(/\s+/)
     .slice(0, 2)
-    .map((p) => p[0])
+    .map((p) => p[0] ?? "")
     .join("")
-    .toUpperCase(),
-);
+    .toUpperCase();
 const vFoco: Directive<HTMLInputElement> = { mounted: (el) => (el.focus(), el.select()) };
 
 function renombrar() {
@@ -215,21 +216,52 @@ async function guardar(e: Event) {
           v-if="data.jefe.foto_png && config.mostrarFoto"
           :src="`data:image/png;base64,${data.jefe.foto_png}`"
           alt=""
-          class="size-5 rounded-full object-cover"
+          class="shrink-0 rounded-full object-cover"
+          :class="personas ? 'size-8' : 'size-5'"
         />
         <span
           v-else-if="config.mostrarFoto"
-          class="grid size-5 place-items-center rounded-full bg-muted text-[10px]"
+          class="grid shrink-0 place-items-center rounded-full bg-muted"
+          :class="personas ? 'size-8 text-xs' : 'size-5 text-[10px]'"
           aria-hidden="true"
         >
-          {{ iniciales }}
-        </span>
-        <span class="truncate">
-          {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
+          {{ iniciales(data.jefe.nombre) }}
         </span>
       </template>
-      <span v-else class="text-amber-800 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
+      <span class="grid min-w-0">
+        <span v-if="data.jefe" class="truncate" :class="personas && 'font-medium'">
+          {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
+        </span>
+        <span v-else class="truncate text-amber-800 dark:text-amber-400">{{ t("arbol.sinJefatura") }}</span>
+        <span v-if="personas && data.cargoJefe" class="truncate text-[11px] text-muted-foreground">
+          {{ data.cargoJefe }}
+        </span>
+      </span>
     </div>
+    <!-- Las caras del equipo: un solo botón (una parada de Tab) que abre la pestaña Personas. -->
+    <button
+      v-if="personas && data.equipo.length"
+      type="button"
+      class="nodrag flex items-center self-start rounded focus-visible:outline-2 focus-visible:outline-ring"
+      :aria-label="t('arbol.verEquipo', { n: data.personas, unidad: data.unidad.nombre }, data.personas)"
+      :title="t('arbol.verEquipo', { n: data.personas, unidad: data.unidad.nombre }, data.personas)"
+      @click.stop="verPersonas(id)"
+    >
+      <span class="flex gap-0.5" aria-hidden="true">
+        <template v-for="w in data.equipo" :key="w.id">
+          <img
+            v-if="w.foto_png"
+            :src="`data:image/png;base64,${w.foto_png}`"
+            alt=""
+            class="size-6 rounded-full object-cover"
+          />
+          <span v-else class="grid size-6 place-items-center rounded-full bg-muted text-[10px]">
+            {{ iniciales(w.nombre) }}
+          </span>
+        </template>
+      </span>
+      <span v-if="data.resto" class="ml-1 text-muted-foreground" aria-hidden="true">+{{ data.resto }}</span>
+    </button>
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->
       <!-- La dotación abre el panel en la pestaña Personas. -->

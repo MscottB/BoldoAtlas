@@ -159,6 +159,61 @@ export function jefeVisible(unidad: Unidad, vigentes: Vigentes): Asignacion | nu
   return v?.titular ?? v?.reemplazo ?? null;
 }
 
+/** Lo que la tarjeta muestra de las personas de su unidad (sin subunidades, como la pestaña Personas sin ellas). */
+export interface PersonasDeUnidad {
+  /** Cargo del puesto de jefatura ("" si la unidad no tiene). */
+  cargoJefe: string;
+  /** Las caras: hasta 4 personas de la unidad sin quien encabeza, en el orden de los puestos. */
+  equipo: Trabajador[];
+  /** Personas distintas con un puesto vigente en la unidad (titular o reemplazo), quien encabeza incluido. */
+  personas: number;
+  /** Las que no tienen cara ni encabezan: el «+N». */
+  resto: number;
+}
+
+export const CARAS = 4;
+
+/**
+ * `PersonasDeUnidad` de cada unidad en una pasada por los puestos (las asignaciones ya vienen resueltas en `vigentes`,
+ * de hoy o de la fecha que se ve). Una persona con dos puestos en la unidad cuenta una vez.
+ */
+export function personasPorUnidad(
+  unidades: Unidad[],
+  puestos: ConBorrado<Puesto>[],
+  vigentes: Vigentes,
+  trabajadores: Map<string, Trabajador>,
+  cargos: Map<string, string>,
+): Map<string, PersonasDeUnidad> {
+  const gente = new Map<string, Set<Trabajador>>();
+  const cargoDe = new Map<string, string>();
+  for (const p of [...puestos].sort((a, b) => a.orden - b.orden)) {
+    if (p.deleted_at) continue;
+    cargoDe.set(p.id, cargos.get(p.cargo_id) ?? "");
+    const v = vigentes.get(p.id);
+    for (const a of [v?.titular, v?.reemplazo]) {
+      const w = a && trabajadores.get(a.trabajador_id);
+      if (!w) continue;
+      const s = gente.get(p.unidad_id);
+      if (s) s.add(w);
+      else gente.set(p.unidad_id, new Set([w]));
+    }
+  }
+  return new Map(
+    unidades.map((u) => {
+      const todas = [...(gente.get(u.id) ?? [])];
+      const jefe = jefeVisible(u, vigentes)?.trabajador_id;
+      const equipo = todas.filter((w) => w.id !== jefe);
+      const datos: PersonasDeUnidad = {
+        cargoJefe: (u.jefe_puesto_id && cargoDe.get(u.jefe_puesto_id)) || "",
+        equipo: equipo.slice(0, CARAS),
+        personas: todas.length,
+        resto: Math.max(0, equipo.length - CARAS),
+      };
+      return [u.id, datos];
+    }),
+  );
+}
+
 /** Lo que lee «ver a una fecha»: todas las filas, también las eliminadas. */
 export interface Historico {
   unidades: (Unidad & Vida)[];

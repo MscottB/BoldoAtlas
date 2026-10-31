@@ -7,7 +7,8 @@ El árbol es la pantalla principal: muestra tu organización como un organigrama
 Cada unidad es una tarjeta con:
 
 - su tipo (por ejemplo, Gerencia o Área) y su nombre;
-- la foto o las iniciales y el nombre de la jefatura (**Reemplazo: nombre** si su puesto solo tiene reemplazo), o **Sin jefatura** si no tiene;
+- la foto o las iniciales y el nombre de la jefatura (**Reemplazo: nombre** si su puesto solo tiene reemplazo), o **Sin jefe asignado** si no tiene; con **Personas en las tarjetas**, también el cargo de la jefatura;
+- con **Personas en las tarjetas**, una fila con las caras (foto o iniciales) de hasta 4 personas más de la unidad y **+N** con las que no caben. Cuenta solo la propia unidad, sin sus subunidades, y cada persona una vez. Pulsa las caras (o `Tab` hasta ellas y `Enter`) para ver la lista en la pestaña **Personas** del panel;
 - la dotación total de su rama (ella y todo lo que cuelga de ella); púlsala (o `Tab` hasta ella y `Enter`) para ver quiénes son en la pestaña **Personas** del panel;
 - las vacantes de la rama, si hay;
 - un punto de color por cada etiqueta (pasa el puntero por encima para ver su nombre).
@@ -117,7 +118,8 @@ Además de lo anterior, el botón **Vista** permite elegir:
 - **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
 - **Líneas**: rectas en ángulo o curvas.
 - **Alinear por tipo de unidad**: cada unidad va en la fila (o columna, en horizontal) de su tipo, en el orden de la lista de tipos; por ejemplo, todas las Áreas quedan en una misma fila aunque cuelguen a distinta profundidad. Solo ocupan fila los tipos de las unidades que se ven (un tipo sin unidades a la vista, o cuyas unidades están en ramas plegadas, no deja una fila vacía). Si el tipo de una unidad la dejaría en la fila de su superior o más arriba, baja a la fila siguiente a la de su superior, para que las líneas siempre vayan hacia abajo (o hacia la derecha): con una Gerencia dentro de otra Gerencia, las filas de los tipos que siguen empiezan más abajo; con una Gerencia bajo un Área, solo baja esa rama. Los puestos van apilados bajo su unidad y no ocupan fila.
-- **Datos de la tarjeta**: tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
+- **Datos de la tarjeta**: personas en las tarjetas, tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
+- **Personas en las tarjetas** (encendido al comienzo): la jefatura se ve con su cargo y, debajo, las caras del equipo de la unidad. La tarjeta queda un poco más alta. Como la jefatura ya está en la tarjeta, con **Ver puestos** su puesto no se repite debajo, como en un organigrama clásico; los demás puestos sí se ven. La tarjeta compacta y la tarjeta simplificada (al alejarte con muchas tarjetas) no muestran personas. A una fecha pasada se ven las personas de ese día.
 
 Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador la última configuración que usaste en él.
 

@@ -22,6 +22,7 @@ import {
   leyendaDeMarcas,
   marcaHeredada,
   marcasPorUnidad,
+  personasPorUnidad,
   ruta,
   rutaPorTipo,
   rutasPorTipo,
@@ -234,6 +235,83 @@ describe("puestos y asignaciones", () => {
     expect(unidadesDePersona(puestos, otroEnMecanica, "t4")).toEqual(["mecanica"]);
     const borrado = [...puestos.slice(0, 2), { ...p("p3", "mantencion"), deleted_at: BORRADO }];
     expect(unidadesDePersona(borrado, asignaciones, "t3")).toEqual([]);
+  });
+});
+
+describe("personasPorUnidad (jefatura y caras de la tarjeta)", () => {
+  const persona = (id: string): Trabajador => ({
+    id,
+    nombre: id.toUpperCase(),
+    correo: null,
+    telefono: null,
+    tipo_contrato_id: null,
+    sede_id: null,
+    jornada_id: null,
+    foto_png: null,
+    notas: null,
+  });
+  const gente = (...ids: string[]) => new Map(ids.map((id) => [id, persona(id)]));
+  const cargos = new Map([["cargo", "Técnico"]]);
+  const caras = (r: { equipo: Trabajador[] } | undefined) => r?.equipo.map((w) => w.id);
+
+  it("solo la propia unidad: quien encabeza aparte, el equipo por orden de puesto y cada persona una vez", () => {
+    const us = unidades.map((x) => (x.id === "mecanica" ? { ...x, jefe_puesto_id: "p5" } : x));
+    const ps = puestos.map((x) => (x.id === "p4" ? { ...x, orden: 9 } : x));
+    // Mecánica: p4 (t4, orden 9), p5 (t5, jefatura), p6 (t3 de reemplazo); t3 también es titular en Mantención.
+    const r = personasPorUnidad(us, ps, vigentesPorPuesto(asignaciones), gente("t1", "t3", "t4", "t5"), cargos);
+    expect(r.get("mecanica")).toEqual({
+      cargoJefe: "Técnico",
+      equipo: [persona("t3"), persona("t4")],
+      personas: 3,
+      resto: 0,
+    });
+    expect(caras(r.get("mantencion"))).toEqual(["t3"]); // sin las subunidades
+    expect(r.get("mantencion")).toMatchObject({ personas: 1, cargoJefe: "" }); // sin puesto de jefatura
+    expect(r.get("operaciones")).toEqual({ cargoJefe: "", equipo: [], personas: 0, resto: 0 });
+    expect(r.get("electrica")?.personas).toBe(0); // t7 y t8 no están entre las personas: no se cuentan
+  });
+
+  it("hasta 4 caras y el resto en «+N»; una persona con dos puestos cuenta una vez", () => {
+    const x = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "q0" };
+    const ps = Array.from({ length: 8 }, (_, i) => ({ ...p(`q${i}`, "x"), orden: i }));
+    const as = ps.map((q, i) => a(`b${i}`, q.id, i === 7 ? "w1" : `w${i}`));
+    const r = personasPorUnidad([x], ps, vigentesPorPuesto(as), gente(...as.map((y) => y.trabajador_id)), cargos);
+    // w0 encabeza; w1…w6 (w1 dos veces) son el equipo: 4 caras y +2.
+    expect(r.get("x")).toMatchObject({ personas: 7, resto: 2 });
+    expect(caras(r.get("x"))).toEqual(["w1", "w2", "w3", "w4"]);
+  });
+
+  it("respeta la fecha que se ve y omite los puestos borrados", () => {
+    const x = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j" };
+    const ps = [p("j", "x"), p("e", "x"), { ...p("b", "x"), deleted_at: BORRADO }];
+    const as = [
+      { ...a("1", "j", "ana", "titular", "2024-06-01"), desde: "2020-01-01" },
+      { ...a("2", "j", "beto"), desde: "2024-06-01" },
+      { ...a("3", "e", "carla"), desde: "2023-01-01" },
+      a("4", "b", "dani"),
+    ];
+    const ws = gente("ana", "beto", "carla", "dani");
+    const antes = personasPorUnidad([x], ps, vigentesPorPuesto(as, "2022-01-01"), ws, cargos).get("x");
+    expect(antes).toMatchObject({ personas: 1, equipo: [] }); // solo Ana, que encabezaba
+    const hoy = personasPorUnidad([x], ps, vigentesPorPuesto(as), ws, cargos).get("x");
+    expect(hoy).toMatchObject({ personas: 2, resto: 0 });
+    expect(caras(hoy)).toEqual(["carla"]);
+  });
+
+  it("2.000 unidades y 10.000 personas en una pasada", () => {
+    const us = Array.from({ length: 2000 }, (_, i) => ({
+      ...u(`u${i}`, TIPO_AREA, `U${i}`, i ? `u${(i - 1) >> 2}` : null),
+      jefe_puesto_id: `p${i}`,
+    }));
+    const ps = Array.from({ length: 10000 }, (_, i) => ({ ...p(`p${i}`, `u${i % 2000}`), orden: i }));
+    const as = ps.map((q, i) => a(`a${i}`, q.id, `t${i}`));
+    const ws = gente(...as.map((x) => x.trabajador_id));
+    const inicio = performance.now();
+    const r = personasPorUnidad(us, ps, vigentesPorPuesto(as), ws, cargos);
+    const ms = performance.now() - inicio; // ~11–18 ms medido
+    expect(r.get("u0")).toMatchObject({ personas: 5, resto: 0 });
+    expect(caras(r.get("u0"))).toEqual(["t2000", "t4000", "t6000", "t8000"]);
+    expect(ms).toBeLessThan(500);
   });
 });
 
