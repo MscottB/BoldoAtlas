@@ -89,10 +89,12 @@ export function tamUnidad(
 
 /**
  * La jefatura se ve en la tarjeta de la unidad (personas y jefatura activas, densidad normal): su puesto no se dibuja
- * aparte, como en un organigrama clásico. En la compacta la jefatura no se ve: el puesto sigue.
+ * aparte, como en un organigrama clásico. En la compacta la jefatura no se ve: el puesto sigue; coloreando por leyenda,
+ * también (su color solo se ve en la tarjeta del puesto).
  */
-export const jefeEnTarjeta = (c: Pick<ConfigVista, "densidad" | "personasEnTarjetas" | "mostrarJefe">) =>
-  c.densidad === "normal" && c.personasEnTarjetas && c.mostrarJefe;
+export const jefeEnTarjeta = (
+  c: Pick<ConfigVista, "densidad" | "personasEnTarjetas" | "mostrarJefe" | "colorearPor">,
+) => c.densidad === "normal" && c.personasEnTarjetas && c.mostrarJefe && c.colorearPor !== CRITERIO_LEYENDA;
 export const tamPuesto = (c: Pick<ConfigVista, "densidad">, escala = 100) =>
   escalar(200, c.densidad === "compacta" ? 32 : 68, escala);
 

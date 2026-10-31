@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { rutaTexto } from "@/features/arbol/jerarquia";
+import { useLienzo } from "@/features/arbol/useLienzo";
 import { formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useRetornoFoco } from "@/lib/foco";
+import { iniciales } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   correosUnicos,
@@ -32,8 +34,20 @@ const router = useRouter();
 const ficha = useFicha();
 const uid = useId();
 
-// La dotación de la tarjeta es la de la rama: por eso la lista parte con las subunidades.
+// La dotación de la tarjeta es la de la rama: por eso la lista parte con las subunidades. Las caras de la tarjeta piden
+// solo la unidad (ramaPersonas); otra unidad sin pedido vuelve a la rama.
+const { ramaPersonas } = useLienzo();
 const conRama = ref(true);
+watch(
+  [() => props.unidad.id, ramaPersonas],
+  ([id, pedido], antes) => {
+    if (pedido !== null) {
+      conRama.value = pedido;
+      ramaPersonas.value = null;
+    } else if (id !== antes?.[0]) conRama.value = true;
+  },
+  { immediate: true },
+);
 const texto = ref("");
 const orden = ref<OrdenPersonas>("nombre");
 
@@ -72,14 +86,6 @@ watch(
   },
   { flush: "post" },
 );
-
-const iniciales = (nombre: string) =>
-  nombre
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase();
 
 async function copiarCorreos() {
   const correos = correosUnicos(filas.value);

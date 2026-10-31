@@ -6,6 +6,7 @@ import { Handle, Position } from "@vue-flow/core";
 import { toast } from "vue-sonner";
 import { Copy, Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
+import { iniciales } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import { textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
@@ -92,13 +93,6 @@ const tipo = computed(
 );
 // Jefatura con cargo y caras del equipo; la tarjeta compacta (una línea) no las muestra.
 const personas = computed(() => config.value.personasEnTarjetas && !compacta.value);
-const iniciales = (nombre: string) =>
-  nombre
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase();
 const vFoco: Directive<HTMLInputElement> = { mounted: (el) => (el.focus(), el.select()) };
 
 function renombrar() {
@@ -242,10 +236,10 @@ async function guardar(e: Event) {
     <button
       v-if="personas && data.equipo.length"
       type="button"
-      class="nodrag flex items-center self-start rounded focus-visible:outline-2 focus-visible:outline-ring"
+      class="nodrag flex items-center self-start rounded hover:underline focus-visible:outline-2 focus-visible:outline-ring"
       :aria-label="t('arbol.verEquipo', { n: data.personas, unidad: data.unidad.nombre }, data.personas)"
       :title="t('arbol.verEquipo', { n: data.personas, unidad: data.unidad.nombre }, data.personas)"
-      @click.stop="verPersonas(id)"
+      @click.stop="verPersonas(id, false)"
     >
       <span class="flex gap-0.5" aria-hidden="true">
         <template v-for="w in data.equipo" :key="w.id">

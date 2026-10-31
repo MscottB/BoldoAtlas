@@ -201,6 +201,7 @@ describe("opcionesElk y tamaños", () => {
     expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, personasEnTarjetas: false })).toBe(false);
     expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, mostrarJefe: false })).toBe(false);
     expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, densidad: "compacta" })).toBe(false); // la compacta no la muestra
+    expect(jefeEnTarjeta({ ...VISTA_POR_DEFECTO, colorearPor: CRITERIO_LEYENDA })).toBe(false); // su color va en el puesto
   });
 
   it("las tarjetas crecen con la escala de la interfaz (el texto es rem): layout y tarjeta usan la misma medida", () => {
