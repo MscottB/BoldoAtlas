@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Check, ImagePlus, ListChecks, X } from "@lucide/vue";
 import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
+import BloquePlegable from "@/components/BloquePlegable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
 import { cambiarIdioma, IDIOMAS, type Idioma } from "@/i18n";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
-import { claseSelect } from "@/lib/utils";
+import { claseSelect, cn } from "@/lib/utils";
 
 const { t, locale } = useI18n();
 const org = useOrganizacion();
@@ -121,12 +122,6 @@ const quitarLogo = async () => {
           </select>
         </div>
         <div class="grid gap-1.5">
-          <Label for="cfg-escala">{{ t("config.escala.etiqueta") }}</Label>
-          <select id="cfg-escala" v-model="escala" :class="claseSelect">
-            <option v-for="e in ESCALAS" :key="e" :value="e">{{ e }} %</option>
-          </select>
-        </div>
-        <div class="grid gap-1.5">
           <Label for="cfg-idioma">{{ t("idioma.etiqueta") }}</Label>
           <select
             id="cfg-idioma"
@@ -138,38 +133,48 @@ const quitarLogo = async () => {
           </select>
         </div>
       </div>
-      <div role="group" aria-labelledby="cfg-acento" class="grid gap-1.5">
-        <p id="cfg-acento" class="text-sm font-medium">{{ t("config.acento.etiqueta") }}</p>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="(color, a) in ACENTOS"
-            :key="a"
-            type="button"
-            :aria-pressed="acento === a"
-            class="flex items-center gap-2 rounded-lg border px-2 py-1 text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-            :class="acento === a ? 'border-foreground' : 'border-border'"
-            @click="acento = a as Acento"
-          >
-            <span
-              class="grid size-5 place-items-center rounded-full"
-              :style="{ background: color, color: textoSobre(color) }"
-              aria-hidden="true"
-            >
-              <Check v-if="acento === a" class="size-3.5" />
-            </span>
-            {{ t(`config.acento.${a}`) }}
-          </button>
+      <BloquePlegable clave="configuracion.apariencia" :titulo="t('config.apariencia.mas')" class="text-sm">
+        <div class="grid gap-4 pt-2 pl-5">
+          <div class="grid gap-1.5">
+            <Label for="cfg-escala">{{ t("config.escala.etiqueta") }}</Label>
+            <select id="cfg-escala" v-model="escala" :class="cn(claseSelect, 'w-fit')">
+              <option v-for="e in ESCALAS" :key="e" :value="e">{{ e }} %</option>
+            </select>
+          </div>
+          <div role="group" aria-labelledby="cfg-acento" class="grid gap-1.5">
+            <p id="cfg-acento" class="font-medium">{{ t("config.acento.etiqueta") }}</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="(color, a) in ACENTOS"
+                :key="a"
+                type="button"
+                :aria-pressed="acento === a"
+                class="flex items-center gap-2 rounded-lg border px-2 py-1 text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                :class="acento === a ? 'border-foreground' : 'border-border'"
+                @click="acento = a as Acento"
+              >
+                <span
+                  class="grid size-5 place-items-center rounded-full"
+                  :style="{ background: color, color: textoSobre(color) }"
+                  aria-hidden="true"
+                >
+                  <Check v-if="acento === a" class="size-3.5" />
+                </span>
+                {{ t(`config.acento.${a}`) }}
+              </button>
+            </div>
+          </div>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              class="size-4 accent-primary"
+              :checked="abrirAlPasar"
+              @change="guardarAbrirAlPasar(($event.target as HTMLInputElement).checked)"
+            />
+            {{ t("config.barra.abrirAlPasar") }}
+          </label>
         </div>
-      </div>
-      <label class="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          class="size-4 accent-primary"
-          :checked="abrirAlPasar"
-          @change="guardarAbrirAlPasar(($event.target as HTMLInputElement).checked)"
-        />
-        {{ t("config.barra.abrirAlPasar") }}
-      </label>
+      </BloquePlegable>
     </section>
 
     <section class="grid gap-2" aria-labelledby="cfg-mantenedores">

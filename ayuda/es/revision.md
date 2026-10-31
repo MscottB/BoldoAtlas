@@ -15,4 +15,4 @@ El número junto a **Revisión** en el menú es el total de avisos pendientes. N
 - **Unidades vacías**: unidades sin puestos ni subunidades.
 - **Valores sin uso**: valores activos de cargos, tipos de contrato, sedes, jornadas, tipos de unidad y leyendas que nada usa. Por ahora son solo informativos; podrás editarlos desde los mantenedores.
 
-Una lista sin avisos muestra «Todo en orden». Los elementos eliminados o desactivados nunca se reportan.
+Primero van las listas con avisos. Las que están en orden se juntan al final en una sola línea, **Sin avisos:** y sus nombres, que se despliega con un clic (y queda como la dejes) para ver cada una con «Todo en orden». Los elementos eliminados o desactivados nunca se reportan.

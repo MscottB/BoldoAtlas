@@ -4,6 +4,8 @@ La ficha es el formulario de una persona: sus datos de contacto, contrato, sede,
 
 El cargo y la unidad no se editan en la ficha: son del **puesto** que la persona ocupa (como titular o como reemplazo). Una vacante es un puesto sin titular.
 
+A la vista están el nombre, el correo, el teléfono, las unidades que encabeza y sus puestos. **Tipo de contrato**, **sede**, **jornada**, **notas** y **foto** están en **Más datos**: se abre solo si la persona ya tiene alguno de esos datos o hay un error ahí; si no, con un clic, y queda como lo dejes.
+
 ## Listas de valores
 
 **Tipo de contrato**, **Sede** y **Jornada** se eligen de listas, para que los datos queden ordenados y sin duplicados.

@@ -33,6 +33,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { base64De, leerComoUrl } from "@/features/configuracion/logo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
+import BloquePlegable from "@/components/BloquePlegable.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
 import {
@@ -235,6 +236,14 @@ async function eliminar() {
   });
 }
 
+// «Más datos» se abre solo si ya tiene algo adentro o un error (la foto, o lo que la base rechazó de esos campos).
+const conMasDatos = computed(
+  () =>
+    !!(form.tipo_contrato_id || form.sede_id || form.jornada_id || form.notas.trim() || form.foto_png) ||
+    !!errorFoto.value ||
+    ["tipo_contrato_id", "sede_id", "jornada_id", "notas", "foto_png"].some((k) => k in fallidos.value),
+);
+
 const titulo = computed(() => t(id.value ? "ficha.tituloPersona" : "ficha.nuevaPersona"));
 const retorno = useRetornoFoco();
 const alAbrir = (e: Event) => {
@@ -273,16 +282,6 @@ const alAbrir = (e: Event) => {
           <p v-if="errores.nombre" id="ficha-error-nombre" role="alert" class="text-xs text-destructive">
             {{ errores.nombre }}
           </p>
-        </div>
-
-        <div v-for="c in CATALOGOS" :key="c.campo" class="grid gap-1.5">
-          <Label :for="`ficha-${c.campo}`">{{ t(c.etiqueta) }}</Label>
-          <SelectorCatalogo
-            :id="`ficha-${c.campo}`"
-            :tabla="c.tabla"
-            :model-value="form[c.campo]"
-            @update:model-value="cambiar(c.campo, $event)"
-          />
         </div>
 
         <div class="grid gap-1.5">
@@ -347,45 +346,66 @@ const alAbrir = (e: Event) => {
           </details>
         </div>
 
-        <div class="grid gap-1.5 sm:col-span-2">
-          <Label for="ficha-notas">{{ t("ficha.notas") }}</Label>
-          <Textarea id="ficha-notas" v-model="form.notas" @blur="alSalir" />
-        </div>
+        <!-- :key: al pasar a otra persona sin cerrar la ficha, el bloque vuelve a decidir si se abre solo. -->
+        <BloquePlegable
+          :key="id ?? ''"
+          clave="ficha.masDatos"
+          :titulo="t('ficha.masDatos')"
+          :abrir="conMasDatos"
+          class="text-sm sm:col-span-2"
+        >
+          <div class="grid gap-3 pt-2 sm:grid-cols-2">
+            <div v-for="c in CATALOGOS" :key="c.campo" class="grid gap-1.5">
+              <Label :for="`ficha-${c.campo}`">{{ t(c.etiqueta) }}</Label>
+              <SelectorCatalogo
+                :id="`ficha-${c.campo}`"
+                :tabla="c.tabla"
+                :model-value="form[c.campo]"
+                @update:model-value="cambiar(c.campo, $event)"
+              />
+            </div>
 
-        <div class="grid gap-1.5 sm:col-span-2">
-          <p class="text-sm font-medium">{{ t("ficha.foto") }}</p>
-          <div class="flex items-center gap-2">
-            <img
-              v-if="form.foto_png"
-              :src="`data:image/png;base64,${form.foto_png}`"
-              alt=""
-              class="size-12 rounded-full object-cover"
-            />
-            <input
-              ref="inputFoto"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              class="hidden"
-              tabindex="-1"
-              @change="elegirFoto"
-            />
-            <Button type="button" size="sm" variant="outline" @click="inputFoto?.click()">
-              <ImagePlus aria-hidden="true" />
-              {{ t("ficha.elegirFoto") }}
-            </Button>
-            <Button
-              v-if="form.foto_png"
-              type="button"
-              size="sm"
-              variant="outline"
-              @click="cambiar('foto_png', null)"
-            >
-              <X aria-hidden="true" />
-              {{ t("ficha.quitarFoto") }}
-            </Button>
+            <div class="grid gap-1.5 sm:col-span-2">
+              <Label for="ficha-notas">{{ t("ficha.notas") }}</Label>
+              <Textarea id="ficha-notas" v-model="form.notas" @blur="alSalir" />
+            </div>
+
+            <div class="grid gap-1.5 sm:col-span-2">
+              <p class="text-sm font-medium">{{ t("ficha.foto") }}</p>
+              <div class="flex items-center gap-2">
+                <img
+                  v-if="form.foto_png"
+                  :src="`data:image/png;base64,${form.foto_png}`"
+                  alt=""
+                  class="size-12 rounded-full object-cover"
+                />
+                <input
+                  ref="inputFoto"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  class="hidden"
+                  tabindex="-1"
+                  @change="elegirFoto"
+                />
+                <Button type="button" size="sm" variant="outline" @click="inputFoto?.click()">
+                  <ImagePlus aria-hidden="true" />
+                  {{ t("ficha.elegirFoto") }}
+                </Button>
+                <Button
+                  v-if="form.foto_png"
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  @click="cambiar('foto_png', null)"
+                >
+                  <X aria-hidden="true" />
+                  {{ t("ficha.quitarFoto") }}
+                </Button>
+              </div>
+              <p v-if="errorFoto" role="alert" class="text-xs text-destructive">{{ errorFoto }}</p>
+            </div>
           </div>
-          <p v-if="errorFoto" role="alert" class="text-xs text-destructive">{{ errorFoto }}</p>
-        </div>
+        </BloquePlegable>
       </div>
 
       <DialogFooter>

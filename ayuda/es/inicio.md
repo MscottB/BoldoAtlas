@@ -8,7 +8,7 @@ BoldoAtlas es una app de escritorio para Windows con la que armas el organigrama
 
 ## Primer uso
 
-Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con dos caminos:
+Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con dos caminos; el primero, destacado, es el principal:
 
 - **Crear una organización vacía:** te pide el nombre de la organización y el de su unidad raíz (del primer tipo de unidad activo) y te lleva al árbol.
 - **Explorar un ejemplo:** crea una organización de muestra, en el idioma de la interfaz, para recorrer la app.
@@ -37,7 +37,7 @@ El título de la ventana y la barra superior muestran el nombre de la organizaci
 - **Portable:** extraes `BoldoAtlas_windows_x64_portable.zip` en cualquier carpeta (o en un pendrive) y ejecutas `BoldoAtlas.exe`. Funciona porque junto al programa hay un archivo `portable.flag`. Extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos.
 - **Instalado:** lo instalas con `BoldoAtlas_windows_x64_setup.exe` y los datos quedan en la carpeta de datos de tu usuario de Windows.
 
-En _Acerca de_ (abajo en el menú) ves el modo en que está corriendo y la carpeta de datos exacta.
+En _Acerca de_ (abajo en el menú) ves la versión. En **Detalles técnicos**, que se abre con un clic, están el modo en que está corriendo, la carpeta de datos exacta y **Copiar información**, para pegarla al pedir ayuda.
 
 ## Dónde quedan tus datos
 

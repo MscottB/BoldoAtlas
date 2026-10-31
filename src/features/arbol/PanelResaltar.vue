@@ -5,7 +5,9 @@ import { ChevronDown, Highlighter } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useOrganizacion } from "@/stores/organizacion";
+import BloquePlegable from "@/components/BloquePlegable.vue";
 import { useVista } from "./useVista";
+import { VISTA_POR_DEFECTO } from "./vista";
 import { claseSelect, cn } from "@/lib/utils";
 
 // Resalta las unidades con cierta etiqueta, con vacantes o con puestos/personas de cierta sede, contrato, jornada o
@@ -25,6 +27,9 @@ const activos = computed(() => {
   const r = config.value.resaltar;
   return [r.etiqueta, r.vacantes, r.sede, r.contrato, r.jornada, r.cargo].filter(Boolean).length;
 });
+// El texto de «Buscar en el diagrama» queda: es de la barra, no de este panel.
+const quitar = () =>
+  (config.value.resaltar = { ...VISTA_POR_DEFECTO.resaltar, texto: config.value.resaltar.texto });
 </script>
 
 <template>
@@ -52,14 +57,27 @@ const activos = computed(() => {
         <input v-model="config.resaltar.vacantes" type="checkbox" class="size-4 accent-primary" />
         {{ t("arbol.resaltar.vacantes") }}
       </label>
-      <label v-for="c in campos" :key="c.clave" class="grid gap-1">
-        <span class="font-medium">{{ t(`arbol.resaltar.${c.clave}`) }}</span>
-        <select v-model="config.resaltar[c.clave]" :class="cn(claseSelect, 'h-7 w-full')">
-          <option :value="null">{{ t("arbol.resaltar.cualquiera") }}</option>
-          <option v-for="v in org.activos(c.tabla)" :key="v.id" :value="v.id">{{ v.nombre }}</option>
-        </select>
-      </label>
+      <!-- Con alguno de estos elegido, el bloque se abre solo: lo que resalta queda a la vista. -->
+      <BloquePlegable
+        clave="resaltar.masFiltros"
+        :titulo="t('arbol.resaltar.masFiltros')"
+        :abrir="campos.some((c) => config.resaltar[c.clave])"
+        class="border-t pt-2"
+      >
+        <div class="grid gap-3 pt-2 pl-5">
+          <label v-for="c in campos" :key="c.clave" class="grid gap-1">
+            <span class="font-medium">{{ t(`arbol.resaltar.${c.clave}`) }}</span>
+            <select v-model="config.resaltar[c.clave]" :class="cn(claseSelect, 'h-7 w-full')">
+              <option :value="null">{{ t("arbol.resaltar.cualquiera") }}</option>
+              <option v-for="v in org.activos(c.tabla)" :key="v.id" :value="v.id">{{ v.nombre }}</option>
+            </select>
+          </label>
+        </div>
+      </BloquePlegable>
       <p class="text-xs text-muted-foreground">{{ t("arbol.resaltar.ayuda") }}</p>
+      <Button variant="outline" size="sm" class="self-start" @click="quitar">
+        {{ t("arbol.resaltar.quitar") }}
+      </Button>
     </PopoverContent>
   </Popover>
 </template>

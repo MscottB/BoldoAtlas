@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { TIPO_AREA, type Trabajador, type ValorCatalogo } from "@/db/tipos";
+import {
+  TIPO_AREA,
+  TIPO_GERENCIA,
+  TIPO_OTRA,
+  TIPO_SUBAREA,
+  type Trabajador,
+  type ValorCatalogo,
+} from "@/db/tipos";
 import { a, asignaciones, p, puestos as puestosBase, tipos, unidades } from "@/features/arbol/fixture";
 import {
   SIN_FILTROS,
   candidatasDirectorio,
+  columnaVisible,
   filtrarDirectorio,
   filtrarYOrdenar,
+  leerColumnas,
   leerEstadoDirectorio,
   type EstadoDirectorio,
   type Filtros,
@@ -247,5 +256,42 @@ describe("filtrarDirectorio", () => {
     };
     expect(claves({}, porPersona, e)).toHaveLength(10);
     expect(claves({ estado: "sinPuesto" }, porPersona, e)).toContain("persona:t9");
+  });
+});
+
+describe("columnas del directorio", () => {
+  const enUso = [{ id: TIPO_OTRA }, { id: TIPO_GERENCIA }, { id: TIPO_AREA }, { id: TIPO_SUBAREA }];
+
+  it("leerColumnas guarda solo los sí/no; lo demás se descarta", () => {
+    expect(leerColumnas({ sede: true, jornada: "si", reemplazo: false, x: null })).toEqual({
+      sede: true,
+      reemplazo: false,
+    });
+    for (const crudo of [null, "texto", 3, [true]]) expect(leerColumnas(crudo)).toEqual({});
+  });
+
+  it("sin elegir: Gerencia y Área a la vista; Reemplazo, contrato, sede, jornada y los demás tipos ocultos", () => {
+    const ver = (clave: string) => columnaVisible({}, clave, enUso);
+    expect(ver(`tipo:${TIPO_GERENCIA}`)).toBe(true);
+    expect(ver(`tipo:${TIPO_AREA}`)).toBe(true);
+    for (const clave of [
+      `tipo:${TIPO_OTRA}`,
+      `tipo:${TIPO_SUBAREA}`,
+      "reemplazo",
+      "tipoContrato",
+      "sede",
+      "jornada",
+    ])
+      expect(ver(clave)).toBe(false);
+  });
+
+  it("sin Gerencia ni Área en uso se ve el primer tipo; lo elegido manda", () => {
+    const otros = [{ id: TIPO_OTRA }, { id: TIPO_SUBAREA }];
+    expect(columnaVisible({}, `tipo:${TIPO_OTRA}`, otros)).toBe(true);
+    expect(columnaVisible({}, `tipo:${TIPO_SUBAREA}`, otros)).toBe(false);
+    expect(
+      columnaVisible({ [`tipo:${TIPO_GERENCIA}`]: false, sede: true }, `tipo:${TIPO_GERENCIA}`, enUso),
+    ).toBe(false);
+    expect(columnaVisible({ sede: true }, "sede", enUso)).toBe(true);
   });
 });

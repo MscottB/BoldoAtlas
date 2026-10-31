@@ -9,13 +9,13 @@ Each backup is a file `boldo-YYYYMMDD-HHMM.db` with the date and time it was mad
 
 ## Automatic backup
 
-When the app opens, if the last backup is more than 24 hours old, a new one is made in the background: you can keep working meanwhile. In **Settings › Backups** you choose how often: **Never**, **Every time** it opens, **Every 24 hours** (the default) or **Every 7 days**. The choice applies to this computer only.
+When the app opens, if the last backup is more than 24 hours old, a new one is made in the background: you can keep working meanwhile. In **Settings › Backups › View and restore backups** you choose how often: **Never**, **Every time** it opens, **Every 24 hours** (the default) or **Every 7 days**. The choice applies to this computer only.
 
 The **10 most recent backups** are kept; making a new one deletes the oldest. Other files in the folder are not touched. If an automatic backup fails, a notice appears.
 
 ## Backup list
 
-In **Settings › Backups** you see each backup with its **date**, **size** and **data revision**: a number that goes up with every saved change and tells you which one is newer. A damaged file is marked **Unreadable** and cannot be restored.
+In **Settings › Backups** you see the date of the **last backup** next to **Back up now**. The list, the frequency and **Open folder** are under **View and restore backups**, which opens with a click and stays as you leave it; if you come from **Backups** in the app menu, it is already open. There you see each backup with its **date**, **size** and **data revision**: a number that goes up with every saved change and tells you which one is newer. A damaged file is marked **Unreadable** and cannot be restored.
 
 - **Back up now** makes a backup right away.
 - **Open folder** opens the backups folder in File Explorer, for example to copy them to a USB drive.
@@ -26,7 +26,7 @@ When you choose **New empty organization** or **Explore the example** with data 
 
 ## Restore
 
-1. Press **Restore** on the row of the backup you want to recover.
+1. Under **View and restore backups**, press **Restore** on the row of the backup you want to recover.
 2. Confirm with **Restore and restart**.
 
 Before replacing anything, BoldoAtlas backs up your current data: it appears in the list marked **Before restore** and is never deleted automatically. If you picked the wrong backup, restore that one. Then your data is replaced with the backup and the app restarts.

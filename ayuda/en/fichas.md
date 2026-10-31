@@ -4,6 +4,8 @@ The record is the form for a person: their contact details, contract, site, sche
 
 Job title and unit are not edited in the record: they belong to the **position** the person holds (as holder or as a replacement). A vacancy is a position without a holder.
 
+The name, email, phone, the units the person heads and their positions are in plain view. **Contract type**, **site**, **schedule**, **notes** and **photo** are under **More details**: it opens by itself if the person already has any of those or there is an error there; otherwise with a click, and it stays as you leave it.
+
 ## Value lists
 
 **Contract type**, **Site** and **Schedule** are chosen from lists, so data stays tidy and free of duplicates.

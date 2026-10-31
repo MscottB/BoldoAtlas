@@ -3,9 +3,16 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { useVirtualList } from "@vueuse/core";
-import { ArrowDown, ArrowUp, ArrowUpDown, Download, X } from "@lucide/vue";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Columns3, Download, ListFilter, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TablaCatalogo } from "@/db/tipos";
 import { tiposEnUso } from "@/features/arbol/jerarquia";
@@ -16,11 +23,14 @@ import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
-import { claseSelect } from "@/lib/utils";
+import { claseSelect, cn } from "@/lib/utils";
 import {
+  FILTROS_PLEGADOS,
   SIN_FILTROS,
   candidatasDirectorio,
+  columnaVisible,
   filtrarYOrdenar,
+  leerColumnas,
   leerEstadoDirectorio,
   type FilaDirectorio,
   type Filtros,
@@ -90,6 +100,30 @@ const selectores = computed(() => {
     },
   ] as const;
 });
+// «Filtros (n)»: cuenta lo activo dentro del botón; «Quitar filtros» vacía solo eso.
+const enFiltros = computed(() => FILTROS_PLEGADOS.filter((k) => filtros.value[k]).length);
+const quitarPlegados = () => {
+  for (const k of FILTROS_PLEGADOS) filtros.value[k] = null;
+};
+
+// «Columnas»: lo elegido se recuerda por PC (las pestañas no lo guardan: es cómo se ve, no qué se busca).
+const columnas = ref(leerColumnas(leerPreferencia<unknown>("directorio:columnas", null)));
+watch(columnas, (c) => guardarPreferencia("directorio:columnas", c), { deep: true });
+const ver = (clave: string) => columnaVisible(columnas.value, clave, tipos.value);
+const tiposVisibles = computed(() => tipos.value.filter((x) => ver(`tipo:${x.id}`)));
+const opcionales = computed(() => [
+  { clave: "reemplazo", nombre: t("directorio.reemplazo") },
+  ...tipos.value.map((x) => ({ clave: `tipo:${x.id}`, nombre: x.nombre })),
+  ...(["tipoContrato", "sede", "jornada"] as const).map((c) => ({ clave: c, nombre: t(`directorio.${c}`) })),
+]);
+// Sin ninguna columna de unidad a la vista no hay encabezado que muestre el orden por unidad: vuelve a persona.
+watch(
+  [tiposVisibles, () => orden.value.campo],
+  ([visibles, campo]) => {
+    if (campo === "unidad" && !visibles.length) orden.value = { campo: "persona", asc: true };
+  },
+  { immediate: true },
+);
 const NINGUNA = new Set<string>();
 const estados = ["ocupado", "vacante", "sinPuesto"] as const;
 
@@ -106,6 +140,11 @@ function abrir(e: MouseEvent, f: FilaDirectorio) {
   if (e.type === "auxclick") return;
   if (f.personaId) void ficha.intentarAbrir(f.personaId);
   else if (f.puestoId) puesto.abrir(f.puestoId);
+}
+// «Limpiar todo» desaparece al limpiar: el foco pasa al buscador para no quedar en el body.
+function limpiarTodo() {
+  filtros.value = { ...SIN_FILTROS };
+  document.querySelector<HTMLInputElement>("[data-buscar-directorio]")?.focus();
 }
 // El botón desaparece con la etiqueta: el foco pasa al buscador para no quedar en el body.
 function quitarPersona() {
@@ -157,24 +196,38 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
             @elegir="filtros.unidad = $event"
           />
         </div>
-        <select
-          v-for="s in selectores"
-          :key="s.campo"
-          v-model="filtros[s.campo]"
-          :class="claseSelect"
-          :aria-label="t(s.etiqueta)"
-        >
-          <option :value="null">{{ t(s.etiqueta) }}: {{ t("directorio.todos") }}</option>
-          <option v-for="o in s.opciones" :key="o.id" :value="o.id">{{ o.nombre }}</option>
-        </select>
-        <select
-          v-model="filtros.estado"
-          :class="claseSelect"
-          :aria-label="t('directorio.estado')"
-        >
-          <option :value="null">{{ t("directorio.estado") }}: {{ t("directorio.todos") }}</option>
-          <option v-for="e in estados" :key="e" :value="e">{{ t(`directorio.${e}`) }}</option>
-        </select>
+        <Popover>
+          <PopoverTrigger as-child>
+            <Button type="button" variant="outline" size="sm" class="h-8">
+              <ListFilter aria-hidden="true" />
+              {{ t("directorio.filtrosBoton") }}
+              <span v-if="enFiltros" class="rounded-full bg-marca px-1.5 text-xs text-marca-foreground">
+                <span aria-hidden="true">{{ enFiltros }}</span>
+                <span class="sr-only">{{ t("directorio.filtrosActivos", enFiltros) }}</span>
+              </span>
+              <ChevronDown class="-ml-0.5 size-3 opacity-60" aria-hidden="true" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" class="w-72 gap-3 text-sm">
+            <label v-for="s in selectores" :key="s.campo" class="grid gap-1">
+              <span class="font-medium">{{ t(s.etiqueta) }}</span>
+              <select v-model="filtros[s.campo]" :class="cn(claseSelect, 'w-full')">
+                <option :value="null">{{ t("directorio.todos") }}</option>
+                <option v-for="o in s.opciones" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+              </select>
+            </label>
+            <label class="grid gap-1">
+              <span class="font-medium">{{ t("directorio.estado") }}</span>
+              <select v-model="filtros.estado" :class="cn(claseSelect, 'w-full')">
+                <option :value="null">{{ t("directorio.todos") }}</option>
+                <option v-for="e in estados" :key="e" :value="e">{{ t(`directorio.${e}`) }}</option>
+              </select>
+            </label>
+            <Button type="button" variant="outline" size="sm" class="self-start" @click="quitarPlegados">
+              {{ t("directorio.quitarFiltros") }}
+            </Button>
+          </PopoverContent>
+        </Popover>
         <span
           v-if="filtros.persona"
           class="inline-flex h-8 items-center gap-1 rounded-full border bg-accent pr-1 pl-3 text-sm text-foreground"
@@ -190,9 +243,30 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
             <X class="size-3.5" aria-hidden="true" />
           </button>
         </span>
-        <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="filtros = { ...SIN_FILTROS }">
+        <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="limpiarTodo">
           {{ t("directorio.limpiar") }}
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button type="button" variant="outline" size="sm" class="ml-auto h-8">
+              <Columns3 aria-hidden="true" />
+              {{ t("directorio.columnas") }}
+              <ChevronDown class="-ml-0.5 size-3 opacity-60" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <!-- Elegir una columna no cierra el menú: se suelen cambiar varias seguidas. -->
+          <DropdownMenuContent align="end" class="w-56">
+            <DropdownMenuCheckboxItem
+              v-for="c in opcionales"
+              :key="c.clave"
+              :model-value="ver(c.clave)"
+              @update:model-value="columnas = { ...columnas, [c.clave]: $event === true }"
+              @select="(e: Event) => e.preventDefault()"
+            >
+              {{ c.nombre }}
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </form>
 
       <p v-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
@@ -223,15 +297,17 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
                     <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
                   </button>
                 </th>
-                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.reemplazo") }}</th>
+                <th v-if="ver('reemplazo')" scope="col" class="px-3 py-2 font-medium whitespace-nowrap">
+                  {{ t("directorio.reemplazo") }}
+                </th>
                 <th
-                  v-for="(tipo, i) in tipos"
+                  v-for="(tipo, i) in tiposVisibles"
                   :key="tipo.id"
                   scope="col"
                   class="px-3 py-2 font-medium whitespace-nowrap"
                   :aria-sort="i === 0 ? ariaSort('unidad') : undefined"
                 >
-                  <!-- Se ordena por la ruta completa de la unidad; el botón está en la primera columna de tipo. -->
+                  <!-- Se ordena por la ruta completa de la unidad; el botón va en la primera columna de tipo visible. -->
                   <button
                     v-if="i === 0"
                     type="button"
@@ -248,9 +324,11 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
                   <template v-else>{{ tipo.nombre }}</template>
                 </th>
                 <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.correo") }}</th>
-                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.tipoContrato") }}</th>
-                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.sede") }}</th>
-                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.jornada") }}</th>
+                <template v-for="c in ['tipoContrato', 'sede', 'jornada'] as const" :key="c">
+                  <th v-if="ver(c)" scope="col" class="px-3 py-2 font-medium whitespace-nowrap">
+                    {{ t(`directorio.${c}`) }}
+                  </th>
+                </template>
               </tr>
             </thead>
             <tbody ref="cuerpo">
@@ -278,14 +356,14 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
                   }}</span>
                   <template v-else>{{ f.cargo }}</template>
                 </td>
-                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.reemplazo }}</td>
-                <td v-for="tipo in tipos" :key="tipo.id" class="px-3 py-1.5 whitespace-nowrap">
+                <td v-if="ver('reemplazo')" class="px-3 py-1.5 whitespace-nowrap">{{ f.reemplazo }}</td>
+                <td v-for="tipo in tiposVisibles" :key="tipo.id" class="px-3 py-1.5 whitespace-nowrap">
                   {{ delTipo(f, tipo.id) }}
                 </td>
                 <td class="px-3 py-1.5 whitespace-nowrap">{{ f.correo }}</td>
-                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.tipoContrato }}</td>
-                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.sede }}</td>
-                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.jornada }}</td>
+                <template v-for="c in ['tipoContrato', 'sede', 'jornada'] as const" :key="c">
+                  <td v-if="ver(c)" class="px-3 py-1.5 whitespace-nowrap">{{ f[c] }}</td>
+                </template>
               </tr>
             </tbody>
           </table>

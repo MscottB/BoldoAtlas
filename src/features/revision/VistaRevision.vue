@@ -6,6 +6,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import type { PersonaRef } from "./revision";
 import { useAvisos } from "./useAvisos";
+import BloquePlegable from "@/components/BloquePlegable.vue";
 import FilasRevision, { type Fila } from "./FilasRevision.vue";
 
 const { t } = useI18n();
@@ -92,6 +93,9 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
     },
   ];
 });
+// Primero lo que tiene avisos (en su orden de siempre); lo que está en orden, agrupado al final.
+const conAvisos = computed(() => secciones.value.filter((s) => s.filas.length));
+const enOrden = computed(() => secciones.value.filter((s) => !s.filas.length));
 </script>
 
 <template>
@@ -103,7 +107,7 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
       }}</span>
     </header>
 
-    <details v-for="s in secciones" :key="s.clave" open class="rounded-lg border">
+    <details v-for="s in conAvisos" :key="s.clave" open class="rounded-lg border bg-card">
       <summary
         class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-ring"
       >
@@ -111,8 +115,30 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
         <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ s.cuenta }}</span>
       </summary>
       <p class="px-3 pb-2 text-sm text-muted-foreground">{{ t(`revision.${s.clave}.ayuda`) }}</p>
-      <p v-if="!s.filas.length" class="border-t px-3 py-2 text-sm">{{ t("revision.todoEnOrden") }}</p>
-      <FilasRevision v-else :filas="s.filas" />
+      <FilasRevision :filas="s.filas" />
     </details>
+
+    <!-- Lo que está en orden va junto al final, en una línea que se despliega. -->
+    <BloquePlegable
+      v-if="enOrden.length"
+      clave="revision.enOrden"
+      class="rounded-lg border bg-card px-3 py-1"
+    >
+      <template #titulo>
+        <span class="min-w-0">
+          {{ t("revision.sinAvisos") }}
+          <span class="text-sm font-normal text-muted-foreground">{{
+            enOrden.map((s) => t(`revision.${s.clave}.titulo`)).join(" · ")
+          }}</span>
+        </span>
+      </template>
+      <ul class="grid gap-2 pb-2 pl-5 text-sm">
+        <li v-for="s in enOrden" :key="s.clave">
+          <span class="font-medium">{{ t(`revision.${s.clave}.titulo`) }}</span>
+          · {{ t("revision.todoEnOrden") }}
+          <p class="text-muted-foreground">{{ t(`revision.${s.clave}.ayuda`) }}</p>
+        </li>
+      </ul>
+    </BloquePlegable>
   </section>
 </template>
