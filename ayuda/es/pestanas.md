@@ -7,7 +7,7 @@ Las pestañas te dejan tener abiertas a la vez distintas partes del mismo proyec
 - `Ctrl` + `T` abre una pestaña nueva en el árbol.
 - **Abrir en pestaña nueva**, en el menú contextual de una unidad del lienzo, abre esa unidad como subárbol.
 - En la paleta de comandos (`Ctrl` + `K`), `Ctrl` + `Enter` o `Ctrl` + clic sobre una unidad, una persona o una acción que lleva a una vista la abre en una pestaña nueva.
-- `Ctrl` + clic o clic central sobre una entrada del menú lateral, o sobre una persona del Directorio, también la abren en una pestaña nueva. Una persona se abre como el Directorio con solo ella.
+- `Ctrl` + clic o clic central sobre una entrada del menú lateral, o sobre una persona del Directorio, también la abren en una pestaña nueva. Una persona se abre como el Directorio con solo sus filas: el filtro «Persona: …» se quita con su ×.
 
 Con una sola pestaña la barra no se muestra; aparece sobre el área central en cuanto abres la segunda. Puedes tener hasta 12 pestañas abiertas.
 
@@ -16,6 +16,8 @@ Con una sola pestaña la barra no se muestra; aparece sobre el área central en 
 Cada pestaña guarda su vista y su estado: en el árbol, las ramas plegadas, la unidad seleccionada, el encuadre y el resaltado; en el Directorio, los filtros y el orden. Al volver a ella la encuentras como la dejaste. Una pestaña nueva parte con lo último que usaste.
 
 El nombre de cada pestaña es automático (el del subárbol, «Directorio», el de la persona…) y cambia si cambia ese nombre.
+
+Configuración, Ayuda y Acerca de, al cerrarlas, vuelven a la vista de esa misma pestaña desde la que las abriste (o al árbol, si se abrieron en una pestaña nueva).
 
 Solo la pestaña activa está cargada: tener varias abiertas no hace más lento el lienzo.
 

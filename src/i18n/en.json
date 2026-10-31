@@ -225,6 +225,8 @@
     "vacante": "Vacant",
     "sinPuesto": "No position",
     "limpiar": "Clear filters",
+    "filtroPersona": "Person: {nombre}",
+    "quitarPersona": "Remove the filter for {nombre}",
     "persona": "Person",
     "reemplazo": "Replacement",
     "correo": "Email",
@@ -552,6 +554,7 @@
     }
   },
   "pestanas": {
+    "tituloVer": "Tree · {nombre}",
     "barra": "Work tabs",
     "cerrar": "Close {titulo}",
     "nueva": "New tab",

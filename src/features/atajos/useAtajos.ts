@@ -9,11 +9,17 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
-import { destinoNavegacion, resolverAtajo, type Navegacion } from "./atajos";
+import { destinoNavegacion, resolverAtajo, type Atajo, type Navegacion } from "./atajos";
 
 /** Si la paleta de comandos (Ctrl+K) está abierta. La abren el atajo y el botón de la barra superior. */
 export const paletaAbierta = ref(false);
 
+const ATAJOS_PESTANAS = new Set<Atajo>([
+  "nuevaPestana",
+  "cerrarPestana",
+  "pestanaSiguiente",
+  "pestanaAnterior",
+]);
 const CAMPO = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
 // Diálogos, menús y listas abiertos (Reka UI los marca con role y data-state): mandan ellos sobre el teclado.
 const MODAL =
@@ -74,11 +80,14 @@ export function useAtajos() {
       return;
     }
     // Pestañas de trabajo: valen en cualquier vista del proyecto.
-    if (atajo === "nuevaPestana") abrirEnPestanaNueva(RUTA_INICIO);
-    else if (atajo === "cerrarPestana") pestanas.cerrar(pestanas.activa); // con una sola pestaña no hace nada
-    else if (atajo === "pestanaSiguiente" || atajo === "pestanaAnterior")
-      pestanas.siguiente(atajo === "pestanaSiguiente" ? 1 : -1);
-    if (atajo.endsWith("Pestana") || atajo.startsWith("pestana")) return void e.preventDefault();
+    if (ATAJOS_PESTANAS.has(atajo)) {
+      e.preventDefault();
+      if (atajo === "nuevaPestana") abrirEnPestanaNueva(RUTA_INICIO);
+      else if (atajo === "cerrarPestana")
+        pestanas.cerrar(pestanas.activa); // con una sola pestaña no hace nada
+      else pestanas.siguiente(atajo === "pestanaSiguiente" ? 1 : -1);
+      return;
+    }
     // Esc en Configuración, Ayuda o Acerca de las cierra (salvo que se esté escribiendo; los diálogos ya mandaron arriba).
     if (atajo === "cerrar" && esVistaCerrable(route.name)) {
       if (!destino?.closest(CAMPO)) {

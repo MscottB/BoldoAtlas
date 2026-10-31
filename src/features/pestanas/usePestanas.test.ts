@@ -7,16 +7,21 @@ import { MAX_PESTANAS } from "./pestanas";
 import { usePestanas } from "./usePestanas";
 
 const vacio = { render: () => null };
-const nuevoRouter = () =>
-  createRouter({
+// `lenta`: las vistas se cargan con demora, como las importadas en diferido del router real.
+const nuevoRouter = (lenta = false) => {
+  const vista = lenta ? () => new Promise<typeof vacio>((r) => setTimeout(() => r(vacio), 20)) : vacio;
+  return createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: "/", name: "arbol", component: vacio },
-      { path: "/directorio", name: "directorio", component: vacio },
-      { path: "/revision", name: "revision", component: vacio },
+      { path: "/directorio", name: "directorio", component: vista },
+      { path: "/revision", name: "revision", component: vista },
+      { path: "/configuracion", name: "configuracion", component: vacio },
+      { path: "/ayuda/:pagina?", name: "ayuda", component: vacio },
       { path: "/bienvenida", name: "bienvenida", component: vacio, meta: { sinMarco: true } },
     ],
   });
+};
 
 let datos: Map<string, string>;
 let router: Router;
@@ -43,7 +48,8 @@ async function arrancar(guardado?: unknown) {
   await router.replace(p.entrar());
   return p;
 }
-const esperar = () => new Promise((r) => setTimeout(r));
+const esperar = (ms = 0) => new Promise((r) => setTimeout(r, ms));
+const rutaActual = () => router.currentRoute.value.fullPath;
 
 describe("usePestanas", () => {
   it("al entrar descarta lo que ya no existe y abre en la activa guardada", async () => {
@@ -139,5 +145,58 @@ describe("usePestanas", () => {
     await router.replace("/");
     expect(rutas()).toEqual(["/", "/directorio"]);
     expect(p.activa).toBe(p.lista[0]!.id);
+  });
+
+  it("cerrar Ayuda abierta en una pestaña nueva vuelve al inicio de esa pestaña, nunca a una ruta de otra", async () => {
+    const p = await arrancar();
+    const a = p.activa;
+    await router.push("/directorio"); // la historia de A: / → /directorio
+    p.abrirNueva("/ayuda"); // Ctrl+clic en «Ayuda»
+    await esperar();
+    const b = p.activa;
+    expect(b).not.toBe(a);
+    await p.cerrarVista();
+    expect(rutaActual()).toBe("/");
+    expect(p.activa).toBe(b);
+    expect(rutas()).toEqual(["/directorio", "/"]);
+  });
+
+  it("cerrar una vista abierta dentro de la pestaña vuelve a donde estaba, también tras pasar por otras pestañas", async () => {
+    const p = await arrancar();
+    const a = p.activa;
+    await router.push("/directorio");
+    await router.push("/configuracion");
+    p.abrirNueva("/revision");
+    await esperar();
+    await router.push("/ayuda"); // en B
+    p.activar(a);
+    await esperar();
+    expect(rutaActual()).toBe("/configuracion");
+    await router.push("/ayuda/atajos"); // de una cerrable a otra: se conserva la vuelta
+    await p.cerrarVista();
+    expect(rutaActual()).toBe("/directorio");
+    expect(p.activa).toBe(a);
+    p.siguiente(1);
+    await esperar();
+    await p.cerrarVista();
+    expect(rutaActual()).toBe("/revision");
+  });
+
+  it("dos Ctrl+Tab seguidos con vistas que aún cargan: cada pestaña conserva su ruta", async () => {
+    router = nuevoRouter(true);
+    const p = await arrancar({
+      lista: [
+        { id: "a", ruta: "/" },
+        { id: "b", ruta: "/directorio" },
+        { id: "c", ruta: "/revision" },
+      ],
+      activa: "a",
+    });
+    p.siguiente(1);
+    p.siguiente(1); // la primera navegación queda cancelada por esta
+    await esperar(80);
+    expect(p.activa).toBe("c");
+    expect(rutaActual()).toBe("/revision");
+    expect(rutas()).toEqual(["/", "/directorio", "/revision"]);
   });
 });

@@ -225,6 +225,8 @@
     "vacante": "Vacante",
     "sinPuesto": "Sin puesto",
     "limpiar": "Limpiar filtros",
+    "filtroPersona": "Persona: {nombre}",
+    "quitarPersona": "Quitar el filtro de {nombre}",
     "persona": "Persona",
     "reemplazo": "Reemplazo",
     "correo": "Correo",
@@ -552,6 +554,7 @@
     }
   },
   "pestanas": {
+    "tituloVer": "Árbol · {nombre}",
     "barra": "Pestañas de trabajo",
     "cerrar": "Cerrar {titulo}",
     "nueva": "Nueva pestaña",

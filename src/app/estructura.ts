@@ -21,10 +21,6 @@ const VISTAS_CERRABLES = ["configuracion", "ayuda", "acerca"];
 export const esVistaCerrable = (nombre: unknown): boolean =>
   typeof nombre === "string" && VISTAS_CERRABLES.includes(nombre);
 
-/** `anterior` es `history.state.back` de vue-router: la ruta anterior dentro de la app, o null si se abrió directo. */
-export const destinoAlCerrar = (anterior: unknown): "atras" | "/" =>
-  typeof anterior === "string" && anterior ? "atras" : "/";
-
 /** Título de la ventana: el programa y la organización abierta. */
 export const tituloVentana = (organizacion: string): string =>
   organizacion.trim() ? `BoldoAtlas — ${organizacion.trim()}` : "BoldoAtlas";

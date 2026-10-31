@@ -14,6 +14,8 @@ export interface Pestana {
   /** Ruta completa (path + query + hash): identifica la vista. */
   ruta: string;
   estado?: EstadoVista;
+  /** En Configuración, Ayuda o Acerca de: la ruta de esta pestaña a la que vuelve «Cerrar». */
+  volver?: string;
 }
 export interface Pestanas {
   lista: Pestana[];
@@ -98,11 +100,11 @@ export function leerPestanas(
       continue;
     vistos.add(p.id);
     const e = p.estado as Record<string, unknown> | undefined;
-    lista.push(
-      typeof e === "object" && e !== null && typeof e.ruta === "string"
-        ? { id: p.id, ruta: p.ruta, estado: { ruta: e.ruta, datos: e.datos } }
-        : { id: p.id, ruta: p.ruta },
-    );
+    const pestana: Pestana = { id: p.id, ruta: p.ruta };
+    if (typeof e === "object" && e !== null && typeof e.ruta === "string")
+      pestana.estado = { ruta: e.ruta, datos: e.datos };
+    if (typeof p.volver === "string" && valida(p.volver)) pestana.volver = p.volver;
+    lista.push(pestana);
   }
   if (!lista.length) return unaPestana(nuevoId());
   return { lista, activa: lista.some((p) => p.id === c.activa) ? (c.activa as string) : lista[0]!.id };

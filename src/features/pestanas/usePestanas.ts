@@ -1,8 +1,15 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { defineStore } from "pinia";
-import { useRoute, type RouteLocationRaw, type Router } from "vue-router";
+import {
+  NavigationFailureType,
+  isNavigationFailure,
+  useRoute,
+  type RouteLocationRaw,
+  type Router,
+} from "vue-router";
 import { useEventListener } from "@vueuse/core";
 import { toast } from "vue-sonner";
+import { esVistaCerrable } from "@/app/estructura";
 import { i18n } from "@/i18n";
 import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
@@ -26,8 +33,8 @@ export const usePestanas = defineStore("pestanas", () => {
   let clave: string | null = null;
   /** false mientras se ve la Bienvenida (fuera del proyecto): al volver se recargan y validan sus pestañas. */
   let enProyecto = false;
-  /** Pestaña que pasa a activa cuando termine la navegación a su ruta: así la vista vieja no se remonta con otra key. */
-  let destino: string | null = null;
+  /** Pestaña que pasa a activa cuando llegue la navegación a su ruta: así la vista vieja no se remonta con otra key. */
+  let destino: { id: string; ruta: string } | null = null;
 
   const lista = computed(() => modelo.value.lista);
   const activa = computed(() => modelo.value.activa);
@@ -55,19 +62,31 @@ export const usePestanas = defineStore("pestanas", () => {
   function conectar(r: Router, proyecto: string) {
     router = r;
     clave = `pestanas:${proyecto}`;
-    r.afterEach((to, _from, fallo) => {
-      if (fallo) return void (destino = null);
+    r.afterEach((to, from, fallo) => {
+      if (fallo) {
+        // Cancelada por otra navegación más nueva (p. ej. un segundo Ctrl+Tab antes de cargar la vista): el cambio de
+        // pestaña pendiente, si lo hay, es el de esa otra y lo resuelve su llegada.
+        if (!isNavigationFailure(fallo, NavigationFailureType.cancelled)) destino = null;
+        return;
+      }
       if (to.meta.sinMarco) return void (enProyecto = false);
+      const cambios: Partial<P.Pestana> = { ruta: to.fullPath };
       if (!enProyecto) {
         // De vuelta de la Bienvenida: la pestaña que ya muestra ese destino; si no hay, la activa pasa a mostrarlo.
         entrar();
         const ya = modelo.value.lista.find((p) => p.ruta === to.fullPath);
         if (ya) modelo.value = { ...modelo.value, activa: ya.id };
-      } else if (destino) {
-        modelo.value = { ...modelo.value, activa: destino };
+      } else if (destino?.ruta === to.fullPath) {
+        modelo.value = { ...modelo.value, activa: destino.id };
+      } else if (!esVistaCerrable(to.name)) {
+        cambios.volver = undefined;
+      } else if (!esVistaCerrable(from.name)) {
+        // Dentro de la pestaña, hacia Configuración, Ayuda o Acerca de: «Cerrar» vuelve a donde estaba (de una cerrable a
+        // otra se conserva la vuelta de la primera; al cambiar de pestaña, la de esa pestaña).
+        cambios.volver = from.matched.length ? from.fullPath : undefined;
       }
       destino = null;
-      modelo.value = P.cambiar(modelo.value, modelo.value.activa, { ruta: to.fullPath });
+      modelo.value = P.cambiar(modelo.value, modelo.value.activa, cambios);
     });
   }
 
@@ -84,8 +103,8 @@ export const usePestanas = defineStore("pestanas", () => {
   async function ir(id: string, siempre = enLaBarra()) {
     const p = modelo.value.lista.find((x) => x.id === id);
     if (!p || !router) return;
-    destino = id;
     const r = router.resolve(p.ruta);
+    destino = { id, ruta: r.fullPath };
     // force: dos pestañas pueden mostrar la misma ruta; igual hay que cambiar de pestaña.
     await router.replace({ path: r.path, query: r.query, hash: r.hash, force: true });
     await enfocar(siempre);
@@ -129,7 +148,14 @@ export const usePestanas = defineStore("pestanas", () => {
     abrirNueva,
     cerrar,
     /** Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1). */
-    siguiente: (paso: 1 | -1) => activar(P.vecina(modelo.value, paso)),
+    /** Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1); con un cambio aún en curso, cuenta desde la pestaña a la que se va. */
+    siguiente: (paso: 1 | -1) =>
+      activar(P.vecina({ ...modelo.value, activa: destino?.id ?? modelo.value.activa }, paso)),
+    /** «Cerrar» en Configuración, Ayuda o Acerca de: a la ruta de esta pestaña desde la que se abrió, o al inicio. */
+    async cerrarVista() {
+      const p = modelo.value.lista.find((x) => x.id === modelo.value.activa);
+      await router?.replace(p?.volver ?? P.RUTA_INICIO);
+    },
     mover(id: string, posicion: number): Resultado {
       modelo.value = P.mover(modelo.value, id, posicion);
       return { ok: true };
@@ -146,10 +172,11 @@ export const usePestanas = defineStore("pestanas", () => {
       switch (r?.name) {
         case "arbol": {
           const raiz = q("raiz");
+          const ver = org.porId.get(q("ver"))?.nombre;
           return (
             (raiz &&
               (org.subarboles.find((s) => s.unidad_id === raiz)?.nombre || org.porId.get(raiz)?.nombre)) ||
-            t("nav.arbol")
+            (ver ? t("pestanas.tituloVer", { nombre: ver }) : t("nav.arbol"))
           );
         }
         case "directorio": {
@@ -198,7 +225,20 @@ export function useEstadoPestana(leer: () => unknown): unknown {
     },
   );
   const guardar = () => pestanas.guardarEstado(id, ruta, leer());
-  onBeforeUnmount(guardar);
+  // También mientras se usa (tras una pausa): al cerrar la ventana, Tauri puede no avisar con beforeunload.
+  let espera: ReturnType<typeof setTimeout> | undefined;
+  watch(
+    leer,
+    () => {
+      clearTimeout(espera);
+      espera = setTimeout(guardar, 500);
+    },
+    { deep: true },
+  );
+  onBeforeUnmount(() => {
+    clearTimeout(espera); // lo pendiente leería el estado compartido de la vista siguiente
+    guardar();
+  });
   useEventListener(window, "beforeunload", guardar);
   return pestanas.estadoDe(id, route.fullPath);
 }

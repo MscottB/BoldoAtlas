@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Plus, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,9 @@ function alSoltar() {
   arrastrada.value = null;
   inicio = null;
 }
+
+// Si la barra desaparece en pleno arrastre (p. ej. Ctrl+W deja una sola pestaña), sin escuchas colgando.
+onBeforeUnmount(alSoltar);
 
 function alPulsar(id: string) {
   if (recienArrastrada) return void (recienArrastrada = false);

@@ -3,7 +3,7 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { useVirtualList } from "@vueuse/core";
-import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "@lucide/vue";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -15,38 +15,37 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
-import { candidatasDirectorio, filtrarYOrdenar, type FilaDirectorio, type Filtros, type Orden } from "./filtrar";
+import {
+  SIN_FILTROS,
+  candidatasDirectorio,
+  filtrarYOrdenar,
+  leerEstadoDirectorio,
+  type FilaDirectorio,
+  type Filtros,
+  type Orden,
+} from "./filtrar";
 
 const { t } = useI18n();
 const org = useOrganizacion();
 const ficha = useFicha();
 const puesto = usePuesto();
 
-const SIN_FILTROS: Filtros = {
-  texto: "",
-  unidad: null,
-  cargo_id: null,
-  tipo_contrato_id: null,
-  sede_id: null,
-  jornada_id: null,
-  etiqueta: null,
-  estado: null,
-};
-// Los filtros y el orden se recuerdan por PC; cada pestaña, además, recuerda los suyos.
-type Guardado = { filtros?: Partial<Filtros>; orden?: Orden } | null;
-const dePestana = useEstadoPestana(() => ({ filtros: { ...filtros.value }, orden: { ...orden.value } })) as Guardado;
-const guardado = dePestana ?? leerPreferencia<Guardado>("directorio", null);
-const filtros = ref<Filtros>({ ...SIN_FILTROS, ...guardado?.filtros });
-const orden = ref<Orden>({ campo: "persona", asc: true, ...guardado?.orden });
+// Los filtros y el orden se recuerdan por PC; cada pestaña, además, recuerda los suyos (validados al leer).
+const dePestana = useEstadoPestana(() => ({ filtros: { ...filtros.value }, orden: { ...orden.value } }));
+const guardado = leerEstadoDirectorio(dePestana ?? leerPreferencia<unknown>("directorio", null));
+const filtros = ref<Filtros>(guardado.filtros);
+const orden = ref<Orden>(guardado.orden);
 // «Ver en el directorio» del panel de una unidad: solo esa unidad y su rama, sin los demás filtros. Una persona abierta en
-// una pestaña nueva (?persona=): buscada por su nombre.
+// una pestaña nueva (?persona=): solo sus filas.
 const { unidad: pedida, persona } = useRoute().query;
-const nombrePersona = org.trabajadores.find((x) => x.id === persona)?.nombre;
 if (!dePestana && typeof pedida === "string") filtros.value = { ...SIN_FILTROS, unidad: pedida };
-else if (!dePestana && nombrePersona) filtros.value = { ...SIN_FILTROS, texto: nombrePersona };
-watch([filtros, orden], () => guardarPreferencia("directorio", { filtros: filtros.value, orden: orden.value }), {
-  deep: true,
-});
+else if (!dePestana && typeof persona === "string") filtros.value = { ...SIN_FILTROS, persona };
+// La persona es de su pestaña: no queda como filtro por defecto del directorio.
+const preferencia = () => ({ filtros: { ...filtros.value, persona: null }, orden: orden.value });
+watch([filtros, orden], () => guardarPreferencia("directorio", preferencia()), { deep: true });
+const nombrePersona = computed(
+  () => org.trabajadores.find((x) => x.id === filtros.value.persona)?.nombre ?? t("directorio.persona"),
+);
 const hayFiltros = computed(() => JSON.stringify(filtros.value) !== JSON.stringify(SIN_FILTROS));
 
 // Las filas se arman una vez por cambio del store; teclear o ordenar solo filtra y ordena.
@@ -168,6 +167,21 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
           <option :value="null">{{ t("directorio.estado") }}: {{ t("directorio.todos") }}</option>
           <option v-for="e in estados" :key="e" :value="e">{{ t(`directorio.${e}`) }}</option>
         </select>
+        <span
+          v-if="filtros.persona"
+          class="inline-flex h-8 items-center gap-1 rounded-full border bg-accent pr-1 pl-3 text-sm text-foreground"
+        >
+          {{ t("directorio.filtroPersona", { nombre: nombrePersona }) }}
+          <button
+            type="button"
+            class="rounded-full p-1 hover:bg-background focus-visible:outline-2 focus-visible:outline-ring"
+            :aria-label="t('directorio.quitarPersona', { nombre: nombrePersona })"
+            :title="t('directorio.quitarPersona', { nombre: nombrePersona })"
+            @click="filtros.persona = null"
+          >
+            <X class="size-3.5" aria-hidden="true" />
+          </button>
+        </span>
         <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="filtros = { ...SIN_FILTROS }">
           {{ t("directorio.limpiar") }}
         </Button>

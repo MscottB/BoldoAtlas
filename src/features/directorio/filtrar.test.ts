@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { TIPO_AREA, type Trabajador, type ValorCatalogo } from "@/db/tipos";
 import { a, asignaciones, p, puestos as puestosBase, tipos, unidades } from "@/features/arbol/fixture";
-import { candidatasDirectorio, filtrarDirectorio, filtrarYOrdenar, type EstadoDirectorio, type Filtros, type Orden } from "./filtrar";
+import {
+  SIN_FILTROS,
+  candidatasDirectorio,
+  filtrarDirectorio,
+  filtrarYOrdenar,
+  leerEstadoDirectorio,
+  type EstadoDirectorio,
+  type Filtros,
+  type Orden,
+} from "./filtrar";
 
 const BORRADO = "2026-01-01T00:00:00.000Z";
 const cat = (id: string, nombre: string, deleted_at: string | null = null): ValorCatalogo => ({
@@ -52,19 +61,37 @@ const estado: EstadoDirectorio = {
     tipos_unidad: tipos,
   },
 };
-const sinFiltros: Filtros = {
-  texto: "",
-  unidad: null,
-  cargo_id: null,
-  tipo_contrato_id: null,
-  sede_id: null,
-  jornada_id: null,
-  etiqueta: null,
-  estado: null,
-};
+const sinFiltros: Filtros = SIN_FILTROS;
 const porPersona: Orden = { campo: "persona", asc: true };
 const claves = (f: Partial<Filtros> = {}, o: Orden = porPersona, e = estado) =>
   filtrarDirectorio(e, { ...sinFiltros, ...f }, o).map((x) => x.clave);
+
+describe("filtro por persona", () => {
+  it("deja solo las filas donde esa persona es la titular o la persona sin puesto, no donde es reemplazo", () => {
+    expect(claves({ persona: "t3" })).toEqual(["puesto:p3"]); // t3 también reemplaza en p6: esa fila no
+    expect(claves({ persona: "t9" })).toEqual(["persona:t9"]);
+    expect(claves({ persona: "nadie" })).toEqual([]);
+  });
+});
+
+describe("leerEstadoDirectorio", () => {
+  it("valida cada campo y deja lo inválido en su valor inicial", () => {
+    expect(leerEstadoDirectorio(null)).toEqual({
+      filtros: SIN_FILTROS,
+      orden: { campo: "persona", asc: true },
+    });
+    const e = leerEstadoDirectorio({
+      filtros: { texto: 5, unidad: "u1", cargo_id: 3, estado: "raro", persona: "t1", sede_id: "" },
+      orden: { campo: "cargo", asc: "no" },
+    });
+    expect(e.filtros).toEqual({ ...SIN_FILTROS, unidad: "u1", persona: "t1" });
+    expect(e.orden).toEqual({ campo: "cargo", asc: true });
+    expect(leerEstadoDirectorio({ filtros: { texto: "ana", estado: "vacante" } }).filtros).toMatchObject({
+      texto: "ana",
+      estado: "vacante",
+    });
+  });
+});
 
 describe("filtrarDirectorio", () => {
   it("una fila por puesto más una por persona sin puesto vigente", () => {

@@ -114,17 +114,20 @@ describe("leerPestanas", () => {
           { ruta: "/" },
           { id: "c", ruta: "/?raiz=borrada" },
           { id: "d", ruta: "/revision", estado: { ruta: "/revision", datos: [1] } },
-          { id: "e", ruta: "/arboles", estado: "roto" },
+          { id: "e", ruta: "/arboles", estado: "roto", volver: "/?raiz=borrada" },
+          { id: "f", ruta: "/ayuda", volver: "/directorio" },
         ],
         activa: "c",
       },
       (r) => !r.includes("borrada"),
       nuevoId,
     );
-    expect(ids(m)).toBe("ade");
+    expect(ids(m)).toBe("adef");
     expect(m.activa).toBe("a"); // la activa guardada ya no existe
     expect(m.lista[1]!.estado).toEqual({ ruta: "/revision", datos: [1] });
     expect(m.lista[2]!.estado).toBeUndefined();
+    expect(m.lista[2]!.volver).toBeUndefined(); // la vuelta tampoco puede llevar a lo que ya no existe
+    expect(m.lista[3]!.volver).toBe("/directorio");
   });
 
   it("conserva la activa válida y no pasa del máximo", () => {

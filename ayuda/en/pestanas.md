@@ -7,7 +7,7 @@ Tabs let you keep different parts of the same project open at once: the full tre
 - `Ctrl` + `T` opens a new tab on the tree.
 - **Open in new tab**, in the context menu of a unit on the canvas, opens that unit as a subtree.
 - In the command palette (`Ctrl` + `K`), `Ctrl` + `Enter` or `Ctrl` + click on a unit, a person or an action that leads to a view opens it in a new tab.
-- `Ctrl` + click or middle click on a side menu entry, or on a person in the Directory, also opens it in a new tab. A person opens as the Directory showing only them.
+- `Ctrl` + click or middle click on a side menu entry, or on a person in the Directory, also opens it in a new tab. A person opens as the Directory showing only their rows: remove the “Person: …” filter with its ×.
 
 With a single tab the bar is hidden; it appears above the central area as soon as you open a second one. You can have up to 12 tabs open.
 
@@ -16,6 +16,8 @@ With a single tab the bar is hidden; it appears above the central area as soon a
 Each tab keeps its view and its state: on the tree, the folded branches, the selected unit, the framing and the highlight; in the Directory, the filters and the sort order. When you go back to it, you find it as you left it. A new tab starts with whatever you used last.
 
 Each tab's name is automatic (the subtree's, "Directory", the person's…) and changes if that name changes.
+
+Settings, Help and About, when closed, go back to the view of that same tab you opened them from (or to the tree, if they were opened in a new tab).
 
 Only the active tab is loaded: having several open does not slow down the canvas.
 
