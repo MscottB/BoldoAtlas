@@ -5,6 +5,7 @@ name: build-prueba
 # En los PR compila solo Windows; Linux y macOS, a pedido: «Run workflow» (workflow_dispatch) o la etiqueta
 # `build-todas` en el PR. En main no sube nada: compila Windows para dejar caliente la caché de Rust de los
 # PR, y solo cuando cambian Rust o las dependencias (si la clave de la caché ya existe, no se vuelve a guardar).
+# «Run workflow» con «instaladores» arma también los instaladores, para probarlos sin publicar un release.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
@@ -13,6 +14,11 @@ on:
     branches: [main]
     paths: ["src-tauri/**", "src-tauri/Cargo.lock", "package-lock.json"]
   workflow_dispatch:
+    inputs:
+      instaladores:
+        description: "También los instaladores (NSIS, AppImage/deb/rpm, dmg)"
+        type: boolean
+        default: false
 
 concurrency:
   group: build-prueba-${{ github.ref }}
@@ -50,13 +56,13 @@ jobs:
       - id: v
         run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
         shell: bash
-      - run: node scripts/release.mjs --solo-portable --perfil prueba
+      - run: node scripts/release.mjs ${{ !inputs.instaladores && '--solo-portable' || '' }} --perfil prueba
         env:
           BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
       - if: github.event_name != 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: BoldoAtlas_${{ steps.v.outputs.version_prueba || github.sha }}_${{ matrix.sistema }}_portable
+          name: BoldoAtlas_${{ steps.v.outputs.version_prueba || github.sha }}_${{ matrix.sistema }}_${{ inputs.instaladores && 'completo' || 'portable' }}
           path: release/*/*
           retention-days: 14
           if-no-files-found: error
