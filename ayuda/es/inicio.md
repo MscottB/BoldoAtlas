@@ -2,7 +2,7 @@
 
 ## Qué es BoldoAtlas
 
-BoldoAtlas es una app de escritorio para Windows con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
+BoldoAtlas es una app de escritorio para Windows, Linux y macOS con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
 
 **Próximamente:** procesos, indicadores, escenarios, importar y exportar a Excel y abrir archivos .boldo. Mientras no existan, sus botones no aparecen en la app (la pestaña «Procesos» del panel de unidad solo avisa que llega más adelante).
 
@@ -34,8 +34,22 @@ El título de la ventana y la barra superior muestran el nombre de la organizaci
 
 ## Modo portable e instalado
 
-- **Portable:** extraes `BoldoAtlas_windows_x64_portable.zip` en cualquier carpeta (o en un pendrive) y ejecutas `BoldoAtlas.exe`. Funciona porque junto al programa hay un archivo `portable.flag`. Extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos.
-- **Instalado:** lo instalas con `BoldoAtlas_windows_x64_setup.exe` y los datos quedan en la carpeta de datos de tu usuario de Windows.
+- **Portable:** extraes el zip de tu sistema en cualquier carpeta (o en un pendrive) y abres el programa que trae. Todo (datos, respaldos y preferencias) queda en la carpeta `datos/`, junto al programa, y nada se escribe fuera de ella. Funciona porque junto al programa hay un archivo `portable.flag`. Extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos.
+- **Instalado:** lo instalas con el instalador de tu sistema y los datos quedan en la carpeta de datos de tu usuario.
+
+| Sistema | Portable | Instalador | Datos del instalado |
+|---|---|---|---|
+| Windows | `BoldoAtlas_windows_x64_portable.zip` → `BoldoAtlas.exe` | `BoldoAtlas_windows_x64_setup.exe` | `%APPDATA%\io.github.mscottb.boldoatlas` |
+| Linux | `BoldoAtlas_linux_x64_portable.zip` → `BoldoAtlas.AppImage` | `.deb`, `.rpm` o `BoldoAtlas_linux_x64.AppImage` | `~/.local/share/io.github.mscottb.boldoatlas` |
+| macOS | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
+
+En macOS, las preferencias de la ventana (tema, escala, pestañas) las guarda el sistema en `~/Library/WebKit`, también en la portable; los datos y los respaldos sí quedan en `datos/`.
+
+BoldoAtlas aún no tiene firma digital, así que la primera vez el sistema avisa:
+
+- **Windows:** si aparece «Windows protegió su PC», pulsa **Más información → Ejecutar de todas formas**.
+- **macOS:** clic derecho sobre `BoldoAtlas.app` → **Abrir** → **Abrir**. Si dice que está dañada o no deja abrirla, ejecuta en Terminal `xattr -dr com.apple.quarantine <carpeta>` sobre la carpeta de la portable (o sobre `/Applications/BoldoAtlas.app`), o usa **Configuración del Sistema › Privacidad y seguridad › Abrir igualmente**. Con la portable hazlo antes de abrirla: si no, macOS la abre desde una copia de solo lectura y no puede guardar.
+- **Linux:** el AppImage necesita permiso de ejecución: `chmod +x BoldoAtlas_linux_x64.AppImage` (o Propiedades › Permitir ejecutar). Si no abre, instala FUSE 2 (`sudo apt install libfuse2`).
 
 En _Acerca de_ (abajo en el menú) ves el modo en que está corriendo y la carpeta de datos exacta.
 

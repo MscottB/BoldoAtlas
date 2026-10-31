@@ -1,10 +1,12 @@
 name: release
 
-# Release de Windows (instalador NSIS + zip portable + SHA256SUMS.txt). Dos caminos:
+# Release de Windows, Linux y macOS, cada uno con instalador y zip portable, más un SHA256SUMS.txt único
+# que cubre todos los archivos (spec §14). Dos caminos:
 # - publicar.yml lo llama al fusionar un PR (workflow_call): crea la etiqueta anotada y usa las notas del PR;
 # - a mano, empujando una etiqueta vX.Y.Z. Las etiquetas que crea el GITHUB_TOKEN no disparan este
 #   camino, por eso publicar.yml lo llama como workflow reutilizable.
-# Lint, tests y cargo test corren en paralelo al build; no se publica nada si alguno falla.
+# Los checks del frontend corren una vez antes de compilar; cargo test corre en los tres SO en paralelo a los
+# builds. No se publica nada si algún job falla.
 on:
   push:
     tags: ["v*"]
@@ -43,37 +45,52 @@ jobs:
       - run: npm run test
 
   pruebas-rust:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/preparar-rust
         with:
-          workspaces: src-tauri
-          shared-key: boldo-debug # la de ci-rust
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache: boldo-debug # la de ci-rust
       # generate_context! exige que exista la carpeta del frontend compilado
       - run: mkdir dist
       - run: cargo test
         working-directory: src-tauri
 
   compilar:
-    runs-on: windows-latest
+    needs: verificar
+    strategy:
+      # sin fail-fast: si un sistema falla, los otros terminan y se ve cuál fue
+      fail-fast: false
+      matrix:
+        include:
+          - sistema: windows
+            runner: windows-latest
+            herramientas: ~\AppData\Local\tauri # NSIS y nsis_tauri_utils
+          - sistema: linux
+            runner: ubuntu-22.04 # glibc antigua: el AppImage abre en más distribuciones
+            herramientas: ~/.cache/tauri # linuxdeploy y sus plugins para el AppImage
+          - sistema: macos
+            runner: macos-latest
+            objetivos: aarch64-apple-darwin,x86_64-apple-darwin # binario universal
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # git describe necesita historia y etiquetas
       - uses: ./.github/actions/preparar-node
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/preparar-rust
         with:
-          workspaces: src-tauri
-          shared-key: boldo-release
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      # NSIS y nsis_tauri_utils que descarga el bundler de Tauri
-      - uses: actions/cache@v4
+          cache: boldo-release
+          objetivos: ${{ matrix.objetivos }}
+      # lo que el bundler de Tauri descarga al empaquetar (macOS no descarga nada)
+      - if: matrix.herramientas
+        uses: actions/cache@v4
         with:
-          path: ~\AppData\Local\tauri
+          path: ${{ matrix.herramientas }}
           key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: tauri-herramientas-${{ runner.os }}-
       # mismo comando que `npm run release` en local; falla si la versión no coincide con la etiqueta.
@@ -84,7 +101,7 @@ jobs:
           BOLDO_VERSION: ${{ inputs.tag }}
       - uses: actions/upload-artifact@v4
         with:
-          name: release-${{ env.ETIQUETA }}
+          name: release-${{ env.ETIQUETA }}-${{ matrix.sistema }}
           path: release/*/*
           retention-days: 7
           if-no-files-found: error
@@ -98,10 +115,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # etiquetas, para ver si este commit ya está publicado
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # un artefacto por sistema, cada uno en su subcarpeta (salida/release-<etiqueta>-<sistema>/<versión>/)
       - uses: actions/download-artifact@v4
         with:
-          name: release-${{ env.ETIQUETA }}
+          pattern: release-${{ env.ETIQUETA }}-*
           path: salida
+      # un solo SHA256SUMS.txt con los archivos de los tres sistemas; falla si dos se llaman igual
+      - run: node scripts/release.mjs --sumas salida && cat salida/SHA256SUMS.txt
       # Solo desde publicar.yml. Nunca publica código viejo con una etiqueta existente o más nueva
       # (p. ej. al reintentar un run antiguo): la etiqueta, si existe, debe apuntar a este mismo commit.
       - name: Etiqueta anotada
@@ -130,7 +153,7 @@ jobs:
         with:
           tag_name: ${{ env.ETIQUETA }}
           name: BoldoAtlas ${{ env.ETIQUETA }}
-          # el artefacto trae una subcarpeta con la versión; sin archivos, falla en vez de publicar vacío
+          # los archivos están en subcarpetas (sistema y versión); sin archivos, falla en vez de publicar vacío
           files: salida/**/*
           fail_on_unmatched_files: true
           body: ${{ inputs.notes }}

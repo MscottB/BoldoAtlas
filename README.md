@@ -5,7 +5,7 @@
 <h1 align="center">BoldoAtlas</h1>
 
 <p align="center">
-  <strong>Org charts, processes and people records — a local, portable desktop app for Windows.</strong><br>
+  <strong>Org charts, processes and people records — a local, portable desktop app for Windows, Linux and macOS.</strong><br>
   No server, no accounts, no internet required. Your data stays on your computer.
 </p>
 
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img alt="Platform: Windows" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-1e2a38">
+  <img alt="Platform: Windows, Linux and macOS" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-1e2a38">
   <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-c8743f">
   <img alt="Built with Tauri and Vue" src="https://img.shields.io/badge/built%20with-Tauri%202%20%2B%20Vue%203-1e2a38">
   <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-c8743f">
@@ -49,17 +49,27 @@ It is designed for **large organizations**: very big trees, several independent 
 
 ## Download
 
-Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases/latest)** (the first public release is coming soon):
+Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases/latest)** (the first public release is coming soon). Each system has a **portable** version, the main one: a zip you extract into any folder (or onto a USB drive) that keeps everything in `datos/`, next to the program, and writes nothing outside that folder. And an **installer**, which keeps the data in your user folder.
 
-| File | Use |
-|---|---|
-| `BoldoAtlas_windows_x64_portable.zip` | Extract anywhere and run `BoldoAtlas.exe`. Data lives in `datos/` next to the program. |
-| `BoldoAtlas_windows_x64_setup.exe` | Installer. Data lives in `%APPDATA%\io.github.mscottb.boldoatlas`. |
-| `SHA256SUMS.txt` | Checksums: `Get-FileHash <file> -Algorithm SHA256`. |
+| System | Portable | Installer | Installed data |
+|---|---|---|---|
+| Windows 10 or 11 (x64) | `BoldoAtlas_windows_x64_portable.zip` → `BoldoAtlas.exe` | `BoldoAtlas_windows_x64_setup.exe` | `%APPDATA%\io.github.mscottb.boldoatlas` |
+| Linux (x64) | `BoldoAtlas_linux_x64_portable.zip` → `BoldoAtlas.AppImage` | `BoldoAtlas_linux_x64.deb`, `BoldoAtlas_linux_x64.rpm` or `BoldoAtlas_linux_x64.AppImage` | `~/.local/share/io.github.mscottb.boldoatlas` |
+| macOS 10.13 or newer (Intel and Apple Silicon) | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
 
-Requirements: Windows 10 or 11 with WebView2 (included in Windows 11 and almost every Windows 10).
+`SHA256SUMS.txt` holds the checksums of every file: `Get-FileHash <file> -Algorithm SHA256` on Windows, `sha256sum -c SHA256SUMS.txt --ignore-missing` on Linux and `shasum -a 256 <file>` on macOS.
 
-> **Windows SmartScreen:** the program is not code-signed yet, so the first time Windows may show "Windows protected your PC". Click **More info → Run anyway**. In portable mode, extract the zip first — running it from inside the zip cannot save data.
+Requirements: on Windows, WebView2 (included in Windows 11 and almost every Windows 10); on Linux, a 2022 or newer distribution (Ubuntu 22.04, Debian 12, Fedora 36…) and, for the AppImage, FUSE 2 (`sudo apt install libfuse2`; on Ubuntu 24.04, `libfuse2t64`).
+
+In portable mode, extract the zip first: running it from inside the zip cannot save data. On macOS, the system keeps the window preferences (theme, zoom, tabs) in `~/Library/WebKit`; data and backups do stay in `datos/`.
+
+### Opening an unsigned program
+
+BoldoAtlas is not code-signed yet, so the first time the system warns you:
+
+- **Windows (SmartScreen):** if "Windows protected your PC" appears, click **More info → Run anyway**.
+- **macOS (Gatekeeper):** right-click `BoldoAtlas.app` → **Open** → **Open**. If it says the app "is damaged" or offers no way to open it (macOS 15 or newer), run `xattr -dr com.apple.quarantine <folder>` in Terminal on the extracted portable folder or on `/Applications/BoldoAtlas.app`, or use **System Settings › Privacy & Security › Open Anyway**. For the portable, remove the quarantine before opening it: otherwise macOS runs it from a read-only copy and BoldoAtlas warns that it cannot save.
+- **Linux (AppImage):** make it executable with `chmod +x BoldoAtlas_linux_x64.AppImage` (or in the file manager: Properties › Allow executing). The portable one already is if you extract the zip with `unzip` or the file manager.
 
 ## Privacy
 
@@ -74,14 +84,14 @@ npm ci
 npm run app            # run in development (picks a free port; closing the window or Ctrl+C stops everything)
 npm run test           # frontend tests
 cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
-npm run release        # full Windows release in release/<version>/
+npm run release        # release for the current system (installer and portable) in release/<version>/
 ```
 
-`npm run release` is the same command GitHub Actions uses, so a local build is exactly what would be published.
+`npm run release` is the same command GitHub Actions runs on each system, so a local build is exactly what would be published. On Linux it first needs the WebKitGTK libraries ([Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux)); on macOS it builds the universal binary, so it needs `rustup target add aarch64-apple-darwin x86_64-apple-darwin`.
 
 ### Versions and releases
 
-Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the **Notas de la versión** section of every PR merged since the previous release (or its title). Docs-only or CI-only merges don't publish; they ship with the next release. The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
+Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the **Notas de la versión** section of every PR merged since the previous release (or its title). Docs-only or CI-only merges don't publish; they ship with the next release. The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. PRs build the Windows portable; Linux and macOS ones are requested with the `build-todas` label on the PR or with **Run workflow** on `build-prueba`. Every release publishes all three systems. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
 
 ## Roadmap
 

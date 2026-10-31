@@ -2,8 +2,8 @@
 
 BoldoAtlas keeps copies of your data in the **respaldos** (backups) folder, inside the data folder:
 
-- **Portable:** `datos\respaldos\`, next to `BoldoAtlas.exe`.
-- **Installed:** `%APPDATA%\io.github.mscottb.boldoatlas\respaldos\`.
+- **Portable:** `datos/respaldos/`, next to the program.
+- **Installed:** `respaldos` inside your user data folder; on Windows, `%APPDATA%\io.github.mscottb.boldoatlas\respaldos\` (for Linux and macOS, see **Getting started › Portable and installed mode**).
 
 Each backup is a file `boldo-YYYYMMDD-HHMM.db` with the date and time it was made. If two are made in the same minute, the second one ends in `-2`.
 
