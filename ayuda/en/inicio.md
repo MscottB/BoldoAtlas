@@ -4,7 +4,7 @@
 
 BoldoAtlas is a Windows desktop app for building your organization's org chart: divisions, areas and sub-areas connected to each other, plus a record for each person who works in them. You can explore the result on the tree canvas or in the directory.
 
-**Coming soon:** processes, indicators, scenarios, Excel import and export, and opening .boldo files. Until they exist, they don't appear in the app.
+**Coming soon:** processes, indicators, scenarios, Excel import and export, and opening .boldo files. Until they exist, their buttons don't appear in the app (the unit panel's «Processes» tab only says they are coming later).
 
 ## First use
 

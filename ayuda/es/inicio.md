@@ -4,7 +4,7 @@
 
 BoldoAtlas es una app de escritorio para Windows con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
 
-**Próximamente:** procesos, indicadores, escenarios, importar y exportar a Excel y abrir archivos .boldo. Mientras no existan, no aparecen en la app.
+**Próximamente:** procesos, indicadores, escenarios, importar y exportar a Excel y abrir archivos .boldo. Mientras no existan, sus botones no aparecen en la app (la pestaña «Procesos» del panel de unidad solo avisa que llega más adelante).
 
 ## Primer uso
 
