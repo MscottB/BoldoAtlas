@@ -16,6 +16,7 @@ const textos = {
     instaladoresTxt: "Instalan BoldoAtlas en el sistema y guardan los datos en la carpeta de tu usuario.",
     sumas: "Sumas de verificación (SHA256SUMS.txt)",
     descargar: "Descargar",
+    sinJs: "Descargas en GitHub (Releases)",
   },
   en: {
     ultima: "latest version",
@@ -28,6 +29,7 @@ const textos = {
     instaladoresTxt: "They install BoldoAtlas on the system and keep the data in your user folder.",
     sumas: "Checksums (SHA256SUMS.txt)",
     descargar: "Download",
+    sinJs: "Downloads on GitHub (Releases)",
   },
 };
 const t = computed(() => textos[props.lang]);
@@ -51,61 +53,75 @@ const sistemas = [
   },
 ];
 
-// null = enlaces «latest/download»; con etiqueta = enlaces de esa versión (ver onMounted).
-const etiqueta = ref<string | null>(null);
-const version = ref<string | null>(null);
-const prelanzamiento = ref(false);
+// Hasta que la API confirme una release, todo apunta a la página de releases (nunca a un enlace que pueda dar 404).
+const RELEASES = `https://github.com/${REPO}/releases`;
+interface Release {
+  tag: string;
+  url: string;
+  prerelease: boolean;
+  archivos: Set<string>;
+}
+const release = ref<Release | null>(null);
 
-const base = computed(() =>
-  etiqueta.value
-    ? `https://github.com/${REPO}/releases/download/${etiqueta.value}`
-    : `https://github.com/${REPO}/releases/latest/download`,
-);
+// Enlace directo solo si el archivo está en esa release; si no, la página de la release.
+function enlace(archivo: string) {
+  const r = release.value;
+  if (!r) return RELEASES;
+  return r.archivos.has(archivo) ? `${RELEASES}/download/${encodeURIComponent(r.tag)}/${archivo}` : r.url;
+}
 
 async function pedir(ruta: string) {
   const r = await fetch(`https://api.github.com/repos/${REPO}/${ruta}`, {
     headers: { Accept: "application/vnd.github+json" },
   });
-  if (r.status === 404) return null;
   if (!r.ok) throw new Error(String(r.status));
   return r.json();
 }
 
 onMounted(async () => {
+  // /releases/latest ignora las prereleases y falla con 404 (o 403 por límite de la API): ante cualquier error
+  // se toma la más reciente de la lista. Si tampoco hay, se queda en la página de releases.
+  let datos;
   try {
-    // /releases/latest ignora las prereleases (y «latest/download» con ella). Mientras todas lo sean (alfa),
-    // se toma la más reciente de la lista y se enlaza por su etiqueta.
-    let release = await pedir("releases/latest");
-    if (!release) {
-      release = (await pedir("releases?per_page=1"))?.[0];
-      if (release) etiqueta.value = release.tag_name;
-    }
-    if (release?.tag_name) {
-      version.value = release.tag_name;
-      prelanzamiento.value = Boolean(release.prerelease);
-    }
+    datos = await pedir("releases/latest");
   } catch {
-    // sin red o con límite de la API: se queda en «última versión»
+    try {
+      datos = (await pedir("releases?per_page=1"))[0];
+    } catch {
+      return;
+    }
   }
+  if (!datos?.tag_name) return;
+  release.value = {
+    tag: datos.tag_name,
+    url: datos.html_url,
+    prerelease: Boolean(datos.prerelease),
+    archivos: new Set((datos.assets ?? []).map((x: { name: string }) => x.name)),
+  };
 });
 </script>
 
 <template>
   <div class="descargas">
-    <p class="version">
-      <template v-if="version">
-        {{ t.version }} <strong>{{ version }}</strong>
-        <span v-if="prelanzamiento" class="insignia">{{ t.pre }}</span>
+    <p class="version" aria-live="polite">
+      <template v-if="release">
+        {{ t.version }} <strong>{{ release.tag }}</strong>
+        <span v-if="release.prerelease" class="insignia">{{ t.pre }}</span>
       </template>
       <template v-else>{{ t.ultima }}</template>
     </p>
+    <noscript>
+      <p>
+        <a :href="RELEASES">{{ t.sinJs }}</a>
+      </p>
+    </noscript>
 
     <h2 id="portable" tabindex="-1">{{ t.portable }}</h2>
     <p>{{ t.portableTxt }}</p>
     <ul class="lista principal">
       <li v-for="s in sistemas" :key="s.portable">
         <span>{{ s.nombre }}</span>
-        <a class="boton" :href="`${base}/${s.portable}`">{{ t.descargar }} <code>{{ s.portable }}</code></a>
+        <a class="boton" :href="enlace(s.portable)">{{ t.descargar }} <code>{{ s.portable }}</code></a>
       </li>
     </ul>
 
@@ -115,12 +131,12 @@ onMounted(async () => {
       <li v-for="s in sistemas" :key="s.nombre">
         <span>{{ s.nombre }}</span>
         <span class="archivos">
-          <a v-for="f in s.instaladores" :key="f" :href="`${base}/${f}`"><code>{{ f }}</code></a>
+          <a v-for="f in s.instaladores" :key="f" :href="enlace(f)"><code>{{ f }}</code></a>
         </span>
       </li>
     </ul>
     <p>
-      <a :href="`${base}/SHA256SUMS.txt`">{{ t.sumas }}</a>
+      <a :href="enlace('SHA256SUMS.txt')">{{ t.sumas }}</a>
     </p>
   </div>
 </template>

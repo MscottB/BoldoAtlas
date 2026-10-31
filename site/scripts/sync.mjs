@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 const sitio = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(sitio, "..");
 
+// El selector de idioma lleva a la misma página: si falta una en un idioma, sería un 404.
+const lista = (i) => readdirSync(join(repo, "ayuda", i)).filter((f) => f.endsWith(".md")).sort().join();
+if (lista("es") !== lista("en")) throw new Error("ayuda/es y ayuda/en no tienen las mismas páginas");
+
 const manual = { es: "manual", en: "en/manual" };
 for (const [idioma, destino] of Object.entries(manual)) {
   const origen = join(repo, "ayuda", idioma);

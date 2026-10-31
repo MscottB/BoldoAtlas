@@ -18,4 +18,4 @@ Found a bug or have an idea? Open an [issue](https://github.com/MscottB/BoldoAtl
 
 ## Privacy
 
-Everything is stored on your computer. BoldoAtlas makes no network connections and has no accounts. This site uses no cookies or analytics either; the [Downloads](/en/descargas) page asks GitHub for the latest version number.
+Everything is stored on your computer. BoldoAtlas does not need internet to work and has no accounts; later it will be able to check for updates, optionally. This site uses no cookies or analytics either; the [Downloads](/en/descargas) page asks GitHub for the latest version number.

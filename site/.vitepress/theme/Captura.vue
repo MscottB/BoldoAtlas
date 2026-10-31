@@ -2,12 +2,12 @@
 import { withBase } from "vitepress";
 
 // Captura de public/capturas/ (copiadas por scripts/sync.mjs); withBase pone el prefijo /BoldoAtlas/.
-defineProps<{ archivo: string; alt: string }>();
+defineProps<{ archivo: string; alt: string; ancho: number; alto: number }>();
 </script>
 
 <template>
   <figure class="captura">
-    <img :src="withBase(`/capturas/${archivo}`)" :alt="alt" loading="lazy" />
+    <img :src="withBase(`/capturas/${archivo}`)" :alt="alt" :width="ancho" :height="alto" loading="lazy" />
     <figcaption><slot /></figcaption>
   </figure>
 </template>

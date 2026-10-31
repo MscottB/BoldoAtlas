@@ -5,27 +5,30 @@ import { defineConfig, type DefaultTheme } from "vitepress";
 // El manual es el de la app (ayuda/<idioma>/*.md); scripts/sync.mjs lo copia a manual/ y en/manual/.
 // Mismo orden que en la app: «inicio» primero, el resto por orden alfabético del archivo.
 const ayuda = fileURLToPath(new URL("../../ayuda/", import.meta.url));
+// Primer encabezado «# ...» fuera de los bloques de código.
+const primerTitulo = (md: string) => /^# +(.+)$/m.exec(md.replace(/^(```|~~~)[\s\S]*?^\1/gm, ""))?.[1];
 function barraManual(idioma: "es" | "en", prefijo: string, titulo: string): DefaultTheme.SidebarItem[] {
   const paginas = readdirSync(`${ayuda}${idioma}`)
     .filter((f) => f.endsWith(".md"))
     .map((f) => ({
       slug: f.slice(0, -3),
-      text: /^#\s+(.+)$/m.exec(readFileSync(`${ayuda}${idioma}/${f}`, "utf8"))?.[1] ?? f,
+      text: primerTitulo(readFileSync(`${ayuda}${idioma}/${f}`, "utf8")) ?? f,
     }))
     .sort((a, b) => Number(b.slug === "inicio") - Number(a.slug === "inicio") || a.slug.localeCompare(b.slug));
   return [{ text: titulo, items: paginas.map((p) => ({ text: p.text, link: `${prefijo}/manual/${p.slug}` })) }];
 }
 
 const REPO = "https://github.com/MscottB/BoldoAtlas";
+const BASE = "/BoldoAtlas/";
 
 export default defineConfig({
   title: "BoldoAtlas",
-  base: "/BoldoAtlas/",
+  base: BASE,
   cleanUrls: true,
   srcExclude: ["README.md"],
   sitemap: { hostname: "https://mscottb.github.io/BoldoAtlas/" },
   head: [
-    ["link", { rel: "icon", type: "image/png", href: "/BoldoAtlas/icono.png" }],
+    ["link", { rel: "icon", type: "image/png", href: `${BASE}icono.png` }],
     ["meta", { name: "theme-color", content: "#c8743f" }],
   ],
   locales: {

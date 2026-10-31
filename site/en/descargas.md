@@ -5,7 +5,7 @@ description: Download BoldoAtlas for Windows, Linux or macOS, as a portable vers
 
 # Downloads
 
-Each system has a **portable** version, the recommended one, and an **installer**. The links always point to the latest published version. For now, every version is a pre-release (alpha).
+Each system has a **portable** version, the recommended one, and an **installer**. The links point to the latest published version; if a file is not in it, the link goes to that version's page.
 
 <Descargas lang="en" />
 
