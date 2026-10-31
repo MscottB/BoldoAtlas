@@ -4,10 +4,30 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useVueFlow } from "@vue-flow/core";
 import { onKeyStroke } from "@vueuse/core";
-import { Bookmark, BookmarkCheck, Maximize, Plus, ZoomIn, ZoomOut } from "@lucide/vue";
+import {
+  Bookmark,
+  BookmarkCheck,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  LayoutGrid,
+  Maximize,
+  Plus,
+  ZoomIn,
+  ZoomOut,
+} from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { hoyISO } from "@/features/puestos/puestos";
+import type { Unidad } from "@/db/tipos";
+import { FECHA_MINIMA, fechaElegible, hoyISO } from "@/features/puestos/puestos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
@@ -15,10 +35,13 @@ import PanelVista from "./PanelVista.vue";
 import PanelResaltar from "./PanelResaltar.vue";
 import MenuVistas from "./MenuVistas.vue";
 
-const props = defineProps<{ raiz: string | null }>();
+// `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
+const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
+defineEmits<{ reordenar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
-const { seleccion, nuevaHija } = useLienzo();
+const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
+const NIVELES = [1, 2, 3, 4, 5, 6];
 const { config } = useVista();
 const { zoomIn, zoomOut, fitView } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
 
@@ -36,13 +59,23 @@ const aGuardar = computed(() => {
   return u?.parent_id ? u : null;
 });
 const guardada = computed(() => org.subarboles.some((s) => s.unidad_id === aGuardar.value?.id));
-// Fecha elegida: vacía = hoy. No se ofrecen fechas futuras; un valor fuera de rango (tecleado) se ignora.
-async function elegirFecha(e: Event) {
-  const campo = e.target as HTMLInputElement;
-  if (campo.value > hoyISO()) return void (campo.value = org.fechaVista ?? "");
-  const v = campo.value;
-  const r = await org.verAFecha(v || null);
+// Fecha elegida: vacía = hoy. Solo se aplica una fecha completa y en rango: al teclear el año el campo pasa por 0002-…,
+// 0020-…, que no se aplican. Al salir del campo (o con Enter) el vacío vuelve a hoy y lo que quedó a medias se descarta.
+async function verFecha(v: string | null) {
+  if (v === org.fechaVista) return;
+  const r = await org.verAFecha(v);
   if (!r.ok) toast.error(r.mensaje);
+}
+function cambiarFecha(e: Event) {
+  const v = (e.target as HTMLInputElement).value;
+  if (fechaElegible(v, hoyISO())) void verFecha(v);
+}
+function terminarFecha(e: Event) {
+  const campo = e.target as HTMLInputElement;
+  const v = campo.value;
+  if (fechaElegible(v, hoyISO())) return; // ya se aplicó al cambiar
+  campo.value = v ? (org.fechaVista ?? "") : ""; // borra también los segmentos a medias
+  if (!v) void verFecha(null);
 }
 async function guardarEnArboles() {
   const r = aGuardar.value && (await org.guardarSubarbol(aGuardar.value.id));
@@ -89,13 +122,46 @@ async function guardarEnArboles() {
       data-fecha-vista
       type="date"
       class="h-7 w-40"
+      :min="FECHA_MINIMA"
       :max="hoyISO()"
       :model-value="org.fechaVista ?? ''"
       :title="t('arbol.fecha.titulo')"
       :aria-label="t('arbol.fecha.titulo')"
-      @change="elegirFecha"
+      @change="cambiarFecha"
+      @blur="terminarFecha"
+      @keydown.enter="terminarFecha"
     />
     <span class="ml-auto flex gap-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="outline" size="sm">
+            <ChevronsUpDown aria-hidden="true" />
+            {{ t("arbol.ramas.titulo") }}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="w-56">
+          <DropdownMenuItem @select="expandirTodo(unidades)">
+            <ChevronsUpDown aria-hidden="true" />
+            {{ t("arbol.ramas.expandirTodo") }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="contraerHasta(unidades, 1)">
+            <ChevronsDownUp aria-hidden="true" />
+            {{ t("arbol.ramas.contraerTodo") }}
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>{{ t("arbol.ramas.contraerHasta") }}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem v-for="n in NIVELES" :key="n" @select="contraerHasta(unidades, n)">
+                {{ t("arbol.ramas.nivel", { n }) }}
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button variant="outline" size="sm" :title="t('arbol.reordenarAyuda')" @click="$emit('reordenar')">
+        <LayoutGrid aria-hidden="true" />
+        {{ t("arbol.reordenar") }}
+      </Button>
       <Button
         variant="outline"
         size="icon-sm"

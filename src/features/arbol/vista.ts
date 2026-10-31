@@ -26,6 +26,8 @@ export interface ConfigVista {
   mostrarVacantes: boolean;
   mostrarEtiquetas: boolean;
   verPuestos: boolean;
+  /** Toda tarjeta de un mismo nivel empieza en la misma línea (también los puestos, que son más bajos). */
+  nivelesEstrictos: boolean;
   mostrarCargo: boolean;
   mostrarPersona: boolean;
   /** Tipos de unidad cuyo superior más cercano se muestra en cada tarjeta. */
@@ -48,6 +50,7 @@ export const VISTA_POR_DEFECTO: ConfigVista = {
   mostrarVacantes: true,
   mostrarEtiquetas: true,
   verPuestos: false,
+  nivelesEstrictos: false,
   mostrarCargo: true,
   mostrarPersona: true,
   rutaTipos: [],
@@ -64,24 +67,35 @@ export const VISTA_POR_DEFECTO: ConfigVista = {
   },
 };
 
-/** Tamaño de las tarjetas: lo usan el layout y los nodos (una sola fuente). Compacta = una línea. */
-export function tamUnidad(c: Pick<ConfigVista, "densidad">, conRuta: boolean) {
-  if (c.densidad === "compacta") return { ancho: 220, alto: 40 };
-  return { ancho: 220, alto: conRuta ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD };
-}
-export const tamPuesto = (c: Pick<ConfigVista, "densidad">) => ({
-  ancho: 200,
-  alto: c.densidad === "compacta" ? 32 : 68,
+// El texto de las tarjetas es rem: con la escala de la interfaz (90 %–125 %) la tarjeta crece igual, o el texto no cabe.
+const escalar = (ancho: number, alto: number, escala: number) => ({
+  ancho: Math.round((ancho * escala) / 100),
+  alto: Math.round((alto * escala) / 100),
 });
 
-/** Opciones de elk: dirección y separaciones. El tamaño de las tarjetas va aparte (tamUnidad/tamPuesto). */
+/** Tamaño de las tarjetas: lo usan el layout y los nodos (una sola fuente). Compacta = una línea. */
+export function tamUnidad(c: Pick<ConfigVista, "densidad">, conRuta: boolean, escala = 100) {
+  if (c.densidad === "compacta") return escalar(220, 40, escala);
+  return escalar(220, conRuta ? ALTO_UNIDAD_CON_RUTA : ALTO_UNIDAD, escala);
+}
+export const tamPuesto = (c: Pick<ConfigVista, "densidad">, escala = 100) =>
+  escalar(200, c.densidad === "compacta" ? 32 : 68, escala);
+
+/** Separación (px) entre tarjetas hermanas y entre un nivel y el siguiente. */
+export const separaciones = (c: Pick<ConfigVista, "densidad">) =>
+  c.densidad === "compacta" ? { hermanos: 10, niveles: 28 } : { hermanos: 28, niveles: 64 };
+
+/**
+ * Opciones de elk. mrtree es un árbol ordenado: cada superior centrado sobre sus hijos, los hermanos en el orden en que
+ * llegan (el de `orden`) y cada profundidad en una fila. Usa la misma separación entre hermanos y entre niveles: la de
+ * niveles la agrega calcularLayout. El tamaño de las tarjetas va aparte (tamUnidad/tamPuesto).
+ */
 export function opcionesElk(c: Pick<ConfigVista, "direccion" | "densidad">): Record<string, string> {
-  const compacta = c.densidad === "compacta";
   return {
-    "elk.algorithm": "layered",
+    "elk.algorithm": "mrtree",
     "elk.direction": c.direccion === "horizontal" ? "RIGHT" : "DOWN",
-    "elk.spacing.nodeNode": compacta ? "10" : "28",
-    "elk.layered.spacing.nodeNodeBetweenLayers": compacta ? "28" : "64",
+    "elk.spacing.nodeNode": String(separaciones(c).hermanos),
+    "elk.mrtree.weighting": "MODEL_ORDER",
   };
 }
 
@@ -120,6 +134,7 @@ export function leerVista(crudo: unknown): ConfigVista {
     mostrarVacantes: bool(c, d, "mostrarVacantes"),
     mostrarEtiquetas: bool(c, d, "mostrarEtiquetas"),
     verPuestos: bool(c, d, "verPuestos"),
+    nivelesEstrictos: bool(c, d, "nivelesEstrictos"),
     mostrarCargo: bool(c, d, "mostrarCargo"),
     mostrarPersona: bool(c, d, "mostrarPersona"),
     rutaTipos:

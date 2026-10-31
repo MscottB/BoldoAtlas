@@ -25,4 +25,7 @@ export function recordarPorArbol(clave: Ref<string | null>) {
   });
 }
 
-export const useVista = () => ({ config });
+/** El panel «Vista» abierto (también lo abre el menú contextual del lienzo). */
+const panelAbierto = ref(false);
+
+export const useVista = () => ({ config, panelAbierto });

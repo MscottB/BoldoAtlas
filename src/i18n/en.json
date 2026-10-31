@@ -129,7 +129,8 @@
         "mostrarDotacion": "Headcount",
         "mostrarVacantes": "Vacancies",
         "mostrarEtiquetas": "Tags"
-      }
+      },
+      "nivelesEstrictos": "Strict level alignment"
     },
     "resaltar": {
       "titulo": "Highlight by…",
@@ -154,6 +155,28 @@
       "eliminar": "Delete “{nombre}”",
       "eliminada": "View deleted",
       "deshacer": "Undo"
+    },
+    "reordenar": "Rearrange",
+    "reordenarAyuda": "Lays out the diagram again and fits it to the view",
+    "ramas": {
+      "titulo": "Branches",
+      "expandirTodo": "Expand all",
+      "contraerTodo": "Collapse all",
+      "contraerHasta": "Collapse to level",
+      "nivel": "Level {n}"
+    },
+    "menu": {
+      "lienzo": "Canvas",
+      "abrirPanel": "Open panel",
+      "renombrar": "Rename",
+      "verPersonas": "View people",
+      "expandirRama": "Expand branch",
+      "contraerRama": "Collapse branch",
+      "seleccionarRama": "Select branch",
+      "eliminar": "Delete…",
+      "abrirPuesto": "Open position",
+      "nuevaRaiz": "New root unit",
+      "vista": "View…"
     }
   },
   "arboles": {

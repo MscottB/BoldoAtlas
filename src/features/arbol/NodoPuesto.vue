@@ -5,6 +5,7 @@ import { Briefcase } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useEstilo } from "@/features/puestos/useEstilo";
 import { usePuesto } from "@/features/puestos/usePuesto";
+import { useTema } from "@/features/tema/useTema";
 import { useVista } from "./useVista";
 import { tamPuesto } from "./vista";
 
@@ -23,11 +24,12 @@ const { t } = useI18n();
 const { abrir } = usePuesto();
 const { copiar, pegar } = useEstilo();
 const { config } = useVista();
+const { escala } = useTema();
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");
 // Misma función que usa el layout.
 const tam = computed(() => {
-  const { ancho, alto } = tamPuesto(config.value);
+  const { ancho, alto } = tamPuesto(config.value, escala.value);
   return { width: `${ancho}px`, height: `${alto}px` };
 });
 </script>

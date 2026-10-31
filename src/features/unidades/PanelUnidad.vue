@@ -35,7 +35,7 @@ const emit = defineEmits<{ cerrar: [foco?: string | null] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { editando, seleccionar, expandir, pedidoEliminar, duplicar } = useLienzo();
+const { editando, seleccionar, expandir, pedidoEliminar, pestanaPanel, duplicar } = useLienzo();
 const puesto = usePuesto();
 const uid = useId();
 
@@ -52,6 +52,16 @@ function cerrar() {
 // Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada.
 const soloLectura = computed(() => !!org.fechaVista);
 const pestana = ref("resumen");
+// El menú contextual de la tarjeta puede pedir una pestaña («Ver personas»).
+watch(
+  pestanaPanel,
+  (p) => {
+    if (!p) return;
+    pestana.value = p;
+    pestanaPanel.value = null;
+  },
+  { immediate: true },
+);
 const avisar = (r: Resultado) => !r.ok && toast.error(r.mensaje);
 
 // Campos de texto: se guardan al terminar de editar (Enter, Tab o salir), no en cada tecla.

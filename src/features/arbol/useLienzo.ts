@@ -5,6 +5,7 @@ import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import { hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
+import { colapsadosIniciales, contraerRama, expandirRama, subgrafoVisible } from "./layout";
 import { sumar, type Seleccion } from "./multiple";
 import { useVista } from "./useVista";
 import type { Resaltado } from "./vista";
@@ -95,8 +96,17 @@ const editando = ref<string | null>(null);
 const centrarEn = ref<string | null>(null);
 /** Cada pedido (Supr) sube el contador; el panel de la unidad seleccionada lo atiende con su flujo de eliminar. */
 const pedidoEliminar = ref(0);
+/** Pestaña que el panel de la unidad debe mostrar (lo atiende y la deja en null). */
+const pestanaPanel = ref<string | null>(null);
 let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
 let cumplen: ComputedRef<Set<string> | null> | undefined;
+
+// Expandir y contraer reemplazan las ramas plegadas y devuelven cuántas unidades quedan a la vista (de `unidades`, las
+// que se dibujan), para poder avisar cuando son muchas.
+function plegar(unidades: Unidad[], nuevas: Set<string>): number {
+  colapsados.value = nuevas;
+  return subgrafoVisible(unidades, [], nuevas).nodos.length;
+}
 
 function expandir(id: string) {
   if (!colapsados.value.has(id)) return;
@@ -185,7 +195,16 @@ export function useLienzo() {
     editando,
     centrarEn,
     pedidoEliminar,
+    pestanaPanel,
     expandir,
+    expandirTodo: (unidades: Unidad[]) => plegar(unidades, new Set()),
+    /** 1 = solo las raíces (contraer todo). */
+    contraerHasta: (unidades: Unidad[], nivel: number) =>
+      plegar(unidades, colapsadosIniciales(unidades, nivel)),
+    expandirRama: (unidades: Unidad[], id: string) =>
+      plegar(unidades, expandirRama(colapsados.value, unidades, id)),
+    contraerRama: (unidades: Unidad[], id: string) =>
+      plegar(unidades, contraerRama(colapsados.value, unidades, id)),
     nuevaUnidad,
     nuevaHija,
     revelar,

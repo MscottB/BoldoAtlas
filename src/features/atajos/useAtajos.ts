@@ -84,6 +84,13 @@ export function useAtajos() {
       return;
     }
 
+    // Las flechas y el menú contextual valen con el foco suelto, en el lienzo o en el panel mismo.
+    const libre =
+      !destino ||
+      destino === document.body ||
+      destino.closest(".vue-flow") ||
+      destino.matches("[data-panel-unidad]");
+
     if (atajo === "nuevaUnidad") {
       const raiz = route.query.raiz;
       void nuevaHija(typeof raiz === "string" ? raiz : null);
@@ -92,15 +99,22 @@ export function useAtajos() {
     } else if (atajo === "eliminar") {
       if (!seleccion.value) return;
       pedidoEliminar.value++;
+    } else if (atajo === "menuContextual") {
+      // Sobre la tarjeta enfocada; si no, la seleccionada; si no, el fondo del lienzo. Se abre en su centro.
+      if (!libre) return;
+      const elegida = seleccion.value && `.vue-flow__node[data-id="${CSS.escape(seleccion.value)}"]`;
+      const el =
+        destino?.closest(".vue-flow__node") ??
+        (elegida ? document.querySelector(elegida) : null) ??
+        document.querySelector(".vue-flow__pane");
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const centro = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+      el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, ...centro }));
     } else if (atajo === "duplicar") {
       // Con varias seleccionadas no hay una rama que duplicar. Ctrl+D se atiende igual (es «marcador» del navegador).
       if (seleccion.value && seleccionadas.value.size === 1) void duplicar(seleccion.value);
     } else {
-      const libre =
-        !destino ||
-        destino === document.body ||
-        destino.closest(".vue-flow") ||
-        destino.matches("[data-panel-unidad]");
       if (!libre) return;
       const extiende = atajo.startsWith("extender:");
       const id = destinoNavegacion(

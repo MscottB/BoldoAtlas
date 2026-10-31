@@ -66,8 +66,17 @@ export const hoyISO = (d = new Date()): string =>
 /** AAAA-MM-DD → fecha corta en el idioma; se arma con partes locales para que la zona horaria no la corra. */
 export function formatearFecha(iso: string, idioma: string): string {
   const [a, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat(idioma, { dateStyle: "medium" }).format(new Date(a, m - 1, d));
+  const fecha = new Date(2000, m - 1, d);
+  fecha.setFullYear(a); // new Date(a, …) lleva los años 0–99 a 1900–1999
+  return new Intl.DateTimeFormat(idioma, { dateStyle: "medium" }).format(fecha);
 }
+
+/** Primer día que se puede ver en el lienzo. */
+export const FECHA_MINIMA = "1900-01-01";
+
+/** Una fecha completa (AAAA-MM-DD) entre FECHA_MINIMA y hoy. Mientras se teclea el año, el campo da 0002-…, 0020-… */
+export const fechaElegible = (v: string, hoy: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= FECHA_MINIMA && v <= hoy;
 
 /** Quien recibe la asignación: una persona existente o el nombre de una por crear. */
 export type EleccionPersona = { id: string } | { nombre: string };

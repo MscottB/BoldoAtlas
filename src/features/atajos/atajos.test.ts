@@ -123,6 +123,23 @@ describe("resolverAtajo: selección múltiple y duplicar", () => {
   });
 });
 
+describe("resolverAtajo: menú contextual", () => {
+  it("Mayús+F10 y la tecla Menú lo abren, también viendo una fecha", () => {
+    expect(resolverAtajo(tecla("F10", { shiftKey: true }))).toBe("menuContextual");
+    expect(resolverAtajo(tecla("ContextMenu"))).toBe("menuContextual");
+    expect(resolverAtajo(tecla("ContextMenu", { soloLectura: true }))).toBe("menuContextual");
+  });
+
+  it("F10 sola, con Ctrl o Alt, escribiendo (el campo tiene su propio menú) o con un menú abierto, no", () => {
+    expect(resolverAtajo(tecla("F10"))).toBeNull();
+    expect(resolverAtajo(tecla("F10", { shiftKey: true, ctrlKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F10", { shiftKey: true, altKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F10", { shiftKey: true, enCampoDeTexto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("ContextMenu", { enCampoDeTexto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("ContextMenu", { modalAbierto: true }))).toBeNull();
+  });
+});
+
 describe("destinoNavegacion", () => {
   // GG › {Operaciones (orden 0) › Mantención › {Mecánica, Eléctrica}, Finanzas (orden 1)}
   const ir = (actual: string | null, a: Parameters<typeof destinoNavegacion>[2], lista = unidades) =>

@@ -9,6 +9,7 @@ import {
   leerVista,
   leyendasEnUso,
   opcionesElk,
+  separaciones,
   sinResaltar,
   tamPuesto,
   tamUnidad,
@@ -21,6 +22,7 @@ describe("leerVista", () => {
     for (const crudo of [null, undefined, 3, "x", [], true])
       expect(leerVista(crudo)).toEqual(VISTA_POR_DEFECTO);
     expect(VISTA_POR_DEFECTO.verPuestos).toBe(false);
+    expect(VISTA_POR_DEFECTO.nivelesEstrictos).toBe(false);
   });
 
   it("acepta una configuración válida y descarta claves desconocidas", () => {
@@ -33,6 +35,7 @@ describe("leerVista", () => {
       mostrarEtiquetas: false,
       resaltar: { ...VISTA_POR_DEFECTO.resaltar, texto: "ope", vacantes: true, sede: "s1", cargo: "c1" },
       verPuestos: true,
+      nivelesEstrictos: true,
       mostrarCargo: false,
       mostrarPersona: true,
       rutaTipos: ["a", "b"],
@@ -137,12 +140,12 @@ describe("leyendasEnUso", () => {
 });
 
 describe("opcionesElk y tamaños", () => {
-  it("por defecto es vertical y normal: lo que usaba el layout antes", () => {
+  it("por defecto: árbol ordenado (mrtree) vertical, hermanos según su orden", () => {
     expect(opcionesElk(VISTA_POR_DEFECTO)).toEqual({
-      "elk.algorithm": "layered",
+      "elk.algorithm": "mrtree",
       "elk.direction": "DOWN",
       "elk.spacing.nodeNode": "28",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "64",
+      "elk.mrtree.weighting": "MODEL_ORDER",
     });
   });
 
@@ -153,7 +156,8 @@ describe("opcionesElk y tamaños", () => {
     expect(h["elk.spacing.nodeNode"]).toBe("28");
     expect(c["elk.direction"]).toBe("DOWN");
     expect(Number(c["elk.spacing.nodeNode"])).toBeLessThan(28);
-    expect(Number(c["elk.layered.spacing.nodeNodeBetweenLayers"])).toBeLessThan(64);
+    expect(separaciones({ densidad: "normal" })).toEqual({ hermanos: 28, niveles: 64 });
+    expect(separaciones({ densidad: "compacta" }).niveles).toBeLessThan(64);
   });
 
   it("la tarjeta compacta es de una línea y no crece con la ruta; la normal crece", () => {
@@ -163,6 +167,14 @@ describe("opcionesElk y tamaños", () => {
     expect(tamUnidad({ densidad: "compacta" }, false).alto).toBeLessThan(60);
     expect(tamPuesto({ densidad: "normal" })).toEqual({ ancho: 200, alto: 68 });
     expect(tamPuesto({ densidad: "compacta" }).alto).toBeLessThan(40);
+  });
+
+  it("las tarjetas crecen con la escala de la interfaz (el texto es rem): layout y tarjeta usan la misma medida", () => {
+    expect(tamUnidad({ densidad: "normal" }, false, 100)).toEqual({ ancho: 220, alto: 112 });
+    expect(tamUnidad({ densidad: "normal" }, false, 125)).toEqual({ ancho: 275, alto: 140 });
+    expect(tamUnidad({ densidad: "compacta" }, false, 125)).toEqual({ ancho: 275, alto: 50 });
+    expect(tamUnidad({ densidad: "normal" }, true, 90)).toEqual({ ancho: 198, alto: 119 });
+    expect(tamPuesto({ densidad: "normal" }, 125)).toEqual({ ancho: 250, alto: 85 });
   });
 });
 

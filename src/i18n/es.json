@@ -129,7 +129,8 @@
         "mostrarDotacion": "Dotación",
         "mostrarVacantes": "Vacantes",
         "mostrarEtiquetas": "Etiquetas"
-      }
+      },
+      "nivelesEstrictos": "Orden estricto por niveles"
     },
     "resaltar": {
       "titulo": "Resaltar por…",
@@ -154,6 +155,28 @@
       "eliminar": "Eliminar «{nombre}»",
       "eliminada": "Vista eliminada",
       "deshacer": "Deshacer"
+    },
+    "reordenar": "Reordenar",
+    "reordenarAyuda": "Vuelve a ordenar el diagrama y lo encuadra",
+    "ramas": {
+      "titulo": "Ramas",
+      "expandirTodo": "Expandir todo",
+      "contraerTodo": "Contraer todo",
+      "contraerHasta": "Contraer hasta el nivel",
+      "nivel": "Nivel {n}"
+    },
+    "menu": {
+      "lienzo": "Lienzo",
+      "abrirPanel": "Abrir panel",
+      "renombrar": "Renombrar",
+      "verPersonas": "Ver personas",
+      "expandirRama": "Expandir rama",
+      "contraerRama": "Contraer rama",
+      "seleccionarRama": "Seleccionar rama",
+      "eliminar": "Eliminar…",
+      "abrirPuesto": "Abrir puesto",
+      "nuevaRaiz": "Nueva unidad raíz",
+      "vista": "Vista…"
     }
   },
   "arboles": {

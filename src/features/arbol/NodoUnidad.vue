@@ -8,6 +8,7 @@ import { Copy, Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { textoSobre } from "@/features/tema/tema";
+import { useTema } from "@/features/tema/useTema";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
@@ -44,12 +45,13 @@ const {
   duplicar,
 } = useLienzo();
 const { config } = useVista();
+const { escala } = useTema();
 
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");
 // Misma función que usa el layout: la tarjeta dibujada mide lo que elk reservó.
 const tam = computed(() => {
-  const { ancho, alto } = tamUnidad(config.value, props.data.ruta !== null);
+  const { ancho, alto } = tamUnidad(config.value, props.data.ruta !== null, escala.value);
   return { width: `${ancho}px`, height: `${alto}px` };
 });
 

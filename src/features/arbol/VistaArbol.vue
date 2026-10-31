@@ -46,7 +46,6 @@ import {
   CRITERIO_LEYENDA,
   arbolDeVista,
   leyendasEnUso,
-  opcionesElk,
   tamPuesto,
   tamUnidad,
   tipoArista,
@@ -56,9 +55,11 @@ import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
+import MenuLienzo from "./MenuLienzo.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha } from "@/features/puestos/puestos";
+import { useTema } from "@/features/tema/useTema";
 
 type Punto = { x: number; y: number };
 
@@ -86,6 +87,7 @@ const {
   removeSelectedElements,
 } = useVueFlow();
 const { config } = useVista();
+const { escala } = useTema();
 
 // Opciones de «Vista» que cambian lo dibujado. Solo cuentan los tipos que alguna unidad usa.
 const tiposUso = computed(() => tiposEnUso(org.enFecha.unidades, org.catalogos.tipos_unidad));
@@ -104,7 +106,7 @@ const rutas = computed(() =>
     : null,
 );
 // Igual que la tarjeta de NodoUnidad (misma función); con la ruta por tipo suma una línea, y la compacta es de una línea.
-const TAM = computed(() => tamUnidad(config.value, !!rutas.value));
+const TAM = computed(() => tamUnidad(config.value, !!rutas.value, escala.value));
 
 // Vista enfocada: /?raiz=<id>. Una raíz que ya no existe se ignora y se ve todo.
 const raiz = computed(() => {
@@ -144,6 +146,12 @@ watch(
 // El layout es asíncrono: solo aplica el del último cambio, junto con el subgrafo que lo produjo.
 const vista = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
 let ultimo = 0;
+// «Reordenar»: vuelve a calcular el layout y encuadra.
+const reordenado = ref(0);
+function reordenar() {
+  encuadrar = true;
+  reordenado.value++;
+}
 watch(
   () => ({
     g: subgrafoVisible(
@@ -153,8 +161,13 @@ watch(
       config.value.verPuestos ? org.enFecha.puestos : [],
     ),
     tam: TAM.value,
-    tamDelPuesto: tamPuesto(config.value),
-    opciones: opcionesElk(config.value),
+    tamDelPuesto: tamPuesto(config.value, escala.value),
+    opciones: {
+      direccion: config.value.direccion,
+      densidad: config.value.densidad,
+      nivelesEstrictos: config.value.nivelesEstrictos,
+    },
+    reordenado: reordenado.value,
   }),
   async ({ g, tam, tamDelPuesto, opciones }) => {
     const este = ++ultimo;
@@ -212,6 +225,8 @@ watch([pendiente, areNodesInitialized], ([p, medidos]) => {
   if (c) void setCenter(c.x + TAM.value.ancho / 2, c.y + TAM.value.alto / 2, { zoom: 1 });
   else void fitView();
 });
+
+const visibles = computed(() => new Set(vista.value?.g.nodos.map((u) => u.id)));
 
 const trabajadorPorId = computed(() => new Map(org.enFecha.trabajadores.map((x) => [x.id, x])));
 const etiquetasDe = computed(() => {
@@ -427,7 +442,7 @@ function verCompleto() {
         <Button variant="outline" size="sm" @click="verCompleto">{{ t("arbol.verCompleto") }}</Button>
       </span>
     </nav>
-    <BarraLienzo :raiz="raiz" />
+    <BarraLienzo :raiz="raiz" :unidades="mostradas" @reordenar="reordenar" />
     <div role="status">
       <div
         v-if="org.fechaVista"
@@ -445,33 +460,35 @@ function verCompleto() {
     </div>
     <div class="flex min-h-0 flex-1">
       <div class="relative min-w-0 flex-1" @keydown.esc="escEnLienzo">
-        <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
-        <VueFlow
-          :nodes="nodos"
-          :edges="aristas"
-          :min-zoom="0.05"
-          :nodes-draggable="!org.fechaVista"
-          :elements-selectable="!org.fechaVista"
-          :select-nodes-on-drag="false"
-          :nodes-connectable="false"
-          :nodes-focusable="false"
-          :edges-focusable="false"
-          :zoom-on-double-click="false"
-          :delete-key-code="null"
-          class="lienzo"
-          @node-drag-stop="alSoltar"
-          @node-click="removeSelectedElements()"
-          @selection-end="alTerminarRecuadro"
-          @pane-click="seleccion = null"
-        >
-          <template #node-unidad="p">
-            <NodoUnidad :id="p.id" :data="p.data" />
-          </template>
-          <template #node-puesto="p">
-            <NodoPuesto :id="p.id" :data="p.data" />
-          </template>
-          <MiniMap pannable zoomable />
-        </VueFlow>
+        <MenuLienzo :unidades="mostradas" :visibles="visibles" :raiz="raiz" @reordenar="reordenar">
+          <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
+          <VueFlow
+            :nodes="nodos"
+            :edges="aristas"
+            :min-zoom="0.05"
+            :nodes-draggable="!org.fechaVista"
+            :elements-selectable="!org.fechaVista"
+            :select-nodes-on-drag="false"
+            :nodes-connectable="false"
+            :nodes-focusable="false"
+            :edges-focusable="false"
+            :zoom-on-double-click="false"
+            :delete-key-code="null"
+            class="lienzo"
+            @node-drag-stop="alSoltar"
+            @node-click="removeSelectedElements()"
+            @selection-end="alTerminarRecuadro"
+            @pane-click="seleccion = null"
+          >
+            <template #node-unidad="p">
+              <NodoUnidad :id="p.id" :data="p.data" />
+            </template>
+            <template #node-puesto="p">
+              <NodoPuesto :id="p.id" :data="p.data" />
+            </template>
+            <MiniMap pannable zoomable />
+          </VueFlow>
+        </MenuLienzo>
         <div
           v-if="seleccionadas.size >= 2 && !org.fechaVista"
           class="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-center"

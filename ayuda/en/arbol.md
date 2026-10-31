@@ -20,6 +20,30 @@ Solid lines join each unit to its parent. Dotted lines are lateral connections b
 
 When the tree opens you see the roots and their first level; the rest is collapsed. The button at the bottom right of a card shows how many sub-units are hidden (for example `+3`): press it to expand them and again to collapse them.
 
+The **Branches** button in the canvas toolbar expands or collapses everything at once:
+
+- **Expand all** opens every branch.
+- **Collapse all** leaves only the roots.
+- **Collapse to level** 1 to 6 shows that many levels (1 = roots only) and collapses the rest.
+
+In a unit's context menu, **Expand branch** opens the unit and everything under it, and **Collapse branch** folds it together with its sub-branches: when you open it again you see one level. In a branch opened as a tree, levels are counted from its root.
+
+## Tidy diagram
+
+The tree is drawn tidy: each parent sits centred over its sub-units (and its positions, if shown), sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they are only drawn on top.
+
+**Rearrange**, in the canvas toolbar, lays out the drawing again and fits it to the window.
+
+## Context menu
+
+Right-click a card or the canvas background to open a menu with what you can do there. With the keyboard, open it with `Shift` + `F10` or the Menu key, on the focused card or, if there is none, the selected one (if there is none either, the background menu). Move with the arrow keys, `Enter` picks and `Esc` closes it and returns focus to the card.
+
+- **Unit**: Open panel, New sub-unit, Rename, View people (opens the panel on the Positions tab), Expand branch, Collapse branch, Select branch (the unit and what is visible of its branch), Duplicate branch, Open as tree, Save in Trees and Delete… (with the usual confirmation).
+- **Position** (with **Show positions** on): Open position, Assign holder, Register replacement, Copy style, Paste style and Remove style.
+- **Background**: New root unit, Expand all, Collapse all, Rearrange, Fit view and View….
+
+While viewing the chart at a past date, actions that change something are disabled.
+
 ## Selecting, creating and renaming
 
 - **Click** a card to select it. Click the background to clear the selection.
@@ -88,6 +112,7 @@ In addition, the **View** button lets you choose:
 - **Direction**: vertical (top to bottom) or horizontal (left to right).
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
 - **Lines**: right-angle or curved.
+- **Strict level alignment**: every card of a level starts on the same line, positions included (they are shorter and, without this option, sit centred in the row).
 - **Card details**: unit type, head, head's photo, headcount, vacancies and tags.
 
 Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.
@@ -98,7 +123,7 @@ The **Views** button saves the current configuration (direction, density, lines,
 
 ## Viewing a past date
 
-The date picker in the canvas toolbar shows the org chart as it was on a past day. Pick the date (future dates are not accepted): the **Viewing as of … · read only** band appears at the top with a **Back to today** button; you can also clear the picker.
+The date picker in the canvas toolbar shows the org chart as it was on a past day. Pick the date or type it in full (from 1 January 1900 up to today; nothing changes while you type the year, and when you leave the field anything left half-typed is discarded): the **Viewing as of … · read only** band appears at the top with a **Back to today** button; you can also clear the picker.
 
 - **Managers**, **headcount**, **vacancies** and **positions** are calculated with the assignments in force that day: an assignment counts if it starts that day or earlier and has not ended (the day it ends no longer counts, and is the first day of the handover).
 - Units and positions **deleted before** that date and those **created after** it are hidden, unless they have an assignment in force that day (a position) or a position or sub-unit that is shown (a unit): so an organization entered today with old assignments shows in full. Anything deleted after the date reappears.

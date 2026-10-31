@@ -20,6 +20,30 @@ Las líneas continuas unen cada unidad con su superior. Las líneas punteadas so
 
 Al abrir el árbol se ven las raíces y su primer nivel; el resto está plegado. El botón de abajo a la derecha de una tarjeta muestra cuántas subunidades tiene ocultas (por ejemplo `+3`): púlsalo para desplegarlas y otra vez para plegarlas.
 
+El botón **Ramas** de la barra del lienzo pliega o despliega todo de una vez:
+
+- **Expandir todo** abre todas las ramas.
+- **Contraer todo** deja solo las raíces.
+- **Contraer hasta el nivel** 1 a 6 muestra esa cantidad de niveles (1 = solo las raíces) y pliega el resto.
+
+En el menú contextual de una unidad, **Expandir rama** abre la unidad y todo lo que cuelga de ella, y **Contraer rama** la pliega junto con sus subramas: al volver a abrirla se ve un nivel. En una rama abierta como árbol, los niveles se cuentan desde su raíz.
+
+## Diagrama ordenado
+
+El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades (y sus puestos, si se ven), las unidades hermanas van en su orden y cada nivel ocupa una misma fila (o columna, en horizontal). Si hay varias raíces, quedan lado a lado. Las conexiones laterales no cambian el dibujo: solo se trazan encima.
+
+**Reordenar**, en la barra del lienzo, vuelve a calcular el dibujo y lo encuadra en la ventana.
+
+## Menú contextual
+
+Clic derecho sobre una tarjeta o sobre el fondo del lienzo abre un menú con lo que se puede hacer ahí. Con el teclado se abre con `Mayús` + `F10` o con la tecla Menú, sobre la tarjeta enfocada o, si no hay, la seleccionada (si tampoco hay, el del fondo). Se recorre con las flechas, `Enter` elige y `Esc` lo cierra y devuelve el foco a la tarjeta.
+
+- **Unidad**: Abrir panel, Nueva subunidad, Renombrar, Ver personas (abre el panel en la pestaña Puestos), Expandir rama, Contraer rama, Seleccionar rama (la unidad y lo que se ve de su rama), Duplicar rama, Abrir como árbol, Guardar en Árboles y Eliminar… (con la misma confirmación de siempre).
+- **Puesto** (con **Ver puestos** activo): Abrir puesto, Asignar titular, Registrar reemplazo, Copiar estilo, Pegar estilo y Quitar estilo.
+- **Fondo**: Nueva unidad raíz, Expandir todo, Contraer todo, Reordenar, Encuadrar y Vista….
+
+Viendo el organigrama a una fecha, las acciones que cambian algo aparecen desactivadas.
+
 ## Seleccionar, crear y renombrar
 
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
@@ -88,6 +112,7 @@ Además de lo anterior, el botón **Vista** permite elegir:
 - **Dirección**: vertical (de arriba a abajo) u horizontal (de izquierda a derecha).
 - **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
 - **Líneas**: rectas en ángulo o curvas.
+- **Orden estricto por niveles**: todas las tarjetas de un mismo nivel empiezan en la misma línea, también los puestos (que son más bajos y, sin esta opción, quedan centrados en la fila).
 - **Datos de la tarjeta**: tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
 
 Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador la última configuración que usaste en él.
@@ -98,7 +123,7 @@ El botón **Vistas** guarda con nombre la configuración actual (dirección, den
 
 ## Ver a una fecha
 
-El selector de fecha de la barra del lienzo muestra el organigrama como estaba un día pasado. Elige la fecha (no se aceptan fechas futuras): arriba aparece la banda **Viendo al … · solo lectura** con el botón **Volver a hoy**; también puedes vaciar el selector.
+El selector de fecha de la barra del lienzo muestra el organigrama como estaba un día pasado. Elige la fecha o escríbela completa (se acepta desde el 1 de enero de 1900 hasta hoy; mientras escribes el año no cambia nada, y al salir del campo lo que quedó a medias se descarta): arriba aparece la banda **Viendo al … · solo lectura** con el botón **Volver a hoy**; también puedes vaciar el selector.
 
 - Los **jefes**, la **dotación**, las **vacantes** y los **puestos** se calculan con las asignaciones vigentes ese día: una asignación cuenta si empieza ese día o antes y no terminó (el día en que termina ya no cuenta, y es el primer día del relevo).
 - Se ocultan las unidades y los puestos **eliminados antes** de esa fecha y los **creados después**, salvo que tengan una asignación vigente ese día (un puesto) o un puesto o una subunidad que se vea (una unidad): así una organización ingresada hoy con asignaciones antiguas se ve completa. Lo eliminado después de la fecha reaparece.

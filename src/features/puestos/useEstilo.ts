@@ -19,5 +19,10 @@ export function useEstilo() {
     if (r.ok) toast(t("leyenda.pegado", { nombre: nombre() }));
     else toast.error(r.mensaje);
   }
-  return { copiar, pegar };
+  async function quitar(puestoId: string) {
+    if (org.fechaVista) return; // solo lectura
+    const r = await org.asignarLeyenda(puestoId, null);
+    if (!r.ok) toast.error(r.mensaje);
+  }
+  return { copiar, pegar, quitar };
 }

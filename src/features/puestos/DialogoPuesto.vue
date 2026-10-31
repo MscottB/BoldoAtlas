@@ -86,7 +86,7 @@ watch(
     descripcion.value = puesto.value?.descripcion ?? "";
     cargoNuevo.value = null;
     errorNuevo.value = "";
-    accion.value = null;
+    accion.value = a.accion && !soloLectura.value ? { tipo: a.accion } : null;
   },
   { immediate: true },
 );

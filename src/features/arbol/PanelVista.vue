@@ -11,7 +11,7 @@ import { CRITERIO_LEYENDA, criterioMarca, tipoDeMarca } from "./vista";
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { config } = useVista();
+const { config, panelAbierto } = useVista();
 
 const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
 // Una preferencia guardada con un tipo que ya nadie usa se ve como «ninguno», sin pisar lo guardado.
@@ -48,7 +48,7 @@ function alternarTipo(id: string, marcado: boolean) {
 </script>
 
 <template>
-  <Popover>
+  <Popover v-model:open="panelAbierto">
     <PopoverTrigger as-child>
       <Button variant="outline" size="sm">
         <SlidersHorizontal aria-hidden="true" />
@@ -65,6 +65,10 @@ function alternarTipo(id: string, marcado: boolean) {
       <p v-if="config.densidad === 'compacta'" class="text-xs text-muted-foreground">
         {{ t("arbol.vista.compactaAviso") }}
       </p>
+      <label class="flex items-center gap-2">
+        <input v-model="config.nivelesEstrictos" type="checkbox" class="size-4 accent-primary" />
+        {{ t("arbol.vista.nivelesEstrictos") }}
+      </label>
       <fieldset class="grid gap-1.5">
         <legend class="mb-1 font-medium">{{ t("arbol.vista.tarjeta") }}</legend>
         <label v-for="campo in camposTarjeta" :key="campo" class="flex items-center gap-2">
