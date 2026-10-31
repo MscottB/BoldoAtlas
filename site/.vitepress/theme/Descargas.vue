@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { masReciente } from "./masReciente";
 
 const props = defineProps<{ lang: "es" | "en" }>();
 
@@ -80,13 +81,13 @@ async function pedir(ruta: string) {
 
 onMounted(async () => {
   // /releases/latest ignora las prereleases y falla con 404 (o 403 por límite de la API): ante cualquier error
-  // se toma la más reciente de la lista. Si tampoco hay, se queda en la página de releases.
+  // se toma la más reciente por fecha de publicación (el orden de la lista no es fiable). Si tampoco hay, se queda en la página de releases.
   let datos;
   try {
     datos = await pedir("releases/latest");
   } catch {
     try {
-      datos = (await pedir("releases?per_page=1"))[0];
+      datos = masReciente(await pedir("releases?per_page=30"));
     } catch {
       return;
     }

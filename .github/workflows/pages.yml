@@ -47,6 +47,8 @@ jobs:
           cache-dependency-path: site/package-lock.json
       - run: npm ci
         working-directory: site
+      - run: npm test
+        working-directory: site
       # vitepress build falla con enlaces rotos; antes copia ayuda/ y las capturas (scripts/sync.mjs)
       - run: npm run build
         working-directory: site
