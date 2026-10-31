@@ -101,7 +101,7 @@
       "panelSoloLectura": "Data for the chosen date: read only. Go back to today to edit.",
       "dialogoSoloLectura": "Position as of {fecha}: read only. Go back to today in the tree to edit."
     },
-    "sinJefatura": "No manager",
+    "sinJefatura": "No unit head",
     "dotacion": "Total headcount",
     "verPersonasDotacion": "View the unit's people",
     "dotacionPersonas": "Total headcount: {n}. View the people",
@@ -127,7 +127,7 @@
       "verPuestos": "Show positions",
       "mostrarCargo": "Show the job title",
       "mostrarPersona": "Show the person",
-      "rutaPorTipo": "Show on the cards the parent of type",
+      "rutaPorTipo": "Show on cards the parent unit of type",
       "colorearPor": "Color by",
       "ninguno": "None",
       "marcaDe": "{tipo} mark",
@@ -164,7 +164,7 @@
       "vacantes": "With vacancies",
       "sede": "Site",
       "contrato": "Contract type",
-      "jornada": "Shift",
+      "jornada": "Schedule",
       "cargo": "Job title",
       "cualquiera": "Any",
       "ayuda": "Units that have the chosen value in their own positions are highlighted. This adds to the tag and the text."
@@ -303,7 +303,7 @@
     },
     "sinUso": {
       "titulo": "Unused values",
-      "ayuda": "Active values of the records and active legends that nothing uses."
+      "ayuda": "Active values of the lists and active legends that nothing uses."
     }
   },
   "idioma": {
@@ -328,7 +328,14 @@
     "relacionInexistente": "The related unit or person no longer exists.",
     "ramaYaGuardada": "That branch is already saved in Trees.",
     "vistaDuplicada": "This tree already has a view with that name.",
-    "colorInvalido": "The color must use the #rrggbb format (for example, #be123c)."
+    "colorInvalido": "The color must use the #rrggbb format (for example, #be123c).",
+    "desdeZip": "BoldoAtlas is running from inside a .zip file ({ruta}). Close it, extract it to a folder first and open it from there; otherwise your data would end up in a temporary folder and be lost.",
+    "esquemaNuevo": "This database was created with a newer version of BoldoAtlas (schema {actual}; this app supports up to {conocida}). Update BoldoAtlas to open it.",
+    "sinPermiso": "BoldoAtlas can't write to {ruta}. Move it to a folder you have write access to (for example, Documents) or check that folder's permissions. Details: {detalle}",
+    "sinAppdata": "The Windows APPDATA folder was not found.",
+    "sinCarpeta": "BoldoAtlas' data folder was not found.",
+    "baseNoDisponible": "The database is not available. Close BoldoAtlas and open it again.",
+    "baseSoloLectura": "The database is read-only: check that the boldo.db file and its folder are writable."
   },
   "store": {
     "nombreVacio": "Enter a name.",
@@ -337,7 +344,7 @@
     "unidadInexistente": "The unit no longer exists.",
     "raizConContenido": "The root unit cannot be deleted while it has content.",
     "noSePuedeDeshacer": "This can no longer be undone.",
-    "valorExiste": "\"{nombre}\" already exists in the list.",
+    "valorExiste": "“{nombre}” already exists in the list.",
     "puestoInexistente": "The position no longer exists.",
     "nadaQuePegar": "There is no copied style that can be pasted.",
     "ultimoTipoUnidad": "At least one unit type must stay active.",
@@ -350,7 +357,7 @@
     "nombre": "Name",
     "tipoContrato": "Contract type",
     "sede": "Site",
-    "jornada": "Shift",
+    "jornada": "Schedule",
     "correo": "Email",
     "telefono": "Phone",
     "notas": "Notes",
@@ -366,9 +373,9 @@
       "elegir": "Choose…",
       "buscar": "Search or type a new value",
       "inactivo": "(inactive)",
-      "agregar": "Add «{texto}» to the list",
+      "agregar": "Add “{texto}” to the list",
       "sinValor": "No value",
-      "yaExistia": "«{nombre}» was already in the list: selected that one."
+      "yaExistia": "“{nombre}” was already in the list, so it was selected."
     },
     "error": {
       "nombre": "Enter the name.",
@@ -395,7 +402,7 @@
     "sinPuestos": "This unit has no positions yet.",
     "cargo": "Job title",
     "descripcion": "Description",
-    "esJefatura": "Is the head of the unit",
+    "esJefatura": "Head of the unit",
     "vigentes": "Current assignments",
     "tipo": {
       "titular": "Holder",
@@ -424,8 +431,8 @@
     "vigente": "Current",
     "elegirPersona": "Choose a person…",
     "buscarPersona": "Search or type a name",
-    "crearPersona": "Create person «{texto}»",
-    "personaNueva": "«{nombre}» (new person)",
+    "crearPersona": "Create person “{texto}”",
+    "personaNueva": "“{nombre}” (new person)",
     "sinPersonas": "No people.",
     "terminaA": "Ends the assignment of {nombre}.",
     "cierraTitular": "{nombre} will stop being the holder on {fecha}; they stay in the history.",
@@ -669,13 +676,13 @@
     },
     "mantenedores": {
       "texto": "Job titles, contract types, sites, schedules, unit types and legends.",
-      "abrir": "Open records"
+      "abrir": "Manage lists"
     }
   },
   "mantenedores": {
-    "titulo": "Records",
+    "titulo": "Lists",
     "volver": "Back to Settings",
-    "listas": "Lists",
+    "listas": "Available lists",
     "tabs": {
       "cargos": "Job titles",
       "tipos_contrato": "Contract types",
@@ -754,6 +761,11 @@
   },
   "vista": {
     "cerrar": "Close"
+  },
+  "comun": {
+    "cerrar": "Close",
+    "avisos": "Notifications",
+    "suprimir": "Del"
   },
   "menu": {
     "abrir": "App menu",

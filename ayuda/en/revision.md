@@ -13,6 +13,6 @@ The number next to **Review** in the menu is the total of pending warnings. It d
 - **Repeated emails**: people with the same email, ignoring case and surrounding spaces. Each person's record opens.
 - **Similar names**: people with the same name ignoring case and accents, or with the same words in another order ("Pérez Juan" and "Juan Perez"). These are possible duplicates; typos are not tolerated in the comparison.
 - **Empty units**: units with no positions and no subunits.
-- **Unused values**: active job titles, contract types, sites, schedules, unit types and legends that nothing uses. For now they are for information only; you will be able to edit them from the records.
+- **Unused values**: active job titles, contract types, sites, schedules, unit types and legends that nothing uses. For now they are for information only; you will be able to edit them from the lists.
 
 A list with no warnings shows "All in order". Deleted or deactivated items are never reported.

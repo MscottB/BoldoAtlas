@@ -1,4 +1,4 @@
-# Settings and records
+# Settings and lists
 
 ## Settings
 
@@ -7,11 +7,11 @@ In **Settings** (at the bottom of the menu) you adjust:
 - **Organization name:** saved when you leave the field or press `Enter`.
 - **Logo:** PNG, JPG or WebP up to 1 MB. It is stored as a PNG (and scaled down if it is very large) together with your data. **Remove logo** deletes it.
 - **Theme, accent color and interface size:** apply to this computer only.
-- **Language:** Español or English. It switches every text in the app at once; the names you typed are not translated.
+- **Language:** Español or English. It switches every text in the app at once (you can also do it from the welcome screen and the app menu); the names you typed are not translated.
 
-## Records
+## Lists
 
-The **records** are the controlled lists used by the person records and the tree. Open them from **Settings › Open records**; each one has its own tab:
+The **lists** hold the values you pick from (job titles, contract types, sites…) in person records and the tree. Open them from **Settings › Manage lists**; each one has its own tab:
 
 | Tab | Used in | The usage column counts |
 | --- | --- | --- |

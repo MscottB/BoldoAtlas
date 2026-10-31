@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import { respaldarAntesDeReemplazar } from "@/db/cliente";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
@@ -97,7 +98,10 @@ onMounted(() => {
 <template>
   <section class="mx-auto flex max-w-3xl flex-col gap-6 p-8">
     <header class="flex flex-col gap-2">
-      <img :src="icono" alt="" class="size-12" />
+      <div class="flex items-start justify-between gap-4">
+        <img :src="icono" alt="" class="size-12" />
+        <SelectorIdioma />
+      </div>
       <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
       <p class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
     </header>

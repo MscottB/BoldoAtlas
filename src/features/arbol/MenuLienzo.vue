@@ -154,7 +154,7 @@ const abrirVista = () => (panelAbierto.value = true);
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive" :disabled="soloLectura" @select="pedir(() => eliminar(id))">
           {{ t("arbol.menu.eliminar") }}
-          <ContextMenuShortcut>Supr</ContextMenuShortcut>
+          <ContextMenuShortcut>{{ t("comun.suprimir") }}</ContextMenuShortcut>
         </ContextMenuItem>
       </template>
       <template v-else-if="delPuesto">

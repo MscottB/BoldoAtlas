@@ -11,6 +11,7 @@ import {
   DialogPortal,
   useForwardPropsEmits,
 } from 'reka-ui'
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import DialogOverlay from './DialogOverlay.vue'
 
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<DialogContentProps & { class?: HTMLAttrib
   showCloseButton: true,
 })
 const emits = defineEmits<DialogContentEmits>()
+const { t } = useI18n()
 
 const delegatedProps = reactiveOmit(props, 'class')
 
@@ -45,7 +47,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       >
         <Button variant="ghost" class="absolute top-2 right-2" size="icon-sm">
           <XIcon />
-          <span class="sr-only">Close</span>
+          <span class="sr-only">{{ t('comun.cerrar') }}</span>
         </Button>
       </DialogClose>
     </DialogContent>

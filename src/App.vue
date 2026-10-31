@@ -216,6 +216,6 @@ function escEnBarra(e: KeyboardEvent) {
     <FichaTrabajador />
     <DialogoPuesto />
     <DatosProyecto v-if="!route.meta.sinMarco" />
-    <Toaster />
+    <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>
 </template>

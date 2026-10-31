@@ -14,7 +14,7 @@ When you open a database with no units, BoldoAtlas shows the welcome screen with
 - **Load from Excel** (arrives in Phase 4) and **open a .boldo file** (Phase 5): shown disabled for now.
 - **Explore an example:** creates a sample organization, in the interface language, to look around the app.
 
-Afterwards you can adjust the name, logo, theme and language in **Settings**, and the lists of job titles, sites and the rest in **Settings › Open records**.
+Afterwards you can adjust the name, logo, theme and language in **Settings**, and the lists of job titles, sites and the rest in **Settings › Manage lists**.
 
 ## The app menu and returning to Home
 
@@ -24,6 +24,7 @@ The logo button on the left of the top bar opens the **app menu**:
 - **New empty organization…** and **Explore the example…** replace the current data. They ask for confirmation first and make an **automatic backup** (if the backup fails, nothing is replaced); the backup stays in the **Settings › Backups** list so you can restore it.
 - **Open .boldo file** (Phase 5) and **Import Excel** (Phase 4) are disabled for now.
 - **Backups** and **Settings** open those sections; **Project data** shows where your data lives.
+- **Language** switches the whole app between Español and English at once. The welcome screen has the same **ES / EN** switch; your choice is remembered on this computer, and on the first run the app follows your system language.
 
 The same actions are in the command palette (`Ctrl+K`). **Settings**, **Help** and **About** close with their **Close** button, with `Esc`, or with a second click on their side-menu entry, and you return to the previous view (or to the tree if there is none). The sidebar folds, and is pinned open again, with the button under the **BoldoAtlas** logo. When folded, it opens over the content when you rest the mouse on it for a moment (or reach it with `Tab`) and folds again when you leave or press `Esc`; turn this off in **Settings › Appearance › Open the sidebar on mouse hover**. In a narrow window (under 1100 px) the sidebar folds by itself. A unit's panel closes with the **×** in its header.
 
