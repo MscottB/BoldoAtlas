@@ -5,7 +5,7 @@ Fecha: 2026-10-28 · Estado: borrador para revisión · Licencia del proyecto: A
 ## 1. Objetivo
 
 App de escritorio local para construir y revisar un organigrama grande de una organización:
-unidades (gerencias, áreas, subáreas) conectadas jerárquicamente o lateralmente, con sus jefaturas,
+unidades (gerencias, superintendencias, áreas… con tipos que define cada organización) conectadas jerárquicamente o lateralmente, con sus jefaturas,
 procesos (SIPOC), actividades (RACI) y las fichas de cada trabajador. Debe pesar poco, verse moderna,
 funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar datos entre PCs mediante archivos.
 
@@ -28,10 +28,10 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 - Funciones "premium" del modelo open core (solo se elige la licencia ahora).
 - Historial de cambios (auditoría) y deshacer/rehacer general → candidatos a v2. (v1 sí tiene "Deshacer" al eliminar; ver sección 7.)
 - Campos personalizados definidos por el usuario.
-- Actualizador automático.
+- Instalar actualizaciones sin preguntar: la app solo **consulta** si hay versión nueva (a pedido o cada cierto tiempo según Configuración, ver §12 "Actualizar") y siempre pide confirmación antes de descargar e instalar.
 - Envío por correo desde la app (se guarda el archivo y se ofrece "Abrir carpeta").
-- Idiomas distintos al español.
-- Builds de macOS/Linux (el workflow queda preparado; v1 publica Windows).
+- Idiomas distintos al español y al inglés.
+- Firma de código de pago (certificado de Windows, cuenta de desarrollador de Apple): los binarios salen sin firmar y el README explica cómo abrirlos (SmartScreen, Gatekeeper). Windows, Linux y macOS sí se publican (pedido del autor, ver §14).
 
 ## 3. Stack
 
@@ -44,6 +44,7 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 | Diagrama | Vue Flow + elkjs (layout automático) |
 | BD | SQLite vía `rusqlite` (SQLite incluido en el binario) expuesto con 3 comandos Tauri; migraciones con `PRAGMA user_version`. Se descartó `tauri-plugin-sql` porque su pool de conexiones no garantiza transacciones atómicas desde el frontend. |
 | Archivos/diálogos | `tauri-plugin-fs`, `tauri-plugin-dialog`, `tauri-plugin-opener` |
+| Cifrado del `.boldo` | Rust: `argon2` (Argon2id) + `chacha20poly1305` (XChaCha20-Poly1305), RustCrypto |
 | PDF | pdfmake (fuente Inter embebida) |
 | Excel (leer y escribir) | ExcelJS (MIT); CSV leído con el mismo flujo |
 | Tests | Vitest |
@@ -94,7 +95,7 @@ La versión de esquema la lleva `PRAGMA user_version`.
 ### `unidades`
 | columna | tipo | reglas |
 |---|---|---|
-| `tipo` | TEXT | NOT NULL, CHECK in ('gerencia','area','subarea','otra') |
+| `tipo_id` | TEXT | NOT NULL → `tipos_unidad.id` (ver abajo) |
 | `nombre` | TEXT | NOT NULL, CHECK largo > 0 |
 | `descripcion` | TEXT | NULL |
 | `parent_id` | TEXT | NULL → `unidades.id`; NULL = raíz (permite árboles sueltos) |
@@ -102,6 +103,14 @@ La versión de esquema la lleva `PRAGMA user_version`.
 | `orden` | INTEGER | NOT NULL DEFAULT 0 |
 
 Profundidad libre. La ausencia de ciclos se valida en la capa de datos antes de guardar (SQLite no puede expresarlo con CHECK). El jefe puede pertenecer a la propia unidad o a la superior.
+
+### `tipos_unidad` (pedido del autor: tipos flexibles, p. ej. Gerencia, Superintendencia, Área, Departamento)
+Cada organización nombra sus propios niveles; no hay tipos fijos en el código.
+- Columnas: `nombre` NOT NULL (único parcial por `lower(trim(nombre))`), `orden` INTEGER NOT NULL DEFAULT 0 (nivel sugerido: menor = más arriba) + comunes. Mantenedor en Configuración › Mantenedores igual a los demás catálogos (crear, renombrar, reordenar, desactivar; un tipo desactivado sigue válido en las unidades que ya lo usan pero no se ofrece para nuevas).
+- La migración siembra Gerencia, Área, Subárea y Otra con ids fijos; el usuario los renombra, reordena o agrega otros (Superintendencia, Departamento…).
+- El orden **no restringe** la estructura: cualquier tipo puede colgar de cualquier otro. Solo se usa para listar, para sugerir el tipo de una unidad hija nueva (el siguiente en orden después del de su superior) y para ordenar columnas.
+- **Ruta por tipo** (reemplaza "Gerencia › Área › Subárea" fijo en todo el documento): para cada tipo, la unidad más cercana hacia arriba de ese tipo. La ficha, el directorio (columnas y filtros), el Excel y el PDF muestran una columna por cada tipo en uso, en el orden del catálogo; las migas de pan muestran la ruta completa.
+- Las marcas heredadas y "Colorear por" se eligen por tipo: "marca de <tipo>" para cada tipo en uso, además de "ninguno" y "leyenda del puesto".
 
 ### `conexiones` (relaciones laterales)
 `origen_id` NOT NULL → `unidades.id`, `destino_id` NOT NULL → `unidades.id`, `etiqueta` TEXT NULL. CHECK `origen_id <> destino_id`.
@@ -137,12 +146,22 @@ Profundidad libre. La ausencia de ciclos se valida en la capa de datos antes de 
 Único parcial (`actividad_id`) `WHERE rol = 'A'`: como máximo un Aprobador por actividad.
 La UI avisa (sin bloquear) si una actividad no tiene ningún R.
 
+### Mantenedores: `cargos`, `tipos_contrato`, `sedes`, `jornadas`
+Cuatro catálogos con la misma forma, administrados en Configuración › Mantenedores, para que la ficha use listas controladas y no texto libre:
+`nombre` NOT NULL (CHECK largo > 0), `orden` INTEGER NOT NULL DEFAULT 0 + comunes.
+Único parcial `lower(trim(nombre))` donde `deleted_at IS NULL` (por catálogo).
+Una tabla por catálogo, y no una tabla genérica de "valores", para que la clave foránea garantice el tipo correcto (en `cargo_id` solo puede ir un cargo).
+Desactivar un valor = borrado lógico: deja de ofrecerse en las listas, pero las fichas que ya lo usan lo conservan y lo muestran como "(inactivo)". El mantenedor muestra cuántas personas usan cada valor.
+
 ### `trabajadores`
 | columna | reglas |
 |---|---|
 | `estado` | NOT NULL DEFAULT 'activo', CHECK in ('activo','vacante') |
 | `nombre` | NULL solo si `estado = 'vacante'` (CHECK) |
-| `cargo` | NOT NULL si `estado = 'vacante'` (CHECK) |
+| `cargo_id` | NULL → `cargos.id`; NOT NULL si `estado = 'vacante'` (CHECK) |
+| `tipo_contrato_id` | NULL → `tipos_contrato.id` |
+| `sede_id` | NULL → `sedes.id` |
+| `jornada_id` | NULL → `jornadas.id` |
 | `correo`, `telefono` | NULL |
 | `unidad_id` | NOT NULL → `unidades.id` |
 | `foto_png` | NULL (base64) |
@@ -150,6 +169,17 @@ La UI avisa (sin bloquear) si una actividad no tiene ningún R.
 
 Una vacante es una fila con `estado = 'vacante'`: un cargo sin persona asignada. "Cubrir vacante" = completar los datos y pasar a `activo`.
 Índice único parcial: `lower(trim(correo))` donde `correo IS NOT NULL AND deleted_at IS NULL`.
+
+### Puestos y asignaciones (pedido del autor; reemplaza el modelo "vacante = trabajador sin nombre")
+El **puesto** (un cargo en una unidad) y la **persona** son cosas distintas, para registrar reemplazos sin pisar al titular y conservar el historial de cada puesto.
+- `puestos`: `unidad_id` NOT NULL → `unidades.id`, `cargo_id` NOT NULL → `cargos.id`, `descripcion` NULL, `orden` + comunes.
+- `asignaciones`: `puesto_id` NOT NULL → `puestos.id`, `trabajador_id` NOT NULL → `trabajadores.id`, `tipo` NOT NULL CHECK in ('titular','reemplazo'), `desde` TEXT NOT NULL (fecha `AAAA-MM-DD`), `hasta` TEXT NULL (NULL = vigente; CHECK `hasta IS NULL OR hasta >= desde`), `motivo` NULL + comunes. Únicos parciales: un **titular vigente** por puesto y un **reemplazo vigente** por puesto (`WHERE hasta IS NULL AND deleted_at IS NULL`, por tipo).
+- `trabajadores` pasa a ser solo la **persona**: `nombre` NOT NULL, `correo`, `telefono`, `tipo_contrato_id`, `sede_id`, `jornada_id`, `foto_png`, `notas` (sin `estado`, `cargo_id` ni `unidad_id`).
+- **Vacante** = puesto sin titular vigente; si tiene reemplazo vigente se muestra "Vacante · cubre <persona> (reemplazo)". Asignar un titular nuevo cierra la asignación titular anterior (`hasta` = fecha), nunca la borra: así queda el historial.
+- **Jefatura:** `unidades.jefe_puesto_id` → `puestos.id` (reemplaza `jefe_id`); el jefe visible es el titular vigente o, si no hay, el reemplazo vigente.
+- **Dotación:** puestos con titular vigente (directa y de la rama); vacantes = puestos sin titular vigente. Un reemplazo no suma dotación.
+- La unidad, gerencia y área de una persona se derivan de sus asignaciones vigentes (puede tener más de una: titular en un puesto y reemplazo en otro).
+- Ficha de la persona: sus puestos vigentes y su historial. Puesto: titular, reemplazo vigente e historial completo, con acciones "Asignar titular", "Registrar reemplazo" y "Terminar asignación" (fecha y motivo).
 
 ### Preferencias por PC (no van en la BD, no viajan)
 Tema, color de acento, columnas elegidas para Excel, filtros del directorio, última carpeta usada, lista de escenarios recientes. En `localStorage` del webview; si la lectura falla se usan valores por defecto.
@@ -177,10 +207,27 @@ Tema, color de acento, columnas elegidas para Excel, filtros del directorio, úl
 ## 7. UX/UI
 
 ### Estructura de la ventana
-- **Barra lateral izquierda** (colapsable): Árbol · Directorio · Indicadores · Escenarios · Importar/Exportar · Configuración · Acerca de.
+- **Barra lateral izquierda** (colapsable): arriba, las secciones del programa: Árbol · Árboles · Directorio · Indicadores · Escenarios · Importar/Exportar; abajo, separadas: Configuración · Ayuda · Acerca de.
+- **Idiomas:** español e inglés en toda la interfaz (`vue-i18n`; diccionarios `src/i18n/es.json` y `en.json`). El idioma inicial sigue al de Windows (`es*` → español, otro → inglés) y se cambia en Configuración (preferencia por PC). Ningún texto de interfaz va literal en componentes, stores ni mensajes de error. Los datos que ingresa el usuario (nombres de unidades, valores de mantenedores) no se traducen. Fechas y números con `Intl` según el idioma.
+- **Ayuda:** sección con páginas en Markdown por idioma (`ayuda/es/*.md`, `ayuda/en/*.md`), mostradas dentro de la app y publicadas también en el sitio web (una sola fuente). Cada función nueva agrega su página en ambos idiomas.
 - **Barra superior:** nombre de la organización, insignia de escenario activo (color de acento + nombre) si no es la base principal, búsqueda global, botón Exportar, indicador "Guardado".
 - **Área central:** la vista elegida.
 - **Panel derecho contextual:** se abre al seleccionar una unidad, proceso o persona; se cierra con Esc. No tapa el lienzo: lo desplaza.
+
+### Comentarios del autor tras probar el ejemplo (2026-10-30)
+- **Menú de la app** (botón con el logo/nombre en la barra superior, también en la paleta): Inicio (vuelve a la Bienvenida en cualquier momento), Nueva organización vacía, Explorar el ejemplo, Abrir `.boldo` (Fase 5), Importar Excel (Fase 4), Respaldos, Configuración. Reemplazar los datos actuales (nueva vacía o ejemplo) pide confirmación explícita y hace antes un respaldo automático; la Bienvenida también lo advierte si ya hay datos.
+- **Configuración, Ayuda y Acerca de se comportan como interruptores:** un segundo clic en su entrada (o Esc, o el botón Cerrar visible) vuelve a la vista anterior.
+- **Todo panel lateral se puede cerrar o plegar con un control visible:** la barra izquierda tiene su botón de plegar en la propia barra (además del de la barra superior) y el panel derecho tiene "Cerrar" (×) además de Esc.
+- **Menú contextual (clic derecho)** en unidad, puesto y fondo del lienzo, con las acciones de su elemento (nueva subunidad, renombrar, abrir panel, ver personas, expandir/contraer rama, duplicar, abrir como árbol, copiar/pegar estilo, eliminar…); también se abre con `Shift+F10` o la tecla Menú.
+- **Expandir y contraer:** "Expandir todo" y "Contraer todo" en la barra del lienzo; "Expandir rama" y "Contraer rama" en el menú contextual de una unidad; "Contraer hasta el nivel N".
+- **Orden del diagrama:** el layout automático debe verse ordenado por defecto (superiores centrados sobre sus hijos, hermanos en su orden, niveles alineados, conexiones laterales sin deformar el árbol). Opción "Orden estricto por niveles" (activable) y botón "Reordenar" que vuelve a calcular y encuadrar.
+- **Personas de una unidad:** la dotación de la tarjeta es clicable y abre la lista de personas; el panel de unidad tiene la pestaña **Personas** (titulares y reemplazos vigentes, con interruptor "Incluir subunidades") y "Ver en el directorio" (directorio filtrado por esa unidad y su rama).
+- **Divulgación progresiva en toda la app:** por defecto se muestran solo las opciones básicas; las avanzadas van en secciones "Más opciones" plegables (recordadas por PC). Aplica a la barra del lienzo, panel Vista, panel de unidad, diálogo de puesto, ficha, directorio y configuración.
+- **Qué proyecto está abierto:** el título de la ventana y la barra superior muestran el nombre de la organización y el tipo de base (principal o escenario, con su nombre); un clic en ese nombre muestra dónde están los datos (carpeta portable o del perfil, ruta del archivo, tamaño, última modificación) con "Abrir carpeta" y "Copiar ruta". Cuando lleguen los escenarios (Fase 5), "Abrir proyecto" lista la base principal y los escenarios.
+- **Pestañas de trabajo dentro del mismo proyecto:** una barra de pestañas sobre el área central permite tener abiertas a la vez distintas partes (árbol completo, un subárbol, el directorio con un filtro, una persona…). "Abrir en pestaña nueva" desde el menú contextual, la paleta, Ctrl+clic o clic central; Ctrl+T nueva, Ctrl+W cerrar, Ctrl+Tab cambiar; se reordenan arrastrando y se recuerdan por PC. Cada pestaña guarda su ruta y su estado (ramas plegadas, selección, encuadre, filtros); solo la pestaña activa queda montada, para no multiplicar el costo del lienzo.
+- **Comparar dos proyectos:** se resuelve con "Comparar" de Escenarios (Fase 5), que además ofrecerá ver ambos árboles lado a lado con las diferencias resaltadas.
+- **Personas de una unidad (ampliado):** la pestaña Personas lista titulares y reemplazos con foto, cargo, tipo y unidad; búsqueda y orden; resumen por cargo (cuántos y vacantes); vista previa de la ficha individual en el mismo panel (foto, contacto, puestos vigentes e historial) con "Abrir ficha" para editar; "Copiar correos" de la lista; exportar la lista llega con Excel (Fase 4).
+- **Revisión visual de los temas claro y oscuro:** paleta de tokens refinada (superficies, bordes, texto secundario con AA real, acento), jerarquía visual más clara y consistencia de espaciado; se valida con capturas en ambos temas.
 
 ### Primer uso
 Pantalla de bienvenida con cuatro caminos, cada uno con una línea de explicación:
@@ -213,11 +260,29 @@ crear organización vacía · cargar desde Excel (con enlace a la plantilla) · 
 
 ## 8. Vistas de trabajo
 
+### Administrador de árboles y subárboles
+- Una base puede tener **varios árboles independientes** (uno por raíz).
+- Cualquier unidad se puede **abrir como árbol**: el lienzo muestra solo su rama, con esa unidad como raíz. No es una copia: sigue colgando de su superior y lo que se edita ahí se edita en el árbol completo. Arriba del lienzo, la ruta de origen (`Gerencia General › Operaciones › Mantención`, cada tramo clicable), "Subir un nivel" y "Ver en el árbol completo".
+- Vista **Árboles** (barra lateral): lista cada árbol independiente (nombre de la raíz, dotación total) y, debajo, sus **subárboles guardados**; permite crear un árbol nuevo (nueva raíz), abrir cualquiera, y renombrar, reordenar o quitar un subárbol guardado (quitarlo no borra la rama). Desde el lienzo o el panel de unidad: "Abrir como árbol" y "Guardar en Árboles".
+- Tabla `subarboles_guardados`: `unidad_id` NOT NULL → `unidades.id`, `nombre` NULL (por defecto se muestra el de la unidad), `orden` INTEGER NOT NULL DEFAULT 0 + comunes; único parcial (`unidad_id`) donde `deleted_at IS NULL`. Es dato de la organización: viaja en el `.boldo` (en una exportación parcial, solo los de unidades incluidas). Si la unidad se elimina, el subárbol guardado deja de mostrarse.
+
 ### Árbol (lienzo)
 Vue Flow con el árbol completo, zoom, mover, minimapa, colapsar/expandir ramas.
 Tarjeta de unidad: tipo, nombre, foto y nombre del jefe (o "Sin jefatura"), dotación total de la rama, vacantes (si hay), chips de etiquetas.
 Aristas jerárquicas sólidas; conexiones laterales punteadas con etiqueta.
-**Filtro por etiqueta o por texto:** las unidades que coinciden se resaltan y el resto se atenúa (no se ocultan, para no perder contexto).
+**Filtro por etiqueta o por texto:** las unidades que coinciden se resaltan y el resto se atenúa (no se ocultan, para no perder contexto). Además se puede resaltar por **vacantes**, **sede**, **tipo de contrato**, **jornada** o **cargo** (pedido del autor).
+
+**Personalizar el diagrama (pedido del autor; preferencias del árbol, no datos de la organización):**
+- Dirección: vertical (arriba→abajo) u horizontal (izquierda→derecha); densidad: normal o compacta (menos separación y tarjetas de una línea, para árboles gigantes).
+- Tarjeta: qué datos muestra (tipo, jefe, foto del jefe, dotación, vacantes, etiquetas, ruta por tipo, puestos) y estilo de líneas (rectas en ángulo o curvas).
+- **Vistas guardadas:** una combinación de dirección, densidad, tarjeta, "Colorear por", filtros de resaltado y ramas plegadas se guarda con nombre por árbol (raíz o subárbol guardado) y se aplica con un clic. Viajan con la base (tabla `vistas`: `arbol_id` NULL = árbol completo, `nombre`, `config` JSON validado al leer + comunes). Las exportaciones de la Fase 4 ofrecen elegir una vista guardada.
+
+**Selección múltiple (pedido del autor):** `Ctrl`/`Shift`+clic o recuadro con arrastre; mover las seleccionadas bajo otro superior en un lote (validando ciclos), plegarlas, etiquetarlas o eliminarlas (un solo "Deshacer"). **Duplicar rama:** copia una unidad con sus descendientes, etiquetas y puestos (sin asignaciones: las copias nacen vacantes), con nombre "<nombre> (copia)".
+
+**Organigrama a una fecha (pedido del autor):** selector de fecha en la barra del lienzo; con una fecha elegida, jefes, dotación, vacantes y puestos se calculan con las asignaciones vigentes ese día (`desde <= fecha` y (`hasta` NULL o `hasta > fecha`)) y se ocultan las unidades y puestos eliminados antes y los creados después que no tengan asignaciones (ni descendientes) visibles a esa fecha, para que una organización ingresada hoy con fechas pasadas se vea completa. Es de solo lectura (banda "Viendo al <fecha>" con "Volver a hoy"). Límite declarado: los cambios de superior de una unidad no se registran, así que la forma del árbol es la actual.
+
+### Revisión de datos (pedido del autor)
+Vista "Revisión" (entrada del menú) con listas accionables, cada fila abre la unidad, puesto o persona: unidades sin jefatura, puestos vacantes (con días desde la última titular), reemplazos vigentes, personas sin puesto vigente, correos repetidos, nombres de persona parecidos (misma normalización que los mantenedores), unidades sin puestos ni hijos, valores de mantenedor sin uso. Un contador en el menú muestra el total de avisos. Todo se calcula en memoria con funciones puras sobre el estado del store.
 
 ### Panel de unidad
 Pestañas: Resumen (datos, jefe, etiquetas, indicadores) · Procesos (con SIPOC, atributos y actividades) · Personas.
@@ -226,10 +291,10 @@ Pestañas: Resumen (datos, jefe, etiquetas, indicadores) · Procesos (con SIPOC,
 Formulario con datos generales, atributos (frecuencia, criticidad, estado, documento), bloque SIPOC (cuatro columnas) y lista de actividades. Cada actividad tiene una mini-matriz RACI: se agregan personas y se elige su rol.
 
 ### Ficha de trabajador
-Formulario modal; muestra la ruta Gerencia › Área › Subárea derivada, su jefe (el de su unidad), las actividades en que participa con su rol RACI y las unidades que encabeza.
+Formulario modal; cargo, tipo de contrato, sede y jornada se eligen de sus mantenedores (se puede agregar un valor nuevo desde la misma lista; si ya existe uno igual sin importar mayúsculas ni tildes, se sugiere ese en vez de duplicarlo); muestra la ruta Gerencia › Área › Subárea derivada, su jefe (el de su unidad), las actividades en que participa con su rol RACI y las unidades que encabeza.
 
 ### Directorio
-Tabla de personas y vacantes con búsqueda y filtros por unidad (incluye su rama), cargo, etiqueta de la unidad y estado. Columnas ordenables. Clic abre la ficha. Botón "Exportar esta lista a Excel" (respeta filtros).
+Tabla de personas y vacantes con búsqueda y filtros por unidad (incluye su rama), cargo, tipo de contrato, sede, jornada, etiqueta de la unidad y estado. Columnas ordenables. Clic abre la ficha. Botón "Exportar esta lista a Excel" (respeta filtros).
 
 ### Indicadores
 Calculados al vuelo con funciones puras sobre los datos (sin tablas extra):
@@ -246,18 +311,26 @@ Calculados al vuelo con funciones puras sobre los datos (sin tablas extra):
 Vista Indicadores: tarjetas con totales de la organización, tabla por unidad ordenable, y listas "unidades sin jefatura", "procesos sin actividades", "actividades sin responsable". Clic en cualquier fila lleva a la unidad en el árbol.
 
 ### Escenarios
-- **Guardar como escenario:** copia la base actual con `VACUUM INTO` a `escenarios/<nombre>.boldo`, con nuevo `db_id`, `escenario_nombre` y `escenario_origen_id`.
+- **Guardar como escenario:** copia la base actual con `VACUUM INTO` a `escenarios/<nombre>.db` (archivo interno sin cifrar: no sale del equipo), con nuevo `db_id`, `escenario_nombre` y `escenario_origen_id`. Para compartir un escenario se exporta como cualquier base (`.boldo` cifrado).
 - **Abrir escenario:** cambia la base activa; la barra superior muestra la insignia del escenario y "Volver a la base principal".
-- **Comparar:** elige dos bases (p. ej. principal vs escenario) y muestra el resultado de `diff.ts` en solo lectura: unidades nuevas, eliminadas, movidas (cambio de `parent_id`), cambios de jefatura, personas reasignadas, y diferencia de indicadores (dotación, vacantes) por unidad. Exportable a Excel.
+- **Comparar:** elige dos bases (p. ej. principal vs escenario) y muestra el resultado de `diff.ts` en solo lectura: unidades nuevas, eliminadas, movidas (cambio de `parent_id`), cambios de jefatura, personas reasignadas, y diferencia de indicadores (dotación, vacantes) por unidad. Exportable a Excel. Modo "lado a lado" (pedido del autor): los dos árboles en paralelo con encuadre sincronizado y las diferencias resaltadas.
 - Pasar un escenario a la base principal = importar con "Reemplazar todo" o "Fusionar" (sección 9), sin flujo nuevo.
 
 ## 9. Exportar e importar `.boldo`
 
-**Formato:** copia SQLite completa generada con `VACUUM INTO` (incluye `meta`, logo y esquema).
+**Formato propio y cifrado.** Cada PC es un ambiente aislado y el archivo viaja por correo o pendrive con datos personales, así que va cifrado y solo se abre con un código que se entrega aparte.
+- Contenido: copia SQLite completa generada con `VACUUM INTO` (incluye `meta`, logo y esquema), cifrada con **XChaCha20-Poly1305**; la clave se deriva del código con **Argon2id** (memoria 64 MiB, 3 pasadas, 1 hilo) y una sal aleatoria por archivo.
+- Cabecera en claro, solo lo necesario para descifrar: identificador `BOLDO`, versión del formato, parámetros de Argon2id, sal y nonce. Nada más va en claro (ni el nombre de la organización ni las versiones: esos datos están dentro del contenido cifrado, en `meta`).
+- Todo el cifrado y descifrado ocurre en Rust (crates `argon2` y `chacha20poly1305` de RustCrypto), nunca en el frontend.
 
-**Exportar:** diálogo "Guardar como" → `Organizacion_AAAA-MM-DD_rN.boldo`.
+**Exportar:** diálogo "Guardar como" → `Organizacion_AAAA-MM-DD_rN.boldo`. La app genera un **código único para ese archivo**: 20 caracteres del alfabeto Crockford base32, sin caracteres confusos (sin O/0 ni I/1/L), en grupos de 4 (`K7QM-2XRP-9DWN-H4TB-V3CJ`, unos 100 bits). Se muestra **una sola vez** con "Copiar código" y la recomendación de enviar el archivo y el código **por canales distintos**. El código no se guarda en ningún lado: si se pierde, ese archivo no se puede abrir y hay que exportar de nuevo (otro archivo, otro código).
 
-**Importar:** se abre el archivo como segunda conexión de solo lectura, se valida el esquema (sección 6) y se elige el modo. **Antes de aplicar cualquiera de los dos modos se guarda un respaldo** en `respaldos/` con fecha (se conservan los últimos 20).
+**Alcance de la exportación.** Al exportar se elige qué llevar: **toda la base**, o **uno o más árboles o ramas** (lista de unidades con casillas; marcar una unidad incluye toda su rama; una base puede tener varios árboles independientes, uno por raíz).
+- Una exportación parcial lleva: las unidades elegidas con sus descendientes, las personas y vacantes de esas unidades, los valores de mantenedor que esas personas usan, las etiquetas de esas unidades, las conexiones laterales con **ambos** extremos incluidos y (Fase 3) los procesos, actividades y roles RACI de esas unidades.
+- Lo que quedaría apuntando fuera de la selección se corta en la copia y se resume antes de guardar ("2 conexiones y 1 jefatura no se incluyen"): conexiones con un extremo fuera, `jefe_id` de una persona que no va (la jefatura queda vacía en la copia) y roles RACI de personas que no van.
+- Se arma en Rust: `VACUUM INTO` a un temporal, se borran de ese temporal las filas fuera del alcance en una transacción, se cifra y se borra el temporal. `meta` de la copia agrega `alcance` (`completo` | `parcial`), los ids de las raíces exportadas y el `db_id` de origen.
+
+**Importar:** se pide el código; Rust descifra a un archivo temporal dentro de `datos/`. Si el archivo es **parcial**, solo se ofrece "Fusionar" ("Reemplazar todo" queda deshabilitado con la explicación: borraría el resto de la base) y, si la unidad superior de una rama exportada no existe en la base de destino, se pregunta dónde colocarla: dentro de una unidad elegida o como árbol independiente; después sigue la revisión de fusión normal. Si el código no corresponde o el archivo fue alterado, el descifrado falla y se muestra "El código no es correcto o el archivo está dañado", sin tocar la base local. Con el contenido descifrado se abre una segunda conexión de solo lectura, se valida el esquema (sección 6) y se elige el modo; el temporal se borra al terminar o al cancelar. **Antes de aplicar cualquiera de los dos modos se guarda un respaldo** en `respaldos/` con fecha (se conservan los últimos 20).
 
 ### Modo A — Reemplazar todo
 La base local se sustituye por el archivo importado (tras el respaldo).
@@ -285,7 +358,7 @@ Limitación aceptada: sin una base común de referencia, "Diferente" no distingu
 
 - **Plantilla descargable** `Plantilla_BoldoAtlas.xlsx` con hojas `Unidades` y `Trabajadores`, encabezados fijos, validación de listas (tipo, estado) y 3 filas de ejemplo. Una hoja `Instrucciones` explica cada columna.
 - **Unidades:** columnas `tipo, nombre, unidad_superior, jefe_correo, descripcion, etiquetas`. La unidad superior se escribe como ruta con `›` o `/` (ej. `Gerencia de Operaciones / Logística`); las rutas inexistentes se crean en orden.
-- **Trabajadores:** columnas `estado, nombre, correo, telefono, cargo, unidad, notas`. `unidad` se escribe como ruta. Si el correo ya existe en la base → se **actualiza** esa persona; si no → se crea.
+- **Trabajadores:** columnas `estado, nombre, correo, telefono, cargo, tipo_contrato, sede, jornada, unidad, notas`. Cargo, tipo de contrato, sede y jornada se escriben por nombre; los que no existan en su mantenedor aparecen en la vista previa como "valores nuevos" y se crean solo al confirmar. `unidad` se escribe como ruta. Si el correo ya existe en la base → se **actualiza** esa persona; si no → se crea.
 - Se aceptan `.xlsx` y `.csv` (UTF-8, separador `,` o `;` detectado). En CSV se carga una hoja por archivo y se elige cuál es.
 - **Vista previa obligatoria:** resumen (unidades a crear, personas a crear/actualizar) y tabla de errores por fila con hoja, fila, columna y mensaje (p. ej. "tipo 'gerncia' no válido", "unidad 'X' no existe y no tiene ruta completa", "correo repetido en el archivo"). Con errores no se puede aplicar; se puede descargar el archivo de errores para corregir.
 - Al aplicar: respaldo automático, una sola transacción, `data_revision` +1.
@@ -320,7 +393,7 @@ Opciones: alcance + qué hojas incluir + qué columnas de cada hoja (casillas, t
 | Procesos | unidad, ruta, nombre, descripción, frecuencia, criticidad, estado, documento, proveedores, entradas, salidas, clientes, nº actividades |
 | Actividades | unidad, proceso, nombre, descripción, responsables (R), aprobador (A), consultados (C), informados (I) |
 | Matriz RACI | filas = actividades (agrupadas por proceso), columnas = personas involucradas, celdas = R/A/C/I |
-| Trabajadores | estado, nombre, correo, teléfono, cargo, gerencia, área, subárea, ruta completa, jefe, notas |
+| Trabajadores | estado, nombre, correo, teléfono, cargo, tipo de contrato, sede, jornada, gerencia, área, subárea, ruta completa, jefe, notas |
 | Indicadores | una fila por unidad con todos los indicadores de la sección 8 |
 
 Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajustado, logo en la hoja Información. Los IDs internos no se exportan salvo que se marque la columna opcional "ID". Nombre: `Organizacion_AAAA-MM-DD_rN.xlsx`.
@@ -333,7 +406,22 @@ Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajus
   - `BoldoAtlas_windows_x64_setup.exe` (instalador NSIS).
   - (Nombres sin versión a propósito; ver sección 14.)
 - Requisito: WebView2 (incluido en Windows 11 y casi todo Windows 10).
+- **Respaldos automáticos (pedido del autor):** al abrir la app, si el último respaldo tiene más de 24 h (configurable: nunca, al abrir, cada 24 h, cada 7 días), se crea `respaldos/boldo-AAAAMMDD-HHMM.db` con `VACUUM INTO`, sin bloquear el uso; se conservan los últimos N (por defecto 10). En Configuración › Respaldos: lista con fecha, tamaño y revisión de datos; "Respaldar ahora", "Abrir carpeta" y "Restaurar" (confirma, respalda la base actual antes y reinicia la app sobre el respaldo elegido). Funciona igual en portable (carpeta `datos/respaldos/`) e instalado.
 - **Aviso conocido:** un `.exe` sin firmar descargado de internet también dispara SmartScreen en modo portable (no solo el instalador). Mitigación v1: instrucciones en el README ("Más información → Ejecutar de todas formas"). Mejora futura: firma gratuita para proyectos open source vía SignPath Foundation.
+
+### Actualizar
+- **Manual (siempre posible):** descargar el zip nuevo y reemplazar `BoldoAtlas.exe`; `datos/` no se toca. Al abrir, si el esquema cambió, la app respalda y migra (§6). Se explica en la Ayuda y en el README.
+- **Consulta periódica (pedido del autor):** en Configuración › Actualizaciones: "Buscar automáticamente" con frecuencia nunca | al abrir | cada día | cada semana. Por defecto: **cada día**, igual en la versión instalada y en la portable (la portable es la principal para el autor y tiene todas las funciones de actualización). La consulta solo descarga el manifiesto público de la versión; no envía datos de la organización ni identificadores. Si hay versión nueva: aviso discreto en la barra superior y en el icono de la bandeja; nunca se descarga ni instala sin confirmación.
+- **Dónde se busca a mano:** botón "Buscar actualizaciones" en Acerca de, en el menú de la app, en la paleta Ctrl+K y en el menú del icono de la bandeja.
+- **Ventana de actualización con el estilo de la app:** muestra la versión actual y la nueva y **las novedades de todas las versiones intermedias** (si se saltó una o más, se listan todas, agrupadas por versión: novedades, correcciones). Distingue el tipo de instalación: instalado ("Se descargará el instalador, se instalará y BoldoAtlas se reiniciará") o portable ("Se reemplazará BoldoAtlas en esta carpeta; tus datos en `datos/` no se tocan"); en Linux `.deb`/`.rpm` (gestionado por el sistema) ofrece descargar el paquete nuevo en vez de instalarlo. Progreso de descarga con opción de cancelar.
+- **Después de actualizar:** al primer arranque de la versión nueva, diálogo "Novedades de la versión X" con lo nuevo desde la última versión que se usó en este PC (también varias versiones); se puede volver a ver desde Acerca de. Las novedades viajan dentro de la app (generadas en el build desde los commits convencionales entre etiquetas), así se ven sin conexión.
+- **Limpieza:** se borran los archivos temporales de la actualización (instalador o paquete descargado, `BoldoAtlas.old.exe`, caché del actualizador) al terminar o en el siguiente arranque, para no acumular espacio.
+- **Icono en la bandeja del sistema** (instalado y portable, mientras la app está abierta): menú contextual con Abrir BoldoAtlas, "Actualizar a vX" (solo si hay versión nueva) o "Buscar actualizaciones", Respaldar ahora, Abrir carpeta de datos, Ayuda y Salir. Cerrar la ventana cierra la app (no queda en segundo plano).
+- **La portable no deja rastro fuera de su carpeta:** todo lo que escribe (datos, respaldos, temporales de la actualización y la carpeta de datos del WebView: caché, almacenamiento local, preferencias) va dentro de `datos/`; nada en `%APPDATA%`, `%LOCALAPPDATA%` ni en el temporal del sistema. Así se puede llevar en un pendrive y actualizarse en el mismo lugar.
+- **Cómo funciona la consulta:** consulta la última versión publicada en GitHub Releases (`releases/latest`) y, si es más nueva (comparación SemVer), muestra la versión y sus notas y ofrece "Descargar e instalar".
+  - Usa `tauri-plugin-updater` con un manifiesto `latest.json` que publica el workflow de release, **firmado** con una clave del autor (`tauri signer`; la clave privada vive solo como secreto `TAURI_SIGNING_PRIVATE_KEY` en GitHub y la pública va en `tauri.conf.json`). Se rechaza cualquier descarga con firma inválida.
+  - Instalado: Windows corre el instalador NSIS nuevo; macOS reemplaza el `.app` (actualizador de Tauri); Linux AppImage se reemplaza a sí mismo; `.deb`/`.rpm` solo ofrecen descargar el paquete. Portable: Windows descarga el zip firmado, renombra el `.exe` en uso a `BoldoAtlas.old.exe`, escribe el nuevo en su lugar y pide reiniciar; el `.old` se borra en el siguiente arranque; Linux portable = el AppImage junto a `portable.flag` (mismo reemplazo); macOS portable = `BoldoAtlas.app` junto a `portable.flag` (reemplaza el `.app`). Si algo falla, se restaura lo anterior y se informa el error. Los temporales de la portable van en `datos/actualizacion/`.
+  - Sin conexión o sin versión nueva: un mensaje claro ("Ya tienes la última versión" / "No se pudo consultar: revisa tu conexión").
 
 ## 13. Marca, tema y "Acerca de"
 
@@ -351,7 +439,7 @@ Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajus
 - `README.md` (qué es, capturas, enlace al sitio y a la descarga, cómo compilar) y `CONTRIBUTING.md` con CLA para contribuciones externas (permite al autor licenciar comercialmente en el futuro).
 - **Flujo de versiones:** se trabaja en `main` con Conventional Commits; publicar = crear la etiqueta `vX.Y.Z` y empujarla (`git tag v1.2.0 && git push origin v1.2.0`).
 
-### CI/CD (GitHub Actions, solo Windows por ahora)
+### CI/CD (GitHub Actions: Windows, Linux y macOS)
 Optimizaciones comunes a todos los workflows: `concurrency` con `cancel-in-progress` (un push nuevo cancela el anterior en la misma rama), caché de npm (`actions/setup-node` con `cache: npm`) y de Rust (`Swatinem/rust-cache`), filtros por ruta, y `permissions` mínimos por workflow.
 
 | Workflow | Disparo | Runner | Pasos |
@@ -360,10 +448,17 @@ Optimizaciones comunes a todos los workflows: `concurrency` con `cancel-in-progr
 | `release.yml` | push de etiqueta `v*` | windows-latest | Mismos checks → `scripts/version.mjs` → `tauri build --bundles nsis` → arma zip portable (`.exe` + `portable.flag` + `datos/`) → calcula `SHA256SUMS.txt` → crea el Release (`softprops/action-gh-release`, para controlar los nombres de archivo) con notas autogeneradas desde los commits y los 3 archivos adjuntos. Las etiquetas con `-` (ej. `v1.3.0-beta.1`) se publican como *pre-release*. |
 | `pages.yml` | push a `main` con cambios en `site/`, o Release publicado | ubuntu-latest | `npm ci` en `site/` → `vitepress build` → despliegue a GitHub Pages. |
 
+**Windows, Linux y macOS, cada uno con instalador y portable (pedido del autor).** `release.yml` pasa a una matriz (`windows-latest`, `ubuntu-22.04`, `macos-latest` con binario universal x64+arm64); los checks corren una sola vez en un job previo y los builds de cada sistema dependen de él. Optimizaciones adicionales para no descargar lo mismo en cada ejecución:
+- caché de Rust por sistema (`Swatinem/rust-cache` con `shared-key` por SO, compartida entre `build-prueba` y `release`), caché de npm, caché de las herramientas que Tauri descarga al empaquetar (NSIS/WiX en `%LOCALAPPDATA%\tauri`, `linuxdeploy`/AppImage en `~/.cache/tauri`) y caché de los paquetes apt de WebKitGTK en Linux;
+- `build-prueba` en los PR compila solo Windows (el más usado por el autor); Linux y macOS se compilan a pedido (`workflow_dispatch` o etiqueta `build-todas` en el PR) y siempre en el release;
+- `ci-rust` corre `clippy` y los tests en los tres sistemas solo si cambió `src-tauri/`;
+- se cancela lo anterior de la misma rama y los artefactos de prueba duran 14 días.
+
 Nombres de los archivos del Release **sin número de versión**, para que el enlace "última versión" del sitio nunca cambie:
-- `BoldoAtlas_windows_x64_portable.zip`
-- `BoldoAtlas_windows_x64_setup.exe`
-- `SHA256SUMS.txt`
+- `BoldoAtlas_windows_x64_portable.zip`, `BoldoAtlas_windows_x64_setup.exe`
+- `BoldoAtlas_linux_x64_portable.zip` (AppImage + `portable.flag` + `datos/`), `BoldoAtlas_linux_x64.AppImage`, `BoldoAtlas_linux_x64.deb`, `BoldoAtlas_linux_x64.rpm`
+- `BoldoAtlas_macos_universal_portable.zip` (`BoldoAtlas.app` + `portable.flag` + `datos/`), `BoldoAtlas_macos_universal.dmg`
+- `latest.json` (manifiesto firmado del actualizador), `novedades.json` (notas por versión) y `SHA256SUMS.txt`
 
 Enlace estable: `https://github.com/MscottB/BoldoAtlas/releases/latest/download/<archivo>`.
 
@@ -396,5 +491,6 @@ Las capturas del sitio se toman a mano de la base de ejemplo en v1 (automatizarl
 - Vue Flow con miles de nodos: mitigado por la prueba temprana.
 - pdfmake con cientos de unidades puede tardar: mostrar progreso; si no alcanza, mover generación a Rust.
 - Fusión sin base común: posibles decisiones manuales repetidas en fusiones frecuentes.
+- Código de un `.boldo` perdido: el archivo no se puede abrir (no hay recuperación, por diseño). Mitigación: el aviso al exportar y la posibilidad de exportar de nuevo cuando se quiera.
 - Carpeta de datos sin permiso de escritura (p. ej. el `.exe` abierto desde dentro del zip): se detecta al iniciar y se muestra cómo resolverlo.
 - Alcance v1 creció (SIPOC/RACI, carga masiva, escenarios): el plan de implementación debe entregarse por fases usables (núcleo árbol+fichas → procesos → exportaciones → sync/escenarios) para tener algo funcionando pronto.

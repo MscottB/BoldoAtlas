@@ -6,40 +6,151 @@ CREATE TABLE meta (
   valor TEXT
 );
 
+-- Niveles que nombra cada organización (Gerencia, Superintendencia, Área…). orden = nivel sugerido; no restringe la estructura.
+CREATE TABLE tipos_unidad (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_tipos_unidad_nombre ON tipos_unidad(lower(trim(nombre))) WHERE deleted_at IS NULL;
+-- Semillas con ids fijos (TIPO_* en src/db/tipos.ts); el usuario las renombra, reordena o desactiva.
+INSERT INTO tipos_unidad (id, nombre, orden, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000001', 'Gerencia', 10, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('00000000-0000-7000-8000-000000000002', 'Área',     20, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('00000000-0000-7000-8000-000000000003', 'Subárea',  30, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('00000000-0000-7000-8000-000000000004', 'Otra',     40, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+
 CREATE TABLE unidades (
   id          TEXT PRIMARY KEY NOT NULL,
-  tipo        TEXT NOT NULL CHECK (tipo IN ('gerencia', 'area', 'subarea', 'otra')),
+  tipo_id     TEXT NOT NULL REFERENCES tipos_unidad(id) DEFERRABLE INITIALLY DEFERRED,
   nombre      TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
   descripcion TEXT,
   parent_id   TEXT REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
-  jefe_id     TEXT REFERENCES trabajadores(id) DEFERRABLE INITIALLY DEFERRED,
+  jefe_puesto_id TEXT REFERENCES puestos(id) DEFERRABLE INITIALLY DEFERRED,
+  marca_color  TEXT,
+  marca_codigo TEXT CHECK (length(marca_codigo) <= 4),
   orden       INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL,
   deleted_at  TEXT
 );
+CREATE INDEX idx_unidades_tipo_id ON unidades(tipo_id);
 CREATE INDEX idx_unidades_parent_id ON unidades(parent_id);
-CREATE INDEX idx_unidades_jefe_id ON unidades(jefe_id);
+CREATE INDEX idx_unidades_jefe_puesto_id ON unidades(jefe_puesto_id);
 
+-- Mantenedores: valores de lista de la ficha del trabajador. Desactivar = deleted_at (la ficha conserva su id).
+CREATE TABLE cargos (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_cargos_nombre ON cargos(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+CREATE TABLE tipos_contrato (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_tipos_contrato_nombre ON tipos_contrato(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+CREATE TABLE sedes (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_sedes_nombre ON sedes(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+CREATE TABLE jornadas (
+  id         TEXT PRIMARY KEY NOT NULL,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE UNIQUE INDEX ux_jornadas_nombre ON jornadas(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+-- La persona; su unidad, cargo y jefatura salen de sus asignaciones vigentes a puestos.
 CREATE TABLE trabajadores (
   id         TEXT PRIMARY KEY NOT NULL,
-  estado     TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo', 'vacante')),
-  nombre     TEXT,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
   correo     TEXT,
   telefono   TEXT,
-  cargo      TEXT,
-  unidad_id  TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
+  tipo_contrato_id TEXT REFERENCES tipos_contrato(id) DEFERRABLE INITIALLY DEFERRED,
+  sede_id          TEXT REFERENCES sedes(id) DEFERRABLE INITIALLY DEFERRED,
+  jornada_id       TEXT REFERENCES jornadas(id) DEFERRABLE INITIALLY DEFERRED,
   foto_png   TEXT,
   notas      TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  deleted_at TEXT,
-  CHECK (estado = 'vacante' OR length(trim(coalesce(nombre, ''))) > 0),
-  CHECK (estado = 'activo' OR length(trim(coalesce(cargo, ''))) > 0)
+  deleted_at TEXT
 );
-CREATE INDEX idx_trabajadores_unidad_id ON trabajadores(unidad_id);
+CREATE INDEX idx_trabajadores_tipo_contrato_id ON trabajadores(tipo_contrato_id);
+CREATE INDEX idx_trabajadores_sede_id ON trabajadores(sede_id);
+CREATE INDEX idx_trabajadores_jornada_id ON trabajadores(jornada_id);
 CREATE UNIQUE INDEX ux_trabajadores_correo ON trabajadores(lower(trim(correo)))
   WHERE correo IS NOT NULL AND trim(correo) <> '' AND deleted_at IS NULL;
+
+-- Entradas de color con nombre para clasificar puestos (p. ej. «Crítico»). Dato de la organización. color = #rrggbb en minúsculas.
+CREATE TABLE leyendas (
+  id          TEXT PRIMARY KEY NOT NULL,
+  nombre      TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  color       TEXT NOT NULL CHECK (color GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+  descripcion TEXT,
+  orden       INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  deleted_at  TEXT
+);
+CREATE UNIQUE INDEX ux_leyendas_nombre ON leyendas(lower(trim(nombre))) WHERE deleted_at IS NULL;
+
+-- Puesto = un cargo en una unidad. Vacante = puesto sin titular vigente.
+CREATE TABLE puestos (
+  id          TEXT PRIMARY KEY NOT NULL,
+  unidad_id   TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
+  cargo_id    TEXT NOT NULL REFERENCES cargos(id) DEFERRABLE INITIALLY DEFERRED,
+  descripcion TEXT,
+  leyenda_id  TEXT REFERENCES leyendas(id) DEFERRABLE INITIALLY DEFERRED,
+  orden       INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  deleted_at  TEXT
+);
+CREATE INDEX idx_puestos_unidad_id ON puestos(unidad_id);
+CREATE INDEX idx_puestos_cargo_id ON puestos(cargo_id);
+CREATE INDEX idx_puestos_leyenda_id ON puestos(leyenda_id);
+
+-- Quién ocupa cada puesto y desde/hasta cuándo (AAAA-MM-DD). hasta NULL = vigente; las cerradas son el historial.
+CREATE TABLE asignaciones (
+  id            TEXT PRIMARY KEY NOT NULL,
+  puesto_id     TEXT NOT NULL REFERENCES puestos(id) DEFERRABLE INITIALLY DEFERRED,
+  trabajador_id TEXT NOT NULL REFERENCES trabajadores(id) DEFERRABLE INITIALLY DEFERRED,
+  tipo          TEXT NOT NULL CHECK (tipo IN ('titular', 'reemplazo')),
+  desde         TEXT NOT NULL,
+  hasta         TEXT CHECK (hasta IS NULL OR hasta >= desde),
+  motivo        TEXT,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  deleted_at    TEXT
+);
+CREATE INDEX idx_asignaciones_puesto_id ON asignaciones(puesto_id);
+CREATE INDEX idx_asignaciones_trabajador_id ON asignaciones(trabajador_id);
+CREATE UNIQUE INDEX ux_asignaciones_titular_vigente ON asignaciones(puesto_id)
+  WHERE tipo = 'titular' AND hasta IS NULL AND deleted_at IS NULL;
+CREATE UNIQUE INDEX ux_asignaciones_reemplazo_vigente ON asignaciones(puesto_id)
+  WHERE tipo = 'reemplazo' AND hasta IS NULL AND deleted_at IS NULL;
 
 CREATE TABLE conexiones (
   id         TEXT PRIMARY KEY NOT NULL,
@@ -122,3 +233,30 @@ CREATE INDEX idx_actividad_roles_actividad_id ON actividad_roles(actividad_id);
 CREATE INDEX idx_actividad_roles_trabajador_id ON actividad_roles(trabajador_id);
 CREATE UNIQUE INDEX ux_roles_persona ON actividad_roles(actividad_id, trabajador_id) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX ux_roles_aprobador ON actividad_roles(actividad_id) WHERE rol = 'A' AND deleted_at IS NULL;
+
+-- Ramas guardadas en "Árboles": una unidad se abre como árbol propio sin dejar de colgar de su superior.
+CREATE TABLE subarboles_guardados (
+  id         TEXT PRIMARY KEY NOT NULL,
+  unidad_id  TEXT NOT NULL REFERENCES unidades(id) DEFERRABLE INITIALLY DEFERRED,
+  nombre     TEXT,
+  orden      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE INDEX idx_subarboles_guardados_unidad_id ON subarboles_guardados(unidad_id);
+CREATE UNIQUE INDEX ux_subarboles_unidad ON subarboles_guardados(unidad_id) WHERE deleted_at IS NULL;
+
+-- Vistas del lienzo guardadas con nombre. arbol_id NULL = árbol completo; si no, un subárbol guardado.
+-- `config` es JSON (dirección, densidad, tarjeta, colorear por, resaltado y ramas plegadas); se valida al leer.
+CREATE TABLE vistas (
+  id         TEXT PRIMARY KEY NOT NULL,
+  arbol_id   TEXT REFERENCES subarboles_guardados(id) DEFERRABLE INITIALLY DEFERRED,
+  nombre     TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+  config     TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE INDEX idx_vistas_arbol_id ON vistas(arbol_id);
+CREATE UNIQUE INDEX ux_vistas_nombre ON vistas(coalesce(arbol_id, ''), lower(trim(nombre))) WHERE deleted_at IS NULL;

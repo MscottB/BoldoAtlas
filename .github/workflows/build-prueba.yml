@@ -1,0 +1,41 @@
+name: build-prueba
+
+# Portable e instalador de prueba en cada PR, descargables desde la pestaña Actions
+# (artefacto privado al repo, sin release pública). Lint y tests los corre ci.yml.
+on:
+  pull_request:
+    paths-ignore: ["site/**", "docs/**", "**/*.md"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-prueba-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe necesita historia y etiquetas
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: release # la misma caché que release.yml
+      - run: npm ci
+      # sin --etiqueta: versión de desarrollo X.Y.(Z+1)-dev.N sacada de git
+      - run: node scripts/release.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BoldoAtlas-prueba-${{ github.event.pull_request.head.sha || github.sha }}
+          path: release/*/*
+          retention-days: 14
+          if-no-files-found: error

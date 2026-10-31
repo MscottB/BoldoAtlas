@@ -1,4 +1,6 @@
+use serde::Serialize;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 pub const IDENTIFICADOR: &str = "io.github.mscottb.boldoatlas";
 
@@ -52,6 +54,41 @@ pub fn dir_datos(exe_dir: &Path, appdata: Option<&Path>) -> Result<Rutas, String
     })
 }
 
+/// Dónde están los datos del proyecto abierto y cuánto ocupan; lo muestra «Datos del proyecto».
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InfoProyecto {
+    pub portable: bool,
+    pub dir_datos: String,
+    pub ruta_bd: String,
+    /// La base más su registro -wal (SQLite tiene ahí los últimos cambios hasta el siguiente volcado).
+    pub bytes: u64,
+    /// Última modificación, en milisegundos desde 1970.
+    pub modificado: Option<i64>,
+}
+
+pub fn info_proyecto(r: &Rutas) -> Result<InfoProyecto, String> {
+    let mut wal = r.bd.as_os_str().to_owned();
+    wal.push("-wal");
+    let metadatos =
+        std::fs::metadata(&r.bd).map_err(|e| format!("No se pudo leer {}: {e}", r.bd.display()))?;
+    let mut bytes = metadatos.len();
+    let mut modificado = metadatos.modified().ok();
+    if let Ok(m) = std::fs::metadata(wal) {
+        bytes += m.len();
+        modificado = modificado.max(m.modified().ok());
+    }
+    Ok(InfoProyecto {
+        portable: r.portable,
+        dir_datos: r.datos.display().to_string(),
+        ruta_bd: r.bd.display().to_string(),
+        bytes,
+        modificado: modificado
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .and_then(|d| i64::try_from(d.as_millis()).ok()),
+    })
+}
+
 /// El Explorador de Windows extrae a `%TEMP%\Temp<N>_<archivo>.zip\` el exe que se abre dentro de un zip.
 fn abierto_desde_zip(exe_dir: &Path) -> bool {
     exe_dir.components().any(|c| {
@@ -99,6 +136,34 @@ mod tests {
         assert!(!r.portable);
         assert_eq!(r.datos, appdata.path().join(IDENTIFICADOR));
         assert!(r.respaldos.is_dir());
+    }
+
+    #[test]
+    fn info_proyecto_suma_la_base_y_su_wal() {
+        let exe = tempfile::tempdir().unwrap();
+        fs::write(exe.path().join("portable.flag"), "").unwrap();
+        let r = dir_datos(exe.path(), None).unwrap();
+        fs::write(&r.bd, b"12345").unwrap();
+        fs::write(r.datos.join("boldo.db-wal"), b"abc").unwrap();
+        let i = info_proyecto(&r).unwrap();
+        assert!(i.portable);
+        assert_eq!(i.bytes, 8);
+        assert_eq!(i.ruta_bd, r.bd.display().to_string());
+        assert_eq!(i.dir_datos, r.datos.display().to_string());
+        assert!(i.modificado.unwrap() > 1_700_000_000_000);
+    }
+
+    #[test]
+    fn info_proyecto_sin_wal_y_sin_base() {
+        let exe = tempfile::tempdir().unwrap();
+        let appdata = tempfile::tempdir().unwrap();
+        let r = dir_datos(exe.path(), Some(appdata.path())).unwrap();
+        let err = info_proyecto(&r).unwrap_err();
+        assert!(err.contains("boldo.db"), "{err}");
+        fs::write(&r.bd, b"1234").unwrap();
+        let i = info_proyecto(&r).unwrap();
+        assert!(!i.portable);
+        assert_eq!(i.bytes, 4);
     }
 
     #[test]

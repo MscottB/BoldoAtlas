@@ -61,7 +61,7 @@
     --primary-foreground: oklch(0.985 0 0);
     /* cobre del logo; shadcn usa --accent para hovers, por eso la marca va en su propio token */
     --marca: #c8743f;
-    --marca-foreground: #ffffff;
+    --marca-foreground: #111827; /* = textoSobre(#c8743f): 5,09:1; el blanco da 3,49:1 */
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
@@ -98,7 +98,7 @@
     --primary: #e6ebf1;
     --primary-foreground: #1e2a38;
     --marca: #c8743f;
-    --marca-foreground: #ffffff;
+    --marca-foreground: #111827; /* = textoSobre(#c8743f): 5,09:1; el blanco da 3,49:1 */
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
@@ -136,3 +136,11 @@
     cursor: pointer;
     }
 }
+/* Texto de las páginas de Ayuda (Markdown renderizado). */
+.ayuda h1 { @apply mb-4 text-2xl font-semibold; }
+.ayuda h2 { @apply mb-2 mt-6 text-lg font-semibold; }
+.ayuda p { @apply my-3 text-sm leading-relaxed; }
+.ayuda ul { @apply my-3 list-disc space-y-1 pl-5 text-sm leading-relaxed; }
+.ayuda code, .ayuda kbd { @apply rounded bg-muted px-1 py-0.5 font-mono text-xs; }
+.ayuda table { @apply my-4 w-full border-collapse text-sm; }
+.ayuda th, .ayuda td { @apply border-b px-2 py-1.5 text-left align-top; }

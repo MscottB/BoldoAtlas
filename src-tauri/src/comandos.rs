@@ -1,10 +1,13 @@
 use crate::db::{self, Sentencia};
-use crate::rutas::{self, Rutas};
+use crate::respaldos::{self, Fallo, Respaldo};
+use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
-use std::sync::Mutex;
-use tauri::State;
+use std::sync::{Mutex, TryLockError};
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 
 /// Si iniciar falla, la app no se cierra: guarda el error y el frontend lo muestra.
 pub struct Estado {
@@ -25,6 +28,7 @@ impl Estado {
             let appdata = std::env::var_os("APPDATA").map(std::path::PathBuf::from);
             let r = rutas::dir_datos(exe_dir, appdata.as_deref())?;
             rutas_ok = Some(r.clone());
+            respaldos::limpiar_parciales(&r.respaldos);
             let mut conn = db::abrir(&r.bd)?;
             let version = db::migrar(&mut conn, &r.respaldos)?;
             db::asegurar_meta(&conn)?;
@@ -46,10 +50,10 @@ impl Estado {
         }
     }
 
-    fn con_conexion<T>(
+    fn con_conexion<T, E: From<String>>(
         &self,
-        f: impl FnOnce(&mut Connection) -> Result<T, String>,
-    ) -> Result<T, String> {
+        f: impl FnOnce(&mut Connection) -> Result<T, E>,
+    ) -> Result<T, E> {
         let mut guardia = self
             .conn
             .lock()
@@ -60,6 +64,36 @@ impl Estado {
                 .unwrap_or_else(|| "La base de datos no está abierta.".into())
         })?;
         f(conn)
+    }
+
+    /// Cierra la conexión al salir: SQLite vuelca el WAL y borra -wal/-shm. Si un respaldo tiene la
+    /// conexión, espera `espera` y se rinde (devuelve false) para no colgar el cierre.
+    pub fn cerrar_ordenado(&self, espera: Duration) -> bool {
+        let limite = Instant::now() + espera;
+        loop {
+            match self.conn.try_lock() {
+                Ok(mut g) => {
+                    if let Some(c) = g.take() {
+                        let _ = c.close();
+                    }
+                    return true;
+                }
+                Err(TryLockError::Poisoned(p)) => {
+                    drop(p.into_inner().take());
+                    return true;
+                }
+                Err(TryLockError::WouldBlock) if Instant::now() < limite => {
+                    std::thread::sleep(Duration::from_millis(25))
+                }
+                Err(TryLockError::WouldBlock) => return false,
+            }
+        }
+    }
+
+    fn rutas(&self) -> Result<&Rutas, Fallo> {
+        self.rutas
+            .as_ref()
+            .ok_or_else(|| "No se ubicó la carpeta de datos.".to_string().into())
     }
 }
 
@@ -101,4 +135,122 @@ pub fn db_lote(
     version_app: String,
 ) -> Result<(), String> {
     estado.con_conexion(|c| db::lote(c, &sentencias, &version_app))
+}
+
+#[tauri::command]
+pub async fn listar_respaldos(app: AppHandle) -> Result<Vec<Respaldo>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        respaldos::listar(&app.state::<Estado>().rutas()?.respaldos)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Como `respaldar_ahora`, pero con un nombre propio que la poda nunca borra: lo usa «reemplazar los datos».
+#[tauri::command]
+pub async fn respaldar_antes_de_reemplazar(app: AppHandle) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let dir = &estado.rutas()?.respaldos;
+        estado.con_conexion(|c| {
+            respaldos::respaldar_antes_de_reemplazar(c, dir, &respaldos::sello_local(c)?)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// En un hilo aparte: el VACUUM INTO no congela la ventana.
+#[tauri::command]
+pub async fn respaldar_ahora(app: AppHandle) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let dir = &estado.rutas()?.respaldos;
+        estado.con_conexion(|c| respaldos::respaldar(c, dir, &respaldos::sello_local(c)?))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Si sale bien, reinicia la app: todo el estado (Rust y frontend) se vuelve a cargar desde la base restaurada.
+#[tauri::command]
+pub async fn restaurar_respaldo(app: AppHandle, nombre: String) -> Result<(), Fallo> {
+    let app2 = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app2.state::<Estado>();
+        let r = estado.rutas()?;
+        let mut conexion = estado
+            .conn
+            .lock()
+            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
+        respaldos::restaurar(&mut conexion, &r.bd, &r.respaldos, &nombre, db::MIGRACIONES)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    app.restart()
+}
+
+/// Abre la carpeta conocida por Rust; la interfaz nunca envía una ruta.
+#[tauri::command]
+pub fn abrir_carpeta_respaldos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
+    app.opener()
+        .open_path(estado.rutas()?.respaldos.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string().into())
+}
+
+/// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust.
+#[tauri::command]
+pub fn info_proyecto(estado: State<Estado>) -> Result<InfoProyecto, Fallo> {
+    Ok(rutas::info_proyecto(estado.rutas()?)?)
+}
+
+/// Abre la carpeta de datos conocida por Rust; la interfaz nunca envía una ruta.
+#[tauri::command]
+pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
+    app.opener()
+        .open_path(estado.rutas()?.datos.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string().into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn estado(conn: Connection) -> Estado {
+        Estado {
+            conn: Mutex::new(Some(conn)),
+            rutas: None,
+            version_esquema: 0,
+            error: None,
+        }
+    }
+
+    #[test]
+    fn cerrar_ordenado_no_deja_wal_ni_shm() {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join("boldo.db");
+        let mut conn = db::abrir(&bd).unwrap();
+        db::migrar(&mut conn, dir.path()).unwrap();
+        db::asegurar_meta(&conn).unwrap();
+        db::lote(&mut conn, &[], "t").unwrap();
+        let wal = dir.path().join("boldo.db-wal");
+        assert!(wal.exists(), "con la conexión abierta el WAL existe");
+        let e = estado(conn);
+        assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        assert!(!wal.exists());
+        assert!(!dir.path().join("boldo.db-shm").exists());
+        assert!(e.conn.lock().unwrap().is_none());
+        // cerrar dos veces no falla
+        assert!(e.cerrar_ordenado(Duration::from_millis(10)));
+    }
+
+    #[test]
+    fn cerrar_ordenado_se_rinde_si_un_respaldo_tiene_la_conexion() {
+        let dir = tempfile::tempdir().unwrap();
+        let e = estado(db::abrir(&dir.path().join("boldo.db")).unwrap());
+        let _ocupada = e.conn.lock().unwrap();
+        let t = Instant::now();
+        assert!(!e.cerrar_ordenado(Duration::from_millis(100)));
+        assert!(t.elapsed() < Duration::from_secs(2));
+    }
 }

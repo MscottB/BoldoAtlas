@@ -1,48 +1,95 @@
-<p align="center"><img src="assets/brand/logo-horizontal.webp" alt="BoldoAtlas" width="420"></p>
+<p align="center">
+  <img src="assets/brand/icono.png" alt="BoldoAtlas" width="112">
+</p>
 
-**BoldoAtlas** es una app de escritorio para Windows que arma el organigrama de una organización —gerencias, áreas y subáreas— con sus procesos, actividades y las fichas de cada trabajador. Funciona 100 % local, sin servidor ni cuentas, y se puede usar en modo portable desde un pendrive.
+<h1 align="center">BoldoAtlas</h1>
 
-> Estado: en desarrollo (Fase 1 — fundaciones). Ver el [diseño](docs/superpowers/specs/2026-10-28-boldo-atlas-design.md).
+<p align="center">
+  <strong>Org charts, processes and people records — a local, portable desktop app for Windows.</strong><br>
+  No server, no accounts, no internet required. Your data stays on your computer.
+</p>
 
-## Descarga
+<p align="center">
+  <a href="README.es.md">Español</a> ·
+  <a href="https://mscottb.github.io/BoldoAtlas/">Website</a> ·
+  <a href="https://github.com/MscottB/BoldoAtlas/releases/latest">Download</a>
+</p>
 
-Última versión en [Releases](https://github.com/MscottB/BoldoAtlas/releases/latest):
+<p align="center">
+  <img alt="Platform: Windows" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-1e2a38">
+  <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-c8743f">
+  <img alt="Built with Tauri and Vue" src="https://img.shields.io/badge/built%20with-Tauri%202%20%2B%20Vue%203-1e2a38">
+  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-c8743f">
+</p>
 
-| Archivo | Para qué |
+---
+
+## What it is
+
+BoldoAtlas lets you build the organizational chart of a company — management levels, areas and sub-areas, connected hierarchically or laterally — and keep, on the same tree, its processes, activities and the record of every person who works there.
+
+It is designed for **large organizations**: very big trees, several independent trees in the same database, and any branch can be opened as a tree of its own without copying it.
+
+## Features
+
+| | Feature |
 |---|---|
-| `BoldoAtlas_windows_x64_portable.zip` | Extraer en cualquier carpeta y ejecutar `BoldoAtlas.exe`. Los datos quedan en `datos/` junto al programa. |
-| `BoldoAtlas_windows_x64_setup.exe` | Instalador. Los datos quedan en `%APPDATA%\io.github.mscottb.boldoatlas`. |
-| `SHA256SUMS.txt` | Sumas para verificar la descarga: `Get-FileHash <archivo> -Algorithm SHA256`. |
+| ✅ | 100 % local SQLite database, portable mode (runs from a USB drive), automatic backups before migrations |
+| ✅ | Version shown in *About*, generated from git (SemVer + build date) |
+| 🚧 | Tree canvas: create, rename, drag to reorganize, collapse branches, lateral connections, highlight by tag |
+| 🚧 | Tree manager: several independent trees and saved sub-trees (open any branch as its own tree) |
+| 🚧 | People records and vacancies, with managed lists for job title, contract type, site and shift |
+| 🚧 | Directory with filters, `Ctrl+K` search, light/dark theme with accent color |
+| 🚧 | English and Spanish interface, built-in Help |
+| 🗓️ | Processes (SIPOC), activities (RACI matrix) and indicators |
+| 🗓️ | PDF, Excel, PNG/SVG exports and bulk load from Excel/CSV |
+| 🗓️ | Encrypted `.boldo` files with a per-file code to share all or part of the organization, with reviewed merge |
 
-Requisitos: Windows 10 u 11 con WebView2 (ya viene en Windows 11 y en casi todo Windows 10).
+✅ available · 🚧 in development · 🗓️ planned
 
-**Aviso de Windows SmartScreen:** el programa aún no está firmado digitalmente, así que la primera vez Windows puede mostrar "Windows protegió su PC". Haz clic en **Más información → Ejecutar de todas formas**. En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos.
+## Download
 
-## Compilar
+Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases/latest)** (the first public release is coming soon):
 
-Requiere Node 24+ y Rust estable.
+| File | Use |
+|---|---|
+| `BoldoAtlas_windows_x64_portable.zip` | Extract anywhere and run `BoldoAtlas.exe`. Data lives in `datos/` next to the program. |
+| `BoldoAtlas_windows_x64_setup.exe` | Installer. Data lives in `%APPDATA%\io.github.mscottb.boldoatlas`. |
+| `SHA256SUMS.txt` | Checksums: `Get-FileHash <file> -Algorithm SHA256`. |
+
+Requirements: Windows 10 or 11 with WebView2 (included in Windows 11 and almost every Windows 10).
+
+> **Windows SmartScreen:** the program is not code-signed yet, so the first time Windows may show "Windows protected your PC". Click **More info → Run anyway**. In portable mode, extract the zip first — running it from inside the zip cannot save data.
+
+## Privacy
+
+Everything is stored on your computer. BoldoAtlas makes no network connections and has no accounts. Files you share with other people (`.boldo`) will be encrypted and open only with the code generated for each file.
+
+## Build from source
+
+Requires Node 24+ and stable Rust.
 
 ```bash
 npm ci
-npm run tauri dev      # app en modo desarrollo
-npm run test           # tests del frontend
-cargo test --manifest-path src-tauri/Cargo.toml   # tests de Rust
-npm run release        # release completo en release/<versión>/: instalador, zip portable y SHA256SUMS.txt
+npm run app            # run in development (picks a free port; closing the window or Ctrl+C stops everything)
+npm run test           # frontend tests
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
+npm run release        # full Windows release in release/<version>/
 ```
 
-`npm run release` es el mismo comando que usa GitHub Actions, así que lo que genera en local es lo que se publicaría.
+`npm run release` is the same command GitHub Actions uses, so a local build is exactly what would be published. To publish a version, push a tag: `git tag v1.2.0 && git push origin v1.2.0`.
 
-## Publicar una versión
+## Roadmap
 
-La versión sale de la etiqueta de git ([SemVer](https://semver.org/lang/es/)) y se muestra en "Acerca de" como `Versión 1.2.0 · DDMMAAAA`. Entre una versión y la siguiente, los builds de desarrollo se numeran como la próxima versión (`1.2.1-dev.5` son 5 commits después de `v1.2.0`). Para publicar:
+1. ✅ Foundations — database, portable mode, versioning, CI/CD
+2. 🚧 Core — tree canvas, tree manager, people records, managed lists, directory, i18n, Help
+3. 🗓️ Processes (SIPOC), activities (RACI) and indicators
+4. 🗓️ Exports (PDF, Excel, images) and bulk load
+5. 🗓️ Encrypted `.boldo` files, merge and scenarios
+6. 🗓️ Website with user manual
 
-```bash
-git tag v1.2.0
-git push origin v1.2.0
-```
+Design document: [docs/superpowers/specs](docs/superpowers/specs/2026-10-28-boldo-atlas-design.md).
 
-GitHub Actions compila, arma el zip portable, el instalador y las sumas SHA256, y crea el Release. Las etiquetas con guion (`v1.3.0-beta.1`) se publican como *pre-release*.
+## License
 
-## Licencia
-
-[AGPL-3.0](LICENSE) · Creado por Michael Jim Scott Bravo.
+[AGPL-3.0](LICENSE) · Created by **Michael Jim Scott Bravo**.

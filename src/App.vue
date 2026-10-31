@@ -1,36 +1,174 @@
 <script setup lang="ts">
-import { Info, Network } from "@lucide/vue";
+import { computed, ref, watch, type Component } from "vue";
+import { useRoute } from "vue-router";
+import { useWindowSize } from "@vueuse/core";
+import { useI18n } from "vue-i18n";
+import {
+  ArrowLeftRight,
+  ChartColumn,
+  CircleHelp,
+  GitBranch,
+  FolderTree,
+  Info,
+  ListChecks,
+  Network,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Users,
+} from "@lucide/vue";
+import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import BarraSuperior from "@/components/BarraSuperior.vue";
+import PaletaComandos from "@/components/PaletaComandos.vue";
+import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
+import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
+import { useAvisos } from "@/features/revision/useAvisos";
+import DatosProyecto from "@/features/proyecto/DatosProyecto.vue";
+import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
+import { useOrganizacion } from "@/stores/organizacion";
+import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
+import { useCerrarVista } from "@/app/useCerrarVista";
+import { ponerTitulo } from "@/app/ventana";
 import icono from "../assets/brand/icono.png";
 
-const navegacion = [
-  { to: "/", etiqueta: "Árbol", icono: Network },
-  { to: "/acerca", etiqueta: "Acerca de", icono: Info },
+// Sin `to`, la entrada aún no existe: se muestra deshabilitada con el aviso de la fase en que llega.
+// `etiqueta` y `aviso` son claves de i18n. `contador`, si da más de 0, se muestra como insignia.
+interface Entrada {
+  to?: string;
+  etiqueta: string;
+  icono: Component;
+  aviso?: string;
+  contador?: () => number;
+  /** Nombre de la ruta que esta entrada abre y que se cierra con un segundo clic (Configuración, Ayuda, Acerca de). */
+  cierra?: string;
+}
+const avisos = useAvisos();
+useAtajos();
+const secciones: Entrada[] = [
+  { to: "/", etiqueta: "nav.arbol", icono: Network },
+  { to: "/arboles", etiqueta: "nav.arboles", icono: FolderTree },
+  { to: "/directorio", etiqueta: "nav.directorio", icono: Users },
+  { to: "/revision", etiqueta: "nav.revision", icono: ListChecks, contador: () => avisos.value.total },
+  { etiqueta: "nav.indicadores", icono: ChartColumn, aviso: "nav.llegaFase3" },
+  { etiqueta: "nav.escenarios", icono: GitBranch, aviso: "nav.llegaFase5" },
+  { etiqueta: "nav.importarExportar", icono: ArrowLeftRight, aviso: "nav.llegaFases45" },
 ];
+// Abajo, separadas de las secciones del programa.
+const utilidades: Entrada[] = [
+  { to: "/configuracion", etiqueta: "nav.configuracion", icono: Settings, cierra: "configuracion" },
+  { to: "/ayuda", etiqueta: "nav.ayuda", icono: CircleHelp, cierra: "ayuda" },
+  { to: "/acerca", etiqueta: "nav.acerca", icono: Info, cierra: "acerca" },
+];
+
+const { t } = useI18n();
+// Con avisos pendientes, el nombre accesible de la entrada incluye cuántos son.
+const nombre = (item: Entrada) => {
+  const n = item.contador?.() ?? 0;
+  return n ? `${t(item.etiqueta)}, ${t("revision.avisos", n)}` : t(item.etiqueta);
+};
+const route = useRoute();
+const org = useOrganizacion();
+watch(() => org.org.nombre, ponerTitulo, { immediate: true });
+const cerrarVista = useCerrarVista();
+// Un segundo clic en la entrada de la vista que ya se está viendo la cierra (en captura: antes de que el enlace navegue).
+function alPulsar(e: MouseEvent, item: Entrada) {
+  if (!item.cierra || route.name !== item.cierra) return;
+  e.preventDefault();
+  cerrarVista();
+}
+const { width } = useWindowSize();
+const manual = ref<boolean | null>(null);
+const colapsada = computed(() => barraColapsada(width.value, manual.value));
+// Al cruzar los 1100 px vuelve a mandar el ancho.
+watch(
+  () => width.value < ANCHO_COLAPSO,
+  () => (manual.value = null),
+);
 </script>
 
 <template>
-  <div class="flex h-screen bg-background text-foreground">
-    <nav
-      class="flex w-56 shrink-0 flex-col gap-1 border-r bg-sidebar p-3 text-sidebar-foreground"
-      aria-label="Navegación principal"
-    >
-      <p class="flex items-center gap-2 px-2 pb-3 text-base font-semibold tracking-tight">
-        <img :src="icono" alt="" class="size-6" />
-        <span>Boldo<span class="text-marca">Atlas</span></span>
-      </p>
-      <RouterLink
-        v-for="item in navegacion"
-        :key="item.to"
-        :to="item.to"
-        class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
-        active-class="bg-sidebar-accent font-medium"
-      >
-        <component :is="item.icono" class="size-4" aria-hidden="true" />
-        {{ item.etiqueta }}
-      </RouterLink>
-    </nav>
-    <main class="min-w-0 flex-1 overflow-auto">
+  <TooltipProvider>
+    <div v-if="route.meta.sinMarco" class="h-screen overflow-auto bg-background text-foreground">
       <RouterView />
-    </main>
-  </div>
+    </div>
+    <div v-else class="flex h-screen bg-background text-foreground">
+      <nav
+        class="flex shrink-0 flex-col gap-1 border-r bg-sidebar p-3 text-sidebar-foreground"
+        :class="colapsada ? 'w-14' : 'w-56'"
+        :aria-label="t('nav.principal')"
+      >
+        <p class="flex items-center gap-2 px-1 pb-3 text-base font-semibold tracking-tight">
+          <img :src="icono" alt="" class="size-6 shrink-0" />
+          <span v-if="!colapsada">Boldo<span class="text-marca">Atlas</span></span>
+          <span v-else class="sr-only">BoldoAtlas</span>
+        </p>
+        <template v-for="(grupo, i) in [secciones, utilidades]" :key="i">
+          <div v-if="i === 1" class="mt-auto border-t" role="separator" />
+          <Tooltip v-for="item in grupo" :key="item.etiqueta" :disabled="!colapsada && !item.aviso">
+            <TooltipTrigger as-child>
+              <RouterLink
+                v-if="item.to"
+                :to="item.to"
+                :aria-label="colapsada ? nombre(item) : undefined"
+                class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
+                active-class="bg-sidebar-accent font-medium"
+                @click.capture="alPulsar($event, item)"
+              >
+                <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
+                <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
+                <template v-if="item.contador?.()">
+                  <span
+                    class="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums"
+                    :class="colapsada ? 'absolute -top-1 -right-1' : 'ml-auto'"
+                    aria-hidden="true"
+                    >{{ item.contador() }}</span
+                  >
+                  <span v-if="!colapsada" class="sr-only">, {{ t("revision.avisos", item.contador()) }}</span>
+                </template>
+              </RouterLink>
+              <button
+                v-else
+                type="button"
+                aria-disabled="true"
+                :aria-label="colapsada ? t(item.etiqueta) : undefined"
+                class="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
+                <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{{ t(item.aviso ?? item.etiqueta) }}</TooltipContent>
+          </Tooltip>
+        </template>
+        <Button
+          variant="ghost"
+          class="justify-start px-2 font-normal"
+          :aria-label="colapsada ? t('barra.mostrarBarra') : undefined"
+          :title="colapsada ? t('barra.mostrarBarra') : undefined"
+          :aria-expanded="!colapsada"
+          @click="manual = !colapsada"
+        >
+          <component :is="colapsada ? PanelLeftOpen : PanelLeftClose" aria-hidden="true" />
+          <span v-if="!colapsada">{{ t("barra.ocultarBarra") }}</span>
+        </Button>
+      </nav>
+      <div class="flex min-w-0 flex-1 flex-col">
+        <BarraSuperior
+          :colapsada="colapsada"
+          @alternar-barra="manual = !colapsada"
+          @buscar="paletaAbierta = true"
+        />
+        <main class="min-h-0 flex-1 overflow-auto">
+          <RouterView />
+        </main>
+      </div>
+    </div>
+    <PaletaComandos v-if="!route.meta.sinMarco" v-model:open="paletaAbierta" />
+    <FichaTrabajador />
+    <DialogoPuesto />
+    <DatosProyecto v-if="!route.meta.sinMarco" />
+    <Toaster />
+  </TooltipProvider>
 </template>

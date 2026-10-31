@@ -228,7 +228,7 @@ mod tests {
 
     fn insertar_unidad(nombre: &str) -> Sentencia {
         Sentencia {
-            sql: "INSERT INTO unidades (id, tipo, nombre, created_at, updated_at) VALUES (?, 'gerencia', ?, 'x', 'x')"
+            sql: "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at) VALUES (?, '00000000-0000-7000-8000-000000000001', ?, 'x', 'x')"
                 .into(),
             params: vec![json!(uuid::Uuid::now_v7().to_string()), json!(nombre)],
         }

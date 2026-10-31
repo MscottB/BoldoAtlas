@@ -1,0 +1,738 @@
+{
+  "nav": {
+    "principal": "Main navigation",
+    "arbol": "Tree",
+    "arboles": "Trees",
+    "directorio": "Directory",
+    "revision": "Review",
+    "indicadores": "Indicators",
+    "escenarios": "Scenarios",
+    "importarExportar": "Import/Export",
+    "configuracion": "Settings",
+    "ayuda": "Help",
+    "acerca": "About",
+    "llegaFase3": "Coming in Phase 3",
+    "llegaFase5": "Coming in Phase 5",
+    "llegaFases45": "Coming in Phases 4 and 5"
+  },
+  "barra": {
+    "mostrarBarra": "Show sidebar",
+    "ocultarBarra": "Hide sidebar",
+    "sinNombre": "Unnamed organization",
+    "buscar": "Search",
+    "exportar": "Export",
+    "llegaFase4": "Coming in Phase 4",
+    "temaClaro": "Switch to light theme",
+    "temaOscuro": "Switch to dark theme"
+  },
+  "guardado": {
+    "guardando": "Saving…",
+    "guardado": "Saved",
+    "noSeGuardo": "Not saved"
+  },
+  "pantallaError": {
+    "titulo": "BoldoAtlas could not open its data",
+    "carpetaDatos": "Data folder",
+    "copiar": "Copy details",
+    "copiado": "Copied"
+  },
+  "acerca": {
+    "version": "Version {version} · {fecha}",
+    "esquema": "Database schema",
+    "idBase": "Database identifier",
+    "revision": "Data revision",
+    "baseCreada": "Database created",
+    "modo": "Mode",
+    "portable": "Portable",
+    "instalado": "Installed",
+    "carpetaDatos": "Data folder",
+    "copiar": "Copy information",
+    "copiado": "Copied",
+    "creadoPor": "Created by",
+    "licencia": "License",
+    "repositorio": "Repository on GitHub",
+    "copia": {
+      "commit": "Commit {commit}",
+      "desconocido": "unknown",
+      "esquema": "Schema {esquema}",
+      "base": "Database {id} · revision {revision} · created {creada}",
+      "modoPortable": "Portable mode",
+      "modoInstalado": "Installed mode"
+    }
+  },
+  "arbol": {
+    "vacioTitulo": "There are no units yet",
+    "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here.",
+    "nuevaUnidad": "New unit",
+    "nuevaSubunidad": "New sub-unit",
+    "sinTiposActivos": "There are no active unit types.",
+    "abrirComoArbol": "Open as tree",
+    "nombre": "Unit name",
+    "ayudaNombre": "Double-click or F2 to rename",
+    "fecha": {
+      "titulo": "View the org chart on a date",
+      "viendo": "Viewing as of {fecha}",
+      "soloLectura": "read only",
+      "volver": "Back to today",
+      "panelSoloLectura": "Data for the chosen date: read only. Go back to today to edit.",
+      "dialogoSoloLectura": "Position as of {fecha}: read only. Go back to today in the tree to edit."
+    },
+    "sinJefatura": "No manager",
+    "dotacion": "Total headcount",
+    "verPersonasDotacion": "View the unit's people",
+    "dotacionPersonas": "Total headcount: {n}. View the people",
+    "vacantes": "{n} vacancy | {n} vacancies",
+    "expandir": "Show {n} sub-unit | Show {n} sub-units",
+    "plegar": "Collapse branch",
+    "resaltarEtiqueta": "Highlight by tag",
+    "todasEtiquetas": "Highlight tag: none",
+    "resaltarTexto": "Highlight by text",
+    "alejar": "Zoom out",
+    "acercar": "Zoom in",
+    "encuadrar": "Fit view",
+    "encuadrarAtajo": "Fit everything (Ctrl+0)",
+    "rutaOrigen": "Origin path",
+    "subirNivel": "Up one level",
+    "verCompleto": "View in the full tree",
+    "confirmarMover": "Move “{unidad}” into “{destino}”?",
+    "cancelar": "Cancel",
+    "mover": "Move",
+    "reemplazo": "Replacement: {nombre}",
+    "vista": {
+      "titulo": "View",
+      "verPuestos": "Show positions",
+      "mostrarCargo": "Show the job title",
+      "mostrarPersona": "Show the person",
+      "rutaPorTipo": "Show on the cards the parent of type",
+      "colorearPor": "Color by",
+      "ninguno": "None",
+      "marcaDe": "{tipo} mark",
+      "ocultarLeyenda": "Hide the legend",
+      "mostrarLeyenda": "Show the legend",
+      "leyendaPuesto": "Position legend",
+      "activaVerPuestos": "Turn on “Show positions” to see the legend colors.",
+      "direccion": "Direction",
+      "densidad": "Density",
+      "lineas": "Lines",
+      "opciones": {
+        "vertical": "Vertical (top to bottom)",
+        "horizontal": "Horizontal (left to right)",
+        "normal": "Normal",
+        "compacta": "Compact",
+        "smoothstep": "Right-angle lines",
+        "bezier": "Curves"
+      },
+      "compactaAviso": "The compact card is one line: name, headcount and vacancies. The other card details are not shown.",
+      "tarjeta": "Card details",
+      "campos": {
+        "mostrarTipo": "Unit type",
+        "mostrarJefe": "Head",
+        "mostrarFoto": "Head's photo",
+        "mostrarDotacion": "Headcount",
+        "mostrarVacantes": "Vacancies",
+        "mostrarEtiquetas": "Tags"
+      },
+      "alinearPorTipo": "Align by unit type"
+    },
+    "resaltar": {
+      "titulo": "Highlight by…",
+      "activos": "{n} active criterion | {n} active criteria",
+      "vacantes": "With vacancies",
+      "sede": "Site",
+      "contrato": "Contract type",
+      "jornada": "Shift",
+      "cargo": "Job title",
+      "cualquiera": "Any",
+      "ayuda": "Units that have the chosen value in their own positions are highlighted. This adds to the tag and the text."
+    },
+    "vistas": {
+      "titulo": "Views",
+      "sinArbol": "This branch is not saved in Trees. Save it there to have views of its own.",
+      "nombre": "View name",
+      "guardar": "Save current view",
+      "sinVistas": "There are no saved views in this tree yet.",
+      "lista": "Saved views",
+      "aplicar": "Apply “{nombre}”",
+      "renombrar": "Rename “{nombre}”",
+      "eliminar": "Delete “{nombre}”",
+      "eliminada": "View deleted",
+      "deshacer": "Undo"
+    },
+    "reordenar": "Rearrange",
+    "ordenando": "Arranging…",
+    "errorOrdenar": "The diagram could not be arranged. Try “Rearrange”.",
+    "limite": {
+      "titulo": "{n} cards would be shown",
+      "texto": "With more than {limite} cards in view the canvas gets slow. You can expand only some levels.",
+      "igual": "Expand anyway",
+      "hastaNivel": "Expand to level {n}"
+    },
+    "reordenarAyuda": "Lays out the diagram again and fits it to the view",
+    "ramas": {
+      "titulo": "Branches",
+      "expandirTodo": "Expand all",
+      "contraerTodo": "Collapse all",
+      "contraerHasta": "Collapse to level",
+      "nivel": "Level {n}"
+    },
+    "menu": {
+      "lienzo": "Canvas",
+      "abrirPanel": "Open panel",
+      "renombrar": "Rename",
+      "verPersonas": "View people",
+      "expandirRama": "Expand branch",
+      "contraerRama": "Collapse branch",
+      "seleccionarRama": "Select branch",
+      "eliminar": "Delete…",
+      "abrirPuesto": "Open position",
+      "nuevaRaiz": "New root unit",
+      "vista": "View…"
+    }
+  },
+  "arboles": {
+    "titulo": "Trees",
+    "nuevoArbol": "New tree",
+    "nombreArbol": "Tree name",
+    "tipoArbol": "Type",
+    "crear": "Create",
+    "abrir": "Open",
+    "abrirNombre": "Open “{nombre}”",
+    "subarboles": "Saved subtrees",
+    "sinSubarboles": "There are no saved subtrees yet.",
+    "renombrar": "Rename subtree",
+    "subir": "Move up",
+    "bajar": "Move down",
+    "quitar": "Remove from Trees",
+    "guardarEnArboles": "Save in Trees",
+    "guardado": "Saved"
+  },
+  "directorio": {
+    "filas": "{n} row | {n} rows",
+    "tabla": "People and positions",
+    "filtros": "Directory filters",
+    "buscar": "Search by person, job title or email",
+    "unidad": "Unit",
+    "todasUnidades": "All units",
+    "cargo": "Job title",
+    "tipoContrato": "Contract type",
+    "sede": "Site",
+    "jornada": "Schedule",
+    "etiqueta": "Tag",
+    "estado": "Status",
+    "todos": "All",
+    "desactivado": "(deactivated)",
+    "ocupado": "Filled",
+    "vacante": "Vacant",
+    "sinPuesto": "No position",
+    "limpiar": "Clear filters",
+    "persona": "Person",
+    "reemplazo": "Replacement",
+    "correo": "Email",
+    "ordenarUnidad": "Sort by unit",
+    "exportar": "Export this list to Excel",
+    "vacio": "There are no positions or people yet. Create units and positions in the tree.",
+    "sinResultados": "No rows match the filters."
+  },
+  "revision": {
+    "titulo": "Data review",
+    "avisos": "{n} warning | {n} warnings",
+    "todoEnOrden": "All in order",
+    "dias": "{n} day without a holder | {n} days without a holder",
+    "nombresGrupo": "{n} people with a similar name",
+    "tablas": {
+      "cargos": "Job title",
+      "tipos_contrato": "Contract type",
+      "sedes": "Site",
+      "jornadas": "Schedule",
+      "tipos_unidad": "Unit type",
+      "leyendas": "Legend"
+    },
+    "sinJefatura": {
+      "titulo": "Units without a head",
+      "ayuda": "Units with no head position, or whose position has no current holder or replacement."
+    },
+    "vacantes": {
+      "titulo": "Vacant positions",
+      "ayuda": "Positions with no current holder, longest without a holder first."
+    },
+    "reemplazos": {
+      "titulo": "Current replacements",
+      "ayuda": "For information only: not counted in the menu counter."
+    },
+    "sinPuesto": {
+      "titulo": "People without a current position",
+      "ayuda": "Registered people who do not hold or replace any position today."
+    },
+    "correos": {
+      "titulo": "Repeated emails",
+      "ayuda": "People who share the same email."
+    },
+    "nombres": {
+      "titulo": "Similar names",
+      "ayuda": "The same name ignoring case and accents, or the same words in another order: possible duplicates."
+    },
+    "vacias": {
+      "titulo": "Empty units",
+      "ayuda": "Units with no positions and no subunits."
+    },
+    "sinUso": {
+      "titulo": "Unused values",
+      "ayuda": "Active values of the records and active legends that nothing uses."
+    }
+  },
+  "idioma": {
+    "etiqueta": "Language",
+    "es": "Español",
+    "en": "English"
+  },
+  "ayuda": {
+    "titulo": "Help",
+    "paginas": "Help pages",
+    "noExiste": "That help page does not exist."
+  },
+  "errores": {
+    "correoDuplicado": "A person with that email already exists.",
+    "etiquetaDuplicada": "A tag with that name already exists.",
+    "unidadYaEtiquetada": "The unit already has that tag.",
+    "valorDuplicado": "That value already exists in the list.",
+    "asignacionVigenteDuplicada": "That position already has a current assignment of that type.",
+    "fechasInvertidas": "The end date cannot be earlier than the start date.",
+    "personaSinNombre": "The person's name is missing.",
+    "conexionConsigoMisma": "A unit cannot be connected to itself.",
+    "relacionInexistente": "The related unit or person no longer exists.",
+    "ramaYaGuardada": "That branch is already saved in Trees.",
+    "vistaDuplicada": "This tree already has a view with that name.",
+    "colorInvalido": "The color must use the #rrggbb format (for example, #be123c)."
+  },
+  "store": {
+    "nombreVacio": "Enter a name.",
+    "hayDatos": "This database already has data: to replace it use “New empty organization” or “Explore the example” from the app menu.",
+    "cicloRama": "A unit cannot be moved inside its own branch.",
+    "unidadInexistente": "The unit no longer exists.",
+    "raizConContenido": "The root unit cannot be deleted while it has content.",
+    "noSePuedeDeshacer": "This can no longer be undone.",
+    "valorExiste": "\"{nombre}\" already exists in the list.",
+    "puestoInexistente": "The position no longer exists.",
+    "nadaQuePegar": "There is no copied style that can be pasted.",
+    "ultimoTipoUnidad": "At least one unit type must stay active.",
+    "soloLectura": "You are viewing the org chart at a past date: it is read-only. Go back to today to change it."
+  },
+  "ficha": {
+    "tituloPersona": "Person record",
+    "nuevaPersona": "New person",
+    "descripcion": "Changes are saved when you leave each field, if they are valid.",
+    "nombre": "Name",
+    "tipoContrato": "Contract type",
+    "sede": "Site",
+    "jornada": "Shift",
+    "correo": "Email",
+    "telefono": "Phone",
+    "notas": "Notes",
+    "foto": "Photo",
+    "elegirFoto": "Choose photo",
+    "quitarFoto": "Remove photo",
+    "encabeza": "Units they head",
+    "ninguna": "None",
+    "eliminar": "Delete",
+    "eliminado": "Record deleted",
+    "deshacer": "Undo",
+    "selector": {
+      "elegir": "Choose…",
+      "buscar": "Search or type a new value",
+      "inactivo": "(inactive)",
+      "agregar": "Add «{texto}» to the list",
+      "sinValor": "No value",
+      "yaExistia": "«{nombre}» was already in the list: selected that one."
+    },
+    "error": {
+      "nombre": "Enter the name.",
+      "correo": "The email is not valid.",
+      "fotoTipo": "The photo must be PNG, JPG or WebP.",
+      "fotoPeso": "The photo cannot be larger than 1 MB.",
+      "fotoLectura": "The photo could not be read."
+    },
+    "cerrar": "Close",
+    "sinGuardarTitulo": "You have unsaved changes",
+    "sinGuardarTexto": "A field is not valid or the record has not been created yet. If you discard, they will be lost.",
+    "seguirEditando": "Keep editing",
+    "descartar": "Discard",
+    "puestos": "Positions",
+    "sinPuestos": "No current positions.",
+    "historialPuestos": "History ({n})",
+    "puestoVigente": "{cargo} · {unidad} · {tipo} · since {desde}",
+    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}"
+  },
+  "puesto": {
+    "nuevo": "New position",
+    "nuevoPuesto": "New position",
+    "puestos": "Positions ({n})",
+    "sinPuestos": "This unit has no positions yet.",
+    "cargo": "Job title",
+    "descripcion": "Description",
+    "esJefatura": "Is the head of the unit",
+    "vigentes": "Current assignments",
+    "tipo": {
+      "titular": "Holder",
+      "reemplazo": "Replacement"
+    },
+    "vacante": "Vacant",
+    "sinReemplazo": "No replacement",
+    "desdeFecha": "Since {fecha}",
+    "terminarDe": "End assignment of {nombre}",
+    "reemplazoDe": "Replacement: {nombre}",
+    "accion": {
+      "titular": "Assign holder",
+      "reemplazo": "Register replacement",
+      "terminar": "End assignment"
+    },
+    "historial": "History",
+    "sinHistorial": "This position has no assignments yet.",
+    "col": {
+      "tipo": "Type",
+      "persona": "Person"
+    },
+    "persona": "Person",
+    "desde": "From",
+    "hasta": "To",
+    "motivo": "Reason",
+    "vigente": "Current",
+    "elegirPersona": "Choose a person…",
+    "buscarPersona": "Search or type a name",
+    "crearPersona": "Create person «{texto}»",
+    "personaNueva": "«{nombre}» (new person)",
+    "sinPersonas": "No people.",
+    "terminaA": "Ends the assignment of {nombre}.",
+    "cierraTitular": "{nombre} will stop being the holder on {fecha}; they stay in the history.",
+    "yaEsTitular": "That person is already the holder of this position: nothing changed.",
+    "cancelar": "Cancel",
+    "confirmar": "Confirm",
+    "crear": "Create position",
+    "eliminar": "Delete position",
+    "eliminado": "Position deleted",
+    "error": {
+      "fecha": "Enter the date.",
+      "persona": "Choose a person.",
+      "cargo": "Choose the job title."
+    },
+    "sinGuardarTitulo": "You have unsaved changes",
+    "sinGuardarTexto": "The position hasn't been created yet. If you discard, what you entered will be lost."
+  },
+  "unidad": {
+    "panel": "Unit panel",
+    "migas": "Unit location",
+    "cerrar": "Close the panel",
+    "resumen": "Summary",
+    "procesos": "Processes",
+    "procesosVacio": "Processes arrive in Phase 3",
+    "tipo": "Type",
+    "superior": "Parent unit",
+    "sinSuperior": "No parent (root)",
+    "buscar": "Search for a unit",
+    "sinCoincidencias": "No units match.",
+    "marca": "Mark",
+    "marcaColor": "Mark color",
+    "marcaCodigo": "Code (up to 4)",
+    "quitarMarca": "Remove mark",
+    "sinColor": "The mark has no color yet.",
+    "codigoLargo": "The code allows up to 4 characters.",
+    "jefatura": "Head",
+    "sinPuestosJefatura": "No head: create a position in the Positions tab to assign one.",
+    "jefaturaInsignia": "Head",
+    "dotacionDirecta": "Direct headcount",
+    "dotacionTotal": "Total headcount",
+    "vacantesRama": "Branch vacancies",
+    "etiquetas": "Tags",
+    "sinEtiquetas": "This unit has no tags.",
+    "agregarEtiqueta": "Add tag…",
+    "nuevaEtiqueta": "New tag…",
+    "nombreEtiqueta": "Tag name",
+    "colorEtiqueta": "Tag color",
+    "crearEtiqueta": "Create and add",
+    "quitarEtiqueta": "Remove the tag “{nombre}”",
+    "conexiones": "Lateral connections",
+    "sinConexiones": "This unit has no lateral connections.",
+    "descripcionConexion": "Connection description (optional)",
+    "conectarCon": "Connect to…",
+    "quitarConexion": "Remove the connection with “{nombre}”",
+    "eliminar": "Delete unit",
+    "eliminarTitulo": "Delete “{unidad}”?",
+    "eliminarTexto": "It has {hijos} and {puestos}. They will move to “{superior}”. You can undo it for 8 seconds.",
+    "nSubunidades": "{n} subunit | {n} subunits",
+    "nPuestos": "{n} position | {n} positions",
+    "moverYEliminar": "Move its content to “{superior}” and delete",
+    "eliminada": "Unit “{nombre}” deleted",
+    "deshacer": "Undo",
+    "duplicar": "Duplicate branch",
+    "copiaDe": "{nombre} (copy)",
+    "duplicada": "Branch “{nombre}” duplicated"
+  },
+  "personas": {
+    "pestana": "People",
+    "filtros": "Search and sort people",
+    "buscar": "Search person, job title, unit or email",
+    "ordenar": "Sort by",
+    "orden": {
+      "nombre": "By name",
+      "cargo": "By job title",
+      "unidad": "By unit"
+    },
+    "incluirSubunidades": "Include sub-units",
+    "copiarCorreos": "Copy emails",
+    "correosCopiados": "Copied {n} email | Copied {n} emails",
+    "sinCorreos": "Nobody on the list has an email.",
+    "errorCopiar": "Could not copy the emails: {detalle}",
+    "verEnDirectorio": "View in the directory",
+    "resumenCargo": "Summary by job title",
+    "nPuestos": "{n} position | {n} positions",
+    "nVacantes": "{n} vacancy | {n} vacancies",
+    "nCubiertas": "{n} covered by a replacement | {n} covered by a replacement",
+    "cantidad": "Nobody | {n} person on the list | {n} people on the list",
+    "lista": "People in the unit",
+    "vacia": "Nobody holds its positions.",
+    "sinResultados": "Nobody matches the search.",
+    "volver": "Back to the list",
+    "abrirFicha": "Open record"
+  },
+  "seleccion": {
+    "barra": "Actions on the selected units",
+    "cantidad": "{n} unit selected | {n} units selected",
+    "limpiar": "Clear the selection",
+    "moverA": "Move to…",
+    "plegar": "Collapse",
+    "etiquetar": "Tag…",
+    "eliminar": "Delete…",
+    "eliminarTitulo": "Delete {n} unit? | Delete {n} units?",
+    "eliminarTexto": "What they contain (subunits and positions) will move to each one's parent unit. You can undo everything at once for 8 seconds.",
+    "eliminarOmitidas": "{n} root unit with content will not be deleted. | {n} root units with content will not be deleted.",
+    "eliminarConfirmar": "Delete {n} unit | Delete {n} units",
+    "eliminadas": "{n} unit deleted | {n} units deleted",
+    "omitidas": "{n} root unit with content was not deleted. | {n} root units with content were not deleted."
+  },
+  "leyenda": {
+    "titulo": "Legend",
+    "sin": "No legend",
+    "nueva": "New entry…",
+    "inactiva": "(inactive)",
+    "nombre": "Name",
+    "color": "Color",
+    "descripcion": "Description (optional)",
+    "crear": "Create and assign",
+    "cancelar": "Cancel",
+    "copiar": "Copy style",
+    "pegar": "Paste style",
+    "quitar": "Remove style",
+    "copiado": "Style copied: {nombre}",
+    "pegado": "Style applied: {nombre}",
+    "sinEstilo": "no style",
+    "errorNombre": "Enter the entry name.",
+    "deLeyenda": "Legend: {nombre}"
+  },
+  "paleta": {
+    "titulo": "Command palette",
+    "descripcion": "Search units, people, vacant positions and actions.",
+    "buscar": "Search units, people or actions",
+    "ayudaVacia": "Type to search units, people and vacant positions.",
+    "sinResultados": "No matches.",
+    "resultados": "No results | {n} result | {n} results",
+    "mas": "{n} more: keep typing to narrow down.",
+    "sinCargo": "No current position",
+    "grupos": {
+      "unidades": "Units",
+      "personas": "People",
+      "vacantes": "Vacant positions",
+      "acciones": "Actions"
+    },
+    "acciones": {
+      "nueva": "New unit",
+      "directorio": "Go to the directory",
+      "revision": "Go to Review",
+      "tema": "Change theme",
+      "ayuda": "Help"
+    }
+  },
+  "bienvenida": {
+    "titulo": "Welcome to BoldoAtlas",
+    "subtitulo": "Choose how to start.",
+    "vacia": {
+      "titulo": "Create an empty organization",
+      "texto": "Start from scratch: you name the organization and its first unit."
+    },
+    "excel": {
+      "titulo": "Load from Excel",
+      "texto": "Import the structure and the people from a spreadsheet."
+    },
+    "boldo": {
+      "titulo": "Open a .boldo file",
+      "texto": "Continue with an organization saved in a file."
+    },
+    "ejemplo": {
+      "titulo": "Explore an example",
+      "texto": "A sample organization to try the app out."
+    },
+    "llegaFase4": "Phase 4",
+    "llegaFase5": "Phase 5",
+    "organizacion": "Organization name",
+    "raiz": "Root unit name",
+    "raizEjemplo": "For example: General Management",
+    "crear": "Create organization",
+    "cancelar": "Cancel",
+    "hayDatos": "This database already has data (“{nombre}”). Choosing an empty organization or the example replaces the current data; an automatic backup is made first.",
+    "volver": "Back to my organization",
+    "reemplazarTitulo": {
+      "vacia": "Replace the current data with an empty organization?",
+      "ejemplo": "Replace the current data with the example?"
+    },
+    "reemplazarTexto": "The units, people, positions and other data of “{nombre}” will be deleted. An automatic backup is made first, and you can restore it from Settings › Backups.",
+    "reemplazar": "Back up and replace"
+  },
+  "config": {
+    "organizacion": {
+      "titulo": "Organization",
+      "nombre": "Organization name"
+    },
+    "logo": {
+      "titulo": "Logo",
+      "ayuda": "PNG, JPG or WebP up to 1 MB. Used in exports.",
+      "alt": "Organization logo",
+      "sin": "No logo",
+      "elegir": "Choose image…",
+      "cambiar": "Change image…",
+      "quitar": "Remove logo",
+      "error": {
+        "tipo": "The file must be a PNG, JPG or WebP.",
+        "tamano": "The image is larger than 1 MB.",
+        "lectura": "The image could not be read."
+      }
+    },
+    "apariencia": {
+      "titulo": "Appearance",
+      "ayuda": "These preferences apply to this computer only."
+    },
+    "tema": {
+      "etiqueta": "Theme",
+      "claro": "Light",
+      "oscuro": "Dark",
+      "sistema": "Follow the system"
+    },
+    "acento": {
+      "etiqueta": "Accent color",
+      "cobre": "Copper",
+      "azul": "Blue",
+      "verde": "Green",
+      "violeta": "Violet"
+    },
+    "escala": {
+      "etiqueta": "Interface size"
+    },
+    "mantenedores": {
+      "texto": "Job titles, contract types, sites, schedules, unit types and legends.",
+      "abrir": "Open records"
+    }
+  },
+  "mantenedores": {
+    "titulo": "Records",
+    "volver": "Back to Settings",
+    "listas": "Lists",
+    "tabs": {
+      "cargos": "Job titles",
+      "tipos_contrato": "Contract types",
+      "sedes": "Sites",
+      "jornadas": "Schedules",
+      "tipos_unidad": "Unit types",
+      "leyendas": "Legends"
+    },
+    "usos": {
+      "cargos": "Positions",
+      "tipos_contrato": "People",
+      "sedes": "People",
+      "jornadas": "People",
+      "tipos_unidad": "Units",
+      "leyendas": "Positions"
+    },
+    "columnas": {
+      "nombre": "Name",
+      "color": "Color",
+      "descripcion": "Description",
+      "estado": "Status",
+      "acciones": "Actions"
+    },
+    "activo": "Active",
+    "inactivo": "Inactive",
+    "nuevo": "Name of the new value",
+    "agregar": "Add",
+    "vacio": "There are no values yet.",
+    "renombrar": "Rename \"{nombre}\"",
+    "subir": "Move \"{nombre}\" up",
+    "bajar": "Move \"{nombre}\" down",
+    "desactivar": "Deactivate",
+    "reactivar": "Reactivate",
+    "desactivarA": "Deactivate \"{nombre}\"",
+    "reactivarA": "Reactivate \"{nombre}\"",
+    "colorDe": "Color of \"{nombre}\"",
+    "descripcionDe": "Description of \"{nombre}\""
+  },
+  "respaldos": {
+    "titulo": "Backups",
+    "ayuda": "Copies of your data in the backups folder on this computer. The 10 most recent backups are kept, automatic or manual.",
+    "frecuencia": {
+      "etiqueta": "Automatic backup on open",
+      "nunca": "Never",
+      "abrir": "Every time",
+      "24h": "Every 24 hours",
+      "7d": "Every 7 days"
+    },
+    "ahora": "Back up now",
+    "carpeta": "Open folder",
+    "hecho": "Backup created.",
+    "vacio": "No backups yet.",
+    "columnas": {
+      "fecha": "Date",
+      "tamano": "Size",
+      "revision": "Data revision",
+      "acciones": "Actions"
+    },
+    "seguridad": "Before restore",
+    "antesDeReemplazar": "Before replacing",
+    "ilegible": "Unreadable",
+    "restaurar": "Restore",
+    "restaurarDe": "Restore the backup from {fecha}",
+    "confirmarTitulo": "Restore the backup from {fecha}?",
+    "confirmarTexto": "Your current data is backed up first (it appears in the list as “Before restore”). Then it is replaced with this backup and BoldoAtlas restarts.",
+    "confirmar": "Restore and restart",
+    "cancelar": "Cancel",
+    "automaticoFallo": "The automatic backup could not be made.",
+    "error": {
+      "desconocido": "That backup is no longer in the folder. Reopen Settings and try again.",
+      "danado": "The backup is damaged or is not a BoldoAtlas database. Nothing was changed.",
+      "esquema_nuevo": "This backup was made with a newer version of BoldoAtlas. Update BoldoAtlas to restore it.",
+      "en_uso": "Another BoldoAtlas window is using the data. Close it and try again; nothing was changed.",
+      "fallo": "The operation could not be completed: {detalle}"
+    }
+  },
+  "vista": {
+    "cerrar": "Close"
+  },
+  "menu": {
+    "abrir": "App menu",
+    "inicio": "Home",
+    "vacia": "New empty organization…",
+    "ejemplo": "Explore the example…",
+    "boldo": "Open .boldo file",
+    "excel": "Import Excel",
+    "respaldos": "Backups",
+    "configuracion": "Settings",
+    "datos": "Project data"
+  },
+  "proyecto": {
+    "titulo": "Project data",
+    "principal": "Main",
+    "abrir": "Project data for “{nombre}”",
+    "archivo": "Database file",
+    "tamano": "Size",
+    "modificado": "Last modified",
+    "copiar": "Copy path",
+    "copiada": "Path copied.",
+    "errorCopiar": "The path could not be copied: {detalle}",
+    "abrirCarpeta": "Open folder"
+  }
+}

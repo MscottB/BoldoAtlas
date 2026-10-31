@@ -1,0 +1,186 @@
+<script setup lang="ts">
+import { computed, nextTick, onMounted, ref, type Component } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { toast } from "vue-sonner";
+import { FilePlus, FileSpreadsheet, FolderOpen, Sparkles } from "@lucide/vue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { respaldarAntesDeReemplazar } from "@/db/cliente";
+import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
+import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import icono from "../../assets/brand/icono.png";
+
+const { t } = useI18n();
+const router = useRouter();
+const route = useRoute();
+const org = useOrganizacion();
+
+// Sin `fase`, el camino está disponible; con ella, se muestra deshabilitado con la fase en que llega.
+interface Camino {
+  id: "vacia" | "excel" | "boldo" | "ejemplo";
+  icono: Component;
+  fase?: string;
+}
+const caminos: Camino[] = [
+  { id: "vacia", icono: FilePlus },
+  { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
+  { id: "boldo", icono: FolderOpen, fase: "bienvenida.llegaFase5" },
+  { id: "ejemplo", icono: Sparkles },
+];
+
+async function entrar(r: Resultado) {
+  if (r.ok) await router.replace("/");
+  else toast.error(r.mensaje);
+}
+
+// Con datos en la base, empezar de nuevo los reemplaza: pide confirmación y hace antes un respaldo.
+const hayDatos = computed(() => !org.vacia);
+const confirmando = ref(false);
+// No se limpia al cerrar el diálogo: la acción lo necesita después de que el diálogo se cierra.
+const reemplazo = ref<"vacia" | "ejemplo">("vacia");
+const ocupado = ref(false);
+
+const creando = ref(false);
+const nombreOrg = ref("");
+const nombreRaiz = ref("");
+async function elegir(c: Camino) {
+  if (c.fase) return;
+  if (c.id === "ejemplo") {
+    if (!hayDatos.value) return entrar(await org.cargarEjemplo());
+    reemplazo.value = "ejemplo";
+    confirmando.value = true;
+    return;
+  }
+  creando.value = true;
+  await nextTick();
+  document.getElementById("bienvenida-org")?.focus();
+}
+async function crear() {
+  if (hayDatos.value) {
+    reemplazo.value = "vacia";
+    confirmando.value = true;
+    return;
+  }
+  await entrar(await org.crearOrganizacion(nombreOrg.value, nombreRaiz.value));
+}
+async function reemplazar() {
+  ocupado.value = true;
+  const datos =
+    reemplazo.value === "vacia" ? { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value } : undefined;
+  await entrar(
+    await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
+  );
+  ocupado.value = false;
+}
+
+// El menú de la app y la paleta llegan aquí con ?accion=vacia|ejemplo.
+onMounted(() => {
+  const c = caminos.find((x) => x.id === route.query.accion);
+  if (!c) return;
+  void router.replace({ path: route.path }); // la acción es de una sola vez: no se repite al volver atrás
+  void elegir(c);
+});
+</script>
+
+<template>
+  <section class="mx-auto flex max-w-3xl flex-col gap-6 p-8">
+    <header class="flex flex-col gap-2">
+      <img :src="icono" alt="" class="size-12" />
+      <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
+      <p class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
+    </header>
+
+    <div
+      v-if="hayDatos"
+      role="status"
+      class="flex flex-wrap items-center gap-3 rounded-lg border bg-muted p-3 text-sm"
+    >
+      <p class="min-w-0 flex-1">
+        {{ t("bienvenida.hayDatos", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
+      </p>
+      <Button type="button" variant="outline" size="sm" @click="router.push('/')">
+        {{ t("bienvenida.volver") }}
+      </Button>
+    </div>
+
+    <ul class="grid gap-3 sm:grid-cols-2">
+      <li v-for="c in caminos" :key="c.id">
+        <button
+          type="button"
+          :aria-disabled="c.fase ? 'true' : undefined"
+          :disabled="!c.fase && (org.guardando || ocupado)"
+          class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring"
+          :class="c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent'"
+          @click="elegir(c)"
+        >
+          <span class="flex items-center gap-2 font-medium">
+            <component :is="c.icono" class="size-4 shrink-0" aria-hidden="true" />
+            {{ t(`bienvenida.${c.id}.titulo`) }}
+            <span v-if="c.fase" class="ml-auto rounded-full border px-2 text-xs font-normal">{{
+              t(c.fase)
+            }}</span>
+          </span>
+          <span class="text-sm" :class="{ 'text-muted-foreground': !c.fase }">
+            {{ t(`bienvenida.${c.id}.texto`) }}
+          </span>
+        </button>
+      </li>
+    </ul>
+
+    <form
+      v-if="creando"
+      class="grid max-w-sm gap-3 rounded-lg border p-4"
+      @submit.prevent="crear"
+      @keydown.esc="creando = false"
+    >
+      <div class="grid gap-1.5">
+        <Label for="bienvenida-org">{{ t("bienvenida.organizacion") }}</Label>
+        <Input id="bienvenida-org" v-model="nombreOrg" autocomplete="off" />
+      </div>
+      <div class="grid gap-1.5">
+        <Label for="bienvenida-raiz">{{ t("bienvenida.raiz") }}</Label>
+        <Input
+          id="bienvenida-raiz"
+          v-model="nombreRaiz"
+          :placeholder="t('bienvenida.raizEjemplo')"
+          autocomplete="off"
+        />
+      </div>
+      <div class="flex justify-end gap-2">
+        <Button type="button" variant="outline" @click="creando = false">{{
+          t("bienvenida.cancelar")
+        }}</Button>
+        <Button type="submit" :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || org.guardando || ocupado">
+          {{ t("bienvenida.crear") }}
+        </Button>
+      </div>
+    </form>
+
+    <AlertDialog v-model:open="confirmando">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t(`bienvenida.reemplazarTitulo.${reemplazo}`) }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t("bienvenida.reemplazarTexto", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{{ t("bienvenida.cancelar") }}</AlertDialogCancel>
+          <AlertDialogAction @click="reemplazar">{{ t("bienvenida.reemplazar") }}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </section>
+</template>

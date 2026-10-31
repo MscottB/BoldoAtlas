@@ -1,0 +1,738 @@
+{
+  "nav": {
+    "principal": "Navegación principal",
+    "arbol": "Árbol",
+    "arboles": "Árboles",
+    "directorio": "Directorio",
+    "revision": "Revisión",
+    "indicadores": "Indicadores",
+    "escenarios": "Escenarios",
+    "importarExportar": "Importar/Exportar",
+    "configuracion": "Configuración",
+    "ayuda": "Ayuda",
+    "acerca": "Acerca de",
+    "llegaFase3": "Llega en la Fase 3",
+    "llegaFase5": "Llega en la Fase 5",
+    "llegaFases45": "Llega en las Fases 4 y 5"
+  },
+  "barra": {
+    "mostrarBarra": "Mostrar barra lateral",
+    "ocultarBarra": "Ocultar barra lateral",
+    "sinNombre": "Organización sin nombre",
+    "buscar": "Buscar",
+    "exportar": "Exportar",
+    "llegaFase4": "Llega en la Fase 4",
+    "temaClaro": "Cambiar a tema claro",
+    "temaOscuro": "Cambiar a tema oscuro"
+  },
+  "guardado": {
+    "guardando": "Guardando…",
+    "guardado": "Guardado",
+    "noSeGuardo": "No se guardó"
+  },
+  "pantallaError": {
+    "titulo": "BoldoAtlas no pudo abrir sus datos",
+    "carpetaDatos": "Carpeta de datos",
+    "copiar": "Copiar detalle",
+    "copiado": "Copiado"
+  },
+  "acerca": {
+    "version": "Versión {version} · {fecha}",
+    "esquema": "Esquema de base de datos",
+    "idBase": "Identificador de la base",
+    "revision": "Revisión de datos",
+    "baseCreada": "Base creada",
+    "modo": "Modo",
+    "portable": "Portable",
+    "instalado": "Instalado",
+    "carpetaDatos": "Carpeta de datos",
+    "copiar": "Copiar información",
+    "copiado": "Copiado",
+    "creadoPor": "Creado por",
+    "licencia": "Licencia",
+    "repositorio": "Repositorio en GitHub",
+    "copia": {
+      "commit": "Commit {commit}",
+      "desconocido": "desconocido",
+      "esquema": "Esquema {esquema}",
+      "base": "Base {id} · revisión {revision} · creada {creada}",
+      "modoPortable": "Modo portable",
+      "modoInstalado": "Modo instalado"
+    }
+  },
+  "arbol": {
+    "vacioTitulo": "Aún no hay unidades",
+    "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí.",
+    "nuevaUnidad": "Nueva unidad",
+    "nuevaSubunidad": "Nueva subunidad",
+    "sinTiposActivos": "No hay tipos de unidad activos.",
+    "abrirComoArbol": "Abrir como árbol",
+    "nombre": "Nombre de la unidad",
+    "ayudaNombre": "Doble clic o F2 para renombrar",
+    "fecha": {
+      "titulo": "Ver el organigrama a una fecha",
+      "viendo": "Viendo al {fecha}",
+      "soloLectura": "solo lectura",
+      "volver": "Volver a hoy",
+      "panelSoloLectura": "Datos de la fecha elegida: solo lectura. Vuelve a hoy para editar.",
+      "dialogoSoloLectura": "Puesto al {fecha}: solo lectura. Vuelve a hoy en el árbol para editar."
+    },
+    "sinJefatura": "Sin jefatura",
+    "dotacion": "Dotación total",
+    "verPersonasDotacion": "Ver las personas de la unidad",
+    "dotacionPersonas": "Dotación total: {n}. Ver las personas",
+    "vacantes": "{n} vacante | {n} vacantes",
+    "expandir": "Mostrar {n} subunidad | Mostrar {n} subunidades",
+    "plegar": "Plegar rama",
+    "resaltarEtiqueta": "Resaltar por etiqueta",
+    "todasEtiquetas": "Resaltar etiqueta: ninguna",
+    "resaltarTexto": "Resaltar por texto",
+    "alejar": "Alejar",
+    "acercar": "Acercar",
+    "encuadrar": "Encuadrar",
+    "encuadrarAtajo": "Encuadrar todo (Ctrl+0)",
+    "rutaOrigen": "Ruta de origen",
+    "subirNivel": "Subir un nivel",
+    "verCompleto": "Ver en el árbol completo",
+    "confirmarMover": "¿Mover «{unidad}» dentro de «{destino}»?",
+    "cancelar": "Cancelar",
+    "mover": "Mover",
+    "reemplazo": "Reemplazo: {nombre}",
+    "vista": {
+      "titulo": "Vista",
+      "verPuestos": "Ver puestos",
+      "mostrarCargo": "Mostrar el cargo",
+      "mostrarPersona": "Mostrar la persona",
+      "rutaPorTipo": "Mostrar en las tarjetas el superior de tipo",
+      "colorearPor": "Colorear por",
+      "ninguno": "Ninguno",
+      "marcaDe": "Marca de {tipo}",
+      "ocultarLeyenda": "Ocultar la leyenda",
+      "mostrarLeyenda": "Mostrar la leyenda",
+      "leyendaPuesto": "Leyenda del puesto",
+      "activaVerPuestos": "Activa «Ver puestos» para ver los colores de las leyendas.",
+      "direccion": "Dirección",
+      "densidad": "Densidad",
+      "lineas": "Líneas",
+      "opciones": {
+        "vertical": "Vertical (de arriba a abajo)",
+        "horizontal": "Horizontal (de izquierda a derecha)",
+        "normal": "Normal",
+        "compacta": "Compacta",
+        "smoothstep": "Rectas en ángulo",
+        "bezier": "Curvas"
+      },
+      "compactaAviso": "La tarjeta compacta es de una línea: nombre, dotación y vacantes. Los demás datos de la tarjeta no se ven.",
+      "tarjeta": "Datos de la tarjeta",
+      "campos": {
+        "mostrarTipo": "Tipo de unidad",
+        "mostrarJefe": "Jefatura",
+        "mostrarFoto": "Foto de la jefatura",
+        "mostrarDotacion": "Dotación",
+        "mostrarVacantes": "Vacantes",
+        "mostrarEtiquetas": "Etiquetas"
+      },
+      "alinearPorTipo": "Alinear por tipo de unidad"
+    },
+    "resaltar": {
+      "titulo": "Resaltar por…",
+      "activos": "{n} criterio activo | {n} criterios activos",
+      "vacantes": "Con vacantes",
+      "sede": "Sede",
+      "contrato": "Tipo de contrato",
+      "jornada": "Jornada",
+      "cargo": "Cargo",
+      "cualquiera": "Cualquiera",
+      "ayuda": "Se resaltan las unidades que tienen, en sus propios puestos, lo elegido. Se suma a la etiqueta y al texto."
+    },
+    "vistas": {
+      "titulo": "Vistas",
+      "sinArbol": "Esta rama no está guardada en Árboles. Guárdala allí para tener vistas propias.",
+      "nombre": "Nombre de la vista",
+      "guardar": "Guardar vista actual",
+      "sinVistas": "Aún no hay vistas guardadas en este árbol.",
+      "lista": "Vistas guardadas",
+      "aplicar": "Aplicar «{nombre}»",
+      "renombrar": "Renombrar «{nombre}»",
+      "eliminar": "Eliminar «{nombre}»",
+      "eliminada": "Vista eliminada",
+      "deshacer": "Deshacer"
+    },
+    "reordenar": "Reordenar",
+    "ordenando": "Ordenando…",
+    "errorOrdenar": "No se pudo ordenar el diagrama. Prueba con «Reordenar».",
+    "limite": {
+      "titulo": "Se verían {n} tarjetas",
+      "texto": "Con más de {limite} tarjetas a la vista el lienzo se vuelve lento. Puedes expandir solo algunos niveles.",
+      "igual": "Expandir igual",
+      "hastaNivel": "Expandir hasta el nivel {n}"
+    },
+    "reordenarAyuda": "Vuelve a ordenar el diagrama y lo encuadra",
+    "ramas": {
+      "titulo": "Ramas",
+      "expandirTodo": "Expandir todo",
+      "contraerTodo": "Contraer todo",
+      "contraerHasta": "Contraer hasta el nivel",
+      "nivel": "Nivel {n}"
+    },
+    "menu": {
+      "lienzo": "Lienzo",
+      "abrirPanel": "Abrir panel",
+      "renombrar": "Renombrar",
+      "verPersonas": "Ver personas",
+      "expandirRama": "Expandir rama",
+      "contraerRama": "Contraer rama",
+      "seleccionarRama": "Seleccionar rama",
+      "eliminar": "Eliminar…",
+      "abrirPuesto": "Abrir puesto",
+      "nuevaRaiz": "Nueva unidad raíz",
+      "vista": "Vista…"
+    }
+  },
+  "arboles": {
+    "titulo": "Árboles",
+    "nuevoArbol": "Nuevo árbol",
+    "nombreArbol": "Nombre del árbol",
+    "tipoArbol": "Tipo",
+    "crear": "Crear",
+    "abrir": "Abrir",
+    "abrirNombre": "Abrir «{nombre}»",
+    "subarboles": "Subárboles guardados",
+    "sinSubarboles": "Aún no hay subárboles guardados.",
+    "renombrar": "Renombrar subárbol",
+    "subir": "Subir",
+    "bajar": "Bajar",
+    "quitar": "Quitar de Árboles",
+    "guardarEnArboles": "Guardar en Árboles",
+    "guardado": "Guardado"
+  },
+  "directorio": {
+    "filas": "{n} fila | {n} filas",
+    "tabla": "Personas y puestos",
+    "filtros": "Filtros del directorio",
+    "buscar": "Buscar por persona, cargo o correo",
+    "unidad": "Unidad",
+    "todasUnidades": "Todas las unidades",
+    "cargo": "Cargo",
+    "tipoContrato": "Tipo de contrato",
+    "sede": "Sede",
+    "jornada": "Jornada",
+    "etiqueta": "Etiqueta",
+    "estado": "Estado",
+    "todos": "Todos",
+    "desactivado": "(desactivado)",
+    "ocupado": "Ocupado",
+    "vacante": "Vacante",
+    "sinPuesto": "Sin puesto",
+    "limpiar": "Limpiar filtros",
+    "persona": "Persona",
+    "reemplazo": "Reemplazo",
+    "correo": "Correo",
+    "ordenarUnidad": "Ordenar por unidad",
+    "exportar": "Exportar esta lista a Excel",
+    "vacio": "Aún no hay puestos ni personas. Crea unidades y puestos en el árbol.",
+    "sinResultados": "Ninguna fila coincide con los filtros."
+  },
+  "revision": {
+    "titulo": "Revisión de datos",
+    "avisos": "{n} aviso | {n} avisos",
+    "todoEnOrden": "Todo en orden",
+    "dias": "{n} día sin titular | {n} días sin titular",
+    "nombresGrupo": "{n} personas con nombre parecido",
+    "tablas": {
+      "cargos": "Cargo",
+      "tipos_contrato": "Tipo de contrato",
+      "sedes": "Sede",
+      "jornadas": "Jornada",
+      "tipos_unidad": "Tipo de unidad",
+      "leyendas": "Leyenda"
+    },
+    "sinJefatura": {
+      "titulo": "Unidades sin jefatura",
+      "ayuda": "Unidades sin puesto de jefatura, o cuyo puesto no tiene titular ni reemplazo vigente."
+    },
+    "vacantes": {
+      "titulo": "Puestos vacantes",
+      "ayuda": "Puestos sin titular vigente, de más a menos tiempo sin titular."
+    },
+    "reemplazos": {
+      "titulo": "Reemplazos vigentes",
+      "ayuda": "Solo informativo: no suma al contador del menú."
+    },
+    "sinPuesto": {
+      "titulo": "Personas sin puesto vigente",
+      "ayuda": "Personas registradas que hoy no ocupan ni reemplazan ningún puesto."
+    },
+    "correos": {
+      "titulo": "Correos repetidos",
+      "ayuda": "Personas que comparten el mismo correo."
+    },
+    "nombres": {
+      "titulo": "Nombres parecidos",
+      "ayuda": "Mismo nombre sin considerar mayúsculas ni tildes, o con las mismas palabras en otro orden: posibles duplicados."
+    },
+    "vacias": {
+      "titulo": "Unidades vacías",
+      "ayuda": "Unidades sin puestos ni subunidades."
+    },
+    "sinUso": {
+      "titulo": "Valores sin uso",
+      "ayuda": "Valores activos de los mantenedores y leyendas activas que nada usa."
+    }
+  },
+  "idioma": {
+    "etiqueta": "Idioma",
+    "es": "Español",
+    "en": "English"
+  },
+  "ayuda": {
+    "titulo": "Ayuda",
+    "paginas": "Páginas de ayuda",
+    "noExiste": "Esa página de ayuda no existe."
+  },
+  "errores": {
+    "correoDuplicado": "Ya existe una persona con ese correo.",
+    "etiquetaDuplicada": "Ya existe una etiqueta con ese nombre.",
+    "unidadYaEtiquetada": "La unidad ya tiene esa etiqueta.",
+    "valorDuplicado": "Ese valor ya existe en la lista.",
+    "asignacionVigenteDuplicada": "Ese puesto ya tiene una asignación vigente de ese tipo.",
+    "fechasInvertidas": "La fecha de término no puede ser anterior a la de inicio.",
+    "personaSinNombre": "Falta el nombre de la persona.",
+    "conexionConsigoMisma": "Una unidad no puede conectarse consigo misma.",
+    "relacionInexistente": "La unidad o persona relacionada ya no existe.",
+    "ramaYaGuardada": "Esa rama ya está guardada en Árboles.",
+    "vistaDuplicada": "Ya hay una vista con ese nombre en este árbol.",
+    "colorInvalido": "El color debe tener el formato #rrggbb (por ejemplo, #be123c)."
+  },
+  "store": {
+    "nombreVacio": "Escribe un nombre.",
+    "hayDatos": "Ya hay datos en esta base: para reemplazarlos usa «Nueva organización vacía» o «Explorar el ejemplo» desde el menú de la app.",
+    "cicloRama": "No se puede mover una unidad dentro de su propia rama.",
+    "unidadInexistente": "La unidad ya no existe.",
+    "raizConContenido": "No se puede eliminar la unidad raíz mientras tenga contenido.",
+    "noSePuedeDeshacer": "Ya no se puede deshacer.",
+    "valorExiste": "Ya existe «{nombre}» en la lista.",
+    "puestoInexistente": "El puesto ya no existe.",
+    "nadaQuePegar": "No hay un estilo copiado que se pueda pegar.",
+    "ultimoTipoUnidad": "Debe quedar al menos un tipo de unidad activo.",
+    "soloLectura": "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo."
+  },
+  "ficha": {
+    "tituloPersona": "Ficha de persona",
+    "nuevaPersona": "Nueva persona",
+    "descripcion": "Los cambios se guardan al salir de cada campo, si son válidos.",
+    "nombre": "Nombre",
+    "tipoContrato": "Tipo de contrato",
+    "sede": "Sede",
+    "jornada": "Jornada",
+    "correo": "Correo",
+    "telefono": "Teléfono",
+    "notas": "Notas",
+    "foto": "Foto",
+    "elegirFoto": "Elegir foto",
+    "quitarFoto": "Quitar foto",
+    "encabeza": "Unidades que encabeza",
+    "ninguna": "Ninguna",
+    "eliminar": "Eliminar",
+    "eliminado": "Ficha eliminada",
+    "deshacer": "Deshacer",
+    "selector": {
+      "elegir": "Elegir…",
+      "buscar": "Buscar o escribir un valor nuevo",
+      "inactivo": "(inactivo)",
+      "agregar": "Agregar «{texto}» a la lista",
+      "sinValor": "Sin valor",
+      "yaExistia": "«{nombre}» ya estaba en la lista: se seleccionó ese."
+    },
+    "error": {
+      "nombre": "Escribe el nombre.",
+      "correo": "El correo no es válido.",
+      "fotoTipo": "La foto debe ser PNG, JPG o WebP.",
+      "fotoPeso": "La foto no puede pesar más de 1 MB.",
+      "fotoLectura": "No se pudo leer la foto."
+    },
+    "cerrar": "Cerrar",
+    "sinGuardarTitulo": "Hay cambios sin guardar",
+    "sinGuardarTexto": "Algún campo no es válido o la ficha aún no se creó. Si descartas, se perderán.",
+    "seguirEditando": "Seguir editando",
+    "descartar": "Descartar",
+    "puestos": "Puestos",
+    "sinPuestos": "Sin puestos vigentes.",
+    "historialPuestos": "Historial ({n})",
+    "puestoVigente": "{cargo} · {unidad} · {tipo} · desde {desde}",
+    "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} a {hasta}"
+  },
+  "puesto": {
+    "nuevo": "Nuevo puesto",
+    "nuevoPuesto": "Nuevo puesto",
+    "puestos": "Puestos ({n})",
+    "sinPuestos": "Esta unidad aún no tiene puestos.",
+    "cargo": "Cargo",
+    "descripcion": "Descripción",
+    "esJefatura": "Es la jefatura de la unidad",
+    "vigentes": "Asignaciones vigentes",
+    "tipo": {
+      "titular": "Titular",
+      "reemplazo": "Reemplazo"
+    },
+    "vacante": "Vacante",
+    "sinReemplazo": "Sin reemplazo",
+    "desdeFecha": "Desde {fecha}",
+    "terminarDe": "Terminar asignación de {nombre}",
+    "reemplazoDe": "Reemplazo: {nombre}",
+    "accion": {
+      "titular": "Asignar titular",
+      "reemplazo": "Registrar reemplazo",
+      "terminar": "Terminar asignación"
+    },
+    "historial": "Historial",
+    "sinHistorial": "Este puesto aún no tiene asignaciones.",
+    "col": {
+      "tipo": "Tipo",
+      "persona": "Persona"
+    },
+    "persona": "Persona",
+    "desde": "Desde",
+    "hasta": "Hasta",
+    "motivo": "Motivo",
+    "vigente": "Vigente",
+    "elegirPersona": "Elegir persona…",
+    "buscarPersona": "Buscar o escribir un nombre",
+    "crearPersona": "Crear persona «{texto}»",
+    "personaNueva": "«{nombre}» (persona nueva)",
+    "sinPersonas": "No hay personas.",
+    "terminaA": "Termina la asignación de {nombre}.",
+    "cierraTitular": "{nombre} dejará de ser titular el {fecha}; queda en el historial.",
+    "yaEsTitular": "Esa persona ya es la titular de este puesto: no se cambió nada.",
+    "cancelar": "Cancelar",
+    "confirmar": "Confirmar",
+    "crear": "Crear puesto",
+    "eliminar": "Eliminar puesto",
+    "eliminado": "Puesto eliminado",
+    "error": {
+      "fecha": "Indica la fecha.",
+      "persona": "Elige una persona.",
+      "cargo": "Elige el cargo."
+    },
+    "sinGuardarTitulo": "Hay cambios sin guardar",
+    "sinGuardarTexto": "El puesto aún no se creó. Si descartas, se perderá lo que escribiste."
+  },
+  "unidad": {
+    "panel": "Panel de la unidad",
+    "migas": "Ubicación de la unidad",
+    "cerrar": "Cerrar el panel",
+    "resumen": "Resumen",
+    "procesos": "Procesos",
+    "procesosVacio": "Los procesos llegan en la Fase 3",
+    "tipo": "Tipo",
+    "superior": "Superior",
+    "sinSuperior": "Sin superior (raíz)",
+    "buscar": "Buscar una unidad",
+    "sinCoincidencias": "No hay unidades que coincidan.",
+    "marca": "Marca",
+    "marcaColor": "Color de la marca",
+    "marcaCodigo": "Código (hasta 4)",
+    "quitarMarca": "Quitar marca",
+    "sinColor": "La marca aún no tiene color.",
+    "codigoLargo": "El código admite hasta 4 caracteres.",
+    "jefatura": "Jefatura",
+    "sinPuestosJefatura": "Sin jefatura: crea un puesto en la pestaña Puestos para asignarla.",
+    "jefaturaInsignia": "Jefatura",
+    "dotacionDirecta": "Dotación directa",
+    "dotacionTotal": "Dotación total",
+    "vacantesRama": "Vacantes de la rama",
+    "etiquetas": "Etiquetas",
+    "sinEtiquetas": "Esta unidad no tiene etiquetas.",
+    "agregarEtiqueta": "Agregar etiqueta…",
+    "nuevaEtiqueta": "Nueva etiqueta…",
+    "nombreEtiqueta": "Nombre de la etiqueta",
+    "colorEtiqueta": "Color de la etiqueta",
+    "crearEtiqueta": "Crear y agregar",
+    "quitarEtiqueta": "Quitar la etiqueta «{nombre}»",
+    "conexiones": "Conexiones laterales",
+    "sinConexiones": "Esta unidad no tiene conexiones laterales.",
+    "descripcionConexion": "Descripción de la conexión (opcional)",
+    "conectarCon": "Conectar con…",
+    "quitarConexion": "Quitar la conexión con «{nombre}»",
+    "eliminar": "Eliminar unidad",
+    "eliminarTitulo": "¿Eliminar «{unidad}»?",
+    "eliminarTexto": "Tiene {hijos} y {puestos}. Pasarán a «{superior}». Podrás deshacerlo durante 8 segundos.",
+    "nSubunidades": "{n} subunidad | {n} subunidades",
+    "nPuestos": "{n} puesto | {n} puestos",
+    "moverYEliminar": "Mover su contenido a «{superior}» y eliminar",
+    "eliminada": "Unidad «{nombre}» eliminada",
+    "deshacer": "Deshacer",
+    "duplicar": "Duplicar rama",
+    "copiaDe": "{nombre} (copia)",
+    "duplicada": "Rama «{nombre}» duplicada"
+  },
+  "personas": {
+    "pestana": "Personas",
+    "filtros": "Buscar y ordenar personas",
+    "buscar": "Buscar persona, cargo, unidad o correo",
+    "ordenar": "Ordenar por",
+    "orden": {
+      "nombre": "Por nombre",
+      "cargo": "Por cargo",
+      "unidad": "Por unidad"
+    },
+    "incluirSubunidades": "Incluir subunidades",
+    "copiarCorreos": "Copiar correos",
+    "correosCopiados": "Se copió {n} correo | Se copiaron {n} correos",
+    "sinCorreos": "Nadie de la lista tiene correo.",
+    "errorCopiar": "No se pudieron copiar los correos: {detalle}",
+    "verEnDirectorio": "Ver en el directorio",
+    "resumenCargo": "Resumen por cargo",
+    "nPuestos": "{n} puesto | {n} puestos",
+    "nVacantes": "{n} vacante | {n} vacantes",
+    "nCubiertas": "{n} con reemplazo | {n} con reemplazo",
+    "cantidad": "Nadie | {n} persona en la lista | {n} personas en la lista",
+    "lista": "Personas de la unidad",
+    "vacia": "Nadie ocupa sus puestos.",
+    "sinResultados": "Nadie coincide con la búsqueda.",
+    "volver": "Volver a la lista",
+    "abrirFicha": "Abrir ficha"
+  },
+  "seleccion": {
+    "barra": "Acciones sobre las unidades seleccionadas",
+    "cantidad": "{n} unidad seleccionada | {n} unidades seleccionadas",
+    "limpiar": "Quitar la selección",
+    "moverA": "Mover a…",
+    "plegar": "Plegar",
+    "etiquetar": "Etiquetar…",
+    "eliminar": "Eliminar…",
+    "eliminarTitulo": "¿Eliminar {n} unidad? | ¿Eliminar {n} unidades?",
+    "eliminarTexto": "Lo que contengan (subunidades y puestos) pasará a la unidad superior de cada una. Podrás deshacerlo todo de una vez durante 8 segundos.",
+    "eliminarOmitidas": "No se eliminará {n} unidad raíz con contenido. | No se eliminarán {n} unidades raíz con contenido.",
+    "eliminarConfirmar": "Eliminar {n} unidad | Eliminar {n} unidades",
+    "eliminadas": "{n} unidad eliminada | {n} unidades eliminadas",
+    "omitidas": "{n} unidad raíz con contenido no se eliminó. | {n} unidades raíz con contenido no se eliminaron."
+  },
+  "leyenda": {
+    "titulo": "Leyenda",
+    "sin": "Sin leyenda",
+    "nueva": "Nueva entrada…",
+    "inactiva": "(inactiva)",
+    "nombre": "Nombre",
+    "color": "Color",
+    "descripcion": "Descripción (opcional)",
+    "crear": "Crear y asignar",
+    "cancelar": "Cancelar",
+    "copiar": "Copiar estilo",
+    "pegar": "Pegar estilo",
+    "quitar": "Quitar estilo",
+    "copiado": "Estilo copiado: {nombre}",
+    "pegado": "Estilo aplicado: {nombre}",
+    "sinEstilo": "sin estilo",
+    "errorNombre": "Escribe el nombre de la entrada.",
+    "deLeyenda": "Leyenda: {nombre}"
+  },
+  "paleta": {
+    "titulo": "Paleta de comandos",
+    "descripcion": "Busca unidades, personas, puestos vacantes y acciones.",
+    "buscar": "Buscar unidades, personas o acciones",
+    "ayudaVacia": "Escribe para buscar unidades, personas y puestos vacantes.",
+    "sinResultados": "Sin coincidencias.",
+    "resultados": "Sin resultados | {n} resultado | {n} resultados",
+    "mas": "Hay {n} más: sigue escribiendo para acotar.",
+    "sinCargo": "Sin cargo vigente",
+    "grupos": {
+      "unidades": "Unidades",
+      "personas": "Personas",
+      "vacantes": "Puestos vacantes",
+      "acciones": "Acciones"
+    },
+    "acciones": {
+      "nueva": "Nueva unidad",
+      "directorio": "Ir al directorio",
+      "revision": "Ir a Revisión",
+      "tema": "Cambiar tema",
+      "ayuda": "Ayuda"
+    }
+  },
+  "bienvenida": {
+    "titulo": "Te damos la bienvenida a BoldoAtlas",
+    "subtitulo": "Elige cómo empezar.",
+    "vacia": {
+      "titulo": "Crear una organización vacía",
+      "texto": "Empieza desde cero: nombras la organización y su primera unidad."
+    },
+    "excel": {
+      "titulo": "Cargar desde Excel",
+      "texto": "Importa la estructura y las personas desde una planilla."
+    },
+    "boldo": {
+      "titulo": "Abrir un archivo .boldo",
+      "texto": "Continúa con una organización guardada en un archivo."
+    },
+    "ejemplo": {
+      "titulo": "Explorar un ejemplo",
+      "texto": "Una organización de muestra para recorrer la app."
+    },
+    "llegaFase4": "Fase 4",
+    "llegaFase5": "Fase 5",
+    "organizacion": "Nombre de la organización",
+    "raiz": "Nombre de la unidad raíz",
+    "raizEjemplo": "Por ejemplo: Gerencia General",
+    "crear": "Crear organización",
+    "cancelar": "Cancelar",
+    "hayDatos": "Esta base ya tiene datos («{nombre}»). Si eliges una organización vacía o el ejemplo, se reemplazan los datos actuales; antes se hace un respaldo automático.",
+    "volver": "Volver a mi organización",
+    "reemplazarTitulo": {
+      "vacia": "¿Reemplazar los datos actuales por una organización vacía?",
+      "ejemplo": "¿Reemplazar los datos actuales por el ejemplo?"
+    },
+    "reemplazarTexto": "Se borrarán las unidades, personas, puestos y demás datos de «{nombre}». Antes se hace un respaldo automático que puedes restaurar desde Configuración › Respaldos.",
+    "reemplazar": "Respaldar y reemplazar"
+  },
+  "config": {
+    "organizacion": {
+      "titulo": "Organización",
+      "nombre": "Nombre de la organización"
+    },
+    "logo": {
+      "titulo": "Logo",
+      "ayuda": "PNG, JPG o WebP de hasta 1 MB. Se usa en las exportaciones.",
+      "alt": "Logo de la organización",
+      "sin": "Sin logo",
+      "elegir": "Elegir imagen…",
+      "cambiar": "Cambiar imagen…",
+      "quitar": "Quitar logo",
+      "error": {
+        "tipo": "El archivo debe ser PNG, JPG o WebP.",
+        "tamano": "La imagen pesa más de 1 MB.",
+        "lectura": "No se pudo leer la imagen."
+      }
+    },
+    "apariencia": {
+      "titulo": "Apariencia",
+      "ayuda": "Estas preferencias valen solo para este computador."
+    },
+    "tema": {
+      "etiqueta": "Tema",
+      "claro": "Claro",
+      "oscuro": "Oscuro",
+      "sistema": "Según el sistema"
+    },
+    "acento": {
+      "etiqueta": "Color de acento",
+      "cobre": "Cobre",
+      "azul": "Azul",
+      "verde": "Verde",
+      "violeta": "Violeta"
+    },
+    "escala": {
+      "etiqueta": "Tamaño de la interfaz"
+    },
+    "mantenedores": {
+      "texto": "Cargos, tipos de contrato, sedes, jornadas, tipos de unidad y leyendas.",
+      "abrir": "Abrir mantenedores"
+    }
+  },
+  "mantenedores": {
+    "titulo": "Mantenedores",
+    "volver": "Volver a Configuración",
+    "listas": "Listas",
+    "tabs": {
+      "cargos": "Cargos",
+      "tipos_contrato": "Tipos de contrato",
+      "sedes": "Sedes",
+      "jornadas": "Jornadas",
+      "tipos_unidad": "Tipos de unidad",
+      "leyendas": "Leyendas"
+    },
+    "usos": {
+      "cargos": "Puestos",
+      "tipos_contrato": "Personas",
+      "sedes": "Personas",
+      "jornadas": "Personas",
+      "tipos_unidad": "Unidades",
+      "leyendas": "Puestos"
+    },
+    "columnas": {
+      "nombre": "Nombre",
+      "color": "Color",
+      "descripcion": "Descripción",
+      "estado": "Estado",
+      "acciones": "Acciones"
+    },
+    "activo": "Activo",
+    "inactivo": "Inactivo",
+    "nuevo": "Nombre del nuevo valor",
+    "agregar": "Agregar",
+    "vacio": "Todavía no hay valores.",
+    "renombrar": "Renombrar «{nombre}»",
+    "subir": "Subir «{nombre}»",
+    "bajar": "Bajar «{nombre}»",
+    "desactivar": "Desactivar",
+    "reactivar": "Reactivar",
+    "desactivarA": "Desactivar «{nombre}»",
+    "reactivarA": "Reactivar «{nombre}»",
+    "colorDe": "Color de «{nombre}»",
+    "descripcionDe": "Descripción de «{nombre}»"
+  },
+  "respaldos": {
+    "titulo": "Respaldos",
+    "ayuda": "Copias de tus datos en la carpeta de respaldos de este computador. Se conservan los 10 respaldos más recientes, automáticos o hechos a mano.",
+    "frecuencia": {
+      "etiqueta": "Respaldo automático al abrir",
+      "nunca": "Nunca",
+      "abrir": "Cada vez",
+      "24h": "Cada 24 horas",
+      "7d": "Cada 7 días"
+    },
+    "ahora": "Respaldar ahora",
+    "carpeta": "Abrir carpeta",
+    "hecho": "Respaldo creado.",
+    "vacio": "Todavía no hay respaldos.",
+    "columnas": {
+      "fecha": "Fecha",
+      "tamano": "Tamaño",
+      "revision": "Revisión de datos",
+      "acciones": "Acciones"
+    },
+    "seguridad": "Antes de restaurar",
+    "antesDeReemplazar": "Antes de reemplazar",
+    "ilegible": "No se puede leer",
+    "restaurar": "Restaurar",
+    "restaurarDe": "Restaurar el respaldo del {fecha}",
+    "confirmarTitulo": "¿Restaurar el respaldo del {fecha}?",
+    "confirmarTexto": "Primero se respaldan tus datos actuales (quedan en la lista como «Antes de restaurar»). Luego se reemplazan por los de este respaldo y BoldoAtlas se reinicia.",
+    "confirmar": "Restaurar y reiniciar",
+    "cancelar": "Cancelar",
+    "automaticoFallo": "No se pudo hacer el respaldo automático.",
+    "error": {
+      "desconocido": "Ese respaldo ya no está en la carpeta. Vuelve a abrir Configuración e inténtalo de nuevo.",
+      "danado": "El respaldo está dañado o no es una base de BoldoAtlas. No se cambió nada.",
+      "esquema_nuevo": "Este respaldo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para restaurarlo.",
+      "en_uso": "Otra ventana de BoldoAtlas está usando los datos. Ciérrala e inténtalo de nuevo; no se cambió nada.",
+      "fallo": "No se pudo completar la operación: {detalle}"
+    }
+  },
+  "vista": {
+    "cerrar": "Cerrar"
+  },
+  "menu": {
+    "abrir": "Menú de la app",
+    "inicio": "Inicio",
+    "vacia": "Nueva organización vacía…",
+    "ejemplo": "Explorar el ejemplo…",
+    "boldo": "Abrir archivo .boldo",
+    "excel": "Importar Excel",
+    "respaldos": "Respaldos",
+    "configuracion": "Configuración",
+    "datos": "Datos del proyecto"
+  },
+  "proyecto": {
+    "titulo": "Datos del proyecto",
+    "principal": "Principal",
+    "abrir": "Datos del proyecto «{nombre}»",
+    "archivo": "Archivo de la base",
+    "tamano": "Tamaño",
+    "modificado": "Última modificación",
+    "copiar": "Copiar ruta",
+    "copiada": "Ruta copiada.",
+    "errorCopiar": "No se pudo copiar la ruta: {detalle}",
+    "abrirCarpeta": "Abrir carpeta"
+  }
+}
