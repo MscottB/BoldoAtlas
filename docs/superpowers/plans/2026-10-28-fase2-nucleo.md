@@ -572,7 +572,7 @@ Reemplaza a la Task 16. Orden final: …, Anexo 3 (17g, 17a, 17b, 17c, 17f, 17d,
 
 ## Anexo 5 (pedido del autor tras publicar v0.1.0-alpha.1, 2026-10-31): entregas cortas
 
-Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del CI para que el autor la pruebe y comente antes de fusionar. Orden: 17f (pestañas, en curso), **18a**, **18b**, **18c**, 17d, 17e, 16a, 15, 16b, revisión final.
+Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del CI para que el autor la pruebe y comente antes de fusionar. Orden: 17f (pestañas, en curso), **18d**, **18e**, **18a**, **18b**, **18c**, 17d, 17e, 16a, 15, 16b, revisión final.
 
 ### Task 18a: CI rápido para la portable
 - `build-prueba.yml` (PR) construye **solo la portable** (`tauri build --no-bundle` + zip, vía una opción de `scripts/release.mjs`, p. ej. `--solo-portable`), sin el instalador; `release.yml` sigue publicando ambos.
@@ -590,3 +590,17 @@ Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del
 - Interruptor "Personas en las tarjetas" en Personalizar diagrama (activo por defecto); el tamaño de tarjeta lo calcula la misma función que usa el layout; las tarjetas livianas (17h) no lo muestran.
 - Sin perder rendimiento: datos precalculados por unidad en una pasada; medir con 2.000 unidades.
 - Commit: `feat(arbol): jefe y equipo en la tarjeta de unidad`
+
+### Task 18d: Ajustes tras probar la alpha.1 (comentarios del autor, 2026-10-31)
+- **«Reordenar» no funciona en el ejemplo:** reproducir con el proyecto de ejemplo y diagnosticar la causa (captura: la tarjeta de puesto "Gerente" de la Gerencia General queda a la izquierda en la fila de las gerencias hijas, y las líneas del jefe y de las hijas comparten tramos a distinta altura). Esperado: «Reordenar» deja un diagrama visiblemente ordenado (los puestos de una unidad pegados a ella, sin mezclarse con las unidades hijas; líneas sin tramos superpuestos) y devuelve a su lugar las tarjetas movidas a mano. Test del caso.
+- **Modo claro:** fondo un poco más oscuro (hoy demasiado brillante), manteniendo contraste AA de textos y bordes.
+- **Barra lateral:** hoy hay dos botones para ocultarla. Dejar uno solo, junto al logo "BoldoAtlas" (quitar el de arriba y el del final del menú). Opción en Configuración "Abrir la barra lateral al pasar el mouse" (activa por defecto, con una pequeña demora para no abrirse sin querer); al estar contraída, pasar el mouse la muestra sobre el contenido y se oculta al salir. Operable con teclado.
+- **Selector de fecha del árbol:** hoy es un campo de fecha suelto junto al filtro, sin rótulo visible, y el autor no supo para qué sirve. Reemplazarlo por un botón con ícono de calendario y texto «Ver en otra fecha» que abre el selector; con una fecha activa, el botón muestra la fecha y la franja de solo lectura ofrece «Volver a hoy». Ayuda es/en.
+- Commit: `fix: reordenar, fondo claro y barra lateral`
+
+### Task 18e: Calendario de cambios (pedido del autor, 2026-10-31)
+- El selector «Ver en otra fecha» (18d) abre un calendario propio (Reka UI `Calendar`, ya instalado) donde los días **con cambios** se destacan (punto o número resaltado, con texto para lectores de pantalla: «3 cambios»), en vez de adivinar día a día.
+- Cambios de un día, derivados de los datos que ya existen (función pura con tests): asignaciones que empiezan o terminan (`desde`/`hasta`: titular asumió, reemplazo empezó o terminó, persona dejó el puesto), unidades y puestos creados o eliminados (`created_at`/`deleted_at`). Lo que hoy no queda registrado (mover una unidad de padre, renombrar) no aparece; decirlo en la ayuda.
+- Junto al calendario, la lista **«Cambios de este día»** en frases simples («Ana Rojas asumió como Gerente de Finanzas», «Se creó la unidad Logística»); clic en un cambio selecciona y encuadra la tarjeta. Botones «Cambio anterior» / «Cambio siguiente» para saltar entre fechas con cambios.
+- Respeta el rango de la fecha mínima y hoy; cálculo en una pasada (O(n)) y solo al abrir el calendario. Teclado completo (el calendario de Reka ya lo trae) e i18n es/en.
+- Commit: `feat(arbol): calendario con los días que tuvieron cambios`
