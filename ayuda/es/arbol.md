@@ -145,7 +145,7 @@ Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un 
 
 La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las cifras y las etiquetas. Lo demás está en **Avanzado**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes. **Eliminar unidad** va al pie, aparte. Reúne:
 
-- **Tipo**, **nombre** y **descripción** (en **Avanzado**). Se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo).
+- **Tipo** y **nombre**, a la vista, y **descripción**, en **Avanzado**. Se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo).
 - **Superior** (en **Avanzado**): un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
 - **Marca** (en **Avanzado**): un color y un código de hasta 4 caracteres, que se ven al elegir «Colorear por» en **Personalizar**. **Quitar marca** borra ambos.
 - **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.

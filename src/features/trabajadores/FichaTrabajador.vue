@@ -346,7 +346,9 @@ const alAbrir = (e: Event) => {
           </details>
         </div>
 
+        <!-- :key: al pasar a otra persona sin cerrar la ficha, el bloque vuelve a decidir si se abre solo. -->
         <BloquePlegable
+          :key="id ?? ''"
           clave="ficha.masDatos"
           :titulo="t('ficha.masDatos')"
           :abrir="conMasDatos"

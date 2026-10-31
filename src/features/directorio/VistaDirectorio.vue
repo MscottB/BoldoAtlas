@@ -116,6 +116,14 @@ const opcionales = computed(() => [
   ...tipos.value.map((x) => ({ clave: `tipo:${x.id}`, nombre: x.nombre })),
   ...(["tipoContrato", "sede", "jornada"] as const).map((c) => ({ clave: c, nombre: t(`directorio.${c}`) })),
 ]);
+// Sin ninguna columna de unidad a la vista no hay encabezado que muestre el orden por unidad: vuelve a persona.
+watch(
+  [tiposVisibles, () => orden.value.campo],
+  ([visibles, campo]) => {
+    if (campo === "unidad" && !visibles.length) orden.value = { campo: "persona", asc: true };
+  },
+  { immediate: true },
+);
 const NINGUNA = new Set<string>();
 const estados = ["ocupado", "vacante", "sinPuesto"] as const;
 
@@ -132,6 +140,11 @@ function abrir(e: MouseEvent, f: FilaDirectorio) {
   if (e.type === "auxclick") return;
   if (f.personaId) void ficha.intentarAbrir(f.personaId);
   else if (f.puestoId) puesto.abrir(f.puestoId);
+}
+// «Limpiar todo» desaparece al limpiar: el foco pasa al buscador para no quedar en el body.
+function limpiarTodo() {
+  filtros.value = { ...SIN_FILTROS };
+  document.querySelector<HTMLInputElement>("[data-buscar-directorio]")?.focus();
 }
 // El botón desaparece con la etiqueta: el foco pasa al buscador para no quedar en el body.
 function quitarPersona() {
@@ -189,7 +202,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
               <ListFilter aria-hidden="true" />
               {{ t("directorio.filtrosBoton") }}
               <span v-if="enFiltros" class="rounded-full bg-marca px-1.5 text-xs text-marca-foreground">
-                {{ enFiltros }}
+                <span aria-hidden="true">{{ enFiltros }}</span>
                 <span class="sr-only">{{ t("directorio.filtrosActivos", enFiltros) }}</span>
               </span>
               <ChevronDown class="-ml-0.5 size-3 opacity-60" aria-hidden="true" />
@@ -230,7 +243,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
             <X class="size-3.5" aria-hidden="true" />
           </button>
         </span>
-        <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="filtros = { ...SIN_FILTROS }">
+        <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="limpiarTodo">
           {{ t("directorio.limpiar") }}
         </Button>
         <DropdownMenu>

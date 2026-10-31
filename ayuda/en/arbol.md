@@ -145,7 +145,7 @@ Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on 
 
 The **Summary** tab shows the type, name, head, figures and tags in plain view. The rest is under **Advanced**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it. **Delete unit** sits apart at the bottom. It holds:
 
-- **Type**, **name** and **description** (under **Advanced**). They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
+- **Type** and **name**, in plain view, and **description**, under **Advanced**. They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
 - **Parent unit** (under **Advanced**): a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
 - **Mark** (under **Advanced**): a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
 - **Head**: choose which of the unit's positions is the head (or **No head**). Below you see who holds it: the holder or, if there is none, **Replacement: name**.

@@ -271,7 +271,7 @@
     "ocupado": "Filled",
     "vacante": "Vacant",
     "sinPuesto": "No position",
-    "limpiar": "Clear filters",
+    "limpiar": "Clear all",
     "filtroPersona": "Person: {nombre}",
     "quitarPersona": "Remove the filter for {nombre}",
     "persona": "Person",
@@ -283,7 +283,7 @@
     "sinResultados": "No rows match the filters.",
     "filtrosBoton": "Filters",
     "filtrosActivos": "{n} active filter | {n} active filters",
-    "quitarFiltros": "Clear filters",
+    "quitarFiltros": "Clear these filters",
     "columnas": "Columns"
   },
   "revision": {

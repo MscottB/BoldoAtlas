@@ -271,7 +271,7 @@
     "ocupado": "Ocupado",
     "vacante": "Vacante",
     "sinPuesto": "Sin puesto",
-    "limpiar": "Limpiar filtros",
+    "limpiar": "Limpiar todo",
     "filtroPersona": "Persona: {nombre}",
     "quitarPersona": "Quitar el filtro de {nombre}",
     "persona": "Persona",
@@ -283,7 +283,7 @@
     "sinResultados": "Ninguna fila coincide con los filtros.",
     "filtrosBoton": "Filtros",
     "filtrosActivos": "{n} filtro activo | {n} filtros activos",
-    "quitarFiltros": "Quitar filtros",
+    "quitarFiltros": "Quitar estos filtros",
     "columnas": "Columnas"
   },
   "revision": {

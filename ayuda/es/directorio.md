@@ -14,8 +14,8 @@ Hay una columna por cada tipo de unidad que usas (por ejemplo Gerencia, Área, S
 ## Buscar y filtrar
 
 - El cuadro de búsqueda busca en el nombre de la persona y del reemplazo, el cargo y el correo del titular, sin distinguir mayúsculas ni tildes («munoz» encuentra «Muñoz»).
-- **Unidad** incluye toda su rama. **Ver en el directorio**, en la pestaña Personas del panel de una unidad, abre el directorio con solo ese filtro. El botón **Filtros** reúne los demás y muestra cuántos están activos; **Quitar filtros**, dentro de él, los vacía. **Cargo**, **tipo de contrato**, **sede** y **jornada** filtran por valor exacto (también los desactivados); contrato, sede y jornada son los del titular, así que una vacante no los cumple. **Etiqueta** usa las etiquetas de la unidad del puesto. **Estado** separa ocupados, vacantes y personas sin puesto.
-- **Limpiar filtros**, junto a los filtros, los quita todos (también el texto y la unidad). Los filtros y el orden se recuerdan en este computador.
+- **Unidad** incluye toda su rama. **Ver en el directorio**, en la pestaña Personas del panel de una unidad, abre el directorio con solo ese filtro. El botón **Filtros** reúne los demás y muestra cuántos están activos; **Quitar estos filtros**, dentro de él, vacía solo esos. **Cargo**, **tipo de contrato**, **sede** y **jornada** filtran por valor exacto (también los desactivados); contrato, sede y jornada son los del titular, así que una vacante no los cumple. **Etiqueta** usa las etiquetas de la unidad del puesto. **Estado** separa ocupados, vacantes y personas sin puesto.
+- **Limpiar todo**, junto a los filtros, los quita todos (también el texto y la unidad). Los filtros y el orden se recuerdan en este computador.
 
 ## Ordenar y abrir
 

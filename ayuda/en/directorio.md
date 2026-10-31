@@ -14,8 +14,8 @@ There is one column for each unit type you use (for example Division, Area, Suba
 ## Search and filter
 
 - The search box looks in the names of the person and the replacement, the job title and the holder's email, ignoring case and accents ("munoz" finds "Muñoz").
-- **Unit** includes its whole branch. **View in the directory**, on the People tab of a unit's panel, opens the directory with just that filter. The **Filters** button holds the rest and shows how many are active; **Clear filters**, inside it, empties them. **Job title**, **contract type**, **site** and **schedule** filter by exact value (deactivated ones too); contract type, site and schedule are the holder's, so a vacancy never matches them. **Tag** uses the tags of the position's unit. **Status** separates filled positions, vacancies and people with no position.
-- **Clear filters**, next to the filters, removes them all (the text and the unit too). Filters and sort order are remembered on this computer.
+- **Unit** includes its whole branch. **View in the directory**, on the People tab of a unit's panel, opens the directory with just that filter. The **Filters** button holds the rest and shows how many are active; **Clear these filters**, inside it, empties only those. **Job title**, **contract type**, **site** and **schedule** filter by exact value (deactivated ones too); contract type, site and schedule are the holder's, so a vacancy never matches them. **Tag** uses the tags of the position's unit. **Status** separates filled positions, vacancies and people with no position.
+- **Clear all**, next to the filters, removes them all (the text and the unit too). Filters and sort order are remembered on this computer.
 
 ## Sort and open
 
