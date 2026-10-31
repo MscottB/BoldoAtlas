@@ -31,6 +31,8 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
+import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
+import { ID_AREA, clicNuevaPestana, idPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: se muestra deshabilitada con el aviso de la fase en que llega.
@@ -72,8 +74,13 @@ const route = useRoute();
 const org = useOrganizacion();
 watch(() => org.org.nombre, ponerTitulo, { immediate: true });
 const cerrarVista = useCerrarVista();
-// Un segundo clic en la entrada de la vista que ya se está viendo la cierra (en captura: antes de que el enlace navegue).
+const pestanas = usePestanas();
+// Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
+const conPestanas = computed(() => pestanas.lista.length > 1);
+// Ctrl+clic: la entrada se abre en una pestaña nueva. Un segundo clic en la entrada de la vista que ya se está viendo la
+// cierra (en captura: antes de que el enlace navegue).
 function alPulsar(e: MouseEvent, item: Entrada) {
+  if (item.to && clicNuevaPestana(e, item.to)) return;
   if (!item.cierra || route.name !== item.cierra) return;
   e.preventDefault();
   cerrarVista();
@@ -115,6 +122,8 @@ watch(
                 class="relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
                 active-class="bg-sidebar-accent font-medium"
                 @click.capture="alPulsar($event, item)"
+                @auxclick="clicNuevaPestana($event, item.to)"
+                @mousedown.middle.prevent
               >
                 <component :is="item.icono" class="size-4 shrink-0" aria-hidden="true" />
                 <span v-if="!colapsada">{{ t(item.etiqueta) }}</span>
@@ -160,8 +169,18 @@ watch(
           @alternar-barra="manual = !colapsada"
           @buscar="paletaAbierta = true"
         />
-        <main class="min-h-0 flex-1 overflow-auto">
-          <RouterView />
+        <BarraPestanas v-if="conPestanas" />
+        <!-- La key es la pestaña: cambiar de pestaña monta su vista de cero (solo la activa está montada). -->
+        <main
+          :id="ID_AREA"
+          tabindex="-1"
+          class="min-h-0 flex-1 overflow-auto outline-none"
+          :role="conPestanas ? 'tabpanel' : undefined"
+          :aria-labelledby="conPestanas ? idPestana(pestanas.activa) : undefined"
+        >
+          <RouterView v-slot="{ Component: vista }">
+            <component :is="vista" :key="pestanas.activa" />
+          </RouterView>
         </main>
       </div>
     </div>

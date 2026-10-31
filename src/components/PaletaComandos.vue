@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { CircleHelp, ListChecks, Network, Palette, Plus, Search, User, UserRoundX, Users } from "@lucide/vue";
 import { ListboxFilter } from "reka-ui";
@@ -12,6 +12,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
 import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
+import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 
 // Ctrl+K: unidades, personas, puestos vacantes y acciones. El filtro es propio (sin tildes ni mayúsculas): el de Command
@@ -45,6 +46,8 @@ interface AccionPaleta extends Accion {
   icono: Component;
   deshabilitada?: boolean;
   ejecutar: () => unknown;
+  /** Si lleva a una vista: la que se abre en una pestaña nueva con Ctrl+Enter, Ctrl+clic o clic central. */
+  ruta?: RouteLocationRaw;
 }
 const enArbol = computed(() => route.name === "arbol");
 const acciones = computed<AccionPaleta[]>(() => [
@@ -64,12 +67,14 @@ const acciones = computed<AccionPaleta[]>(() => [
     etiqueta: t("paleta.acciones.directorio"),
     icono: Users,
     ejecutar: () => router.push("/directorio"),
+    ruta: "/directorio",
   },
   {
     id: "revision",
     etiqueta: t("paleta.acciones.revision"),
     icono: ListChecks,
     ejecutar: () => router.push("/revision"),
+    ruta: "/revision",
   },
   {
     id: "tema",
@@ -85,12 +90,14 @@ const acciones = computed<AccionPaleta[]>(() => [
     icono: e.icono,
     deshabilitada: !!e.fase,
     ejecutar: () => irAEntrada(e, router),
+    ruta: e.destino && !router.resolve(e.destino).meta.sinMarco ? e.destino : undefined,
   })),
   {
     id: "ayuda",
     etiqueta: t("paleta.acciones.ayuda"),
     icono: CircleHelp,
     ejecutar: () => router.push("/ayuda"),
+    ruta: "/ayuda",
   },
 ]);
 
@@ -109,10 +116,38 @@ function irAUnidad(id: string) {
   else void router.push({ name: "arbol", query: { ver: id } });
 }
 
+const rutaUnidad = (id: string): RouteLocationRaw => ({ name: "arbol", query: { ver: id } });
+const rutaPersona = (id: string): RouteLocationRaw => ({ name: "directorio", query: { persona: id } });
+
+// Ctrl+Enter o Ctrl+clic sobre algo que lleva a una vista: se abre en una pestaña nueva. Reka no elige con Ctrl+Enter:
+// aquí se pulsa la opción resaltada recordando que fue con Ctrl (el clic que le llega no lo trae).
+let conCtrl = false;
+function alTeclear(e: KeyboardEvent) {
+  if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey) || e.isComposing) return;
+  const resaltada = (e.currentTarget as HTMLElement)
+    .closest('[role="dialog"]')
+    ?.querySelector<HTMLElement>('[role="option"][data-highlighted]');
+  if (!resaltada) return;
+  e.preventDefault();
+  conCtrl = true;
+  resaltada.click(); // elige en el acto (o nada, si está deshabilitada)
+  conCtrl = false;
+}
 // Se cierra primero: lo elegido (ficha, diálogo del puesto) toma el foco sin pelearlo con la paleta.
-function elegir(accion: () => unknown) {
+function elegir(accion: () => unknown, ev?: CustomEvent<{ originalEvent: Event }>, ruta?: RouteLocationRaw) {
+  const clic = ev?.detail?.originalEvent;
+  const nueva = conCtrl || (clic instanceof MouseEvent && (clic.ctrlKey || clic.metaKey));
+  conCtrl = false;
   abierto.value = false;
-  accion();
+  if (ruta && nueva) abrirEnPestanaNueva(ruta);
+  else accion();
+}
+// Clic central: también en una pestaña nueva.
+function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
+  if (e.button !== 1 || !ruta) return;
+  e.preventDefault();
+  abierto.value = false;
+  abrirEnPestanaNueva(ruta);
 }
 </script>
 
@@ -126,6 +161,7 @@ function elegir(accion: () => unknown) {
         :placeholder="t('paleta.buscar')"
         :aria-label="t('paleta.buscar')"
         class="h-10 w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
+        @keydown="alTeclear"
       />
     </div>
     <p class="sr-only" role="status">{{ busqueda.trim() ? t("paleta.resultados", total) : "" }}</p>
@@ -140,7 +176,8 @@ function elegir(accion: () => unknown) {
           v-for="u in r.unidades.items"
           :key="u.id"
           :value="`unidad:${u.id}`"
-          @select="elegir(() => irAUnidad(u.id))"
+          @select="elegir(() => irAUnidad(u.id), $event, rutaUnidad(u.id))"
+          @auxclick="alPulsarAux($event, rutaUnidad(u.id))"
         >
           <Network aria-hidden="true" />
           <span class="grid min-w-0">
@@ -158,7 +195,8 @@ function elegir(accion: () => unknown) {
           v-for="p in r.personas.items"
           :key="p.id"
           :value="`persona:${p.id}`"
-          @select="elegir(() => ficha.intentarAbrir(p.id))"
+          @select="elegir(() => ficha.intentarAbrir(p.id), $event, rutaPersona(p.id))"
+          @auxclick="alPulsarAux($event, rutaPersona(p.id))"
         >
           <User aria-hidden="true" />
           <span class="grid min-w-0">
@@ -197,12 +235,14 @@ function elegir(accion: () => unknown) {
           :key="a.id"
           :value="`accion:${a.id}`"
           :disabled="a.deshabilitada"
-          @select="elegir(a.ejecutar)"
+          @select="elegir(a.ejecutar, $event, a.ruta)"
+          @auxclick="alPulsarAux($event, a.ruta)"
         >
           <component :is="a.icono" aria-hidden="true" />
           {{ a.etiqueta }}
         </CommandItem>
       </CommandGroup>
     </CommandList>
+    <p class="border-t px-3 py-1.5 text-xs text-muted-foreground">{{ t("paleta.ayudaPestana") }}</p>
   </CommandDialog>
 </template>

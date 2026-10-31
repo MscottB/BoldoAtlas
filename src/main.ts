@@ -7,6 +7,7 @@ import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
+import { usePestanas } from "./features/pestanas/usePestanas";
 import { respaldoAutomatico } from "./features/respaldos/respaldos";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
 import "./styles/main.css";
@@ -24,9 +25,12 @@ infoApp()
     // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, se muestra el motivo en vez de una app vacía.
     const falloCarga = infoSiFalloCarga(await org.cargar());
     if (falloCarga) return createApp(PantallaError, { info: falloCarga }).use(i18n).mount("#app");
+    // Las pestañas de trabajo de este proyecto (se recuerdan por PC y por base de datos); se abre en la que estaba activa.
+    const pestanas = usePestanas(pinia);
+    pestanas.conectar(router, info.rutaBd);
+    const destino = destinoInicial(org.cargado, org.vacia) ?? pestanas.entrar();
     const app = createApp(App).use(pinia).use(router).use(i18n);
-    const destino = destinoInicial(org.cargado, org.vacia);
-    if (destino) await router.replace(destino);
+    await router.replace(destino);
     app.mount("#app");
     void respaldoAutomatico();
   })

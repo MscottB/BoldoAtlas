@@ -25,11 +25,54 @@ export interface Filtros {
   /** Etiqueta de la unidad de la fila. */
   etiqueta: string | null;
   estado: "ocupado" | "vacante" | "sinPuesto" | null;
+  /** Solo las filas de esta persona (titular o sin puesto): una persona abierta en su propia pestaña. */
+  persona: string | null;
 }
 
 export interface Orden {
   campo: "persona" | "cargo" | "unidad";
   asc: boolean;
+}
+
+export const SIN_FILTROS: Filtros = {
+  texto: "",
+  unidad: null,
+  cargo_id: null,
+  tipo_contrato_id: null,
+  sede_id: null,
+  jornada_id: null,
+  etiqueta: null,
+  estado: null,
+  persona: null,
+};
+export const ORDEN_INICIAL: Orden = { campo: "persona", asc: true };
+
+/** Filtros y orden guardados (preferencia o pestaña), validados campo a campo; lo inválido vuelve al valor inicial. */
+export function leerEstadoDirectorio(crudo: unknown): { filtros: Filtros; orden: Orden } {
+  const objeto = (x: unknown) => (typeof x === "object" && x !== null ? x : {}) as Record<string, unknown>;
+  const c = objeto(crudo);
+  const f = objeto(c.filtros);
+  const o = objeto(c.orden);
+  const id = (k: keyof Filtros) => (typeof f[k] === "string" && f[k] ? (f[k] as string) : null);
+  const estados = ["ocupado", "vacante", "sinPuesto"] as const;
+  const campos = ["persona", "cargo", "unidad"] as const;
+  return {
+    filtros: {
+      texto: typeof f.texto === "string" ? f.texto : "",
+      unidad: id("unidad"),
+      cargo_id: id("cargo_id"),
+      tipo_contrato_id: id("tipo_contrato_id"),
+      sede_id: id("sede_id"),
+      jornada_id: id("jornada_id"),
+      etiqueta: id("etiqueta"),
+      estado: estados.find((e) => e === f.estado) ?? null,
+      persona: id("persona"),
+    },
+    orden: {
+      campo: campos.find((x) => x === o.campo) ?? ORDEN_INICIAL.campo,
+      asc: typeof o.asc === "boolean" ? o.asc : ORDEN_INICIAL.asc,
+    },
+  };
 }
 
 /** Un puesto (con su titular o vacante) o una persona sin puesto vigente. Los nombres de catálogo incluyen los desactivados. */
@@ -151,6 +194,7 @@ export function filtrarYOrdenar(c: Candidatas, f: Filtros, orden: Orden): FilaDi
   // Contrato, sede, jornada y correo son los del titular (lo que muestran las columnas); una vacante no los cumple.
   const pasa = ({ fila, cargoId, titular }: Candidata) =>
     (!f.estado || fila.estado === f.estado) &&
+    (!f.persona || fila.personaId === f.persona) &&
     (!rama || (!!fila.unidadId && rama.has(fila.unidadId))) &&
     (!conEtiqueta || (!!fila.unidadId && conEtiqueta.has(fila.unidadId))) &&
     (!f.cargo_id || cargoId === f.cargo_id) &&

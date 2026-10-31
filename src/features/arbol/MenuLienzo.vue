@@ -15,6 +15,7 @@ import {
 import type { Unidad } from "@/db/tipos";
 import { useEstilo } from "@/features/puestos/useEstilo";
 import { usePuesto } from "@/features/puestos/usePuesto";
+import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { descendientes, indiceHijos } from "./jerarquia";
 import { useLienzo } from "./useLienzo";
@@ -143,6 +144,9 @@ const abrirVista = () => (panelAbierto.value = true);
         </ContextMenuItem>
         <ContextMenuItem @select="pedir(() => router.push({ query: { raiz: id } }))">
           {{ t("arbol.abrirComoArbol") }}
+        </ContextMenuItem>
+        <ContextMenuItem @select="pedir(() => abrirEnPestanaNueva({ name: 'arbol', query: { raiz: id } }))">
+          {{ t("pestanas.abrirNueva") }}
         </ContextMenuItem>
         <ContextMenuItem :disabled="soloLectura || !guardable" @select="pedir(() => guardar(id))">
           {{ t("arboles.guardarEnArboles") }}

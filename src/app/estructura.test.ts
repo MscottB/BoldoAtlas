@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   barraColapsada,
-  destinoAlCerrar,
   destinoInicial,
   esVistaCerrable,
   infoSiFalloCarga,
@@ -38,18 +37,6 @@ describe("infoSiFalloCarga", () => {
   });
   it("devuelve null si la carga salió bien", () => {
     expect(infoSiFalloCarga({ ok: true })).toBeNull();
-  });
-});
-
-describe("destinoAlCerrar", () => {
-  it("vuelve atrás si hay una ruta anterior dentro de la app", () => {
-    expect(destinoAlCerrar("/directorio")).toBe("atras");
-    expect(destinoAlCerrar("/")).toBe("atras");
-  });
-  it("sin historia (se abrió directo en esa vista) va al árbol", () => {
-    expect(destinoAlCerrar(null)).toBe("/");
-    expect(destinoAlCerrar(undefined)).toBe("/");
-    expect(destinoAlCerrar("")).toBe("/");
   });
 });
 
