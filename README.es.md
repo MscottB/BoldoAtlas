@@ -49,19 +49,19 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 
 ## Descarga
 
-Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases/latest)** (la primera versión pública llega pronto). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta. Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
+Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases/latest)** (la primera versión pública llega pronto). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta (salvo en macOS: las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
 
 | Sistema | Portable | Instalador | Datos del instalado |
 |---|---|---|---|
 | Windows 10 u 11 (x64) | `BoldoAtlas_windows_x64_portable.zip` → `BoldoAtlas.exe` | `BoldoAtlas_windows_x64_setup.exe` | `%APPDATA%\io.github.mscottb.boldoatlas` |
 | Linux (x64) | `BoldoAtlas_linux_x64_portable.zip` → `BoldoAtlas.AppImage` | `BoldoAtlas_linux_x64.deb`, `BoldoAtlas_linux_x64.rpm` o `BoldoAtlas_linux_x64.AppImage` | `~/.local/share/io.github.mscottb.boldoatlas` |
-| macOS 10.13 o más nuevo (Intel y Apple Silicon) | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
+| macOS 11 o más nuevo (Intel y Apple Silicon) | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
 
 `SHA256SUMS.txt` trae las sumas de todos los archivos para verificar la descarga: `Get-FileHash <archivo> -Algorithm SHA256` en Windows, `sha256sum -c SHA256SUMS.txt --ignore-missing` en Linux y `shasum -a 256 <archivo>` en macOS.
 
 Requisitos: en Windows, WebView2 (ya viene en Windows 11 y en casi todo Windows 10); en Linux, una distribución de 2022 o más nueva (Ubuntu 22.04, Debian 12, Fedora 36…) y, para el AppImage, FUSE 2 (`sudo apt install libfuse2`; en Ubuntu 24.04, `libfuse2t64`).
 
-En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos. En macOS, las preferencias de la ventana (tema, escala, pestañas) las guarda el sistema en `~/Library/WebKit`; los datos y los respaldos sí quedan en `datos/`.
+En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos. En macOS, las preferencias de la ventana (tema, escala, pestañas) y sus cachés web las guarda el sistema en tu carpeta `~/Library` (`WebKit`, `Caches`); los datos y los respaldos sí quedan en `datos/`.
 
 ### Abrir un programa sin firma digital
 

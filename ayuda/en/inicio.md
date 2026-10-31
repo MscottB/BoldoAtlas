@@ -34,22 +34,22 @@ The window title and the top bar show the organization name with the **Main** ba
 
 ## Portable and installed mode
 
-- **Portable:** extract the zip for your system into any folder (or onto a USB drive) and open the program inside. Everything (data, backups and preferences) stays in the `datos/` folder next to the program, and nothing is written outside it. It works because a `portable.flag` file sits next to the program. Extract the zip before running: opening it from inside the zip prevents data from being saved.
+- **Portable:** extract the zip for your system into any folder (or onto a USB drive) and open the program inside. Everything (data, backups and preferences) stays in the `datos/` folder next to the program, and nothing is written outside it (except on macOS: the window preferences, see below). It works because a `portable.flag` file sits next to the program. Extract the zip before running: opening it from inside the zip prevents data from being saved.
 - **Installed:** install it with your system's installer and the data goes to your user's data folder.
 
 | System | Portable | Installer | Installed data |
 |---|---|---|---|
 | Windows | `BoldoAtlas_windows_x64_portable.zip` → `BoldoAtlas.exe` | `BoldoAtlas_windows_x64_setup.exe` | `%APPDATA%\io.github.mscottb.boldoatlas` |
 | Linux | `BoldoAtlas_linux_x64_portable.zip` → `BoldoAtlas.AppImage` | `.deb`, `.rpm` or `BoldoAtlas_linux_x64.AppImage` | `~/.local/share/io.github.mscottb.boldoatlas` |
-| macOS | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
+| macOS 11 or newer | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
 
-On macOS, the system keeps the window preferences (theme, zoom, tabs) in `~/Library/WebKit`, also for the portable; data and backups do stay in `datos/`.
+On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`), also for the portable; data and backups do stay in `datos/`.
 
 BoldoAtlas is not code-signed yet, so the first time the system warns you:
 
 - **Windows:** if "Windows protected your PC" appears, click **More info → Run anyway**.
 - **macOS:** right-click `BoldoAtlas.app` → **Open** → **Open**. If it says the app is damaged or won't let you open it, run `xattr -dr com.apple.quarantine <folder>` in Terminal on the portable folder (or on `/Applications/BoldoAtlas.app`), or use **System Settings › Privacy & Security › Open Anyway**. For the portable, do it before opening it: otherwise macOS opens it from a read-only copy and it cannot save.
-- **Linux:** the AppImage needs execute permission: `chmod +x BoldoAtlas_linux_x64.AppImage` (or Properties › Allow executing). If it doesn't open, install FUSE 2 (`sudo apt install libfuse2`).
+- **Linux:** the AppImage needs execute permission: `chmod +x BoldoAtlas_linux_x64.AppImage` (or Properties › Allow executing). If it doesn't open, install FUSE 2 (`sudo apt install libfuse2`; on Ubuntu 24.04, `libfuse2t64`).
 
 _About_ (at the bottom of the menu) shows the mode it is running in and the exact data folder.
 
@@ -58,7 +58,7 @@ _About_ (at the bottom of the menu) shows the mode it is running in and the exac
 Everything is stored in a local SQLite database, `boldo.db`:
 
 - In portable mode, in the `datos/` folder next to the program.
-- In installed mode, in `%APPDATA%\io.github.mscottb.boldoatlas`.
+- In installed mode, in your user data folder, which depends on the system ("Installed data" column of the table in **Portable and installed mode**).
 
 Before upgrading the database structure, BoldoAtlas saves a copy in the `respaldos` subfolder. To move your data to another computer in portable mode, copy the whole folder.
 
