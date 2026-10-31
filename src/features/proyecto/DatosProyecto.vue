@@ -16,6 +16,7 @@ import {
 import { abrirCarpetaDatos, infoProyecto, type InfoProyecto } from "@/db/cliente";
 import { tamano } from "@/lib/formato";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
+import { useRetornoFoco } from "@/lib/foco";
 import { useOrganizacion } from "@/stores/organizacion";
 import { datosProyectoAbierto } from "./menuApp";
 
@@ -24,6 +25,7 @@ const { t, locale } = useI18n();
 const org = useOrganizacion();
 const info = ref<InfoProyecto | null>(null);
 const error = ref("");
+const retorno = useRetornoFoco();
 
 watch(datosProyectoAbierto, async (abierto) => {
   if (!abierto) return;
@@ -47,7 +49,7 @@ async function copiar() {
     await navigator.clipboard.writeText(info.value.rutaBd);
     toast.success(t("proyecto.copiada"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(t("proyecto.errorCopiar", { detalle: String(e) }));
   }
 }
 const abrirCarpeta = () => abrirCarpetaDatos().catch((e: unknown) => toast.error(mensajeFallo(e)));
@@ -55,7 +57,11 @@ const abrirCarpeta = () => abrirCarpetaDatos().catch((e: unknown) => toast.error
 
 <template>
   <Dialog v-model:open="datosProyectoAbierto">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent
+      class="sm:max-w-lg"
+      @open-auto-focus="retorno.alAbrir"
+      @close-auto-focus="retorno.alCerrar"
+    >
       <DialogHeader>
         <DialogTitle>{{ t("proyecto.titulo") }}</DialogTitle>
         <DialogDescription>

@@ -1240,26 +1240,14 @@ describe("guarda de datos existentes", () => {
 });
 
 describe("reemplazarCon", () => {
-  const TABLAS = [
-    "unidades",
-    "puestos",
-    "asignaciones",
-    "trabajadores",
-    "leyendas",
-    "etiquetas",
-    "unidad_etiquetas",
-    "conexiones",
-    "cargos",
-    "tipos_contrato",
-    "sedes",
-    "jornadas",
-    "tipos_unidad",
-    "subarboles_guardados",
-    "vistas",
-  ];
+  // Todas las tablas de la base (menos meta), no una lista a mano: así una tabla nueva también se comprueba.
   const filas = () =>
     Object.fromEntries(
-      TABLAS.map((t) => [t, h.bd!.consultar<{ n: number }>(`SELECT count(*) AS n FROM ${t}`)[0].n]),
+      h
+        .bd!.consultar<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'meta' AND name NOT LIKE 'sqlite_%'",
+        )
+        .map(({ name }) => [name, h.bd!.consultar<{ n: number }>(`SELECT count(*) AS n FROM ${name}`)[0].n]),
     );
   afterEach(() => cambiarIdioma("es"));
 
@@ -1286,6 +1274,9 @@ describe("reemplazarCon", () => {
     expect(s.unidades.map((u) => u.nombre)).toEqual(["Matriz"]);
     expect(s.unidades[0].tipo_id).toBe(TIPO_GERENCIA);
     expect(filas()).toEqual({
+      actividad_roles: 0,
+      actividades: 0,
+      procesos: 0,
       unidades: 1,
       puestos: 0,
       asignaciones: 0,

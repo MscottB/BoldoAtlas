@@ -632,6 +632,7 @@
       "acciones": "Actions"
     },
     "seguridad": "Before restore",
+    "antesDeReemplazar": "Before replacing",
     "ilegible": "Unreadable",
     "restaurar": "Restore",
     "restaurarDe": "Restore the backup from {fecha}",
@@ -671,6 +672,7 @@
     "modificado": "Last modified",
     "copiar": "Copy path",
     "copiada": "Path copied.",
+    "errorCopiar": "The path could not be copied: {detalle}",
     "abrirCarpeta": "Open folder"
   }
 }

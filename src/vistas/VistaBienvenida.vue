@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { respaldarAhora } from "@/db/cliente";
+import { respaldarAntesDeReemplazar } from "@/db/cliente";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import icono from "../../assets/brand/icono.png";
@@ -79,7 +79,9 @@ async function reemplazar() {
   ocupado.value = true;
   const datos =
     reemplazo.value === "vacia" ? { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value } : undefined;
-  await entrar(await conRespaldoPrevio(respaldarAhora, () => org.reemplazarCon(reemplazo.value, datos)));
+  await entrar(
+    await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
+  );
   ocupado.value = false;
 }
 

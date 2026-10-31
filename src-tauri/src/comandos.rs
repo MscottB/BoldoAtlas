@@ -146,6 +146,20 @@ pub async fn listar_respaldos(app: AppHandle) -> Result<Vec<Respaldo>, Fallo> {
     .map_err(|e| e.to_string())?
 }
 
+/// Como `respaldar_ahora`, pero con un nombre propio que la poda nunca borra: lo usa «reemplazar los datos».
+#[tauri::command]
+pub async fn respaldar_antes_de_reemplazar(app: AppHandle) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let dir = &estado.rutas()?.respaldos;
+        estado.con_conexion(|c| {
+            respaldos::respaldar_antes_de_reemplazar(c, dir, &respaldos::sello_local(c)?)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// En un hilo aparte: el VACUUM INTO no congela la ventana.
 #[tauri::command]
 pub async fn respaldar_ahora(app: AppHandle) -> Result<String, Fallo> {

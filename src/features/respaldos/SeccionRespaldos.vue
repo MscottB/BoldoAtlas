@@ -127,7 +127,9 @@ const selector =
           <tr v-for="r in lista" :key="r.nombre">
             <td class="py-2 pr-2">
               {{ fecha(r) }}
-              <Badge v-if="r.seguridad" variant="outline" class="ml-2">{{ t("respaldos.seguridad") }}</Badge>
+              <Badge v-if="r.seguridad" variant="outline" class="ml-2">{{
+                t(r.reemplazo ? "respaldos.antesDeReemplazar" : "respaldos.seguridad")
+              }}</Badge>
             </td>
             <td class="px-2 text-right tabular-nums">{{ tamano(r.bytes, locale) }}</td>
             <td class="px-2 text-right tabular-nums">

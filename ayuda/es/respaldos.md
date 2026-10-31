@@ -20,6 +20,10 @@ En **Configuración › Respaldos** ves cada respaldo con su **fecha**, su **tam
 - **Respaldar ahora** hace un respaldo en el momento.
 - **Abrir carpeta** abre la carpeta de respaldos en el Explorador, por ejemplo para copiarlos a un pendrive.
 
+## Antes de reemplazar los datos
+
+Al elegir **Nueva organización vacía** o **Explorar el ejemplo** con datos cargados, BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Como el de restaurar, nunca se borra solo: si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
+
 ## Restaurar
 
 1. Pulsa **Restaurar** en la fila del respaldo que quieres recuperar.

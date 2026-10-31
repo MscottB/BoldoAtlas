@@ -632,6 +632,7 @@
       "acciones": "Acciones"
     },
     "seguridad": "Antes de restaurar",
+    "antesDeReemplazar": "Antes de reemplazar",
     "ilegible": "No se puede leer",
     "restaurar": "Restaurar",
     "restaurarDe": "Restaurar el respaldo del {fecha}",
@@ -671,6 +672,7 @@
     "modificado": "Última modificación",
     "copiar": "Copiar ruta",
     "copiada": "Ruta copiada.",
+    "errorCopiar": "No se pudo copiar la ruta: {detalle}",
     "abrirCarpeta": "Abrir carpeta"
   }
 }

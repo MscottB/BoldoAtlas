@@ -43,6 +43,8 @@ export interface Respaldo {
   revision: number | null;
   legible: boolean;
   seguridad: boolean;
+  /** Seguridad hecha antes de reemplazar los datos (si no, antes de restaurar). */
+  reemplazo: boolean;
 }
 
 /** Error de los comandos de respaldos: `codigo` se traduce con `respaldos.error.<codigo>`. */
@@ -57,6 +59,11 @@ export function listarRespaldos(): Promise<Respaldo[]> {
 
 export function respaldarAhora(): Promise<string> {
   return invoke<string>("respaldar_ahora");
+}
+
+/** Respaldo previo a reemplazar los datos: no entra en la poda de los últimos 10. */
+export function respaldarAntesDeReemplazar(): Promise<string> {
+  return invoke<string>("respaldar_antes_de_reemplazar");
 }
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */

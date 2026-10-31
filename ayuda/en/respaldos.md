@@ -20,6 +20,10 @@ In **Settings › Backups** you see each backup with its **date**, **size** and 
 - **Back up now** makes a backup right away.
 - **Open folder** opens the backups folder in File Explorer, for example to copy them to a USB drive.
 
+## Before replacing your data
+
+When you choose **New empty organization** or **Explore the example** with data loaded, BoldoAtlas first makes a backup marked **Before replacing**. Like the one made before restoring, it is never deleted automatically: if you change your mind, restore it from this list. If the backup fails, nothing is replaced.
+
 ## Restore
 
 1. Press **Restore** on the row of the backup you want to recover.

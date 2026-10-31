@@ -13,7 +13,7 @@ export const TIPOS_SEMILLA = [
 
 // Todas las tablas de la organización; `meta` (identidad y revisión de la base) no. Las claves foráneas son
 // diferidas: el orden no importa dentro de la transacción.
-const TABLAS = [
+export const TABLAS_ORGANIZACION = [
   "actividad_roles",
   "actividades",
   "procesos",
@@ -42,7 +42,7 @@ const TABLAS = [
 export function vaciarOrganizacion(): Sentencia[] {
   const t = ahora();
   return [
-    ...TABLAS.map((tabla) => ({ sql: `DELETE FROM ${tabla}` })),
+    ...TABLAS_ORGANIZACION.map((tabla) => ({ sql: `DELETE FROM ${tabla}` })),
     ...TIPOS_SEMILLA.map((s) => ({
       sql: "INSERT INTO tipos_unidad (id, nombre, orden, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
       params: [s.id, s.nombre, s.orden, t, t],

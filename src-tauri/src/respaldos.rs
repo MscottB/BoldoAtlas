@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 const PREFIJO: &str = "boldo-";
 /// Copia de la base actual que se hace antes de restaurar: se lista (para poder deshacer) pero nunca se poda.
 const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
+/// Copia que se hace antes de reemplazar los datos por una organización nueva o el ejemplo: tampoco se poda.
+const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
 pub const CONSERVAR: usize = 10;
 
@@ -52,6 +54,8 @@ pub struct Respaldo {
     pub revision: Option<i64>,
     pub legible: bool,
     pub seguridad: bool,
+    /// Seguridad hecha antes de reemplazar los datos (si no, antes de restaurar).
+    pub reemplazo: bool,
 }
 
 /// `AAAAMMDD-HHMM` en hora local.
@@ -68,13 +72,15 @@ struct Entrada {
     sello: String,
     n: u32,
     seguridad: bool,
+    reemplazo: bool,
 }
 
-/// `boldo-[antes-de-restaurar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
+/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
 fn entrada(nombre: &str) -> Option<Entrada> {
-    let (seguridad, resto) = match nombre.strip_prefix(PREFIJO_SEGURIDAD) {
-        Some(r) => (true, r),
-        None => (false, nombre.strip_prefix(PREFIJO)?),
+    let reemplazo = nombre.strip_prefix(PREFIJO_REEMPLAZO);
+    let (seguridad, resto) = match (reemplazo, nombre.strip_prefix(PREFIJO_SEGURIDAD)) {
+        (Some(r), _) | (_, Some(r)) => (true, r),
+        _ => (false, nombre.strip_prefix(PREFIJO)?),
     };
     let resto = resto.strip_suffix(".db")?;
     let sello = resto.get(..13)?;
@@ -99,6 +105,7 @@ fn entrada(nombre: &str) -> Option<Entrada> {
         sello: sello.to_string(),
         n,
         seguridad,
+        reemplazo: reemplazo.is_some(),
     })
 }
 
@@ -165,6 +172,15 @@ pub fn respaldar(conn: &Connection, dir: &Path, sello: &str) -> Result<String, F
     Ok(nombre)
 }
 
+/// Respaldo previo a reemplazar los datos: va aparte de los automáticos y no se poda.
+pub fn respaldar_antes_de_reemplazar(
+    conn: &Connection,
+    dir: &Path,
+    sello: &str,
+) -> Result<String, Fallo> {
+    volcar(conn, dir, PREFIJO_REEMPLAZO, sello)
+}
+
 fn revision(ruta: &Path) -> Option<i64> {
     let c = Connection::open_with_flags(ruta, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
     c.query_row(
@@ -198,6 +214,7 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
                 legible: revision.is_some(),
                 revision,
                 seguridad: e.seguridad,
+                reemplazo: e.reemplazo,
                 nombre: e.nombre,
             })
         })
@@ -438,6 +455,31 @@ mod tests {
             .collect();
         assert_eq!(propios.len(), CONSERVAR, "{quedan:?}");
         assert_eq!(propios[0], "boldo-20200103-0000.db");
+    }
+
+    #[test]
+    fn el_respaldo_previo_a_reemplazar_se_lista_aparte_y_no_se_poda() {
+        let dir = tempfile::tempdir().unwrap();
+        let (_, respaldos, conn) = base(dir.path());
+        let previo = respaldar_antes_de_reemplazar(&conn, &respaldos, "20200101-0000").unwrap();
+        assert_eq!(previo, "boldo-antes-de-reemplazar-20200101-0000.db");
+        for d in 1..=CONSERVAR + 5 {
+            respaldar(&conn, &respaldos, &format!("202002{d:02}-0000")).unwrap();
+        }
+        let lista = listar(&respaldos).unwrap();
+        let p = lista
+            .iter()
+            .find(|r| r.nombre == previo)
+            .expect("sigue ahí");
+        assert!(p.seguridad && p.reemplazo && p.legible);
+        assert_eq!(lista.iter().filter(|r| !r.seguridad).count(), CONSERVAR);
+        // restaurar sigue ofreciendo solo nombres de la lista: este también vale
+        assert!(
+            entradas(&respaldos)
+                .unwrap()
+                .iter()
+                .any(|e| e.nombre == previo)
+        );
     }
 
     #[cfg(windows)]

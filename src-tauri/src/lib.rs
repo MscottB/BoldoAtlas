@@ -16,6 +16,7 @@ pub fn run() {
             comandos::db_lote,
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
+            comandos::respaldar_antes_de_reemplazar,
             comandos::restaurar_respaldo,
             comandos::abrir_carpeta_respaldos,
             comandos::info_proyecto,
