@@ -1,0 +1,63 @@
+name: version-pr
+
+# Dice en el PR con qué versión se publicará al fusionarse: en el resumen del job y en UN comentario
+# que se edita en cada cambio (código, labels version:* o la sección «Notas de la versión»).
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
+
+concurrency:
+  group: version-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # etiquetas
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - id: v
+        run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
+      - name: Resumen
+        env:
+          ETIQUETA: ${{ steps.v.outputs.etiqueta }}
+          PRUEBA: ${{ steps.v.outputs.version_prueba }}
+          NOTAS: ${{ steps.v.outputs.notas }}
+        run: |
+          {
+            echo "<!-- boldoatlas:version-pr -->"
+            echo "Se publicará como **$ETIQUETA** al fusionar este PR."
+            echo
+            echo "La portable de prueba de este PR es \`$PRUEBA\` (artefacto del workflow build-prueba)."
+            echo "Para cambiar el salto: labels \`version:parche\`, \`version:menor\` o \`version:mayor\`."
+            echo
+            echo "### Notas de la versión"
+            echo
+            echo "$NOTAS"
+          } > comentario.md
+          cat comentario.md >> "$GITHUB_STEP_SUMMARY"
+      # en PR desde forks el token es de solo lectura: queda el resumen del job
+      - name: Comentario fijo
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- boldoatlas:version-pr -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@comentario.md > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -F body=@comentario.md > /dev/null
+          fi

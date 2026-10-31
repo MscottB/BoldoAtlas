@@ -77,7 +77,11 @@ cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
 npm run release        # full Windows release in release/<version>/
 ```
 
-`npm run release` is the same command GitHub Actions uses, so a local build is exactly what would be published. To publish a version, push a tag: `git tag v1.2.0 && git push origin v1.2.0`.
+`npm run release` is the same command GitHub Actions uses, so a local build is exactly what would be published.
+
+### Versions and releases
+
+Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the PR's **Notas de la versión** section (or its title). The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
 
 ## Roadmap
 

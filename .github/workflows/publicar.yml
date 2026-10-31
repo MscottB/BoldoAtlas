@@ -1,0 +1,88 @@
+name: publicar
+
+# Cada PR fusionado a main es una versión: calcula la siguiente (scripts/publicacion.mjs), y release.yml
+# crea la etiqueta anotada, compila y publica la prerelease con las notas del PR.
+# Un push a main que no viene de un PR, o que solo toca documentación, no publica nada.
+# workflow_dispatch es un ensayo: muestra versión y notas sin etiquetar ni publicar.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Número de PR a ensayar (vacío: el PR fusionado en este commit)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# un release a la vez, en orden: el siguiente calcula su versión con la etiqueta del anterior ya creada
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      publicar: ${{ steps.v.outputs.publicar }}
+      etiqueta: ${{ steps.v.outputs.etiqueta }}
+      notas: ${{ steps.v.outputs.notas }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # etiquetas
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: PR fusionado en este commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ inputs.pr }}
+        run: |
+          if [ -n "$PR" ]; then
+            gh api "repos/$REPO/pulls/$PR" > pr.json
+          else
+            gh api "repos/$REPO/commits/$GITHUB_SHA/pulls" \
+              --jq "[.[] | select(.merge_commit_sha == \"$GITHUB_SHA\")][0] // empty" > pr.json
+          fi
+      - id: v
+        run: node scripts/publicacion.mjs pr.json
+      - name: Resumen
+        env:
+          PUBLICAR: ${{ steps.v.outputs.publicar }}
+          ETIQUETA: ${{ steps.v.outputs.etiqueta }}
+          PR: ${{ steps.v.outputs.pr }}
+          NOTAS: ${{ steps.v.outputs.notas }}
+          ENSAYO: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          {
+            if [ "$PUBLICAR" != "true" ]; then
+              echo "Este commit no viene de un PR fusionado: no se publica nada."
+            else
+              [ "$ENSAYO" = "true" ] && echo "**Ensayo:** no se etiqueta ni se publica."
+              echo "Se publica **$ETIQUETA** (PR #$PR)."
+              echo
+              echo "### Notas de la versión"
+              echo
+              echo "$NOTAS"
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: version
+    if: github.event_name == 'push' && needs.version.outputs.publicar == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.version.outputs.etiqueta }}
+      notes: ${{ needs.version.outputs.notas }}
+      prerelease: ${{ needs.version.outputs.prerelease == 'true' }}

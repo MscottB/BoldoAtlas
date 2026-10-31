@@ -1,42 +1,121 @@
 name: release
 
+# Release de Windows (instalador NSIS + zip portable + SHA256SUMS.txt). Dos caminos:
+# - publicar.yml lo llama al fusionar un PR (workflow_call): crea la etiqueta anotada y usa las notas del PR;
+# - a mano, empujando una etiqueta vX.Y.Z. Las etiquetas que crea el GITHUB_TOKEN no disparan este
+#   camino, por eso publicar.yml lo llama como workflow reutilizable.
+# Lint, tests y cargo test corren en paralelo al build; no se publica nada si alguno falla.
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      notes:
+        type: string
+        required: false
+        default: ""
+      prerelease:
+        type: boolean
+        required: false
+        default: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
+env:
+  ETIQUETA: ${{ inputs.tag || github.ref_name }}
+
 jobs:
-  windows:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparar-node
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+
+  pruebas-rust:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: boldo-debug # la de ci-rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # generate_context! exige que exista la carpeta del frontend compilado
+      - run: mkdir dist
+      - run: cargo test
+        working-directory: src-tauri
+
+  compilar:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # git describe necesita historia y etiquetas
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+      - uses: ./.github/actions/preparar-node
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          shared-key: release # la misma caché que build-prueba.yml
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
-      - run: cargo test
-        working-directory: src-tauri
-      # mismo comando que `npm run release` en local; falla si la versión no coincide con la etiqueta
-      - run: node scripts/release.mjs --etiqueta ${{ github.ref_name }}
+          shared-key: boldo-release
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # NSIS y nsis_tauri_utils que descarga el bundler de Tauri
+      - uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\tauri
+          key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-herramientas-${{ runner.os }}-
+      # mismo comando que `npm run release` en local; falla si la versión no coincide con la etiqueta.
+      # Desde publicar.yml la etiqueta aún no existe: BOLDO_VERSION impone la versión.
+      - run: node scripts/release.mjs --etiqueta "$ETIQUETA"
+        shell: bash
+        env:
+          BOLDO_VERSION: ${{ inputs.tag }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ env.ETIQUETA }}
+          path: release/*/*
+          retention-days: 7
+          if-no-files-found: error
+
+  publicar:
+    needs: [verificar, pruebas-rust, compilar]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ env.ETIQUETA }}
+          path: salida
+      # solo desde publicar.yml; si ya existe (reintento de un release fallido) se reutiliza
+      - name: Etiqueta anotada
+        if: inputs.tag
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$ETIQUETA" > /dev/null; then
+            echo "La etiqueta $ETIQUETA ya existe; se reutiliza."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$ETIQUETA" -m "BoldoAtlas $ETIQUETA" "$GITHUB_SHA"
+            git push origin "refs/tags/$ETIQUETA"
+          fi
       - uses: softprops/action-gh-release@v2
         with:
-          files: release/*/*
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ env.ETIQUETA }}
+          files: salida/*
+          body: ${{ inputs.notes }}
+          generate_release_notes: ${{ !inputs.tag }}
+          prerelease: ${{ inputs.tag && inputs.prerelease || !inputs.tag && contains(github.ref_name, '-') }}
