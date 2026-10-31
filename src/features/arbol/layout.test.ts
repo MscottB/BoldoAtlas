@@ -221,6 +221,24 @@ describe("alinear por tipo de unidad", () => {
     });
   });
 
+  it("filasPorTipo: un tipo sin unidades a la vista no ocupa fila (aunque esté activo y entre otros)", () => {
+    const conSinUso: ValorCatalogo[] = [
+      ...conSuper,
+      { id: "sinUso", nombre: "Departamento", orden: 12, deleted_at: null },
+    ];
+    const g = subgrafoVisible(porTipo, [], new Set());
+    expect(filasPorTipo(g.nodos, conSinUso)).toEqual(filasPorTipo(g.nodos, conSuper));
+    // Plegada Operaciones, Mantención no se ve: la fila de Superintendencia desaparece y las Áreas suben.
+    const plegado = subgrafoVisible(porTipo, [], new Set(["op"]));
+    expect(Object.fromEntries(filasPorTipo(plegado.nodos, conSinUso))).toEqual({
+      gg: 0,
+      op: 1,
+      fi: 1,
+      co: 2,
+      inv: 3,
+    });
+  });
+
   for (const direccion of ["vertical", "horizontal"] as const)
     it(`con elk (${direccion}): las Áreas comparten fila, Mantención y Producción no; superior centrado`, async () => {
       const g = subgrafoVisible(porTipo, [], new Set(), [p("pp", "pr")]);

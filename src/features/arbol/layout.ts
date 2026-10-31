@@ -97,15 +97,21 @@ export function subgrafoVisible(
 }
 
 /**
- * Fila de cada unidad al alinear por tipo (0 = la primera). Cada tipo tiene su fila, en el orden del catálogo (también
- * los desactivados, que conservan su lugar). Una unidad cuyo tipo la dejaría en la fila de su superior o más arriba baja
+ * Fila de cada unidad al alinear por tipo (0 = la primera). Cada tipo de las unidades que se dibujan tiene su fila, en
+ * el orden del catálogo (desactivado o no); un tipo sin unidades a la vista no ocupa fila. Una unidad cuyo tipo la dejaría en la fila de su superior o más arriba baja
  * a la fila siguiente a la de él, para que las líneas siempre bajen. Si eso pasa con un tipo igual o anterior al de su
  * superior (una Gerencia dentro de una Gerencia), los tipos que siguen empiezan más abajo; si su superior es de un tipo
  * posterior (una Gerencia bajo un Área), solo baja esa rama. `nodos` en orden de recorrido (superior antes que hijos),
  * como los entrega subgrafoVisible.
  */
 export function filasPorTipo(nodos: Unidad[], tipos: ValorCatalogo[]): Map<string, number> {
-  const rango = new Map([...tipos].sort(porOrden).map((t, i) => [t.id, i]));
+  const usados = new Set(nodos.map((u) => u.tipo_id));
+  const rango = new Map(
+    tipos
+      .filter((t) => usados.has(t.id))
+      .sort(porOrden)
+      .map((t, i) => [t.id, i]),
+  );
   const rangoDe = (u: Unidad) => rango.get(u.tipo_id) ?? 0;
   const porId = new Map(nodos.map((u) => [u.id, u]));
   // Primero, el inicio de cada tipo: tras las filas que ocupan los tipos anteriores, sin contar las ramas invertidas.
