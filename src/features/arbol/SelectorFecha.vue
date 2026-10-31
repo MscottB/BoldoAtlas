@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
-import { getLocalTimeZone, parseDate, type DateValue } from "@internationalized/date";
+import { getLocalTimeZone, parseDate, type CalendarDate, type DateValue } from "@internationalized/date";
 import {
   CalendarCell,
   CalendarCellTrigger,
@@ -13,22 +13,22 @@ import {
   CalendarGridRow,
   CalendarHeadCell,
   CalendarHeader,
-  CalendarHeading,
   CalendarNext,
   CalendarPrev,
   CalendarRoot,
 } from "reka-ui";
 import { CalendarDays, ChevronLeft, ChevronRight } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { FECHA_MINIMA, formatearFecha, hoyISO } from "@/features/puestos/puestos";
+import { FECHA_MINIMA, fechaElegible, formatearFecha, hoyISO } from "@/features/puestos/puestos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { diaConCambios, type Cambio } from "./cambios";
 import { unidadesDeRama } from "./layout";
 import { useLienzo } from "./useLienzo";
 
-// «Ver en otra fecha»: el botón muestra la fecha vista (si hay una) y abre un calendario donde se destacan los días con
-// cambios; al elegir un día se ve el organigrama de ese día y, debajo, sus cambios.
+// «Ver en otra fecha»: el botón muestra la fecha vista (si hay una) y abre la fecha escrita y un calendario donde se
+// destacan los días con cambios; al elegir un día se ve el organigrama de ese día y, debajo, sus cambios.
 const { t, locale } = useI18n();
 const org = useOrganizacion();
 const route = useRoute();
@@ -38,14 +38,45 @@ const { revelar } = useLienzo();
 /** Cambios que se listan como máximo (un alta masiva deja miles en un día). */
 const MAX_LISTA = 100;
 
-async function verFecha(v: string) {
+async function verFecha(v: string | null) {
   if (v === org.fechaVista) return;
   const r = await org.verAFecha(v);
   if (!r.ok) toast.error(r.mensaje);
 }
+// Fecha escrita (la de 18d): vacía = hoy. Solo se aplica una fecha completa y en rango: al teclear el año el campo pasa
+// por 0002-…, 0020-…, que no se aplican. Al salir del campo (o con Enter) el vacío vuelve a hoy y lo a medias se descarta.
+function cambiarFecha(e: Event) {
+  const v = (e.target as HTMLInputElement).value;
+  if (fechaElegible(v, hoyISO())) void verFecha(v);
+}
+function terminarFecha(e: Event) {
+  const campo = e.target as HTMLInputElement;
+  const v = campo.value;
+  if (fechaElegible(v, hoyISO())) return; // ya se aplicó al cambiar
+  campo.value = v ? (org.fechaVista ?? "") : ""; // borra también los segmentos a medias
+  if (!v) void verFecha(null);
+}
+
+const minimo = parseDate(FECHA_MINIMA);
+/** Mes que muestra el calendario (Reka lo mueve solo al cambiar la fecha elegida). */
+const mesVisible = shallowRef<DateValue>(parseDate(hoyISO()));
+const nombreMes = computed(() => new Intl.DateTimeFormat(locale.value, { month: "long" }));
+const meses = computed(() => Array.from({ length: 12 }, (_, i) => nombreMes.value.format(new Date(2000, i, 1))));
+const anios = computed(() =>
+  Array.from({ length: Number(hoyISO().slice(0, 4)) - minimo.year + 1 }, (_, i) => minimo.year + i).reverse(),
+);
+// Saltar de mes o de año con los selectores sin salir del rango (un mes futuro de este año queda en hoy).
+function irAMes(cambio: { year?: number; month?: number }) {
+  const hoy = parseDate(hoyISO());
+  const m = (mesVisible.value as CalendarDate).set(cambio);
+  mesVisible.value = m.compare(hoy) > 0 ? hoy : m.compare(minimo) < 0 ? minimo : m;
+}
+const valorDe = (e: Event) => Number((e.target as HTMLSelectElement).value);
+
 // Los cambios se calculan al abrir (una vez, hasta la próxima carga del store).
 async function alAbrir(abierto: boolean) {
   if (!abierto) return;
+  mesVisible.value = elegida.value ?? parseDate(hoyISO());
   const r = await org.leerCambios();
   if (!r.ok) toast.error(r.mensaje);
 }
@@ -96,11 +127,25 @@ function irA(id: string) {
     </PopoverTrigger>
     <!-- El foco entra al día elegido (o a hoy), no al botón del mes anterior. -->
     <PopoverContent align="start" class="w-80 gap-2 text-sm" @open-auto-focus.prevent>
-      <p id="titulo-fecha-vista" class="font-medium">{{ t("arbol.fecha.titulo") }}</p>
+      <label class="grid gap-1">
+        <span id="titulo-fecha-vista" class="font-medium">{{ t("arbol.fecha.titulo") }}</span>
+        <Input
+          type="date"
+          class="h-8"
+          :min="FECHA_MINIMA"
+          :max="hoyISO()"
+          :model-value="org.fechaVista ?? ''"
+          aria-describedby="ayuda-fecha-vista"
+          @change="cambiarFecha"
+          @blur="terminarFecha"
+          @keydown.enter="terminarFecha"
+        />
+      </label>
       <CalendarRoot
         v-slot="{ grid, weekDays }"
+        v-model:placeholder="mesVisible"
         :model-value="elegida"
-        :min-value="parseDate(FECHA_MINIMA)"
+        :min-value="minimo"
         :max-value="parseDate(hoyISO())"
         :locale="locale"
         prevent-deselect
@@ -117,7 +162,24 @@ function irA(id: string) {
               <ChevronLeft aria-hidden="true" />
             </Button>
           </CalendarPrev>
-          <CalendarHeading class="font-medium first-letter:uppercase" />
+          <div class="flex gap-1">
+            <select
+              :value="mesVisible.month"
+              :aria-label="t('arbol.fecha.mes')"
+              class="h-7 rounded-md border bg-background px-1 text-sm"
+              @change="irAMes({ month: valorDe($event) })"
+            >
+              <option v-for="(m, i) in meses" :key="i" :value="i + 1">{{ m }}</option>
+            </select>
+            <select
+              :value="mesVisible.year"
+              :aria-label="t('arbol.fecha.anio')"
+              class="h-7 rounded-md border bg-background px-1 text-sm"
+              @change="irAMes({ year: valorDe($event) })"
+            >
+              <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </div>
           <CalendarNext as-child>
             <Button variant="ghost" size="icon-sm" :aria-label="t('arbol.fecha.mesSiguiente')">
               <ChevronRight aria-hidden="true" />
@@ -144,7 +206,7 @@ function irA(id: string) {
                   :month="mes.value"
                   :aria-label="etiqueta(d)"
                   :data-cambios="cuantos(d) ? '' : undefined"
-                  class="group relative mx-auto flex size-8 cursor-default flex-col items-center justify-center rounded-md outline-none select-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring data-cambios:bg-marca/15 data-cambios:font-semibold data-disabled:pointer-events-none data-disabled:opacity-40 data-outside-view:text-muted-foreground data-today:ring-1 data-today:ring-muted-foreground data-selected:bg-primary! data-selected:text-primary-foreground"
+                  class="group relative mx-auto flex size-8 cursor-default flex-col items-center justify-center rounded-md outline-none select-none hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-solid focus-visible:outline-foreground data-cambios:bg-marca/15 data-cambios:font-semibold data-cambios:hover:bg-marca/30 data-disabled:pointer-events-none data-disabled:opacity-40 data-outside-view:text-muted-foreground data-today:ring-1 data-today:ring-muted-foreground data-selected:bg-primary! data-selected:text-primary-foreground"
                 >
                   {{ d.day }}
                   <span
@@ -171,7 +233,7 @@ function irA(id: string) {
       <p id="ayuda-fecha-vista" class="text-xs text-muted-foreground">{{ t("arbol.fecha.ayuda") }}</p>
       <!-- La lista aparece al elegir un día. -->
       <section v-if="org.fechaVista" class="grid gap-1 border-t pt-2" aria-labelledby="cambios-fecha-vista">
-        <p id="cambios-fecha-vista" class="font-medium">
+        <p id="cambios-fecha-vista" class="font-medium" aria-live="polite">
           {{ t("arbol.fecha.cambiosDelDia") }}
           <span class="font-normal text-muted-foreground">· {{ t("arbol.fecha.nCambios", delDia.length) }}</span>
         </p>
@@ -181,7 +243,7 @@ function irA(id: string) {
             <button
               v-if="org.enFecha.porId.has(c.unidadId)"
               type="button"
-              class="w-full rounded-md px-1 py-0.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+              class="w-full rounded-md px-1 py-0.5 text-left underline decoration-muted-foreground decoration-dotted underline-offset-4 outline-none hover:bg-accent hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring"
               @click="irA(c.unidadId)"
             >
               {{ t(`arbol.fecha.cambio.${c.tipo}`, { ...c }) }}

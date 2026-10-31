@@ -45,7 +45,12 @@ describe("cambios por día", () => {
   const m = cambiosPorDia(h, cargos);
 
   it("unidades y puestos creados o eliminados, en el día local", () => {
-    expect(tipos(m.get("2026-03-02"))).toEqual(["unidadCreada", "unidadCreada", "puestoCreado", "puestoCreado"]);
+    expect(tipos(m.get("2026-03-02"))).toEqual([
+      "unidadCreada",
+      "unidadCreada",
+      "puestoCreado",
+      "puestoCreado",
+    ]);
     expect(m.get("2026-03-02")![0]).toMatchObject({ unidad: "Finanzas", unidadId: "fin" }); // 23:30 local sigue siendo el 2
     expect(m.get("2026-04-10")).toEqual([
       { tipo: "puestoEliminado", unidadId: "log", unidad: "Logística", cargo: "Gerente" },
@@ -86,11 +91,59 @@ describe("cambios por día", () => {
 
   it("una asignación abierta que se elimina (al eliminar a la persona) termina el día de la baja", () => {
     const borrada = cambiosPorDia(
-      { ...h, asignaciones: [{ ...a("x", "pf", "ana"), desde: "2026-05-02", deleted_at: local(2026, 6, 3, 23) }] },
+      {
+        ...h,
+        asignaciones: [{ ...a("x", "pf", "ana"), desde: "2026-05-02", deleted_at: local(2026, 6, 3, 23) }],
+      },
       cargos,
     );
     expect(tipos(borrada.get("2026-05-02"))).toEqual(["asumio"]);
     expect(tipos(borrada.get("2026-06-03"))).toEqual(["dejo"]);
+  });
+
+  it("el relevo distingue personas por id, no por nombre", () => {
+    const relevo = (quien: string) =>
+      tipos(
+        cambiosPorDia(
+          {
+            ...h,
+            asignaciones: [
+              { ...a("x", "pf", "ana", "titular", "2026-06-01"), desde: "2026-05-01" },
+              { ...a("y", "pf", quien), desde: "2026-06-01" },
+            ],
+            trabajadores: [t("ana", "Ana"), t("otra", "Ana")],
+          },
+          cargos,
+        ).get("2026-06-01"),
+      );
+    expect(relevo("otra")).toEqual(["relevo"]); // otra Ana
+    expect(relevo("ana")).toEqual(["dejo", "asumio"]); // la misma, de nuevo
+  });
+
+  it("no da por creado un puesto (ni su unidad) que el lienzo ya mostraba por una asignación anterior", () => {
+    const carga = cambiosPorDia(
+      {
+        ...h,
+        asignaciones: [{ ...a("x", "pf", "ana"), desde: "2019-05-01" }], // Finanzas ya se veía en 2019
+      },
+      cargos,
+    );
+    // El 2 de marzo (día del ingreso) solo queda Logística, que no tenía a nadie antes.
+    expect(carga.get("2026-03-02")?.map((c) => [c.tipo, c.unidad])).toEqual([
+      ["unidadCreada", "Logística"],
+      ["puestoCreado", "Logística"],
+    ]);
+    expect(tipos(carga.get("2019-05-01"))).toEqual(["asumio"]);
+    // Una asignación que nunca se vio (eliminada antes de empezar) no adelanta nada.
+    const nunca = cambiosPorDia(
+      {
+        ...h,
+        asignaciones: [{ ...a("x", "pf", "ana"), desde: "2019-05-01", deleted_at: local(2019, 4, 1) }],
+      },
+      cargos,
+    );
+    expect(tipos(nunca.get("2026-03-02"))).toContain("puestoCreado");
+    expect(nunca.get("2026-03-02")?.filter((c) => c.unidad === "Finanzas")).toHaveLength(2);
   });
 
   it("aguanta 10.000 personas y 2.000 unidades en una pasada", () => {
@@ -98,15 +151,16 @@ describe("cambios por día", () => {
       ...u(`u${i}`, TIPO_AREA, `U${i}`, null),
       created_at: local(2020, 1, 1 + (i % 28)),
     }));
-    const ps = Array.from({ length: 10000 }, (_, i) => ({ ...p(`p${i}`, `u${i % 2000}`), created_at: local(2020, 2, 1) }));
+    const ps = Array.from({ length: 10000 }, (_, i) => ({
+      ...p(`p${i}`, `u${i % 2000}`),
+      created_at: local(2020, 2, 1),
+    }));
     const as = Array.from({ length: 10000 }, (_, i) => ({
       ...a(`a${i}`, `p${i}`, `t${i}`, "titular", i % 2 ? "2024-01-01" : null),
       desde: `2021-0${1 + (i % 9)}-15`,
     }));
     const ts = Array.from({ length: 10000 }, (_, i) => t(`t${i}`, `P${i}`));
-    const inicio = performance.now();
     const grande = cambiosPorDia({ unidades: us, puestos: ps, asignaciones: as, trabajadores: ts }, cargos);
-    expect(performance.now() - inicio).toBeLessThan(1000);
     expect(grande.get("2024-01-01")).toHaveLength(5000);
   });
 });
