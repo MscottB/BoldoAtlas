@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useVista } from "./useVista";
+import { claseSelect, cn } from "@/lib/utils";
 
 // Resalta las unidades con vacantes o con puestos/personas de cierta sede, contrato, jornada o cargo.
 // Se suma a la etiqueta y al texto de la barra: las que no coinciden se atenúan, no se ocultan.
@@ -45,7 +46,7 @@ const activos = computed(() => {
       </label>
       <label v-for="c in campos" :key="c.clave" class="grid gap-1">
         <span class="font-medium">{{ t(`arbol.resaltar.${c.clave}`) }}</span>
-        <select v-model="config.resaltar[c.clave]" class="h-7 rounded-md border bg-background px-2 text-sm">
+        <select v-model="config.resaltar[c.clave]" :class="cn(claseSelect, 'h-7')">
           <option :value="null">{{ t("arbol.resaltar.cualquiera") }}</option>
           <option v-for="v in org.activos(c.tabla)" :key="v.id" :value="v.id">{{ v.nombre }}</option>
         </select>

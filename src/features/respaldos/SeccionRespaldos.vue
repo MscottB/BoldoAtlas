@@ -27,6 +27,7 @@ import { tamano } from "@/lib/formato";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { FRECUENCIA_POR_DEFECTO, FRECUENCIAS } from "./programa";
 import { mensajeFallo, PREFERENCIA } from "./respaldos";
+import { claseSelect } from "@/lib/utils";
 
 const { t, locale } = useI18n();
 
@@ -82,9 +83,6 @@ const fecha = (r: Respaldo) =>
   new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(
     new Date(r.fecha),
   );
-
-const selector =
-  "h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring";
 </script>
 
 <template>
@@ -96,7 +94,7 @@ const selector =
     <div class="flex flex-wrap items-end gap-3">
       <div class="grid gap-1.5">
         <Label for="cfg-frecuencia">{{ t("respaldos.frecuencia.etiqueta") }}</Label>
-        <select id="cfg-frecuencia" v-model="frecuencia" :class="selector">
+        <select id="cfg-frecuencia" v-model="frecuencia" :class="claseSelect">
           <option v-for="f in FRECUENCIAS" :key="f" :value="f">{{ t(`respaldos.frecuencia.${f}`) }}</option>
         </select>
       </div>

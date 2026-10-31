@@ -23,4 +23,4 @@ Press the **Person**, **Job title** or first unit column header (it sorts by the
 
 Press a row (or Tab to the name and Enter) to open the person's record; on a vacancy, the position opens.
 
-**Export this list to Excel** arrives in Phase 4.
+Coming soon: export this list to Excel.

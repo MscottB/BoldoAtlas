@@ -25,6 +25,7 @@ import {
   type FilaPersonaUnidad,
   type OrdenPersonas,
 } from "./personas";
+import { claseSelect } from "@/lib/utils";
 
 // Pestaña Personas del panel: quién ocupa los puestos de la unidad (o de su rama), hoy o el día que muestra el lienzo.
 const props = defineProps<{ unidad: Unidad }>();
@@ -161,11 +162,7 @@ watch(persona, (w) => previa.value && !w && void volver());
           :aria-label="t('personas.buscar')"
           :placeholder="t('personas.buscar')"
         />
-        <select
-          v-model="orden"
-          class="h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
-          :aria-label="t('personas.ordenar')"
-        >
+        <select v-model="orden" :class="claseSelect" :aria-label="t('personas.ordenar')">
           <option v-for="o in ['nombre', 'cargo', 'unidad'] as const" :key="o" :value="o">
             {{ t(`personas.orden.${o}`) }}
           </option>

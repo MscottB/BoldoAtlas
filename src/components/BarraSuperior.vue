@@ -11,8 +11,9 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useTema } from "@/features/tema/useTema";
 import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 
-// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, bajo el logo.
+// "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, al pie de ella.
 defineEmits<{ buscar: [] }>();
 
 const { t } = useI18n();
@@ -51,7 +52,7 @@ const etiquetaTema = computed(() => (oscuro.value ? t("barra.temaClaro") : t("ba
         <kbd class="ml-auto rounded border px-1 font-sans text-xs">Ctrl K</kbd>
       </Button>
       <IndicadorGuardado :guardando="org.guardando" :error="org.error" />
-      <Tooltip>
+      <Tooltip v-if="MOSTRAR_PROXIMAMENTE">
         <TooltipTrigger as-child>
           <Button variant="outline" aria-disabled="true" class="cursor-not-allowed text-muted-foreground">
             <Download aria-hidden="true" />

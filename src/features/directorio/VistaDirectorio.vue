@@ -15,6 +15,8 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
+import { claseSelect } from "@/lib/utils";
 import {
   SIN_FILTROS,
   candidatasDirectorio,
@@ -118,7 +120,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
     <header class="flex flex-wrap items-center gap-2">
       <h1 class="text-lg font-semibold">{{ t("nav.directorio") }}</h1>
       <span class="text-sm text-muted-foreground" aria-live="polite">{{ t("directorio.filas", filas.length) }}</span>
-      <Tooltip>
+      <Tooltip v-if="MOSTRAR_PROXIMAMENTE">
         <TooltipTrigger as-child>
           <Button variant="outline" aria-disabled="true" class="ml-auto cursor-not-allowed text-muted-foreground">
             <Download aria-hidden="true" />
@@ -159,7 +161,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
           v-for="s in selectores"
           :key="s.campo"
           v-model="filtros[s.campo]"
-          class="h-8 rounded-md border bg-background px-2 text-sm"
+          :class="claseSelect"
           :aria-label="t(s.etiqueta)"
         >
           <option :value="null">{{ t(s.etiqueta) }}: {{ t("directorio.todos") }}</option>
@@ -167,7 +169,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
         </select>
         <select
           v-model="filtros.estado"
-          class="h-8 rounded-md border bg-background px-2 text-sm"
+          :class="claseSelect"
           :aria-label="t('directorio.estado')"
         >
           <option :value="null">{{ t("directorio.estado") }}: {{ t("directorio.todos") }}</option>

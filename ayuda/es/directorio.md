@@ -23,4 +23,4 @@ Pulsa el encabezado de **Persona**, **Cargo** o de la primera columna de unidad 
 
 Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona; en una vacante se abre el puesto.
 
-**Exportar esta lista a Excel** llega en la Fase 4.
+Próximamente: exportar esta lista a Excel.

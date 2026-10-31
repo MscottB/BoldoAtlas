@@ -26,6 +26,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { diaConCambios, type Cambio } from "./cambios";
 import { unidadesDeRama } from "./layout";
 import { useLienzo } from "./useLienzo";
+import { claseSelect, cn } from "@/lib/utils";
 
 // «Ver en otra fecha»: el botón muestra la fecha vista (si hay una) y abre la fecha escrita y un calendario donde se
 // destacan los días con cambios; al elegir un día se ve el organigrama de ese día y, debajo, sus cambios.
@@ -166,7 +167,7 @@ function irA(id: string) {
             <select
               :value="mesVisible.month"
               :aria-label="t('arbol.fecha.mes')"
-              class="h-7 rounded-md border bg-background px-1 text-sm"
+              :class="cn(claseSelect, 'h-7 px-1')"
               @change="irAMes({ month: valorDe($event) })"
             >
               <option v-for="(m, i) in meses" :key="i" :value="i + 1">{{ m }}</option>
@@ -174,7 +175,7 @@ function irA(id: string) {
             <select
               :value="mesVisible.year"
               :aria-label="t('arbol.fecha.anio')"
-              class="h-7 rounded-md border bg-background px-1 text-sm"
+              :class="cn(claseSelect, 'h-7 px-1')"
               @change="irAMes({ year: valorDe($event) })"
             >
               <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>

@@ -9,6 +9,17 @@ export const ACENTOS: Record<Acento, string> = {
   violeta: "#7C3AED",
 };
 
+/**
+ * La marca como texto («Atlas» del logo, enlaces): el mismo tono que el acento, con la luminosidad justa para AA
+ * (≥ 4,5:1) sobre background, card y sidebar de cada tema. Se escribe en --marca-texto.
+ */
+export const MARCA_TEXTO: Record<Acento, { claro: string; oscuro: string }> = {
+  cobre: { claro: "#9e511e", oscuro: "#c8743f" },
+  azul: { claro: "#205ee6", oscuro: "#3a7aff" },
+  verde: { claro: "#00776c", oscuro: "#0d9488" },
+  violeta: { claro: "#7c3aed", oscuro: "#985fff" },
+};
+
 function luminancia(hex: string): number {
   let h = hex.replace("#", "");
   if (h.length === 3) h = [...h].map((c) => c + c).join("");
@@ -28,3 +39,10 @@ export function contraste(a: string, b: string): number {
 export function textoSobre(hex: string): "#ffffff" | "#111827" {
   return contraste("#ffffff", hex) >= contraste("#111827", hex) ? "#ffffff" : "#111827";
 }
+
+/** --card de main.css en cada tema (oklch(1 0 0) y oklch(0.205 0 0)). */
+const TARJETA = { claro: "#ffffff", oscuro: "#171717" };
+
+/** Una marca con menos de 3:1 contra la tarjeta (p. ej. azul marino en oscuro) no se distingue: lleva contorno. */
+export const marcaTenue = (color: string, oscuro: boolean): boolean =>
+  contraste(color, oscuro ? TARJETA.oscuro : TARJETA.claro) < 3;

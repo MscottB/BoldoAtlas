@@ -28,6 +28,7 @@ import EditorEtiquetas from "./EditorEtiquetas.vue";
 import PersonasUnidad from "./PersonasUnidad.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 import { decisionEliminar, excluidasComoSuperior, filasDePuestos, migas, validarMarca } from "./panel";
+import { claseSelect } from "@/lib/utils";
 
 // Panel lateral de la unidad seleccionada: junto al lienzo (no lo tapa). Esc lo cierra y guarda lo que se estaba escribiendo.
 const props = defineProps<{ unidad: Unidad }>();
@@ -244,7 +245,7 @@ async function eliminar() {
             <Label :for="`${uid}-tipo`">{{ t("unidad.tipo") }}</Label>
             <select
               :id="`${uid}-tipo`"
-              class="h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+              :class="claseSelect"
               :value="unidad.tipo_id"
               @change="
                 async (e) =>
@@ -307,7 +308,7 @@ async function eliminar() {
             <Label :for="`${uid}-jefatura`">{{ t("unidad.jefatura") }}</Label>
             <select
               :id="`${uid}-jefatura`"
-              class="h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+              :class="claseSelect"
               :value="unidad.jefe_puesto_id ?? ''"
               @change="
                 async (e) =>

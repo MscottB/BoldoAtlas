@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, inject, nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-import { useVueFlow } from "@vue-flow/core";
 import { toast } from "vue-sonner";
 import {
   ContextMenu,
@@ -20,6 +19,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { descendientes, indiceHijos } from "./jerarquia";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
+import { CONTEXTO_LIENZO } from "./contexto";
 
 // Menú contextual del lienzo (clic derecho, Mayús+F10 o la tecla Menú) según lo apuntado: una unidad, un puesto o el
 // fondo. `unidades`: las que se dibujan; `visibles`: las que están en pantalla; `raiz`: la rama enfocada, si hay.
@@ -33,7 +33,7 @@ const lienzo = useLienzo();
 const puesto = usePuesto();
 const estilo = useEstilo();
 const { panelAbierto } = useVista();
-const { fitView } = useVueFlow(); // el store de Vue Flow lo provee VistaArbol
+const { encuadrar } = inject(CONTEXTO_LIENZO)!;
 
 // Lo apuntado: el id de la tarjeta (unidad o puesto); "" = el fondo del lienzo.
 const id = ref("");
@@ -198,7 +198,7 @@ const abrirVista = () => (panelAbierto.value = true);
           {{ t("arbol.ramas.contraerTodo") }}
         </ContextMenuItem>
         <ContextMenuItem @select="pedir(() => emit('reordenar'))">{{ t("arbol.reordenar") }}</ContextMenuItem>
-        <ContextMenuItem @select="pedir(() => fitView())">
+        <ContextMenuItem @select="pedir(() => encuadrar())">
           {{ t("arbol.encuadrar") }}
           <ContextMenuShortcut>Ctrl+0</ContextMenuShortcut>
         </ContextMenuItem>

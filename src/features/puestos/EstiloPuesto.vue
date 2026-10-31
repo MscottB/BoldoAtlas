@@ -9,6 +9,7 @@ import type { Puesto } from "@/db/tipos";
 import { textoSobre } from "@/features/tema/tema";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useEstilo } from "./useEstilo";
+import { claseSelect, cn } from "@/lib/utils";
 
 // Leyenda del puesto: elegir una entrada (o crear una), copiar/pegar el estilo y quitarlo.
 const props = defineProps<{ puesto: Puesto }>();
@@ -76,7 +77,7 @@ async function crear() {
     <div class="flex flex-wrap items-center gap-2">
       <select
         ref="selector"
-        class="h-8 min-w-48 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+        :class="cn(claseSelect, 'min-w-48')"
         :aria-labelledby="`${uid}-titulo`"
         :value="puesto.leyenda_id ?? ''"
         @change="elegir"

@@ -94,7 +94,7 @@ El botón **Resaltar por…** suma más criterios: **Con vacantes**, **Sede**, *
 
 ## Moverse por el lienzo
 
-Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** para alejar o acercar. **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El minimapa de la esquina muestra dónde estás.
+Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** para alejar o acercar. **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El **minimapa** muestra dónde estás: viene apagado y se enciende en **Vista › Mostrar minimapa**. Aparece abajo a la derecha, con los colores del tema, y al encuadrar el árbol se deja libre su espacio para que no tape tarjetas.
 
 Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Así el lienzo se mueve con fluidez. Al acercarte vuelve todo el detalle; con el teclado, cada tarjeta ligera se enfoca con `Tab` y se elige con `Enter` o la barra espaciadora. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. Con más de 300 tarjetas no hay minimapa, con cualquier zoom. La tarjeta seleccionada se ve rellena con el color de acento.
 
@@ -110,13 +110,14 @@ El botón **Vista**, en la barra del lienzo, abre las opciones de cómo se dibuj
 - **Mostrar en las tarjetas el superior de tipo**: marca los tipos (por ejemplo, Gerencia o Área) cuyo superior más cercano quieres leer en cada tarjeta de unidad. Solo aparecen los tipos que alguna unidad usa.
 - **Colorear por**: **Ninguno**, **Marca de** un tipo o **Leyenda del puesto**. Con **Marca de** un tipo, cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Con **Leyenda del puesto**, las tarjetas de puesto toman el color de su leyenda (hay que activar **Ver puestos**; ver «Leyendas y colores de puestos»). Solo se aplica un criterio a la vez.
 
-Con un criterio de color activo, abajo a la izquierda del lienzo aparece una **leyenda** con el color, el código y el nombre de la unidad que define cada marca que se ve. Se puede ocultar y volver a mostrar con su encabezado.
+Con un criterio de color activo, en una franja bajo el lienzo aparece una **leyenda** con el color, el código y el nombre de la unidad que define cada marca que se ve. Si no cabe, la fila se desplaza a lo ancho. Se puede plegar y volver a abrir con su encabezado. Una marca muy oscura (o muy clara) que casi no se distingue de la tarjeta lleva un contorno gris en la franja y el código.
 
 Además de lo anterior, el botón **Vista** permite elegir:
 
 - **Dirección**: vertical (de arriba a abajo) u horizontal (de izquierda a derecha).
 - **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
 - **Líneas**: rectas en ángulo o curvas.
+- **Mostrar minimapa** (apagado al comienzo): se recuerda en este computador, aparte de la configuración de cada árbol.
 - **Alinear por tipo de unidad**: cada unidad va en la fila (o columna, en horizontal) de su tipo, en el orden de la lista de tipos; por ejemplo, todas las Áreas quedan en una misma fila aunque cuelguen a distinta profundidad. Solo ocupan fila los tipos de las unidades que se ven (un tipo sin unidades a la vista, o cuyas unidades están en ramas plegadas, no deja una fila vacía). Si el tipo de una unidad la dejaría en la fila de su superior o más arriba, baja a la fila siguiente a la de su superior, para que las líneas siempre vayan hacia abajo (o hacia la derecha): con una Gerencia dentro de otra Gerencia, las filas de los tipos que siguen empiezan más abajo; con una Gerencia bajo un Área, solo baja esa rama. Los puestos van apilados bajo su unidad y no ocupan fila.
 - **Datos de la tarjeta**: personas en las tarjetas, tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
 - **Personas en las tarjetas** (encendido al comienzo): la jefatura se ve con su cargo y, debajo, las caras del equipo de la unidad. La tarjeta queda un poco más alta. Como la jefatura ya está en la tarjeta, con **Ver puestos** su puesto no se repite debajo, como en un organigrama clásico; los demás puestos sí se ven. La tarjeta compacta y la tarjeta simplificada (al alejarte con muchas tarjetas) no muestran personas. A una fecha pasada se ven las personas de ese día. Las caras abren la pestaña **Personas** con **Incluir subunidades** apagado, para que la lista sea la misma que cuentan. Con **Jefatura** apagada la jefatura no se ve en la tarjeta, pero sigue contada en la cifra del equipo (el nombre del botón de las caras).

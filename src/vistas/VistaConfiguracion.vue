@@ -14,6 +14,7 @@ import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
 import { cambiarIdioma, IDIOMAS, type Idioma } from "@/i18n";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { claseSelect } from "@/lib/utils";
 
 const { t, locale } = useI18n();
 const org = useOrganizacion();
@@ -53,9 +54,6 @@ const quitarLogo = async () => {
   errorLogo.value = "";
   avisar(await org.guardarOrg(org.org.nombre, null));
 };
-
-const selector =
-  "h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring";
 </script>
 
 <template>
@@ -118,13 +116,13 @@ const selector =
       <div class="flex flex-wrap gap-6">
         <div class="grid gap-1.5">
           <Label for="cfg-tema">{{ t("config.tema.etiqueta") }}</Label>
-          <select id="cfg-tema" v-model="tema" :class="selector">
+          <select id="cfg-tema" v-model="tema" :class="claseSelect">
             <option v-for="m in TEMAS" :key="m" :value="m">{{ t(`config.tema.${m}`) }}</option>
           </select>
         </div>
         <div class="grid gap-1.5">
           <Label for="cfg-escala">{{ t("config.escala.etiqueta") }}</Label>
-          <select id="cfg-escala" v-model="escala" :class="selector">
+          <select id="cfg-escala" v-model="escala" :class="claseSelect">
             <option v-for="e in ESCALAS" :key="e" :value="e">{{ e }} %</option>
           </select>
         </div>
@@ -133,7 +131,7 @@ const selector =
           <select
             id="cfg-idioma"
             :value="locale"
-            :class="selector"
+            :class="claseSelect"
             @change="cambiarIdioma(($event.target as HTMLSelectElement).value as Idioma)"
           >
             <option v-for="i in IDIOMAS" :key="i" :value="i">{{ t(`idioma.${i}`) }}</option>

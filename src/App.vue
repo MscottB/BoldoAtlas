@@ -17,7 +17,6 @@ import {
   Settings,
   Users,
 } from "@lucide/vue";
-import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BarraSuperior from "@/components/BarraSuperior.vue";
@@ -30,6 +29,7 @@ import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
 import { useBarraFlotante } from "@/app/barraLateral";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
@@ -57,7 +57,7 @@ const secciones: Entrada[] = [
   { etiqueta: "nav.indicadores", icono: ChartColumn, aviso: "nav.llegaFase3" },
   { etiqueta: "nav.escenarios", icono: GitBranch, aviso: "nav.llegaFase5" },
   { etiqueta: "nav.importarExportar", icono: ArrowLeftRight, aviso: "nav.llegaFases45" },
-];
+].filter((e) => MOSTRAR_PROXIMAMENTE || e.to);
 // Abajo, separadas de las secciones del programa.
 const utilidades: Entrada[] = [
   { to: "/configuracion", etiqueta: "nav.configuracion", icono: Settings, cierra: "configuracion" },
@@ -103,6 +103,7 @@ const { flotando, entrar, salir, enfocar, cerrar } = useBarraFlotante(
   () => !!navegacion.value?.querySelector(":focus-visible"),
 );
 const angosta = computed(() => colapsada.value && !flotando.value);
+const etiquetaBarra = computed(() => (colapsada.value ? t("barra.mostrarBarra") : t("barra.ocultarBarra")));
 function alSalirFoco(e: FocusEvent) {
   if (!navegacion.value?.contains(e.relatedTarget as Node | null)) cerrar();
 }
@@ -133,28 +134,34 @@ function escEnBarra(e: KeyboardEvent) {
           @focusout="alSalirFoco"
           @keydown.esc="escEnBarra"
         >
-          <!-- El botón va bajo el logo, igual contraída, desplegada o fija: abrirla solo revela los textos y nada se mueve
-               bajo el puntero (en la barra angosta no cabe al lado). -->
-          <div class="flex flex-col items-start gap-2 pb-3">
-            <p class="flex h-6 items-center gap-2 px-1 text-base font-semibold tracking-tight">
-              <img :src="icono" alt="" class="size-6 shrink-0" />
-              <span v-if="!angosta">Boldo<span class="text-marca">Atlas</span></span>
-              <span v-else class="sr-only">BoldoAtlas</span>
-            </p>
-            <!-- El único botón para fijar la barra abierta o contraída. -->
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              :aria-label="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
-              :title="colapsada ? t('barra.mostrarBarra') : t('barra.ocultarBarra')"
-              :aria-expanded="!colapsada"
-              @click="manual = !colapsada"
-            >
-              <component :is="colapsada ? PanelLeftOpen : PanelLeftClose" aria-hidden="true" />
-            </Button>
-          </div>
+          <!-- En oscuro, el ícono azul marino va sobre una placa clara (si no, no se ve). -->
+          <p class="mb-3 flex h-6 shrink-0 items-center gap-2 px-1 text-base font-semibold tracking-tight">
+            <img :src="icono" alt="" class="size-6 shrink-0 dark:rounded-md dark:bg-primary dark:p-0.5" />
+            <span v-if="!angosta">Boldo<span class="text-marca-texto">Atlas</span></span>
+            <span v-else class="sr-only">BoldoAtlas</span>
+          </p>
           <template v-for="(grupo, i) in [secciones, utilidades]" :key="i">
-            <div v-if="i === 1" class="mt-auto border-t" role="separator" />
+            <template v-if="i === 1">
+              <div class="mt-auto border-t" role="separator" />
+              <!-- El único botón para fijar la barra abierta o contraída. Al pie, sobre Configuración, con la misma forma que
+                   las demás entradas: queda en su lugar contraída, desplegada o fija; abrirla solo revela los textos y nada
+                   se mueve bajo el puntero. -->
+              <button
+                type="button"
+                class="flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
+                :aria-label="angosta ? etiquetaBarra : undefined"
+                :title="etiquetaBarra"
+                :aria-expanded="!colapsada"
+                @click="manual = !colapsada"
+              >
+                <component
+                  :is="colapsada ? PanelLeftOpen : PanelLeftClose"
+                  class="size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <span v-if="!angosta">{{ etiquetaBarra }}</span>
+              </button>
+            </template>
             <Tooltip v-for="item in grupo" :key="item.etiqueta" :disabled="!angosta && !item.aviso">
               <TooltipTrigger as-child>
                 <RouterLink

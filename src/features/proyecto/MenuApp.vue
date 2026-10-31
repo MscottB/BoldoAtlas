@@ -26,7 +26,7 @@ const router = useRouter();
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button variant="ghost" size="sm" class="px-1.5" :aria-label="t('menu.abrir')" :title="t('menu.abrir')">
-        <img :src="icono" alt="" class="size-5" />
+        <img :src="icono" alt="" class="size-5 dark:rounded-md dark:bg-primary dark:p-0.5" />
         <ChevronDown aria-hidden="true" />
       </Button>
     </DropdownMenuTrigger>

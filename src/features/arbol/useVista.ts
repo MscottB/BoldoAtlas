@@ -28,4 +28,8 @@ export function recordarPorArbol(clave: Ref<string | null>) {
 /** El panel «Vista» abierto (también lo abre el menú contextual del lienzo). */
 const panelAbierto = ref(false);
 
-export const useVista = () => ({ config, panelAbierto });
+/** Minimapa: apagado por defecto (tapaba tarjetas); se recuerda por PC, aparte de las vistas. Solo un true guardado lo enciende. */
+const minimapa = ref(leerPreferencia<unknown>("minimapa", false) === true);
+watch(minimapa, (v) => guardarPreferencia("minimapa", v));
+
+export const useVista = () => ({ config, panelAbierto, minimapa });

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { textoSobre } from "@/features/tema/tema";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { claseSelect } from "@/lib/utils";
 
 // Etiquetas de la unidad: quitar, agregar una existente o crear una con color (sin duplicar nombres).
 const props = defineProps<{ unidadId: string }>();
@@ -69,11 +70,7 @@ async function crear() {
       </li>
     </ul>
     <p v-else class="text-sm text-muted-foreground">{{ t("unidad.sinEtiquetas") }}</p>
-    <select
-      class="h-8 rounded-lg border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
-      :aria-label="t('unidad.agregarEtiqueta')"
-      @change="elegir"
-    >
+    <select :class="claseSelect" :aria-label="t('unidad.agregarEtiqueta')" @change="elegir">
       <option value="">{{ t("unidad.agregarEtiqueta") }}</option>
       <option v-for="e in libres" :key="e.id" :value="e.id">{{ e.nombre }}</option>
       <option :value="NUEVA">{{ t("unidad.nuevaEtiqueta") }}</option>
