@@ -28,11 +28,13 @@ The **Branches** button in the canvas toolbar expands or collapses everything at
 
 In a unit's context menu, **Expand branch** opens the unit and everything under it, and **Collapse branch** folds it together with its sub-branches: when you open it again you see one level. In a branch opened as a tree, levels are counted from its root.
 
+If expanding (with **Branches**, the context menu or a saved view) would leave more than 1,000 cards in view, you are warned first with the number: **Expand anyway**, **Expand to level** (the deepest level that still fits) or **Cancel**. With that many cards the canvas gets slow.
+
 ## Tidy diagram
 
 The tree is drawn tidy: each parent sits centred over its sub-units (and its positions, if shown), sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they are only drawn on top.
 
-**Rearrange**, in the canvas toolbar, lays out the drawing again and fits it to the window.
+**Rearrange**, in the canvas toolbar, lays out the drawing again and fits it to the window. With a large tree this takes a few seconds: meanwhile **Arranging…** shows at the top right and you can keep using the canvas.
 
 ## Context menu
 
@@ -92,6 +94,8 @@ The **Highlight by…** button adds more criteria: **With vacancies**, **Site**,
 ## Moving around the canvas
 
 Drag the background to pan and use the mouse wheel or the **−** and **+** buttons to zoom out or in. **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The minimap in the corner shows where you are.
+
+With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the colour of its mark, and the lines become steps. This keeps the canvas smooth. Zoom back in and all the detail returns. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. In that case the minimap is not shown. The selected card is filled with the accent colour.
 
 ## Opening a branch as a tree
 

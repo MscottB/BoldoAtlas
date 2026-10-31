@@ -100,7 +100,7 @@ async function guardarEnArboles() {
       {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
     </Button>
     <PanelVista />
-    <MenuVistas :raiz="raiz" />
+    <MenuVistas :raiz="raiz" :unidades="unidades" />
     <select
       v-model="config.resaltar.etiqueta"
       class="h-7 rounded-md border bg-background px-2 text-sm"

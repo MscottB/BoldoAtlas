@@ -157,6 +157,13 @@
       "deshacer": "Undo"
     },
     "reordenar": "Rearrange",
+    "ordenando": "Arranging…",
+    "limite": {
+      "titulo": "{n} cards would be shown",
+      "texto": "With more than {limite} cards in view the canvas gets slow. You can expand only some levels.",
+      "igual": "Expand anyway",
+      "hastaNivel": "Expand to level {n}"
+    },
     "reordenarAyuda": "Lays out the diagram again and fits it to the view",
     "ramas": {
       "titulo": "Branches",

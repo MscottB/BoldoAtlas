@@ -6,16 +6,18 @@ import { Eye, Pencil, Trash2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { Unidad } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { aplicarVista, arbolDeVista, configDeVista } from "./vista";
 
 // Vistas nombradas del árbol que se ve: dirección, densidad, tarjeta, colorear por, resaltado y ramas plegadas.
-const props = defineProps<{ raiz: string | null }>();
+// `unidades`: las que se dibujan.
+const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
-const { colapsados } = useLienzo();
+const { colapsados, aplicarPlegado } = useLienzo();
 const { config } = useVista();
 
 const abierto = ref(false);
@@ -40,7 +42,7 @@ async function guardar() {
 function aplicar(texto: string) {
   const r = aplicarVista(texto, new Set(org.unidades.map((u) => u.id)));
   config.value = r.vista;
-  if (r.colapsados) colapsados.value = r.colapsados;
+  if (r.colapsados) aplicarPlegado(props.unidades, r.colapsados);
   abierto.value = false;
 }
 

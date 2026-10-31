@@ -28,11 +28,13 @@ El botón **Ramas** de la barra del lienzo pliega o despliega todo de una vez:
 
 En el menú contextual de una unidad, **Expandir rama** abre la unidad y todo lo que cuelga de ella, y **Contraer rama** la pliega junto con sus subramas: al volver a abrirla se ve un nivel. En una rama abierta como árbol, los niveles se cuentan desde su raíz.
 
+Si al expandir (con **Ramas**, el menú contextual o una vista guardada) quedarían más de 1.000 tarjetas a la vista, primero se avisa con la cifra: **Expandir igual**, **Expandir hasta el nivel** que todavía cabe, o **Cancelar**. Con tantas tarjetas el lienzo se vuelve lento.
+
 ## Diagrama ordenado
 
 El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades (y sus puestos, si se ven), las unidades hermanas van en su orden y cada nivel ocupa una misma fila (o columna, en horizontal). Si hay varias raíces, quedan lado a lado. Las conexiones laterales no cambian el dibujo: solo se trazan encima.
 
-**Reordenar**, en la barra del lienzo, vuelve a calcular el dibujo y lo encuadra en la ventana.
+**Reordenar**, en la barra del lienzo, vuelve a calcular el dibujo y lo encuadra en la ventana. Con un árbol grande el cálculo tarda unos segundos: mientras tanto se ve **Ordenando…** arriba a la derecha y puedes seguir usando el lienzo.
 
 ## Menú contextual
 
@@ -92,6 +94,8 @@ El botón **Resaltar por…** suma más criterios: **Con vacantes**, **Sede**, *
 ## Moverse por el lienzo
 
 Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** para alejar o acercar. **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El minimapa de la esquina muestra dónde estás.
+
+Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Así el lienzo se mueve con fluidez. Al acercarte vuelve todo el detalle. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. En ese caso el minimapa no se muestra. La tarjeta seleccionada se ve rellena con el color de acento.
 
 ## Abrir una rama como árbol
 

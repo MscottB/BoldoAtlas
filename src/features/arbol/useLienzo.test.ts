@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import type { Trabajador } from "@/db/tipos";
-import { a, p, unidades } from "./fixture";
+import { TIPO_GERENCIA, type Trabajador } from "@/db/tipos";
+import { a, p, u, unidades } from "./fixture";
 import { vigentesPorPuesto } from "./jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
 import { coincideFiltro, destinoAlSoltar, unidadesQueCumplen, useLienzo } from "./useLienzo";
@@ -119,6 +119,30 @@ describe("expandir y contraer devuelven cuántas unidades quedan a la vista", ()
     expect(l.contraerRama(unidades, "operaciones")).toBe(3);
     expect(l.expandirRama(unidades, "operaciones")).toBe(6);
     expect(l.colapsados.value).toEqual(new Set());
+  });
+
+  it("si la expansión deja más de LIMITE_TARJETAS, no se aplica: queda un aviso con la cifra y el nivel que cabe", () => {
+    setActivePinia(createPinia());
+    const l = useLienzo();
+    // GG › A › 1.100 hojas: con A plegada se ven 2; abierta, 1.102.
+    const grande = [u("gg", TIPO_GERENCIA, "GG", null), u("a", TIPO_GERENCIA, "A", "gg")];
+    for (let i = 0; i < 1100; i++) grande.push(u(`h${i}`, TIPO_GERENCIA, `H${i}`, "a", i));
+    l.colapsados.value = new Set(["a"]);
+    expect(l.expandirTodo(grande)).toBe(1102);
+    expect(l.colapsados.value).toEqual(new Set(["a"])); // sin cambios hasta que se elija
+    expect(l.avisoExpansion.value).toEqual({
+      tarjetas: 1102,
+      nivel: 2,
+      todo: new Set(),
+      hasta: new Set(["a"]),
+    });
+    l.avisoExpansion.value = null;
+    expect(l.aplicarPlegado(grande, new Set())).toBe(1102); // aplicar una vista avisa igual
+    expect(l.avisoExpansion.value).toMatchObject({ tarjetas: 1102 });
+    l.avisoExpansion.value = null;
+    l.colapsados.value = new Set();
+    expect(l.contraerHasta(grande, 1)).toBe(1); // contraer nunca avisa
+    expect(l.avisoExpansion.value).toBeNull();
   });
 });
 

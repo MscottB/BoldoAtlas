@@ -7,6 +7,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
 import { colapsadosIniciales, contraerRama, expandirRama, subgrafoVisible } from "./layout";
 import { sumar, type Seleccion } from "./multiple";
+import { debeAvisar, hastaNivel, nivelBajoLimite } from "./rendimiento";
 import { useVista } from "./useVista";
 import type { Resaltado } from "./vista";
 
@@ -101,12 +102,14 @@ const pestanaPanel = ref<string | null>(null);
 let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
 let cumplen: ComputedRef<Set<string> | null> | undefined;
 
-// Expandir y contraer reemplazan las ramas plegadas y devuelven cuántas unidades quedan a la vista (de `unidades`, las
-// que se dibujan), para poder avisar cuando son muchas.
-function plegar(unidades: Unidad[], nuevas: Set<string>): number {
-  colapsados.value = nuevas;
-  return subgrafoVisible(unidades, [], nuevas).nodos.length;
+/** Una expansión que dejaría demasiadas tarjetas: VistaArbol pregunta si aplicar `todo`, `hasta` (nivel `nivel`) o nada. */
+export interface AvisoExpansion {
+  tarjetas: number;
+  nivel: number | null;
+  todo: Set<string>;
+  hasta: Set<string> | null;
 }
+const avisoExpansion = shallowRef<AvisoExpansion | null>(null);
 
 function expandir(id: string) {
   if (!colapsados.value.has(id)) return;
@@ -133,6 +136,30 @@ export function useLienzo() {
       org.enFecha.trabajadores,
     ),
   );
+
+  // Tarjetas a la vista con esas ramas plegadas (de `unidades`, las que se dibujan), con sus puestos si se ven.
+  const tarjetas = (unidades: Unidad[], c: Set<string>) => {
+    const g = subgrafoVisible(unidades, [], c, config.value.verPuestos ? org.enFecha.puestos : []);
+    return g.nodos.length + g.puestos.length;
+  };
+  // Expandir y contraer reemplazan las ramas plegadas y devuelven cuántas tarjetas quedan a la vista. Si abren de más,
+  // no se aplican: queda el aviso para que se elija.
+  function plegar(unidades: Unidad[], nuevas: Set<string>): number {
+    const despues = tarjetas(unidades, nuevas);
+    if (!debeAvisar(tarjetas(unidades, colapsados.value), despues)) {
+      colapsados.value = nuevas;
+      return despues;
+    }
+    const actual = colapsados.value;
+    const nivel = nivelBajoLimite(unidades, actual, nuevas, (c) => tarjetas(unidades, c));
+    avisoExpansion.value = {
+      tarjetas: despues,
+      nivel,
+      todo: nuevas,
+      hasta: nivel === null ? null : hastaNivel(unidades, actual, nuevas, nivel),
+    };
+    return despues;
+  }
 
   /** Crea una subunidad de `padre` (o una raíz) con nombre provisorio y la deja seleccionada y en edición. */
   async function nuevaUnidad(padre: Unidad | null) {
@@ -196,7 +223,10 @@ export function useLienzo() {
     centrarEn,
     pedidoEliminar,
     pestanaPanel,
+    avisoExpansion,
     expandir,
+    /** Las ramas plegadas de una vista guardada (avisa igual si abren de más). */
+    aplicarPlegado: plegar,
     expandirTodo: (unidades: Unidad[]) => plegar(unidades, new Set()),
     /** 1 = solo las raíces (contraer todo). */
     contraerHasta: (unidades: Unidad[], nivel: number) =>

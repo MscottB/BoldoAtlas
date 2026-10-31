@@ -157,6 +157,13 @@
       "deshacer": "Deshacer"
     },
     "reordenar": "Reordenar",
+    "ordenando": "Ordenando…",
+    "limite": {
+      "titulo": "Se verían {n} tarjetas",
+      "texto": "Con más de {limite} tarjetas a la vista el lienzo se vuelve lento. Puedes expandir solo algunos niveles.",
+      "igual": "Expandir igual",
+      "hastaNivel": "Expandir hasta el nivel {n}"
+    },
     "reordenarAyuda": "Vuelve a ordenar el diagrama y lo encuadra",
     "ramas": {
       "titulo": "Ramas",

@@ -6,22 +6,13 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import type { PersonaRef } from "./revision";
 import { useAvisos } from "./useAvisos";
+import FilasRevision, { type Fila } from "./FilasRevision.vue";
 
 const { t } = useI18n();
 const router = useRouter();
 const puesto = usePuesto();
 const ficha = useFicha();
 const resumen = useAvisos();
-
-// Fila plana: los grupos (correos, nombres) son una fila de encabezado y una por persona.
-interface Fila {
-  clave: string;
-  texto: string;
-  detalle?: string;
-  /** Sin `abrir` la fila es solo texto (los valores sin uso no tienen adónde llevar todavía). */
-  abrir?: () => void;
-  hija?: boolean;
-}
 
 const unir = (...partes: (string | null | undefined)[]) => partes.filter(Boolean).join(" · ");
 // La unidad se abre en el árbol completo, seleccionada y centrada (con su panel).
@@ -107,7 +98,9 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
   <section class="mx-auto flex max-w-4xl flex-col gap-3 p-6">
     <header class="flex flex-wrap items-baseline gap-2">
       <h1 class="text-lg font-semibold">{{ t("revision.titulo") }}</h1>
-      <span class="text-sm text-muted-foreground" aria-live="polite">{{ t("revision.avisos", resumen.total) }}</span>
+      <span class="text-sm text-muted-foreground" aria-live="polite">{{
+        t("revision.avisos", resumen.total)
+      }}</span>
     </header>
 
     <details v-for="s in secciones" :key="s.clave" open class="rounded-lg border">
@@ -119,23 +112,7 @@ const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>((
       </summary>
       <p class="px-3 pb-2 text-sm text-muted-foreground">{{ t(`revision.${s.clave}.ayuda`) }}</p>
       <p v-if="!s.filas.length" class="border-t px-3 py-2 text-sm">{{ t("revision.todoEnOrden") }}</p>
-      <ul v-else class="border-t">
-        <li v-for="f in s.filas" :key="f.clave" class="text-sm" :class="f.hija && 'pl-6'">
-          <component
-            :is="f.abrir ? 'button' : 'div'"
-            v-bind="f.abrir ? { type: 'button', onClick: f.abrir } : {}"
-            class="group flex w-full items-baseline gap-2 px-3 py-1.5 text-left"
-            :class="
-              f.abrir
-                ? 'hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring'
-                : !f.hija && 'font-medium'
-            "
-          >
-            <span>{{ f.texto }}</span>
-            <span v-if="f.detalle" class="text-muted-foreground group-hover:text-foreground">{{ f.detalle }}</span>
-          </component>
-        </li>
-      </ul>
+      <FilasRevision v-else :filas="s.filas" />
     </details>
   </section>
 </template>

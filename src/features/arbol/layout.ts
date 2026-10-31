@@ -1,4 +1,4 @@
-import ELK from "elkjs/lib/elk.bundled.js";
+import type { ElkNode } from "elkjs/lib/elk.bundled.js";
 import type { Conexion, Puesto, Unidad, ValorCatalogo } from "../../db/tipos";
 import { descendientes, indiceHijos, porOrden } from "./jerarquia";
 import {
@@ -137,25 +137,30 @@ export function filasPorTipo(nodos: Unidad[], tipos: ValorCatalogo[]): Map<strin
   return filas;
 }
 
-const elk = new ELK();
 // Superior invisible de todas las raíces: mrtree pide un solo árbol, y así las raíces quedan lado a lado en una fila.
 const RAIZ_VIRTUAL = "raiz-virtual"; // los ids de las unidades son UUID: no choca
 
-// Devuelve la esquina superior izquierda de cada nodo. Solo las aristas jerárquicas entran: las laterales no deforman
-// el árbol. Los tamaños deben ser los de las tarjetas dibujadas (tamUnidad/tamPuesto); `tipos`, el catálogo completo
-// (solo se usa al alinear por tipo).
-export async function calcularLayout(
+type Tam = { ancho: number; alto: number };
+/** Posición que elk dio a cada nodo (la app la pide a un worker: solo viajan id, x e y). */
+export type NodoUbicado = { id: string; x?: number; y?: number };
+
+/**
+ * El grafo que se le pasa a elk (objetos planos: puede ir a un worker). Solo las aristas jerárquicas entran: las laterales
+ * no deforman el árbol. Los tamaños deben ser los de las tarjetas dibujadas (tamUnidad/tamPuesto); `tipos`, el catálogo
+ * completo (solo se usa al alinear por tipo).
+ */
+export function grafoElk(
   subgrafo: Subgrafo,
-  tam = tamUnidad(VISTA_POR_DEFECTO, false),
-  tamDelPuesto = tamPuesto(VISTA_POR_DEFECTO),
+  tam: Tam = tamUnidad(VISTA_POR_DEFECTO, false),
+  tamDelPuesto: Tam = tamPuesto(VISTA_POR_DEFECTO),
   vista: Pick<ConfigVista, "direccion" | "densidad" | "alinearPorTipo"> = VISTA_POR_DEFECTO,
   tipos: ValorCatalogo[] = [],
-): Promise<Map<string, { x: number; y: number }>> {
+): ElkNode {
   const horizontal = vista.direccion === "horizontal";
   const sep = separaciones(vista);
   // mrtree separa los niveles como a los hermanos: cada tarjeta reserva el resto detrás de sí, en el eje de los niveles.
   const extra = sep.niveles - sep.hermanos;
-  const caja = (t: { ancho: number; alto: number }) =>
+  const caja = (t: Tam) =>
     horizontal ? { width: t.ancho + extra, height: t.alto } : { width: t.ancho, height: t.alto + extra };
   const hijos = new Set(subgrafo.jerarquicas.map(([, b]) => b));
   const raices = subgrafo.nodos
@@ -181,7 +186,7 @@ export async function calcularLayout(
     }
     aristas.push([desde, b]);
   }
-  const resultado = await elk.layout({
+  return {
     id: "lienzo",
     layoutOptions: opcionesElk(vista),
     children: [
@@ -189,11 +194,26 @@ export async function calcularLayout(
       ...aristas.map(([, b]) => ({ id: b, ...medida.get(b)! })),
     ],
     edges: aristas.map(([a, b]) => ({ id: `${a}>${b}`, sources: [a], targets: [b] })),
-  });
+  };
+}
+
+/** Esquina superior izquierda de cada unidad y puesto dibujados (sin la raíz virtual ni los huecos). */
+export function posiciones(
+  subgrafo: Subgrafo,
+  ubicados: NodoUbicado[],
+): Map<string, { x: number; y: number }> {
   const dibujados = new Set([...subgrafo.nodos, ...subgrafo.puestos].map((n) => n.id));
   return new Map(
-    (resultado.children ?? [])
-      .filter((n) => dibujados.has(n.id))
-      .map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]),
+    ubicados.filter((n) => dibujados.has(n.id)).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]),
   );
+}
+
+/**
+ * grafoElk → elk → posiciones, en este hilo: para los tests. La app lo hace en un worker (layout.worker.ts); por eso elk
+ * se importa aquí solo al llamarla y no entra al paquete principal.
+ */
+export async function calcularLayout(...args: Parameters<typeof grafoElk>) {
+  const { default: ELK } = await import("elkjs/lib/elk.bundled.js");
+  const resultado = await new ELK().layout(grafoElk(...args));
+  return posiciones(args[0], resultado.children ?? []);
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useVirtualList } from "@vueuse/core";
 import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,22 @@ const hayFiltros = computed(() => JSON.stringify(filtros.value) !== JSON.stringi
 // Las filas se arman una vez por cambio del store; teclear o ordenar solo filtra y ordena.
 const candidatas = computed(() => candidatasDirectorio(org));
 const filas = computed(() => filtrarYOrdenar(candidatas.value, filtros.value, orden.value));
+// Solo las filas a la vista van al DOM: con 10.000 personas, abrir tardaba 1 s y cada tecla al filtrar 0,2–0,5 s (nota de
+// rendimiento). Todas las filas miden lo mismo (una línea): se mide la primera dibujada, que cambia con la escala.
+const altoFila = ref(33);
+const { list: ventana, containerProps, wrapperProps } = useVirtualList(filas, {
+  itemHeight: () => altoFila.value,
+  overscan: 10,
+});
+const cuerpo = useTemplateRef("cuerpo");
+watch(
+  ventana,
+  () => {
+    const fila = cuerpo.value?.rows[0];
+    if (fila) altoFila.value = fila.getBoundingClientRect().height;
+  },
+  { flush: "post" },
+);
 const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad));
 const sinDatos = computed(() => !org.puestos.length && !org.trabajadores.length);
 
@@ -144,86 +161,98 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
       </form>
 
       <p v-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
-      <div v-else class="min-h-0 flex-1 overflow-auto rounded-lg border">
-        <table class="w-full border-collapse text-left text-sm" :aria-label="t('directorio.tabla')">
-          <thead class="sticky top-0 z-10 bg-muted text-muted-foreground">
-            <tr>
-              <th
-                v-for="c in ['persona', 'cargo'] as const"
-                :key="c"
-                scope="col"
-                class="px-3 py-2 font-medium whitespace-nowrap"
-                :aria-sort="ariaSort(c)"
+      <div v-else v-bind="containerProps" class="min-h-0 flex-1 overflow-auto rounded-lg border">
+        <div v-bind="wrapperProps">
+          <table
+            class="w-full border-collapse text-left text-sm"
+            :aria-label="t('directorio.tabla')"
+            :aria-rowcount="filas.length + 1"
+          >
+            <thead class="sticky top-0 z-10 bg-muted text-muted-foreground">
+              <tr aria-rowindex="1">
+                <th
+                  v-for="c in ['persona', 'cargo'] as const"
+                  :key="c"
+                  scope="col"
+                  class="px-3 py-2 font-medium whitespace-nowrap"
+                  :aria-sort="ariaSort(c)"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                    @click="ordenarPor(c)"
+                  >
+                    {{ t(`directorio.${c}`) }}
+                    <ArrowUp v-if="orden.campo === c && orden.asc" class="size-3.5" aria-hidden="true" />
+                    <ArrowDown v-else-if="orden.campo === c" class="size-3.5" aria-hidden="true" />
+                    <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
+                  </button>
+                </th>
+                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.reemplazo") }}</th>
+                <th
+                  v-for="(tipo, i) in tipos"
+                  :key="tipo.id"
+                  scope="col"
+                  class="px-3 py-2 font-medium whitespace-nowrap"
+                  :aria-sort="i === 0 ? ariaSort('unidad') : undefined"
+                >
+                  <!-- Se ordena por la ruta completa de la unidad; el botón está en la primera columna de tipo. -->
+                  <button
+                    v-if="i === 0"
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                    :title="t('directorio.ordenarUnidad')"
+                    @click="ordenarPor('unidad')"
+                  >
+                    {{ tipo.nombre }}
+                    <ArrowUp v-if="orden.campo === 'unidad' && orden.asc" class="size-3.5" aria-hidden="true" />
+                    <ArrowDown v-else-if="orden.campo === 'unidad'" class="size-3.5" aria-hidden="true" />
+                    <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
+                    <span class="sr-only">{{ t("directorio.ordenarUnidad") }}</span>
+                  </button>
+                  <template v-else>{{ tipo.nombre }}</template>
+                </th>
+                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.correo") }}</th>
+                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.tipoContrato") }}</th>
+                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.sede") }}</th>
+                <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.jornada") }}</th>
+              </tr>
+            </thead>
+            <tbody ref="cuerpo">
+              <tr
+                v-for="{ data: f, index } in ventana"
+                :key="f.clave"
+                :aria-rowindex="index + 2"
+                class="cursor-pointer border-t hover:bg-accent"
+                @click="abrir(f)"
               >
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                  @click="ordenarPor(c)"
-                >
-                  {{ t(`directorio.${c}`) }}
-                  <ArrowUp v-if="orden.campo === c && orden.asc" class="size-3.5" aria-hidden="true" />
-                  <ArrowDown v-else-if="orden.campo === c" class="size-3.5" aria-hidden="true" />
-                  <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
-                </button>
-              </th>
-              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.reemplazo") }}</th>
-              <th
-                v-for="(tipo, i) in tipos"
-                :key="tipo.id"
-                scope="col"
-                class="px-3 py-2 font-medium whitespace-nowrap"
-                :aria-sort="i === 0 ? ariaSort('unidad') : undefined"
-              >
-                <!-- Se ordena por la ruta completa de la unidad; el botón está en la primera columna de tipo. -->
-                <button
-                  v-if="i === 0"
-                  type="button"
-                  class="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                  :title="t('directorio.ordenarUnidad')"
-                  @click="ordenarPor('unidad')"
-                >
-                  {{ tipo.nombre }}
-                  <ArrowUp v-if="orden.campo === 'unidad' && orden.asc" class="size-3.5" aria-hidden="true" />
-                  <ArrowDown v-else-if="orden.campo === 'unidad'" class="size-3.5" aria-hidden="true" />
-                  <ArrowUpDown v-else class="size-3.5 opacity-50" aria-hidden="true" />
-                  <span class="sr-only">{{ t("directorio.ordenarUnidad") }}</span>
-                </button>
-                <template v-else>{{ tipo.nombre }}</template>
-              </th>
-              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.correo") }}</th>
-              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.tipoContrato") }}</th>
-              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.sede") }}</th>
-              <th scope="col" class="px-3 py-2 font-medium whitespace-nowrap">{{ t("directorio.jornada") }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="f in filas" :key="f.clave" class="cursor-pointer border-t hover:bg-accent" @click="abrir(f)">
-              <th scope="row" class="px-3 py-1.5 font-normal whitespace-nowrap">
-                <button
-                  type="button"
-                  class="rounded-sm text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                  :class="!f.persona && 'font-normal text-muted-foreground italic'"
-                >
-                  {{ f.persona ?? t("directorio.vacante") }}
-                </button>
-              </th>
-              <td class="px-3 py-1.5 whitespace-nowrap">
-                <span v-if="f.estado === 'sinPuesto'" class="text-muted-foreground italic">{{
-                  t("directorio.sinPuesto")
-                }}</span>
-                <template v-else>{{ f.cargo }}</template>
-              </td>
-              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.reemplazo }}</td>
-              <td v-for="tipo in tipos" :key="tipo.id" class="px-3 py-1.5 whitespace-nowrap">
-                {{ delTipo(f, tipo.id) }}
-              </td>
-              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.correo }}</td>
-              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.tipoContrato }}</td>
-              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.sede }}</td>
-              <td class="px-3 py-1.5 whitespace-nowrap">{{ f.jornada }}</td>
-            </tr>
-          </tbody>
-        </table>
+                <th scope="row" class="px-3 py-1.5 font-normal whitespace-nowrap">
+                  <button
+                    type="button"
+                    class="rounded-sm text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    :class="!f.persona && 'font-normal text-muted-foreground italic'"
+                  >
+                    {{ f.persona ?? t("directorio.vacante") }}
+                  </button>
+                </th>
+                <td class="px-3 py-1.5 whitespace-nowrap">
+                  <span v-if="f.estado === 'sinPuesto'" class="text-muted-foreground italic">{{
+                    t("directorio.sinPuesto")
+                  }}</span>
+                  <template v-else>{{ f.cargo }}</template>
+                </td>
+                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.reemplazo }}</td>
+                <td v-for="tipo in tipos" :key="tipo.id" class="px-3 py-1.5 whitespace-nowrap">
+                  {{ delTipo(f, tipo.id) }}
+                </td>
+                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.correo }}</td>
+                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.tipoContrato }}</td>
+                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.sede }}</td>
+                <td class="px-3 py-1.5 whitespace-nowrap">{{ f.jornada }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </template>
   </section>

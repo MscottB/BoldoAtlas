@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Directive } from "vue";
+import { computed, inject, type Directive } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { Handle, Position } from "@vue-flow/core";
@@ -12,7 +12,8 @@ import { useTema } from "@/features/tema/useTema";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
-import type { Marca } from "./jerarquia";
+import { rutaSuperiores } from "./jerarquia";
+import { CONTEXTO_LIENZO } from "./contexto";
 
 export interface DatosNodo {
   unidad: Unidad;
@@ -23,10 +24,6 @@ export interface DatosNodo {
   vacantes: number;
   etiquetas: Etiqueta[];
   hijos: number;
-  /** Marca efectiva según «Colorear por»; null = sin color. */
-  marca: Marca | null;
-  /** Superiores por tipo elegido (texto); null = la vista no muestra la ruta. */
-  ruta: string | null;
 }
 
 const props = defineProps<{ id: string; data: DatosNodo }>();
@@ -46,13 +43,25 @@ const {
 } = useLienzo();
 const { config } = useVista();
 const { escala } = useTema();
+const contexto = inject(CONTEXTO_LIENZO)!;
+// Marca efectiva según «Colorear por» (null = sin color) y superiores por tipo elegido (null = la vista no los muestra).
+const marca = computed(() => contexto.marcas.value?.get(props.id) ?? null);
+const ruta = computed(() =>
+  contexto.rutas.value
+    ? rutaSuperiores(contexto.rutas.value, props.data.unidad)
+        .map((x) => x.nombre)
+        .join(" › ")
+    : null,
+);
+// Alejado y con muchas tarjetas, la ligera (rendimiento.ts); la que se está renombrando conserva su campo.
+const ligera = computed(() => contexto.ligera.value && editando.value !== props.id);
 
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");
 // Misma función que usa el layout: la tarjeta dibujada mide lo que elk reservó.
 const tam = computed(() => {
-  const { ancho, alto } = tamUnidad(config.value, props.data.ruta !== null, escala.value);
-  return { width: `${ancho}px`, height: `${alto}px` };
+  const { ancho, alto } = tamUnidad(config.value, ruta.value !== null, escala.value);
+  return `width: ${ancho}px; height: ${alto}px`; // texto: si no cambia, la tarjeta no se vuelve a pintar
 });
 
 // Con una fecha elegida el organigrama es de solo lectura: no se renombra ni se agregan subunidades.
@@ -97,37 +106,54 @@ async function guardar(e: Event) {
 </script>
 
 <template>
+  <!-- Ligera: un solo elemento con el nombre y el color de la marca (más los puntos de conexión, que no reciben el puntero). -->
+  <div
+    v-if="ligera"
+    class="line-clamp-2 rounded-lg border px-2 py-1 text-2xl leading-tight font-semibold break-words"
+    :class="[
+      seleccionada
+        ? 'border-marca bg-marca text-marca-foreground ring-8 ring-marca'
+        : !marca?.color && 'bg-card text-card-foreground',
+      atenuada && 'opacity-35',
+    ]"
+    :style="[
+      tam,
+      marca?.color && !seleccionada ? { background: marca.color, color: textoSobre(marca.color) } : {},
+    ]"
+    @click="alHacerClic"
+  >
+    <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+    {{ data.unidad.nombre }}
+    <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
+  </div>
   <!-- Nodo liviano: sin sombras ni transiciones (nota de rendimiento). -->
   <div
+    v-else
     class="flex rounded-lg border bg-card text-xs text-card-foreground"
     :class="[
       compacta ? 'items-center gap-1.5 px-2' : 'flex-col gap-1 p-2',
       seleccionada && 'border-marca ring-2 ring-marca',
       atenuada && 'opacity-35',
-      data.marca?.color && 'border-l-4',
+      marca?.color && 'border-l-4',
     ]"
-    :style="[tam, data.marca?.color ? { borderLeftColor: data.marca.color } : {}]"
+    :style="[tam, marca?.color ? { borderLeftColor: marca.color } : {}]"
     @click="alHacerClic"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
     <div
-      v-if="!compacta && (config.mostrarTipo || config.mostrarEtiquetas || data.marca?.codigo)"
+      v-if="!compacta && (config.mostrarTipo || config.mostrarEtiquetas || marca?.codigo)"
       class="flex items-center justify-between text-muted-foreground"
     >
       <span class="flex min-w-0 items-center gap-1">
         <span v-if="config.mostrarTipo" class="truncate uppercase">{{ tipo }}</span>
         <span
-          v-if="data.marca?.codigo"
+          v-if="marca?.codigo"
           class="rounded px-1 text-[10px] font-semibold"
-          :class="!data.marca.color && 'bg-muted text-foreground'"
-          :style="
-            data.marca.color
-              ? { background: data.marca.color, color: textoSobre(data.marca.color) }
-              : undefined
-          "
-          :title="data.marca.unidad.nombre"
+          :class="!marca.color && 'bg-muted text-foreground'"
+          :style="marca.color ? { background: marca.color, color: textoSobre(marca.color) } : undefined"
+          :title="marca.unidad.nombre"
         >
-          {{ data.marca.codigo }}
+          {{ marca.codigo }}
         </span>
       </span>
       <span v-if="config.mostrarEtiquetas" class="flex shrink-0 gap-1">
@@ -164,8 +190,8 @@ async function guardar(e: Event) {
     >
       {{ data.unidad.nombre }}
     </button>
-    <span v-if="data.ruta && !compacta" class="truncate text-[11px] text-muted-foreground" :title="data.ruta">
-      {{ data.ruta }}
+    <span v-if="ruta && !compacta" class="truncate text-[11px] text-muted-foreground" :title="ruta">
+      {{ ruta }}
     </span>
     <div v-if="!compacta && config.mostrarJefe" class="flex items-center gap-1.5">
       <template v-if="data.jefe">

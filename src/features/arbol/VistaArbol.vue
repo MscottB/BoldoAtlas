@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, provide, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { VueFlow, useVueFlow, type Edge, type Node, type NodeDragEvent } from "@vue-flow/core";
@@ -8,12 +8,13 @@ import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
 import "@vue-flow/minimap/dist/style.css";
 import { toast } from "vue-sonner";
-import { ArrowUp, CalendarClock, Network } from "@lucide/vue";
+import { ArrowUp, CalendarClock, LoaderCircle, Network } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -30,16 +31,20 @@ import {
   marcasPorUnidad,
   ruta,
   rutasPorTipo,
-  rutaSuperiores,
   tiposEnUso,
 } from "./jerarquia";
 import {
-  calcularLayout,
+  grafoElk,
+  posiciones,
   subgrafoVisible,
   colapsadosIniciales,
   unidadesDeRama,
+  type NodoUbicado,
   type Subgrafo,
 } from "./layout";
+import LayoutWorker from "./layout.worker?worker";
+import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
+import { CONTEXTO_LIENZO } from "./contexto";
 import { destinoAlSoltar, useLienzo } from "./useLienzo";
 import { recordarPorArbol, useVista } from "./useVista";
 import {
@@ -76,15 +81,19 @@ const {
   sumarVarias,
   podarSeleccion,
   limpiarMultiple,
+  avisoExpansion,
 } = useLienzo();
 const {
   fitView,
+  fitBounds,
+  findNode,
   setCenter,
   updateNode,
   updateNodeInternals,
   areNodesInitialized,
   getSelectedNodes,
   removeSelectedElements,
+  viewport,
 } = useVueFlow();
 const { config } = useVista();
 const { escala } = useTema();
@@ -143,9 +152,35 @@ watch(
   { immediate: true },
 );
 
-// El layout es asíncrono: solo aplica el del último cambio, junto con el subgrafo que lo produjo.
+// El layout corre en un worker (la interfaz sigue respondiendo): solo aplica el del último cambio, junto con el subgrafo
+// que lo produjo; mientras tanto se avisa «Ordenando…».
 const vista = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
-let ultimo = 0;
+// Lo dibujado (nodos y líneas de Vue Flow): solo se reemplaza si cambian las tarjetas o las líneas. Si no (reordenar, volver
+// a aplicar una vista, otra densidad), las tarjetas se mueven en su lugar: rehacer los nodos de Vue Flow compara todos contra
+// todos (~1 s con 2.000 tarjetas); moverlos cuesta unos ms.
+const dibujo = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
+const forma = (g: Subgrafo) =>
+  JSON.stringify([
+    g.nodos.map((u) => u.id),
+    g.puestos.map((p) => p.id),
+    g.jerarquicas,
+    g.laterales.map((c) => [c.id, c.origen_id, c.destino_id, c.etiqueta]),
+  ]);
+const worker = new LayoutWorker();
+const cola = colaDeUltimo<ReturnType<typeof grafoElk>, NodoUbicado[]>((id, grafo) =>
+  worker.postMessage({ id, grafo }),
+);
+worker.onmessage = ({ data }: MessageEvent<{ id: number; ubicados?: NodoUbicado[]; error?: string }>) =>
+  cola.recibir(data.id, data.ubicados, data.error);
+onBeforeUnmount(() => worker.terminate());
+// El aviso aparece solo si el layout tarda: uno rápido no parpadea ni se anuncia.
+const ordenando = ref(false);
+let demora: ReturnType<typeof setTimeout> | undefined;
+function avisarOrdenando(si: boolean) {
+  clearTimeout(demora);
+  if (si) demora = setTimeout(() => (ordenando.value = true), 300);
+  else ordenando.value = false;
+}
 // «Reordenar»: vuelve a calcular el layout y encuadra.
 const reordenado = ref(0);
 function reordenar() {
@@ -171,10 +206,39 @@ watch(
     reordenado: reordenado.value,
   }),
   async ({ g, tam, tamDelPuesto, opciones, tipos }) => {
-    const este = ++ultimo;
-    const pos = await calcularLayout(g, tam, tamDelPuesto, opciones, tipos);
-    if (este !== ultimo) return;
+    avisarOrdenando(true);
+    const ubicados = await cola.pedir(grafoElk(g, tam, tamDelPuesto, opciones, tipos)).catch((e) => {
+      avisarOrdenando(false);
+      throw e;
+    });
+    if (!ubicados) return; // llegó otro cambio: manda ese
+    avisarOrdenando(false);
+    const pos = posiciones(g, ubicados);
+    // Al pasar a muchas tarjetas se encuadra antes de dibujarlas: así nacen ligeras, sin montar antes el detalle de todas
+    // (con 2.000, 1,3 s de interfaz congelada). Las medidas de las tarjetas ya se conocen: no hace falta esperar a Vue Flow.
+    if (!centrar && !conMinimapa(g.nodos.length + g.puestos.length) && conMinimapa(nodos.value.length)) {
+      const ps = [...pos.values()];
+      const x = Math.min(...ps.map((p) => p.x));
+      const y = Math.min(...ps.map((p) => p.y));
+      const ancho = Math.max(tam.ancho, tamDelPuesto.ancho);
+      const alto = Math.max(tam.alto, tamDelPuesto.alto);
+      encuadrar = false;
+      await fitBounds({
+        x,
+        y,
+        width: Math.max(...ps.map((p) => p.x)) + ancho - x,
+        height: Math.max(...ps.map((p) => p.y)) + alto - y,
+      });
+    }
+    const antes = dibujo.value;
     vista.value = { g, pos };
+    if (antes && forma(antes.g) === forma(g))
+      for (const [id, p] of pos) {
+        antes.pos.set(id, p); // sin avisar a `nodos`: si se rehace por otra razón, ya usa la posición nueva
+        const n = findNode(id);
+        if (n) n.position = p;
+      }
+    else dibujo.value = vista.value;
     podarSeleccion(new Set(g.nodos.map((u) => u.id))); // lo que se plegó ya no cuenta como seleccionado
     if (!encuadrar && !centrar) return;
     const id = centrar;
@@ -197,7 +261,7 @@ watch(centrarEn, (id) => {
 // Otra dirección o densidad cambia la forma de todo el árbol: se encuadra tras el próximo layout, y los puntos de
 // conexión (arriba/abajo o izquierda/derecha) se vuelven a medir.
 watch(
-  () => [config.value.direccion, config.value.densidad],
+  [() => config.value.direccion, () => config.value.densidad], // solo si cambian (aplicar una vista reemplaza todo)
   async () => {
     encuadrar = true;
     await nextTick();
@@ -240,9 +304,9 @@ const etiquetasDe = computed(() => {
   return m;
 });
 
-const nodos = computed<Node[]>(() => {
-  if (!vista.value) return [];
-  const { g, pos } = vista.value;
+// Lo que muestra cada tarjeta, para todas las que pueden dibujarse: un layout nuevo reutiliza estos objetos y las tarjetas
+// no se vuelven a pintar. Marca, ruta, leyenda y nivel de detalle los lee cada tarjeta del contexto (no rehacen los nodos).
+const datosUnidad = computed(() => {
   const indice = indiceHijos(mostradas.value);
   const dotaciones = dotacionPorUnidad(
     mostradas.value,
@@ -251,50 +315,68 @@ const nodos = computed<Node[]>(() => {
     org.fechaVista ?? undefined,
   );
   const vigentes = org.enFecha.vigentes;
-  const unidades = g.nodos.map((u): Node<DatosNodo> => {
-    const { total, vacantes } = dotaciones.get(u.id)!;
-    const jefe = jefeVisible(u, vigentes);
-    return {
-      id: u.id,
-      type: "unidad",
-      position: pos.get(u.id)!,
-      data: {
-        unidad: u,
-        jefe: (jefe && trabajadorPorId.value.get(jefe.trabajador_id)) || null,
-        jefeReemplazo: jefe?.tipo === "reemplazo",
-        total,
-        vacantes,
-        etiquetas: etiquetasDe.value.get(u.id) ?? [],
-        hijos: indice.get(u.id)?.length ?? 0,
-        marca: marcas.value?.get(u.id) ?? null,
-        ruta: rutas.value
-          ? rutaSuperiores(rutas.value, u)
-              .map((x) => x.nombre)
-              .join(" › ")
-          : null,
-      },
-    };
-  });
+  return new Map(
+    mostradas.value.map((u): [string, DatosNodo] => {
+      const { total, vacantes } = dotaciones.get(u.id) ?? { total: 0, vacantes: 0 };
+      const jefe = jefeVisible(u, vigentes);
+      return [
+        u.id,
+        {
+          unidad: u,
+          jefe: (jefe && trabajadorPorId.value.get(jefe.trabajador_id)) || null,
+          jefeReemplazo: jefe?.tipo === "reemplazo",
+          total,
+          vacantes,
+          etiquetas: etiquetasDe.value.get(u.id) ?? [],
+          hijos: indice.get(u.id)?.length ?? 0,
+        },
+      ];
+    }),
+  );
+});
+const datosPuesto = computed(() => {
   const cargos = new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre]));
+  const vigentes = org.enFecha.vigentes;
   const nombre = (a?: { trabajador_id: string }) =>
     (a && trabajadorPorId.value.get(a.trabajador_id)?.nombre) || null;
-  const leyendas = porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null;
-  const delPuesto = g.puestos.map((p): Node<DatosPuesto> => ({
-    id: p.id,
-    type: "puesto",
-    position: pos.get(p.id)!,
-    draggable: false,
-    selectable: false,
-    data: {
-      cargo: cargos.get(p.cargo_id) ?? "",
-      titular: nombre(vigentes.get(p.id)?.titular),
-      reemplazo: nombre(vigentes.get(p.id)?.reemplazo),
-      mostrarCargo: config.value.mostrarCargo,
-      mostrarPersona: config.value.mostrarPersona,
-      leyenda: (p.leyenda_id && leyendas?.get(p.leyenda_id)) || null,
-    },
-  }));
-  return [...unidades, ...delPuesto];
+  return new Map(
+    (config.value.verPuestos ? org.enFecha.puestos : []).map((p): [string, DatosPuesto] => [
+      p.id,
+      {
+        cargo: cargos.get(p.cargo_id) ?? "",
+        titular: nombre(vigentes.get(p.id)?.titular),
+        reemplazo: nombre(vigentes.get(p.id)?.reemplazo),
+        leyendaId: p.leyenda_id,
+      },
+    ]),
+  );
+});
+
+// Mientras llega el layout de un cambio, `vista` puede nombrar algo que ya no está: se omite hasta el próximo.
+const nodos = computed<Node[]>(() => {
+  if (!dibujo.value) return [];
+  const { g, pos } = dibujo.value;
+  return [
+    ...g.nodos.flatMap((u) => {
+      const data = datosUnidad.value.get(u.id);
+      return data ? [{ id: u.id, type: "unidad", position: pos.get(u.id)!, data }] : [];
+    }),
+    ...g.puestos.flatMap((p) => {
+      const data = datosPuesto.value.get(p.id);
+      return data
+        ? [{ id: p.id, type: "puesto", position: pos.get(p.id)!, draggable: false, selectable: false, data }]
+        : [];
+    }),
+  ];
+});
+
+// Nivel de detalle (rendimiento.ts): alejado y con muchas tarjetas, tarjetas y aristas ligeras y sin minimapa.
+const ligera = computed(() => tarjetasLigeras(viewport.value.zoom, nodos.value.length));
+provide(CONTEXTO_LIENZO, {
+  marcas,
+  rutas,
+  leyendas: computed(() => (porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null)),
+  ligera,
 });
 
 const leyenda = computed<EntradaLeyenda[]>(() => {
@@ -322,14 +404,16 @@ const tituloLeyenda = computed(() =>
 );
 
 const aristas = computed<Edge[]>(() => {
-  if (!vista.value) return [];
-  const { g } = vista.value;
+  if (!dibujo.value) return [];
+  const { g } = dibujo.value;
   return [
     ...g.jerarquicas.map(([a, b]) => ({
       id: `${a}>${b}`,
       source: a,
       target: b,
-      type: tipoArista(config.value.lineas),
+      // Ligeras: en escalón y sin el trazo invisible que el navegador revisa bajo el puntero en cada evento.
+      type: ligera.value ? "step" : tipoArista(config.value.lineas),
+      interactionWidth: ligera.value ? 0 : undefined,
     })),
     ...g.laterales.map((c) => ({
       id: c.id,
@@ -340,6 +424,14 @@ const aristas = computed<Edge[]>(() => {
     })),
   ];
 });
+
+// Expandir de más (useLienzo): el diálogo propone expandir igual, solo hasta un nivel, o nada.
+const avisoAbierto = ref(false);
+watch(avisoExpansion, (a) => (avisoAbierto.value = !!a));
+function expandirConAviso(colapsadosNuevos: Set<string> | null | undefined) {
+  if (colapsadosNuevos) colapsados.value = colapsadosNuevos;
+  avisoExpansion.value = null;
+}
 
 // Separado de `moviendo`: AlertDialogAction cierra el diálogo antes de que corra su @click.
 const confirmando = ref(false);
@@ -476,6 +568,7 @@ function verCompleto() {
             :zoom-on-double-click="false"
             :delete-key-code="null"
             class="lienzo"
+            :class="ligera && 'lienzo-ligero'"
             @node-drag-stop="alSoltar"
             @node-click="removeSelectedElements()"
             @selection-end="alTerminarRecuadro"
@@ -487,7 +580,7 @@ function verCompleto() {
             <template #node-puesto="p">
               <NodoPuesto :id="p.id" :data="p.data" />
             </template>
-            <MiniMap pannable zoomable />
+            <MiniMap v-if="conMinimapa(nodos.length)" pannable zoomable />
           </VueFlow>
         </MenuLienzo>
         <div
@@ -497,6 +590,15 @@ function verCompleto() {
           <BarraSeleccion class="pointer-events-auto" />
         </div>
         <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
+        <div role="status" class="pointer-events-none absolute top-2 right-2 z-10">
+          <span
+            v-if="ordenando"
+            class="flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs text-card-foreground"
+          >
+            <LoaderCircle class="size-3.5 motion-safe:animate-spin" aria-hidden="true" />
+            {{ t("arbol.ordenando") }}
+          </span>
+        </div>
         <div
           v-if="org.vacia"
           class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"
@@ -526,6 +628,27 @@ function verCompleto() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    <AlertDialog v-model:open="avisoAbierto">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {{ t("arbol.limite.titulo", { n: avisoExpansion?.tarjetas.toLocaleString(locale) }) }}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t("arbol.limite.texto", { limite: LIMITE_TARJETAS.toLocaleString(locale) }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{{ t("arbol.cancelar") }}</AlertDialogCancel>
+          <AlertDialogAction @click="expandirConAviso(avisoExpansion?.todo)">
+            {{ t("arbol.limite.igual") }}
+          </AlertDialogAction>
+          <AlertDialogAction v-if="avisoExpansion?.hasta" @click="expandirConAviso(avisoExpansion?.hasta)">
+            {{ t("arbol.limite.hastaNivel", { n: avisoExpansion.nivel }) }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </section>
 </template>
 
@@ -542,5 +665,10 @@ function verCompleto() {
 }
 .lienzo :deep(.vue-flow__minimap-mask) {
   fill: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+/* Ligero: el navegador no revisa aristas ni puntos de conexión bajo el puntero (nota de rendimiento: HitTest). */
+.lienzo-ligero :deep(.vue-flow__edge),
+.lienzo-ligero :deep(.vue-flow__handle) {
+  pointer-events: none;
 }
 </style>
