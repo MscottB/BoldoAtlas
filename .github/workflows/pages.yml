@@ -1,0 +1,80 @@
+name: pages
+
+# Construye el sitio (site/, VitePress) y lo publica en GitHub Pages: https://mscottb.github.io/BoldoAtlas/
+# - push a main con cambios en el sitio, en el manual (ayuda/, que el sitio publica sin duplicarlo) o en las
+#   capturas que usa (docs/capturas/);
+# - release publicado (OJO: un release creado con GITHUB_TOKEN no dispara este evento; el número de versión
+#   de la página de descargas lo consulta el navegador a la API de GitHub, así que no hace falta redesplegar);
+# - a mano (workflow_dispatch).
+# Un cambio solo en site/ no publica una versión de la app: publicar.yml ignora site/** (ayuda/** sí la publica,
+# porque el manual va dentro de la app).
+# Requiere que el autor active Settings → Pages → Source: GitHub Actions. Mientras no esté activo, el job
+# «desplegar» se omite con un aviso (no falla); el sitio queda construido y se publica en la siguiente ejecución.
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "ayuda/**", "docs/capturas/**", ".github/workflows/pages.yml"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# un despliegue a la vez; el que está en curso termina (no se corta a medias)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read # solo para saber si Pages está activado
+    outputs:
+      pages: ${{ steps.pages.outputs.activado }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+        working-directory: site
+      # vitepress build falla con enlaces rotos; antes copia ayuda/ y las capturas (scripts/sync.mjs)
+      - run: npm run build
+        working-directory: site
+      - id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if tipo=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>&1); then
+            if [ "$tipo" = "workflow" ]; then echo "activado=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+            echo "::warning title=GitHub Pages no usa GitHub Actions::La fuente actual es '$tipo'. Cambia Settings → Pages → Source a «GitHub Actions» para publicar el sitio."
+          elif grep -q "404" <<<"$tipo"; then
+            echo "::warning title=GitHub Pages no está activado::Activa Settings → Pages → Source: GitHub Actions y vuelve a ejecutar este workflow (Run workflow) para publicar el sitio."
+          else
+            # error distinto (red, permisos): se intenta desplegar igual y el paso de despliegue dirá el motivo
+            echo "activado=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "activado=false" >> "$GITHUB_OUTPUT"
+      - if: steps.pages.outputs.activado == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/.vitepress/dist
+
+  desplegar:
+    needs: construir
+    if: needs.construir.outputs.pages == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4
