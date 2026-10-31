@@ -1,10 +1,14 @@
 name: build-prueba
 
-# Portable e instalador de prueba en cada PR, descargables desde la pestaña Actions
-# (artefacto privado al repo, sin release pública). Lint y tests los corre ci.yml.
+# Portable de prueba en cada PR, descargable desde la pestaña Actions (artefacto privado al repo, sin
+# release pública). Solo portable y con el perfil Cargo `prueba` (sin LTO): lint y tests los corre ci.yml.
+# En main no sube nada: compila para dejar la caché de Rust caliente para los PR.
 on:
   pull_request:
-    paths-ignore: ["site/**", "docs/**", "**/*.md"]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
+  push:
+    branches: [main]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/*.md"]
   workflow_dispatch:
 
 concurrency:
@@ -20,22 +24,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # git describe necesita historia y etiquetas
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+          fetch-depth: 0 # etiquetas para calcular la versión
+      - uses: ./.github/actions/preparar-node
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          shared-key: release # la misma caché que release.yml
-      - run: npm ci
-      # sin --etiqueta: versión de desarrollo X.Y.(Z+1)-dev.N sacada de git
-      - run: node scripts/release.mjs
-      - uses: actions/upload-artifact@v4
+          shared-key: boldo-prueba
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # en un PR: la versión que tendrá al fusionarse, con el número del PR (p. ej. 0.1.0-alpha.3+pr4)
+      - id: v
+        run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
+        shell: bash
+      - run: node scripts/release.mjs --solo-portable --perfil prueba
+        env:
+          BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
+      - if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
         with:
-          name: BoldoAtlas-prueba-${{ github.event.pull_request.head.sha || github.sha }}
+          name: BoldoAtlas_${{ steps.v.outputs.version_prueba || github.sha }}_portable
           path: release/*/*
           retention-days: 14
           if-no-files-found: error
