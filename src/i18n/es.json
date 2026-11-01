@@ -1069,7 +1069,8 @@
       "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar.",
       "revisar": "Revisar y decidir",
       "revisarAyuda": "Compara el archivo con tus datos y decides qué se queda: nuevos, distintos, borrados y lo que choca.",
-      "revisarNada": "Comparar no cambia nada: tus datos se escriben solo cuando apliques lo decidido."
+      "revisarNada": "Comparar no cambia nada: tus datos se escriben solo cuando apliques lo decidido.",
+      "lugarDesconocido": "No se pudo saber dónde iban las ramas de este archivo. Las que no estén en tu base entrarán como árboles independientes: después puedes moverlas."
     },
     "etapa": {
       "copiando": "Preparando la copia de tus datos…",
@@ -1125,7 +1126,8 @@
       "base_cambio": "Tus datos cambiaron mientras revisabas. No se aplicó nada: compara de nuevo.",
       "bloqueada": "Aún hay casos por resolver. No se aplicó nada.",
       "sin_verificar": "Las decisiones cambiaron recién. No se aplicó nada: inténtalo de nuevo.",
-      "correo_no_valido": "Escribe un correo válido."
+      "correo_no_valido": "Escribe un correo válido.",
+      "falta_confirmar": "Hay que confirmar antes de eliminar o vaciar tanto de una vez. No se aplicó nada."
     },
     "columnas": {
       "otra": "un campo",
@@ -1193,14 +1195,16 @@
         "unica": "{n} registro choca con otro: elige cuál conservar en «Por resolver». | {n} registros chocan con otros: elige cuáles conservar en «Por resolver».",
         "regla": "{n} mezcla de campos que la base no acepta: mira «Por resolver». | {n} mezclas de campos que la base no acepta: mira «Por resolver».",
         "referencia": "{n} referencia queda apuntando a algo que no estará: resuélvela en «Por resolver». | {n} referencias quedan apuntando a algo que no estará: resuélvelas en «Por resolver».",
-        "ciclo": "{n} unidad quedaría dentro de sí misma: cambia su superior en «Por resolver». | {n} unidades quedarían dentro de sí mismas: cambia su superior en «Por resolver»."
+        "ciclo": "{n} unidad quedaría dentro de sí misma: cambia su superior en «Por resolver». | {n} unidades quedarían dentro de sí mismas: cambia su superior en «Por resolver».",
+        "cadena": "{n} registro en una cadena de cambios demasiado larga: mira «Por resolver». | {n} registros en una cadena de cambios demasiado larga: mira «Por resolver»."
       },
       "tituloBloqueos": "Por resolver",
       "bloqueo": {
         "unica": "«{nombre}» ({tabla}) choca con «{otro}»: no pueden quedar los dos.",
         "regla": "«{nombre}» ({tabla}): esta mezcla de campos no es válida. Conserva lo tuyo, o elige otros campos en «Distintos».",
         "referencia": "«{nombre}» ({tabla}) apunta a «{otro}», que no estará después de aplicar.",
-        "ciclo": "«{nombre}» quedaría dentro de sí misma con estas decisiones. Cambia su unidad superior."
+        "ciclo": "«{nombre}» quedaría dentro de sí misma con estas decisiones. Cambia su unidad superior.",
+        "cadena": "«{nombre}» ({tabla}) está en una cadena de cambios demasiado larga para aplicarla de una vez. Conserva lo tuyo en este registro y aplica; después importa de nuevo el archivo para seguir con el resto."
       },
       "algoQueNoEsta": "algo que no está",
       "resuelto": {
@@ -1343,17 +1347,20 @@
         "borradas": "{n} eliminado | {n} eliminados",
         "revividas": "{n} recuperado | {n} recuperados",
         "unidas": "{n} unido | {n} unidos",
-        "omitidas": "{n} no entró | {n} no entraron"
+        "omitidas": "{n} no entró | {n} no entraron",
+        "vaciadas": "{n} referencia vaciada | {n} referencias vaciadas",
+        "localesBorradas": "de lo eliminado, {n} solo estaba en tu base | de lo eliminado, {n} solo estaban en tu base"
       },
       "bloqueoResuelto": {
         "unica": "«{nombre}» ({tabla}) chocaba con otro registro.",
         "regla": "«{nombre}» ({tabla}) tenía una mezcla de campos no válida.",
         "referencia": "«{nombre}» ({tabla}) apuntaba a algo que no iba a estar.",
-        "ciclo": "«{nombre}» iba a quedar dentro de sí misma."
+        "ciclo": "«{nombre}» iba a quedar dentro de sí misma.",
+        "cadena": "«{nombre}» ({tabla}) estaba en una cadena de cambios demasiado larga."
       },
-      "borrarMuchosTitulo": "¿Eliminar {n} registro de tu base? | ¿Eliminar {n} registros de tu base?",
-      "borrarMuchosTexto": "Al aplicar se elimina {n} registro de tu base. Antes se hace un respaldo, que puedes restaurar desde Configuración. | Al aplicar se eliminan {n} registros de tu base. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
-      "borrarMuchosSi": "Eliminar {n} y aplicar | Eliminar {n} y aplicar",
+      "borrarMuchosTitulo": "¿Eliminar o vaciar {n} registro de tu base? | ¿Eliminar o vaciar {n} registros de tu base?",
+      "borrarMuchosTexto": "Antes se hace un respaldo, que puedes restaurar desde Configuración.",
+      "borrarMuchosSi": "Sí, aplicar",
       "aplicadoFuera": "Se aplicó lo que decidiste en la revisión.",
       "noAlcanza": "Eso no alcanzó: elige otra cosa.",
       "posicion": "Posición {n}"

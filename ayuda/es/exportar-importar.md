@@ -56,7 +56,7 @@ Para dos copias que siguieron trabajando por separado: comparas el archivo con t
 4. Resuelve lo que aparezca en **Por resolver**. Mientras quede algo, **Aplicar** está detenido y un aviso arriba dice qué falta.
 5. Pulsa **Aplicar**. El recuadro **Al aplicar** dice antes cuánto se agrega, cambia, elimina o queda vacío, también lo que solo está en tu base. Si se elimina mucho de una vez, pide confirmar con el número.
 
-![Revisar y decidir: el aviso de lo que falta, Aceptar todos los más recientes y los grupos de casos con su cantidad.](../img/es/importar-decidir-resumen.webp "Primero el resumen: abres solo lo que quieras mirar."){width=768 height=1296}
+![Revisar y decidir: el aviso de lo que falta, Aceptar todos los más recientes y los grupos de casos con su cantidad.](../img/es/importar-decidir-resumen.webp "Primero el resumen: abres solo lo que quieras mirar."){width=768 height=1260}
 
 | Caso | Qué es | Qué viene elegido | Qué puedes hacer |
 |---|---|---|---|

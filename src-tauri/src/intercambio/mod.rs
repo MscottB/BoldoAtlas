@@ -258,6 +258,8 @@ pub struct ResumenImportacion {
     pub informe: Option<Informe>,
     /// Por qué falló: solo el código, que nunca lleva datos personales.
     pub motivo_revision: Option<&'static str>,
+    /// Cada rama frente a esta base, también si la revisión falló. None si ni eso se pudo saber: no se puede preguntar dónde va.
+    pub ramas: Option<Vec<fusion::RamaImportada>>,
 }
 
 /// Lo que quedó en `meta` al reemplazar: nada más que lo que la app escribe y lee.
@@ -365,6 +367,7 @@ pub(crate) fn ahora(conn: &Connection) -> Result<String, Fallo> {
 /// Qué pasaría al agregar: la pasada completa, deshecha al final.
 pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportacion, Fallo> {
     let imp = validar::solo_lectura(i.temporal.ruta())?;
+    let ramas = fusion::ramas(conn, &imp, &i.meta).ok();
     let marca = ahora(conn)?;
     let pasada = (|| {
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -379,6 +382,7 @@ pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportac
         parcial: i.meta.parcial,
         informe,
         motivo_revision,
+        ramas,
     })
 }
 
@@ -903,6 +907,7 @@ mod tests {
         let i = importacion(d.path(), &origen, dd.path());
         let r = revisar(&mut conn, &i).unwrap();
         assert!(r.informe.is_none());
+        assert!(r.ramas.is_some(), "las ramas se saben igual");
         assert_eq!(r.motivo_revision, Some("contenido_invalido"));
         let mut slot = Some(conn);
         reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();

@@ -32,7 +32,7 @@ Para llevarte una copia a otro lugar, pulsa **Abrir carpeta** y copia el archivo
 
 ## Antes de reemplazar los datos
 
-Al elegir **Nueva organización vacía** o **Explorar el ejemplo** con datos cargados, o al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. Como el de restaurar, nunca se borran solos: si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
+Al elegir **Nueva organización vacía** o **Explorar el ejemplo** con datos cargados, o al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. El de reemplazar y el de restaurar nunca se borran solos. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
 
 ## Restaurar
 

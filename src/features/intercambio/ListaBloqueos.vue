@@ -101,7 +101,7 @@ const queResuelto = (f: FilaBloqueo) => {
           <span v-if="f.fallido" class="text-destructive">{{ t("intercambio.revisar.noAlcanza") }}</span>
           <Button type="button" variant="ghost" size="sm" @click="quitar(f)">{{ t("intercambio.revisar.deshacer") }}</Button>
         </p>
-        <div v-else-if="f.tipo === 'unica' || f.tipo === 'regla'" class="flex flex-wrap gap-2">
+        <div v-else-if="f.tipo === 'unica' || f.tipo === 'regla' || f.tipo === 'cadena'" class="flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" @click="decidir(f, { que: 'conservar_mio' })">
             {{ t("intercambio.revisar.conservarMio") }}
           </Button>

@@ -711,6 +711,7 @@ pub async fn revision_aplicar(
     app: AppHandle,
     trabajo: String,
     version: u64,
+    confirmado: bool,
     version_app: String,
 ) -> Result<revision::InformeRevision, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -720,7 +721,9 @@ pub async fn revision_aplicar(
         let i = sesiones.importacion(&trabajo)?;
         let hecho = {
             let g = leer(&r);
-            estado.con_conexion(|c| revision::aplicar(c, dir, &i, &g, version, &version_app))
+            estado.con_conexion(|c| {
+                revision::aplicar(c, dir, &i, &g, version, confirmado, &version_app)
+            })
         };
         // ya aplicado no se puede aplicar dos veces
         if hecho.is_ok() {

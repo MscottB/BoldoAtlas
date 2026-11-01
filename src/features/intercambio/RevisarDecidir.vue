@@ -40,7 +40,7 @@ const emit = defineEmits<{
   "update:resumen": [r: ResumenRevision];
   volver: [];
   salir: [];
-  aplicar: [version: number];
+  aplicar: [version: number, confirmado: boolean];
 }>();
 const { t } = useI18n();
 
@@ -56,6 +56,8 @@ const generacion = ref(0);
 const verificando = ref(false);
 const baseCambio = ref(false);
 const error = ref("");
+// Por qué falló «Aplicar». Una verificación que pasa no lo explica ni lo arregla (un disco lleno): sigue a la vista hasta otra acción.
+const errorAplicar = ref("");
 
 // Una decisión anota al instante; la comprobación completa va después, una a la vez, y solo sobre lo último decidido.
 let temporizador: ReturnType<typeof setTimeout> | undefined;
@@ -84,7 +86,7 @@ async function verificar() {
 onMounted(() => {
   const f = props.fallo;
   if (f?.codigo === "base_cambio") baseCambio.value = true;
-  else if (f && f.codigo !== "bloqueada" && f.codigo !== "sin_verificar") error.value = f.mensaje;
+  else if (f && f.codigo !== "bloqueada" && f.codigo !== "sin_verificar") errorAplicar.value = f.mensaje;
   if (!baseCambio.value && (f || !resumen.value.verificada)) void verificar();
 });
 onUnmounted(() => {
@@ -93,6 +95,7 @@ onUnmounted(() => {
 });
 
 async function decidir(tabla: string, id: string, eleccion: Eleccion) {
+  errorAplicar.value = "";
   const r = await intentar(() => revisionDecidir(props.trabajo, tabla, id, eleccion));
   if (!r.ok) {
     toast.error(r.mensaje);
@@ -105,6 +108,7 @@ async function decidir(tabla: string, id: string, eleccion: Eleccion) {
 }
 
 async function enBloque(accion: AccionMasiva, tipo: TipoCaso | null = null) {
+  errorAplicar.value = "";
   const r = await intentar(() => revisionMasivo(props.trabajo, accion, tipo));
   if (!r.ok) {
     toast.error(r.mensaje);
@@ -150,6 +154,7 @@ watch(
 
 const comparando = ref(false);
 async function compararDeNuevo() {
+  errorAplicar.value = "";
   comparando.value = true;
   const r = await intentarTrabajo(t("trabajos.importarComparar"), () =>
     importarComparar(props.trabajo, props.lugares),
@@ -169,13 +174,20 @@ async function compararDeNuevo() {
 
 // Eliminar mucho de una vez se confirma, con el número real: un archivo puede traer toda la base marcada como eliminada.
 const confirmandoBorrado = ref(false);
+const masa = computed(() => resumen.value.aplicara.borrar + resumen.value.aplicara.vaciar);
+const lineasMasa = computed(() =>
+  (["borrar", "vaciar"] as const)
+    .filter((k) => resumen.value.aplicara[k] > 0)
+    .map((k) => t(`intercambio.revisar.aplicara.${k}`, resumen.value.aplicara[k])),
+);
 function pedirAplicar() {
+  errorAplicar.value = "";
   if (resumen.value.borradoMasivo) confirmandoBorrado.value = true;
-  else aplicar();
+  else emit("aplicar", resumen.value.version, false);
 }
-function aplicar() {
+function aplicarConfirmado() {
   confirmandoBorrado.value = false;
-  emit("aplicar", resumen.value.version);
+  emit("aplicar", resumen.value.version, true);
 }
 
 // Salir con decisiones avisa antes: se pierden.
@@ -235,9 +247,11 @@ function salirYa(a: "volver" | "salir") {
           {{ t("intercambio.revisar.porResolver.referencia", bloqueos.referencia) }}
         </li>
         <li v-if="bloqueos.ciclo">{{ t("intercambio.revisar.porResolver.ciclo", bloqueos.ciclo) }}</li>
+        <li v-if="bloqueos.cadena">{{ t("intercambio.revisar.porResolver.cadena", bloqueos.cadena) }}</li>
       </ul>
     </div>
     <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
+    <p v-if="errorAplicar" role="alert" class="text-sm text-destructive">{{ errorAplicar }}</p>
 
     <ListaBloqueos
       :trabajo="trabajo"
@@ -265,6 +279,7 @@ function salirYa(a: "volver" | "salir") {
         :tipo="g.tipo"
         :total="g.total"
         :tablas="g.tablas"
+        :borrados-aqui="g.borradosAqui"
         :recarga="recarga"
         :generacion="generacion"
         :dudosas="resumen.dudosas > 0"
@@ -295,15 +310,15 @@ function salirYa(a: "volver" | "salir") {
     <AlertDialog v-model:open="confirmandoBorrado">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{{ t("intercambio.revisar.borrarMuchosTitulo", resumen.aplicara.borrar) }}</AlertDialogTitle>
+          <AlertDialogTitle>{{ t("intercambio.revisar.borrarMuchosTitulo", masa) }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ t("intercambio.revisar.borrarMuchosTexto", resumen.aplicara.borrar) }}
+            {{ lineasMasa.join(" · ") }}. {{ t("intercambio.revisar.borrarMuchosTexto") }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{{ t("intercambio.revisar.seguir") }}</AlertDialogCancel>
-          <AlertDialogAction @click="aplicar">
-            {{ t("intercambio.revisar.borrarMuchosSi", resumen.aplicara.borrar) }}
+          <AlertDialogAction @click="aplicarConfirmado">
+            {{ t("intercambio.revisar.borrarMuchosSi") }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

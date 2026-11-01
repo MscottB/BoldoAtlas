@@ -92,7 +92,7 @@ async function abrir() {
   resumen.value = r.valor;
   modo.value = r.valor.informe ? "agregar" : r.valor.parcial ? "revisar" : "reemplazar";
   lugares.value = Object.fromEntries(
-    (r.valor.informe?.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
+    (r.valor.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
   );
   paso.value = "revision";
 }
@@ -158,6 +158,7 @@ const destinos = computed(() =>
 async function comparar() {
   const propio = trabajo.actual.value;
   if (!propio) return;
+  falloAplicar.value = null;
   paso.value = "comparando";
   avance.value = { etapa: "comparando", hecho: 0, total: 0 };
   const r = await intentarTrabajo(t("trabajos.importarComparar"), () => importarComparar(propio, destinos.value));
@@ -174,6 +175,7 @@ async function comparar() {
 /** De la revisión a elegir qué hacer con el archivo: se pierden las decisiones, el archivo sigue abierto. */
 async function volverAOpciones() {
   const propio = trabajo.actual.value;
+  falloAplicar.value = null;
   revision.value = null;
   paso.value = "revision";
   if (propio) await importarVolver(propio);
@@ -184,7 +186,7 @@ const falloAplicar = ref<{ codigo: string; mensaje: string } | null>(null);
 // Ya no se puede volver atrás ni descartar: Rust aplica. El resultado se recoge siempre, también si se salió del panel.
 let aplicandoRevision = false;
 let fuera = false;
-async function aplicarRevision(version: number) {
+async function aplicarRevision(version: number, confirmado: boolean) {
   const propio = trabajo.actual.value;
   if (!propio) return;
   falloAplicar.value = null;
@@ -192,7 +194,7 @@ async function aplicarRevision(version: number) {
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   const r = await intentarTrabajo(t("trabajos.importarAplicarRevision"), () =>
-    revisionAplicar(propio, version),
+    revisionAplicar(propio, version, confirmado),
   );
   aplicandoRevision = false;
   if (!r.ok) {
@@ -232,7 +234,7 @@ function dejarRevision(propio: string) {
 }
 const lineasHechas = computed(() =>
   (informeRevision.value?.tablas ?? []).flatMap((f) =>
-    (["agregadas", "cambiadas", "borradas", "revividas", "unidas", "omitidas"] as const)
+    (["agregadas", "cambiadas", "vaciadas", "borradas", "localesBorradas", "revividas", "unidas", "omitidas"] as const)
       .filter((k) => f[k] > 0)
       .map((k) => ({ clave: `${f.tabla}-${k}`, tabla: f.tabla, que: k, n: f[k] })),
   ),
@@ -256,6 +258,7 @@ async function cancelar() {
   archivo.value = null;
   resumen.value = null;
   revision.value = null;
+  falloAplicar.value = null;
   await trabajo.soltar();
 }
 async function salir() {
@@ -404,10 +407,13 @@ onUnmounted(() => {
         </label>
       </fieldset>
 
-      <template v-if="modo !== 'reemplazar' && resumen.informe">
+      <template v-if="modo !== 'reemplazar'">
+        <p v-if="resumen.parcial && !resumen.ramas" role="status" class="text-sm">
+          {{ t("intercambio.importar.lugarDesconocido") }}
+        </p>
         <div v-if="Object.keys(lugares).length" class="grid gap-3 rounded-lg border p-3">
           <p class="text-sm font-medium">{{ t("intercambio.importar.dondeVa") }}</p>
-          <template v-for="r in resumen.informe.ramas" :key="r.id">
+          <template v-for="r in resumen.ramas ?? []" :key="r.id">
             <div v-if="r.pideLugar" class="grid max-w-lg gap-1.5">
               <Label :for="`lugar-${r.id}`">{{ r.nombre }}</Label>
               <select :id="`lugar-${r.id}`" v-model="lugares[r.id]" :class="claseSelect">
@@ -420,16 +426,16 @@ onUnmounted(() => {
           </template>
         </div>
         <ul class="grid gap-1 text-sm text-muted-foreground">
-          <template v-for="r in resumen.informe.ramas" :key="r.id">
+          <template v-for="r in resumen.ramas ?? []" :key="r.id">
             <li v-if="r.dentroDe && !r.existe">
               {{ t("intercambio.importar.vuelveA", { rama: r.nombre, nombre: r.dentroDe }) }}
             </li>
           </template>
-          <li v-if="resumen.informe.vaciadas">
+          <li v-if="modo === 'agregar' && resumen.informe?.vaciadas">
             {{ t("intercambio.importar.vaciadas", resumen.informe.vaciadas) }}
           </li>
         </ul>
-        <ListaDetalle v-if="modo === 'agregar'" :informe="resumen.informe" />
+        <ListaDetalle v-if="modo === 'agregar' && resumen.informe" :informe="resumen.informe" />
       </template>
 
       <p class="text-sm text-muted-foreground">

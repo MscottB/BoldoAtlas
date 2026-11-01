@@ -15,6 +15,7 @@ const props = defineProps<{
   tipo: TipoCaso;
   total: number;
   tablas: { tabla: string; total: number }[];
+  borradosAqui: number;
   recarga: number;
   generacion: number;
   dudosas: boolean;
@@ -93,7 +94,9 @@ const acciones = computed<AccionMasiva[]>(() => {
       return ["agregar_todo", "omitir_todo"];
     case "borrado_vs_editado":
     case "borrado_sin_conflicto":
-      return ["mantener_todo", "borrar_todo", "restaurar_todo"];
+      return props.borradosAqui > 0
+        ? ["mantener_todo", "borrar_todo", "restaurar_todo"]
+        : ["mantener_todo", "borrar_todo"];
     case "duplicado_persona":
       return ["unir_todo_mio"];
     default:

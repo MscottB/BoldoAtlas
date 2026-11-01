@@ -135,6 +135,20 @@ pub struct Verificacion {
     bloqueos: Vec<Bloqueo>,
     tablas: Vec<Aplicado>,
     inactivos: Vec<(&'static str, String, String)>,
+    choques_inactivos: Vec<(&'static str, String)>,
+}
+
+/// Qué le pasó a una fila en la pasada. Una fila cuenta una sola vez, por lo último que le pasó de verdad: lo que se muestra
+/// y lo que se informa son el cambio real de la base.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Efecto {
+    Agregada,
+    Cambiada,
+    Vaciada,
+    Borrada,
+    /// Eliminada, y el archivo no la trae.
+    BorradaLocal,
+    Revivida,
 }
 
 /// Tope de pasadas de reintento: un archivo hostil puede armar una cadena de renombres en el peor orden.
@@ -156,6 +170,9 @@ pub enum TipoBloqueo {
     Regla,
     Referencia,
     Ciclo,
+    /// Sigue chocando al llegar al tope de pasadas: puede ser una cadena de cambios demasiado larga. No se sabe si la otra
+    /// fila iba a quedar libre, así que no se ofrece darla de baja.
+    Cadena,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -228,6 +245,8 @@ pub struct PorTabla {
 pub struct Grupo {
     pub tipo: TipoCaso,
     pub total: u64,
+    /// Cuántos están borrados en esta base: solo con alguno tiene sentido «Restaurar lo que borré».
+    pub borrados_aqui: u64,
     pub tablas: Vec<PorTabla>,
 }
 
@@ -253,6 +272,7 @@ pub struct Bloqueos {
     pub regla: u64,
     pub referencia: u64,
     pub ciclo: u64,
+    pub cadena: u64,
     pub total: u64,
 }
 
@@ -633,6 +653,7 @@ impl Revision {
                     .bloqueos
                     .iter()
                     .find(|b| b.tabla == tabla && b.id == id && b.columna.is_none())
+                    .filter(|b| b.tipo != TipoBloqueo::Cadena || lado == Lado::Mio)
                     .ok_or_else(|| Fallo::de("desconocido", ""))?;
                 ChoqueGuardado {
                     lado,
@@ -798,11 +819,14 @@ impl Revision {
             for clave in v.inactivos {
                 self.arreglos.remove(&clave);
             }
+            for clave in v.choques_inactivos {
+                self.choques.remove(&clave);
+            }
         }
     }
 
     pub fn resumen(&self) -> ResumenRevision {
-        let mut por_tipo: BTreeMap<usize, (TipoCaso, u64, Vec<PorTabla>)> = BTreeMap::new();
+        let mut por_tipo: BTreeMap<usize, (TipoCaso, u64, Vec<PorTabla>, u64)> = BTreeMap::new();
         let mut a = Aplicara::default();
         let (mut dudosas, mut decisiones, mut duplicado) = (0u64, 0u64, 0u64);
         for x in &self.casos {
@@ -835,8 +859,9 @@ impl Revision {
                 TipoCaso::Union => 5,
                 TipoCaso::Desactivado => continue,
             };
-            let g = por_tipo.entry(orden).or_insert((c.tipo, 0, Vec::new()));
+            let g = por_tipo.entry(orden).or_insert((c.tipo, 0, Vec::new(), 0));
             g.1 += 1;
+            g.3 += u64::from(c.borrado_aqui);
             match g.2.last_mut() {
                 Some(p) if p.tabla == c.tabla => p.total += 1,
                 _ => g.2.push(PorTabla {
@@ -859,7 +884,9 @@ impl Revision {
                 a.borrar_locales += t.locales_borradas;
             }
         }
-        let borrado_masivo = a.borrar >= 20 || a.borrar * 5 > self.vivas_locales;
+        // vaciar también es perder datos: 25 unidades sin superior piden confirmar igual que 25 eliminadas
+        let masa = a.borrar + a.vaciar;
+        let borrado_masivo = masa >= 20 || masa * 5 > self.vivas_locales;
         let mut b = Bloqueos {
             duplicado,
             total: duplicado + self.bloqueos.len() as u64,
@@ -871,6 +898,7 @@ impl Revision {
                 TipoBloqueo::Regla => b.regla += 1,
                 TipoBloqueo::Referencia => b.referencia += 1,
                 TipoBloqueo::Ciclo => b.ciclo += 1,
+                TipoBloqueo::Cadena => b.cadena += 1,
             }
         }
         ResumenRevision {
@@ -878,8 +906,9 @@ impl Revision {
             verificada: self.verificada == Some(self.version),
             grupos: por_tipo
                 .into_values()
-                .map(|(tipo, total, tablas)| Grupo {
+                .map(|(tipo, total, tablas, borrados_aqui)| Grupo {
                     tipo,
+                    borrados_aqui,
                     total,
                     tablas,
                 })
@@ -1341,23 +1370,46 @@ struct Pasada<'a> {
     ahora: &'a str,
     parcial: comparar::Parcial<'a>,
     unidos: HashMap<(&'static str, String), String>,
-    insertadas: HashSet<(&'static str, String)>,
+    efectos: HashMap<(&'static str, String), Efecto>,
     /// Filas detenidas por un bloqueo: lo que apunta a ellas no es otro bloqueo.
     sin_resolver: HashSet<(&'static str, String)>,
     bloqueos: Vec<Bloqueo>,
     cuentas: BTreeMap<usize, Aplicado>,
     /// Arreglos que ya no hacían falta.
     inactivos: Vec<(&'static str, String, String)>,
+    /// Choques con los que de verdad se chocó.
+    choques_usados: HashSet<(&'static str, String)>,
 }
 
 struct Salida {
     inactivos: Vec<(&'static str, String, String)>,
+    choques_inactivos: Vec<(&'static str, String)>,
     tablas: Vec<Aplicado>,
     bloqueos: Vec<Bloqueo>,
     nombre_heredado: Option<String>,
 }
 
 impl Pasada<'_> {
+    /// Anota lo que le pasó a una fila. Lo que ya entró, se borró o volvió sigue contando así aunque después se le cambie algo.
+    fn marcar(&mut self, tabla: &'static str, id: &str, nuevo: Efecto) {
+        use Efecto as E;
+        let clave = (tabla, id.to_string());
+        match (self.efectos.get(&clave).copied(), nuevo) {
+            // estaba eliminada antes y lo sigue
+            (Some(E::Revivida), E::Borrada | E::BorradaLocal) => {
+                self.efectos.remove(&clave);
+            }
+            (
+                Some(E::Agregada | E::Revivida | E::Borrada | E::BorradaLocal),
+                E::Cambiada | E::Vaciada,
+            )
+            | (Some(E::Cambiada), E::Vaciada) => {}
+            _ => {
+                self.efectos.insert(clave, nuevo);
+            }
+        }
+    }
+
     fn cuenta(&mut self, tabla: &'static str) -> &mut Aplicado {
         self.cuentas
             .entry(comparar::posicion(tabla))
@@ -1436,8 +1488,7 @@ impl Pasada<'_> {
             }
             return Ok(false);
         }
-        self.insertadas.insert((c.tabla, c.id.clone()));
-        self.cuenta(c.tabla).agregadas += 1;
+        self.marcar(c.tabla, &c.id, Efecto::Agregada);
         Ok(true)
     }
 
@@ -1527,9 +1578,8 @@ impl Pasada<'_> {
                     return Ok(false);
                 }
                 self.unidos.insert((c.tabla, c.id.clone()), r.clone());
-                let cuenta = self.cuenta(c.tabla);
-                cuenta.unidas += 1;
-                cuenta.cambiadas += 1;
+                self.cuenta(c.tabla).unidas += 1;
+                self.marcar(c.tabla, r, Efecto::Cambiada);
                 Ok(true)
             }
             (Decision::Campos(0), _) => Ok(true),
@@ -1538,7 +1588,7 @@ impl Pasada<'_> {
                 if !self.actualizar(c.tabla, d, &c.id, *m, &fila, "")? {
                     return Ok(false);
                 }
-                self.cuenta(c.tabla).cambiadas += 1;
+                self.marcar(c.tabla, &c.id, Efecto::Cambiada);
                 Ok(true)
             }
             (Decision::Borrar, _) if c.borrado_aqui => Ok(true),
@@ -1561,7 +1611,7 @@ impl Pasada<'_> {
                     ),
                     [&cuando, self.ahora, &c.id],
                 )?;
-                self.cuenta(c.tabla).borradas += 1;
+                self.marcar(c.tabla, &c.id, Efecto::Borrada);
                 Ok(true)
             }
             (Decision::Mantener, _) => {
@@ -1569,7 +1619,7 @@ impl Pasada<'_> {
                 if !self.actualizar(c.tabla, d, &c.id, todas, &fila, ", deleted_at = NULL")? {
                     return Ok(false);
                 }
-                self.cuenta(c.tabla).revividas += 1;
+                self.marcar(c.tabla, &c.id, Efecto::Revivida);
                 Ok(true)
             }
         }
@@ -1624,7 +1674,7 @@ impl Pasada<'_> {
                    date('now', 'localtime'))), updated_at = ?2 WHERE id = ?3",
                 rusqlite::params![&fila[i], self.ahora, id],
             )?;
-            self.cuenta(tabla).cambiadas += 1;
+            self.marcar(tabla, id, Efecto::Cambiada);
         } else {
             self.dar_de_baja(tabla, id)?;
         }
@@ -1633,28 +1683,35 @@ impl Pasada<'_> {
 
     fn dar_de_baja(&mut self, tabla: &'static str, id: &str) -> Result<(), Fallo> {
         // lo que entró en esta misma pasada no se deja eliminado: es invisible y no se podría purgar
-        if self.insertadas.remove(&(tabla, id.to_string())) {
+        let clave = (tabla, id.to_string());
+        if self.efectos.get(&clave) == Some(&Efecto::Agregada) {
             self.dst
                 .execute(&format!("DELETE FROM {tabla} WHERE id = ?1"), [id])?;
-            let cuenta = self.cuenta(tabla);
-            cuenta.agregadas -= 1;
-            cuenta.omitidas += 1;
+            self.efectos.remove(&clave);
+            self.cuenta(tabla).omitidas += 1;
         } else {
             let n = self.dst.execute(
                 &format!("UPDATE {tabla} SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL"),
                 [self.ahora, id],
             )? as u64;
-            let solo_aqui = self.rev.indice(tabla, id).is_err();
-            let cuenta = self.cuenta(tabla);
-            cuenta.borradas += n;
-            if solo_aqui {
-                cuenta.locales_borradas += n;
+            if n > 0 {
+                // «solo está aquí» es que el archivo no la trae, no que no tenga un caso
+                let solo_aqui = fusion::estado_fila(self.imp, tabla, id)?.is_none();
+                self.marcar(
+                    tabla,
+                    id,
+                    if solo_aqui {
+                        Efecto::BorradaLocal
+                    } else {
+                        Efecto::Borrada
+                    },
+                );
             }
         }
         Ok(())
     }
 
-    fn resolver_choque(&mut self, x: &Decidido, d: &Tabla) -> Result<(), Fallo> {
+    fn resolver_choque(&mut self, x: &Decidido, d: &Tabla, tope: bool) -> Result<(), Fallo> {
         let c = &x.caso;
         let (propio, fila) = self.fila_final(x, d)?;
         let con_quien = rival(self.dst, c.tabla, d, &fila, &propio)?;
@@ -1662,6 +1719,7 @@ impl Pasada<'_> {
         if con_quien.is_none() && self.procesar(x, d)? {
             return Ok(());
         }
+        self.choques_usados.insert((c.tabla, c.id.clone()));
         // lo decidido era contra una fila concreta: si ahora choca con otra, hay que volver a decidir
         let guardado = self
             .rev
@@ -1673,7 +1731,8 @@ impl Pasada<'_> {
                 self.cuenta(c.tabla).omitidas += 1;
                 return Ok(());
             }
-            Some(_) => {
+            // al tope no se sabe si la otra fila iba a quedar libre: no se da de baja
+            Some(_) if !tope => {
                 if let Some(r) = &con_quien {
                     self.retirar_rival(c.tabla, d, r, &fila)?;
                     if self.procesar(x, d)? {
@@ -1681,11 +1740,13 @@ impl Pasada<'_> {
                     }
                 }
             }
-            None => {}
+            _ => {}
         }
         self.sin_resolver.insert((c.tabla, c.id.clone()));
         self.bloqueos.push(Bloqueo {
-            tipo: if con_quien.is_some() {
+            tipo: if tope {
+                TipoBloqueo::Cadena
+            } else if con_quien.is_some() {
                 TipoBloqueo::Unica
             } else {
                 TipoBloqueo::Regla
@@ -1765,7 +1826,9 @@ impl Pasada<'_> {
                         huella_otro: 0,
                     });
                 } else if x.accion == Arreglo::Vaciar {
-                    self.cuenta(tabla).vaciadas += 1;
+                    self.marcar(tabla, id, Efecto::Vaciada);
+                } else {
+                    self.marcar(tabla, id, Efecto::Cambiada);
                 }
             }
         }
@@ -1820,7 +1883,7 @@ impl Pasada<'_> {
                         ),
                         [self.ahora, &r.id],
                     )?;
-                    self.cuenta(r.tabla).vaciadas += 1;
+                    self.marcar(r.tabla, &r.id, Efecto::Vaciada);
                 }
             }
         }
@@ -1845,12 +1908,7 @@ fn pasada(
         .into_iter()
         .map(|r| (r.tabla.to_string(), r.id, r.columna))
         .collect();
-    let contar_fk = |c: &Connection| -> rusqlite::Result<i64> {
-        c.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |f| {
-            f.get(0)
-        })
-    };
-    let fk_antes = contar_fk(dst)?;
+    let fk_antes = fk_rotas(dst)?;
     let mut p = Pasada {
         dst,
         imp,
@@ -1862,11 +1920,12 @@ fn pasada(
             resumidas: &rev.resumidas,
         },
         unidos: rev.unidos.clone(),
-        insertadas: HashSet::new(),
+        efectos: HashMap::new(),
         sin_resolver: HashSet::new(),
         bloqueos: Vec::new(),
         cuentas: BTreeMap::new(),
         inactivos: Vec::new(),
+        choques_usados: HashSet::new(),
     };
     for tabla in tablas() {
         let d = rev.esquema.get(tabla).ok_or("tabla")?;
@@ -1878,6 +1937,7 @@ fn pasada(
             .casos
             .partition_point(|c| comparar::posicion(c.caso.tabla) <= posicion);
         let mut cola: Vec<&Decidido> = rev.casos[inicio..fin].iter().collect();
+        let mut tope = true;
         for _ in 0..rev.limite_pasadas {
             if !seguir() {
                 return Err(Fallo::de("cancelado", ""));
@@ -1892,11 +1952,12 @@ fn pasada(
             let atascado = siguen.len() == cola.len();
             cola = siguen;
             if cola.is_empty() || atascado {
+                tope = false;
                 break;
             }
         }
         for x in cola {
-            p.resolver_choque(x, d)?;
+            p.resolver_choque(x, d, tope)?;
         }
     }
     p.aplicar_arreglos()?;
@@ -1920,13 +1981,33 @@ fn pasada(
         });
     }
     let nombre_heredado = fusion::heredar_nombre(dst, meta)?;
+    for ((tabla, _), efecto) in std::mem::take(&mut p.efectos) {
+        let c = p.cuenta(tabla);
+        match efecto {
+            Efecto::Agregada => c.agregadas += 1,
+            Efecto::Cambiada => c.cambiadas += 1,
+            Efecto::Vaciada => c.vaciadas += 1,
+            Efecto::Borrada => c.borradas += 1,
+            Efecto::BorradaLocal => {
+                c.borradas += 1;
+                c.locales_borradas += 1;
+            }
+            Efecto::Revivida => c.revividas += 1,
+        }
+    }
+    let choques_inactivos = rev
+        .choques
+        .keys()
+        .filter(|k| !p.choques_usados.contains(*k))
+        .cloned()
+        .collect();
     let inactivos = p.inactivos;
     let (tablas, bloqueos) = (p.cuentas.into_values().collect(), p.bloqueos);
     // nunca se aplica con referencias rotas, aunque lo anterior tuviera un error
     let sin_bloqueos =
         bloqueos.is_empty() && rev.casos.iter().all(|x| x.decision != Decision::Pendiente);
     // lo que ya estaba roto en esta base no es de esta fusión
-    if sin_bloqueos && contar_fk(dst)? > fk_antes {
+    if sin_bloqueos && hay_fk_nueva(dst, &fk_antes)? {
         return Err(Fallo::de("contenido_invalido", "resultado"));
     }
     Ok(Salida {
@@ -1934,7 +2015,22 @@ fn pasada(
         bloqueos,
         nombre_heredado,
         inactivos,
+        choques_inactivos,
     })
+}
+
+type FkRota = (String, Option<i64>, String, i64);
+
+fn fk_rotas(c: &Connection) -> rusqlite::Result<HashSet<FkRota>> {
+    c.prepare("SELECT \"table\", rowid, parent, fkid FROM pragma_foreign_key_check")?
+        .query_map([], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?)))?
+        .collect()
+}
+
+/// Por identidad, no por cantidad: arreglar una y crear otra también es una nueva. La comprobación identifica fila y clave, no
+/// el valor: que una fila viva pase a apuntar a otro id inexistente lo marca `rotas`.
+fn hay_fk_nueva(c: &Connection, antes: &HashSet<FkRota>) -> rusqlite::Result<bool> {
+    Ok(!fk_rotas(c)?.is_subset(antes))
 }
 
 /// La base cambió desde que se comparó: lo decidido ya no corresponde a lo que hay.
@@ -1973,6 +2069,7 @@ pub fn verificar(
         bloqueos,
         tablas: s.tablas,
         inactivos: s.inactivos,
+        choques_inactivos: s.choques_inactivos,
     })
 }
 
@@ -2008,10 +2105,15 @@ pub fn aplicar(
     i: &Importacion,
     r: &Revision,
     version: u64,
+    confirmado: bool,
     version_app: &str,
 ) -> Result<InformeRevision, Fallo> {
     if r.version != version || r.verificada != Some(version) {
         return Err(Fallo::de("sin_verificar", ""));
+    }
+    // no depende de la interfaz: mucho de una vez se confirma
+    if r.resumen().borrado_masivo && !confirmado {
+        return Err(Fallo::de("falta_confirmar", ""));
     }
     avisar_cambios(conn, r)?;
     if r.casos.iter().any(|x| x.decision == Decision::Pendiente) || !r.bloqueos.is_empty() {
@@ -2158,7 +2260,7 @@ mod tests {
             let dir = self.dir.path().join("respaldos");
             std::fs::create_dir_all(&dir).unwrap();
             let v = r.version;
-            aplicar(&mut self.local, &dir, &self.i, r, v, "1.2.3")
+            aplicar(&mut self.local, &dir, &self.i, r, v, true, "1.2.3")
         }
 
         fn aplicar(&mut self, r: &mut Revision) -> InformeRevision {
@@ -3912,7 +4014,10 @@ mod tests {
         assert!(r.resumen().decisiones >= 2, "salir avisa");
         b.verificar(&mut r);
         let a = r.resumen().aplicara;
-        assert!(a.vaciar >= 1, "{a:?}");
+        assert_eq!(
+            a.vaciar, 0,
+            "la hija nueva entra ya sin superior: es una fila agregada"
+        );
         assert_eq!(a.borrar_locales, 1, "el puesto de aquí: {a:?}");
         assert!(a.borrar >= a.borrar_locales);
         // y deshacerlo vuelve a mostrar los bloqueos
@@ -3954,11 +4059,24 @@ mod tests {
         let resumen = r.resumen();
         // la que quedó libre justo al tope entra en el último intento: las demás, a decidir
         assert_eq!(
-            resumen.bloqueos.unica,
+            resumen.bloqueos.cadena,
             12 - MAX_PASADAS as u64 - 1,
             "{:?}",
             r.bloqueos
         );
+        assert_eq!(resumen.bloqueos.unica, 0);
+        // y ahí no se ofrece dar de baja a la otra fila: podía quedar libre
+        let b0 = r.bloqueos[0].clone();
+        let mut r2 = r;
+        assert_eq!(
+            r2.decidir(b0.tabla, &b0.id, Eleccion::ConservarArchivo)
+                .unwrap_err()
+                .codigo,
+            "desconocido"
+        );
+        r2.decidir(b0.tabla, &b0.id, Eleccion::ConservarMio)
+            .unwrap();
+        let r = r2;
         assert_eq!(resumen.bloqueos.regla, 0);
         // cancelar corta la pasada
         let e = verificar(&mut b.local, &b.i, &r, || false).err().unwrap();
@@ -4172,6 +4290,296 @@ mod tests {
         );
     }
 
+    // --- Ronda de arreglo 2 ---
+
+    /// Cada tabla: id → fila sin `updated_at`.
+    fn foto(c: &Connection) -> HashMap<(&'static str, String), (Vec<Value>, bool)> {
+        let mut m = HashMap::new();
+        for t in tablas() {
+            let d = fusion::describir(c, t).unwrap();
+            let (i_id, i_act, i_baja) = (
+                d.columnas.iter().position(|x| x == "id").unwrap(),
+                d.columnas.iter().position(|x| x == "updated_at").unwrap(),
+                d.columnas.iter().position(|x| x == "deleted_at").unwrap(),
+            );
+            let sql = format!("SELECT {} FROM {t}", d.columnas.join(", "));
+            let mut q = c.prepare(&sql).unwrap();
+            let mut f = q.query([]).unwrap();
+            while let Some(x) = f.next().unwrap() {
+                let mut fila: Vec<Value> =
+                    (0..d.columnas.len()).map(|i| x.get(i).unwrap()).collect();
+                let id = match &fila[i_id] {
+                    Value::Text(t) => t.clone(),
+                    _ => panic!("id"),
+                };
+                let viva = fila[i_baja] == Value::Null;
+                fila[i_act] = Value::Null;
+                fila[i_baja] = Value::Null;
+                m.insert((t, id), (fila, viva));
+            }
+        }
+        m
+    }
+
+    /// Lo mostrado en «Al aplicar», el informe y el cambio real de la base dicen lo mismo.
+    fn aplicar_y_cuadrar(b: &mut Banco, r: &mut Revision) -> Aplicara {
+        b.verificar(r);
+        let mostrado = r.resumen().aplicara;
+        let antes = foto(&b.local);
+        let h = b.aplicar(r);
+        let despues = foto(&b.local);
+        let mut real = Aplicara::default();
+        for (k, (fila, viva)) in &despues {
+            match antes.get(k) {
+                None => real.agregar += 1,
+                Some((_, va)) if *va && !*viva => {
+                    real.borrar += 1;
+                    if fusion::estado_fila(&b.i.solo_lectura().unwrap(), k.0, &k.1)
+                        .unwrap()
+                        .is_none()
+                    {
+                        real.borrar_locales += 1;
+                    }
+                }
+                Some((_, va)) if !*va && *viva => real.revivir += 1,
+                Some((f, _)) if *viva && f != fila => real.cambiar += 1,
+                _ => {}
+            }
+        }
+        assert!(
+            antes.keys().all(|k| despues.contains_key(k)),
+            "nunca se borra de verdad"
+        );
+        let suma = |f: fn(&Aplicado) -> u64| h.tablas.iter().map(f).sum::<u64>();
+        // cambiar y vaciar son los dos un cambio de fila: separados en lo mostrado, una sola cosa en el diff
+        assert_eq!(mostrado.agregar, real.agregar, "agregar");
+        assert_eq!(mostrado.borrar, real.borrar, "borrar");
+        assert_eq!(mostrado.borrar_locales, real.borrar_locales, "solo locales");
+        assert_eq!(mostrado.revivir, real.revivir, "revivir");
+        assert_eq!(
+            mostrado.cambiar + mostrado.vaciar,
+            real.cambiar,
+            "cambiar y vaciar"
+        );
+        assert_eq!(suma(|t| t.agregadas), mostrado.agregar);
+        assert_eq!(suma(|t| t.borradas), mostrado.borrar);
+        assert_eq!(suma(|t| t.locales_borradas), mostrado.borrar_locales);
+        assert_eq!(suma(|t| t.revividas), mostrado.revivir);
+        assert_eq!(suma(|t| t.cambiadas), mostrado.cambiar);
+        assert_eq!(suma(|t| t.vaciadas), mostrado.vaciar);
+        mostrado
+    }
+
+    #[test]
+    fn f2_reasignar_cuenta_como_un_cambio() {
+        let mut b = banco();
+        con_puesto_local(&mut b);
+        let mut r = b.abrir();
+        r.decidir(
+            "puestos",
+            "p-local",
+            Eleccion::Reasignar {
+                columna: "unidad_id".into(),
+                a: "otra".into(),
+            },
+        )
+        .unwrap();
+        let a = aplicar_y_cuadrar(&mut b, &mut r);
+        assert_eq!(a.cambiar, 1, "{a:?}");
+        assert_eq!(a.borrar_locales, 0, "{a:?}");
+    }
+
+    #[test]
+    fn f2_resolver_todas_cuadra() {
+        let mut b = banco();
+        con_rama_nueva(&mut b);
+        con_puesto_local(&mut b);
+        let mut r = b.abrir();
+        r.decidir("unidades", "u-nueva", Eleccion::Omitir).unwrap();
+        r.masivo(Masivo {
+            accion: AccionMasiva::ResolverRotas,
+            tipo: None,
+        });
+        let a = aplicar_y_cuadrar(&mut b, &mut r);
+        assert_eq!(a.borrar_locales, 1, "solo el puesto de aquí: {a:?}");
+    }
+
+    #[test]
+    fn f2_una_fila_que_el_archivo_trae_no_es_solo_local() {
+        // ana toma el correo de una persona de aquí, y conservar lo del archivo da de baja a esa persona
+        let mut b = banco();
+        b.mia(&format!(
+            "INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at) VALUES ('de-aqui', 'Eva', 'eva@x.cl', '{F0}', '{F0}');"
+        ));
+        b.archivo(&format!(
+            "UPDATE trabajadores SET correo = 'eva@x.cl', updated_at = '{F1}' WHERE id = 'ana';"
+        ));
+        let mut r = b.abrir();
+        assert_eq!(r.resumen().bloqueos.unica, 1);
+        r.decidir("trabajadores", "ana", Eleccion::ConservarArchivo)
+            .unwrap();
+        let a = aplicar_y_cuadrar(&mut b, &mut r);
+        assert_eq!((a.cambiar, a.borrar, a.borrar_locales), (1, 1, 1), "{a:?}");
+
+        // con una rival que el archivo también trae, no es solo local
+        let mut b = banco();
+        b.archivo(&format!(
+            "UPDATE trabajadores SET correo = 'libre@x.cl' WHERE id = 'bruno';
+             UPDATE trabajadores SET correo = 'bruno@x.cl', updated_at = '{F1}' WHERE id = 'ana';"
+        ));
+        let mut r = b.abrir();
+        r.decidir("trabajadores", "bruno", eleccion_campos(&[]))
+            .unwrap();
+        b.verificar(&mut r);
+        r.decidir("trabajadores", "ana", Eleccion::ConservarArchivo)
+            .unwrap();
+        r.masivo(Masivo {
+            accion: AccionMasiva::ResolverRotas,
+            tipo: None,
+        });
+        let a = aplicar_y_cuadrar(&mut b, &mut r);
+        assert_eq!(a.borrar_locales, 0, "{a:?}");
+        assert!(a.borrar >= 1, "{a:?}");
+    }
+
+    #[test]
+    fn f2_una_fila_no_cuenta_dos_veces() {
+        // cambiada por el archivo y después descartada: es una baja, no un cambio y una baja
+        let mut b = banco();
+        con_puesto_local(&mut b);
+        b.archivo(&format!("UPDATE conexiones SET etiqueta = 'x', updated_at = '{F1}', deleted_at = NULL WHERE id = 'x-corte';"));
+        let imp = b.i.solo_lectura().unwrap();
+        let rev = b.abrir();
+        let tx = b.local.transaction().unwrap();
+        let mut seguir = || true;
+        let s = pasada(&tx, &imp, &b.i.meta, &rev, F2, &mut seguir).unwrap();
+        drop(tx);
+        let mut vistos = HashSet::new();
+        assert!(
+            s.tablas.iter().all(|t| vistos.insert(t.tabla)),
+            "una línea por tabla"
+        );
+    }
+
+    #[test]
+    fn f2_arreglar_una_referencia_y_romper_otra_no_pasa() {
+        let (_d, c) = base_con_datos();
+        c.pragma_update(None, "foreign_keys", "OFF").unwrap();
+        c.execute_batch("UPDATE unidades SET parent_id = 'nadie' WHERE id = 'otra';")
+            .unwrap();
+        let antes = fk_rotas(&c).unwrap();
+        assert_eq!(antes.len(), 1);
+        assert!(!hay_fk_nueva(&c, &antes).unwrap());
+        // misma cantidad, otra rota
+        c.execute_batch(
+            "UPDATE unidades SET parent_id = 'raiz' WHERE id = 'otra';
+             UPDATE unidades SET parent_id = 'nadie' WHERE id = 'hija';",
+        )
+        .unwrap();
+        assert_eq!(fk_rotas(&c).unwrap().len(), 1);
+        assert!(hay_fk_nueva(&c, &antes).unwrap());
+    }
+
+    #[test]
+    fn f2_un_choque_que_ya_no_hace_falta_deja_de_contar() {
+        let mut b = banco();
+        con_otro_titular(&mut b);
+        let mut r = b.abrir();
+        r.decidir("asignaciones", "as-rama", Eleccion::Mantener)
+            .unwrap();
+        b.verificar(&mut r);
+        r.decidir("asignaciones", "as-nueva", Eleccion::ConservarMio)
+            .unwrap();
+        b.verificar(&mut r);
+        assert_eq!(r.choques.len(), 1);
+        // al aplicar el borrado de la mía ya no hay choque
+        r.decidir("asignaciones", "as-rama", Eleccion::Borrar)
+            .unwrap();
+        b.verificar(&mut r);
+        assert!(r.choques.is_empty());
+        b.aplicar(&mut r);
+        assert!(
+            b.viva("asignaciones", "as-nueva"),
+            "no se quedó fuera por un choque viejo"
+        );
+    }
+
+    #[test]
+    fn f2_restaurar_solo_si_hay_algo_borrado_aqui() {
+        let mut b = banco();
+        b.archivo(&format!(
+            "UPDATE conexiones SET deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'x-dentro';"
+        ));
+        let r = b.abrir();
+        let g = r
+            .resumen()
+            .grupos
+            .into_iter()
+            .find(|g| g.tipo == TipoCaso::BorradoSinConflicto)
+            .unwrap();
+        assert_eq!(g.borrados_aqui, 0);
+        let mut b = banco();
+        b.mia(&format!(
+            "UPDATE conexiones SET deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'x-dentro';"
+        ));
+        let r = b.abrir();
+        let g = r
+            .resumen()
+            .grupos
+            .into_iter()
+            .find(|g| g.tipo == TipoCaso::BorradoSinConflicto)
+            .unwrap();
+        assert_eq!(g.borrados_aqui, 1);
+    }
+
+    #[test]
+    fn f2_vaciar_mucho_pide_confirmar_y_rust_lo_exige() {
+        // 25 unidades de aquí que quedarían sin superior
+        let mut b = banco();
+        let mut sql = String::new();
+        for n in 0..25 {
+            sql += &format!(
+                "INSERT INTO unidades (id, tipo_id, nombre, parent_id, created_at, updated_at) VALUES ('h{n}', '{TIPO}', 'H{n}', 'hija', '{F0}', '{F0}');"
+            );
+        }
+        // base grande, para que no cuente el 20 %
+        for n in 0..400 {
+            sql += &format!(
+                "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('m{n:03}', 'M', '{F0}', '{F0}');"
+            );
+        }
+        b.mia(&sql);
+        con_puesto_local(&mut b);
+        let mut r = b.abrir();
+        r.masivo(Masivo {
+            accion: AccionMasiva::ResolverRotas,
+            tipo: None,
+        });
+        b.verificar(&mut r);
+        let resumen = r.resumen();
+        assert_eq!(resumen.aplicara.vaciar, 25, "{:?}", resumen.aplicara);
+        assert!(resumen.borrado_masivo);
+        let dir = b.dir.path().join("respaldos");
+        std::fs::create_dir_all(&dir).unwrap();
+        let v = r.version;
+        let e = aplicar(&mut b.local, &dir, &b.i, &r, v, false, "1")
+            .err()
+            .unwrap();
+        assert_eq!(e.codigo, "falta_confirmar");
+        assert_eq!(
+            b.uno("SELECT parent_id FROM unidades WHERE id = 'h0'")
+                .unwrap(),
+            "hija",
+            "no escribe"
+        );
+        assert_eq!(b.respaldos(), 0, "ni deja respaldo");
+        aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1").unwrap();
+        assert_eq!(
+            b.uno("SELECT parent_id FROM unidades WHERE id = 'h0'"),
+            None
+        );
+    }
+
     // --- La base cambió, el trabajo, y lo que se aplica ---
 
     #[test]
@@ -4197,7 +4605,9 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let revision = b.revision_datos();
         let v = r.version;
-        let e = aplicar(&mut b.local, &dir, &b.i, &r, v, "1").err().unwrap();
+        let e = aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1")
+            .err()
+            .unwrap();
         assert_eq!((e.codigo, e.detalle.as_str()), ("base_cambio", "1"));
         assert_eq!(
             b.uno("SELECT nombre FROM trabajadores WHERE id = 'ana'")
@@ -4274,7 +4684,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         // otra decisión después de lo que se vio
         assert_eq!(
-            aplicar(&mut b.local, &dir, &b.i, &r, vista, "1")
+            aplicar(&mut b.local, &dir, &b.i, &r, vista, true, "1")
                 .err()
                 .unwrap()
                 .codigo,
@@ -4283,7 +4693,7 @@ mod tests {
         // sin verificar
         let v = r.version;
         assert_eq!(
-            aplicar(&mut b.local, &dir, &b.i, &r, v, "1")
+            aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1")
                 .err()
                 .unwrap()
                 .codigo,
@@ -4296,7 +4706,7 @@ mod tests {
         r.anotar_verificacion(vieja);
         let v = r.version;
         assert_eq!(
-            aplicar(&mut b.local, &dir, &b.i, &r, v, "1")
+            aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1")
                 .err()
                 .unwrap()
                 .codigo,
@@ -4304,7 +4714,7 @@ mod tests {
         );
         b.verificar(&mut r);
         let v = r.version;
-        aplicar(&mut b.local, &dir, &b.i, &r, v, "1").unwrap();
+        aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1").unwrap();
         assert_eq!(
             b.uno("SELECT nombre FROM trabajadores WHERE id = 'ana'")
                 .unwrap(),
@@ -4361,7 +4771,7 @@ mod tests {
         let dir = b.dir.path().join("respaldos");
         std::fs::create_dir_all(&dir).unwrap();
         assert_eq!(
-            aplicar(&mut b.local, &dir, &b.i, &r, s, "1")
+            aplicar(&mut b.local, &dir, &b.i, &r, s, true, "1")
                 .err()
                 .unwrap()
                 .codigo,
@@ -4554,7 +4964,7 @@ mod tests {
         let v = r.version;
         let respaldos = dir.join("respaldos");
         std::fs::create_dir_all(&respaldos).unwrap();
-        aplicar(c, &respaldos, i, &r, v, "1.2.3").unwrap();
+        aplicar(c, &respaldos, i, &r, v, true, "1.2.3").unwrap();
     }
 
     #[test]

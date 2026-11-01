@@ -149,6 +149,8 @@ export interface ResumenImportacion {
   informe: InformeImportacion | null;
   /** Código de por qué falló. */
   motivoRevision: string | null;
+  /** Cada rama frente a esta base, también si la revisión falló. null si no se pudo saber. */
+  ramas: RamaImportada[] | null;
 }
 
 /** `raices` null: toda la base. */
@@ -225,7 +227,7 @@ export interface ResumenRevision {
   version: number;
   /** Lo que dice `bloqueos` vale para las decisiones de ahora. */
   verificada: boolean;
-  grupos: { tipo: TipoCaso; total: number; tablas: { tabla: string; total: number }[] }[];
+  grupos: { tipo: TipoCaso; total: number; borradosAqui: number; tablas: { tabla: string; total: number }[] }[];
   iguales: number;
   dudosas: number;
   /** Lo decidido a mano: se pierde si se sale. */
@@ -241,7 +243,15 @@ export interface ResumenRevision {
     /** De las que se borran, las que solo están en esta base. */
     borrarLocales: number;
   };
-  bloqueos: { duplicado: number; unica: number; regla: number; referencia: number; ciclo: number; total: number };
+  bloqueos: {
+    duplicado: number;
+    unica: number;
+    regla: number;
+    referencia: number;
+    ciclo: number;
+    cadena: number;
+    total: number;
+  };
   resolverRotas: boolean;
   /** Se eliminaría mucho de una vez: «Aplicar» pide confirmar. */
   borradoMasivo: boolean;
@@ -286,7 +296,7 @@ export interface DetalleCaso {
 }
 
 export interface FilaBloqueo {
-  tipo: "unica" | "regla" | "referencia" | "ciclo";
+  tipo: "unica" | "regla" | "referencia" | "ciclo" | "cadena";
   tabla: string;
   id: string;
   nombre: string;
@@ -381,9 +391,16 @@ export function revisionOpciones(
   return invoke("revision_opciones", { trabajo, destino, texto });
 }
 
-/** `version`: la de las decisiones que se vieron. Si hubo otra después, o la base cambió, no escribe nada. */
-export function revisionAplicar(trabajo: string, version: number): Promise<InformeRevision> {
-  return invoke("revision_aplicar", { trabajo, version, versionApp: __APP_VERSION__ });
+/**
+ * `version`: la de las decisiones que se vieron. Si hubo otra después, o la base cambió, no escribe nada.
+ * `confirmado`: se confirmó una eliminación masiva; Rust lo exige si corresponde.
+ */
+export function revisionAplicar(
+  trabajo: string,
+  version: number,
+  confirmado: boolean,
+): Promise<InformeRevision> {
+  return invoke("revision_aplicar", { trabajo, version, confirmado, versionApp: __APP_VERSION__ });
 }
 
 export function intercambioCancelar(trabajo: string): Promise<void> {

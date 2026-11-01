@@ -56,7 +56,7 @@ For two copies that kept working separately: you compare the file with your data
 4. Resolve whatever appears in **To resolve**. While anything is left, **Apply** is stopped and a notice at the top says what is missing.
 5. Press **Apply**. The **When applying** box says beforehand how much is added, changed, deleted or left empty, including what is only in your database. If a lot is deleted at once, it asks you to confirm with the number.
 
-![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=1316}
+![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=1280}
 
 | Case | What it is | What comes selected | What you can do |
 |---|---|---|---|
