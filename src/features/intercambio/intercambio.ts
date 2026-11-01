@@ -1,12 +1,12 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "vue-sonner";
-import { intercambioCancelar } from "@/db/cliente";
+import { intercambioCancelar, type ResumenImportacion } from "@/db/cliente";
 import type { Unidad } from "@/db/tipos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
 import { nuevoId } from "@/lib/ids";
-import { conTrabajo } from "@/lib/trabajos";
+import { conTrabajo, iniciarTrabajo } from "@/lib/trabajos";
 
 export const RUTA_INTERCAMBIO = "/importar-exportar";
 
@@ -154,6 +154,32 @@ export const conFilas = <T extends { tabla: string }>(filas: T[], valor: (f: T) 
  * global lo sigue mostrando hasta que se copie o se descarte a sabiendas. Vive solo en memoria.
  */
 export const codigoSinCopiar = ref<string | null>(null);
+
+/**
+ * Una revisión con decisiones que se dejó atrás. Igual que el código: la navegación no se retiene, y un diálogo global
+ * pregunta si se vuelve o se descarta. Las decisiones siguen en Rust, junto al trabajo, hasta que se elija.
+ */
+export interface RevisionDejada {
+  trabajo: string;
+  decisiones: number;
+  lugares: Record<string, string | null>;
+  /** Lo que se mostró del archivo antes de la revisión, para poder volver a las opciones. */
+  importacion: ResumenImportacion;
+  /** Se pidió volver: el panel de importar la retoma al montarse. */
+  volviendo: boolean;
+}
+export const revisionDejada = ref<RevisionDejada | null>(null);
+
+let terminarRevision: (() => void) | null = null;
+
+/** Mientras haya decisiones sin aplicar, cerrar la app pregunta: se perderían. */
+export function revisionConDecisiones(hay: boolean) {
+  if (hay && !terminarRevision) terminarRevision = iniciarTrabajo(i18n.global.t("trabajos.revisionAbierta"));
+  if (!hay && terminarRevision) {
+    terminarRevision();
+    terminarRevision = null;
+  }
+}
 
 /** Copia el código y avisa. true si se pudo. */
 export async function copiarCodigo(codigo: string): Promise<boolean> {

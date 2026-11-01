@@ -350,10 +350,10 @@ Vista Indicadores: tarjetas con totales de la organización, tabla por unidad or
 ### Escenarios
 - **Guardar como escenario:** copia la base actual con `VACUUM INTO` a `escenarios/<nombre>.db` (archivo interno sin cifrar: no sale del equipo), con nuevo `db_id`, `escenario_nombre` y `escenario_origen_id`. Para compartir un escenario se exporta como cualquier base (`.boldo` cifrado).
 - **Abrir escenario:** cambia la base activa; la barra superior muestra la insignia del escenario y "Volver a la base principal".
-- **Comparar:** elige dos bases (p. ej. principal vs escenario) y muestra el resultado de `diff.ts` en solo lectura: unidades nuevas, eliminadas, movidas (cambio de `parent_id`), cambios de jefatura, personas reasignadas, y diferencia de indicadores (dotación, vacantes) por unidad. Exportable a Excel. Modo "lado a lado" (pedido del autor): los dos árboles en paralelo con encuadre sincronizado y las diferencias resaltadas.
+- **Comparar:** elige dos bases (p. ej. principal vs escenario) y muestra el resultado de `comparar` (Rust, §9) en solo lectura: unidades nuevas, eliminadas, movidas (cambio de `parent_id`), cambios de jefatura, personas reasignadas, y diferencia de indicadores (dotación, vacantes) por unidad. Exportable a Excel. Modo "lado a lado" (pedido del autor): los dos árboles en paralelo con encuadre sincronizado y las diferencias resaltadas.
 - **Costo de la reorganización (pedido del autor, 2026-11-01):** con costos activos, la comparación agrega la diferencia de costo por unidad y en total, y avisa si alguna de las dos bases tiene puestos sin costo, porque entonces la diferencia es parcial.
 - **Notas por cambio (pedido del autor, 2026-11-01):** en un escenario se puede explicar el porqué de un cambio en una unidad o un puesto (tabla `escenario_notas`: `entidad`, `entidad_id`, `texto` + comunes, solo con contenido en escenarios). Salen junto al cambio en la comparación y en su Excel.
-- Pasar un escenario a la base principal = importar con "Reemplazar todo" o "Fusionar" (sección 9), sin flujo nuevo.
+- Pasar un escenario a la base principal = importar con "Reemplazar todo" o "Revisar y decidir" (sección 9), sin flujo nuevo.
 
 ## 9. Exportar e importar `.boldo`
 
@@ -370,29 +370,49 @@ Vista Indicadores: tarjetas con totales de la organización, tabla por unidad or
 - Lo que quedaría apuntando fuera de la selección se corta en la copia y se resume antes de guardar ("2 conexiones y 1 jefatura no se incluyen"): conexiones con un extremo fuera, `jefe_id` de una persona que no va (la jefatura queda vacía en la copia) y roles RACI de personas que no van.
 - Se arma en Rust: `VACUUM INTO` a un temporal, se borran de ese temporal las filas fuera del alcance en una transacción, se cifra y se borra el temporal. `meta` de la copia agrega `alcance` (`completo` | `parcial`), los ids de las raíces exportadas y el `db_id` de origen.
 
-**Importar:** se pide el código; Rust descifra a un archivo temporal dentro de `datos/`. Si el archivo es **parcial**, solo se ofrece "Fusionar" ("Reemplazar todo" queda deshabilitado con la explicación: borraría el resto de la base) y, si la unidad superior de una rama exportada no existe en la base de destino, se pregunta dónde colocarla: dentro de una unidad elegida o como árbol independiente; después sigue la revisión de fusión normal. Si el código no corresponde o el archivo fue alterado, el descifrado falla y se muestra "El código no es correcto o el archivo está dañado", sin tocar la base local. Con el contenido descifrado se abre una segunda conexión de solo lectura, se valida el esquema (sección 6) y se elige el modo; el temporal se borra al terminar o al cancelar. **Antes de aplicar cualquiera de los dos modos se guarda un respaldo** en `respaldos/` con fecha (se conservan los últimos 20).
+**Importar:** se pide el código; Rust descifra a un archivo temporal dentro de `datos/`. Si el archivo es **parcial**, "Reemplazar todo" queda deshabilitado con la explicación (borraría el resto de la base) y, si la unidad superior de una rama exportada no existe en la base de destino, se pregunta dónde colocarla: dentro de una unidad elegida o como árbol independiente. Si el código no corresponde o el archivo fue alterado, el descifrado falla y se muestra "El código no es correcto o el archivo está dañado", sin tocar la base local. Con el contenido descifrado se abre una segunda conexión de solo lectura, se valida el esquema (sección 6) y se elige el modo: "Reemplazar todo", "Agregar lo nuevo" o "Revisar y decidir"; el temporal se borra al terminar o al cancelar. **Antes de aplicar cualquier modo se guarda un respaldo** en `respaldos/` con fecha. De `boldo-antes-de-importar-` se conservan los últimos 20, al crear uno nuevo; `boldo-antes-de-reemplazar-` no se poda.
 
 ### Modo A — Reemplazar todo
 La base local se sustituye por el archivo importado (tras el respaldo).
 
-### Modo B — Fusionar con revisión
-Comparación por `id` en todas las tablas de negocio. Lógica pura en `src/features/sync/diff.ts` (la misma que usa Escenarios → Comparar).
+### Modo B — Agregar lo nuevo
+Lo que no existe entra y lo que existe se queda como está; lo que no entra se informa. Sin decisiones por registro.
 
-| Caso | Detección | Por defecto | Opciones | ¿Bloquea "Aplicar"? |
+### Modo C — Revisar y decidir
+Disponible con archivos completos y parciales. Comparación por `id` en todas las tablas de negocio, en Rust: `src-tauri/src/intercambio/comparar.rs` recorre las dos bases en orden de `id` sin cargarlas, porque un archivo puede traer cientos de miles de filas, y no escribe nada. Es lo que reutiliza Escenarios → Comparar, con sus dos conexiones. Las decisiones también viven en Rust (`revision.rs`), junto al identificador del trabajo: a la interfaz solo llega la página que se ve, y lo aplicado sale de ahí, no de lo que la interfaz envíe al final.
+
+«Mío» es la base local. `updated_at` y `deleted_at` vienen de un archivo no confiable: solo sirven para preseleccionar. Una fecha futura o que no es una fecha se marca, nunca cuenta como la más reciente, y no borra ni revive nada sin que alguien lo decida.
+
+| Caso | Detección | Por defecto | Opciones | ¿Bloquea «Aplicar»? |
 |---|---|---|---|---|
-| Idéntico | mismos campos | ignorar (oculto) | — | no |
-| Nuevo | `id` solo en importado | agregar | desmarcar | no |
-| Diferente | mismo `id`, campos distintos | campo a campo; preselecciona el `updated_at` más reciente | "mío"/"importado" por registro o campo; "aceptar todos los más recientes" | no |
-| Borrado vs editado | un lado `deleted_at`, el otro `updated_at` posterior | mantener | borrar / mantener | no |
-| Borrado sin conflicto | un lado borrado, el otro sin cambios posteriores | aplicar borrado | revertir | no |
-| Duplicado de persona | trabajadores con distinto `id` y mismo correo normalizado | — | unir (se conserva uno y se reasignan `jefe_id` y `actividad_roles`) / editar correo de uno | **sí** |
-| Otra regla única violada | p. ej. dos Aprobadores en una actividad, dos etiquetas con el mismo nombre | — | elegir cuál conservar | **sí** |
-| Referencia rota | tras la fusión, una FK apunta a algo inexistente o borrado | marcar | reasignar a… / dejar vacío si la columna lo permite / descartar el registro | **sí** |
-| Ciclo | la jerarquía resultante forma un círculo | marcar | elegir qué `parent_id` cambiar | **sí** |
+| Idéntico | mismos campos (sin contar las marcas de tiempo; NULL y vacío son iguales), o eliminado en los dos lados | ignorar (oculto) | — | no |
+| Solo aquí | `id` solo en la base local | se queda: nunca se borra por no venir | — | no |
+| Nuevo | `id` solo en el archivo, vivo | agregar | desmarcar | no |
+| Eliminado solo en el archivo | `id` solo en el archivo, eliminado | no entra, salvo un valor de mantenedor que una fila viva usa | — | no |
+| Se une | valor de mantenedor o etiqueta con otro `id` y el mismo nombre normalizado | se usa el de aquí, y no cuenta como diferencia en lo que lo usa | — | no |
+| Diferente | mismo `id`, campos distintos | campo a campo; preselecciona el `updated_at` más reciente y confiable | «mío»/«archivo» por registro o campo; «aceptar todos los más recientes», «todo lo mío», «todo lo del archivo» | no |
+| Borrado vs editado | un lado `deleted_at`, el otro `updated_at` posterior, o una fecha no confiable | no cambia nada: lo que está aquí se mantiene y lo borrado aquí sigue borrado | borrar / mantener / restaurar lo borrado aquí con los datos del archivo | no |
+| Borrado sin conflicto | un lado borrado, el otro sin cambios posteriores | aplicar el borrado (si el borrado es local, sigue borrado) | revertir | no |
+| Duplicado de persona | persona nueva y persona local con el mismo correo normalizado | — | unir (se conserva la ficha local, con sus datos o los del archivo, y se reasignan `asignaciones` y `actividad_roles`) / editar el correo de la del archivo | **sí** |
+| Valor con el mismo `id` renombrado al nombre de otro, y otra regla única | p. ej. dos titulares vigentes en un puesto, dos Aprobadores en una actividad, dos vistas con el mismo nombre en un árbol, un valor renombrado al nombre de otro | — | elegir cuál conservar. Si gana la del archivo, la local se da de baja; una asignación se cierra en vez de borrarse | **sí** |
+| Misma etiqueta en la misma unidad, misma rama guardada | otra fila con otro `id` para lo mismo | se usa la de aquí | — | no |
+| Mezcla no válida | los campos elegidos no cumplen una regla de la fila (`hasta >= desde`, `origen <> destino`) | — | conservar lo mío, o elegir otros campos | **sí** |
+| Referencia rota | tras aplicar, una fila viva (también una que solo está aquí) apunta a algo inexistente o eliminado. Apuntar a un valor de mantenedor desactivado es válido. Las que ya estaban rotas antes de aplicar no cuentan | marcar | reasignar a… / dejar vacío si la columna lo permite / descartar el registro; o resolver todas: vacío lo que se pueda, fuera lo demás | **sí** |
+| Ciclo | la jerarquía resultante forma un círculo | marcar | reasignar su superior / dejarla sin superior | **sí** |
 
-Los casos se agrupan por tipo con contador. Todo se aplica en una única transacción; si falla, no se escribe nada.
+Primero se ve un resumen por tipo de caso con contador; el detalle se abre si se quiere, paginado de a 50 y sin mostrar nunca un id. `foto_png` y `config` se comparan sin mostrar su contenido, y un texto se corta a 1.000 caracteres.
 
-Limitación aceptada: sin una base común de referencia, "Diferente" no distingue quién cambió qué; por eso se muestra siempre y se preselecciona el más reciente.
+En un archivo parcial, lo que la exportación corta no es una diferencia: su raíz vuelve a colgar de su superior o queda donde está, una jefatura vacía porque su puesto no viajó no borra la local, lo que no viajó no se borra, y una persona sin asignación vigente en el archivo, o que trae vacíos esos seis campos, viaja resumida: lo que trae vacío (teléfono, tipo de contrato, sede, jornada, foto, notas) nunca se ofrece ni vacía sus datos locales, tampoco al unirla o recuperarla. Vigente se calcula como en `alcance.rs`.
+
+Un arreglo de una referencia o un ciclo guarda el valor roto: si ya no está roto con ese valor, deja de aplicar y deja de contar como decidido. Solo se decide sobre bloqueos que una verificación mostró.
+
+**Antes de aplicar:** las reglas de referencias, ciclos e índices únicos se revisan con la misma pasada que aplica, deshecha al final (`verificar`), sobre la selección real; corre sola al decidir. Si una regla única choca solo por el orden de escritura (una cadena de renombres) se reintenta hasta 8 pasadas, y lo que falte queda como bloqueo de «cadena demasiado larga», donde solo se puede conservar lo propio; dos filas que se cambian un valor entre sí quedan como bloqueo.
+
+**Al aplicar:** respaldo previo con nombre propio (`boldo-antes-de-importar-`) y una única transacción; si algo no calza, no se escribe nada. Si se eliminan o vacían al menos 20 registros, o más del 20 % de la base, se pide confirmar con el número real, y Rust lo exige. Lo mostrado y el informe salen de la misma pasada: cada fila cuenta una vez, por lo que de verdad le pasó, y «solo local» es lo que el archivo no trae. Solo vale para el identificador de trabajo y la versión de las decisiones que se verificó. Cada caso, y cada decisión sobre un bloqueo con su fila y su rival, guarda una huella de la fila local: si una cambió desde entonces, se avisa sin aplicar y se ofrece comparar de nuevo, y lo decidido sobre lo que no cambió se conserva.
+
+Las decisiones se pierden al cancelar. Salir de la revisión con decisiones avisa antes; si se sale navegando, la navegación no se retiene y un diálogo global pregunta si se vuelve o se descarta. Mientras haya decisiones, cerrar la app pregunta, como con un trabajo en curso.
+
+Limitación aceptada: sin una base común de referencia, «Diferente» no distingue quién cambió qué; por eso se muestra siempre y se preselecciona el más reciente.
 
 ## 10. Carga masiva desde Excel/CSV
 
@@ -540,7 +560,7 @@ Las capturas del sitio se toman a mano de la base de ejemplo en v1 (automatizarl
 ## 15. Pruebas
 
 - **Vitest (obligatorio):**
-  - `diff.ts`: cada caso de la tabla de la sección 9, incluidos ciclos, duplicados, reglas únicas y referencias rotas.
+  - `comparar.rs` y `revision.rs`: cada caso de la tabla de la sección 9, incluidos ciclos, duplicados, reglas únicas y referencias rotas.
   - Indicadores: dotación directa/total, vacantes, personas a cargo, cobertura RACI sobre un árbol de ejemplo.
   - `validar.ts` de carga masiva: rutas nuevas/existentes, correos repetidos, valores inválidos, CSV con `;`.
   - Derivación de ruta Gerencia › Área › Subárea y validación de ciclos al mover.

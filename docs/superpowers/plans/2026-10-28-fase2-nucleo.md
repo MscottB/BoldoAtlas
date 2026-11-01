@@ -629,11 +629,11 @@ Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del
 
 Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase pública es siempre «te ayuda a cumplir», nunca «cumple»: las obligaciones de la Ley 21.719 (Chile) y del RGPD (UE) son de quien trata los datos. La 19e se publica cuando 19b, 19c y 19d estén en main, no antes.
 
-### Task 22a: Exportar e importar (spec §9, sin el modo B campo a campo)
+### Task 22a: Exportar e importar (spec §9, sin la revisión campo a campo)
 - Archivo `.boldo` cifrado, con toda la base o una o más ramas. Importar con «Reemplazar todo» o «Agregar lo nuevo»: lo que ya existe se conserva y se informa. El archivo importado no es confiable: límites, `integrity_check` y esquema exacto.
 
-### Task 22b: Fusión con revisión (spec §9, modo B)
-- Comparar lo importado con lo local, decidir por registro o por campo, y resolver duplicados, referencias rotas y ciclos antes de aplicar, en una sola transacción.
+### Task 22b: Revisar y decidir (spec §9, modo C)
+- Comparar lo importado con lo local, decidir por registro o por campo, y resolver duplicados, referencias rotas y ciclos antes de aplicar, en una sola transacción. La comparación vive en Rust (`src-tauri/src/intercambio/comparar.rs`).
 
 ### Task 19b: Borrado definitivo y datos de una persona
 - Suprimir a una persona de verdad, también de los respaldos antiguos tras un plazo, y del historial de la 19c. Exportar los datos de una persona (acceso y portabilidad).
@@ -762,4 +762,4 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 - Guardar como escenario, abrir, insignia en la barra y volver a la base principal. La portable los guarda dentro de su carpeta. Definir con la 19d cómo van cifrados: la spec los describe sin cifrar, y hay que corregirla.
 
 ### Task 26b: Comparar y lado a lado (spec §8 "Escenarios")
-- Comparación en solo lectura con `src/features/sync/diff.ts` de la 22b, diferencia de indicadores (24c) y de costo (23e), exportable a Excel (23a), y lado a lado con encuadre sincronizado.
+- Comparación en solo lectura con `comparar::comparar` de la 22b (Rust, dos conexiones), diferencia de indicadores (24c) y de costo (23e), exportable a Excel (23a), y lado a lado con encuadre sincronizado.

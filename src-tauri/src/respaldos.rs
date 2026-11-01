@@ -10,8 +10,12 @@ const PREFIJO: &str = "boldo-";
 const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
 /// Copia que se hace antes de reemplazar los datos por una organización nueva o el ejemplo: tampoco se poda.
 const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
+/// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: de estas quedan las últimas `CONSERVAR_IMPORTAR`.
+const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
 pub const CONSERVAR: usize = 10;
+/// Cuántos `boldo-antes-de-importar-` quedan al crear uno nuevo.
+pub const CONSERVAR_IMPORTAR: usize = 20;
 
 /// Error con un código estable que el frontend traduce (`respaldos.error.<codigo>`); `detalle` es técnico.
 #[derive(Debug, Serialize)]
@@ -73,6 +77,8 @@ pub struct Respaldo {
     pub seguridad: bool,
     /// Seguridad hecha antes de reemplazar los datos (si no, antes de restaurar).
     pub reemplazo: bool,
+    /// Seguridad hecha antes de agregar o fusionar un archivo importado.
+    pub importacion: bool,
 }
 
 /// `AAAAMMDD-HHMM` en hora local.
@@ -90,14 +96,19 @@ struct Entrada {
     n: u32,
     seguridad: bool,
     reemplazo: bool,
+    importacion: bool,
 }
 
-/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
+/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-|antes-de-importar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
 fn entrada(nombre: &str) -> Option<Entrada> {
     let reemplazo = nombre.strip_prefix(PREFIJO_REEMPLAZO);
-    let (seguridad, resto) = match (reemplazo, nombre.strip_prefix(PREFIJO_SEGURIDAD)) {
-        (Some(r), _) | (_, Some(r)) => (true, r),
-        _ => (false, nombre.strip_prefix(PREFIJO)?),
+    let importacion = nombre.strip_prefix(PREFIJO_IMPORTAR);
+    let especial = reemplazo
+        .or(importacion)
+        .or_else(|| nombre.strip_prefix(PREFIJO_SEGURIDAD));
+    let (seguridad, resto) = match especial {
+        Some(r) => (true, r),
+        None => (false, nombre.strip_prefix(PREFIJO)?),
     };
     let resto = resto.strip_suffix(".db")?;
     let sello = resto.get(..13)?;
@@ -123,6 +134,7 @@ fn entrada(nombre: &str) -> Option<Entrada> {
         n,
         seguridad,
         reemplazo: reemplazo.is_some(),
+        importacion: importacion.is_some(),
     })
 }
 
@@ -209,6 +221,27 @@ pub fn respaldar_antes_de_reemplazar(
     volcar(conn, dir, PREFIJO_REEMPLAZO, sello)
 }
 
+/// Respaldo previo a agregar o fusionar un archivo importado: va aparte de los automáticos, y de estos quedan los últimos
+/// `CONSERVAR_IMPORTAR`. Los demás tipos no se tocan.
+pub fn respaldar_antes_de_importar(
+    conn: &Connection,
+    dir: &Path,
+    sello: &str,
+) -> Result<String, Fallo> {
+    let nombre = volcar(conn, dir, PREFIJO_IMPORTAR, sello)?;
+    // el respaldo ya está hecho: si la poda falla, se reintenta la próxima vez
+    for viejo in entradas(dir)
+        .unwrap_or_default()
+        .iter()
+        // el recién hecho nunca, aunque su sello sea anterior: el reloj pudo cambiar
+        .filter(|e| e.importacion && e.nombre != nombre)
+        .skip(CONSERVAR_IMPORTAR - 1)
+    {
+        let _ = fs::remove_file(dir.join(&viejo.nombre));
+    }
+    Ok(nombre)
+}
+
 fn revision(ruta: &Path) -> Option<i64> {
     let c = Connection::open_with_flags(ruta, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
     c.query_row(
@@ -243,6 +276,7 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
                 revision,
                 seguridad: e.seguridad,
                 reemplazo: e.reemplazo,
+                importacion: e.importacion,
                 nombre: e.nombre,
             })
         })
@@ -802,5 +836,68 @@ mod tests {
         assert_eq!(revision(&otra), 3);
         // un intento fallido no deja una copia «antes de restaurar» suelta
         assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));
+    }
+
+    #[test]
+    fn la_poda_de_importar_nunca_se_lleva_el_respaldo_recien_hecho() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("boldo.db")).unwrap();
+        conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
+            .unwrap();
+        let carpeta = dir.path().join("respaldos");
+        fs::create_dir(&carpeta).unwrap();
+        // 20 con sellos posteriores: el reloj volvió atrás
+        let mut posteriores = Vec::new();
+        for n in 0..CONSERVAR_IMPORTAR {
+            posteriores.push(
+                respaldar_antes_de_importar(&conn, &carpeta, &format!("20300101-{n:04}")).unwrap(),
+            );
+        }
+        let nuevo = respaldar_antes_de_importar(&conn, &carpeta, "20200101-0000").unwrap();
+        assert!(carpeta.join(&nuevo).exists(), "el recién hecho sigue");
+        assert!(
+            !carpeta.join(&posteriores[0]).exists(),
+            "se va el más viejo de los demás"
+        );
+        assert_eq!(
+            entradas(&carpeta)
+                .unwrap()
+                .iter()
+                .filter(|e| e.importacion)
+                .count(),
+            CONSERVAR_IMPORTAR
+        );
+    }
+
+    #[test]
+    fn de_los_respaldos_de_importar_quedan_los_ultimos_20_y_los_demas_no_se_tocan() {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join("boldo.db");
+        let conn = Connection::open(&bd).unwrap();
+        conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
+            .unwrap();
+        let carpeta = dir.path().join("respaldos");
+        fs::create_dir(&carpeta).unwrap();
+        let reemplazo = respaldar_antes_de_reemplazar(&conn, &carpeta, "20200101-0000").unwrap();
+        let comun = respaldar(&conn, &carpeta, "20200101-0001").unwrap();
+        let mut hechos = Vec::new();
+        for n in 0..CONSERVAR_IMPORTAR + 3 {
+            hechos.push(
+                respaldar_antes_de_importar(&conn, &carpeta, &format!("20200201-{n:04}")).unwrap(),
+            );
+        }
+        let quedan = |nombre: &str| carpeta.join(nombre).exists();
+        assert!(
+            hechos[..3].iter().all(|n| !quedan(n)),
+            "los tres más viejos se fueron"
+        );
+        assert!(
+            hechos[3..].iter().all(|n| quedan(n)),
+            "los últimos 20 siguen"
+        );
+        assert!(
+            quedan(&reemplazo) && quedan(&comun),
+            "los demás tipos no se tocan"
+        );
     }
 }

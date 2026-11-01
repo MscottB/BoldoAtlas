@@ -23,6 +23,7 @@ import BarraSuperior from "@/components/BarraSuperior.vue";
 import PaletaComandos from "@/components/PaletaComandos.vue";
 import DialogoSalir from "@/components/DialogoSalir.vue";
 import DialogoCodigoSinCopiar from "@/features/intercambio/DialogoCodigoSinCopiar.vue";
+import DialogoRevisionDejada from "@/features/intercambio/DialogoRevisionDejada.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
@@ -230,6 +231,7 @@ function escEnBarra(e: KeyboardEvent) {
     <DialogoActualizacion />
     <DialogoNovedades />
     <DialogoCodigoSinCopiar />
+    <DialogoRevisionDejada />
     <DialogoSalir />
     <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>

@@ -3,7 +3,7 @@ import { indiceHijos } from "@/features/arbol/jerarquia";
 import type { Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { trabajos, ultimoFin } from "@/lib/trabajos";
-import { filasVisibles, intentar, intentarTrabajo } from "./intercambio";
+import { filasVisibles, intentar, intentarTrabajo, revisionConDecisiones } from "./intercambio";
 
 const unidad = (id: string, parent_id: string | null) => ({ id, parent_id, nombre: id, orden: 0 }) as Unidad;
 const indice = indiceHijos([unidad("r", null), unidad("a", "r"), unidad("b", "a"), unidad("c", "r")]);
@@ -72,6 +72,54 @@ describe("intentar", () => {
     expect(r).toMatchObject({ mensaje: expect.stringContaining("512 MB") });
     const filas = await intentar(() => Promise.reject({ codigo: "muy_pesado_total", detalle: "filas" }));
     expect(filas).toMatchObject({ mensaje: expect.stringContaining("500.000 filas") });
+  });
+});
+
+describe("revisión con decisiones", () => {
+  beforeEach(() => {
+    trabajos.value = [];
+    revisionConDecisiones(false);
+    trabajos.value = [];
+  });
+
+  it("mientras haya decisiones cuenta como trabajo en curso, una sola vez", () => {
+    revisionConDecisiones(true);
+    revisionConDecisiones(true);
+    expect(trabajos.value).toEqual([i18n.global.t("trabajos.revisionAbierta")]);
+    revisionConDecisiones(false);
+    expect(trabajos.value).toEqual([]);
+    revisionConDecisiones(false);
+    expect(trabajos.value).toEqual([]);
+  });
+
+  it("cada grupo y cada acción en bloque tiene su texto, en los dos idiomas", () => {
+    const { te } = i18n.global;
+    for (const locale of ["es", "en"] as const) {
+      for (const tipo of [
+        "nuevo",
+        "diferente",
+        "borrado_vs_editado",
+        "borrado_sin_conflicto",
+        "duplicado_persona",
+        "union",
+      ]) {
+        expect(te(`intercambio.revisar.grupo.${tipo}.titulo`, locale), tipo).toBe(true);
+        expect(te(`intercambio.revisar.grupo.${tipo}.ayuda`, locale), tipo).toBe(true);
+      }
+      for (const a of ["todo_mio", "todo_archivo", "agregar_todo", "omitir_todo", "mantener_todo", "borrar_todo"])
+        expect(te(`intercambio.revisar.masivo.${a}`, locale), a).toBe(true);
+      for (const b of ["unica", "regla", "referencia", "ciclo"])
+        expect(te(`intercambio.revisar.bloqueo.${b}`, locale), b).toBe(true);
+      for (const r of ["conservar_mio", "conservar_archivo", "vaciar", "descartar"])
+        expect(te(`intercambio.revisar.resuelto.${r}`, locale), r).toBe(true);
+    }
+  });
+
+  it("los fallos propios de la revisión dicen qué pasó y que no se aplicó nada", async () => {
+    for (const codigo of ["base_cambio", "bloqueada", "sin_verificar"]) {
+      const r = await intentar(() => Promise.reject({ codigo, detalle: "" }));
+      expect(r).toMatchObject({ ok: false, codigo, mensaje: expect.stringContaining("No se aplicó nada") });
+    }
   });
 });
 

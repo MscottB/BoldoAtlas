@@ -1,8 +1,10 @@
 //! Exportar e importar archivos `.boldo`. Todo el cifrado y la lectura del archivo ocurren aquí; no usa el camino de SQL
 //! de la interfaz (`db::consultar`, `db::lote`) y la interfaz nunca envía una ruta.
 pub mod alcance;
+pub mod comparar;
 pub mod formato;
 pub mod fusion;
+pub mod revision;
 pub mod validar;
 
 use crate::db;
@@ -13,7 +15,7 @@ use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 use validar::MetaArchivo;
 
 /// Copia en claro de una base, dentro de `datos/`. Se borra al soltarla; si la app se cierra de golpe, la borra
@@ -44,13 +46,21 @@ pub struct Importacion {
     meta: MetaArchivo,
 }
 
+impl Importacion {
+    pub fn solo_lectura(&self) -> Result<Connection, Fallo> {
+        validar::solo_lectura(self.temporal.ruta())
+    }
+}
+
 #[derive(Default)]
 struct EstadoSesion {
     trabajo: Option<String>,
     exportacion: Option<Temporal>,
     destino: Option<PathBuf>,
     archivo: Option<PathBuf>,
-    importacion: Option<Importacion>,
+    importacion: Option<Arc<Importacion>>,
+    /// «Revisar y decidir»: las decisiones viven aquí, junto al trabajo, y se pierden con él.
+    revision: Option<Arc<RwLock<revision::Revision>>>,
 }
 
 /// Cancelados que se recuerdan, por si su comando aún no empieza.
@@ -169,6 +179,7 @@ impl Sesiones {
         }
         e.archivo = Some(ruta);
         e.importacion = None;
+        e.revision = None;
         Ok(())
     }
 
@@ -180,21 +191,61 @@ impl Sesiones {
         e.archivo.clone().ok_or_else(no_esta)
     }
 
-    pub fn guardar_importacion(&self, trabajo: &str, i: Importacion) -> Result<(), Fallo> {
+    pub fn guardar_importacion(
+        &self,
+        trabajo: &str,
+        i: impl Into<Arc<Importacion>>,
+    ) -> Result<(), Fallo> {
         let mut e = self.estado();
         if e.trabajo.as_deref() != Some(trabajo) {
             return Err(cancelado());
         }
-        e.importacion = Some(i);
+        e.importacion = Some(i.into());
+        // otra importación: lo decidido era sobre la anterior
+        e.revision = None;
         Ok(())
     }
 
-    pub fn tomar_importacion(&self, trabajo: &str) -> Result<Importacion, Fallo> {
+    pub fn tomar_importacion(&self, trabajo: &str) -> Result<Arc<Importacion>, Fallo> {
         let mut e = self.estado();
         if e.trabajo.as_deref() != Some(trabajo) {
             return Err(no_esta());
         }
         e.importacion.take().ok_or_else(no_esta)
+    }
+
+    /// La importación abierta, sin tomarla: se puede seguir revisando, y cancelar borra el temporal cuando nadie la use.
+    pub fn importacion(&self, trabajo: &str) -> Result<Arc<Importacion>, Fallo> {
+        let e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.importacion.clone().ok_or_else(no_esta)
+    }
+
+    pub fn guardar_revision(&self, trabajo: &str, r: revision::Revision) -> Result<(), Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(cancelado());
+        }
+        e.revision = Some(Arc::new(RwLock::new(r)));
+        Ok(())
+    }
+
+    pub fn revision(&self, trabajo: &str) -> Result<Arc<RwLock<revision::Revision>>, Fallo> {
+        let e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.revision.clone().ok_or_else(no_esta)
+    }
+
+    /// Volver a elegir qué hacer con el archivo: las decisiones se pierden, la importación sigue abierta.
+    pub fn soltar_revision(&self, trabajo: &str) {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() == Some(trabajo) {
+            e.revision = None;
+        }
     }
 }
 
@@ -207,6 +258,8 @@ pub struct ResumenImportacion {
     pub informe: Option<Informe>,
     /// Por qué falló: solo el código, que nunca lleva datos personales.
     pub motivo_revision: Option<&'static str>,
+    /// Cada rama frente a esta base, también si la revisión falló. None si ni eso se pudo saber: no se puede preguntar dónde va.
+    pub ramas: Option<Vec<fusion::RamaImportada>>,
 }
 
 /// Lo que quedó en `meta` al reemplazar: nada más que lo que la app escribe y lee.
@@ -303,7 +356,7 @@ pub fn abrir(
     Ok(Importacion { temporal, meta })
 }
 
-fn ahora(conn: &Connection) -> Result<String, Fallo> {
+pub(crate) fn ahora(conn: &Connection) -> Result<String, Fallo> {
     Ok(
         conn.query_row("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')", [], |f| {
             f.get(0)
@@ -314,6 +367,7 @@ fn ahora(conn: &Connection) -> Result<String, Fallo> {
 /// Qué pasaría al agregar: la pasada completa, deshecha al final.
 pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportacion, Fallo> {
     let imp = validar::solo_lectura(i.temporal.ruta())?;
+    let ramas = fusion::ramas(conn, &imp, &i.meta).ok();
     let marca = ahora(conn)?;
     let pasada = (|| {
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -328,6 +382,7 @@ pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportac
         parcial: i.meta.parcial,
         informe,
         motivo_revision,
+        ramas,
     })
 }
 
@@ -340,7 +395,7 @@ pub fn agregar(
     version_app: &str,
 ) -> Result<Informe, Fallo> {
     let imp = validar::solo_lectura(i.temporal.ruta())?;
-    respaldos::respaldar_antes_de_reemplazar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
+    respaldos::respaldar_antes_de_importar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
     let marca = ahora(conn)?;
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let informe = fusion::fusionar(&tx, &imp, &i.meta, lugares, &marca)?;
@@ -612,7 +667,7 @@ mod tests {
             respaldos::listar(&respaldos)
                 .unwrap()
                 .iter()
-                .any(|r| r.reemplazo),
+                .any(|r| r.importacion && r.seguridad),
             "siempre un respaldo antes de aplicar"
         );
     }
@@ -852,6 +907,7 @@ mod tests {
         let i = importacion(d.path(), &origen, dd.path());
         let r = revisar(&mut conn, &i).unwrap();
         assert!(r.informe.is_none());
+        assert!(r.ramas.is_some(), "las ramas se saben igual");
         assert_eq!(r.motivo_revision, Some("contenido_invalido"));
         let mut slot = Some(conn);
         reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();

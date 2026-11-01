@@ -1,5 +1,5 @@
 use crate::db::{self, Sentencia};
-use crate::intercambio::{self, Sesiones, alcance, fusion};
+use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Mutex, TryLockError};
+use std::sync::{Mutex, RwLock, TryLockError};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::{DialogExt, FileDialogBuilder};
@@ -510,6 +510,230 @@ pub async fn importar_reemplazar(app: AppHandle, trabajo: String) -> Result<(), 
     .await
     .map_err(|e| e.to_string())??;
     app.restart()
+}
+
+/// «Revisar y decidir»: compara el archivo con la base, sin escribir nada. Comparar de nuevo conserva las decisiones sobre las
+/// filas que no cambiaron.
+#[tauri::command]
+pub async fn importar_comparar(
+    app: AppHandle,
+    trabajo: String,
+    lugares: HashMap<String, Option<String>>,
+) -> Result<revision::ResumenRevision, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let i = sesiones.importacion(&trabajo)?;
+        let anterior = sesiones.revision(&trabajo).ok();
+        let guardia = anterior.as_ref().map(|a| leer(a));
+        let r = estado.con_conexion(|c| {
+            revision::abrir(
+                c,
+                &i,
+                lugares,
+                guardia.as_deref(),
+                seguimiento(&app, &trabajo, "comparando"),
+            )
+        })?;
+        drop(guardia);
+        let resumen = r.resumen();
+        sesiones.guardar_revision(&trabajo, r)?;
+        Ok(resumen)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Volver a elegir qué hacer con el archivo. Las decisiones se pierden; la interfaz ya avisó.
+#[tauri::command]
+pub fn importar_volver(sesiones: State<Sesiones>, trabajo: String) {
+    sesiones.soltar_revision(&trabajo);
+}
+
+fn leer(r: &RwLock<revision::Revision>) -> std::sync::RwLockReadGuard<'_, revision::Revision> {
+    r.read().unwrap_or_else(|p| p.into_inner())
+}
+
+fn escribir(r: &RwLock<revision::Revision>) -> std::sync::RwLockWriteGuard<'_, revision::Revision> {
+    r.write().unwrap_or_else(|p| p.into_inner())
+}
+
+/// Lo que necesita mirar la revisión, ya abierta: la base y el archivo, solo para leer.
+fn con_revision<T: Send + 'static>(
+    app: AppHandle,
+    trabajo: String,
+    f: impl FnOnce(&Connection, &Connection, &revision::Revision) -> Result<T, Fallo> + Send + 'static,
+) -> tauri::async_runtime::JoinHandle<Result<T, Fallo>> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let (i, r) = (
+            sesiones.importacion(&trabajo)?,
+            sesiones.revision(&trabajo)?,
+        );
+        let imp = i.solo_lectura()?;
+        let guardia = leer(&r);
+        estado.con_conexion(|c| f(c, &imp, &guardia))
+    })
+}
+
+#[tauri::command]
+pub async fn revision_resumen(
+    app: AppHandle,
+    trabajo: String,
+) -> Result<revision::ResumenRevision, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let r = app.state::<Sesiones>().revision(&trabajo)?;
+        let resumen = leer(&r).resumen();
+        Ok(resumen)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn revision_pagina(
+    app: AppHandle,
+    trabajo: String,
+    filtro: revision::Filtro,
+) -> Result<revision::Pagina, Fallo> {
+    con_revision(app, trabajo, move |c, imp, r| r.pagina(c, imp, &filtro))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn revision_detalle(
+    app: AppHandle,
+    trabajo: String,
+    tabla: String,
+    id: String,
+) -> Result<revision::DetalleCaso, Fallo> {
+    con_revision(app, trabajo, move |c, imp, r| {
+        r.detalle(c, imp, &tabla, &id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Anota una decisión. Lo aplicado sale de aquí, no de lo que la interfaz mande al final.
+#[tauri::command]
+pub async fn revision_decidir(
+    app: AppHandle,
+    trabajo: String,
+    tabla: String,
+    id: String,
+    eleccion: revision::Eleccion,
+) -> Result<revision::ResumenRevision, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let r = app.state::<Sesiones>().revision(&trabajo)?;
+        let mut g = escribir(&r);
+        g.decidir(&tabla, &id, eleccion)?;
+        Ok(g.resumen())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn revision_masivo(
+    app: AppHandle,
+    trabajo: String,
+    accion: revision::Masivo,
+) -> Result<revision::ResumenRevision, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let r = app.state::<Sesiones>().revision(&trabajo)?;
+        let mut g = escribir(&r);
+        g.masivo(accion);
+        Ok(g.resumen())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// La misma pasada que al aplicar, deshecha al final: dice qué detendría «Aplicar» con las decisiones de ahora.
+#[tauri::command]
+pub async fn revision_verificar(
+    app: AppHandle,
+    trabajo: String,
+) -> Result<revision::ResumenRevision, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let (i, r) = (
+            sesiones.importacion(&trabajo)?,
+            sesiones.revision(&trabajo)?,
+        );
+        let v = {
+            let g = leer(&r);
+            let sesiones = &sesiones;
+            let trabajo = &trabajo;
+            estado.con_conexion(|c| revision::verificar(c, &i, &g, || sesiones.sigue(trabajo)))?
+        };
+        let mut g = escribir(&r);
+        g.anotar_verificacion(v);
+        Ok(g.resumen())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn revision_bloqueos(
+    app: AppHandle,
+    trabajo: String,
+    desde: usize,
+    cuantos: usize,
+) -> Result<revision::PaginaBloqueos, Fallo> {
+    con_revision(app, trabajo, move |c, imp, r| {
+        r.pagina_bloqueos(c, imp, desde, cuantos)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// A qué se puede reasignar una referencia: filas vivas de esta base.
+#[tauri::command]
+pub async fn revision_opciones(
+    app: AppHandle,
+    trabajo: String,
+    destino: String,
+    texto: String,
+) -> Result<Vec<revision::Opcion>, Fallo> {
+    con_revision(app, trabajo, move |c, _, _| {
+        revision::opciones(c, &destino, &texto)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Aplica lo decidido en esta revisión, en una sola transacción y con respaldo. `version` es la revisión que se vio: si hubo
+/// otra decisión después, o la base cambió, no se escribe nada.
+#[tauri::command]
+pub async fn revision_aplicar(
+    app: AppHandle,
+    trabajo: String,
+    version: u64,
+    confirmado: bool,
+    version_app: String,
+) -> Result<revision::InformeRevision, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let dir = &estado.rutas()?.respaldos;
+        let r = sesiones.revision(&trabajo)?;
+        let i = sesiones.importacion(&trabajo)?;
+        let hecho = {
+            let g = leer(&r);
+            estado.con_conexion(|c| {
+                revision::aplicar(c, dir, &i, &g, version, confirmado, &version_app)
+            })
+        };
+        // ya aplicado no se puede aplicar dos veces
+        if hecho.is_ok() {
+            let _ = sesiones.tomar_importacion(&trabajo);
+            sesiones.soltar_revision(&trabajo);
+        }
+        hecho
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Detiene ese trabajo y borra sus temporales. Nada se aplicó.

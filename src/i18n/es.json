@@ -845,7 +845,8 @@
       "fallo": "No se pudo completar la operación: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",
-    "verLista": "Ver respaldos y restaurar"
+    "verLista": "Ver respaldos y restaurar",
+    "antesDeImportar": "Antes de importar"
   },
   "vista": {
     "cerrar": "Cerrar"
@@ -976,7 +977,10 @@
     "exportarGuardar": "Guardar el archivo exportado",
     "importarAbrir": "Abrir el archivo a importar",
     "importarAgregar": "Agregar lo nuevo del archivo",
-    "importarReemplazar": "Reemplazar los datos por los del archivo"
+    "importarReemplazar": "Reemplazar los datos por los del archivo",
+    "importarComparar": "Comparar el archivo con tus datos",
+    "importarAplicarRevision": "Aplicar lo decidido en la revisión",
+    "revisionAbierta": "Revisión de una importación con decisiones sin aplicar"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
@@ -1062,14 +1066,19 @@
       "ver": "Ver mi organización",
       "confirmarTitulo": "¿Reemplazar todo?",
       "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
-      "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar."
+      "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar.",
+      "revisar": "Revisar y decidir",
+      "revisarAyuda": "Compara el archivo con tus datos y decides qué se queda: nuevos, distintos, borrados y lo que choca.",
+      "revisarNada": "Comparar no cambia nada: tus datos se escriben solo cuando apliques lo decidido.",
+      "lugarDesconocido": "No se pudo saber dónde iban las ramas de este archivo. Las que no estén en tu base entrarán como árboles independientes: después puedes moverlas."
     },
     "etapa": {
       "copiando": "Preparando la copia de tus datos…",
       "cifrando": "Protegiendo el archivo…",
       "descifrando": "Abriendo el archivo…",
       "revisando": "Revisando lo que trae…",
-      "aplicando": "Aplicando…"
+      "aplicando": "Aplicando…",
+      "comparando": "Comparando el archivo con tus datos…"
     },
     "tablas": {
       "unidades": "Unidades",
@@ -1113,7 +1122,12 @@
       "muy_pesado_fila": "En {tabla}, «{nombre}»: {columna} es más largo de lo que BoldoAtlas puede llevar. Acórtalo e inténtalo de nuevo; si el archivo es de otra persona, pídele que lo haga. No se cambió nada.",
       "muy_pesado_total": "Este archivo trae {exceso}, más de lo que BoldoAtlas puede cargar. Pide a quien lo envió que lo exporte por ramas. No se cambió nada.",
       "exportar_muy_pesado": "Tu base tiene {exceso}: no cabe en un solo archivo. Exporta por ramas: cada archivo lleva una parte.",
-      "base_no_valida": "Tu base no pasó la revisión previa a exportar, así que no se creó el archivo. Prueba con una rama, o restaura un respaldo reciente."
+      "base_no_valida": "Tu base no pasó la revisión previa a exportar, así que no se creó el archivo. Prueba con una rama, o restaura un respaldo reciente.",
+      "base_cambio": "Tus datos cambiaron mientras revisabas. No se aplicó nada: compara de nuevo.",
+      "bloqueada": "Aún hay casos por resolver. No se aplicó nada.",
+      "sin_verificar": "Las decisiones cambiaron recién. No se aplicó nada: inténtalo de nuevo.",
+      "correo_no_valido": "Escribe un correo válido.",
+      "falta_confirmar": "Hay que confirmar antes de eliminar o vaciar tanto de una vez. No se aplicó nada."
     },
     "columnas": {
       "otra": "un campo",
@@ -1135,7 +1149,32 @@
       "clientes": "Clientes",
       "documento_ref": "Documento",
       "org_nombre": "Nombre de la organización",
-      "logo_png": "Logo"
+      "logo_png": "Logo",
+      "tipo_id": "Tipo",
+      "parent_id": "Unidad superior",
+      "jefe_puesto_id": "Jefatura",
+      "orden": "Orden",
+      "tipo_contrato_id": "Tipo de contrato",
+      "sede_id": "Sede",
+      "jornada_id": "Jornada",
+      "unidad_id": "Unidad",
+      "cargo_id": "Cargo",
+      "leyenda_id": "Leyenda",
+      "puesto_id": "Puesto",
+      "trabajador_id": "Persona",
+      "tipo": "Tipo",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "origen_id": "Desde la unidad",
+      "destino_id": "Hacia la unidad",
+      "etiqueta_id": "Etiqueta",
+      "frecuencia": "Frecuencia",
+      "criticidad": "Criticidad",
+      "estado": "Estado",
+      "proceso_id": "Proceso",
+      "actividad_id": "Actividad",
+      "rol": "Rol",
+      "arbol_id": "Rama guardada"
     },
     "motivoRevision": {
       "contenido_invalido": "tu base tiene referencias rotas o un ciclo y no se puede agregar sobre ella",
@@ -1145,6 +1184,217 @@
     "exceso": {
       "filas": "más de 500.000 filas",
       "bytes": "más de 512 MB de datos"
+    },
+    "revisar": {
+      "intro": "Esto es lo que difiere entre tus datos y el archivo. {n} registro es igual en los dos lados y no aparece aquí. | Esto es lo que difiere entre tus datos y el archivo. {n} registros son iguales en los dos lados y no aparecen aquí.",
+      "sinDiferencias": "Tus datos y el archivo son iguales: no hay nada que decidir.",
+      "retomada": "Volviste a tu revisión: lo que habías decidido sigue aquí.",
+      "detenido": "«Aplicar» está detenido: falta resolver {n} caso. | «Aplicar» está detenido: faltan resolver {n} casos.",
+      "porResolver": {
+        "duplicado": "{n} persona con un correo que ya tienes: decide en «Personas con el mismo correo». | {n} personas con un correo que ya tienes: decide en «Personas con el mismo correo».",
+        "unica": "{n} registro choca con otro: elige cuál conservar en «Por resolver». | {n} registros chocan con otros: elige cuáles conservar en «Por resolver».",
+        "regla": "{n} mezcla de campos que la base no acepta: mira «Por resolver». | {n} mezclas de campos que la base no acepta: mira «Por resolver».",
+        "referencia": "{n} referencia queda apuntando a algo que no estará: resuélvela en «Por resolver». | {n} referencias quedan apuntando a algo que no estará: resuélvelas en «Por resolver».",
+        "ciclo": "{n} unidad quedaría dentro de sí misma: cambia su superior en «Por resolver». | {n} unidades quedarían dentro de sí mismas: cambia su superior en «Por resolver».",
+        "cadena": "{n} registro en una cadena de cambios demasiado larga: mira «Por resolver». | {n} registros en una cadena de cambios demasiado larga: mira «Por resolver»."
+      },
+      "tituloBloqueos": "Por resolver",
+      "bloqueo": {
+        "unica": "«{nombre}» ({tabla}) choca con «{otro}»: no pueden quedar los dos.",
+        "regla": "«{nombre}» ({tabla}): esta mezcla de campos no es válida. Conserva lo tuyo, o elige otros campos en «Distintos».",
+        "referencia": "«{nombre}» ({tabla}) apunta a «{otro}», que no estará después de aplicar.",
+        "ciclo": "«{nombre}» quedaría dentro de sí misma con estas decisiones. Cambia su unidad superior.",
+        "cadena": "«{nombre}» ({tabla}) está en una cadena de cambios demasiado larga para aplicarla de una vez. Conserva lo tuyo en este registro y aplica; después importa de nuevo el archivo para seguir con el resto."
+      },
+      "algoQueNoEsta": "algo que no está",
+      "resuelto": {
+        "conservar_mio": "Se conserva lo tuyo.",
+        "conservar_archivo": "Se conserva lo del archivo.",
+        "vaciar": "Queda vacía.",
+        "descartar": "Este registro se descarta."
+      },
+      "reasignadaA": "Se reasigna a «{nombre}».",
+      "deshacer": "Deshacer",
+      "conservarMio": "Conservar lo mío",
+      "conservarArchivo": "Conservar lo del archivo",
+      "reasignar": "Reasignar a…",
+      "buscar": "Buscar",
+      "buscarReasignar": "Buscar a qué reasignar «{nombre}»",
+      "reasignarA": "Reasignar «{nombre}» a",
+      "usar": "Usar",
+      "dejarVacio": "Dejar vacío",
+      "dejarRaiz": "Dejar sin unidad superior",
+      "descartarFila": "Descartar el registro",
+      "resolverRotas": "Resolver todas las referencias",
+      "noResolverRotas": "Resolverlas una a una",
+      "resolverRotasAyuda": "Deja vacío lo que se pueda y descarta lo demás.",
+      "aceptarRecientes": "Aceptar todos los más recientes",
+      "aceptarRecientesAyuda": "En cada registro distinto, usa el lado con la fecha de edición más reciente. Es solo una ayuda: la fecha la pone el otro computador.",
+      "dudosas": "{n} registro trae una fecha futura o que no es una fecha. No cuenta como el más reciente, y lo decides tú. | {n} registros traen una fecha futura o que no es una fecha. No cuentan como los más recientes, y los decides tú.",
+      "fechaDudosa": "Fecha futura o no válida",
+      "fechaNoValida": "fecha no válida",
+      "grupo": {
+        "duplicado_persona": {
+          "titulo": "Personas con el mismo correo",
+          "ayuda": "Una persona del archivo tiene el correo de una tuya. Únelas o cambia el correo: hasta decidirlo no se puede aplicar."
+        },
+        "diferente": {
+          "titulo": "Distintos",
+          "ayuda": "El mismo registro con otros datos. Se puede decidir por registro o campo a campo."
+        },
+        "borrado_vs_editado": {
+          "titulo": "Borrado en un lado, editado en el otro",
+          "ayuda": "Un lado lo eliminó y el otro lo editó después, o la fecha no es confiable."
+        },
+        "nuevo": {
+          "titulo": "Nuevos",
+          "ayuda": "Solo están en el archivo. Entran salvo que los desmarques."
+        },
+        "borrado_sin_conflicto": {
+          "titulo": "Borrados sin conflicto",
+          "ayuda": "Un lado lo eliminó y el otro no lo cambió después."
+        },
+        "union": {
+          "titulo": "Se unen a lo que ya tienes",
+          "ayuda": "Valores con el mismo nombre que uno tuyo, sin contar mayúsculas ni tildes. Se usa el tuyo: no se duplican."
+        }
+      },
+      "masivo": {
+        "todo_mio": "Todo lo mío",
+        "todo_archivo": "Todo lo del archivo",
+        "agregar_todo": "Agregar todos",
+        "omitir_todo": "Omitir todos",
+        "mantener_todo": "Dejar todo como en mi base",
+        "borrar_todo": "Aplicar los borrados del archivo",
+        "unir_todo_mio": "Unir todas con mis datos",
+        "restaurar_todo": "Restaurar lo que borré"
+      },
+      "verTabla": "Ver",
+      "todas": "Todo",
+      "soloDudosas": "Solo con fecha dudosa",
+      "sinFilas": "No hay registros con ese filtro.",
+      "sinNombre": "(sin nombre)",
+      "paginas": "Páginas de la lista",
+      "anterior": "Anterior",
+      "siguiente": "Siguiente",
+      "rango": "{desde}–{hasta} de {total}",
+      "queHacerCon": "Qué hacer con «{nombre}»",
+      "agregarEsta": "Agregar",
+      "lo_mio": "Lo mío",
+      "lo_del_archivo": "Lo del archivo",
+      "mezcla": "Campos de los dos lados",
+      "mantener": "Mantener",
+      "borrar": "Borrar",
+      "revivir": "Restaurar con los datos del archivo",
+      "sigueBorrada": "Que siga eliminado",
+      "borradaAqui": "Lo eliminaste en tu base; en el archivo sigue.",
+      "borradaArchivo": "El archivo lo trae eliminado; en tu base sigue.",
+      "reciente": {
+        "mio": "Tu lado se editó después.",
+        "archivo": "El archivo se editó después."
+      },
+      "unirMio": "Unir, con mis datos",
+      "unirArchivo": "Unir, con los datos del archivo",
+      "editarCorreo": "Cambiar el correo de la del archivo",
+      "correoNuevo": "Correo nuevo de «{nombre}»",
+      "usarCorreo": "Usar este correo",
+      "seUne": "Se usa el valor que ya tienes.",
+      "verDetalle": "Ver campos",
+      "ocultarDetalle": "Ocultar campos",
+      "mismoCorreoQue": "Mismo correo que",
+      "editadaMia": "Editado en tu base",
+      "editadaArchivo": "Editado en el archivo",
+      "eliminadaMia": "Eliminado en tu base",
+      "eliminadaArchivo": "Eliminado en el archivo",
+      "camposDe": "Campos de «{nombre}»",
+      "campo": "Campo",
+      "vacio": "(vacío)",
+      "valorOculto": "No se muestra ({tamano})",
+      "cortado": "(cortado)",
+      "usarMio": "{campo}: usar lo mío",
+      "usarArchivo": "{campo}: usar lo del archivo",
+      "alAplicar": "Al aplicar",
+      "nadaQueAplicar": "Con estas decisiones no cambia nada.",
+      "aplicara": {
+        "agregar": "se agrega {n} | se agregan {n}",
+        "cambiar": "cambia {n} | cambian {n}",
+        "borrar": "se elimina {n} | se eliminan {n}",
+        "revivir": "se recupera {n} | se recuperan {n}",
+        "unir": "se une {n} | se unen {n}",
+        "omitir": "no entra {n} | no entran {n}",
+        "vaciar": "queda vacía {n} referencia | quedan vacías {n} referencias",
+        "borrarLocales": "{n} de lo eliminado solo está en tu base | {n} de lo eliminado solo están en tu base"
+      },
+      "comprobando": "Comprobando referencias y reglas…",
+      "baseCambioTitulo": "Tus datos cambiaron mientras revisabas",
+      "baseCambioTexto": "No se aplicó nada. Compara de nuevo: lo que decidiste sobre lo que no cambió se conserva.",
+      "compararDeNuevo": "Comparar de nuevo",
+      "restablecidas": "{n} decisión volvió a su valor inicial porque ese registro cambió. | {n} decisiones volvieron a su valor inicial porque esos registros cambiaron.",
+      "volverOpciones": "Volver a las opciones",
+      "perderTitulo": "¿Perder las decisiones?",
+      "perderTexto": "Tienes {n} decisión sin aplicar. Si sales de esta revisión, se pierde. | Tienes {n} decisiones sin aplicar. Si sales de esta revisión, se pierden.",
+      "seguir": "Seguir revisando",
+      "perder": "Salir y perderlas",
+      "dejadaTitulo": "Dejaste una revisión sin aplicar",
+      "dejadaTexto": "Tiene {n} decisión. Si la descartas, se pierde y se borra la copia temporal del archivo. | Tiene {n} decisiones. Si la descartas, se pierden y se borra la copia temporal del archivo.",
+      "descartar": "Descartar",
+      "volverARevision": "Volver a la revisión",
+      "hecho": "Listo. Esto cambió en tu base:",
+      "hechoNada": "Listo. Con esas decisiones no cambió nada.",
+      "resultado": {
+        "agregadas": "{n} agregado | {n} agregados",
+        "cambiadas": "{n} cambiado | {n} cambiados",
+        "borradas": "{n} eliminado | {n} eliminados",
+        "revividas": "{n} recuperado | {n} recuperados",
+        "unidas": "{n} unido | {n} unidos",
+        "omitidas": "{n} no entró | {n} no entraron",
+        "vaciadas": "{n} referencia vaciada | {n} referencias vaciadas",
+        "localesBorradas": "de lo eliminado, {n} solo estaba en tu base | de lo eliminado, {n} solo estaban en tu base"
+      },
+      "bloqueoResuelto": {
+        "unica": "«{nombre}» ({tabla}) chocaba con otro registro.",
+        "regla": "«{nombre}» ({tabla}) tenía una mezcla de campos no válida.",
+        "referencia": "«{nombre}» ({tabla}) apuntaba a algo que no iba a estar.",
+        "ciclo": "«{nombre}» iba a quedar dentro de sí misma.",
+        "cadena": "«{nombre}» ({tabla}) estaba en una cadena de cambios demasiado larga."
+      },
+      "borrarMuchosTitulo": "¿Eliminar o vaciar {n} registro de tu base? | ¿Eliminar o vaciar {n} registros de tu base?",
+      "borrarMuchosTexto": "Antes se hace un respaldo, que puedes restaurar desde Configuración.",
+      "borrarMuchosSi": "Sí, aplicar",
+      "aplicadoFuera": "Se aplicó lo que decidiste en la revisión.",
+      "noAlcanza": "Eso no alcanzó: elige otra cosa.",
+      "posicion": "Posición {n}"
+    },
+    "valores": {
+      "tipo": {
+        "titular": "Titular",
+        "reemplazo": "Reemplazo"
+      },
+      "rol": {
+        "R": "Responsable",
+        "A": "Aprobador",
+        "C": "Consultado",
+        "I": "Informado"
+      },
+      "frecuencia": {
+        "diaria": "Diaria",
+        "semanal": "Semanal",
+        "mensual": "Mensual",
+        "trimestral": "Trimestral",
+        "anual": "Anual",
+        "eventual": "Eventual"
+      },
+      "criticidad": {
+        "baja": "Baja",
+        "media": "Media",
+        "alta": "Alta"
+      },
+      "estado": {
+        "borrador": "Borrador",
+        "documentado": "Documentado",
+        "en_revision": "En revisión",
+        "obsoleto": "Obsoleto"
+      }
     }
   }
 }

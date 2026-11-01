@@ -151,7 +151,13 @@ const fecha = (r: Respaldo) =>
                 <td class="py-2 pr-2">
                   {{ fecha(r) }}
                   <Badge v-if="r.seguridad" variant="outline" class="ml-2">{{
-                    t(r.reemplazo ? "respaldos.antesDeReemplazar" : "respaldos.seguridad")
+                    t(
+                      r.importacion
+                        ? "respaldos.antesDeImportar"
+                        : r.reemplazo
+                          ? "respaldos.antesDeReemplazar"
+                          : "respaldos.seguridad",
+                    )
                   }}</Badge>
                 </td>
                 <td class="px-2 text-right tabular-nums">{{ tamano(r.bytes, locale) }}</td>
