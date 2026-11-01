@@ -11,15 +11,17 @@ pub fn run() {
     // antes del Builder: la portable ajusta el entorno del proceso y aún no hay otros hilos
     let estado = comandos::Estado::iniciar();
     let webview = estado.dir_webview();
-    if let Some(r) = estado.rutas_app() {
-        actualizar::limpiar_al_iniciar(r.datos.clone());
-    }
+    let datos = estado.rutas_app().map(|r| r.datos.clone());
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(estado)
         .manage(actualizar::Actualizador::default())
         .setup(move |app| {
+            // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
+            if let Some(datos) = datos {
+                actualizar::limpiar_al_iniciar(datos);
+            }
             // la ventana se crea aquí y no desde tauri.conf.json ("create": false) para que la portable
             // guarde el perfil del WebView en datos/ y no en %LOCALAPPDATA%
             let mut ventana = tauri::WebviewWindowBuilder::from_config(
@@ -45,7 +47,8 @@ pub fn run() {
             comandos::abrir_carpeta_datos,
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
-            actualizar::cancelar_actualizacion
+            actualizar::cancelar_actualizacion,
+            actualizar::bandeja_disponible
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

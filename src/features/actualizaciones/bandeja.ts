@@ -2,6 +2,7 @@ import { watch } from "vue";
 import type { Router } from "vue-router";
 import { toast } from "vue-sonner";
 import { defaultWindowIcon } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -16,7 +17,10 @@ import { buscarActualizaciones } from "./acciones";
  * «Actualizar a vX» (si hay versión nueva) o «Buscar actualizaciones», Respaldar ahora, Abrir carpeta de datos,
  * Ayuda y Salir. No deja la app en segundo plano: cerrar la ventana la cierra (y con ella el icono), y «Salir»
  * cierra la ventana por el mismo camino, que termina en el cierre ordenado de SQLite (RunEvent::Exit).
- * Sin bandeja (p. ej. un Linux sin AppIndicator) la app funciona igual.
+ * Con una versión nueva, el texto del icono (tooltip) también lo avisa.
+ * En Linux, crear el icono sin libayatana-appindicator3 haría entrar en pánico a tray-icon y, con panic = "abort",
+ * cerraría la app (un try/catch no lo ataja): por eso Rust prueba antes la biblioteca (`bandeja_disponible`) y,
+ * si no está, no hay icono y la app funciona igual.
  */
 export async function crearBandeja(router: Router): Promise<void> {
   const { t } = i18n.global;
@@ -44,6 +48,7 @@ export async function crearBandeja(router: Router): Promise<void> {
   });
   const x = textos();
   try {
+    if (!(await invoke<boolean>("bandeja_disponible"))) return;
     const abrir = await MenuItem.new({ id: "abrir", text: x.abrir, action: () => void mostrar() });
     const actualizar = await MenuItem.new({
       id: "actualizar",
@@ -82,10 +87,11 @@ export async function crearBandeja(router: Router): Promise<void> {
         salir,
       ],
     });
-    await TrayIcon.new({
+    const tooltip = () => (a.disponible ? t("actualizar.disponible", { version: a.disponible.version }) : "BoldoAtlas");
+    const icono = await TrayIcon.new({
       id: "principal",
       icon: (await defaultWindowIcon()) ?? undefined,
-      tooltip: "BoldoAtlas",
+      tooltip: tooltip(),
       menu,
       showMenuOnLeftClick: false,
       // clic izquierdo: trae la ventana; el menú va con el derecho
@@ -100,6 +106,7 @@ export async function crearBandeja(router: Router): Promise<void> {
       void carpeta.setText(n.carpeta);
       void ayuda.setText(n.ayuda);
       void salir.setText(n.salir);
+      void icono.setTooltip(tooltip());
     });
   } catch {
     // sin bandeja: el resto de la app no depende de ella

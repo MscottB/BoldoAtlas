@@ -293,6 +293,7 @@ dependencies = [
  "dirs",
  "flate2",
  "futures-util",
+ "libloading",
  "reqwest",
  "rusqlite",
  "rustls",

@@ -32,6 +32,50 @@ const EXE_PORTABLE: &str = "BoldoAtlas.exe";
 const TEMPORAL_PLUGIN: &str = "BoldoAtlas-";
 const ESPERA: Duration = Duration::from_secs(30);
 
+/// Error de los comandos del actualizador. `codigo` lo traduce la interfaz (`actualizar.error.<codigo>`, es/en);
+/// `detalle` es el texto técnico del sistema o de la biblioteca, sin traducir.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Fallo {
+    pub codigo: &'static str,
+    pub detalle: String,
+}
+
+fn fallo(codigo: &'static str, detalle: impl std::fmt::Display) -> Fallo {
+    Fallo {
+        codigo,
+        detalle: detalle.to_string(),
+    }
+}
+
+/// Respuesta no exitosa de la API de GitHub: 403 y 429 son su límite de consultas sin cuenta.
+pub fn codigo_http(estado: u16) -> &'static str {
+    match estado {
+        403 | 429 => "limite",
+        _ => "respuesta",
+    }
+}
+
+/// Error de tauri-plugin-updater: red, manifiesto que no calza, firma inválida o instalación.
+pub fn codigo_plugin(e: &tauri_plugin_updater::Error) -> &'static str {
+    use tauri_plugin_updater::Error as E;
+    match e {
+        E::Reqwest(r) if r.is_decode() => "manifiesto",
+        E::Reqwest(_) | E::Network(_) => "red",
+        E::Minisign(_)
+        | E::Base64(_)
+        | E::SignatureUtf8(_)
+        | E::SignedVersionMismatch { .. }
+        | E::MissingSignedVersion => "firma",
+        E::ReleaseNotFound
+        | E::TargetNotFound(_)
+        | E::TargetsNotFound(_)
+        | E::Serialization(_)
+        | E::Semver(_)
+        | E::UrlParse(_) => "manifiesto",
+        _ => "instalar",
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ReleaseGh {
     pub tag_name: String,
@@ -129,54 +173,63 @@ pub fn dir_temporal(datos: &Path) -> PathBuf {
 
 /// El programa del zip portable de Windows, ya verificado por su firma. Solo se lee la entrada `BoldoAtlas.exe`
 /// por nombre exacto: ninguna ruta del zip decide dónde se escribe.
-pub fn exe_del_zip(zip: &[u8]) -> Result<Vec<u8>, String> {
+pub fn exe_del_zip(zip: &[u8]) -> Result<Vec<u8>, Fallo> {
     let mut archivo = zip::ZipArchive::new(std::io::Cursor::new(zip))
-        .map_err(|e| format!("El paquete descargado no es un zip válido: {e}"))?;
+        .map_err(|e| fallo("paquete", format!("zip: {e}")))?;
     let mut entrada = archivo
         .by_name(EXE_PORTABLE)
-        .map_err(|_| format!("El paquete descargado no trae {EXE_PORTABLE}."))?;
+        .map_err(|_| fallo("paquete", format!("{EXE_PORTABLE} ∉ zip")))?;
     let mut exe = Vec::new();
     entrada
         .read_to_end(&mut exe)
-        .map_err(|e| format!("No se pudo leer {EXE_PORTABLE} del paquete: {e}"))?;
+        .map_err(|e| fallo("paquete", format!("{EXE_PORTABLE}: {e}")))?;
     if !exe.starts_with(b"MZ") {
-        return Err(format!(
-            "{EXE_PORTABLE} del paquete no es un programa de Windows."
-        ));
+        return Err(fallo("paquete", format!("{EXE_PORTABLE}: no MZ")));
     }
     Ok(exe)
 }
 
 /// Deja `nuevo` en `temporal/` (en `datos/`, el mismo disco que el exe) y lo cambia por el exe en uso. Windows
 /// permite renombrar un exe en ejecución, no borrarlo: el viejo queda como `.old.exe` hasta el siguiente arranque.
-pub fn reemplazar(exe: &Path, nuevo: &[u8], temporal: &Path) -> Result<(), String> {
-    let nombre = exe.file_name().ok_or("Ruta del programa inválida.")?;
+pub fn reemplazar(exe: &Path, nuevo: &[u8], temporal: &Path) -> Result<(), Fallo> {
+    let nombre = exe
+        .file_name()
+        .ok_or_else(|| fallo("reemplazo", exe.display()))?;
     std::fs::create_dir_all(temporal)
-        .map_err(|e| format!("No se pudo preparar {}: {e}", temporal.display()))?;
+        .map_err(|e| fallo("reemplazo", format!("{}: {e}", temporal.display())))?;
     let listo = temporal.join(nombre);
     std::fs::write(&listo, nuevo)
-        .map_err(|e| format!("No se pudo escribir {}: {e}", listo.display()))?;
+        .map_err(|e| fallo("reemplazo", format!("{}: {e}", listo.display())))?;
     intercambiar(exe, &listo)
 }
 
 /// Pone `listo` en el lugar de `exe`, que pasa a `.old.exe`. Si no se puede, devuelve el anterior a su lugar.
-pub fn intercambiar(exe: &Path, listo: &Path) -> Result<(), String> {
+/// Errores: `reemplazo` (todo quedó como estaba) o `restaurar` (el detalle es dónde quedó la versión anterior).
+pub fn intercambiar(exe: &Path, listo: &Path) -> Result<(), Fallo> {
     let viejo = ruta_vieja(exe);
     let _ = std::fs::remove_file(&viejo); // de una actualización anterior que no alcanzó a limpiarse
-    std::fs::rename(exe, &viejo)
-        .map_err(|e| format!("No se pudo apartar el programa en uso: {e}"))?;
+    std::fs::rename(exe, &viejo).map_err(|e| fallo("reemplazo", e))?;
     if let Err(e) = std::fs::rename(listo, exe) {
         return match std::fs::rename(&viejo, exe) {
-            Ok(()) => Err(format!(
-                "No se pudo poner la versión nueva; se dejó la anterior. Detalle: {e}"
-            )),
-            Err(e2) => Err(format!(
-                "No se pudo poner la versión nueva ni restaurar la anterior: está en {}. Detalle: {e}; {e2}",
-                viejo.display()
-            )),
+            Ok(()) => Err(fallo("reemplazo", e)),
+            Err(_) => Err(fallo("restaurar", viejo.display())),
         };
     }
     Ok(())
+}
+
+/// Después de poner el exe nuevo en su lugar: cierra SQLite, abre la versión nueva y termina, también si no se
+/// pudo abrir (la versión nueva ya está; se abre a mano). Esta copia nunca sigue corriendo sin base de datos.
+/// Devuelve si se pudo abrir la versión nueva.
+pub fn terminar_tras_reemplazo(
+    cerrar: impl FnOnce(),
+    abrir_nueva: impl FnOnce() -> std::io::Result<()>,
+    salir: impl FnOnce(),
+) -> bool {
+    cerrar();
+    let abierta = abrir_nueva().is_ok();
+    salir();
+    abierta
 }
 
 /// Temporales de una actualización anterior (spec §12 «Limpieza»): el `.old.exe` de la portable de Windows,
@@ -199,7 +252,8 @@ pub fn limpiar(exe: &Path, datos: &Path, temporal: &Path) {
     }
 }
 
-/// Al iniciar, en otro hilo: el proceso anterior puede tardar un momento en soltar el `.old.exe`.
+/// Al iniciar (desde `setup`, ya ajustado el entorno de la portable), en otro hilo: el proceso anterior puede
+/// tardar un momento en soltar el `.old.exe`.
 pub fn limpiar_al_iniciar(datos: PathBuf) {
     std::thread::spawn(move || {
         let Ok(exe) = std::env::current_exe() else {
@@ -213,6 +267,33 @@ pub fn limpiar_al_iniciar(datos: PathBuf) {
             std::thread::sleep(Duration::from_millis(500));
         }
     });
+}
+
+/// Si se puede crear el icono de la bandeja. En Linux, tray-icon carga libayatana-appindicator3 o libappindicator3
+/// al crear el icono y, si no está, entra en pánico; con `panic = "abort"` eso cerraría la app entera. Se prueban
+/// los mismos nombres que libappindicator-sys (con `backcompat`, que viene por defecto) y, si ninguno carga, la
+/// interfaz no crea el icono.
+#[tauri::command]
+pub fn bandeja_disponible() -> bool {
+    appindicator()
+}
+
+#[cfg(target_os = "linux")]
+fn appindicator() -> bool {
+    [
+        "libayatana-appindicator3.so.1",
+        "libappindicator3.so.1",
+        "libayatana-appindicator3.so",
+        "libappindicator3.so",
+    ]
+    .iter()
+    // SAFETY: son bibliotecas del sistema que tray-icon cargaría igual; solo se abren y se sueltan
+    .any(|l| unsafe { libloading::Library::new(l) }.is_ok())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn appindicator() -> bool {
+    true
 }
 
 /// Si este exe corre dentro de un AppImage (como `rutas::carpeta_programa`: un `$APPIMAGE` heredado no vale).
@@ -258,14 +339,14 @@ fn url_releases() -> String {
     RELEASES.to_string()
 }
 
-fn cliente() -> Result<reqwest::Client, String> {
+fn cliente() -> Result<reqwest::Client, Fallo> {
     // el plugin hace lo mismo antes de su primera consulta: rustls sin proveedor instalado no conecta
     let _ = rustls::crypto::ring::default_provider().install_default();
     reqwest::Client::builder()
         .user_agent("BoldoAtlas")
         .timeout(ESPERA)
         .build()
-        .map_err(|e| e.to_string())
+        .map_err(|e| fallo("interno", e))
 }
 
 /// Busca una versión nueva. `version_actual` es la de la interfaz (`__APP_VERSION_CORTA__`): la del binario
@@ -274,25 +355,27 @@ fn cliente() -> Result<reqwest::Client, String> {
 pub async fn buscar_actualizacion(
     app: AppHandle,
     version_actual: String,
-) -> Result<Option<Disponible>, String> {
-    let actual =
-        Version::parse(&version_actual).map_err(|e| format!("Versión actual inválida: {e}"))?;
+) -> Result<Option<Disponible>, Fallo> {
+    let actual = Version::parse(&version_actual).map_err(|e| fallo("version", e))?;
     let http = cliente()?;
     let respuesta = http
         .get(url_releases())
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| fallo("red", e))?;
     if !respuesta.status().is_success() {
-        return Err(format!("GitHub respondió {}", respuesta.status()));
+        return Err(fallo(
+            codigo_http(respuesta.status().as_u16()),
+            respuesta.status(),
+        ));
     }
-    let releases: Vec<ReleaseGh> = respuesta.json().await.map_err(|e| e.to_string())?;
+    let releases: Vec<ReleaseGh> = respuesta.json().await.map_err(|e| fallo("respuesta", e))?;
     let Some(elegida) = elegir(&releases, &actual) else {
         *app.state::<Actualizador>()
             .pendiente
             .lock()
-            .map_err(|e| e.to_string())? = None;
+            .map_err(|e| fallo("interno", e))? = None;
         return Ok(None);
     };
     let novedades = match &elegida.novedades {
@@ -305,20 +388,20 @@ pub async fn buscar_actualizacion(
     let portable = app
         .state::<Estado>()
         .rutas_app()
-        .ok_or("No se ubicó la carpeta de datos.")?
+        .ok_or_else(|| fallo("interno", "rutas"))?
         .portable;
     let modo = modo(std::env::consts::OS, portable, es_appimage());
     if let Some(objetivo) = objetivo(modo, std::env::consts::OS, std::env::consts::ARCH) {
         let url = elegida
             .manifiesto
             .parse()
-            .map_err(|e| format!("URL inválida: {e}"))?;
+            .map_err(|e| fallo("manifiesto", e))?;
         let nueva = elegida.version.clone();
         let al_salir = app.clone();
         let update = app
             .updater_builder()
             .endpoints(vec![url])
-            .map_err(|e| e.to_string())?
+            .map_err(|e| fallo(codigo_plugin(&e), e))?
             .target(objetivo)
             .timeout(ESPERA)
             // la versión del binario no sirve (ver arriba): se compara con la elegida, que ya es mayor
@@ -330,15 +413,15 @@ pub async fn buscar_actualizacion(
                     .cerrar_ordenado(Duration::from_secs(3));
             })
             .build()
-            .map_err(|e| e.to_string())?
+            .map_err(|e| fallo(codigo_plugin(&e), e))?
             .check()
             .await
-            .map_err(|e| e.to_string())?
-            .ok_or("El manifiesto del release no coincide con la versión publicada.")?;
+            .map_err(|e| fallo(codigo_plugin(&e), e))?
+            .ok_or_else(|| fallo("manifiesto", format!("latest.json ≠ {}", elegida.version)))?;
         *app.state::<Actualizador>()
             .pendiente
             .lock()
-            .map_err(|e| e.to_string())? = Some((update, modo));
+            .map_err(|e| fallo("interno", e))? = Some((update, modo));
     }
     Ok(Some(Disponible {
         version: elegida.version.to_string(),
@@ -354,16 +437,16 @@ pub async fn buscar_actualizacion(
 pub async fn instalar_actualizacion(
     app: AppHandle,
     progreso: Channel<Progreso>,
-) -> Result<(), String> {
+) -> Result<(), Fallo> {
     let estado = app.state::<Actualizador>();
     let (update, modo) = estado
         .pendiente
         .lock()
-        .map_err(|e| e.to_string())?
+        .map_err(|e| fallo("interno", e))?
         .clone()
-        .ok_or("No hay una actualización pendiente; búscala de nuevo.")?;
+        .ok_or_else(|| fallo("pendiente", ""))?;
     let (abortar, registro) = AbortHandle::new_pair();
-    *estado.cancelar.lock().map_err(|e| e.to_string())? = Some(abortar);
+    *estado.cancelar.lock().map_err(|e| fallo("interno", e))? = Some(abortar);
     let mut descargado = 0u64;
     let mut avisado = 0u64;
     let descarga = update.download(
@@ -379,35 +462,51 @@ pub async fn instalar_actualizacion(
     );
     let bytes = Abortable::new(descarga, registro)
         .await
-        .map_err(|_| "Descarga cancelada.".to_string())?
-        .map_err(|e| format!("No se pudo descargar la actualización: {e}"))?;
+        .map_err(|_| fallo("cancelada", ""))?
+        .map_err(|e| fallo(codigo_plugin(&e), e))?;
     instalar(&app, &update, modo, &bytes)
 }
 
-fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Result<(), String> {
+fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Result<(), Fallo> {
     let estado = app.state::<Estado>();
     if cfg!(windows) && modo == Modo::Portable {
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let exe = std::env::current_exe().map_err(|e| fallo("interno", e))?;
         let datos = estado
             .rutas_app()
-            .ok_or("No se ubicó la carpeta de datos.")?
+            .ok_or_else(|| fallo("interno", "rutas"))?
             .datos
             .clone();
+        // si falla, nada cambió y la base sigue abierta
         reemplazar(&exe, &exe_del_zip(bytes)?, &dir_temporal(&datos))?;
-        estado.cerrar_ordenado(Duration::from_secs(3));
         // se abre la ruta de siempre (ahora el exe nuevo); el proceso actual sigue siendo el .old.exe
-        std::process::Command::new(&exe)
-            .current_dir(exe.parent().unwrap_or(Path::new(".")))
-            .spawn()
-            .map_err(|e| format!("Se actualizó, pero no se pudo abrir de nuevo: {e}"))?;
-        app.exit(0);
+        terminar_tras_reemplazo(
+            || {
+                estado.cerrar_ordenado(Duration::from_secs(3));
+            },
+            || {
+                std::process::Command::new(&exe)
+                    .current_dir(exe.parent().unwrap_or(Path::new(".")))
+                    .spawn()
+                    .map(|_| ())
+            },
+            || app.exit(0),
+        );
         return Ok(());
     }
-    // Windows: lanza el instalador y cierra la app (on_before_exit cierra SQLite). macOS y Linux: reemplaza
-    // el .app o el AppImage, restaurando el anterior si falla, y vuelve aquí para reiniciar.
-    update
-        .install(bytes)
-        .map_err(|e| format!("No se pudo instalar la actualización: {e}"))?;
+    // Windows: lanza el instalador y cierra la app (on_before_exit cierra SQLite antes). macOS y Linux:
+    // reemplaza el .app o el AppImage, restaurando el anterior si falla, y vuelve aquí para reiniciar.
+    if let Err(e) = update.install(bytes) {
+        // en Windows, on_before_exit ya cerró SQLite y el instalador no se lanzó: se reabre la base o, si no se
+        // puede, la app termina; nunca sigue corriendo sin base de datos
+        if estado.reabrir().is_err() {
+            app.exit(1);
+        }
+        let codigo = match codigo_plugin(&e) {
+            "firma" => "firma",
+            _ => "instalar",
+        };
+        return Err(fallo(codigo, e));
+    }
     estado.cerrar_ordenado(Duration::from_secs(3));
     app.restart()
 }
@@ -570,18 +669,10 @@ mod tests {
         ]);
         assert_eq!(exe_del_zip(&zip).unwrap(), b"MZbueno");
         let sin = zip_con(&[("otra/BoldoAtlas.exe", b"MZ")]);
-        assert!(
-            exe_del_zip(&sin)
-                .unwrap_err()
-                .contains("no trae BoldoAtlas.exe")
-        );
+        assert_eq!(exe_del_zip(&sin).unwrap_err().codigo, "paquete");
         let falso = zip_con(&[("BoldoAtlas.exe", b"#!/bin/sh")]);
-        assert!(
-            exe_del_zip(&falso)
-                .unwrap_err()
-                .contains("no es un programa de Windows")
-        );
-        assert!(exe_del_zip(b"no es zip").is_err());
+        assert_eq!(exe_del_zip(&falso).unwrap_err().codigo, "paquete");
+        assert_eq!(exe_del_zip(b"no es zip").unwrap_err().codigo, "paquete");
     }
 
     #[test]
@@ -614,7 +705,7 @@ mod tests {
         let exe = dir.path().join("BoldoAtlas.exe");
         fs::write(&exe, b"MZviejo").unwrap();
         let err = intercambiar(&exe, &dir.path().join("no-existe.exe")).unwrap_err();
-        assert!(err.contains("se dejó la anterior"), "{err}");
+        assert_eq!(err.codigo, "reemplazo", "{err:?}");
         assert_eq!(fs::read(&exe).unwrap(), b"MZviejo");
         assert!(!ruta_vieja(&exe).exists());
     }
@@ -645,6 +736,55 @@ mod tests {
         assert!(temporal.join("otra-cosa-updater-x").exists());
         assert!(temporal.join("BoldoAtlas-nota-updater-.txt").exists());
         assert!(datos.join("boldo.db").exists());
+    }
+
+    #[test]
+    fn tras_reemplazar_siempre_termina_aunque_no_abra_la_version_nueva() {
+        use std::cell::RefCell;
+        for abre in [true, false] {
+            let pasos = RefCell::new(Vec::new());
+            let abierta = terminar_tras_reemplazo(
+                || pasos.borrow_mut().push("cerrar"),
+                || {
+                    pasos.borrow_mut().push("abrir");
+                    if abre {
+                        Ok(())
+                    } else {
+                        Err(std::io::Error::other("bloqueado"))
+                    }
+                },
+                || pasos.borrow_mut().push("salir"),
+            );
+            assert_eq!(abierta, abre);
+            // la base se cierra antes de abrir la nueva y esta copia termina siempre
+            assert_eq!(*pasos.borrow(), ["cerrar", "abrir", "salir"]);
+        }
+    }
+
+    #[test]
+    fn codigos_de_error_para_la_interfaz() {
+        use tauri_plugin_updater::Error as E;
+        assert_eq!(codigo_http(403), "limite");
+        assert_eq!(codigo_http(429), "limite");
+        assert_eq!(codigo_http(500), "respuesta");
+        assert_eq!(codigo_http(404), "respuesta");
+        assert_eq!(codigo_plugin(&E::Network("x".into())), "red");
+        assert_eq!(codigo_plugin(&E::MissingSignedVersion), "firma");
+        assert_eq!(
+            codigo_plugin(&E::SignedVersionMismatch {
+                signed: "1".into(),
+                announced: "2".into()
+            }),
+            "firma"
+        );
+        assert_eq!(codigo_plugin(&E::TargetNotFound("x".into())), "manifiesto");
+        assert_eq!(codigo_plugin(&E::ReleaseNotFound), "manifiesto");
+        assert_eq!(codigo_plugin(&E::InvalidUpdaterFormat), "instalar");
+        // se serializa con el código y el detalle técnico
+        assert_eq!(
+            serde_json::to_value(fallo("limite", "403 Forbidden")).unwrap(),
+            serde_json::json!({ "codigo": "limite", "detalle": "403 Forbidden" })
+        );
     }
 
     #[test]

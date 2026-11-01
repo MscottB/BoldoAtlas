@@ -114,6 +114,20 @@ impl Estado {
         Some(r.datos.join("webview"))
     }
 
+    /// Vuelve a abrir la base que cerró `cerrar_ordenado` cuando lo que venía después falló (p. ej. el instalador de
+    /// Windows no se pudo lanzar). Con la base abierta no hace nada.
+    pub fn reabrir(&self) -> Result<(), String> {
+        let mut conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
+        if conn.is_none() {
+            let r = self
+                .rutas
+                .as_ref()
+                .ok_or("No se ubicó la carpeta de datos.")?;
+            *conn = Some(db::abrir(&r.bd)?);
+        }
+        Ok(())
+    }
+
     /// Rutas de datos, si se pudieron ubicar (las usa el actualizador).
     pub fn rutas_app(&self) -> Option<&Rutas> {
         self.rutas.as_ref()
@@ -292,6 +306,45 @@ mod tests {
         assert!(e.conn.lock().unwrap().is_none());
         // cerrar dos veces no falla
         assert!(e.cerrar_ordenado(Duration::from_millis(10)));
+    }
+
+    #[test]
+    fn reabrir_tras_cerrar_deja_la_base_usable() {
+        let exe = tempfile::tempdir().unwrap();
+        std::fs::write(exe.path().join("portable.flag"), "").unwrap();
+        let r = rutas::dir_datos(exe.path(), None).unwrap();
+        let mut conn = db::abrir(&r.bd).unwrap();
+        db::migrar(&mut conn, &r.respaldos).unwrap();
+        db::asegurar_meta(&conn).unwrap();
+        let e = Estado {
+            conn: Mutex::new(Some(conn)),
+            rutas: Some(r),
+            version_esquema: 0,
+            error: None,
+        };
+        // abierta: no hace nada
+        e.reabrir().unwrap();
+        assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        assert!(e.conn.lock().unwrap().is_none());
+        e.reabrir().unwrap();
+        let n: i64 = e
+            .con_conexion(|c| {
+                c.query_row("SELECT count(*) FROM meta", [], |f| f.get(0))
+                    .map_err(|x| x.to_string())
+            })
+            .unwrap();
+        assert!(n > 0);
+    }
+
+    #[test]
+    fn reabrir_sin_rutas_falla_sin_entrar_en_panico() {
+        let e = Estado {
+            conn: Mutex::new(None),
+            rutas: None,
+            version_esquema: 0,
+            error: None,
+        };
+        assert!(e.reabrir().is_err());
     }
 
     #[test]
