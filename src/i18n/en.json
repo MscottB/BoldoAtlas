@@ -555,7 +555,22 @@
     "vacia": "Nobody holds its positions.",
     "sinResultados": "Nobody matches the search.",
     "volver": "Back to the list",
-    "abrirFicha": "Open record"
+    "volverArbol": "Back to the tree",
+    "abrirFicha": "Open record",
+    "vista": {
+      "titulo": "View as",
+      "lista": "List",
+      "arbol": "Tree"
+    },
+    "arbol": {
+      "nombre": "People in {unidad}, as a tree",
+      "ayuda": "Up and down arrows move, right and left open and close. Enter opens the person or selects the unit on the canvas; Shift+Enter opens the unit's head.",
+      "expandir": "Expand all",
+      "contraer": "Collapse all",
+      "cantidad": "Nobody in the tree | {n} person in the tree | {n} people in the tree",
+      "nPersonas": "nobody | {n} person | {n} people",
+      "verJefe": "View the head"
+    }
   },
   "seleccion": {
     "barra": "Actions on the selected units",

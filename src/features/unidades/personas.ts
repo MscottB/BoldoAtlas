@@ -63,7 +63,7 @@ export function personasDelAlcance(
 }
 
 export type OrdenPersonas = "nombre" | "cargo" | "unidad";
-const collator = new Intl.Collator("es");
+export const collator = new Intl.Collator("es");
 
 /** Filas cuyo nombre, cargo, unidad o correo contienen `texto` (sin tildes ni mayúsculas), ordenadas; empates por nombre. */
 export function filtrarPersonasUnidad(

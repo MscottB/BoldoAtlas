@@ -26,7 +26,10 @@ import {
   type FilaPersonaUnidad,
   type OrdenPersonas,
 } from "./personas";
+import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { claseSelect } from "@/lib/utils";
+import { arbolDePersonas } from "./arbolPersonas";
+import ArbolPersonas from "./ArbolPersonas.vue";
 
 // Pestaña Personas del panel: quién ocupa los puestos de la unidad (o de su rama), hoy o el día que muestra el lienzo.
 const props = defineProps<{ unidad: Unidad }>();
@@ -67,6 +70,23 @@ const todas = computed(() =>
 );
 const filas = computed(() => filtrarPersonasUnidad(todas.value, texto.value, orden.value));
 const resumen = computed(() => resumenPorCargo(alcance.value, org.enFecha.vigentes, org.catalogos.cargos));
+
+// Lista o árbol: se recuerda en este computador. El árbol solo se arma si se ve, y se rehace con los datos o el orden,
+// no con cada tecla: la búsqueda parte de las filas ya filtradas de la lista.
+const vista = ref(leerPreferencia<unknown>("personas:vista", "lista") === "arbol" ? "arbol" : "lista");
+watch(vista, (v) => guardarPreferencia("personas:vista", v));
+const arbol = computed(() =>
+  arbolDePersonas(
+    props.unidad,
+    conRama.value ? org.enFecha.unidades : [],
+    alcance.value,
+    filtrarPersonasUnidad(todas.value, "", orden.value),
+    org.enFecha.vigentes,
+    org.catalogos.cargos,
+  ),
+);
+const coinciden = computed(() => new Set(filas.value.map((f) => f.clave)));
+const vistaArbol = useTemplateRef<InstanceType<typeof ArbolPersonas>>("vistaArbol");
 
 // Con 10.000 personas en una rama raíz, solo las filas a la vista van al DOM (como en el directorio). Todas miden lo
 // mismo (dos líneas truncadas): se mide la primera dibujada, que cambia con la escala.
@@ -170,6 +190,19 @@ watch(persona, (w) => previa.value && !w && void volver());
         </select>
       </div>
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div role="group" :aria-label="t('personas.vista.titulo')" class="flex gap-1">
+          <Button
+            v-for="o in ['lista', 'arbol'] as const"
+            :key="o"
+            type="button"
+            size="sm"
+            :variant="vista === o ? 'default' : 'outline'"
+            :aria-pressed="vista === o"
+            @click="vista = o"
+          >
+            {{ t(`personas.vista.${o}`) }}
+          </Button>
+        </div>
         <label class="flex items-center gap-2 text-sm">
           <input v-model="conRama" type="checkbox" class="size-4 accent-primary" />
           {{ t("personas.incluirSubunidades") }}
@@ -205,10 +238,28 @@ watch(persona, (w) => previa.value && !w && void volver());
         </ul>
       </details>
 
-      <p class="text-xs text-muted-foreground" aria-live="polite">
-        {{ t("personas.cantidad", filas.length) }}
-      </p>
-      <p v-if="!filas.length" class="text-sm text-muted-foreground">
+      <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p class="text-xs text-muted-foreground" aria-live="polite">
+          {{ t(vista === "arbol" ? "personas.arbol.cantidad" : "personas.cantidad", filas.length) }}
+        </p>
+        <div v-if="vista === 'arbol'" class="flex gap-1">
+          <Button type="button" variant="ghost" size="xs" @click="vistaArbol?.expandirTodo()">
+            {{ t("personas.arbol.expandir") }}
+          </Button>
+          <Button type="button" variant="ghost" size="xs" @click="vistaArbol?.contraerTodo()">
+            {{ t("personas.arbol.contraer") }}
+          </Button>
+        </div>
+      </div>
+      <ArbolPersonas
+        v-if="vista === 'arbol'"
+        ref="vistaArbol"
+        :raiz="arbol"
+        :texto="texto"
+        :coinciden="coinciden"
+        @persona="abrirPrevia"
+      />
+      <p v-else-if="!filas.length" class="text-sm text-muted-foreground">
         {{ todas.length ? t("personas.sinResultados") : t("personas.vacia") }}
       </p>
       <div v-else v-bind="containerProps" class="min-h-40 flex-1 overflow-auto rounded-lg border">
@@ -258,7 +309,7 @@ watch(persona, (w) => previa.value && !w && void volver());
     >
       <Button type="button" variant="ghost" size="sm" class="justify-self-start" @click="volver">
         <ArrowLeft aria-hidden="true" />
-        {{ t("personas.volver") }}
+        {{ t(vista === "arbol" ? "personas.volverArbol" : "personas.volver") }}
       </Button>
       <div class="flex items-center gap-3">
         <img

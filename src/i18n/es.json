@@ -555,7 +555,22 @@
     "vacia": "Nadie ocupa sus puestos.",
     "sinResultados": "Nadie coincide con la búsqueda.",
     "volver": "Volver a la lista",
-    "abrirFicha": "Abrir ficha"
+    "volverArbol": "Volver al árbol",
+    "abrirFicha": "Abrir ficha",
+    "vista": {
+      "titulo": "Ver como",
+      "lista": "Lista",
+      "arbol": "Árbol"
+    },
+    "arbol": {
+      "nombre": "Personas de {unidad}, como árbol",
+      "ayuda": "Flechas arriba y abajo para moverse, derecha e izquierda para abrir y cerrar. Enter abre a la persona o selecciona la unidad en el lienzo; Mayús+Enter abre a la jefatura de la unidad.",
+      "expandir": "Expandir todo",
+      "contraer": "Contraer todo",
+      "cantidad": "Nadie en el árbol | {n} persona en el árbol | {n} personas en el árbol",
+      "nPersonas": "nadie | {n} persona | {n} personas",
+      "verJefe": "Ver a la jefatura"
+    }
   },
   "seleccion": {
     "barra": "Acciones sobre las unidades seleccionadas",
