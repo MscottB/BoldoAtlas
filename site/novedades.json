@@ -39,12 +39,12 @@
     "imagen": "exportar-alcance",
     "es": {
       "titulo": "Llévate la organización a otro computador",
-      "texto": "Guarda toda tu base, o solo algunas ramas, en un archivo .boldo cifrado con un código de un solo uso. Al importar ves lo que trae antes de aplicar nada, y antes se hace siempre un respaldo.",
+      "texto": "Guarda toda tu base, o solo algunas ramas, en un archivo .boldo cifrado con su propio código. Al importar ves lo que trae antes de aplicar nada, y antes se hace siempre un respaldo.",
       "alt": "Exportar con la opción de uno o más árboles o ramas y la lista de unidades con una rama marcada."
     },
     "en": {
       "titulo": "Take your organization to another computer",
-      "texto": "Save your whole database, or just some branches, in a .boldo file encrypted with a one-time code. When you import, you see what the file brings before anything is applied, and a backup is always made first.",
+      "texto": "Save your whole database, or just some branches, in a .boldo file encrypted with its own code. When you import, you see what the file brings before anything is applied, and a backup is always made first.",
       "alt": "Export with the option of one or more trees or branches and the list of units with one branch checked."
     }
   },
