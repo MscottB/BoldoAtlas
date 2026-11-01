@@ -34,7 +34,7 @@ Si el código no corresponde o el archivo se alteró, verás el mismo aviso: «E
 
 ### Agregar lo nuevo
 
-Lo que no existe en tu base entra tal cual, salvo lo que en el archivo está eliminado. Lo que ya existe se queda como está, aunque en el archivo sea distinto: al final ves cuántos se omitieron y cuáles, en una lista que se abre con un clic.
+Para traer lo que falta sin revisar uno por uno. Lo que no existe en tu base entra tal cual, salvo lo que en el archivo está eliminado. Lo que ya existe se queda como está, aunque en el archivo sea distinto: al final ves cuántos se omitieron y cuáles, en una lista que se abre con un clic.
 
 | Si en el archivo viene… | Qué pasa |
 |---|---|
@@ -46,12 +46,48 @@ Lo que no existe en tu base entra tal cual, salvo lo que en el archivo está eli
 
 Si importas una rama cuya unidad superior está en tu base, vuelve a quedar dentro de ella. Si no está, se te pregunta dónde colocarla: **dentro de una unidad** o **como árbol independiente**. En ambos casos queda al final de sus hermanas. Una base sin nombre toma el de la organización del archivo.
 
+### Revisar y decidir
+
+Para dos copias que siguieron trabajando por separado: comparas el archivo con tus datos y decides qué se queda. Sirve con un archivo de toda la base o de una o más ramas. Comparar no cambia nada: tus datos se escriben solo cuando pulsas **Aplicar**.
+
+1. Elige **Revisar y decidir** y pulsa **Continuar**.
+2. Mira el resumen: cada tipo de caso con su cantidad. Lo que es igual en los dos lados no aparece.
+3. Pulsa **Aceptar todos los más recientes** para resolver lo común de un clic, o abre un grupo y decide por registro. **Ver campos** muestra cada campo con su valor en tus datos y en el archivo, y puedes elegir campo a campo.
+4. Resuelve lo que aparezca en **Por resolver**. Mientras quede algo, **Aplicar** está detenido y un aviso arriba dice qué falta.
+5. Pulsa **Aplicar**. El recuadro **Al aplicar** dice antes cuánto se agrega, cambia o elimina.
+
+![Revisar y decidir: el aviso de lo que falta, Aceptar todos los más recientes y los grupos de casos con su cantidad.](../img/es/importar-decidir-resumen.webp "Primero el resumen: abres solo lo que quieras mirar."){width=768 height=REV1ES}
+
+| Caso | Qué es | Qué viene elegido | Qué puedes hacer |
+|---|---|---|---|
+| **Nuevos** | Solo están en el archivo | Entran | Desmarcarlos |
+| **Distintos** | El mismo registro con otros datos | El lado editado más recientemente | Lo tuyo o lo del archivo, por registro o por campo |
+| **Borrado en un lado, editado en el otro** | Un lado lo eliminó y el otro lo editó después | Se mantiene | Mantener o borrar |
+| **Borrados sin conflicto** | Un lado lo eliminó y el otro no lo cambió después | Queda eliminado | Revertir |
+| **Se unen a lo que ya tienes** | Valores con el mismo nombre que uno tuyo, sin contar mayúsculas ni tildes | Se usa el tuyo | Nada que decidir |
+| **Personas con el mismo correo** | Una persona del archivo tiene el correo de una tuya | Nada: detiene **Aplicar** | Unir con tus datos, unir con los del archivo o cambiar su correo |
+| **Choca con otro** | Por ejemplo, dos titulares en un puesto o dos Aprobadores en una actividad | Nada: detiene **Aplicar** | Conservar lo tuyo o lo del archivo. Si conservas una asignación del archivo, la tuya se cierra |
+| **Referencia a algo que no estará** | Algo apunta a lo que decidiste no traer o a lo que quedará eliminado | Nada: detiene **Aplicar** | Reasignar, dejar vacío si se puede o descartar el registro. **Resolver todas las referencias** lo hace de una vez |
+| **Quedaría dentro de sí misma** | Con lo elegido, una unidad termina colgando de sí misma | Nada: detiene **Aplicar** | Cambiar su unidad superior o dejarla sin superior |
+
+Lo que solo está en tu base se queda: nada se borra por no venir en el archivo. Eso es lo que permite traer una sola rama sin tocar el resto. Una foto o la configuración de una vista se comparan sin mostrarse, y dice cuánto pesan.
+
+![Ver campos de un registro distinto: cada campo con su valor en tus datos y en el archivo, para elegir uno por uno.](../img/es/importar-decidir-campos.webp "Campo a campo: eliges qué valor se queda."){width=768 height=REV2ES}
+
+::: warning Importante
+«El más reciente» es solo una ayuda: esa fecha la pone el otro computador, y puede estar mal. Una fecha futura o que no es una fecha se marca, nunca cuenta como la más reciente y no borra ni recupera nada sola: lo decides tú.
+:::
+
+Si tus datos cambian mientras revisas, por ejemplo en otra pestaña, **Aplicar** avisa y no escribe nada. Pulsa **Comparar de nuevo**: lo que decidiste sobre lo que no cambió se conserva, y un aviso dice cuántas decisiones volvieron a su valor inicial.
+
+Las decisiones duran mientras dura la revisión. **Cancelar** y **Volver a las opciones** avisan antes de perderlas. Si te vas a otra pantalla, un aviso te ofrece volver a la revisión o descartarla; y si cierras la app con decisiones sin aplicar, pregunta antes.
+
 ### Reemplazar todo
 
 Tus datos actuales se cambian por los del archivo y la app se reinicia. Solo se puede con un archivo de **toda la base**: con una parte borrarías el resto. Se pide confirmar.
 
 ::: tip Consejo
-Antes de aplicar cualquiera de los dos, BoldoAtlas hace un respaldo marcado **Antes de reemplazar**. Si te arrepientes, restáuralo desde [Respaldos](respaldos.md). Si algo falla al aplicar, no se escribe nada.
+Antes de aplicar cualquiera de las tres, BoldoAtlas hace un respaldo marcado **Antes de reemplazar**. Si te arrepientes, restáuralo desde [Respaldos](respaldos.md). Si algo falla al aplicar, no se escribe nada.
 :::
 
 ## Si cierras a mitad de camino

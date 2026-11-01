@@ -34,7 +34,7 @@ If the code does not match or the file was altered, you see the same notice: “
 
 ### Add what is new
 
-What does not exist in your database comes in as it is, except what is deleted in the file. What already exists stays as it is, even if it differs in the file: at the end you see how many were skipped and which, in a list that opens with a click.
+To bring in what is missing without reviewing one by one. What does not exist in your database comes in as it is, except what is deleted in the file. What already exists stays as it is, even if it differs in the file: at the end you see how many were skipped and which, in a list that opens with a click.
 
 | If the file carries… | What happens |
 |---|---|
@@ -46,12 +46,48 @@ What does not exist in your database comes in as it is, except what is deleted i
 
 If you import a branch whose parent unit is in your database, it goes back inside it. If it is not, you are asked where to place it: **inside a unit** or **as an independent tree**. Either way it goes after its siblings. A database with no name takes the name of the organization in the file.
 
+### Review and decide
+
+For two copies that kept working separately: you compare the file with your data and decide what stays. It works with a file of the whole database or of one or more branches. Comparing changes nothing: your data is written only when you press **Apply**.
+
+1. Choose **Review and decide** and press **Continue**.
+2. Look at the summary: each type of case with its count. What is the same on both sides is not listed.
+3. Press **Accept all the most recent** to settle the common cases in one click, or open a group and decide per record. **Show fields** shows each field with its value in your data and in the file, and you can choose field by field.
+4. Resolve whatever appears in **To resolve**. While anything is left, **Apply** is stopped and a notice at the top says what is missing.
+5. Press **Apply**. The **When applying** box says beforehand how much is added, changed or deleted.
+
+![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=REV1EN}
+
+| Case | What it is | What comes selected | What you can do |
+|---|---|---|---|
+| **New** | Only in the file | They come in | Uncheck them |
+| **Different** | The same record with other data | The side edited most recently | Yours or the file's, per record or per field |
+| **Deleted on one side, edited on the other** | One side deleted it and the other edited it later | It is kept | Keep or delete |
+| **Deleted without conflict** | One side deleted it and the other did not change it afterwards | It stays deleted | Revert |
+| **Merged with what you already have** | Values with the same name as one of yours, ignoring capitals and accents | Yours is used | Nothing to decide |
+| **People with the same email** | A person in the file has the email of one of yours | Nothing: it stops **Apply** | Merge with your data, merge with the file's, or change their email |
+| **Clashes with another** | For example, two holders in a position or two Approvers in an activity | Nothing: it stops **Apply** | Keep yours or the file's. If you keep an assignment from the file, yours is closed |
+| **Reference to something that will not be there** | Something points to what you chose not to bring or to what will end up deleted | Nothing: it stops **Apply** | Reassign, leave empty if allowed, or discard the record. **Resolve all references** does it at once |
+| **Would end up inside itself** | With what you chose, a unit ends up hanging from itself | Nothing: it stops **Apply** | Change its parent unit or leave it without one |
+
+What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. A photo or a view's settings are compared without being shown, and it says how much they weigh.
+
+![Show fields of a different record: each field with its value in your data and in the file, to choose one by one.](../img/en/importar-decidir-campos.webp "Field by field: you choose which value stays."){width=768 height=REV2EN}
+
+::: warning Important
+“The most recent” is only a help: that date comes from the other computer, and it may be wrong. A future date or something that is not a date is marked, never counts as the most recent and does not delete or recover anything by itself: you decide.
+:::
+
+If your data changes while you review, for example in another tab, **Apply** warns you and writes nothing. Press **Compare again**: what you decided about what did not change is kept, and a notice says how many decisions went back to their initial value.
+
+Decisions last as long as the review. **Cancel** and **Back to the options** warn before losing them. If you go to another screen, a notice offers to go back to the review or discard it; and if you close the app with unapplied decisions, it asks first.
+
 ### Replace everything
 
 Your current data is swapped for the file's and the app restarts. It only works with a file of **the whole database**: with a part you would erase the rest. You are asked to confirm.
 
 ::: tip Tip
-Before applying either one, BoldoAtlas makes a backup marked **Before replacing**. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
+Before applying any of the three, BoldoAtlas makes a backup marked **Before replacing**. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
 :::
 
 ## If you close halfway
