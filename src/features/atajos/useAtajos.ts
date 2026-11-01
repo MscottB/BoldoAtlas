@@ -9,7 +9,7 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
-import { destinoNavegacion, resolverAtajo, type Atajo, type Navegacion } from "./atajos";
+import { dentroDelPanel, destinoNavegacion, resolverAtajo, type Atajo, type Navegacion } from "./atajos";
 
 /** Si la paleta de comandos (Ctrl+K) está abierta. La abren el atajo y el botón de la barra superior. */
 export const paletaAbierta = ref(false);
@@ -77,6 +77,7 @@ export function useAtajos() {
       altKey: e.altKey,
       shiftKey: e.shiftKey,
       enCampoDeTexto: !!destino?.closest(CAMPO),
+      enPanel: dentroDelPanel(destino),
       modalAbierto: !!document.querySelector(MODAL),
       soloLectura: !!org.fechaVista,
       horizontal: config.value.direccion === "horizontal",

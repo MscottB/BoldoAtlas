@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { unidades } from "../arbol/fixture";
-import { destinoNavegacion, resolverAtajo, type TeclaAtajo } from "./atajos";
+import { dentroDelPanel, destinoNavegacion, resolverAtajo, type TeclaAtajo } from "./atajos";
 
 const tecla = (key: string, extra: Partial<TeclaAtajo> = {}): TeclaAtajo => ({
   key,
@@ -10,7 +10,33 @@ const tecla = (key: string, extra: Partial<TeclaAtajo> = {}): TeclaAtajo => ({
   ...extra,
 });
 
+describe("dentroDelPanel", () => {
+  const el = (enPanel: boolean, esPanel: boolean) =>
+    ({ closest: () => (enPanel ? {} : null), matches: () => esPanel }) as unknown as Element;
+
+  it("cuenta un control dentro del panel, no el panel mismo ni lo de afuera", () => {
+    expect(dentroDelPanel(el(true, false))).toBe(true);
+    expect(dentroDelPanel(el(true, true))).toBe(false);
+    expect(dentroDelPanel(el(false, false))).toBe(false);
+    expect(dentroDelPanel(null)).toBe(false);
+  });
+});
+
 describe("resolverAtajo", () => {
+  it("con el foco dentro del panel, nada actúa sobre el lienzo; zoom, paleta, Esc y pestañas siguen", () => {
+    const enPanel = { enPanel: true };
+    for (const key of ["Delete", "n", "N", "f", "F2", "ContextMenu", "ArrowUp", "ArrowLeft"])
+      expect(resolverAtajo(tecla(key, enPanel))).toBeNull();
+    expect(resolverAtajo(tecla("F10", { ...enPanel, shiftKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("ArrowUp", { ...enPanel, shiftKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("d", { ...enPanel, ctrlKey: true }))).toBeNull();
+
+    expect(resolverAtajo(tecla("Escape", enPanel))).toBe("cerrar");
+    expect(resolverAtajo(tecla("k", { ...enPanel, ctrlKey: true }))).toBe("paleta");
+    expect(resolverAtajo(tecla("-", { ...enPanel, ctrlKey: true }))).toBe("alejar");
+    expect(resolverAtajo(tecla("t", { ...enPanel, ctrlKey: true }))).toBe("nuevaPestana");
+  });
+
   it("Ctrl+K abre la paleta, también escribiendo en un campo, y Cmd+K en Mac", () => {
     expect(resolverAtajo(tecla("k", { ctrlKey: true }))).toBe("paleta");
     expect(resolverAtajo(tecla("K", { ctrlKey: true, enCampoDeTexto: true }))).toBe("paleta");

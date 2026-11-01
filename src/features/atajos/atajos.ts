@@ -40,6 +40,8 @@ export interface TeclaAtajo {
   soloLectura?: boolean;
   /** El árbol se dibuja de izquierda a derecha: las flechas siguen el dibujo. */
   horizontal?: boolean;
+  /** El foco está en un control dentro del panel de la unidad (ver `dentroDelPanel`). */
+  enPanel?: boolean;
 }
 
 const FLECHAS: Record<string, [vertical: Navegacion, horizontal: Navegacion]> = {
@@ -48,6 +50,14 @@ const FLECHAS: Record<string, [vertical: Navegacion, horizontal: Navegacion]> = 
   ArrowLeft: ["irHermanoAnterior", "irSuperior"],
   ArrowRight: ["irHermanoSiguiente", "irPrimerHijo"],
 };
+
+const PANEL = "[data-panel-unidad]";
+
+/**
+ * Un control dentro del panel de la unidad: ahí una tecla suelta no debe actuar sobre el lienzo (Supr eliminaría la
+ * unidad). El panel mismo no cuenta: toma el foco al abrirse, justo después de elegir la tarjeta.
+ */
+export const dentroDelPanel = (el: Element | null) => !!el?.closest(PANEL) && !el.matches(PANEL);
 
 /** Qué atajo (si alguno) es esta pulsación. Pura: quien la llama mide el foco, los diálogos y la fecha. */
 export function resolverAtajo(e: TeclaAtajo): Atajo | null {
@@ -64,8 +74,9 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return "nuevaPestana";
   if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";
   if (e.ctrlKey && !e.altKey && e.key === "Tab") return e.shiftKey ? "pestanaAnterior" : "pestanaSiguiente";
-  if (conControl && tecla === "d" && !e.altKey) return e.enCampoDeTexto || e.soloLectura ? null : "duplicar";
-  if (conControl || e.altKey || e.enCampoDeTexto) return null;
+  if (conControl && tecla === "d" && !e.altKey)
+    return e.enCampoDeTexto || e.soloLectura || e.enPanel ? null : "duplicar";
+  if (conControl || e.altKey || e.enCampoDeTexto || e.enPanel) return null;
   if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) return "menuContextual";
   if (e.key === "F2" && !e.shiftKey) return e.soloLectura ? null : "renombrar";
   if (e.key in FLECHAS) {

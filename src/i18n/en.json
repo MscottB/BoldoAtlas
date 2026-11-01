@@ -552,12 +552,26 @@
     "nPuestos": "{n} position | {n} positions",
     "nVacantes": "{n} vacancy | {n} vacancies",
     "nCubiertas": "{n} covered by a replacement | {n} covered by a replacement",
-    "cantidad": "Nobody | {n} person on the list | {n} people on the list",
+    "cantidad": "No assignments | {n} assignment | {n} assignments",
     "lista": "People in the unit",
     "vacia": "Nobody holds its positions.",
     "sinResultados": "Nobody matches the search.",
     "volver": "Back to the list",
-    "abrirFicha": "Open record"
+    "volverArbol": "Back to the tree",
+    "abrirFicha": "Open record",
+    "vista": {
+      "titulo": "View as",
+      "lista": "List",
+      "arbol": "Tree"
+    },
+    "arbol": {
+      "nombre": "People in {unidad}, as a tree",
+      "ayuda": "Up and down arrows move, right and left open and close. Enter opens the person or selects the unit on the canvas; Shift+Enter opens the unit's head.",
+      "expandir": "Expand all",
+      "contraer": "Collapse all",
+      "nPersonas": "{n} people | {n} person | {n} people",
+      "verJefe": "View the head (Shift+Enter)"
+    }
   },
   "seleccion": {
     "barra": "Actions on the selected units",

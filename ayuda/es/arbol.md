@@ -172,6 +172,15 @@ La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reempla
 
 Pulsa una persona para ver su **vista previa** en el mismo panel: foto, correo, teléfono, puestos vigentes e historial. **Abrir ficha** abre su ficha completa para editarla; **Volver a la lista** (o `Esc`) vuelve a la lista en el mismo lugar, con el foco en la persona que abriste. Con una fecha elegida, la lista y la vista previa muestran a quienes estaban asignados ese día.
 
+**Lista** y **Árbol** cambian cómo se ven esas mismas personas; la elección se recuerda en este computador. El **árbol** parte de la unidad del panel y muestra lo que tiene debajo, padre e hijo:
+
+- Cada unidad muestra su nombre, su tipo, su jefatura (foto o iniciales, nombre y cargo) y cuántas personas tiene su rama: los titulares, la misma cifra de la tarjeta (los reemplazos se ven, pero no suman). Arriba, **asignaciones** cuenta todas las filas de personas, como la lista. Debajo van sus demás personas (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Con **Incluir subunidades** apagado se ve solo la unidad.
+- Al abrirlo se ve el primer nivel. La flecha de una unidad la abre o la cierra; **Expandir todo** abre todas y **Contraer todo** vuelve al primer nivel.
+- Pulsa una persona o el nombre de una jefatura para ver su vista previa; **Volver al árbol** (o `Esc`) vuelve al mismo lugar. Pulsa una unidad para seleccionarla en el lienzo: el panel y el árbol pasan a partir de ella. Los puestos vacantes no abren nada.
+- El buscador deja a quienes coinciden, con las unidades que los contienen, y resalta el texto encontrado (si coincide el correo, que no se ve en el árbol, la persona aparece sin resaltar). Son las mismas personas que en la lista, y **Copiar correos** copia esas.
+- El orden se aplica a las personas dentro de cada unidad (**Por unidad** las deja por nombre, porque ahí todas son de la misma); las subunidades siguen el orden del organigrama. Con una fecha elegida, el árbol es el de ese día.
+- Con el teclado, `↑` y `↓` recorren las filas, `→` abre una unidad o entra en ella, `←` la cierra o sube a su superior, `Inicio` y `Fin` van a la primera y a la última. `Enter` hace lo mismo que pulsar la fila y `Mayús+Enter` abre la vista previa de la jefatura de la unidad.
+
 ### Eliminar una unidad
 
 Una unidad sin contenido se elimina de inmediato. Si tiene subunidades o puestos, BoldoAtlas pregunta antes y **mueve su contenido al superior** de la unidad eliminada. Una unidad raíz con contenido no se puede eliminar: primero mueve o elimina lo que contiene. Tras eliminar aparece un aviso con **Deshacer** durante 8 segundos, que devuelve la unidad y todo lo que contenía a su lugar.

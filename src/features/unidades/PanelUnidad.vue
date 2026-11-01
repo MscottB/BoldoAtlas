@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useId, watch } from "vue";
+import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Bookmark, BookmarkCheck, Copy, Plus, Trash2, X } from "@lucide/vue";
@@ -48,6 +48,12 @@ const raiz = ref<HTMLElement | null>(null);
 onMounted(() => {
   if (!editando.value) raiz.value?.focus();
 });
+// La miga pulsada pasa a ser la última, que no es botón: el foco va donde va al abrir el panel, no a <body>.
+async function irA(id: string) {
+  seleccionar(id);
+  await nextTick();
+  raiz.value?.focus();
+}
 function cerrar() {
   (document.activeElement as HTMLElement | null)?.blur(); // el campo en edición guarda su cambio al perder el foco
   emit("cerrar");
@@ -210,7 +216,7 @@ async function eliminar() {
                 v-else
                 type="button"
                 class="rounded hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                @click="seleccionar(m.id)"
+                @click="irA(m.id)"
               >
                 {{ m.nombre }}
               </button>
