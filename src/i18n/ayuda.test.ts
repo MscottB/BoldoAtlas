@@ -91,7 +91,7 @@ describe("ayuda en español e inglés", () => {
   it.each(["es", "en"])("%s: ninguna página habla de funciones que aún no existen", (idioma) => {
     for (const f of paginas(idioma))
       expect(leer(idioma, f), `${idioma}/${f}`).not.toMatch(
-        /Próximamente|Coming soon|\bFases? \d|\bPhases? \d|\.boldo\b|\bExcel\b/i,
+        /Próximamente|Coming soon|\bFases? \d|\bPhases? \d|\.boldo\b|\bExcel\b|\b(aún|todavía) no (tiene|existe|está|hay|se puede)\b|\bpor ahora\b|\bfor now\b|\b(is|are) not \S+ yet\b/i,
       );
   });
 });

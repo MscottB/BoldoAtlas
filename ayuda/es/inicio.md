@@ -56,7 +56,7 @@ El título de la ventana y la barra superior muestran el nombre de la organizaci
 En macOS, las preferencias de la ventana (tema, escala, pestañas) y sus cachés web las guarda el sistema en tu carpeta `~/Library` (`WebKit`, `Caches`), también en la portable; los datos y los respaldos sí quedan en `datos/`.
 
 ::: warning Importante
-BoldoAtlas aún no tiene firma digital, así que la primera vez el sistema avisa. Esto es lo que debes hacer según tu sistema:
+BoldoAtlas no está firmado digitalmente, así que la primera vez el sistema avisa. Esto es lo que debes hacer según tu sistema:
 :::
 
 - **Windows:** si aparece «Windows protegió su PC», pulsa **Más información → Ejecutar de todas formas**.

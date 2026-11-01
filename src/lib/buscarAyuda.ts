@@ -1,5 +1,5 @@
 // Buscador de la Ayuda: parte cada página en secciones (por encabezado) y busca por palabras, sin tildes ni mayúsculas.
-import { idEncabezado } from "@/lib/markdownAyuda";
+import { generadorDeIds } from "@/lib/markdownAyuda";
 import { normalizarTexto, partirCoincidencia } from "@/lib/texto";
 
 export interface PaginaAyuda {
@@ -45,25 +45,19 @@ export function resumenDe(texto: string): string {
 export function seccionesDe(paginas: PaginaAyuda[]): Seccion[] {
   const salida: Seccion[] = [];
   for (const p of paginas) {
-    const usados = new Map<string, number>();
+    const idDe = generadorDeIds();
     let actual: Seccion = { slug: p.slug, pagina: p.titulo, encabezado: p.titulo, id: "", lineas: [] };
     let codigo = false;
     for (const l of p.texto.replace(/\r\n/g, "\n").split("\n")) {
       if (/^(```|~~~)/.test(l)) codigo = !codigo;
-      const h = !codigo && /^(#{2,6})\s+(.+?)\s*$/.exec(l);
+      const h = !codigo && /^(#{1,6})\s+(.+?)\s*$/.exec(l);
       if (h) {
+        // el id se calcula con todos los encabezados, el título incluido, igual que en el HTML
+        const id = idDe(h[2]!);
+        if (h[1]!.length === 1) continue;
         salida.push(actual);
-        const base = idEncabezado(h[2]!) || "seccion";
-        const n = usados.get(base) ?? 0;
-        usados.set(base, n + 1);
-        actual = {
-          slug: p.slug,
-          pagina: p.titulo,
-          encabezado: limpiar(h[2]!),
-          id: n ? `${base}-${n + 1}` : base,
-          lineas: [],
-        };
-      } else if (!/^#\s/.test(l)) {
+        actual = { slug: p.slug, pagina: p.titulo, encabezado: limpiar(h[2]!), id, lineas: [] };
+      } else {
         const limpia = limpiar(l);
         if (limpia) actual.lineas.push(limpia);
       }
@@ -73,10 +67,13 @@ export function seccionesDe(paginas: PaginaAyuda[]): Seccion[] {
   return salida;
 }
 
+/** La búsqueda solo se ejecuta con al menos dos letras; antes, la vista no debe decir «sin resultados». */
+export const consultaValida = (consulta: string) => normalizarTexto(consulta).replace(/ /g, "").length >= 2;
+
 /** Secciones que contienen todas las palabras (en el encabezado o el texto), con un extracto de la primera coincidencia. */
 export function buscarEnAyuda(secciones: Seccion[], consulta: string, maximo = 30): Resultado[] {
+  if (!consultaValida(consulta)) return [];
   const palabras = normalizarTexto(consulta).split(" ").filter(Boolean);
-  if (palabras.length === 0 || palabras.join("").length < 2) return [];
   const resultados: Resultado[] = [];
   for (const s of secciones) {
     const todo = normalizarTexto([s.pagina, s.encabezado, ...s.lineas].join(" "));

@@ -14,19 +14,35 @@ export interface OpcionesAyuda {
   rutaPagina?: (slug: string, ancla: string) => string;
   /** Agrega un id a cada encabezado (VitePress ya lo hace). */
   anclas?: boolean;
+  /** Activa los avisos `::: info|tip|warning` (VitePress ya los trae). */
+  avisos?: boolean;
 }
 
 const TIPOS_AVISO = /^:::\s*(info|tip|warning)\s+(\S.*?)\s*$/;
 const ATRIBUTOS_IMAGEN = new Set(["width", "height"]);
 
 /** Un id estable para un encabezado: minúsculas, sin tildes, guiones. */
-export function idEncabezado(texto: string): string {
+function idEncabezado(texto: string): string {
   return texto
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Los ids de los encabezados de una página, en orden: el mismo cálculo para el HTML (regla `anclas`) y para el
+ * buscador. Debe recibir todos los encabezados, el `#` incluido, porque un `## Árboles` bajo `# Árboles` es `arboles-2`.
+ */
+export function generadorDeIds(): (texto: string) => string {
+  const usados = new Map<string, number>();
+  return (texto) => {
+    const base = idEncabezado(texto) || "seccion";
+    const n = usados.get(base) ?? 0;
+    usados.set(base, n + 1);
+    return n ? `${base}-${n + 1}` : base;
+  };
 }
 
 function avisos(state: StateBlock, inicio: number, fin: number, silencioso: boolean): boolean {
@@ -77,22 +93,19 @@ function atributosDeImagen(hijos: Token[]) {
   }
 }
 
-export function reglasAyuda(md: MarkdownIt, opciones: OpcionesAyuda & { avisos?: boolean } = {}) {
+export function reglasAyuda(md: MarkdownIt, opciones: OpcionesAyuda = {}) {
   if (opciones.avisos)
     md.block.ruler.before("fence", "aviso", avisos, {
       alt: ["paragraph", "reference", "blockquote", "list"],
     });
 
   md.core.ruler.push("ayuda", (state: StateCore) => {
-    const usados = new Map<string, number>();
+    const idDe = generadorDeIds();
     const ts = state.tokens;
     for (let i = 0; i < ts.length; i++) {
       const t = ts[i]!;
       if (opciones.anclas && t.type === "heading_open" && ts[i + 1]?.type === "inline") {
-        const base = idEncabezado(ts[i + 1]!.content) || "seccion";
-        const n = usados.get(base) ?? 0;
-        usados.set(base, n + 1);
-        t.attrSet("id", n ? `${base}-${n + 1}` : base);
+        t.attrSet("id", idDe(ts[i + 1]!.content));
       }
       if (t.type !== "inline" || !t.children) continue;
       atributosDeImagen(t.children);

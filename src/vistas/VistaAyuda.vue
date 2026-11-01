@@ -25,7 +25,7 @@ import {
 import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
 import { Input } from "@/components/ui/input";
 import { abrirEnlacesFuera } from "@/lib/enlaces";
-import { buscarEnAyuda, resumenDe, seccionesDe } from "@/lib/buscarAyuda";
+import { buscarEnAyuda, consultaValida, resumenDe, seccionesDe } from "@/lib/buscarAyuda";
 import { reglasAyuda } from "@/lib/markdownAyuda";
 import orden from "../../ayuda/orden.json";
 
@@ -96,7 +96,8 @@ const consulta = ref("");
 const campo = ref<InstanceType<typeof Input> | null>(null);
 const secciones = computed(() => seccionesDe(lista.value));
 const resultados = computed(() => buscarEnAyuda(secciones.value, consulta.value));
-const buscando = computed(() => consulta.value.trim().length > 0);
+// Con una sola letra la búsqueda aún no corre: se sigue viendo la página o el índice.
+const buscando = computed(() => consultaValida(consulta.value));
 
 function limpiarBusqueda() {
   consulta.value = "";

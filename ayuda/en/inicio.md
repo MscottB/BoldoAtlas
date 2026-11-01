@@ -56,7 +56,7 @@ The window title and the top bar show the organization name with the **Main** ba
 On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`), also for the portable; data and backups do stay in `datos/`.
 
 ::: warning Important
-BoldoAtlas is not code-signed yet, so the first time the system warns you. Here is what to do on your system:
+BoldoAtlas is not digitally signed, so the first time the system warns you. Here is what to do on your system:
 :::
 
 - **Windows:** if "Windows protected your PC" appears, click **More info → Run anyway**.
