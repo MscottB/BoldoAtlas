@@ -63,6 +63,17 @@ Requirements: on Windows, WebView2 (included in Windows 11 and almost every Wind
 
 In portable mode, extract the zip first: running it from inside the zip cannot save data. On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`); data and backups do stay in `datos/`.
 
+### Updating
+
+BoldoAtlas checks for new versions every day (portable and installed) and shows a notice in the top bar; you can also use **Check for updates** in About, in the app menu or with Ctrl+K. The update window shows the notes of every version you skipped and never installs without confirmation. Every package is signed and rejected if the signature doesn't match.
+
+- **Windows portable:** replaces `BoldoAtlas.exe` inside its folder (the previous one stays as `BoldoAtlas.old.exe` until the next start) and restarts; `datos/` is not touched and nothing is written outside the folder. One trace stays outside, written by Windows rather than BoldoAtlas: the registry (`HKCU\Control Panel\NotifyIconSettings`) records the path of every program that shows a tray icon.
+- **Linux and macOS portable:** replaces the AppImage or the `.app` in its folder; temporary files go in `datos/`.
+- **Installed:** Windows runs the new installer, macOS replaces the `.app` and the AppImage replaces itself.
+- **`.deb` and `.rpm`:** the system updates them; BoldoAtlas only offers to download the new package.
+
+You can always update by hand: download the new zip and replace the program; `datos/` is not touched. Release notes are written in Spanish (also shown that way with the English interface).
+
 ### Opening an unsigned program
 
 BoldoAtlas is not code-signed yet, so the first time the system warns you:
@@ -73,7 +84,7 @@ BoldoAtlas is not code-signed yet, so the first time the system warns you:
 
 ## Privacy
 
-Everything is stored on your computer. BoldoAtlas makes no network connections and has no accounts. Files you share with other people (`.boldo`) will be encrypted and open only with the code generated for each file.
+Everything is stored on your computer and BoldoAtlas has no accounts. Its only automatic connection is the check for new versions (daily by default; change it or turn it off in **Settings › Updates**): it reads the public list of GitHub releases and the new version's `latest.json` and `novedades.json`, sends no organization data or identifiers, and never installs without asking. Files you share with other people (`.boldo`) will be encrypted and open only with the code generated for each file.
 
 ## Build from source
 

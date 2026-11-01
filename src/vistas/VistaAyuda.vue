@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import MarkdownIt from "markdown-it";
 import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
+import { abrirEnlacesFuera } from "@/lib/enlaces";
 
 // Las páginas viven en /ayuda/<idioma>/<tema>.md (fuente única, también para el sitio web).
 const paginas = import.meta.glob("/ayuda/*/*.md", {
@@ -56,8 +57,9 @@ const html = computed(() => (actual.value ? md.render(actual.value.texto) : ""))
           </li>
         </ul>
       </nav>
+      <!-- los enlaces se abren en el navegador del sistema, nunca dentro de la app -->
       <!-- eslint-disable-next-line vue/no-v-html -- html: false en markdown-it -->
-      <article v-if="actual" class="ayuda min-w-0 flex-1" v-html="html" />
+      <article v-if="actual" class="ayuda min-w-0 flex-1" @click="abrirEnlacesFuera" v-html="html" />
       <p v-else class="text-sm text-muted-foreground">{{ t("ayuda.noExiste") }}</p>
     </div>
   </section>

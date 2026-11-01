@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { artefactos, empaquetar, escribirSumas, SUMAS, TAR } from "./release.mjs";
+import { ACTUALIZABLES, artefactos, empaquetar, escribirSumas, SUMAS, TAR } from "./release.mjs";
 
 const sha256 = (ruta: string) => createHash("sha256").update(readFileSync(ruta)).digest("hex");
 const SISTEMAS = ["windows", "linux", "macos"] as const;
@@ -54,7 +54,7 @@ describe("artefactos", () => {
   it("publica los nombres de la spec, sin versión", () => {
     const publicados = SISTEMAS.flatMap((s) => {
       const a = artefactos(s, "1.2.3");
-      return [a.zip, ...Object.keys(a.instaladores)];
+      return [a.zip, ...Object.keys(a.instaladores), ...Object.keys(a.comprimidos)];
     });
     expect(publicados).toEqual([
       "BoldoAtlas_windows_x64_portable.zip",
@@ -65,7 +65,18 @@ describe("artefactos", () => {
       "BoldoAtlas_linux_x64.rpm",
       "BoldoAtlas_macos_universal_portable.zip",
       "BoldoAtlas_macos_universal.dmg",
+      "BoldoAtlas_macos_universal.app.tar.gz",
     ]);
+  });
+
+  it("cada paquete del actualizador es un archivo publicado", () => {
+    const publicados = new Set(
+      SISTEMAS.flatMap((s) => {
+        const a = artefactos(s, "1.2.3");
+        return [a.zip, ...Object.keys(a.instaladores), ...Object.keys(a.comprimidos)];
+      }),
+    );
+    for (const archivo of Object.values(ACTUALIZABLES)) expect(publicados).toContain(archivo);
   });
 
   it("busca los paquetes de Tauri con la versión y el binario universal en macOS", () => {
@@ -109,7 +120,7 @@ describe.skipIf(!hayZip)("empaquetar", () => {
 
     empaquetar({ sistema, version: "0.1.0", dir, salida });
 
-    const publicados = [a.zip, ...Object.keys(a.instaladores)].sort();
+    const publicados = [a.zip, ...Object.keys(a.instaladores), ...Object.keys(a.comprimidos)].sort();
     expect(readdirSync(salida).sort()).toEqual([...publicados, SUMAS].sort());
     expect(listar(join(salida, a.zip))).toEqual(contenidoPortable[sistema]);
     expect(readFileSync(join(salida, SUMAS), "utf8")).toBe(
@@ -124,6 +135,26 @@ describe.skipIf(!hayZip)("empaquetar", () => {
 
     expect(readdirSync(salida).sort()).toEqual([a.zip, SUMAS].sort());
     expect(readFileSync(join(salida, SUMAS), "utf8")).toBe(`${sha256(join(salida, a.zip))}  ${a.zip}\n`);
+  });
+
+  it("macOS: el actualizador recibe el .app en un tar.gz", () => {
+    const { dir, salida } = compilado("macos");
+    empaquetar({ sistema: "macos", version: "0.1.0", dir, salida });
+    const tar = enWindows ? TAR : "tar";
+    const lista = execFileSync(
+      tar,
+      ["-t", "-z", "-f", join(salida, "BoldoAtlas_macos_universal.app.tar.gz")],
+      {
+        encoding: "utf8",
+      },
+    );
+    expect(lista.split(/\r?\n/).filter(Boolean).sort()).toEqual([
+      "BoldoAtlas.app/",
+      "BoldoAtlas.app/Contents/",
+      "BoldoAtlas.app/Contents/Info.plist",
+      "BoldoAtlas.app/Contents/MacOS/",
+      "BoldoAtlas.app/Contents/MacOS/boldo-atlas",
+    ]);
   });
 
   it.skipIf(enWindows)("el AppImage sigue siendo ejecutable dentro del zip", () => {

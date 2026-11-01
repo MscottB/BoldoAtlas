@@ -66,4 +66,4 @@ Changes are saved automatically: there is no "Save" button. The indicator in the
 
 ## Privacy
 
-Nothing leaves your computer. BoldoAtlas has no accounts, no server and never connects to the internet.
+Your data never leaves your computer. BoldoAtlas has no accounts and no server. The only thing it does on its own is look for new versions (every day; turn it off in **Settings › Updates**): it reads the public list of releases on GitHub and sends no data or identifiers. See **Updates**.

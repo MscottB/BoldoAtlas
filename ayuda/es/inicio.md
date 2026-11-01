@@ -66,4 +66,4 @@ Los cambios se guardan solos: no hay botón "Guardar". El indicador de la barra 
 
 ## Privacidad
 
-Nada sale de tu computador. BoldoAtlas no usa cuentas, no tiene servidor y no se conecta a internet.
+Tus datos no salen de tu computador. BoldoAtlas no usa cuentas ni tiene servidor. Lo único que hace por su cuenta es buscar versiones nuevas (cada día; se apaga en **Configuración › Actualizaciones**): lee la lista pública de versiones en GitHub y no envía datos ni identificadores. Ver **Actualizaciones**.

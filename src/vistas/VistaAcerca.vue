@@ -4,13 +4,17 @@ import { useI18n } from "vue-i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
 import BloquePlegable from "@/components/BloquePlegable.vue";
+import { RefreshCw, Sparkles } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
+import { useActualizaciones } from "@/stores/actualizaciones";
 import { infoApp, leerMeta, type InfoApp } from "@/db/cliente";
 import { AUTOR, LICENCIA, REPO } from "@/app/about";
 import { infoParaCopiar, versionVisible } from "@/app/version";
 import logo from "../../assets/brand/logo-horizontal.webp";
 
 const { t } = useI18n();
+const actualizaciones = useActualizaciones();
 const info = ref<InfoApp | null>(null);
 const meta = ref<Record<string, string>>({});
 const copiado = ref(false);
@@ -39,6 +43,22 @@ async function copiar() {
     <div>
       <p class="text-2xl font-semibold">{{ versionVisible() }}</p>
       <p class="mt-1 select-all font-mono text-xs text-muted-foreground">{{ versionCompleta }}</p>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          :disabled="actualizaciones.buscando"
+          @click="buscarActualizaciones"
+        >
+          <RefreshCw aria-hidden="true" :class="actualizaciones.buscando && 'animate-spin'" />
+          {{ actualizaciones.buscando ? t("actualizar.buscando") : t("actualizar.buscar") }}
+        </Button>
+        <Button type="button" variant="outline" size="sm" @click="actualizaciones.abrirNovedades()">
+          <Sparkles aria-hidden="true" />
+          {{ t("novedades.ver") }}
+        </Button>
+      </div>
     </div>
 
     <BloquePlegable clave="acerca.detalles" :titulo="t('acerca.detalles')" class="text-sm">
