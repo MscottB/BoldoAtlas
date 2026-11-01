@@ -15,7 +15,7 @@ Both actions are in **Import/Export**, in the sidebar, and in the app menu. To o
 
 ![Export with the One or more trees or branches option and the list of units with one branch checked.](../img/en/exportar-alcance.webp "Export: checking a unit includes its whole branch."){width=768 height=414}
 
-A branch carries its units, its positions, the people who hold them today with their history in that branch, the list values they use, its tags, its saved branches and views, and its processes. What was deleted does not go, nor do the records of people who are no longer there. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going, the roles of people who are not going and the assignments of people who are no longer there.
+A branch carries its units, its positions, the people who hold them today, the full history of those positions, the list values they use, its tags, its saved branches and views, and its processes. People who are no longer there travel with their name and email only, without phone, notes or photo, so the history makes sense. What was deleted does not go. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going and the roles of people who are not going.
 
 ::: warning Important
 The code is shown only once and is not saved anywhere. If it is lost, the file cannot be opened: you have to export again, which gives another file and another code. The file carries personal data: send the file and the code **through different channels**, for example the file by email and the code by phone.

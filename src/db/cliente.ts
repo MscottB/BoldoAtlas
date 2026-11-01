@@ -107,7 +107,7 @@ export function abrirCarpetaDatos(): Promise<void> {
 export interface ResumenExportacion {
   parcial: boolean;
   filas: { tabla: string; filas: number }[];
-  cortes: { conexiones: number; jefaturas: number; roles: number; vistas: number; asignaciones: number };
+  cortes: { conexiones: number; jefaturas: number; roles: number; vistas: number; historial: number };
 }
 
 export interface Detalle {

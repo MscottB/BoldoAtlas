@@ -695,6 +695,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 **Orden de trabajo:**
 0. 20e: opciones al cerrar la ventana, junto a la 22a.
 1. 22a y 22b: exportar e importar, y fusión con revisión.
+1b. 27a y 27b: fotos optimizadas y carga bajo demanda.
 2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
 3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
 4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
@@ -706,6 +707,16 @@ Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la funci�
 
 ### Task 20e: Opciones al cerrar la ventana (spec §7 "Al cerrar la ventana")
 - Diálogo con Cancelar, Dejar en la bandeja, Cerrar la app y No volver a preguntar; preferencia en Configuración. Un registro de trabajos en curso que usan respaldos y las tareas 22a, 22b, 23a y 25a, para avisar antes de interrumpir. Se apoya en `src-tauri/src/salida.rs` y `src/app/ventana.ts`: cerrar nunca queda bloqueado.
+
+### Task 27a: Fotos optimizadas al subir (pedido del autor, 2026-11-01)
+- Al elegir una foto, la app la reduce con `canvas`, sin dependencias: lado máximo razonable para una ficha y compresión JPEG o WebP, como en `logoComoPng` de `configuracion/logo.ts`. Hoy se guarda una imagen de hasta 1 MiB por persona. Medir peso y nitidez con fotos reales antes de fijar el tamaño. La foto solo es para presentación.
+- En Configuración, «Optimizar fotos existentes» con avance y respaldo previo, solo a pedido. El logo sigue con su transparencia.
+
+### Task 27b: Cargar fotos y notas bajo demanda (hallazgo del autor y la revisión, 2026-11-01)
+- `SQL_TRABAJADORES` trae `foto_png` y `notas` de todos al abrir, y `db_consultar` devuelve todo en un solo JSON. Medido solo en JSON: unas 1.000 personas con foto de 300 KB son 400 MB; con 1 MB ya no cabe en un texto de JavaScript, y la app no podría cargar esa base, importada o no.
+- La lista carga sin esos campos, con un indicador de si existen. La ficha, las tarjetas visibles y el Directorio los piden al mostrarse, con caché y sin bloquear la ventana. Ajustar `organizacion.ts`, `historico.ts` y `validar.rs`, y probar con la organización grande.
+- **Apoyarse en Rust (pedido del autor):** TypeScript corre como JavaScript en la ventana y tiene ese límite de texto; Rust no. Las fotos se sirven desde Rust como archivos, con un protocolo propio de Tauri (`<img src>`), sin pasar por JSON, con el mínimo ajuste del CSP y sin dar acceso a nada más que fotos de esta base. Los comandos que devuelvan muchos datos usan respuestas por partes o paginadas. Lo que se pueda calcular o filtrar se hace en Rust o en SQL, y a la ventana llega solo lo que se muestra. Medir antes y después.
+- Después, revisar el presupuesto de 512 MiB en `validar.rs`, midiendo.
 
 ### Task 24a: Procesos con SIPOC (spec §5 `procesos` y §8 "Proceso")
 - Migración, repositorio y store con la tabla `procesos`. Pestaña Procesos en el panel de unidad, formulario con atributos, SIPOC y documento (se abre con el programa del sistema, validando la ruta o URL).

@@ -15,7 +15,7 @@ Ambas acciones están en **Importar/Exportar**, en la barra lateral, y en el men
 
 ![Exportar con la opción Uno o más árboles o ramas y la lista de unidades con una rama marcada.](../img/es/exportar-alcance.webp "Exportar: marcar una unidad incluye toda su rama."){width=768 height=414}
 
-Una rama lleva sus unidades, sus puestos, las personas que hoy los ocupan con su historial en esa rama, los valores de mantenedor que usan, sus etiquetas, sus ramas y vistas guardadas, y sus procesos. Lo eliminado no va, ni las fichas de quienes ya no están. Lo que apunta fuera de la rama se corta y se te avisa antes de guardar: las conexiones con una unidad que no va, una jefatura cuyo puesto no va, los roles de personas que no van y las asignaciones de personas que ya no están.
+Una rama lleva sus unidades, sus puestos, las personas que hoy los ocupan, todo el historial de esos puestos, los valores de mantenedor que usan, sus etiquetas, sus ramas y vistas guardadas, y sus procesos. Quienes ya no están viajan solo con su nombre y correo, sin teléfono, notas ni foto, para que el historial se entienda. Lo eliminado no va. Lo que apunta fuera de la rama se corta y se te avisa antes de guardar: las conexiones con una unidad que no va, una jefatura cuyo puesto no va y los roles de personas que no van.
 
 ::: warning Importante
 El código se muestra una sola vez y no se guarda en ninguna parte. Si se pierde, el archivo no se puede abrir: hay que exportar de nuevo, y eso da otro archivo y otro código. El archivo lleva datos personales: envía el archivo y el código **por canales distintos**, por ejemplo el archivo por correo y el código por teléfono.

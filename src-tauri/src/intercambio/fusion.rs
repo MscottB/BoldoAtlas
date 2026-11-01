@@ -739,7 +739,7 @@ mod tests {
         let inf = fusion(&mut dst, &origen, d.path(), Some(&rama()), &Lugares::new()).unwrap();
         // el puesto (unidad obligatoria) no entra, ni lo que depende de él
         assert_eq!(tabla(&inf, "puestos").omitidas, 1);
-        assert_eq!(tabla(&inf, "asignaciones").omitidas, 2);
+        assert_eq!(tabla(&inf, "asignaciones").omitidas, 3);
         assert_eq!(
             uno(
                 &dst,

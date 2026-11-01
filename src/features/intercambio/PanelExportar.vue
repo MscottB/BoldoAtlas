@@ -51,7 +51,7 @@ const puedeSeguir = computed(() => modo.value === "todo" || marcadas.value.size 
 const cortes = computed(() => {
   const c = resumen.value?.cortes;
   return c
-    ? (["conexiones", "jefaturas", "roles", "vistas", "asignaciones"] as const).filter((k) => c[k] > 0)
+    ? (["conexiones", "jefaturas", "roles", "vistas", "historial"] as const).filter((k) => c[k] > 0)
     : [];
 });
 const filasResumen = computed(() => conFilas(resumen.value?.filas ?? [], (f) => f.filas));

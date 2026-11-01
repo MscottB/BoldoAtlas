@@ -997,7 +997,7 @@
         "jefaturas": "{n} jefatura cuyo puesto no va: queda vacía | {n} jefaturas cuyo puesto no va: quedan vacías",
         "roles": "{n} rol de una persona que no va | {n} roles de personas que no van",
         "vistas": "{n} vista guardada del árbol completo | {n} vistas guardadas del árbol completo",
-        "asignaciones": "{n} asignación de una persona que ya no está | {n} asignaciones de personas que ya no están"
+        "historial": "{n} persona que ya no está va solo con nombre y correo, por su historial | {n} personas que ya no están van solo con nombre y correo, por su historial"
       },
       "guardar": "Guardar como…",
       "guardado": "Se guardó el archivo {nombre}.",
