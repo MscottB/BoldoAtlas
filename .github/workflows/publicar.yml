@@ -9,7 +9,7 @@ name: publicar
 on:
   push:
     branches: [main]
-    paths-ignore: ["site/**", "docs/**", "*.md", ".github/**"]
+    paths-ignore: ["site/**", "docs/**", "*.md", ".github/**", ".gitignore"]
   workflow_dispatch:
     inputs:
       pr:
