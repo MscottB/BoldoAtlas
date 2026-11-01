@@ -160,7 +160,11 @@ export function useLienzo() {
   // cambiar el texto no rehace los nodos (17h).
   if (!conPersona) {
     const indice = computed(() => indicePersonas(org.enFecha.trabajadores));
-    conPersona = computed(() => unidadesConPersona(config.value.resaltar.texto, indice.value, porPersona!.value));
+    // Sin texto no se lee el índice: se arma recién con la primera búsqueda.
+    conPersona = computed(() => {
+      const texto = config.value.resaltar.texto;
+      return normalizarTexto(texto) ? unidadesConPersona(texto, indice.value, porPersona!.value) : null;
+    });
   }
 
   // Tarjetas a la vista con esas ramas plegadas (de `unidades`, las que se dibujan), con sus puestos si se ven.

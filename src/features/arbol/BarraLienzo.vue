@@ -73,7 +73,7 @@ async function guardarEnArboles() {
 </script>
 
 <template>
-  <!-- @container: bajo 62rem de ancho, la búsqueda, «Ver en otra fecha» y «Más» se acortan (la fila cabe en la ventana mínima). -->
+  <!-- @container: bajo 62rem de ancho, «Ver en otra fecha» y «Más» se acortan y la búsqueda queda en su mínimo (la fila cabe en la ventana mínima). -->
   <div class="@container border-b">
     <div class="flex flex-wrap items-center gap-2 p-2">
       <Button size="sm" :disabled="!!org.fechaVista" @click="nueva">

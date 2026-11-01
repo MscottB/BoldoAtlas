@@ -157,15 +157,21 @@ async function hayCambios() {
 // Quien quiera abrir otra ficha (p. ej. el diálogo de un puesto) pasa por esta misma comprobación.
 ficha.registrarGuardia(hayCambios);
 
-// «Ver en el organigrama»: la ficha se cierra para dejar ver el lienzo (con cambios sin guardar, se pregunta como al cerrar).
+// «Ver en el organigrama»: la ficha se cierra para dejar ver el lienzo. Con cambios sin guardar se pregunta como al cerrar:
+// Descartar sigue al organigrama; Seguir editando se queda.
+let alDecidir: ((seguir: boolean) => void) | null = null;
 async function cerrarParaUbicar() {
   if (await hayCambios()) {
     confirmando.value = true;
-    return false;
+    return new Promise<boolean>((resolver) => (alDecidir = resolver));
   }
   ficha.cerrar();
   return true;
 }
+const decidir = (seguir: boolean) => {
+  alDecidir?.(seguir);
+  alDecidir = null;
+};
 
 async function pedirCerrar() {
   if (!ficha.abierta.value) return;
@@ -175,11 +181,16 @@ async function pedirCerrar() {
 
 // Hay una ficha esperando: se pregunta lo mismo que al cerrar. Descartar la abre; Seguir editando la olvida.
 watch(ficha.pendiente, (p) => p && (confirmando.value = true));
-watch(confirmando, (c) => c || (ficha.pendiente.value = null));
+watch(confirmando, (c) => {
+  if (c) return;
+  ficha.pendiente.value = null;
+  decidir(false); // Descartar ya respondió (su clic corre antes que este watcher)
+});
 function descartar() {
   const p = ficha.pendiente.value; // el diálogo ya se cerró, pero el watcher que la borra corre después
   if (p) ficha.abrir(p);
   else ficha.cerrar();
+  decidir(true);
 }
 
 function alSalir() {

@@ -1,6 +1,6 @@
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { i18n } from "@/i18n";
-import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
+import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { unidadesDeRama } from "./layout";
 import type { Ubicacion } from "./ubicar";
@@ -22,7 +22,7 @@ export function useUbicar() {
   /**
    * En la pestaña activa (o en una nueva con `nueva`, como Ctrl+clic). Ya en el árbol y con la unidad dentro de la rama
    * enfocada basta revelarla; si no (otra vista, otra rama o un subárbol guardado que no la incluye), se abre el árbol
-   * completo con ella.
+   * completo con ella. Una rama enfocada que no existe en la fecha que se ve no cuenta: el lienzo ya muestra todo.
    */
   function ubicar(puestoId: string, nueva = false): Resultado {
     const p = org.enFecha.puestos.find((x) => x.id === puestoId);
@@ -35,8 +35,13 @@ export function useUbicar() {
     const raiz = route.query.raiz;
     const dentro =
       typeof raiz !== "string" ||
+      !org.enFecha.porId.has(raiz) ||
       unidadesDeRama(org.enFecha.unidades, raiz).some((u) => u.id === p.unidad_id);
     if (route.name === "arbol" && dentro) return revelarPuesto(p.id);
+    // La pestaña restaura su estado guardado si vuelve a la misma ruta (viniendo de una vista que no guarda el suyo): esto
+    // es saltar, no volver.
+    const pestanas = usePestanas();
+    pestanas.guardarEstado(pestanas.activa, "", null);
     void router.push(rutaPuesto(p));
     return { ok: true };
   }

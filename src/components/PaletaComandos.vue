@@ -247,13 +247,6 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
               <span class="truncate text-xs text-muted-foreground">{{ textoDe(u) }}</span>
             </span>
           </CommandItem>
-          <CommandItem v-if="!ubicaciones(p.id).length" :value="`ubicar:${p.id}`" class="pl-8" disabled>
-            <LocateFixed aria-hidden="true" />
-            <span class="grid min-w-0">
-              <span class="truncate">{{ t("paleta.verEnOrganigrama", { nombre: p.nombre }) }}</span>
-              <span class="truncate text-xs">{{ t("ubicar.sinPuesto") }}</span>
-            </span>
-          </CommandItem>
         </template>
         <p v-if="faltan(r.personas)" class="px-2 py-1 text-xs text-muted-foreground">
           {{ t("paleta.mas", { n: faltan(r.personas) }) }}

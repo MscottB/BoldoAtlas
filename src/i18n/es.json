@@ -594,8 +594,9 @@
   "ubicar": {
     "ver": "Ver en el organigrama",
     "verAyuda": "Ver en el organigrama (Ctrl+clic: en una pestaña nueva)",
-    "verSinPuesto": "Ver en el organigrama: sin puesto vigente",
+    "verSinPuesto": "Ver en el organigrama: {motivo}",
     "sinPuesto": "Sin puesto vigente",
+    "sinPuestoAl": "Sin puesto vigente al {fecha}",
     "cual": "¿Cuál puesto?",
     "opcion": "{cargo} · {unidad}",
     "opcionReemplazo": "{cargo} · {unidad} (reemplazo)",

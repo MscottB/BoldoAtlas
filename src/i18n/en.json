@@ -594,8 +594,9 @@
   "ubicar": {
     "ver": "Show in the org chart",
     "verAyuda": "Show in the org chart (Ctrl+click: in a new tab)",
-    "verSinPuesto": "Show in the org chart: no current position",
+    "verSinPuesto": "Show in the org chart: {motivo}",
     "sinPuesto": "No current position",
+    "sinPuestoAl": "No current position on {fecha}",
     "cual": "Which position?",
     "opcion": "{cargo} · {unidad}",
     "opcionReemplazo": "{cargo} · {unidad} (replacement)",
