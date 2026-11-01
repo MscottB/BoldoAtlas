@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { useMediaQuery } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { Download, Moon, Search, Sun } from "@lucide/vue";
+import { Download, Search } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import BotonTema from "@/components/BotonTema.vue";
 import IndicadorGuardado from "@/components/IndicadorGuardado.vue";
 import { useOrganizacion } from "@/stores/organizacion";
-import { useTema } from "@/features/tema/useTema";
 import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -19,12 +17,6 @@ defineEmits<{ buscar: [] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { tema } = useTema();
-
-// "sistema" no es un modo visible: el botón alterna hacia el opuesto del que se ve ahora.
-const sistemaOscuro = useMediaQuery("(prefers-color-scheme: dark)");
-const oscuro = computed(() => tema.value === "oscuro" || (tema.value === "sistema" && sistemaOscuro.value));
-const etiquetaTema = computed(() => (oscuro.value ? t("barra.temaClaro") : t("barra.temaOscuro")));
 </script>
 
 <template>
@@ -63,16 +55,7 @@ const etiquetaTema = computed(() => (oscuro.value ? t("barra.temaClaro") : t("ba
         </TooltipTrigger>
         <TooltipContent>{{ t("barra.llegaFase4") }}</TooltipContent>
       </Tooltip>
-      <Button
-        variant="ghost"
-        size="icon"
-        :aria-label="etiquetaTema"
-        :title="etiquetaTema"
-        @click="tema = oscuro ? 'claro' : 'oscuro'"
-      >
-        <Sun v-if="oscuro" aria-hidden="true" />
-        <Moon v-else aria-hidden="true" />
-      </Button>
+      <BotonTema />
     </div>
   </header>
 </template>

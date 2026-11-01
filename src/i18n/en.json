@@ -855,6 +855,22 @@
     "avisos": "Notifications",
     "suprimir": "Del"
   },
+  "inicio": {
+    "organizacion": "Your organization",
+    "unidades": "Units",
+    "personas": "People",
+    "vacantes": "Vacancies",
+    "avisos": "Review warnings",
+    "ultimoRespaldo": "Last backup: {fecha}",
+    "sinRespaldo": "There are no backups yet.",
+    "recientes": "Recently opened",
+    "borrarRecientes": "Clear list",
+    "recientesBorrada": "List cleared.",
+    "ahora": "just now",
+    "accesos": "Quick access",
+    "buscarPersona": "Find a person",
+    "empezarDeNuevo": "Create another organization or explore the example"
+  },
   "menu": {
     "abrir": "App menu",
     "inicio": "Home",

@@ -14,6 +14,11 @@ export interface Sentencia {
   params?: unknown[];
 }
 
+const alReemplazar = new Set<() => void>();
+/** Lo que la app guarda atado a los datos de ahora (p. ej. «Abierto recientemente») se suelta aquí cuando la base se reemplaza. */
+export const alReemplazarBase = (f: () => void): void => void alReemplazar.add(f);
+const soltarDatos = () => alReemplazar.forEach((f) => f());
+
 export function infoApp(): Promise<InfoApp> {
   return invoke<InfoApp>("info_app");
 }
@@ -77,6 +82,7 @@ export function respaldarAntesDeReemplazar(): Promise<string> {
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function restaurarRespaldo(nombre: string): Promise<void> {
+  soltarDatos();
   return invoke("restaurar_respaldo", { nombre });
 }
 
@@ -176,6 +182,7 @@ export function importarAgregar(
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function importarReemplazar(trabajo: string): Promise<void> {
+  soltarDatos();
   return invoke("importar_reemplazar", { trabajo });
 }
 
