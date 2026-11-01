@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import BarraSuperior from "@/components/BarraSuperior.vue";
 import PaletaComandos from "@/components/PaletaComandos.vue";
 import DialogoSalir from "@/components/DialogoSalir.vue";
+import DialogoCodigoSinCopiar from "@/features/intercambio/DialogoCodigoSinCopiar.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
@@ -59,7 +60,7 @@ const secciones: Entrada[] = [
   { to: "/revision", etiqueta: "nav.revision", icono: ListChecks, contador: () => avisos.value.total },
   { etiqueta: "nav.indicadores", icono: ChartColumn, aviso: "nav.llegaFase3" },
   { etiqueta: "nav.escenarios", icono: GitBranch, aviso: "nav.llegaFase5" },
-  { etiqueta: "nav.importarExportar", icono: ArrowLeftRight, aviso: "nav.llegaFases45" },
+  { to: "/importar-exportar", etiqueta: "nav.importarExportar", icono: ArrowLeftRight },
 ].filter((e) => MOSTRAR_PROXIMAMENTE || e.to);
 // Abajo, separadas de las secciones del programa.
 const utilidades: Entrada[] = [
@@ -228,6 +229,7 @@ function escEnBarra(e: KeyboardEvent) {
     <DatosProyecto v-if="!route.meta.sinMarco" />
     <DialogoActualizacion />
     <DialogoNovedades />
+    <DialogoCodigoSinCopiar />
     <DialogoSalir />
     <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>

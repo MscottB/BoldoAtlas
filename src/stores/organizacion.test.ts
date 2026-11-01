@@ -685,6 +685,24 @@ describe("etiqueta nueva para una unidad", () => {
 });
 
 describe("concurrencia", () => {
+  it("una escritura no espera a una carga lenta, y `guardando` la ve hasta que termina", async () => {
+    const s = nuevo();
+    let liberar!: () => void;
+    h.antesDeMeta = () => {
+      h.antesDeMeta = null;
+      return new Promise<void>((resolver) => (liberar = resolver));
+    };
+    const lenta = s.cargar(); // queda pausada
+    const escrita = s.crearUnidad({ tipo_id: TIPO_AREA, nombre: "A", parent_id: null });
+    expect(s.guardando).toBe(true); // lo que `salir()` espera
+    await escrita; // termina sin que la carga lenta termine
+    expect(s.guardando).toBe(false);
+    expect(s.unidades).toHaveLength(1);
+    liberar();
+    await lenta;
+    expect(s.unidades).toHaveLength(1);
+  });
+
   it("guardando sigue activo hasta que terminan todas las escrituras superpuestas", async () => {
     const s = nuevo();
     const liberar: (() => void)[] = [];

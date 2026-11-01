@@ -37,7 +37,7 @@ Con **No volver a preguntar**, tu elección queda guardada. Para cambiarla, ve a
 
 **Salir**, en el menú de la app y en el del icono, cierra la app: por sí solo nunca la deja en la bandeja. Si la opción es **Preguntar** o hay un trabajo en curso, pregunta antes, y en ese diálogo puedes elegir **Dejar en la bandeja**.
 
-Si hay un trabajo en curso, como un respaldo o una actualización, pregunta siempre, aunque hayas marcado **No volver a preguntar**, y dice qué trabajo es: cerrar la app lo interrumpe. En la bandeja el trabajo sigue y el texto del icono (se ve al pasar el mouse sobre él) dice que está en curso y cuándo termina. Si falla, la ventana vuelve al frente para mostrar el error. Una actualización continúa y BoldoAtlas se reinicia solo al instalarla.
+Si hay un trabajo en curso, como un respaldo, una actualización o exportar e importar un archivo, pregunta siempre, aunque hayas marcado **No volver a preguntar**, y dice qué trabajo es: cerrar la app lo interrumpe. En la bandeja el trabajo sigue y el texto del icono (se ve al pasar el mouse sobre él) dice que está en curso y cuándo termina. Si falla, la ventana vuelve al frente para mostrar el error. Una actualización continúa y BoldoAtlas se reinicia solo al instalarla.
 
 Si tu sistema no tiene bandeja (Linux sin AppIndicator), no aparece **Dejar en la bandeja**. Actualizar, restaurar un respaldo, el instalador y el apagado del computador cierran la app sin preguntar, también cuando está en la bandeja.
 

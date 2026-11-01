@@ -2,6 +2,7 @@ mod actualizar;
 mod comandos;
 mod db;
 mod inicio;
+mod intercambio;
 mod respaldos;
 mod rutas;
 mod salida;
@@ -15,6 +16,7 @@ pub fn run() {
     let estado = comandos::Estado::iniciar();
     let webview = estado.dir_webview();
     let datos = estado.rutas_app().map(|r| r.datos.clone());
+    let respaldos_dir = estado.rutas_app().map(|r| r.respaldos.clone());
     let mut contexto = tauri::generate_context!();
     if let Some(r) = estado.rutas_app().filter(|r| r.portable) {
         let id = rutas::identificador_portable(&contexto.config().identifier, &r.datos);
@@ -33,10 +35,12 @@ pub fn run() {
         }));
     }
     app.plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(estado)
         .manage(actualizar::Actualizador::default())
         .manage(salida::Cierre::default())
+        .manage(intercambio::Sesiones::default())
         .on_window_event(|ventana, evento| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
                 salida::al_pedir_cierre(ventana.app_handle(), api);
@@ -59,6 +63,11 @@ pub fn run() {
             }
         })
         .setup(move |app| {
+            // en setup y no al iniciar: una segunda instancia sale en el plugin de arriba, antes de llegar aquí, y no le
+            // borra a la primera las copias con que está trabajando
+            for dir in datos.iter().chain(respaldos_dir.iter()) {
+                respaldos::limpiar_parciales(dir);
+            }
             // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
             if let Some(datos) = datos {
                 actualizar::limpiar_al_iniciar(datos);
@@ -95,6 +104,14 @@ pub fn run() {
             comandos::abrir_carpeta_respaldos,
             comandos::info_proyecto,
             comandos::abrir_carpeta_datos,
+            comandos::exportar_preparar,
+            comandos::exportar_elegir_destino,
+            comandos::exportar_guardar,
+            comandos::importar_elegir,
+            comandos::importar_abrir,
+            comandos::importar_agregar,
+            comandos::importar_reemplazar,
+            comandos::intercambio_cancelar,
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
             actualizar::cancelar_actualizacion,
@@ -114,6 +131,8 @@ pub fn run() {
             if let tauri::RunEvent::Exit = evento {
                 app.state::<comandos::Estado>()
                     .cerrar_ordenado(std::time::Duration::from_secs(3));
+                // las copias en claro de un exportar o importar sin terminar no se quedan
+                app.state::<intercambio::Sesiones>().cancelar_todo();
             }
             // el Dock de macOS: abrir la app ya abierta no pasa por la instancia única
             #[cfg(target_os = "macos")]

@@ -49,7 +49,7 @@ interface Camino {
 const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
   { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
-  { id: "boldo", icono: FolderOpen, fase: "bienvenida.llegaFase5" },
+  { id: "boldo", icono: FolderOpen },
   { id: "ejemplo", icono: Sparkles },
 ];
 const caminos = todos.filter((c) => MOSTRAR_PROXIMAMENTE || !c.fase);
@@ -83,6 +83,7 @@ function alCerrar(e: Event) {
 async function elegir(c: Camino, desde: EventTarget | null = null) {
   if (c.fase) return;
   origen = desde instanceof HTMLElement ? desde : null;
+  if (c.id === "boldo") return router.push({ path: "/importar-exportar", query: { accion: "importar" } });
   if (c.id === "ejemplo") {
     if (!hayDatos.value) return entrar(await org.cargarEjemplo());
     reemplazo.value = "ejemplo";

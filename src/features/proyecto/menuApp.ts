@@ -3,6 +3,7 @@ import type { RouteLocationRaw, Router } from "vue-router";
 import {
   Database,
   DatabaseBackup,
+  Download,
   FilePlus,
   FileSpreadsheet,
   FolderOpen,
@@ -40,7 +41,8 @@ export const GRUPOS_MENU: EntradaMenu[][] = [
   [
     { id: "vacia", icono: FilePlus, destino: { path: RUTA_BIENVENIDA, query: { accion: "vacia" } } },
     { id: "ejemplo", icono: Sparkles, destino: { path: RUTA_BIENVENIDA, query: { accion: "ejemplo" } } },
-    { id: "boldo", icono: FolderOpen, fase: "bienvenida.llegaFase5" },
+    { id: "boldo", icono: FolderOpen, destino: { path: "/importar-exportar", query: { accion: "importar" } } },
+    { id: "exportar", icono: Download, destino: { path: "/importar-exportar", query: { accion: "exportar" } } },
     { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
   ].filter((e) => MOSTRAR_PROXIMAMENTE || !e.fase),
   [

@@ -22,6 +22,7 @@ BoldoAtlas is maintained by one person, so there is no guaranteed response time.
 - **Updates are signed.** The app installs a package only if its signature matches the public key built into the app and the signature covers the announced version. It never installs without asking, and it does not offer older versions.
 - **The interface is restricted.** A content security policy allows only the app's own scripts and styles and blocks loading anything from the internet. The interface cannot send file paths for backups or data folders. Its database access is limited to reading and changing rows.
 - **Text from outside is not trusted.** Release notes and help pages are shown with HTML turned off, and links open in your browser only if they are `http`, `https` or `mailto`.
+- **`.boldo` files are encrypted** with XChaCha20-Poly1305 and a key derived from a one-time code (Argon2id) that is not saved anywhere. When importing, the content is not trusted even if the code is correct: it is opened read-only and checked against the expected schema before anything is applied.
 - **Installed on Linux and macOS,** the data folder can be opened only by your user. On Windows, it is inside your user's `%APPDATA%`.
 - **Each release** includes `SHA256SUMS.txt` and the list of its components (SBOM, in CycloneDX format). Known vulnerabilities in dependencies are checked every week.
 
@@ -62,6 +63,7 @@ A BoldoAtlas lo mantiene una sola persona, así que no hay un plazo de respuesta
 - **Las actualizaciones van firmadas.** La app instala un paquete solo si su firma coincide con la clave pública que trae dentro y si la firma cubre la versión anunciada. Nunca instala sin preguntar y no ofrece versiones más antiguas.
 - **La interfaz está restringida.** Una política de seguridad de contenido permite solo los scripts y estilos de la propia app y bloquea cargar cualquier cosa desde internet. La interfaz no puede enviar rutas de archivos para los respaldos ni para las carpetas de datos. Con la base de datos solo puede leer y cambiar filas.
 - **El texto de afuera no se da por seguro.** Las notas de versión y la ayuda se muestran con el HTML desactivado, y los enlaces se abren en tu navegador solo si son `http`, `https` o `mailto`.
+- **Los archivos `.boldo` van cifrados** con XChaCha20-Poly1305 y una clave derivada de un código de un solo uso (Argon2id) que no se guarda en ninguna parte. Al importar, el contenido no se da por seguro aunque el código sea correcto: se abre de solo lectura y se compara con el esquema esperado antes de aplicar nada.
 - **Instalada en Linux y macOS,** solo tu usuario puede abrir la carpeta de datos. En Windows, está dentro del `%APPDATA%` de tu usuario.
 - **Cada versión publicada** trae `SHA256SUMS.txt` y la lista de sus componentes (SBOM, en formato CycloneDX). Las vulnerabilidades conocidas de las dependencias se revisan cada semana.
 

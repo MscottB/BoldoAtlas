@@ -37,7 +37,7 @@ With **Don't ask again**, your choice is saved. To change it, go to **Settings â
 
 **Quit**, in the app menu and the icon's menu, closes the app: on its own it never leaves it in the tray. If the option is **Ask** or work is in progress, it asks first, and in that dialog you can choose **Keep in the tray**.
 
-If work is in progress, such as a backup or an update, it always asks, even if you checked **Don't ask again**, and says which work it is: quitting the app interrupts it. In the tray the work continues and the icon's text (you see it when you hover over the icon) says it is in progress and when it finishes. If it fails, the window comes back to the front to show the error. An update continues and BoldoAtlas restarts on its own once installed.
+If work is in progress, such as a backup, an update or exporting and importing a file, it always asks, even if you checked **Don't ask again**, and says which work it is: quitting the app interrupts it. In the tray the work continues and the icon's text (you see it when you hover over the icon) says it is in progress and when it finishes. If it fails, the window comes back to the front to show the error. An update continues and BoldoAtlas restarts on its own once installed.
 
 If your system has no tray (Linux without AppIndicator), **Keep in the tray** does not appear. Updating, restoring a backup, the installer and shutting down the computer close the app without asking, also when it is in the tray.
 

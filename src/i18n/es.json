@@ -12,8 +12,7 @@
     "ayuda": "Ayuda",
     "acerca": "Acerca de",
     "llegaFase3": "Llega en la Fase 3",
-    "llegaFase5": "Llega en la Fase 5",
-    "llegaFases45": "Llega en las Fases 4 y 5"
+    "llegaFase5": "Llega en la Fase 5"
   },
   "barra": {
     "mostrarBarra": "Mostrar barra lateral",
@@ -684,7 +683,6 @@
       "texto": "Una organización de muestra para recorrer la app."
     },
     "llegaFase4": "Fase 4",
-    "llegaFase5": "Fase 5",
     "organizacion": "Nombre de la organización",
     "raiz": "Nombre de la unidad raíz",
     "raizEjemplo": "Por ejemplo: Gerencia General",
@@ -863,6 +861,7 @@
     "vacia": "Nueva organización vacía…",
     "ejemplo": "Explorar el ejemplo…",
     "boldo": "Abrir archivo .boldo",
+    "exportar": "Exportar a un archivo .boldo",
     "excel": "Importar Excel",
     "respaldos": "Respaldos",
     "configuracion": "Configuración",
@@ -956,7 +955,12 @@
   "trabajos": {
     "respaldar": "Respaldo de los datos",
     "restaurar": "Restaurar un respaldo",
-    "actualizar": "Descargar e instalar la actualización"
+    "actualizar": "Descargar e instalar la actualización",
+    "exportarPreparar": "Preparar la exportación",
+    "exportarGuardar": "Guardar el archivo exportado",
+    "importarAbrir": "Abrir el archivo a importar",
+    "importarAgregar": "Agregar lo nuevo del archivo",
+    "importarReemplazar": "Reemplazar los datos por los del archivo"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
@@ -968,5 +972,163 @@
     "trabajo": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá.",
     "trabajoBandeja": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá. En la bandeja sigue, y al terminar el texto del icono lo avisa.",
     "actualizacionSigue": "Si la dejas en la bandeja, la actualización continúa y BoldoAtlas se reinicia solo al instalarla."
+  },
+  "intercambio": {
+    "ayuda": "Lleva tu organización, o solo una parte, a otro computador en un archivo protegido con un código.",
+    "cancelar": "Cancelar",
+    "continuar": "Continuar",
+    "listo": "Listo",
+    "exportar": {
+      "titulo": "Exportar",
+      "texto": "Guarda toda la base, o uno o más árboles o ramas, en un archivo .boldo.",
+      "queLlevar": "¿Qué quieres llevar?",
+      "todo": "Toda la base",
+      "ramas": "Uno o más árboles o ramas",
+      "ramasAyuda": "Marca las unidades. Cada una incluye toda su rama.",
+      "verRama": "Ver la rama de {nombre}",
+      "resumenTodo": "El archivo llevará toda la base:",
+      "resumenRamas": "El archivo llevará solo esto:",
+      "noVan": "Esto queda fuera porque apunta a lo que no va:",
+      "corte": {
+        "conexiones": "{n} conexión con una unidad que no va | {n} conexiones con una unidad que no va",
+        "jefaturas": "{n} jefatura cuyo puesto no va: queda vacía | {n} jefaturas cuyo puesto no va: quedan vacías",
+        "roles": "{n} rol de una persona que no va | {n} roles de personas que no van",
+        "vistas": "{n} vista guardada del árbol completo | {n} vistas guardadas del árbol completo",
+        "asignaciones": "{n} asignación de una persona que ya no está | {n} asignaciones de personas que ya no están"
+      },
+      "guardar": "Guardar como…",
+      "guardado": "Se guardó el archivo {nombre}.",
+      "tuCodigo": "El código para abrirlo:",
+      "copiar": "Copiar código",
+      "copiado": "Código copiado.",
+      "errorCopiar": "No se pudo copiar. Selecciona el código y cópialo a mano.",
+      "sinCopiarTitulo": "Aún no copiaste el código",
+      "sinCopiarTexto": "Este código no se vuelve a mostrar. Sin él, el archivo no se puede abrir y habrá que exportar de nuevo.",
+      "salirSinCopiar": "Cerrar sin copiar",
+      "unaVez": "Este código se muestra solo ahora y no se guarda en ninguna parte. Si se pierde, el archivo no se puede abrir y hay que exportar de nuevo.",
+      "canales": "Envía el archivo y el código por canales distintos: por ejemplo, el archivo por correo y el código por teléfono."
+    },
+    "importar": {
+      "titulo": "Importar",
+      "texto": "Abre un archivo .boldo con su código y revisa lo que trae antes de aplicarlo.",
+      "elegir": "Elegir archivo…",
+      "codigo": "Código del archivo",
+      "codigoAyuda": "Te lo entrega quien exportó el archivo.",
+      "abrir": "Abrir",
+      "traeTodo": "El archivo trae toda la base de «{nombre}».",
+      "traeRamas": "El archivo trae una parte de «{nombre}».",
+      "columna": {
+        "que": "Qué trae",
+        "trae": "En el archivo",
+        "nuevas": "Nuevo",
+        "existentes": "Ya existe o no entra"
+      },
+      "queHacer": "¿Qué quieres hacer?",
+      "agregar": "Agregar lo nuevo",
+      "agregarAyuda": "Lo que no existe entra. Lo que ya existe se queda como está.",
+      "reemplazar": "Reemplazar todo",
+      "reemplazarAyuda": "Tus datos actuales se cambian por los del archivo y la app se reinicia.",
+      "soloCompleta": "No disponible: este archivo trae solo una parte, y reemplazar borraría el resto de tu base.",
+      "dondeVa": "La unidad superior de estas ramas no está en tu base. ¿Dónde las colocas?",
+      "independiente": "Como árbol independiente",
+      "dentroDe": "Dentro de {nombre}",
+      "vuelveA": "«{rama}» vuelve a quedar dentro de «{nombre}».",
+      "vaciadas": "{n} referencia a algo que no entra queda vacía. | {n} referencias a algo que no entra quedan vacías.",
+      "agregarNoDisponible": "No disponible: {motivo}. Con este archivo solo se puede reemplazar todo.",
+      "tomaraNombre": "Tu base no tiene nombre: tomará el de «{nombre}».",
+      "tomoNombre": "Tu base tomó el nombre «{nombre}».",
+      "hechoNada": "Listo. No había nada nuevo que agregar.",
+      "detalle": "{n} registro con un aviso | {n} registros con un aviso",
+      "detalleMas": "Y {n} más. | Y {n} más.",
+      "respaldo": "Antes de aplicar se hace un respaldo. Si algo falla, no se escribe nada.",
+      "aplicar": "Aplicar",
+      "hecho": "Listo. Esto se agregó a tu base:",
+      "ver": "Ver mi organización",
+      "confirmarTitulo": "¿Reemplazar todo?",
+      "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
+      "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar."
+    },
+    "etapa": {
+      "copiando": "Preparando la copia de tus datos…",
+      "cifrando": "Protegiendo el archivo…",
+      "descifrando": "Abriendo el archivo…",
+      "revisando": "Revisando lo que trae…",
+      "aplicando": "Aplicando…"
+    },
+    "tablas": {
+      "unidades": "Unidades",
+      "trabajadores": "Personas",
+      "puestos": "Puestos",
+      "asignaciones": "Asignaciones",
+      "conexiones": "Conexiones",
+      "unidad_etiquetas": "Etiquetas en unidades",
+      "etiquetas": "Etiquetas",
+      "procesos": "Procesos",
+      "actividades": "Actividades",
+      "actividad_roles": "Roles en actividades",
+      "subarboles_guardados": "Ramas guardadas",
+      "vistas": "Vistas guardadas",
+      "tipos_unidad": "Tipos de unidad",
+      "cargos": "Cargos",
+      "leyendas": "Leyendas",
+      "tipos_contrato": "Tipos de contrato",
+      "sedes": "Sedes",
+      "jornadas": "Jornadas",
+      "meta": "Datos de la organización"
+    },
+    "motivo": {
+      "existe": "ya existe: se queda como está",
+      "union": "se une al que tiene el mismo nombre",
+      "correo": "ya hay una persona con ese correo: no se duplica",
+      "choque": "choca con lo que ya tienes: no entra",
+      "referencia": "apunta a algo eliminado: no entra",
+      "vaciada": "entra sin una referencia a algo que no está"
+    },
+    "error": {
+      "no_abre": "El código no es correcto o el archivo está dañado. No se cambió nada.",
+      "contenido_invalido": "El archivo no es una copia válida de BoldoAtlas. No se cambió nada.",
+      "esquema_nuevo": "Este archivo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para abrirlo.",
+      "muy_grande": "El archivo es demasiado grande: el máximo es de 2 GB.",
+      "muy_pesado": "En {tabla}, {columna} es más largo de lo que BoldoAtlas puede llevar. Acórtalo e inténtalo de nuevo; si el archivo es de otra persona, pídele que lo haga. No se cambió nada.",
+      "ya_existe": "Ya hay un archivo .boldo con ese nombre. Elige otro nombre.",
+      "solo_completo": "Este archivo trae solo una parte: no puede reemplazar toda la base.",
+      "desconocido": "Ya no está lo que elegiste. Vuelve a empezar.",
+      "cancelado": "Cancelado. No se cambió nada.",
+      "muy_pesado_fila": "En {tabla}, «{nombre}»: {columna} es más largo de lo que BoldoAtlas puede llevar. Acórtalo e inténtalo de nuevo; si el archivo es de otra persona, pídele que lo haga. No se cambió nada.",
+      "muy_pesado_total": "Este archivo trae {exceso}, más de lo que BoldoAtlas puede cargar. Pide a quien lo envió que lo exporte por ramas. No se cambió nada.",
+      "exportar_muy_pesado": "Tu base tiene {exceso}: no cabe en un solo archivo. Exporta por ramas: cada archivo lleva una parte.",
+      "base_no_valida": "Tu base no pasó la revisión previa a exportar, así que no se creó el archivo. Prueba con una rama, o restaura un respaldo reciente."
+    },
+    "columnas": {
+      "otra": "un campo",
+      "nombre": "Nombre",
+      "correo": "Correo",
+      "telefono": "Teléfono",
+      "notas": "Notas",
+      "foto_png": "Foto",
+      "descripcion": "Descripción",
+      "config": "Configuración",
+      "motivo": "Motivo",
+      "etiqueta": "Etiqueta",
+      "color": "Color",
+      "marca_color": "Color",
+      "marca_codigo": "Código",
+      "proveedores": "Proveedores",
+      "entradas": "Entradas",
+      "salidas": "Salidas",
+      "clientes": "Clientes",
+      "documento_ref": "Documento",
+      "org_nombre": "Nombre de la organización",
+      "logo_png": "Logo"
+    },
+    "motivoRevision": {
+      "contenido_invalido": "tu base tiene referencias rotas o un ciclo y no se puede agregar sobre ella",
+      "fallo": "no se pudo revisar el archivo contra tu base",
+      "desconocido": "no se pudo revisar el archivo contra tu base"
+    },
+    "exceso": {
+      "filas": "más de 500.000 filas",
+      "bytes": "más de 512 MB de datos"
+    }
   }
 }

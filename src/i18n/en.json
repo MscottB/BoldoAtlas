@@ -12,8 +12,7 @@
     "ayuda": "Help",
     "acerca": "About",
     "llegaFase3": "Coming in Phase 3",
-    "llegaFase5": "Coming in Phase 5",
-    "llegaFases45": "Coming in Phases 4 and 5"
+    "llegaFase5": "Coming in Phase 5"
   },
   "barra": {
     "mostrarBarra": "Show sidebar",
@@ -684,7 +683,6 @@
       "texto": "A sample organization to try the app out."
     },
     "llegaFase4": "Phase 4",
-    "llegaFase5": "Phase 5",
     "organizacion": "Organization name",
     "raiz": "Root unit name",
     "raizEjemplo": "For example: General Management",
@@ -863,6 +861,7 @@
     "vacia": "New empty organization…",
     "ejemplo": "Explore the example…",
     "boldo": "Open .boldo file",
+    "exportar": "Export to a .boldo file",
     "excel": "Import Excel",
     "respaldos": "Backups",
     "configuracion": "Settings",
@@ -956,7 +955,12 @@
   "trabajos": {
     "respaldar": "Data backup",
     "restaurar": "Restoring a backup",
-    "actualizar": "Downloading and installing the update"
+    "actualizar": "Downloading and installing the update",
+    "exportarPreparar": "Preparing the export",
+    "exportarGuardar": "Saving the exported file",
+    "importarAbrir": "Opening the file to import",
+    "importarAgregar": "Adding what is new from the file",
+    "importarReemplazar": "Replacing the data with the file's"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
@@ -968,5 +972,163 @@
     "trabajo": "Work in progress: {trabajos}. Quitting the app will interrupt it.",
     "trabajoBandeja": "Work in progress: {trabajos}. Quitting the app will interrupt it. In the tray it continues, and the icon's text tells you when it finishes.",
     "actualizacionSigue": "If you keep it in the tray, the update continues and BoldoAtlas restarts on its own once installed."
+  },
+  "intercambio": {
+    "ayuda": "Take your organization, or just part of it, to another computer in a file protected with a code.",
+    "cancelar": "Cancel",
+    "continuar": "Continue",
+    "listo": "Done",
+    "exportar": {
+      "titulo": "Export",
+      "texto": "Save the whole database, or one or more trees or branches, to a .boldo file.",
+      "queLlevar": "What do you want to take?",
+      "todo": "The whole database",
+      "ramas": "One or more trees or branches",
+      "ramasAyuda": "Check the units. Each one includes its whole branch.",
+      "verRama": "Show the branch of {nombre}",
+      "resumenTodo": "The file will carry the whole database:",
+      "resumenRamas": "The file will carry only this:",
+      "noVan": "This stays out because it points to what is not going:",
+      "corte": {
+        "conexiones": "{n} connection with a unit that is not going | {n} connections with a unit that is not going",
+        "jefaturas": "{n} head whose position is not going: left empty | {n} heads whose position is not going: left empty",
+        "roles": "{n} role of a person who is not going | {n} roles of people who are not going",
+        "vistas": "{n} saved view of the full tree | {n} saved views of the full tree",
+        "asignaciones": "{n} assignment of a person who is no longer there | {n} assignments of people who are no longer there"
+      },
+      "guardar": "Save as…",
+      "guardado": "The file {nombre} was saved.",
+      "tuCodigo": "The code to open it:",
+      "copiar": "Copy code",
+      "copiado": "Code copied.",
+      "errorCopiar": "Could not copy it. Select the code and copy it by hand.",
+      "sinCopiarTitulo": "You have not copied the code yet",
+      "sinCopiarTexto": "This code is not shown again. Without it, the file cannot be opened and you will have to export again.",
+      "salirSinCopiar": "Close without copying",
+      "unaVez": "This code is shown only now and is not saved anywhere. If it is lost, the file cannot be opened and you have to export again.",
+      "canales": "Send the file and the code through different channels: for example, the file by email and the code by phone."
+    },
+    "importar": {
+      "titulo": "Import",
+      "texto": "Open a .boldo file with its code and review what it carries before applying it.",
+      "elegir": "Choose file…",
+      "codigo": "File code",
+      "codigoAyuda": "Whoever exported the file gives it to you.",
+      "abrir": "Open",
+      "traeTodo": "The file carries the whole database of “{nombre}”.",
+      "traeRamas": "The file carries part of “{nombre}”.",
+      "columna": {
+        "que": "What it carries",
+        "trae": "In the file",
+        "nuevas": "New",
+        "existentes": "Already exists or stays out"
+      },
+      "queHacer": "What do you want to do?",
+      "agregar": "Add what is new",
+      "agregarAyuda": "What does not exist comes in. What already exists stays as it is.",
+      "reemplazar": "Replace everything",
+      "reemplazarAyuda": "Your current data is swapped for the file's and the app restarts.",
+      "soloCompleta": "Not available: this file carries only a part, and replacing would erase the rest of your database.",
+      "dondeVa": "The parent unit of these branches is not in your database. Where do you place them?",
+      "independiente": "As an independent tree",
+      "dentroDe": "Inside {nombre}",
+      "vuelveA": "“{rama}” goes back inside “{nombre}”.",
+      "vaciadas": "{n} reference to something that does not come in is left empty. | {n} references to something that does not come in are left empty.",
+      "agregarNoDisponible": "Not available: {motivo}. With this file you can only replace everything.",
+      "tomaraNombre": "Your database has no name: it will take “{nombre}”.",
+      "tomoNombre": "Your database took the name “{nombre}”.",
+      "hechoNada": "Done. There was nothing new to add.",
+      "detalle": "{n} record with a notice | {n} records with a notice",
+      "detalleMas": "And {n} more. | And {n} more.",
+      "respaldo": "A backup is made before applying. If anything fails, nothing is written.",
+      "aplicar": "Apply",
+      "hecho": "Done. This was added to your database:",
+      "ver": "See my organization",
+      "confirmarTitulo": "Replace everything?",
+      "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings.",
+      "nadaDisponible": "Not available: {motivo}. Since this file carries only a part, it cannot replace your data either."
+    },
+    "etapa": {
+      "copiando": "Preparing the copy of your data…",
+      "cifrando": "Protecting the file…",
+      "descifrando": "Opening the file…",
+      "revisando": "Reviewing what it carries…",
+      "aplicando": "Applying…"
+    },
+    "tablas": {
+      "unidades": "Units",
+      "trabajadores": "People",
+      "puestos": "Positions",
+      "asignaciones": "Assignments",
+      "conexiones": "Connections",
+      "unidad_etiquetas": "Tags on units",
+      "etiquetas": "Tags",
+      "procesos": "Processes",
+      "actividades": "Activities",
+      "actividad_roles": "Roles in activities",
+      "subarboles_guardados": "Saved branches",
+      "vistas": "Saved views",
+      "tipos_unidad": "Unit types",
+      "cargos": "Job titles",
+      "leyendas": "Legends",
+      "tipos_contrato": "Contract types",
+      "sedes": "Sites",
+      "jornadas": "Work schedules",
+      "meta": "Organization data"
+    },
+    "motivo": {
+      "existe": "already exists: stays as it is",
+      "union": "joins the one with the same name",
+      "correo": "a person with that email already exists: not duplicated",
+      "choque": "clashes with what you have: does not come in",
+      "referencia": "points to something deleted: does not come in",
+      "vaciada": "comes in without a reference to something that is not there"
+    },
+    "error": {
+      "no_abre": "The code is not correct or the file is damaged. Nothing was changed.",
+      "contenido_invalido": "The file is not a valid BoldoAtlas copy. Nothing was changed.",
+      "esquema_nuevo": "This file was made with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
+      "muy_grande": "The file is too large: the maximum is 2 GB.",
+      "muy_pesado": "In {tabla}, {columna} is longer than BoldoAtlas can carry. Shorten it and try again; if the file is someone else's, ask them to do it. Nothing was changed.",
+      "ya_existe": "A .boldo file with that name already exists. Choose another name.",
+      "solo_completo": "This file carries only a part: it cannot replace the whole database.",
+      "desconocido": "What you chose is no longer there. Start again.",
+      "cancelado": "Cancelled. Nothing was changed.",
+      "muy_pesado_fila": "In {tabla}, “{nombre}”: {columna} is longer than BoldoAtlas can carry. Shorten it and try again; if the file is someone else's, ask them to do it. Nothing was changed.",
+      "muy_pesado_total": "This file carries {exceso}, more than BoldoAtlas can load. Ask whoever sent it to export it by branches. Nothing was changed.",
+      "exportar_muy_pesado": "Your database has {exceso}: it does not fit in one file. Export by branches: each file carries a part.",
+      "base_no_valida": "Your database did not pass the check before exporting, so no file was created. Try with a branch, or restore a recent backup."
+    },
+    "columnas": {
+      "otra": "a field",
+      "nombre": "Name",
+      "correo": "Email",
+      "telefono": "Phone",
+      "notas": "Notes",
+      "foto_png": "Photo",
+      "descripcion": "Description",
+      "config": "Settings",
+      "motivo": "Reason",
+      "etiqueta": "Label",
+      "color": "Color",
+      "marca_color": "Color",
+      "marca_codigo": "Code",
+      "proveedores": "Suppliers",
+      "entradas": "Inputs",
+      "salidas": "Outputs",
+      "clientes": "Customers",
+      "documento_ref": "Document",
+      "org_nombre": "Organization name",
+      "logo_png": "Logo"
+    },
+    "motivoRevision": {
+      "contenido_invalido": "your database has broken references or a cycle, so nothing can be added to it",
+      "fallo": "the file could not be checked against your database",
+      "desconocido": "the file could not be checked against your database"
+    },
+    "exceso": {
+      "filas": "more than 500,000 rows",
+      "bytes": "more than 512 MB of data"
+    }
   }
 }
