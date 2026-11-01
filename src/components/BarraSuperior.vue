@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { CircleArrowUp, Download, Moon, Search, Sun } from "@lucide/vue";
+import { Download, Moon, Search, Sun } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,7 +12,7 @@ import { useTema } from "@/features/tema/useTema";
 import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
-import { useActualizaciones } from "@/stores/actualizaciones";
+import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
 
 // "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, al pie de ella.
 defineEmits<{ buscar: [] }>();
@@ -20,7 +20,6 @@ defineEmits<{ buscar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { tema } = useTema();
-const actualizaciones = useActualizaciones();
 
 // "sistema" no es un modo visible: el botón alterna hacia el opuesto del que se ve ahora.
 const sistemaOscuro = useMediaQuery("(prefers-color-scheme: dark)");
@@ -43,17 +42,7 @@ const etiquetaTema = computed(() => (oscuro.value ? t("barra.temaClaro") : t("ba
     </button>
 
     <div class="ml-auto flex items-center gap-2">
-      <!-- Aviso discreto de versión nueva (spec §12): abre la ventana de actualización; nunca instala solo. -->
-      <Button
-        v-if="actualizaciones.disponible"
-        variant="ghost"
-        size="sm"
-        class="text-marca-texto"
-        @click="actualizaciones.ventanaAbierta = true"
-      >
-        <CircleArrowUp aria-hidden="true" />
-        {{ t("actualizar.disponible", { version: actualizaciones.disponible.version }) }}
-      </Button>
+      <AvisoActualizacion />
       <Button
         variant="outline"
         class="w-48 justify-start text-muted-foreground"

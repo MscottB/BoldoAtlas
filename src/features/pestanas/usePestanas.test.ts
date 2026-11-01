@@ -198,6 +198,23 @@ describe("usePestanas", () => {
     expect(p.activa).toBe(p.lista[0]!.id);
   });
 
+  it("volver al proyecto con una vista de paso abierta llega a donde estaba antes de abrirla, o al árbol", async () => {
+    const p = await arrancar();
+    await router.push("/directorio");
+    await router.push("/ayuda");
+    await router.push("/bienvenida");
+    await p.volverAlProyecto();
+    expect(rutaActual()).toBe("/directorio");
+    expect(rutas()).toEqual(["/directorio"]);
+
+    p.abrirNueva("/ayuda"); // sin vista anterior en esa pestaña
+    await esperar();
+    await router.push("/bienvenida");
+    await p.volverAlProyecto();
+    expect(rutaActual()).toBe("/");
+    expect(rutas()).toEqual(["/directorio", "/"]);
+  });
+
   it("cerrar Ayuda abierta en una pestaña nueva vuelve al inicio de esa pestaña, nunca a una ruta de otra", async () => {
     const p = await arrancar();
     const a = p.activa;

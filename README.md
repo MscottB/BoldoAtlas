@@ -66,7 +66,7 @@ Opening BoldoAtlas when it's already open brings its window to the front. Instal
 
 ### Updating
 
-BoldoAtlas checks for new versions every day (portable and installed) and shows a notice in the top bar; you can also use **Check for updates** in About, in the app menu or with Ctrl+K. The update window shows the notes of every version you skipped and never installs without confirmation. Every package is signed and rejected if the signature doesn't match.
+BoldoAtlas checks for new versions when opening and every day (portable and installed; change how often in Settings) and shows a notice on Home and in the top bar; you can also use **Check for updates** in About, in the app menu or with Ctrl+K. The update window shows the notes of every version you skipped and never installs without confirmation. Every package is signed and rejected if the signature doesn't match.
 
 - **Windows portable:** replaces `BoldoAtlas.exe` inside its folder (the previous one stays as `BoldoAtlas.old.exe` until the next start) and restarts; `datos/` is not touched and nothing is written outside the folder. One trace stays outside, written by Windows rather than BoldoAtlas: the registry (`HKCU\Control Panel\NotifyIconSettings`) records the path of every program that shows a tray icon.
 - **Linux and macOS portable:** replaces the AppImage or the `.app` in its folder; temporary files go in `datos/`.

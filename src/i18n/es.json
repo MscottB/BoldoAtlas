@@ -920,7 +920,9 @@
     "frecuencia": {
       "etiqueta": "Buscar automáticamente",
       "nunca": "Nunca",
-      "abrir": "Al abrir",
+      "abrir": "Solo al abrir",
+      "cadaHora": "Cada hora",
+      "seisHoras": "Cada 6 horas",
       "diaria": "Cada día",
       "semanal": "Cada semana"
     }

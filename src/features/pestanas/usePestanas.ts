@@ -55,7 +55,9 @@ export const usePestanas = defineStore("pestanas", () => {
   function entrar(): string {
     modelo.value = P.leerPestanas(clave ? leerPreferencia<unknown>(clave, null) : null, valida, nuevoId);
     enProyecto = true;
-    return modelo.value.lista.find((p) => p.id === modelo.value.activa)!.ruta;
+    const p = modelo.value.lista.find((x) => x.id === modelo.value.activa)!;
+    // Configuración, Ayuda y Acerca de son de paso: al entrar se llega a la vista de trabajo de la pestaña.
+    return esVistaCerrable(router?.resolve(p.ruta).name) ? (p.volver ?? P.RUTA_INICIO) : p.ruta;
   }
 
   /** Una sola vez, al arrancar: `proyecto` identifica el proyecto abierto (la ruta de su base). */
@@ -77,9 +79,12 @@ export const usePestanas = defineStore("pestanas", () => {
         const anterior = entrar();
         const { lista, activa } = modelo.value;
         // con dos pestañas en la misma ruta manda la activa
-        const ya = lista.find((p) => p.id === activa && p.ruta === to.fullPath) ?? lista.find((p) => p.ruta === to.fullPath);
+        const ya =
+          lista.find((p) => p.id === activa && p.ruta === to.fullPath) ??
+          lista.find((p) => p.ruta === to.fullPath);
         if (ya) modelo.value = { ...modelo.value, activa: ya.id };
-        else if (esVistaCerrable(to.name) && !esVistaCerrable(r.resolve(anterior).name)) cambios.volver = anterior;
+        else if (esVistaCerrable(to.name) && !esVistaCerrable(r.resolve(anterior).name))
+          cambios.volver = anterior;
       } else if (destino?.ruta === to.fullPath) {
         modelo.value = { ...modelo.value, activa: destino.id };
       } else if (!esVistaCerrable(to.name)) {
