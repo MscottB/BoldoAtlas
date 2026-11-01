@@ -15,7 +15,7 @@ Both actions are in **Import/Export**, in the sidebar, and in the app menu. To o
 
 ![Export with the One or more trees or branches option and the list of units with one branch checked.](../img/en/exportar-alcance.webp "Export: checking a unit includes its whole branch."){width=768 height=414}
 
-A branch carries its units, its positions with those who hold or held them, the list values they use, its tags, its saved branches and views, and its processes. What was deleted does not go. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going and the roles of people who are not going.
+A branch carries its units, its positions, the people who hold them today with their history in that branch, the list values they use, its tags, its saved branches and views, and its processes. What was deleted does not go, nor do the records of people who are no longer there. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going, the roles of people who are not going and the assignments of people who are no longer there.
 
 ::: warning Important
 The code is shown only once and is not saved anywhere. If it is lost, the file cannot be opened: you have to export again, which gives another file and another code. The file carries personal data: send the file and the code **through different channels**, for example the file by email and the code by phone.
@@ -25,7 +25,7 @@ The code is shown only once and is not saved anywhere. If it is lost, the file c
 
 1. Press **Import** and then **Choose file…**.
 2. Type the code and press **Open**. Capitals and dashes do not matter.
-3. Review what it carries: how much is in the file, how much is new and how much already exists. Up to here nothing was changed, and **Cancel** leaves no trace.
+3. Review what it carries: how much is in the file, how much is new and how much already exists. Up to here your database has not changed, and **Cancel** deletes the temporary copy of the file.
 4. Choose what to do and press **Apply**.
 
 ![Import: what the file carries in a table, the Add what is new and Replace everything options, and where to place the branch.](../img/en/importar-revision.webp "Import: you review what it carries before applying anything."){width=768 height=794}
@@ -34,17 +34,17 @@ If the code does not match or the file was altered, you see the same notice: “
 
 ### Add what is new
 
-What does not exist in your database comes in as it is. What already exists stays as it is, even if it differs in the file: at the end you see how many were skipped and which, in a list that opens with a click.
+What does not exist in your database comes in as it is, except what is deleted in the file. What already exists stays as it is, even if it differs in the file: at the end you see how many were skipped and which, in a list that opens with a click.
 
 | If the file carries… | What happens |
 |---|---|
 | A record you already have (the same one, even if edited) | Yours stays |
-| A list value with the same name as one of yours | It joins yours: not duplicated |
+| A list value with the same name as one of yours, ignoring capitals and accents | It joins yours: not duplicated |
 | A person with the same email as one of yours | Not duplicated: what came with them stays with yours |
 | Something pointing to what you deleted in your database | That reference is left empty or, if required, it does not come in. You are told |
 | Something that clashes with a rule of your database, like a second holder in a position | It does not come in. You are told |
 
-If you import a branch whose parent unit is in your database, it goes back inside it. If it is not, you are asked where to place it: **inside a unit** or **as an independent tree**.
+If you import a branch whose parent unit is in your database, it goes back inside it. If it is not, you are asked where to place it: **inside a unit** or **as an independent tree**. Either way it goes after its siblings. A database with no name takes the name of the organization in the file.
 
 ### Replace everything
 
@@ -58,6 +58,6 @@ Before applying either one, BoldoAtlas makes a backup marked **Before replacing*
 
 - A file made with an earlier version of BoldoAtlas is updated when opened, without touching your database.
 - One made with a **newer** version does not open until you update BoldoAtlas.
-- A file is only accepted if it is a valid BoldoAtlas copy, even if the code is correct: that is why it is safe to open one someone else sent you.
+- Even if the code is correct, BoldoAtlas checks the file before applying it: it rejects anything that is not a valid copy or that carries more data than it can handle. That check looks at the form, not the content: the data is what the sender put in, so import only files from people you trust and look at what it carries before applying.
 
 **See also:** [Backups](respaldos.md) · [List values](mantenedores.md).
