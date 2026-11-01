@@ -622,3 +622,31 @@ Cada tarea va en su propia rama y PR hacia `main`, con la portable de prueba del
 ### Task 17j: Divulgación progresiva en el resto de la app
 - El «Trabajo posterior» de §6 de la propuesta: Configuración, Directorio, Revisión, panel de unidad, ficha, Acerca, Bienvenida y Mantenedores (bloques plegables que recuerdan su estado por PC).
 - Commit: `feat(ui): opciones avanzadas plegadas en toda la app`
+
+---
+
+## Anexo 6 (pedidos del autor, 2026-11-01): exportar e importar, seguridad y privacidad
+
+Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase pública es siempre «te ayuda a cumplir», nunca «cumple»: las obligaciones de la Ley 21.719 (Chile) y del RGPD (UE) son de quien trata los datos. La 19e se publica cuando 19b, 19c y 19d estén en main, no antes.
+
+### Task 22a: Exportar e importar (spec §9, sin el modo B campo a campo)
+- Archivo `.boldo` cifrado, con toda la base o una o más ramas. Importar con «Reemplazar todo» o «Agregar lo nuevo»: lo que ya existe se conserva y se informa. El archivo importado no es confiable: límites, `integrity_check` y esquema exacto.
+
+### Task 22b: Fusión con revisión (spec §9, modo B)
+- Comparar lo importado con lo local, decidir por registro o por campo, y resolver duplicados, referencias rotas y ciclos antes de aplicar, en una sola transacción.
+
+### Task 19b: Borrado definitivo y datos de una persona
+- Suprimir a una persona de verdad, también de los respaldos antiguos tras un plazo, y del historial de la 19c. Exportar los datos de una persona (acceso y portabilidad).
+- Decisión pendiente del autor: cuántos respaldos `boldo-antes-de-*` conservar.
+
+### Task 19c: Historial de cambios
+- Triggers que guardan antes y después por lote. Bitácora, deshacer y rehacer persistentes (Ctrl+Z, Ctrl+Y) y panel «volver a este punto». Deshacer una acción antigua solo si nada posterior tocó esas filas; si no, avisar. Con retención, y sale antes que la 19d.
+
+### Task 19d: Base cifrada
+- Mostrar el diseño al autor antes de implementar: SQLCipher con rusqlite, contraseña al abrir, respaldos y portable cifrados, recuperación, y convivencia con los `.boldo`.
+
+### Task 19f: Candado por árbol (después de la 19d)
+- Impide ver y editar sin contraseña; agregar, cambiar y quitar. Si se olvida, se recupera con la contraseña de la base. Solo protege de verdad junto con la base cifrada, y así se explica.
+
+### Task 19e: Página «Seguridad y privacidad» (al final)
+- En el sitio y la ayuda, es y en: «te ayuda a cumplir» Ley 21.719 y RGPD, tabla honesta de lo que hace la app y lo que le toca a la organización, y nota de que no es asesoría legal. Revisar el estado de la ley chilena al publicar: rige el 1 de diciembre de 2026 salvo que se apruebe el proyecto que la posterga.
