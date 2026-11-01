@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { withBase } from "vitepress";
+import novedades from "../../novedades.json";
 
 // Portada bajo el hero: beneficios, funciones con su captura, comparación, confianza, preguntas y llamada a descargar.
-// Todo lo que dice debe ser cierto en la versión actual (alfa).
+// Todo lo que dice debe ser cierto hoy. «Lo nuevo» sale de novedades.json (sin números de versión).
 const props = defineProps<{ lang: "es" | "en" }>();
 
 const REPO = "https://github.com/MscottB/BoldoAtlas";
@@ -81,6 +82,12 @@ const TEXTOS = {
         },
       ],
     },
+    nuevo: {
+      etiqueta: "Lo nuevo",
+      titulo: "Mejoras para tu día a día",
+      bajada: "Lo último que se suma a BoldoAtlas, lo más nuevo primero.",
+      mas: "Leer más en el manual",
+    },
     funciones: {
       etiqueta: "Funciones",
       titulo: "Así funciona",
@@ -154,6 +161,7 @@ const TEXTOS = {
             "Ctrl+K abre la paleta de comandos: escribe y llega a cualquier unidad o persona.",
             "Ordena por persona, cargo o gerencia.",
             "Busca también dentro del diagrama.",
+            "Inicio resume tu organización y recuerda lo último que abriste.",
           ],
           imagen: {
             nombre: "directorio",
@@ -173,6 +181,8 @@ const TEXTOS = {
             "Respaldo automático al abrir, y a mano cuando quieras.",
             "Se conservan los 10 más recientes y se restauran desde la misma pantalla.",
             "Antes de cambiar la estructura de la base, BoldoAtlas guarda una copia.",
+            "Lleva toda la base, o solo algunas ramas, a otro computador en un archivo .boldo cifrado con un código.",
+            "Al importar, revisas las diferencias y decides qué se queda antes de aplicar.",
           ],
           imagen: {
             nombre: "respaldos",
@@ -190,7 +200,8 @@ const TEXTOS = {
           puntos: [
             "Windows 10 y 11, Linux (AppImage, .deb y .rpm) y macOS 11 o más nuevo, en Intel y Apple Silicon.",
             "El idioma se cambia al instante; tema claro, oscuro o según el sistema.",
-            "Un manual dentro de la app, el mismo que está en este sitio.",
+            "Un manual con capturas numeradas y buscador dentro de la app, el mismo que está en este sitio.",
+            "Al cerrar la ventana puedes dejar BoldoAtlas en la bandeja y volver al instante.",
           ],
           imagen: {
             nombre: "idioma-en-oscuro",
@@ -279,7 +290,7 @@ const TEXTOS = {
           icono: "sinRed",
           titulo: "No necesita internet",
           texto:
-            "Funciona completa sin conexión. Cuando busca versiones nuevas (puedes desactivarlo), solo descarga la lista de versiones y no envía datos.",
+            "Funciona completa sin conexión. Cuando busca versiones nuevas (puedes desactivarlo), solo lee la lista pública de versiones y no envía datos.",
         },
       ],
     },
@@ -302,7 +313,7 @@ const TEXTOS = {
         },
         {
           p: "¿Cómo se actualiza?",
-          r: "Descargando la versión nueva desde este sitio. En la portable reemplazas el programa y la carpeta datos/ se queda donde está. Si la versión nueva cambia la base, antes hace un respaldo. Cuando BoldoAtlas busca versiones nuevas (puedes desactivarlo), solo descarga la lista de versiones y no envía datos.",
+          r: "BoldoAtlas busca versiones nuevas al abrirse y cada día (puedes cambiar la frecuencia o apagarlo) y te avisa; nunca descarga ni instala nada sin que lo confirmes. En la portable reemplaza el programa dentro de su carpeta y datos/ no se toca. Si la versión nueva cambia la base, antes hace un respaldo. La búsqueda solo lee la lista pública de versiones y no envía datos. También puedes descargar la versión nueva desde este sitio.",
           enlace: { texto: "Cómo actualizar", href: "/descargas#como-actualizar" },
         },
         {
@@ -311,7 +322,7 @@ const TEXTOS = {
         },
         {
           p: "¿Es una versión final?",
-          r: "No: es una versión de prueba (alfa). Lo que muestra esta página ya funciona; si algo falla, cuéntalo en GitHub.",
+          r: "No: es una versión de prueba. Lo que muestra esta página ya funciona; si algo falla, cuéntalo en GitHub.",
           enlace: { texto: "Avisar de un problema", href: `${REPO}/issues` },
         },
       ],
@@ -360,6 +371,12 @@ const TEXTOS = {
             "No server and no accounts, and it doesn't need the internet to work. A local database with automatic backups.",
         },
       ],
+    },
+    nuevo: {
+      etiqueta: "What's new",
+      titulo: "Improvements for your day to day",
+      bajada: "The latest additions to BoldoAtlas, newest first.",
+      mas: "Read more in the manual",
     },
     funciones: {
       etiqueta: "Features",
@@ -431,6 +448,7 @@ const TEXTOS = {
             "Ctrl+K opens the command palette: type and reach any unit or person.",
             "Sort by person, job title or division.",
             "Search inside the diagram too.",
+            "Home sums up your organization and remembers what you opened last.",
           ],
           imagen: {
             nombre: "directorio",
@@ -450,6 +468,8 @@ const TEXTOS = {
             "Automatic backup when it opens, and manual backups whenever you like.",
             "The 10 most recent are kept, and you restore them from the same screen.",
             "Before changing the database structure, BoldoAtlas keeps a copy.",
+            "Take the whole database, or just some branches, to another computer in a .boldo file encrypted with a code.",
+            "When you import, you review the differences and decide what stays before applying.",
           ],
           imagen: {
             nombre: "respaldos",
@@ -467,7 +487,8 @@ const TEXTOS = {
           puntos: [
             "Windows 10 and 11, Linux (AppImage, .deb and .rpm) and macOS 11 or newer, on Intel and Apple Silicon.",
             "The language changes instantly; light theme, dark theme or follow the system.",
-            "A manual inside the app, the same one that is on this site.",
+            "A manual with numbered screenshots and search inside the app, the same one that is on this site.",
+            "When you close the window you can keep BoldoAtlas in the tray and come back instantly.",
           ],
           imagen: {
             nombre: "idioma-es-oscuro",
@@ -556,7 +577,7 @@ const TEXTOS = {
           icono: "sinRed",
           titulo: "No internet needed",
           texto:
-            "It works fully offline. When it checks for new versions (you can turn this off), it only downloads the list of versions and sends no data.",
+            "It works fully offline. When it checks for new versions (you can turn this off), it only reads the public list of versions and sends no data.",
         },
       ],
     },
@@ -579,7 +600,7 @@ const TEXTOS = {
         },
         {
           p: "How do I update it?",
-          r: "By downloading the new version from this site. With the portable version you replace the program and the datos/ folder stays where it is. If the new version changes the database, it makes a backup first. When BoldoAtlas checks for new versions (you can turn this off), it only downloads the list of versions and sends no data.",
+          r: "BoldoAtlas checks for new versions when it opens and every day (you can change how often or turn it off) and lets you know; it never downloads or installs anything without your confirmation. The portable version replaces the program inside its folder and datos/ is not touched. If the new version changes the database, it makes a backup first. The check only reads the public list of versions and sends no data. You can also download the new version from this site.",
           enlace: { texto: "How to update", href: "/en/descargas#how-to-update" },
         },
         {
@@ -588,7 +609,7 @@ const TEXTOS = {
         },
         {
           p: "Is it a final version?",
-          r: "No: it is a test (alpha) version. Everything on this page already works; if something fails, tell us on GitHub.",
+          r: "No: it is a test version. Everything on this page already works; if something fails, tell us on GitHub.",
           enlace: { texto: "Report a problem", href: `${REPO}/issues` },
         },
       ],
@@ -613,6 +634,22 @@ const img = (nombre: string) => withBase(`/capturas/${nombre}.webp`);
 const fuente = (f: Funcion, tema: "claro" | "oscuro") =>
   f.imagen.temas ? img(`${f.imagen.nombre}-${props.lang}-${tema}`) : img(f.imagen.nombre);
 const SISTEMAS = ["Windows", "Linux", "macOS"];
+
+const urls = import.meta.glob("../../img/es/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+const urlsEn = import.meta.glob("../../en/img/en/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+const imgAyuda = (nombre: string) =>
+  props.lang === "es" ? urls[`../../img/es/${nombre}.webp`] : urlsEn[`../../en/img/en/${nombre}.webp`];
+const nuevas = computed(() =>
+  novedades.map((n) => {
+    const x = (n as Record<string, any>)[props.lang];
+    return {
+      id: n.id,
+      ...x,
+      imagen: "imagen" in n ? imgAyuda(n.imagen as string) : undefined,
+      href: `${props.lang === "es" ? "" : "/en"}/manual/${n.pagina}${x.ancla ? "#" + x.ancla : ""}`,
+    };
+  }),
+);
 </script>
 
 <template>
@@ -638,7 +675,33 @@ const SISTEMAS = ["Windows", "Linux", "macOS"];
       </div>
     </section>
 
-    <section class="seccion suave" aria-labelledby="funciones">
+    <section class="seccion suave" aria-labelledby="lo-nuevo">
+      <div class="contenedor">
+        <p class="etiqueta">{{ t.nuevo.etiqueta }}</p>
+        <h2 id="lo-nuevo">{{ t.nuevo.titulo }}</h2>
+        <p class="bajada">{{ t.nuevo.bajada }}</p>
+        <ul class="nuevo" role="list">
+          <li v-for="n in nuevas" :key="n.id">
+            <img
+              v-if="n.imagen"
+              :src="n.imagen"
+              :alt="n.alt"
+              width="640"
+              height="400"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="cuerpo">
+              <h3>{{ n.titulo }}</h3>
+              <p>{{ n.texto }}</p>
+              <a class="mas" :href="enlace(n.href)">{{ t.nuevo.mas }} →</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="seccion" aria-labelledby="funciones">
       <div class="contenedor">
         <p class="etiqueta">{{ t.funciones.etiqueta }}</p>
         <h2 id="funciones">{{ t.funciones.titulo }}</h2>
@@ -697,7 +760,7 @@ const SISTEMAS = ["Windows", "Linux", "macOS"];
       </div>
     </section>
 
-    <section class="seccion" aria-labelledby="comparacion">
+    <section class="seccion suave" aria-labelledby="comparacion">
       <div class="contenedor">
         <p class="etiqueta">{{ t.comparacion.etiqueta }}</p>
         <h2 id="comparacion">{{ t.comparacion.titulo }}</h2>
@@ -733,7 +796,7 @@ const SISTEMAS = ["Windows", "Linux", "macOS"];
       </div>
     </section>
 
-    <section class="seccion suave" aria-labelledby="confianza">
+    <section class="seccion" aria-labelledby="confianza">
       <div class="contenedor">
         <p class="etiqueta">{{ t.confianza.etiqueta }}</p>
         <h2 id="confianza">{{ t.confianza.titulo }}</h2>
@@ -748,7 +811,7 @@ const SISTEMAS = ["Windows", "Linux", "macOS"];
       </div>
     </section>
 
-    <section class="seccion" aria-labelledby="preguntas">
+    <section class="seccion suave" aria-labelledby="preguntas">
       <div class="contenedor angosto">
         <p class="etiqueta">{{ t.preguntas.etiqueta }}</p>
         <h2 id="preguntas">{{ t.preguntas.titulo }}</h2>
@@ -957,6 +1020,42 @@ ul[role="list"] {
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
   font-size: 22px;
+}
+
+/* lo nuevo: tarjetas con la captura de la ayuda, si la hay */
+.nuevo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 20px;
+  margin-top: 40px !important;
+}
+.nuevo li {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--pr-radio);
+  background: var(--vp-c-bg);
+}
+.nuevo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  object-fit: cover;
+  object-position: top left;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.nuevo .cuerpo {
+  padding: 24px;
+}
+.nuevo h3 {
+  font-size: 1.125rem;
+  line-height: 1.35;
+}
+.nuevo p {
+  margin-top: 8px;
+  color: var(--vp-c-text-2);
+  line-height: 1.6;
 }
 
 /* funciones: texto y captura alternados */
