@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, type Component } from "vue";
+import { computed, onMounted, ref, type Component } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -15,10 +15,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import { respaldarAntesDeReemplazar } from "@/db/cliente";
+import { useRetornoFoco } from "@/lib/foco";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -27,6 +36,7 @@ import icono from "../../assets/brand/icono.png";
 const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
+const retorno = useRetornoFoco();
 const org = useOrganizacion();
 
 // Sin `fase`, el camino está disponible; con ella, se muestra deshabilitado con la fase en que llega.
@@ -58,6 +68,12 @@ const ocupado = ref(false);
 const creando = ref(false);
 const nombreOrg = ref("");
 const nombreRaiz = ref("");
+// El foco va al primer campo (no al botón de cerrar) y, al cerrar, vuelve a la tarjeta que abrió el diálogo.
+function alAbrir(e: Event) {
+  retorno.alAbrir();
+  e.preventDefault();
+  document.getElementById("bienvenida-org")?.focus();
+}
 async function elegir(c: Camino) {
   if (c.fase) return;
   if (c.id === "ejemplo") {
@@ -67,10 +83,9 @@ async function elegir(c: Camino) {
     return;
   }
   creando.value = true;
-  await nextTick();
-  document.getElementById("bienvenida-org")?.focus();
 }
 async function crear() {
+  if (!nombreOrg.value.trim() || !nombreRaiz.value.trim() || org.guardando || ocupado.value) return;
   if (hayDatos.value) {
     reemplazo.value = "vacia";
     confirmando.value = true;
@@ -153,38 +168,40 @@ onMounted(() => {
       </li>
     </ul>
 
-    <p v-if="!MOSTRAR_PROXIMAMENTE" class="text-sm text-muted-foreground">
-      {{ t("bienvenida.proximamente") }}
-    </p>
-
-    <form
-      v-if="creando"
-      class="grid max-w-sm gap-3 rounded-lg border p-4"
-      @submit.prevent="crear"
-      @keydown.esc="creando = false"
-    >
-      <div class="grid gap-1.5">
-        <Label for="bienvenida-org">{{ t("bienvenida.organizacion") }}</Label>
-        <Input id="bienvenida-org" v-model="nombreOrg" autocomplete="off" />
-      </div>
-      <div class="grid gap-1.5">
-        <Label for="bienvenida-raiz">{{ t("bienvenida.raiz") }}</Label>
-        <Input
-          id="bienvenida-raiz"
-          v-model="nombreRaiz"
-          :placeholder="t('bienvenida.raizEjemplo')"
-          autocomplete="off"
-        />
-      </div>
-      <div class="flex justify-end gap-2">
-        <Button type="button" variant="outline" @click="creando = false">{{
-          t("bienvenida.cancelar")
-        }}</Button>
-        <Button type="submit" :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || org.guardando || ocupado">
-          {{ t("bienvenida.crear") }}
-        </Button>
-      </div>
-    </form>
+    <Dialog v-model:open="creando">
+      <DialogContent @open-auto-focus="alAbrir" @close-auto-focus="retorno.alCerrar">
+        <form class="grid gap-4" @submit.prevent="crear">
+          <DialogHeader>
+            <DialogTitle>{{ t("bienvenida.vacia.titulo") }}</DialogTitle>
+            <DialogDescription>{{ t("bienvenida.vacia.texto") }}</DialogDescription>
+          </DialogHeader>
+          <div class="grid gap-1.5">
+            <Label for="bienvenida-org">{{ t("bienvenida.organizacion") }}</Label>
+            <Input id="bienvenida-org" v-model="nombreOrg" autocomplete="off" />
+          </div>
+          <div class="grid gap-1.5">
+            <Label for="bienvenida-raiz">{{ t("bienvenida.raiz") }}</Label>
+            <Input
+              id="bienvenida-raiz"
+              v-model="nombreRaiz"
+              :placeholder="t('bienvenida.raizEjemplo')"
+              autocomplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="creando = false">{{
+              t("bienvenida.cancelar")
+            }}</Button>
+            <Button
+              type="submit"
+              :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || org.guardando || ocupado"
+            >
+              {{ t("bienvenida.crear") }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
 
     <AlertDialog v-model:open="confirmando">
       <AlertDialogContent>

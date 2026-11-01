@@ -633,7 +633,6 @@
   "bienvenida": {
     "titulo": "Te damos la bienvenida a BoldoAtlas",
     "subtitulo": "Elige cómo empezar.",
-    "proximamente": "Próximamente: cargar desde Excel y abrir un archivo .boldo.",
     "vacia": {
       "titulo": "Crear una organización vacía",
       "texto": "Empieza desde cero: nombras la organización y su primera unidad."

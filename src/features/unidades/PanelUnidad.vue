@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import type { Unidad } from "@/db/tipos";
 import { dotacion, jefeVisible } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
@@ -241,7 +242,7 @@ async function eliminar() {
         <TabsTrigger value="resumen">{{ t("unidad.resumen") }}</TabsTrigger>
         <TabsTrigger value="puestos">{{ t("puesto.puestos", { n: filas.length }) }}</TabsTrigger>
         <TabsTrigger value="personas">{{ t("personas.pestana") }}</TabsTrigger>
-        <TabsTrigger value="procesos">{{ t("unidad.procesos") }}</TabsTrigger>
+        <TabsTrigger v-if="MOSTRAR_PROXIMAMENTE" value="procesos">{{ t("unidad.procesos") }}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="resumen">
@@ -453,7 +454,7 @@ async function eliminar() {
         <PersonasUnidad :unidad="unidad" />
       </TabsContent>
 
-      <TabsContent value="procesos">
+      <TabsContent v-if="MOSTRAR_PROXIMAMENTE" value="procesos">
         <p class="pt-4 text-sm text-muted-foreground">{{ t("unidad.procesosVacio") }}</p>
       </TabsContent>
     </Tabs>
