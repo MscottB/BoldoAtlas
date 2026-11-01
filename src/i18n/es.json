@@ -872,5 +872,11 @@
     "sinNotas": "Sin notas para esta versión.",
     "vacio": "Esta copia no trae notas de versión (es una versión de desarrollo o de prueba).",
     "enEspanol": "Las notas de versión están en español."
+  },
+  "bandeja": {
+    "abrir": "Abrir BoldoAtlas",
+    "actualizarA": "Actualizar a v{version}",
+    "carpeta": "Abrir carpeta de datos",
+    "salir": "Salir"
   }
 }

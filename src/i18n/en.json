@@ -872,5 +872,11 @@
     "sinNotas": "No notes for this version.",
     "vacio": "This copy has no release notes (it is a development or test build).",
     "enEspanol": "Release notes are written in Spanish."
+  },
+  "bandeja": {
+    "abrir": "Open BoldoAtlas",
+    "actualizarA": "Update to v{version}",
+    "carpeta": "Open data folder",
+    "salir": "Quit"
   }
 }

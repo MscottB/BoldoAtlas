@@ -32,6 +32,10 @@ Si algo falla, se deja la versión anterior y se muestra el error. También pued
 
 La primera vez que abres una versión nueva aparece **Novedades de la versión X**, con lo nuevo desde la última versión que usaste en este PC. Puedes volver a verlas en **Acerca de › Novedades**; vienen dentro de la app, así que se ven sin conexión. Las notas de versión se escriben en español.
 
+## Icono en la bandeja
+
+Mientras BoldoAtlas está abierto, su icono aparece en la bandeja del sistema. Un clic lo trae al frente; el menú (clic derecho) tiene Abrir BoldoAtlas, **Actualizar a vX** cuando hay una versión nueva (si no, Buscar actualizaciones), Respaldar ahora, Abrir carpeta de datos, Ayuda y Salir. Cerrar la ventana cierra BoldoAtlas por completo: no queda nada en segundo plano.
+
 ## Limpieza
 
 Los archivos temporales de la actualización (el instalador descargado, el programa anterior de la portable) se borran solos al terminar o al siguiente arranque. En la portable todo eso queda dentro de su carpeta, en `datos/`.

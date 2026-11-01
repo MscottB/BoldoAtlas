@@ -32,6 +32,10 @@ If something fails, the previous version stays and the error is shown. You can a
 
 The first time you open a new version, **What's new in version X** appears, with what changed since the last version you used on this PC. You can see it again in **About › What's new**; the notes ship inside the app, so they work offline. Release notes are written in Spanish.
 
+## Tray icon
+
+While BoldoAtlas is open, its icon appears in the system tray. One click brings it to the front; the menu (right click) has Open BoldoAtlas, **Update to vX** when there is a new version (otherwise Check for updates), Back up now, Open data folder, Help and Quit. Closing the window quits BoldoAtlas completely: nothing stays in the background.
+
 ## Cleanup
 
 The update's temporary files (the downloaded installer, the portable's previous program) are deleted when it finishes or on the next start. In the portable all of that stays inside its folder, in `datos/`.

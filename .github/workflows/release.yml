@@ -123,7 +123,7 @@ jobs:
         shell: bash
         env:
           BOLDO_VERSION: ${{ inputs.tag }}
-          BOLDO_NOVEDADES: src-tauri/target/novedades.json # el diálogo «Novedades» de la app
+          BOLDO_NOVEDADES: ${{ github.workspace }}/src-tauri/target/novedades.json # el diálogo «Novedades»
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ env.ETIQUETA }}-${{ matrix.sistema }}

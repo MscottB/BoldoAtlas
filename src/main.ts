@@ -10,6 +10,7 @@ import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
 import { respaldoAutomatico } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
+import { crearBandeja } from "./features/actualizaciones/bandeja";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
 import "./styles/main.css";
 
@@ -36,6 +37,7 @@ infoApp()
     void respaldoAutomatico();
     // «Novedades» tras actualizar y la consulta periódica de versiones nuevas (la única conexión automática)
     useActualizaciones(pinia).iniciar();
+    void crearBandeja(router);
   })
   .catch((e: unknown) => {
     const info = { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
