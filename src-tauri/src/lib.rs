@@ -18,10 +18,12 @@ pub fn run() {
         let id = rutas::identificador_portable(&contexto.config().identifier, &r.datos);
         contexto.config_mut().identifier = id;
     }
-    tauri::Builder::default()
-        // el primero: una segunda instancia cierra antes de crear nada. Arrancar con el sistema con la app ya
-        // abierta no la interrumpe; abrirla a mano la trae al frente
-        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+    let mut app = tauri::Builder::default();
+    // el primero: una segunda instancia cierra antes de crear nada. Arrancar con el sistema con la app ya abierta no
+    // la interrumpe; abrirla a mano la trae al frente. Sin carpeta de datos no se sabe si es portable y solo muestra
+    // el motivo («extrae el zip primero»): sin instancia única, para no irse a la ventana de otra copia sin decirlo.
+    if estado.rutas_app().is_some() {
+        app = app.plugin(tauri_plugin_single_instance::init(|app, args, _| {
             if args.iter().any(|a| a == inicio::ARGUMENTO) {
                 return;
             }
@@ -30,8 +32,9 @@ pub fn run() {
                 let _ = v.show();
                 let _ = v.set_focus();
             }
-        }))
-        .plugin(tauri_plugin_opener::init())
+        }));
+    }
+    app.plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(estado)
         .manage(actualizar::Actualizador::default())
