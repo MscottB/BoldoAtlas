@@ -1,0 +1,57 @@
+name: auditoria
+
+# Vulnerabilidades conocidas en las dependencias: en los PR que tocan un archivo de bloqueo, cada lunes y a mano.
+# Falla solo por gravedad alta o crítica en lo que llega al programa; lo demás (herramientas de desarrollo, avisos de
+# «sin mantenimiento») se muestra sin fallar. Va aparte de publicar.yml y release.yml: si falla, avisa y no detiene
+# ninguna publicación. site/ no llega al programa: sus dependencias las sigue Dependabot.
+on:
+  pull_request:
+    paths:
+      - package-lock.json
+      - src-tauri/Cargo.lock
+      - .github/workflows/auditoria.yml
+      - scripts/auditoria.mjs
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auditoria-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Todas las dependencias (solo informa)
+        run: npm audit || true
+      # --omit=optional: vite cuelga de vue-router como par opcional; compila la app, pero no va dentro de ella
+      - name: Lo que llega al programa
+        run: npm audit --omit=dev --omit=optional --audit-level=high
+
+  cargo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: cargo install cargo-audit --version 0.22.2 --locked
+      # cargo audit sale con error ante cualquier vulnerabilidad: decide scripts/auditoria.mjs, por gravedad
+      - run: |
+          cargo audit --json --file src-tauri/Cargo.lock > cargo-audit.json || true
+          node scripts/auditoria.mjs cargo-audit.json

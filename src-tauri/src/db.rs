@@ -148,11 +148,27 @@ pub fn asegurar_meta(conn: &Connection) -> Result<(), String> {
     tx.commit().map_err(texto)
 }
 
+/// La interfaz solo trabaja con las filas de esta base: nada de ATTACH, PRAGMA, VACUUM, DDL ni control de
+/// transacciones. Basta con la primera palabra: rusqlite rechaza un texto con más de una sentencia.
+fn solo_permitidas(sql: &str, permitidas: &[&str]) -> Result<(), String> {
+    let primera = sql
+        .trim_start()
+        .split(|c: char| !c.is_ascii_alphabetic())
+        .next()
+        .unwrap_or_default();
+    if permitidas.iter().any(|p| primera.eq_ignore_ascii_case(p)) {
+        Ok(())
+    } else {
+        Err(format!("Sentencia no permitida: {primera}"))
+    }
+}
+
 pub fn consultar(
     conn: &Connection,
     sql: &str,
     params: &[Value],
 ) -> Result<Vec<Map<String, Value>>, String> {
+    solo_permitidas(sql, &["SELECT", "WITH"])?;
     let mut stmt = conn.prepare(sql).map_err(texto)?;
     if !stmt.readonly() {
         return Err("db_consultar es solo lectura; las escrituras van por db_lote.".into());
@@ -182,6 +198,7 @@ pub fn lote(
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(texto)?;
     for s in sentencias {
+        solo_permitidas(&s.sql, &["INSERT", "UPDATE", "DELETE", "REPLACE", "WITH"])?;
         tx.execute(&s.sql, params_from_iter(s.params.iter().map(a_sql)))
             .map_err(texto)?;
     }
@@ -262,12 +279,67 @@ mod tests {
         let (_dir, _, conn) = base_nueva();
         let err = consultar(
             &conn,
-            "UPDATE meta SET valor = '9' WHERE clave = 'data_revision'",
+            "WITH x AS (SELECT 1) UPDATE meta SET valor = '9' WHERE clave = 'data_revision'",
             &[],
         )
         .unwrap_err();
         assert!(err.contains("solo lectura"), "{err}");
         assert_eq!(meta(&conn, "data_revision"), "0");
+    }
+
+    #[test]
+    fn consultar_solo_acepta_lecturas_de_filas() {
+        let (dir, _, conn) = base_nueva();
+        let otra = dir.path().join("otra.db");
+        let otra = otra.to_string_lossy();
+        for sql in [
+            format!("ATTACH '{otra}' AS y"),
+            format!(" -- x\n ATTACH '{otra}' AS y"),
+            format!("/* x */ ATTACH '{otra}' AS y"),
+            "PRAGMA journal_mode = DELETE".into(),
+            "BEGIN".into(),
+            "COMMIT".into(),
+            format!("VACUUM INTO '{otra}'"),
+        ] {
+            let err = consultar(&conn, &sql, &[]).unwrap_err();
+            assert!(err.contains("no permitida"), "{sql}: {err}");
+        }
+        assert!(!dir.path().join("otra.db").exists());
+        // nada puede venir después de la sentencia revisada
+        consultar(&conn, &format!("SELECT 1; ATTACH '{otra}' AS y"), &[]).unwrap_err();
+        assert!(!dir.path().join("otra.db").exists());
+        let filas = consultar(&conn, "  with a AS (SELECT 1 AS n) SELECT n FROM a", &[]).unwrap();
+        assert_eq!(filas[0]["n"], json!(1));
+    }
+
+    #[test]
+    fn lote_solo_acepta_cambios_de_filas() {
+        let (dir, _, mut conn) = base_nueva();
+        let otra = dir.path().join("otra.db");
+        let otra = otra.to_string_lossy();
+        for sql in [
+            "COMMIT".to_string(),
+            "BEGIN".into(),
+            "PRAGMA writable_schema = ON".into(),
+            "DROP TABLE meta".into(),
+            "CREATE TABLE x (y)".into(),
+            "CREATE TRIGGER t AFTER INSERT ON meta BEGIN DELETE FROM meta; END".into(),
+            format!("VACUUM INTO '{otra}'"),
+        ] {
+            let malo = Sentencia {
+                sql: sql.clone(),
+                params: vec![],
+            };
+            let err = lote(&mut conn, &[insertar_unidad("A"), malo], "1").unwrap_err();
+            assert!(err.contains("no permitida"), "{sql}: {err}");
+        }
+        let doble = Sentencia {
+            sql: "DELETE FROM meta WHERE clave = 'x'; DROP TABLE meta".into(),
+            params: vec![],
+        };
+        lote(&mut conn, &[doble], "1").unwrap_err();
+        assert_eq!(meta(&conn, "data_revision"), "0");
+        assert!(!dir.path().join("otra.db").exists());
     }
 
     #[test]

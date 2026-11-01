@@ -99,8 +99,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const archivo of new Set(Object.values(ACTUALIZABLES))) {
     const ruta = archivos.get(archivo);
     if (!ruta) fallar(`No está ${archivo} entre los archivos del release.`);
-    // stdin cerrado: si la clave pidiera una contraseña que no llegó, falla en vez de quedarse esperando
-    const r = spawnSync("npx", ["tauri", "signer", "sign", "--app-version", version, ruta], {
+    // stdin cerrado: si la clave pidiera una contraseña que no llegó, falla en vez de quedarse esperando.
+    // --no: solo la CLI de node_modules; npx nunca baja de internet un paquete «tauri» junto a la clave
+    const r = spawnSync("npx", ["--no", "tauri", "signer", "sign", "--app-version", version, ruta], {
       stdio: ["ignore", "inherit", "inherit"],
       shell: process.platform === "win32",
     });
