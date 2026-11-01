@@ -17,8 +17,8 @@ const { colapsados, nuevaUnidad, renombrar, alternarRama } = useLienzo();
 
 const soloLectura = computed(() => !!org.fechaVista);
 const plegada = computed(() => colapsados.value.has(props.id));
-// Alejado, los botones no se achican hasta volverse imposibles de pulsar.
-const escala = computed(() => Math.min(4, Math.max(1, 0.9 / viewport.value.zoom)));
+// Alejado, los botones no se achican hasta volverse imposibles de pulsar; con el tope, la barra cabe en la franja de arriba (64 px).
+const escala = computed(() => Math.min(1.75, Math.max(1, 0.9 / viewport.value.zoom)));
 const clase =
   "grid size-6 place-items-center rounded hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring";
 </script>

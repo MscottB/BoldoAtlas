@@ -10,6 +10,8 @@ export interface Trazado {
   puntos: Punto[];
   /** Centro de la etiqueta, sobre la línea. */
   etiqueta: Punto;
+  /** No hubo lugar libre y la etiqueta asoma sobre una tarjeta: entonces no debe capturar sus clics. */
+  etiquetaTapa: boolean;
   /** Tarjetas que atraviesa: 0 salvo que no haya otro camino (entonces, las menos posibles). */
   cruces: number;
 }
@@ -40,9 +42,18 @@ const VECINDAD = 3; // cuántas tarjetas a cada lado de los extremos se miran pa
 const ALTO_ETIQUETA = 20;
 const ANCHO_LETRA = 6.5;
 const ANCHO_ETIQUETA = 192; // el texto más largo se abrevia a esto (max-w-48 en AristaLateral.vue)
+const AJUSTES_ETIQUETA = [0, 4, -4, 8, -8]; // cuánto puede correrse fuera de su línea (la sigue tocando: mide 20 de alto)
+const MAX_SONDAS = 300; // lugares que se prueban por etiqueta
+const CELDA = 256; // lado de la rejilla de etiquetas ya ubicadas
 // Varias líneas por la misma franja van en carriles distintos; el medio (0,5) es de las líneas jerárquicas.
 const CARRILES_FRANJA = [0.25, 0.75, 0.4, 0.6];
 const CARRILES_HUECO = [0.5, 0.3, 0.7, 0.4];
+
+/**
+ * Cuánto puede agrandarse la etiqueta al alejar sin salirse de los huecos: 1,3 cabe en los 28 px entre hermanas y en la franja
+ * de 64 px; en la compacta (10 y 28 px) no hay margen. El trazado la ubica ya con este tamaño.
+ */
+export const escalaMaxEtiqueta = (densidad: "normal" | "compacta") => (densidad === "compacta" ? 1 : 1.3);
 
 const girarPunto = ({ x, y }: Punto): Punto => ({ x: y, y: x });
 const girarCaja = ({ x, y, ancho, alto }: Caja): Caja => ({ x: y, y: x, ancho: alto, alto: ancho });
@@ -98,12 +109,15 @@ function crucesDelTramo(filas: Fila[], p: Punto, q: Punto): number {
 
 type Puerto = { x: number; y: number; dx: number; dy: number; costo: number };
 
-function puertos(c: Caja, otra: Caja, i: number, conEtiqueta: boolean): Puerto[] {
+/** `n`: cuántas líneas de esta tarjeta ya se trazaron. */
+function puertos(c: Caja, otra: Caja, n: number, conEtiqueta: boolean): Puerto[] {
   // Abajo y arriba, hacia el lado de la otra tarjeta y lejos del centro (ahí llegan las líneas jerárquicas). Dos líneas de
-  // una misma tarjeta no salen del mismo punto.
+  // una misma tarjeta no salen del mismo punto: 0, +1, -1, +2, -2 y vuelta a empezar.
+  const k = n % 5;
+  const desvio = ((k + 1) >> 1) * (k % 2 ? 1 : -1);
   const hacia = otra.x + otra.ancho / 2 >= c.x + c.ancho / 2 ? 0.75 : 0.25;
-  const x = c.x + c.ancho * (hacia + ((i % 3) - 1) * 0.08);
-  const y = c.y + c.alto * (0.5 + ((i % 3) - 1) * 0.2);
+  const x = c.x + c.ancho * (hacia + desvio * 0.08);
+  const y = c.y + c.alto * (0.5 + desvio * 0.2);
   const costado = conEtiqueta ? COSTO_COSTADO_CON_ETIQUETA : 0;
   return [
     { x, y: c.y + c.alto, dx: 0, dy: 1, costo: 0 },
@@ -179,9 +193,16 @@ function colaMinima() {
 }
 
 /** Busca el camino más corto y con menos codos, sobre la grilla de carriles; solo cruza una tarjeta si no hay otro. */
-function camino(filas: Fila[], a: Caja, b: Caja, i: number, conEtiqueta: boolean): Punto[] | null {
-  const salidas = puertos(a, b, i, conEtiqueta);
-  const llegadas = puertos(b, a, i, conEtiqueta);
+function camino(
+  filas: Fila[],
+  a: Caja,
+  b: Caja,
+  i: number,
+  [usosA, usosB]: [number, number],
+  conEtiqueta: boolean,
+): Punto[] | null {
+  const salidas = puertos(a, b, usosA, conEtiqueta);
+  const llegadas = puertos(b, a, usosB, conEtiqueta);
   const { xs: xSet, ys: ySet } = carriles(filas, a, b, i);
   for (const p of [...salidas, ...llegadas]) (p.dx ? ySet : xSet).add(p.dx ? p.y : p.x);
   const xs = [...xSet].sort((m, n) => m - n);
@@ -290,21 +311,30 @@ function simplificar(puntos: Punto[]): Punto[] {
   });
 }
 
+/** Las etiquetas ya ubicadas, por celda: mirar una sonda no recorre todas (una caja puede estar en varias celdas). */
+type Rejilla = Map<number, Caja[]>;
+function celdas(r: { x: number; y: number; ancho: number; alto: number }, visitar: (clave: number) => void) {
+  for (let ix = Math.floor(r.x / CELDA); ix <= Math.floor((r.x + r.ancho) / CELDA); ix++)
+    for (let iy = Math.floor(r.y / CELDA); iy <= Math.floor((r.y + r.alto) / CELDA); iy++)
+      visitar(ix * 1e6 + iy);
+}
+
 const solape = (p: Punto, w: number, h: number, c: Caja) =>
   Math.max(0, Math.min(p.x + w / 2, c.x + c.ancho) - Math.max(p.x - w / 2, c.x)) *
   Math.max(0, Math.min(p.y + h / 2, c.y + c.alto) - Math.max(p.y - h / 2, c.y));
 
 /**
  * El punto de la línea donde la etiqueta tapa menos tarjetas y otras etiquetas. Se mira primero el tramo más largo que corre
- * a lo ancho de la pantalla (ahí cabe el texto) y desde su centro hacia afuera. `pantallaX`: el eje horizontal de la pantalla.
+ * a lo ancho de la pantalla (ahí cabe el texto) y desde su centro hacia afuera, con un tope de intentos. `pantallaX`: el eje
+ * horizontal de la pantalla. `tapa`: cuánto queda sobre otra cosa (0 = libre).
  */
 function ubicarEtiqueta(
   puntos: Punto[],
   [w, h]: [number, number],
   filas: Fila[],
-  ocupadas: Caja[],
+  ocupadas: Rejilla,
   pantallaX: "x" | "y",
-): Punto {
+): { punto: Punto; tapa: number } {
   const largo = (p: Punto, q: Punto) => Math.abs(p.x - q.x) + Math.abs(p.y - q.y);
   const tramos = puntos
     .slice(1)
@@ -317,26 +347,33 @@ function ubicarEtiqueta(
     let total = 0;
     const sumar = (c: Caja) => (total += solape(p, w, h, c));
     cajasEn(filas, p.x - w / 2, p.x + w / 2, p.y - h / 2, p.y + h / 2, sumar);
-    ocupadas.forEach(sumar);
+    celdas({ x: p.x - w / 2, y: p.y - h / 2, ancho: w, alto: h }, (k) => ocupadas.get(k)?.forEach(sumar));
     return total;
   };
   let mejor = puntos[0]!;
   let menos = Infinity;
+  let sondas = 0;
   for (const [p, q] of tramos) {
     const paso = Math.max(8, largo(p, q) / 48) / Math.max(1, largo(p, q));
+    const aLoAncho = p.y === q.y;
     for (let d = 0; d <= 0.5; d += paso) {
       for (const t of d ? [0.5 - d, 0.5 + d] : [0.5]) {
-        const c = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
-        const n = tapa(c);
-        if (n < menos) {
-          menos = n;
-          mejor = c;
+        for (const a of AJUSTES_ETIQUETA) {
+          const c = {
+            x: p.x + (q.x - p.x) * t + (aLoAncho ? 0 : a),
+            y: p.y + (q.y - p.y) * t + (aLoAncho ? a : 0),
+          };
+          const n = tapa(c);
+          if (n < menos) {
+            menos = n;
+            mejor = c;
+          }
+          if (!n || ++sondas >= MAX_SONDAS) return { punto: mejor, tapa: menos };
         }
-        if (!n) return mejor;
       }
     }
   }
-  return mejor;
+  return { punto: mejor, tapa: menos };
 }
 
 /** Ancho que ocupará la etiqueta en el lienzo (sin medir el DOM): el texto largo se abrevia. */
@@ -344,12 +381,13 @@ const anchoEtiqueta = (texto: string) => Math.min(ANCHO_ETIQUETA, texto.length *
 
 /**
  * El trazado de cada lateral cuyas dos tarjetas están en `cajas`. Si no hay un camino sin cruzar tarjetas (una unidad rodeada
- * por completo), devuelve el que cruza menos y lo dice en `cruces`.
+ * por completo), devuelve el que cruza menos y lo dice en `cruces`. `escalaEtiqueta`: lo más que se agrandará la etiqueta.
  */
 export function trazarLaterales(
   laterales: Lateral[],
   cajas: ReadonlyMap<string, Caja>,
   direccion: "vertical" | "horizontal",
+  escalaEtiqueta = 1,
 ): Map<string, Trazado> {
   const horizontal = direccion === "horizontal";
   const normCaja = horizontal ? girarCaja : (c: Caja) => c;
@@ -357,27 +395,40 @@ export function trazarLaterales(
   const res = new Map<string, Trazado>();
   if (!laterales.length) return res;
   const filas = agruparFilas([...cajas.values()].map(normCaja));
-  const ocupadas: Caja[] = [];
+  const ocupadas: Rejilla = new Map();
+  const usos = new Map<string, number>();
+  const usar = (id: string) => {
+    const n = usos.get(id) ?? 0;
+    usos.set(id, n + 1);
+    return n;
+  };
   laterales.forEach((l, i) => {
     const [ca, cb] = [cajas.get(l.origen_id), cajas.get(l.destino_id)];
     if (!ca || !cb || ca === cb) return;
     const [a, b] = [normCaja(ca), normCaja(cb)];
-    const puntos = camino(filas, a, b, i, !!l.etiqueta) ?? [
+    const puntos = camino(filas, a, b, i, [usar(l.origen_id), usar(l.destino_id)], !!l.etiqueta) ?? [
       { x: a.x + a.ancho / 2, y: a.y + a.alto / 2 },
       { x: b.x + b.ancho / 2, y: b.y + b.alto / 2 },
     ];
-    const ancho = anchoEtiqueta(l.etiqueta ?? "");
-    const medida: [number, number] = horizontal ? [ALTO_ETIQUETA, ancho] : [ancho, ALTO_ETIQUETA];
-    const etiqueta = l.etiqueta
+    const ancho = anchoEtiqueta(l.etiqueta ?? "") * escalaEtiqueta;
+    const alto = ALTO_ETIQUETA * escalaEtiqueta;
+    const medida: [number, number] = horizontal ? [alto, ancho] : [ancho, alto];
+    const { punto, tapa } = l.etiqueta
       ? ubicarEtiqueta(puntos, medida, filas, ocupadas, horizontal ? "y" : "x")
-      : puntos[0]!;
+      : { punto: puntos[0]!, tapa: 0 };
     if (l.etiqueta) {
       const [w, h] = medida;
-      ocupadas.push({ x: etiqueta.x - w / 2, y: etiqueta.y - h / 2, ancho: w, alto: h });
+      const caja = { x: punto.x - w / 2, y: punto.y - h / 2, ancho: w, alto: h };
+      celdas(caja, (k) => {
+        const lista = ocupadas.get(k);
+        if (lista) lista.push(caja);
+        else ocupadas.set(k, [caja]);
+      });
     }
     res.set(l.id, {
       puntos: puntos.map(norm),
-      etiqueta: norm(etiqueta),
+      etiqueta: norm(punto),
+      etiquetaTapa: tapa > 0,
       cruces: puntos.slice(1).reduce((n, q, k) => n + crucesDelTramo(filas, puntos[k]!, q), 0),
     });
   });

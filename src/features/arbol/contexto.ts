@@ -20,6 +20,8 @@ export interface ContextoLienzo {
   trazados: ComputedRef<ReadonlyMap<string, Trazado>>;
   /** La tarjeta bajo el puntero o con el foco del teclado (null si ninguna, en ligero o al arrastrar). */
   tarjetaActiva: ComputedRef<string | null>;
+  /** La tarjeta con el foco del teclado: también muestra sus acciones, aunque el puntero esté en otra. */
+  tarjetaEnfocada: ComputedRef<string | null>;
   /** Conexiones de la tarjeta activa: se resaltan y las demás se atenúan. null = ninguna en particular. */
   relacionesActivas: ComputedRef<ReadonlySet<string> | null>;
   /** Encuadra todo el árbol; con el minimapa a la vista deja libre su franja, para que no tape tarjetas. */

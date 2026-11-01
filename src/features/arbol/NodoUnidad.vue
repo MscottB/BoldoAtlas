@@ -82,7 +82,10 @@ const seleccionada = computed(() => seleccionadas.value.has(props.id));
 // Los botones de la tarjeta son de la selección simple; con varias, mandan la barra y sus atajos.
 const sola = computed(() => seleccionada.value && seleccionadas.value.size === 1);
 // Las acciones aparecen al pasar o enfocar: en reposo la tarjeta no carga botones (ni sus elementos en el DOM).
-const conAcciones = computed(() => sola.value || contexto.tarjetaActiva.value === props.id);
+const conAcciones = computed(
+  () =>
+    sola.value || contexto.tarjetaActiva.value === props.id || contexto.tarjetaEnfocada.value === props.id,
+);
 
 // Ctrl+clic alterna la unidad en la selección; Mayús+clic la suma. Con una fecha elegida no hay selección múltiple.
 function alHacerClic(e: MouseEvent) {
@@ -109,6 +112,13 @@ const vFoco: Directive<HTMLInputElement> = {
     intentar(30);
   },
 };
+
+// Esc cancela solo el renombrado: el panel sigue abierto y el foco vuelve a la tarjeta.
+async function cancelarRenombrar() {
+  editando.value = null;
+  await nextTick();
+  raiz.value?.querySelector("button")?.focus();
+}
 
 function renombrar() {
   if (!soloLectura.value) editando.value = props.id;
@@ -207,7 +217,7 @@ async function guardar(e: Event) {
       :value="data.unidad.nombre"
       :aria-label="t('arbol.nombre')"
       @keydown.enter="guardar"
-      @keydown.esc="editando = null"
+      @keydown.esc.stop="cancelarRenombrar"
       @blur="guardar"
     />
     <button

@@ -1,5 +1,22 @@
 [
   {
+    "id": "lineas-e-interaccion",
+    "pagina": "arbol",
+    "imagen": "arbol-panel",
+    "es": {
+      "titulo": "Líneas que se leen y acciones a mano",
+      "texto": "Las conexiones laterales se leen mejor y van por el espacio libre entre tarjetas. Las tarjetas muestran sus acciones al pasar o enfocarlas, hay niveles rápidos 1, 2, 3 y Todo, y al arrastrar se ve dónde quedará la tarjeta.",
+      "ancla": "las-tarjetas",
+      "alt": "El árbol con una tarjeta seleccionada: sobre ella, sus acciones para agregar, renombrar, plegar y ver más; a la derecha, el panel de la unidad."
+    },
+    "en": {
+      "titulo": "Lines you can read and actions at hand",
+      "texto": "Lateral connections are easier to read and run through the free space between cards. Cards show their actions on hover or focus, there are quick levels 1, 2, 3 and All, and dragging shows where the card will go.",
+      "ancla": "the-cards",
+      "alt": "The tree with a card selected: above it, its actions to add, rename, collapse and see more; on the right, the unit panel."
+    }
+  },
+  {
     "id": "revisar-y-decidir",
     "pagina": "exportar-importar",
     "imagen": "importar-decidir-campos",
@@ -72,18 +89,6 @@
     "en": {
       "titulo": "It tells you when a new version is out",
       "texto": "BoldoAtlas checks for new versions and lets you know on Home and in the top bar. It never downloads or installs anything without your confirmation, and you see what is new in everything you skipped."
-    }
-  },
-  {
-    "id": "ayuda-visual",
-    "pagina": "inicio",
-    "es": {
-      "titulo": "Una ayuda que se ve",
-      "texto": "El manual trae capturas con números, un resumen al comienzo de cada tema, pasos y consejos, con índice y buscador. Es el mismo dentro de la app y en este sitio."
-    },
-    "en": {
-      "titulo": "Help you can see",
-      "texto": "The manual has numbered screenshots, a summary at the start of each topic, steps and tips, with an index and search. It is the same inside the app and on this site."
     }
   }
 ]

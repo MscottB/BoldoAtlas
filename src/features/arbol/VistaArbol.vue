@@ -51,7 +51,7 @@ import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
 import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo } from "./useLienzo";
-import { trazarLaterales, type Caja, type Trazado } from "./lateral";
+import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
 import { recordarPorArbol, useVista } from "./useVista";
 import {
@@ -210,6 +210,7 @@ type VistaLienzo = {
   pos: Map<string, Punto>;
   cajas: Map<string, Caja>;
   direccion: ConfigVista["direccion"];
+  densidad: ConfigVista["densidad"];
 };
 const vista = shallowRef<VistaLienzo | null>(null);
 // Lo dibujado (nodos y líneas de Vue Flow): solo se reemplaza si cambian las tarjetas o las líneas. Si no (reordenar, volver
@@ -313,7 +314,13 @@ watch(
       if (este !== secuencia) return; // mientras se encuadraba llegó otro cambio
     }
     const antes = dibujo.value;
-    vista.value = { g, pos, cajas: cajasDibujadas(g, pos, tam, tamDelPuesto), direccion: opciones.direccion };
+    vista.value = {
+      g,
+      pos,
+      cajas: cajasDibujadas(g, pos, tam, tamDelPuesto),
+      direccion: opciones.direccion,
+      densidad: opciones.densidad,
+    };
     // Sin avisar a `nodos`: las tarjetas se mueven en su lugar.
     if (antes && forma(antes.g) === forma(g)) reubicar(pos, antes.pos, findNode);
     else dibujo.value = vista.value;
@@ -492,7 +499,12 @@ const conMapa = computed(() => minimapa.value && conMinimapa(nodos.value.length)
 // Solo cambia con un layout: mover el puntero no vuelve a trazar nada.
 const trazados = computed(() =>
   vista.value && config.value.relacionesLaterales
-    ? trazarLaterales(vista.value.g.laterales, vista.value.cajas, vista.value.direccion)
+    ? trazarLaterales(
+        vista.value.g.laterales,
+        vista.value.cajas,
+        vista.value.direccion,
+        escalaMaxEtiqueta(vista.value.densidad),
+      )
     : new Map<string, Trazado>(),
 );
 // La tarjeta activa: bajo el puntero o, si no, con el foco del teclado (un clic con el mouse no cuenta como foco).
@@ -500,8 +512,21 @@ const bajoPuntero = ref<string | null>(null);
 const conFoco = ref<string | null>(null);
 const tarjetaDe = (el: EventTarget | null) =>
   el instanceof Element ? (el.closest<HTMLElement>(".vue-flow__node")?.dataset.id ?? null) : null;
-function alEnfocar({ target }: FocusEvent) {
-  conFoco.value = target instanceof Element && target.matches(":focus-visible") ? tarjetaDe(target) : null;
+let tabAtras = false; // la última tecla fue Mayús+Tab
+async function alEnfocar({ target, relatedTarget }: FocusEvent) {
+  const id = target instanceof Element && target.matches(":focus-visible") ? tarjetaDe(target) : null;
+  conFoco.value = id;
+  const volviendo = tabAtras && id && id !== tarjetaDe(relatedTarget);
+  tabAtras = false;
+  if (!volviendo) return;
+  // La barra se monta con el foco y va al final de la tarjeta: Mayús+Tab ya la pasó de largo. El foco sigue a su último botón,
+  // que es donde habría caído de existir ya.
+  await nextTick();
+  document
+    .querySelector<HTMLElement>(
+      `.vue-flow__node[data-id="${CSS.escape(id)}"] [data-acciones-tarjeta] button:last-of-type`,
+    )
+    ?.focus();
 }
 // Si el foco sigue en la misma tarjeta no se toca: quitar sus acciones ahora botaría el foco que va hacia una de ellas.
 function alDesenfocar({ relatedTarget }: FocusEvent) {
@@ -511,6 +536,7 @@ const arrastrando = ref(false);
 const tarjetaActiva = computed(() =>
   ligera.value || arrastrando.value ? null : (bajoPuntero.value ?? conFoco.value),
 );
+const tarjetaEnfocada = computed(() => (ligera.value || arrastrando.value ? null : conFoco.value));
 const relacionesActivas = computed(() => {
   const id = tarjetaActiva.value;
   const propias = id
@@ -529,6 +555,7 @@ provide(CONTEXTO_LIENZO, {
   ligera,
   trazados,
   tarjetaActiva,
+  tarjetaEnfocada,
   relacionesActivas,
   encuadrar: encuadrarTodo,
 });
@@ -604,7 +631,10 @@ watch(avisoExpansion, (a) => (avisoAbierto.value = !!a));
 // Cerrado sin elegir (Cancelar, Esc): nada cambia. Los botones de acción ya dejaron el aviso en null antes de esto.
 watch(avisoAbierto, (abierto) => abierto || cancelarExpansion());
 function expandirConAviso(colapsadosNuevos: Set<string> | null | undefined) {
-  if (colapsadosNuevos) colapsados.value = colapsadosNuevos;
+  if (colapsadosNuevos) {
+    colapsados.value = colapsadosNuevos;
+    encuadrar = true; // tanto cambio de forma se encuadra, como los niveles rápidos cuando no hay aviso
+  }
   avisoExpansion.value = null;
 }
 
@@ -647,6 +677,7 @@ useEventListener(
   window,
   "keydown",
   (e: KeyboardEvent) => {
+    tabAtras = e.key === "Tab" && e.shiftKey;
     if (e.key !== "Escape" || !arrastrando.value) return;
     e.preventDefault();
     e.stopImmediatePropagation(); // ni el panel ni el resto de los atajos ven este Esc
@@ -831,7 +862,7 @@ function verCompleto() {
         </MenuLienzo>
         <PreviaMover :previa="previa" />
         <div
-          v-if="seleccionadas.size >= 2 && !org.fechaVista"
+          v-if="seleccionadas.size >= 2 && !org.fechaVista && !arrastrando"
           class="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-center"
         >
           <BarraSeleccion class="pointer-events-auto" />
