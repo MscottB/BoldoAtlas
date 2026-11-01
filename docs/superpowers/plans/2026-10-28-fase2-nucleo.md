@@ -698,7 +698,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 1b. 28a y 28b: líneas laterales legibles e interacción directa en el lienzo.
 1c. 27a y 27b: fotos optimizadas y carga bajo demanda.
 1d. 28c: zonas, probándolas con el organigrama del autor. 28d solo si aún hace falta.
-1e. 29a: una sola copia abierta, en cuanto el autor decida el alcance. 29b: vista dividida. 29c: Revisión de datos más clara; su parte de historial, después de la 19c.
+1e. 29b: vista dividida. 29c: Revisión de datos más clara; su parte de historial, después de la 19c.
 2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
 3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
 4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
@@ -723,9 +723,7 @@ Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la funci�
 ### Task 28d: Posición libre (solo si aún hace falta tras la 28c)
 - Opción de una vista guardada, con "Reordenar" para volver al orden automático. Decidir con el autor antes de empezar.
 
-### Task 29a: Una sola copia abierta (pedido del autor, 2026-11-01)
-- Hoy `lib.rs` usa una instancia única por copia: la instalada y cada carpeta portable pueden abrirse a la vez, porque tienen datos distintos, y las copias sin carpeta de datos no la usan. El autor espera una sola en total. Decidir con el autor: una sola por usuario, y si es otra copia, traer la abierta y decirle cuál es y dónde están sus datos, sin abrir otra base sin avisar.
-- Las builds de prueba usan su propio identificador, y nunca deben traer al frente la app real del autor.
+Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy en `lib.rs`. La instalada y cada carpeta portable pueden abrirse a la vez, porque tienen datos distintos. No hay tarea que hacer.
 
 ### Task 29b: Vista dividida (pedido del autor, 2026-11-01)
 - Ver dos pestañas a la vez, lado a lado o una sobre otra, con el divisor movible. Más de un diagrama a la vez se resuelve con pestañas, no con otra ventana.
