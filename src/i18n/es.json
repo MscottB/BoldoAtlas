@@ -955,7 +955,12 @@
   "trabajos": {
     "respaldar": "Respaldo de los datos",
     "restaurar": "Restaurar un respaldo",
-    "actualizar": "Descargar e instalar la actualización"
+    "actualizar": "Descargar e instalar la actualización",
+    "exportarPreparar": "Preparar la exportación",
+    "exportarGuardar": "Guardar el archivo exportado",
+    "importarAbrir": "Abrir el archivo a importar",
+    "importarAgregar": "Agregar lo nuevo del archivo",
+    "importarReemplazar": "Reemplazar los datos por los del archivo"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
@@ -997,10 +1002,9 @@
       "copiar": "Copiar código",
       "copiado": "Código copiado.",
       "errorCopiar": "No se pudo copiar. Selecciona el código y cópialo a mano.",
-      "sinCopiarTitulo": "¿Salir sin copiar el código?",
+      "sinCopiarTitulo": "Aún no copiaste el código",
       "sinCopiarTexto": "Este código no se vuelve a mostrar. Sin él, el archivo no se puede abrir y habrá que exportar de nuevo.",
-      "seguirAqui": "Seguir aquí",
-      "salirSinCopiar": "Salir sin copiar",
+      "salirSinCopiar": "Cerrar sin copiar",
       "unaVez": "Este código se muestra solo ahora y no se guarda en ninguna parte. Si se pierde, el archivo no se puede abrir y hay que exportar de nuevo.",
       "canales": "Envía el archivo y el código por canales distintos: por ejemplo, el archivo por correo y el código por teléfono."
     },
@@ -1030,7 +1034,7 @@
       "dentroDe": "Dentro de {nombre}",
       "vuelveA": "«{rama}» vuelve a quedar dentro de «{nombre}».",
       "vaciadas": "{n} referencia a algo que no entra queda vacía. | {n} referencias a algo que no entra quedan vacías.",
-      "agregarNoDisponible": "No disponible: no se pudo revisar este archivo contra tu base.",
+      "agregarNoDisponible": "No disponible: {motivo}. Con este archivo solo se puede reemplazar todo.",
       "tomaraNombre": "Tu base no tiene nombre: tomará el de «{nombre}».",
       "tomoNombre": "Tu base tomó el nombre «{nombre}».",
       "hechoNada": "Listo. No había nada nuevo que agregar.",
@@ -1041,7 +1045,8 @@
       "hecho": "Listo. Esto se agregó a tu base:",
       "ver": "Ver mi organización",
       "confirmarTitulo": "¿Reemplazar todo?",
-      "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración."
+      "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
+      "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar."
     },
     "etapa": {
       "copiando": "Preparando la copia de tus datos…",
@@ -1068,14 +1073,15 @@
       "leyendas": "Leyendas",
       "tipos_contrato": "Tipos de contrato",
       "sedes": "Sedes",
-      "jornadas": "Jornadas"
+      "jornadas": "Jornadas",
+      "meta": "Datos de la organización"
     },
     "motivo": {
       "existe": "ya existe: se queda como está",
       "union": "se une al que tiene el mismo nombre",
       "correo": "ya hay una persona con ese correo: no se duplica",
       "choque": "choca con lo que ya tienes: no entra",
-      "referencia": "apunta a algo eliminado en tu base: no entra",
+      "referencia": "apunta a algo eliminado: no entra",
       "vaciada": "entra sin una referencia a algo que no está"
     },
     "error": {
@@ -1083,11 +1089,42 @@
       "contenido_invalido": "El archivo no es una copia válida de BoldoAtlas. No se cambió nada.",
       "esquema_nuevo": "Este archivo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para abrirlo.",
       "muy_grande": "El archivo es demasiado grande: el máximo es de 2 GB.",
-      "muy_pesado": "Hay más datos de los que BoldoAtlas puede llevar en un archivo, o un campo demasiado largo. No se cambió nada.",
+      "muy_pesado": "En {tabla}, {columna} es más largo de lo que BoldoAtlas puede llevar. Acórtalo e inténtalo de nuevo; si el archivo es de otra persona, pídele que lo haga. No se cambió nada.",
       "ya_existe": "Ya hay un archivo .boldo con ese nombre. Elige otro nombre.",
       "solo_completo": "Este archivo trae solo una parte: no puede reemplazar toda la base.",
       "desconocido": "Ya no está lo que elegiste. Vuelve a empezar.",
-      "cancelado": "Cancelado. No se cambió nada."
+      "cancelado": "Cancelado. No se cambió nada.",
+      "muy_pesado_fila": "En {tabla}, «{nombre}»: {columna} es más largo de lo que BoldoAtlas puede llevar. Acórtalo e inténtalo de nuevo; si el archivo es de otra persona, pídele que lo haga. No se cambió nada.",
+      "muy_pesado_total": "Este archivo trae más datos de los que BoldoAtlas puede cargar (máximo 512 MB). Pide a quien lo envió que lo exporte por ramas. No se cambió nada.",
+      "exportar_muy_pesado": "Tu base tiene más datos de los que caben en un solo archivo (máximo 512 MB). Exporta por ramas: cada archivo lleva una parte.",
+      "base_no_valida": "Tu base no pasó la revisión previa a exportar, así que no se creó el archivo. Prueba con una rama, o restaura un respaldo reciente."
+    },
+    "columnas": {
+      "otra": "un campo",
+      "nombre": "Nombre",
+      "correo": "Correo",
+      "telefono": "Teléfono",
+      "notas": "Notas",
+      "foto_png": "Foto",
+      "descripcion": "Descripción",
+      "config": "Configuración",
+      "motivo": "Motivo",
+      "etiqueta": "Etiqueta",
+      "color": "Color",
+      "marca_color": "Color",
+      "marca_codigo": "Código",
+      "proveedores": "Proveedores",
+      "entradas": "Entradas",
+      "salidas": "Salidas",
+      "clientes": "Clientes",
+      "documento_ref": "Documento",
+      "org_nombre": "Nombre de la organización",
+      "logo_png": "Logo"
+    },
+    "motivoRevision": {
+      "contenido_invalido": "tu base tiene referencias rotas o un ciclo y no se puede agregar sobre ella",
+      "fallo": "no se pudo revisar el archivo contra tu base",
+      "desconocido": "no se pudo revisar el archivo contra tu base"
     }
   }
 }

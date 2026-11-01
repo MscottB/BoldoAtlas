@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { indiceHijos } from "@/features/arbol/jerarquia";
 import type { Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
-import { filasVisibles, intentar } from "./intercambio";
+import { trabajos, ultimoFin } from "@/lib/trabajos";
+import { filasVisibles, intentar, intentarTrabajo } from "./intercambio";
 
 const unidad = (id: string, parent_id: string | null) => ({ id, parent_id, nombre: id, orden: 0 }) as Unidad;
 const indice = indiceHijos([unidad("r", null), unidad("a", "r"), unidad("b", "a"), unidad("c", "r")]);
@@ -40,5 +41,63 @@ describe("intentar", () => {
 
   it("devuelve el valor", async () => {
     expect(await intentar(() => Promise.resolve(3))).toEqual({ ok: true, valor: 3 });
+  });
+
+  it("un campo demasiado largo dice dónde, con etiquetas legibles", async () => {
+    const r = await intentar(() =>
+      Promise.reject({
+        codigo: "muy_pesado",
+        detalle: "",
+        donde: { tabla: "trabajadores", columna: "notas", nombre: "Ana" },
+      }),
+    );
+    expect(r).toMatchObject({
+      ok: false,
+      mensaje: expect.stringMatching(/Personas.*Ana.*Notas/),
+    });
+    const sinNombre = await intentar(() =>
+      Promise.reject({
+        codigo: "muy_pesado",
+        detalle: "",
+        donde: { tabla: "tabla_rara", columna: "campo_raro", nombre: null },
+      }),
+    );
+    if (sinNombre.ok) throw new Error("debía fallar");
+    expect(sinNombre.mensaje).not.toMatch(/tabla_rara|campo_raro/);
+  });
+
+  it("si lo que se pasa es el total, sugiere exportar por ramas", async () => {
+    const r = await intentar(() => Promise.reject({ codigo: "exportar_muy_pesado", detalle: "" }));
+    expect(r).toMatchObject({ ok: false, mensaje: expect.stringContaining("Exporta por ramas") });
+  });
+});
+
+describe("intentarTrabajo", () => {
+  beforeEach(() => {
+    trabajos.value = [];
+    ultimoFin.value = null;
+  });
+
+  it("anota el trabajo mientras dura y lo da por bueno", async () => {
+    let fin: (n: number) => void = () => {};
+    const p = intentarTrabajo("A", () => new Promise<number>((r) => (fin = r)));
+    expect(trabajos.value).toEqual(["A"]);
+    fin(3);
+    expect(await p).toEqual({ ok: true, valor: 3 });
+    expect(trabajos.value).toEqual([]);
+    expect(ultimoFin.value).toEqual({ nombre: "A", fallo: false });
+  });
+
+  it("un fallo real llega a conTrabajo y a quien llama", async () => {
+    const r = await intentarTrabajo("A", () => Promise.reject({ codigo: "no_abre", detalle: "" }));
+    expect(r).toMatchObject({ ok: false, codigo: "no_abre" });
+    expect(ultimoFin.value).toEqual({ nombre: "A", fallo: true });
+  });
+
+  it("cancelar no cuenta como fallo: no trae la ventana al frente", async () => {
+    const r = await intentarTrabajo("A", () => Promise.reject({ codigo: "cancelado", detalle: "" }));
+    expect(r).toMatchObject({ ok: false, codigo: "cancelado" });
+    expect(ultimoFin.value).toEqual({ nombre: "A", fallo: false });
+    expect(trabajos.value).toEqual([]);
   });
 });

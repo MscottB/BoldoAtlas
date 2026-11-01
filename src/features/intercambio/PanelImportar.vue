@@ -31,10 +31,10 @@ import { claseSelect } from "@/lib/utils";
 import { useOrganizacion } from "@/stores/organizacion";
 import BarraAvance from "./BarraAvance.vue";
 import ListaDetalle from "./ListaDetalle.vue";
-import { conFilas, intentar, useAvance, useTrabajo } from "./intercambio";
+import { conFilas, intentar, intentarTrabajo, useAvance, useTrabajo } from "./intercambio";
 
 const emit = defineEmits<{ terminar: [] }>();
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
 const trabajo = useTrabajo();
@@ -66,7 +66,7 @@ async function abrir() {
   error.value = "";
   paso.value = "abriendo";
   avance.value = null;
-  const r = await intentar(() => importarAbrir(propio, codigo.value));
+  const r = await intentarTrabajo(t("trabajos.importarAbrir"), () => importarAbrir(propio, codigo.value));
   if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
   if (!r.ok) {
     paso.value = "elegir";
@@ -93,6 +93,16 @@ const opciones = computed(() =>
     .sort((a, b) => a.texto.localeCompare(b.texto, locale.value)),
 );
 
+// Por qué no se puede agregar, con el código que da Rust (sin datos personales).
+const porQueNoAgregar = computed(() => {
+  const clave = `intercambio.motivoRevision.${resumen.value?.motivoRevision}`;
+  const motivo = te(clave) ? t(clave) : t("intercambio.motivoRevision.fallo");
+  return t(
+    resumen.value?.parcial ? "intercambio.importar.nadaDisponible" : "intercambio.importar.agregarNoDisponible",
+    { motivo },
+  );
+});
+
 const informe = ref<InformeImportacion | null>(null);
 async function agregar() {
   const propio = trabajo.actual.value;
@@ -100,7 +110,7 @@ async function agregar() {
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   const destino = Object.fromEntries(Object.entries(lugares.value).map(([k, v]) => [k, v || null]));
-  const r = await intentar(() => importarAgregar(propio, destino));
+  const r = await intentarTrabajo(t("trabajos.importarAgregar"), () => importarAgregar(propio, destino));
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -123,7 +133,8 @@ async function reemplazar() {
   if (!propio) return;
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
-  const r = await intentar(() => importarReemplazar(propio)); // si sale bien, la app se reinicia
+  // si sale bien, la app se reinicia: `app.restart` no pasa por «¿Seguro que quieres salir?» (src-tauri/src/salida.rs)
+  const r = await intentarTrabajo(t("trabajos.importarReemplazar"), () => importarReemplazar(propio));
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -230,7 +241,7 @@ onUnmounted(() => {
           <span>
             <span class="font-medium">{{ t("intercambio.importar.agregar") }}</span>
             <span class="block text-muted-foreground">
-              {{ t(resumen.informe ? "intercambio.importar.agregarAyuda" : "intercambio.importar.agregarNoDisponible") }}
+              {{ resumen.informe ? t("intercambio.importar.agregarAyuda") : porQueNoAgregar }}
             </span>
           </span>
         </label>

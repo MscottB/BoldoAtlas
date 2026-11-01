@@ -955,7 +955,12 @@
   "trabajos": {
     "respaldar": "Data backup",
     "restaurar": "Restoring a backup",
-    "actualizar": "Downloading and installing the update"
+    "actualizar": "Downloading and installing the update",
+    "exportarPreparar": "Preparing the export",
+    "exportarGuardar": "Saving the exported file",
+    "importarAbrir": "Opening the file to import",
+    "importarAgregar": "Adding what is new from the file",
+    "importarReemplazar": "Replacing the data with the file's"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
@@ -997,10 +1002,9 @@
       "copiar": "Copy code",
       "copiado": "Code copied.",
       "errorCopiar": "Could not copy it. Select the code and copy it by hand.",
-      "sinCopiarTitulo": "Leave without copying the code?",
+      "sinCopiarTitulo": "You have not copied the code yet",
       "sinCopiarTexto": "This code is not shown again. Without it, the file cannot be opened and you will have to export again.",
-      "seguirAqui": "Stay here",
-      "salirSinCopiar": "Leave without copying",
+      "salirSinCopiar": "Close without copying",
       "unaVez": "This code is shown only now and is not saved anywhere. If it is lost, the file cannot be opened and you have to export again.",
       "canales": "Send the file and the code through different channels: for example, the file by email and the code by phone."
     },
@@ -1030,7 +1034,7 @@
       "dentroDe": "Inside {nombre}",
       "vuelveA": "“{rama}” goes back inside “{nombre}”.",
       "vaciadas": "{n} reference to something that does not come in is left empty. | {n} references to something that does not come in are left empty.",
-      "agregarNoDisponible": "Not available: this file could not be checked against your database.",
+      "agregarNoDisponible": "Not available: {motivo}. With this file you can only replace everything.",
       "tomaraNombre": "Your database has no name: it will take “{nombre}”.",
       "tomoNombre": "Your database took the name “{nombre}”.",
       "hechoNada": "Done. There was nothing new to add.",
@@ -1041,7 +1045,8 @@
       "hecho": "Done. This was added to your database:",
       "ver": "See my organization",
       "confirmarTitulo": "Replace everything?",
-      "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings."
+      "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings.",
+      "nadaDisponible": "Not available: {motivo}. Since this file carries only a part, it cannot replace your data either."
     },
     "etapa": {
       "copiando": "Preparing the copy of your data…",
@@ -1068,14 +1073,15 @@
       "leyendas": "Legends",
       "tipos_contrato": "Contract types",
       "sedes": "Sites",
-      "jornadas": "Work schedules"
+      "jornadas": "Work schedules",
+      "meta": "Organization data"
     },
     "motivo": {
       "existe": "already exists: stays as it is",
       "union": "joins the one with the same name",
       "correo": "a person with that email already exists: not duplicated",
       "choque": "clashes with what you have: does not come in",
-      "referencia": "points to something deleted in your database: does not come in",
+      "referencia": "points to something deleted: does not come in",
       "vaciada": "comes in without a reference to something that is not there"
     },
     "error": {
@@ -1083,11 +1089,42 @@
       "contenido_invalido": "The file is not a valid BoldoAtlas copy. Nothing was changed.",
       "esquema_nuevo": "This file was made with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
       "muy_grande": "The file is too large: the maximum is 2 GB.",
-      "muy_pesado": "There is more data than BoldoAtlas can carry in a file, or a field that is too long. Nothing was changed.",
+      "muy_pesado": "In {tabla}, {columna} is longer than BoldoAtlas can carry. Shorten it and try again; if the file is someone else's, ask them to do it. Nothing was changed.",
       "ya_existe": "A .boldo file with that name already exists. Choose another name.",
       "solo_completo": "This file carries only a part: it cannot replace the whole database.",
       "desconocido": "What you chose is no longer there. Start again.",
-      "cancelado": "Cancelled. Nothing was changed."
+      "cancelado": "Cancelled. Nothing was changed.",
+      "muy_pesado_fila": "In {tabla}, “{nombre}”: {columna} is longer than BoldoAtlas can carry. Shorten it and try again; if the file is someone else's, ask them to do it. Nothing was changed.",
+      "muy_pesado_total": "This file carries more data than BoldoAtlas can load (512 MB at most). Ask whoever sent it to export it by branches. Nothing was changed.",
+      "exportar_muy_pesado": "Your database has more data than fits in one file (512 MB at most). Export by branches: each file carries a part.",
+      "base_no_valida": "Your database did not pass the check before exporting, so no file was created. Try with a branch, or restore a recent backup."
+    },
+    "columnas": {
+      "otra": "a field",
+      "nombre": "Name",
+      "correo": "Email",
+      "telefono": "Phone",
+      "notas": "Notes",
+      "foto_png": "Photo",
+      "descripcion": "Description",
+      "config": "Settings",
+      "motivo": "Reason",
+      "etiqueta": "Label",
+      "color": "Color",
+      "marca_color": "Color",
+      "marca_codigo": "Code",
+      "proveedores": "Suppliers",
+      "entradas": "Inputs",
+      "salidas": "Outputs",
+      "clientes": "Customers",
+      "documento_ref": "Document",
+      "org_nombre": "Organization name",
+      "logo_png": "Logo"
+    },
+    "motivoRevision": {
+      "contenido_invalido": "your database has broken references or a cycle, so nothing can be added to it",
+      "fallo": "the file could not be checked against your database",
+      "desconocido": "the file could not be checked against your database"
     }
   }
 }

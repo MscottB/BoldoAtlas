@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import BarraSuperior from "@/components/BarraSuperior.vue";
 import PaletaComandos from "@/components/PaletaComandos.vue";
 import DialogoSalir from "@/components/DialogoSalir.vue";
+import DialogoCodigoSinCopiar from "@/features/intercambio/DialogoCodigoSinCopiar.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
@@ -228,6 +229,7 @@ function escEnBarra(e: KeyboardEvent) {
     <DatosProyecto v-if="!route.meta.sinMarco" />
     <DialogoActualizacion />
     <DialogoNovedades />
+    <DialogoCodigoSinCopiar />
     <DialogoSalir />
     <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>

@@ -1,5 +1,6 @@
 // Único punto de acceso a SQLite desde el frontend (puente Rust en src-tauri/src/comandos.rs).
 import { invoke } from "@tauri-apps/api/core";
+import { escritura } from "./cola";
 
 export interface InfoApp {
   dirDatos: string;
@@ -22,21 +23,14 @@ export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> 
   return invoke<T[]>("db_consultar", { sql, params });
 }
 
-// Rust atiende los comandos fuera del hilo principal y en paralelo: las escrituras se ponen en cola para que lleguen a la
-// base en el orden en que se pidieron.
-let colaLotes: Promise<unknown> = Promise.resolve();
-
 /** Ejecuta todo en una transacción: o se aplican todas las sentencias o ninguna. */
 export function lote(sentencias: Sentencia[]): Promise<void> {
-  const hecho = colaLotes.then(() =>
+  return escritura(() =>
     invoke<void>("db_lote", {
       sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
       versionApp: __APP_VERSION__,
     }),
   );
-  // un lote que falla no detiene a los siguientes; quien lo pidió ya recibe su error en `hecho`
-  colaLotes = hecho.catch(() => undefined);
-  return hecho;
 }
 
 export async function leerMeta(): Promise<Record<string, string>> {
@@ -139,6 +133,8 @@ export interface ResumenImportacion {
   parcial: boolean;
   /** null si la revisión falló: «Agregar» no se ofrece. */
   informe: InformeImportacion | null;
+  /** Código de por qué falló. */
+  motivoRevision: string | null;
 }
 
 /** `raices` null: toda la base. */
@@ -146,8 +142,13 @@ export function exportarPreparar(trabajo: string, raices: string[] | null): Prom
   return invoke("exportar_preparar", { trabajo, raices });
 }
 
-/** Abre «Guardar como» y cifra. null si no se eligió un lugar; el código se entrega solo aquí. */
-export function exportarGuardar(trabajo: string): Promise<{ nombre: string; codigo: string } | null> {
+/** Abre «Guardar como». false si no se eligió un lugar. */
+export function exportarElegirDestino(trabajo: string): Promise<boolean> {
+  return invoke("exportar_elegir_destino", { trabajo });
+}
+
+/** Cifra al destino elegido. El código se entrega solo aquí. */
+export function exportarGuardar(trabajo: string): Promise<{ nombre: string; codigo: string }> {
   return invoke("exportar_guardar", { trabajo });
 }
 

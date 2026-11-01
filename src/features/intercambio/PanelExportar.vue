@@ -1,34 +1,31 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
-import {
-  onBeforeRouteLeave,
-  onBeforeRouteUpdate,
-  useRouter,
-  type RouteLocationNormalized,
-} from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { ChevronRight, Copy, Save } from "@lucide/vue";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { exportarGuardar, exportarPreparar, type ResumenExportacion } from "@/db/cliente";
+import {
+  exportarElegirDestino,
+  exportarGuardar,
+  exportarPreparar,
+  type ResumenExportacion,
+} from "@/db/cliente";
 import { indiceHijos } from "@/features/arbol/jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
 import BarraAvance from "./BarraAvance.vue";
-import { conFilas, filasVisibles, intentar, useAvance, useTrabajo } from "./intercambio";
+import {
+  codigoSinCopiar,
+  conFilas,
+  copiarCodigo,
+  filasVisibles,
+  intentar,
+  intentarTrabajo,
+  useAvance,
+  useTrabajo,
+} from "./intercambio";
 
 const emit = defineEmits<{ terminar: [] }>();
 const { t } = useI18n();
-const router = useRouter();
 const org = useOrganizacion();
 const trabajo = useTrabajo();
 const avance = useAvance(() => trabajo.actual.value);
@@ -68,7 +65,9 @@ async function preparar() {
   const propio = trabajo.nuevo();
   paso.value = "trabajando";
   avance.value = null;
-  const r = await intentar(() => exportarPreparar(propio, modo.value === "todo" ? null : [...marcadas.value]));
+  const r = await intentarTrabajo(t("trabajos.exportarPreparar"), () =>
+    exportarPreparar(propio, modo.value === "todo" ? null : [...marcadas.value]),
+  );
   if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
   if (!r.ok) return fallar(r.mensaje, r.codigo, "alcance");
   resumen.value = r.valor;
@@ -82,18 +81,16 @@ const copiado = ref(false);
 async function guardar() {
   const propio = trabajo.actual.value;
   if (!propio) return;
+  // el diálogo de archivos no es un trabajo: espera al usuario, y cerrar no interrumpiría nada
+  const elegido = await intentar(() => exportarElegirDestino(propio));
+  if (trabajo.actual.value !== propio) return;
+  if (!elegido.ok) return fallar(elegido.mensaje, elegido.codigo, "resumen"); // la copia sigue preparada
+  if (!elegido.valor) return;
   paso.value = "trabajando";
   avance.value = null;
-  const r = await intentar(() => exportarGuardar(propio));
+  const r = await intentarTrabajo(t("trabajos.exportarGuardar"), () => exportarGuardar(propio));
   if (trabajo.actual.value !== propio) return;
-  if (!r.ok) {
-    // otro nombre es otro intento: la copia sigue preparada
-    return fallar(r.mensaje, r.codigo, r.codigo === "ya_existe" ? "resumen" : "alcance");
-  }
-  if (!r.valor) {
-    paso.value = "resumen"; // no se eligió un lugar: la copia sigue preparada
-    return;
-  }
+  if (!r.ok) return fallar(r.mensaje, r.codigo, "alcance");
   codigo.value = r.valor.codigo;
   nombreArchivo.value = r.valor.nombre;
   copiado.value = false;
@@ -101,13 +98,7 @@ async function guardar() {
 }
 
 async function copiar() {
-  try {
-    await navigator.clipboard.writeText(codigo.value);
-    copiado.value = true;
-    toast.success(t("intercambio.exportar.copiado"));
-  } catch {
-    toast.error(t("intercambio.exportar.errorCopiar"));
-  }
+  if (await copiarCodigo(codigo.value)) copiado.value = true;
 }
 
 async function cancelar() {
@@ -115,38 +106,9 @@ async function cancelar() {
   await trabajo.soltar();
 }
 
-// Salir sin copiar el código deja un archivo que nadie puede abrir: se pregunta una vez.
-const preguntando = ref(false);
-let destinoPendiente: RouteLocationNormalized | null = null;
-const faltaCopiar = () => paso.value === "codigo" && !copiado.value;
-function retener(destino: RouteLocationNormalized) {
-  if (!faltaCopiar()) return true;
-  destinoPendiente = destino;
-  preguntando.value = true;
-  return false;
-}
-onBeforeRouteLeave(retener);
-onBeforeRouteUpdate(retener);
-
-function terminar() {
-  codigo.value = "";
-  copiado.value = true;
-  emit("terminar");
-}
-function listo() {
-  if (faltaCopiar()) preguntando.value = true;
-  else terminar();
-}
-function salirSinCopiar() {
-  const destino = destinoPendiente;
-  destinoPendiente = null;
-  codigo.value = "";
-  copiado.value = true;
-  if (destino) void router.push(destino);
-  else emit("terminar");
-}
-
 onUnmounted(() => {
+  // salir sin copiarlo no lo pierde sin avisar: sigue visible en un diálogo global
+  if (paso.value === "codigo" && !copiado.value) codigoSinCopiar.value = codigo.value;
   codigo.value = "";
   void trabajo.soltar();
 });
@@ -260,21 +222,8 @@ onUnmounted(() => {
         <li>{{ t("intercambio.exportar.canales") }}</li>
       </ul>
       <div>
-        <Button type="button" @click="listo">{{ t("intercambio.listo") }}</Button>
+        <Button type="button" @click="emit('terminar')">{{ t("intercambio.listo") }}</Button>
       </div>
     </template>
-
-    <AlertDialog v-model:open="preguntando">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{{ t("intercambio.exportar.sinCopiarTitulo") }}</AlertDialogTitle>
-          <AlertDialogDescription>{{ t("intercambio.exportar.sinCopiarTexto") }}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{{ t("intercambio.exportar.seguirAqui") }}</AlertDialogCancel>
-          <AlertDialogAction @click="salirSinCopiar">{{ t("intercambio.exportar.salirSinCopiar") }}</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   </div>
 </template>
