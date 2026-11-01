@@ -60,7 +60,7 @@ En Windows, abre el instalador desde el Explorador de archivos (doble clic en De
 
 Si ya quedó instalado así (sus accesos directos apuntan a `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): cierra BoldoAtlas, abre esa carpeta en el Explorador, haz doble clic en `uninstall.exe` **sin marcar borrar datos** y vuelve a instalar con doble clic en el instalador. Tus datos están en `%APPDATA%` y no se tocan. En la zona privada de esa aplicación queda una entrada de desinstalación vieja, sin efecto. Estos pasos se probaron con una copia de prueba, no con una instalación real.
 
-Para iniciar con el sistema en Windows, la versión instalada tiene una casilla en la última página del instalador y en **Configuración › Inicio con el sistema**; se abre minimizada y la entrada se quita al desinstalar. No se ofrece en la portable, porque escribiría fuera de su carpeta, ni por ahora en Linux y macOS. En Windows 11, los iconos nuevos de la bandeja quedan dentro de la flecha **^** junto al reloj; para tener a mano el de BoldoAtlas, arrástralo a la barra de tareas.
+Para iniciar con el sistema en Windows, la versión instalada tiene una casilla en la última página del instalador y en **Configuración › Inicio con el sistema**; se abre minimizada y la entrada se quita al desinstalar. No se ofrece en la portable, porque escribiría fuera de su carpeta, ni en Linux y macOS. En Windows 11, los iconos nuevos de la bandeja quedan dentro de la flecha **^** junto al reloj; para tener a mano el de BoldoAtlas, arrástralo a la barra de tareas.
 
 Abrir BoldoAtlas cuando ya está abierto trae su ventana al frente. La instalada y las portables, y portables en carpetas distintas, pueden estar abiertas a la vez.
 

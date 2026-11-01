@@ -705,7 +705,7 @@
       "etiqueta": "Start BoldoAtlas with the system",
       "ayuda": "It opens minimized when you sign in, without taking focus from what you are doing. Closing the window quits it, as always.",
       "portable": "Not available in the portable version: it would store an entry outside its folder.",
-      "sistema": "For now it is only available on Windows.",
+      "sistema": "It is only available on Windows.",
       "error": "Could not change starting with the system: {detalle}"
     },
     "organizacion": {
