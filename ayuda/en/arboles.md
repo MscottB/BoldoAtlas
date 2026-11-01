@@ -6,7 +6,7 @@ The **Trees** section gathers your trees and the branches you saved so you can o
 
 Each tree is a root unit (one with no parent). Its block shows the name, the type and the total headcount, with an **Open** button that shows it on the canvas.
 
-**+ New tree** creates another, independent root: type the name, choose the type and press **Create**.
+**+ New tree** creates another, independent root: type the name, choose the type (if it does not exist, type it in the list and press **Add “text” to the list**) and press **Create**.
 
 ## Saved subtrees
 

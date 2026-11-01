@@ -566,6 +566,67 @@ describe("mantenedores", () => {
   });
 });
 
+describe("agregar desde la lista", () => {
+  it("un tipo repetido con otra caja y sin tilde devuelve el existente, sin crear otro", async () => {
+    const s = nuevo();
+    const t = await s.crearValor("tipos_unidad", "Dirección");
+    if (!t.ok) throw new Error("no se creó el tipo");
+    const antes = s.catalogos.tipos_unidad.length;
+    const r = await s.crearValor("tipos_unidad", " DIRECCION ");
+    expect(r).toMatchObject({ ok: false, existente: t.id });
+    expect(s.catalogos.tipos_unidad).toHaveLength(antes);
+  });
+
+  it("crearPuesto con comoJefatura crea el puesto y fija la jefatura en un solo lote", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const cargo = await s.crearValor("cargos", "Jefe de turno");
+    if (!cargo.ok) throw new Error("no se creó el cargo");
+    const antes = revision();
+    const r = await s.crearPuesto({ unidad_id: u, cargo_id: cargo.id }, true);
+    if (!r.ok || !r.id) throw new Error("no se creó el puesto");
+    expect(revision()).toBe(antes + 1);
+    expect(s.puestos.map((p) => p.id)).toEqual([r.id]);
+    expect(s.porId.get(u)?.jefe_puesto_id).toBe(r.id);
+  });
+
+  it("sin comoJefatura el puesto nuevo no toca la jefatura", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const viejo = await puesto(s, u);
+    await s.asignarJefe(u, viejo);
+    const cargo = await s.crearValor("cargos", "Otro");
+    if (!cargo.ok) throw new Error("no se creó el cargo");
+    const r = await s.crearPuesto({ unidad_id: u, cargo_id: cargo.id });
+    expect(r.ok).toBe(true);
+    expect(s.porId.get(u)?.jefe_puesto_id).toBe(viejo);
+  });
+
+  it("si el lote falla no queda ni el puesto ni la jefatura", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const antes = revision();
+    h.antesDeLote = async () => {
+      throw new Error("falla simulada");
+    };
+    const r = await s.crearPuesto({ unidad_id: u, cargo_id: "no-existe" }, true);
+    h.antesDeLote = null;
+    expect(r.ok).toBe(false);
+    expect(revision()).toBe(antes);
+    expect(s.puestos).toHaveLength(0);
+    expect(s.porId.get(u)?.jefe_puesto_id).toBeNull();
+  });
+
+  it("un cargo inexistente rechaza el lote entero (clave foránea) y no deja jefatura", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const r = await s.crearPuesto({ unidad_id: u, cargo_id: "no-existe" }, true);
+    expect(r.ok).toBe(false);
+    expect(s.puestos).toHaveLength(0);
+    expect(s.porId.get(u)?.jefe_puesto_id).toBeNull();
+  });
+});
+
 describe("organización, etiquetas y conexiones", () => {
   it("guarda el nombre y el logo de la organización", async () => {
     const s = nuevo();

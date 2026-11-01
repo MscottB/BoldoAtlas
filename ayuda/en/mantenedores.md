@@ -20,6 +20,8 @@ The **lists** hold the values you pick from (job titles, contract types, sitesâ€
 | Unit types | Every unit in the tree | Units |
 | Legends | Position colors | Positions |
 
+You do not have to come here to add a value: in person records, positions, units, a position's legend and tags, the list itself offers **Add** (or **Newâ€¦**) at the end and leaves the new value selected. Here you reorder, rename and deactivate them.
+
 In each list you can:
 
 - **Add** a value by typing its name. If one already exists (ignoring case and accents) it is not duplicated: you are told and the existing one is highlighted.
