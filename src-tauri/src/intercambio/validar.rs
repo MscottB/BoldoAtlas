@@ -22,6 +22,9 @@ pub fn abrir_no_confiable(ruta: &Path, flags: OpenFlags) -> Result<Connection, F
     ] {
         c.set_db_config(opcion, valor).map_err(invalido)?;
     }
+    // nada de archivos temporales de SQLite fuera de datos/
+    c.pragma_update(None, "temp_store", "MEMORY")
+        .map_err(invalido)?;
     Ok(c)
 }
 
@@ -31,9 +34,18 @@ pub fn solo_lectura(ruta: &Path) -> Result<Connection, Fallo> {
 
 type Objeto = (String, String, String, Option<String>);
 
+/// `sql` guarda los fines de línea de la migración que creó la tabla: los de Windows y los de los demás sistemas valen igual.
 fn objetos(c: &Connection) -> rusqlite::Result<Vec<Objeto>> {
     c.prepare("SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name")?
-        .query_map([], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?)))?
+        .query_map([], |f| {
+            let sql: Option<String> = f.get(3)?;
+            Ok((
+                f.get(0)?,
+                f.get(1)?,
+                f.get(2)?,
+                sql.map(|s| s.replace("\r\n", "\n")),
+            ))
+        })?
         .collect()
 }
 
@@ -46,6 +58,86 @@ fn revisar_esquema(c: &Connection, migraciones: &[&str]) -> Result<(), Fallo> {
     }
     if objetos(c).map_err(invalido)? != objetos(&esperado).map_err(invalido)? {
         return Err(invalido("esquema"));
+    }
+    Ok(())
+}
+
+/// Para `respaldos::restaurar`: un respaldo también debe tener exactamente el esquema de su versión.
+pub fn revisar_solo_esquema(
+    ruta: &Path,
+    version: usize,
+    migraciones: &[&str],
+) -> Result<(), Fallo> {
+    revisar_esquema(&solo_lectura(ruta)?, &migraciones[..version])
+}
+
+/// Tope de cada campo, en bytes. Lo vivo se carga entero en la interfaz: un archivo pesado la dejaría inutilizable.
+const MAX_CORTO: i64 = 1024;
+const MAX_LARGO: i64 = 256 * 1024;
+/// Fotos y logo: la app acepta hasta 1 MB, en base64.
+const MAX_IMAGEN: i64 = 2 * 1024 * 1024;
+const MAX_FILAS_VIVAS: i64 = 500_000;
+const MAX_BYTES_VIVOS: i64 = 512 * 1024 * 1024;
+
+fn tope_de(columna: &str) -> i64 {
+    match columna {
+        "foto_png" | "config" => MAX_IMAGEN,
+        "notas" | "descripcion" | "proveedores" | "entradas" | "salidas" | "clientes"
+        | "documento_ref" => MAX_LARGO,
+        _ => MAX_CORTO,
+    }
+}
+
+fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), Fallo> {
+    let pesado = || Fallo::de("muy_pesado", "");
+    let tablas: Vec<String> = c
+        .prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        )?
+        .query_map([], |f| f.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    let (mut filas, mut bytes) = (0i64, 0i64);
+    for tabla in tablas {
+        let columnas: Vec<String> = c
+            .prepare("SELECT name FROM pragma_table_info(?1)")?
+            .query_map([&tabla], |f| f.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        if tabla == "meta" {
+            let excede: bool = c.query_row(
+                "SELECT EXISTS (SELECT 1 FROM meta WHERE length(CAST(clave AS BLOB)) > ?1
+                   OR length(CAST(valor AS BLOB)) >
+                     CASE clave WHEN 'logo_png' THEN ?2 WHEN 'raices' THEN ?3 ELSE ?1 END)",
+                [MAX_CORTO, MAX_IMAGEN, MAX_LARGO],
+                |f| f.get(0),
+            )?;
+            if excede {
+                return Err(pesado());
+            }
+            continue;
+        }
+        let vivas = if columnas.iter().any(|x| x == "deleted_at") {
+            " WHERE deleted_at IS NULL"
+        } else {
+            ""
+        };
+        for columna in &columnas {
+            // los nombres ya coinciden con las migraciones: no vienen del archivo
+            let sql = format!(
+                "SELECT EXISTS (SELECT 1 FROM {tabla} WHERE length(CAST({columna} AS BLOB)) > ?1)"
+            );
+            if c.query_row(&sql, [tope_de(columna)], |f| f.get::<_, bool>(0))? {
+                return Err(pesado());
+            }
+            let sql = format!(
+                "SELECT COALESCE(SUM(length(CAST({columna} AS BLOB))), 0) FROM {tabla}{vivas}"
+            );
+            bytes += c.query_row(&sql, [], |f| f.get::<_, i64>(0))?;
+        }
+        let sql = format!("SELECT count(*) FROM {tabla}{vivas}");
+        filas += c.query_row(&sql, [], |f| f.get::<_, i64>(0))?;
+    }
+    if filas > max_filas || bytes > max_bytes {
+        return Err(pesado());
     }
     Ok(())
 }
@@ -192,6 +284,7 @@ pub fn revisar(ruta: &Path, migraciones: &[&str]) -> Result<usize, Fallo> {
     if hay_rotas || hay_ciclo(&c).map_err(invalido)? || !revisar_tipos(&c).map_err(invalido)? {
         return Err(invalido("datos"));
     }
+    revisar_topes(&c, MAX_FILAS_VIVAS, MAX_BYTES_VIVOS)?;
     leer_meta(&c)?;
     Ok(version)
 }
@@ -329,6 +422,70 @@ mod tests {
             alterar(&ruta, &sql);
             assert_eq!(codigo(&ruta), "contenido_invalido", "{sql}");
         }
+    }
+
+    #[test]
+    fn rechaza_campos_mas_largos_que_lo_que_la_app_admite() {
+        const T: &str = "'00000000-0000-7000-8000-000000000001'";
+        let kib = |n: usize| "x".repeat(n * 1024 + 1);
+        for sql in [
+            format!(
+                "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('a', '{}', 'x', 'x');",
+                kib(1)
+            ),
+            format!(
+                "INSERT INTO trabajadores (id, nombre, notas, created_at, updated_at) VALUES ('a', 'A', '{}', 'x', 'x');",
+                kib(256)
+            ),
+            format!(
+                "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES ('a', 'A', '{}', 'x', 'x');",
+                kib(2048)
+            ),
+            format!(
+                "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at) VALUES ('a', {T}, '{}', 'x', 'x');",
+                kib(1)
+            ),
+            format!(
+                "INSERT INTO meta (clave, valor) VALUES ('logo_png', '{}');",
+                kib(2048)
+            ),
+            format!(
+                "INSERT INTO meta (clave, valor) VALUES ('org_nombre', '{}');",
+                kib(1)
+            ),
+        ] {
+            let (_d, ruta) = copia();
+            alterar(&ruta, &sql);
+            assert_eq!(codigo(&ruta), "muy_pesado", "{}", &sql[..60]);
+        }
+        // lo que la app sí permite pasa: una foto de 1 MB en base64
+        let (_d, ruta) = copia();
+        alterar(
+            &ruta,
+            &format!(
+                "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES ('a', 'A', '{}', 'x', 'x');",
+                "x".repeat(1_400_000)
+            ),
+        );
+        revisar(&ruta, MIGRACIONES).unwrap();
+    }
+
+    #[test]
+    fn rechaza_mas_filas_o_bytes_vivos_que_el_presupuesto_y_no_cuenta_lo_eliminado() {
+        let (_d, ruta) = copia();
+        alterar(
+            &ruta,
+            "INSERT INTO trabajadores (id, nombre, notas, created_at, updated_at) VALUES ('a', 'A', 'xxxxxxxxxx', 'x', 'x');
+             INSERT INTO trabajadores (id, nombre, notas, created_at, updated_at, deleted_at) VALUES ('b', 'B', 'xxxxxxxxxx', 'x', 'x', 'y');",
+        );
+        let c = solo_lectura(&ruta).unwrap();
+        let semillas = 4; // tipos de unidad
+        revisar_topes(&c, semillas + 1, 10_000).unwrap();
+        assert_eq!(
+            revisar_topes(&c, semillas, 10_000).unwrap_err().codigo,
+            "muy_pesado"
+        );
+        assert_eq!(revisar_topes(&c, 100, 10).unwrap_err().codigo, "muy_pesado");
     }
 
     #[test]

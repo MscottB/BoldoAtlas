@@ -15,6 +15,7 @@ pub fn run() {
     let estado = comandos::Estado::iniciar();
     let webview = estado.dir_webview();
     let datos = estado.rutas_app().map(|r| r.datos.clone());
+    let respaldos_dir = estado.rutas_app().map(|r| r.respaldos.clone());
     let mut contexto = tauri::generate_context!();
     if let Some(r) = estado.rutas_app().filter(|r| r.portable) {
         let id = rutas::identificador_portable(&contexto.config().identifier, &r.datos);
@@ -49,6 +50,11 @@ pub fn run() {
             }
         })
         .setup(move |app| {
+            // en setup y no al iniciar: una segunda instancia sale en el plugin de arriba, antes de llegar aquí, y no le
+            // borra a la primera las copias con que está trabajando
+            for dir in datos.iter().chain(respaldos_dir.iter()) {
+                respaldos::limpiar_parciales(dir);
+            }
             // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
             if let Some(datos) = datos {
                 actualizar::limpiar_al_iniciar(datos);
@@ -110,7 +116,7 @@ pub fn run() {
                 app.state::<comandos::Estado>()
                     .cerrar_ordenado(std::time::Duration::from_secs(3));
                 // las copias en claro de un exportar o importar sin terminar no se quedan
-                app.state::<intercambio::Sesiones>().cancelar();
+                app.state::<intercambio::Sesiones>().cancelar_todo();
             }
         });
 }

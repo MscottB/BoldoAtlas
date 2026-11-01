@@ -13,8 +13,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, MutexGuard};
 use validar::MetaArchivo;
 
 /// Copia en claro de una base, dentro de `datos/`. Se borra al soltarla; si la app se cierra de golpe, la borra
@@ -45,62 +44,110 @@ pub struct Importacion {
     meta: MetaArchivo,
 }
 
-/// Lo que hay entre un paso y el siguiente del asistente.
 #[derive(Default)]
-pub struct Sesiones {
-    exportacion: Mutex<Option<Temporal>>,
-    archivo: Mutex<Option<PathBuf>>,
-    importacion: Mutex<Option<Importacion>>,
-    cancelar: AtomicBool,
+struct EstadoSesion {
+    trabajo: Option<String>,
+    exportacion: Option<Temporal>,
+    archivo: Option<PathBuf>,
+    importacion: Option<Importacion>,
+}
+
+/// Lo que hay entre un paso y el siguiente del asistente, de un solo trabajo a la vez. El identificador lo pone la
+/// interfaz: «Guardar» y «Aplicar» solo valen para lo que se revisó, y lo que termina tarde, ya cancelado o reemplazado
+/// por otro trabajo, no deja nada.
+#[derive(Default)]
+pub struct Sesiones(Mutex<EstadoSesion>);
+
+fn no_esta() -> Fallo {
+    Fallo::de("desconocido", "")
+}
+
+fn cancelado() -> Fallo {
+    Fallo::de("cancelado", "")
 }
 
 impl Sesiones {
-    pub fn empezar(&self) {
-        self.cancelar.store(false, Ordering::SeqCst);
+    fn estado(&self) -> MutexGuard<'_, EstadoSesion> {
+        self.0.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    pub fn sigue(&self) -> bool {
-        !self.cancelar.load(Ordering::SeqCst)
+    /// Este trabajo pasa a ser el único; lo que hubiera de otro se suelta y sus temporales se borran.
+    pub fn empezar(&self, trabajo: &str) {
+        *self.estado() = EstadoSesion {
+            trabajo: Some(trabajo.to_string()),
+            ..Default::default()
+        };
     }
 
-    /// Detiene lo que esté en curso y borra los temporales. Nada se aplicó todavía.
-    pub fn cancelar(&self) {
-        self.cancelar.store(true, Ordering::SeqCst);
-        self.poner_exportacion(None);
-        self.poner_archivo(None);
-        drop(tomar(&self.importacion));
+    pub fn sigue(&self, trabajo: &str) -> bool {
+        self.estado().trabajo.as_deref() == Some(trabajo)
     }
 
-    pub fn poner_exportacion(&self, t: Option<Temporal>) {
-        *self.exportacion.lock().unwrap_or_else(|p| p.into_inner()) = t;
+    /// Detiene ese trabajo y borra sus temporales. Si ya hay otro, no le pasa nada.
+    pub fn cancelar(&self, trabajo: &str) {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() == Some(trabajo) {
+            *e = EstadoSesion::default();
+        }
     }
 
-    pub fn tomar_exportacion(&self) -> Option<Temporal> {
-        tomar(&self.exportacion)
+    /// Al salir de la app.
+    pub fn cancelar_todo(&self) {
+        *self.estado() = EstadoSesion::default();
     }
 
-    pub fn poner_archivo(&self, ruta: Option<PathBuf>) {
-        *self.archivo.lock().unwrap_or_else(|p| p.into_inner()) = ruta;
+    pub fn guardar_exportacion(&self, trabajo: &str, t: Temporal) -> Result<(), Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(cancelado());
+        }
+        e.exportacion = Some(t);
+        Ok(())
     }
 
-    pub fn archivo(&self) -> Option<PathBuf> {
-        self.archivo
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clone()
+    pub fn tomar_exportacion(&self, trabajo: &str) -> Result<Temporal, Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.exportacion.take().ok_or_else(no_esta)
     }
 
-    pub fn poner_importacion(&self, i: Importacion) {
-        *self.importacion.lock().unwrap_or_else(|p| p.into_inner()) = Some(i);
+    /// Elegir otro archivo deja sin efecto lo que se había revisado.
+    pub fn guardar_archivo(&self, trabajo: &str, ruta: PathBuf) -> Result<(), Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(cancelado());
+        }
+        e.archivo = Some(ruta);
+        e.importacion = None;
+        Ok(())
     }
 
-    pub fn tomar_importacion(&self) -> Option<Importacion> {
-        tomar(&self.importacion)
+    pub fn archivo(&self, trabajo: &str) -> Result<PathBuf, Fallo> {
+        let e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.archivo.clone().ok_or_else(no_esta)
     }
-}
 
-fn tomar<T>(m: &Mutex<Option<T>>) -> Option<T> {
-    m.lock().unwrap_or_else(|p| p.into_inner()).take()
+    pub fn guardar_importacion(&self, trabajo: &str, i: Importacion) -> Result<(), Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(cancelado());
+        }
+        e.importacion = Some(i);
+        Ok(())
+    }
+
+    pub fn tomar_importacion(&self, trabajo: &str) -> Result<Importacion, Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.importacion.take().ok_or_else(no_esta)
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -108,7 +155,35 @@ fn tomar<T>(m: &Mutex<Option<T>>) -> Option<T> {
 pub struct ResumenImportacion {
     pub organizacion: String,
     pub parcial: bool,
-    pub informe: Informe,
+    /// None si la revisión falló: «Agregar» no se ofrece, pero un archivo completo y válido se puede reemplazar igual.
+    pub informe: Option<Informe>,
+}
+
+/// Lo que quedó en `meta` al reemplazar: nada más que lo que la app escribe y lee.
+const META_CONOCIDAS: &[&str] = &[
+    "org_nombre",
+    "logo_png",
+    "db_id",
+    "db_creada",
+    "data_revision",
+    "app_version_ultima",
+];
+
+/// Con la extensión puesta. Si hubo que agregarla, el diálogo preguntó por otro nombre: lo que ya tenga este no se pisa.
+pub fn con_extension(destino: PathBuf) -> Result<PathBuf, Fallo> {
+    if destino
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("boldo"))
+    {
+        return Ok(destino);
+    }
+    let mut con = destino.into_os_string();
+    con.push(".boldo");
+    let con = PathBuf::from(con);
+    if con.exists() {
+        return Err(Fallo::de("ya_existe", ""));
+    }
+    Ok(con)
 }
 
 fn fecha_y_revision(conn: &Connection) -> Result<(String, String), Fallo> {
@@ -190,13 +265,14 @@ fn ahora(conn: &Connection) -> Result<String, Fallo> {
 pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportacion, Fallo> {
     let imp = validar::solo_lectura(i.temporal.ruta())?;
     let marca = ahora(conn)?;
-    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let informe = fusion::fusionar(&tx, &imp, &i.meta, &HashMap::new(), &marca)?;
-    drop(tx);
+    let pasada = (|| {
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        fusion::fusionar(&tx, &imp, &i.meta, &HashMap::new(), &marca)
+    })();
     Ok(ResumenImportacion {
         organizacion: i.meta.organizacion.clone(),
         parcial: i.meta.parcial,
-        informe,
+        informe: pasada.ok(),
     })
 }
 
@@ -213,24 +289,12 @@ pub fn agregar(
     let marca = ahora(conn)?;
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let informe = fusion::fusionar(&tx, &imp, &i.meta, lugares, &marca)?;
-    // al importar en una base sin nombre (recién instalada), la organización se llama como la del archivo
-    let sin_nombre: bool = tx.query_row(
-        "SELECT COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''",
-        [],
-        |f| f.get(0),
-    )?;
-    if sin_nombre {
-        tx.execute(
-            "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?1)",
-            [&i.meta.organizacion],
-        )?;
-    }
     db::marcar_cambio(&tx, version_app)?;
     tx.commit()?;
     Ok(informe)
 }
 
-/// «Reemplazar todo»: solo con archivos completos. Lo de la exportación se quita de la copia, que pasa a ser la base local.
+/// «Reemplazar todo»: solo con archivos completos. De `meta` queda solo lo conocido, porque la copia pasa a ser la base local.
 pub fn reemplazar(
     conexion: &mut Option<Connection>,
     bd: &Path,
@@ -242,9 +306,10 @@ pub fn reemplazar(
         return Err(Fallo::de("solo_completo", ""));
     }
     let c = validar::abrir_no_confiable(i.temporal.ruta(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+    let lista = vec!["?"; META_CONOCIDAS.len()].join(", ");
     c.execute(
-        "DELETE FROM meta WHERE clave IN ('alcance', 'raices', 'origen_db_id')",
-        [],
+        &format!("DELETE FROM meta WHERE clave NOT IN ({lista})"),
+        rusqlite::params_from_iter(META_CONOCIDAS),
     )?;
     c.close().map_err(|(_, e)| e)?;
     respaldos::reemplazar_antes_respaldando(
@@ -305,6 +370,11 @@ pub mod prueba {
               ('as-rama', 'p-rama', 'ana', 'titular', '2020-01-01', {x}),
               ('as-hija', 'p-hija', 'bruno', 'titular', '2020-01-01', {x}),
               ('as-fuera', 'p-fuera', 'fuera', 'titular', '2020-01-01', {x});
+            INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at) VALUES
+              ('yanoesta', 'PersonaYaNoEsta', 'yanoesta@x.cl', {x});
+            INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, hasta, motivo, created_at, updated_at) VALUES
+              ('as-ana-antes', 'p-hija', 'ana', 'titular', '2010-01-01', '2015-01-01', NULL, {x}),
+              ('as-yanoesta', 'p-hija', 'yanoesta', 'titular', '2015-01-01', '2020-01-01', 'motivo-yanoesta', {x});
             INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, created_at, updated_at, deleted_at) VALUES
               ('as-muerta', 'p-rama', 'muerta', 'reemplazo', '2020-01-01', 'x', 'x', 'y');
             INSERT INTO conexiones (id, origen_id, destino_id, created_at, updated_at) VALUES
@@ -454,13 +524,16 @@ mod tests {
         let vista = revisar(&mut conn, &i).unwrap();
         assert_eq!(vista.organizacion, "Mi Org / SA");
         assert_eq!(cuenta(&conn, "unidades"), 0);
-        assert!(vista.informe.ramas[0].pide_lugar);
+        let previa = vista.informe.expect("la revisión pasa");
+        assert!(previa.ramas[0].pide_lugar);
+        assert_eq!(previa.nombre_heredado.as_deref(), Some("Mi Org / SA"));
 
         let hecho = agregar(&mut conn, &respaldos, &i, &HashMap::new(), "1.2.3").unwrap();
         assert_eq!(cuenta(&conn, "unidades"), 2);
         assert_eq!(cuenta(&conn, "trabajadores"), 2);
         let por = |inf: &Informe| -> Vec<i64> { inf.tablas.iter().map(|t| t.nuevas).collect() };
-        assert_eq!(por(&hecho), por(&vista.informe));
+        assert_eq!(por(&hecho), por(&previa));
+        assert_eq!(hecho.nombre_heredado.as_deref(), Some("Mi Org / SA"));
         let revision: String = conn
             .query_row(
                 "SELECT valor FROM meta WHERE clave = 'data_revision'",
@@ -616,11 +689,302 @@ mod tests {
         let t = Temporal::nuevo(dd.path(), "exportando");
         fs::write(t.ruta(), "x").unwrap();
         let ruta = t.ruta().to_path_buf();
-        s.poner_exportacion(Some(t));
-        s.empezar();
-        assert!(s.sigue());
-        s.cancelar();
-        assert!(!s.sigue());
+        s.empezar("t1");
+        assert!(s.sigue("t1"));
+        s.guardar_exportacion("t1", t).unwrap();
+        // cancelar otro trabajo no le hace nada
+        s.cancelar("otro");
+        assert!(s.sigue("t1") && ruta.exists());
+        s.cancelar("t1");
+        assert!(!s.sigue("t1"));
         assert!(!ruta.exists());
+    }
+
+    fn importacion(d: &Path, o: &Connection, destino: &Path) -> Importacion {
+        let (archivo, codigo) = exportar(o, d, None);
+        abrir(&archivo, destino, &codigo, MIGRACIONES, SIGUE).unwrap()
+    }
+
+    #[test]
+    fn cancelar_y_reabrir_nunca_aplica_otro_archivo() {
+        let (d, origen) = base_con_datos();
+        let (dd, _bd, respaldos, mut conn) = destino();
+        let s = Sesiones::default();
+
+        // el trabajo A se cancela mientras está en curso, y se empieza B con otro archivo
+        s.empezar("A");
+        let a = importacion(d.path(), &origen, dd.path());
+        let ruta_a = a.temporal.ruta().to_path_buf();
+        s.cancelar("A");
+        s.empezar("B");
+        s.guardar_archivo("B", d.path().join("otro.boldo")).unwrap();
+        let b = importacion(d.path(), &origen, dd.path());
+        let ruta_b = b.temporal.ruta().to_path_buf();
+        s.guardar_importacion("B", b).unwrap();
+
+        // A termina tarde: no deja nada, y su temporal se borra
+        assert_eq!(
+            s.guardar_importacion("A", a).unwrap_err().codigo,
+            "cancelado"
+        );
+        assert!(!ruta_a.exists());
+        assert!(ruta_b.exists());
+        // aplicar lo de A no toca lo de B
+        assert_eq!(s.tomar_importacion("A").unwrap_err().codigo, "desconocido");
+        assert_eq!(s.archivo("A").unwrap_err().codigo, "desconocido");
+        let i = s.tomar_importacion("B").unwrap();
+        assert_eq!(i.temporal.ruta(), ruta_b);
+        agregar(&mut conn, &respaldos, &i, &HashMap::new(), "1").unwrap();
+
+        // la exportación sigue la misma regla, y lo ya tomado no se puede aplicar dos veces
+        assert_eq!(s.tomar_importacion("B").unwrap_err().codigo, "desconocido");
+        s.empezar("C");
+        let t = Temporal::nuevo(dd.path(), "exportando");
+        fs::write(t.ruta(), "x").unwrap();
+        s.guardar_exportacion("C", t).unwrap();
+        assert_eq!(s.tomar_exportacion("B").unwrap_err().codigo, "desconocido");
+        s.tomar_exportacion("C").unwrap();
+        let tarde = Temporal::nuevo(dd.path(), "exportando");
+        assert_eq!(
+            s.guardar_exportacion("B", tarde).unwrap_err().codigo,
+            "cancelado"
+        );
+    }
+
+    #[test]
+    fn empezar_otro_trabajo_borra_los_temporales_del_anterior() {
+        let (dd, ..) = destino();
+        let s = Sesiones::default();
+        s.empezar("A");
+        let t = Temporal::nuevo(dd.path(), "exportando");
+        fs::write(t.ruta(), "x").unwrap();
+        let ruta = t.ruta().to_path_buf();
+        s.guardar_exportacion("A", t).unwrap();
+        s.empezar("B");
+        assert!(!ruta.exists());
+    }
+
+    #[test]
+    fn un_fallo_de_la_revision_no_impide_reemplazar_con_un_archivo_valido() {
+        let (d, origen) = base_con_datos();
+        let (dd, bd, respaldos, mut conn) = destino();
+        // una base local con una referencia rota: agregar no pasaría su comprobación final
+        conn.execute_batch(&format!(
+            "PRAGMA foreign_keys = OFF;
+             INSERT INTO unidades (id, tipo_id, nombre, parent_id, created_at, updated_at)
+               VALUES ('rota', '{TIPO}', 'Rota', 'nadie', 'x', 'x');
+             PRAGMA foreign_keys = ON;"
+        ))
+        .unwrap();
+        let i = importacion(d.path(), &origen, dd.path());
+        let r = revisar(&mut conn, &i).unwrap();
+        assert!(r.informe.is_none());
+        let mut slot = Some(conn);
+        reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+    }
+
+    #[test]
+    fn reemplazar_conserva_solo_las_claves_conocidas_de_meta() {
+        let (_d, archivo, codigo) =
+            hostil("INSERT INTO meta (clave, valor) VALUES ('ajena', 'x');");
+        let (dd, bd, respaldos, conn) = destino();
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        let mut slot = Some(conn);
+        reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        let c = db::abrir(&bd).unwrap();
+        let claves: Vec<String> = c
+            .prepare("SELECT clave FROM meta")
+            .unwrap()
+            .query_map([], |f| f.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert!(
+            claves.iter().all(|k| META_CONOCIDAS.contains(&k.as_str())),
+            "{claves:?}"
+        );
+        assert!(claves.iter().any(|k| k == "org_nombre"));
+    }
+
+    #[test]
+    fn agregar_la_extension_no_pisa_un_archivo_que_el_dialogo_no_pregunto() {
+        let d = tempfile::tempdir().unwrap();
+        let sin = d.path().join("copia");
+        assert_eq!(
+            con_extension(sin.clone()).unwrap(),
+            d.path().join("copia.boldo")
+        );
+        fs::write(d.path().join("copia.boldo"), "mío").unwrap();
+        assert_eq!(con_extension(sin).unwrap_err().codigo, "ya_existe");
+        // si ya venía con la extensión, el diálogo sí preguntó
+        let con = d.path().join("copia.BOLDO");
+        assert_eq!(con_extension(con.clone()).unwrap(), con);
+    }
+
+    #[test]
+    fn exportar_rechaza_una_base_que_no_se_podria_importar() {
+        let (d, origen) = base_con_datos();
+        origen
+            .execute(
+                "UPDATE trabajadores SET nombre = ?1 WHERE id = 'ana'",
+                ["x".repeat(2000)],
+            )
+            .unwrap();
+        let copia = alcance::copiar(&origen, d.path()).unwrap();
+        let e = alcance::preparar(copia, d.path(), None).unwrap_err();
+        assert_eq!(e.codigo, "muy_pesado");
+        assert!(temporales(d.path()).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod revision_22a {
+    use super::prueba::*;
+    use super::*;
+    use db::MIGRACIONES;
+    const COD: &str = "K7QM-2XRP-9DWN-H4TB-V3CJ";
+    const CAB: usize = 53;
+    const BLO: usize = (1 << 20) + 16;
+    fn completa(d: &Path, o: &Connection) -> Temporal {
+        let c = alcance::copiar(o, d).unwrap();
+        alcance::preparar(c, d, None).unwrap().0
+    }
+    fn abre(dir: &Path, b: &[u8]) -> Result<Vec<u8>, Fallo> {
+        let (a, s) = (dir.join("t.boldo"), dir.join("t.out"));
+        fs::write(&a, b).unwrap();
+        formato::descifrar(&a, &s, COD, |_, _| true)?;
+        Ok(fs::read(s).unwrap())
+    }
+    fn cifra(dir: &Path, claro: &[u8], n: &str) -> Vec<u8> {
+        let (a, s) = (dir.join("c.in"), dir.join(n));
+        fs::write(&a, claro).unwrap();
+        formato::cifrar(&a, &s, COD, |_, _| true).unwrap();
+        fs::read(s).unwrap()
+    }
+
+    #[test]
+    fn t_tamper_bloques() {
+        let d = tempfile::tempdir().unwrap();
+        let claro = vec![7u8; 3 * (1 << 20) + 5];
+        let f = cifra(d.path(), &claro, "a");
+        assert_eq!(abre(d.path(), &f).unwrap(), claro);
+        let (h, c) = f.split_at(CAB);
+        let (b0, b1, b2, b3) = (
+            &c[..BLO],
+            &c[BLO..2 * BLO],
+            &c[2 * BLO..3 * BLO],
+            &c[3 * BLO..],
+        );
+        let casos: Vec<(&str, Vec<u8>)> = vec![
+            ("duplicado", [h, b0, b0, b1, b2, b3].concat()),
+            ("quitado medio", [h, b0, b2, b3].concat()),
+            ("quitado ultimo", [h, b0, b1, b2].concat()),
+            ("anexado", [h, b0, b1, b2, b3, b3].concat()),
+            ("basura al final", [h, b0, b1, b2, b3, &[0u8; 16]].concat()),
+            ("ultimo primero", [h, b3, b1, b2, b0].concat()),
+        ];
+        for (n, b) in casos {
+            assert_eq!(abre(d.path(), &b).unwrap_err().codigo, "no_abre", "{n}");
+        }
+        // empalme entre archivos con el MISMO codigo
+        let g = cifra(d.path(), &claro, "b");
+        assert_ne!(&f[..CAB], &g[..CAB]);
+        let mezcla = [&g[..CAB], &f[CAB..]].concat();
+        assert_eq!(
+            abre(d.path(), &mezcla).unwrap_err().codigo,
+            "no_abre",
+            "cabecera ajena"
+        );
+        let mezcla = [&f[..CAB + BLO], &g[CAB + BLO..]].concat();
+        assert_eq!(
+            abre(d.path(), &mezcla).unwrap_err().codigo,
+            "no_abre",
+            "bloques ajenos"
+        );
+        // multiplo exacto cortado en el borde: el penultimo no lleva la marca de ultimo
+        let e = cifra(d.path(), &vec![1u8; 2 << 20], "e");
+        assert_eq!(e.len(), CAB + 2 * BLO);
+        assert_eq!(
+            abre(d.path(), &e[..CAB + BLO]).unwrap_err().codigo,
+            "no_abre",
+            "borde"
+        );
+        // vacio: quitar la etiqueta
+        let v = cifra(d.path(), b"", "v");
+        assert_eq!(v.len(), CAB + 16);
+        assert_eq!(abre(d.path(), &v).unwrap(), b"");
+        assert_eq!(abre(d.path(), &v[..CAB]).unwrap_err().codigo, "no_abre");
+    }
+
+    #[test]
+    fn t_crlf_contra_lf() {
+        let (d, o) = base_con_datos();
+        let t = completa(d.path(), &o);
+        println!("este build tiene CRLF: {}", MIGRACIONES[0].contains("\r\n"));
+        let otro = if MIGRACIONES[0].contains("\r\n") {
+            MIGRACIONES[0].replace("\r\n", "\n")
+        } else {
+            MIGRACIONES[0].replace('\n', "\r\n")
+        };
+        let r = validar::revisar(t.ruta(), &[otro.as_str()]);
+        println!("revisar con el otro fin de linea: {r:?}");
+        assert!(r.is_ok(), "{:?}", r.err());
+    }
+
+    #[test]
+    fn t_cabecera_wal_hostil() {
+        let (d, o) = base_con_datos();
+        let t = completa(d.path(), &o);
+        let mut b = fs::read(t.ruta()).unwrap();
+        println!("cabecera 18,19 = {},{}", b[18], b[19]);
+        b[18] = 2;
+        b[19] = 2;
+        fs::write(t.ruta(), &b).unwrap();
+        let r = validar::revisar(t.ruta(), MIGRACIONES);
+        println!("revisar WAL: {r:?}");
+        let lado: Vec<String> = fs::read_dir(d.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        println!("{lado:?}");
+        drop(t);
+        let lado: Vec<String> = fs::read_dir(d.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .filter(|n| n.contains(".tmp"))
+            .collect();
+        assert!(lado.is_empty(), "{lado:?}");
+    }
+
+    #[test]
+    fn t_union_mantenedor_con_tildes() {
+        let (d, o) = base_con_datos();
+        o.execute_batch(
+            "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c-t', 'GERENCIA DE ADMINISTRACIÓN', 'x', 'x');
+             UPDATE puestos SET cargo_id = 'c-t' WHERE id = 'p-rama';",
+        )
+        .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let mut dst = db::abrir(&dir.path().join("b.db")).unwrap();
+        db::migrar(&mut dst, dir.path()).unwrap();
+        db::asegurar_meta(&dst).unwrap();
+        dst.execute_batch(
+            "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c-l', 'Gerencia de Administración', 'x', 'x');",
+        )
+        .unwrap();
+        let t = completa(d.path(), &o);
+        let imp = validar::solo_lectura(t.ruta()).unwrap();
+        let meta = validar::leer_meta(&imp).unwrap();
+        let tx = dst.transaction().unwrap();
+        fusion::fusionar(&tx, &imp, &meta, &HashMap::new(), "z").unwrap();
+        let n: i64 = tx
+            .query_row(
+                "SELECT count(*) FROM cargos WHERE nombre LIKE '%ADMINISTRACI%'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        println!("cargos con ese nombre tras importar (LIKE sin tilde): {n}");
+        assert_eq!(n, 1, "se duplico el valor de mantenedor");
     }
 }

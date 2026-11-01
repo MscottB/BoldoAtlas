@@ -76,10 +76,10 @@ pub struct Informe {
     pub tablas: Vec<PorTabla>,
     pub detalle: Vec<Detalle>,
     pub total_detalle: i64,
-    /// Filas eliminadas que entran para conservar el historial de lo que entra.
-    pub historial: i64,
     pub vaciadas: i64,
     pub ramas: Vec<RamaImportada>,
+    /// El nombre que toma una base que no tenía (recién instalada).
+    pub nombre_heredado: Option<String>,
 }
 
 impl Informe {
@@ -96,6 +96,51 @@ impl Informe {
 }
 
 type Lugares = HashMap<String, Option<String>>;
+
+/// Quién usa cada valor de mantenedor. Uno desactivado solo entra si una fila viva lo usa: la ficha conserva su id.
+const USOS: &[(&str, &str, &str)] = &[
+    ("tipos_unidad", "unidades", "tipo_id"),
+    ("cargos", "puestos", "cargo_id"),
+    ("leyendas", "puestos", "leyenda_id"),
+    ("tipos_contrato", "trabajadores", "tipo_contrato_id"),
+    ("sedes", "trabajadores", "sede_id"),
+    ("jornadas", "trabajadores", "jornada_id"),
+    ("etiquetas", "unidad_etiquetas", "etiqueta_id"),
+];
+
+/// Para comparar nombres, igual que `normalizarTexto` de la interfaz: minúsculas, sin tildes, espacios colapsados.
+/// shortcut: quita las marcas de las letras latinas (Latin-1 y Extended-A) y las combinantes, sin NFD completo; otro
+/// alfabeto con tilde no se une y queda como otro valor. Usar una normalización NFD si hace falta.
+pub fn normalizar_nombre(s: &str) -> String {
+    let plano: String = s
+        .chars()
+        .flat_map(char::to_lowercase)
+        .filter(|c| !('\u{0300}'..='\u{036F}').contains(c))
+        .map(|c| match c {
+            'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'ă' | 'ą' => 'a',
+            'ç' | 'ć' | 'ĉ' | 'ċ' | 'č' => 'c',
+            'ď' => 'd',
+            'è' | 'é' | 'ê' | 'ë' | 'ē' | 'ĕ' | 'ė' | 'ę' | 'ě' => 'e',
+            'ĝ' | 'ğ' | 'ġ' | 'ģ' => 'g',
+            'ĥ' => 'h',
+            'ì' | 'í' | 'î' | 'ï' | 'ĩ' | 'ī' | 'ĭ' | 'į' => 'i',
+            'ĵ' => 'j',
+            'ķ' => 'k',
+            'ĺ' | 'ļ' | 'ľ' => 'l',
+            'ñ' | 'ń' | 'ņ' | 'ň' => 'n',
+            'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ō' | 'ŏ' | 'ő' => 'o',
+            'ŕ' | 'ŗ' | 'ř' => 'r',
+            'ś' | 'ŝ' | 'ş' | 'š' => 's',
+            'ţ' | 'ť' => 't',
+            'ù' | 'ú' | 'û' | 'ü' | 'ũ' | 'ū' | 'ŭ' | 'ů' | 'ű' | 'ų' => 'u',
+            'ŵ' => 'w',
+            'ý' | 'ÿ' | 'ŷ' => 'y',
+            'ź' | 'ż' | 'ž' => 'z',
+            otra => otra,
+        })
+        .collect();
+    plano.split_whitespace().collect::<Vec<_>>().join(" ")
+}
 
 fn estado_fila(dst: &Connection, tabla: &str, id: &str) -> Result<Option<Option<String>>, Fallo> {
     Ok(dst
@@ -191,10 +236,10 @@ pub fn fusionar(
         ramas: ramas(dst, imp, meta)?,
         ..Default::default()
     };
-    let padres: HashMap<&str, &str> = meta
+    let padres: HashMap<&str, Option<&str>> = meta
         .ramas
         .iter()
-        .filter_map(|r| r.padre.as_deref().map(|p| (r.id.as_str(), p)))
+        .map(|r| (r.id.as_str(), r.padre.as_deref()))
         .collect();
     // id del archivo -> id local, para lo que se une a algo que ya existe
     let mut unidos: HashMap<(&str, String), String> = HashMap::new();
@@ -202,8 +247,49 @@ pub fn fusionar(
     let mut fuera: HashSet<(&str, String)> = HashSet::new();
     let mut jefes: Vec<(String, String)> = Vec::new();
 
+    // Lo eliminado del archivo no entra: es invisible y no se podría purgar. Se sabe antes de empezar, porque una fila viva
+    // puede aparecer antes que la eliminada a la que apunta. Se salvan los valores de mantenedor que una fila viva usa.
+    let mut desactivados_en_uso: HashSet<(&str, String)> = HashSet::new();
+    for &(catalogo, tabla, columna) in USOS {
+        let sql = format!(
+            "SELECT DISTINCT c.id FROM {catalogo} c JOIN {tabla} t ON t.{columna} = c.id
+             WHERE c.deleted_at IS NOT NULL AND t.deleted_at IS NULL"
+        );
+        for id in imp
+            .prepare(&sql)?
+            .query_map([], |f| f.get::<_, String>(0))?
+        {
+            desactivados_en_uso.insert((catalogo, id?));
+        }
+    }
+    for &tabla in CATALOGOS.iter().chain(NEGOCIO) {
+        let sql = format!("SELECT id FROM {tabla} WHERE deleted_at IS NOT NULL");
+        for id in imp
+            .prepare(&sql)?
+            .query_map([], |f| f.get::<_, String>(0))?
+        {
+            let clave = (tabla, id?);
+            if !desactivados_en_uso.contains(&clave) && estado_fila(dst, tabla, &clave.1)?.is_none()
+            {
+                fuera.insert(clave);
+            }
+        }
+    }
+
     for &tabla in CATALOGOS.iter().chain(NEGOCIO) {
         let es_catalogo = CATALOGOS.contains(&tabla);
+        // nombre normalizado -> id, de los valores vivos de esta base
+        let mut por_nombre: HashMap<String, String> = HashMap::new();
+        if es_catalogo {
+            let sql = format!("SELECT id, nombre FROM {tabla} WHERE deleted_at IS NULL");
+            for fila in dst
+                .prepare(&sql)?
+                .query_map([], |f| Ok((f.get::<_, String>(0)?, f.get::<_, String>(1)?)))?
+            {
+                let (id, nombre) = fila?;
+                por_nombre.insert(normalizar_nombre(&nombre), id);
+            }
+        }
         let columnas: Vec<String> = imp
             .prepare("SELECT name FROM pragma_table_info(?1)")?
             .query_map([tabla], |f| f.get(0))?
@@ -252,6 +338,9 @@ pub fn fusionar(
                 return Err(Fallo::de("contenido_invalido", "id"));
             };
             let es_viva = matches!(fila[i_borrado], Value::Null);
+            if !es_viva && !desactivados_en_uso.contains(&(tabla, id.clone())) {
+                continue;
+            }
             let v = i64::from(es_viva);
             cuenta.trae += v;
             let nombre = etiqueta(imp, tabla, &columnas, &fila)?;
@@ -264,22 +353,14 @@ pub fn fusionar(
                 }
                 continue;
             }
-            if es_catalogo {
-                let i = pos("nombre").ok_or("nombre")?;
-                let igual: Option<String> = dst
-                    .prepare_cached(&format!(
-                        "SELECT id FROM {tabla} WHERE lower(trim(nombre)) = lower(trim(?1)) AND deleted_at IS NULL"
-                    ))?
-                    .query_row([&fila[i]], |f| f.get(0))
-                    .optional()?;
-                if let Some(local) = igual {
-                    unidos.insert((tabla, id), local);
-                    cuenta.unidas += v;
-                    if es_viva {
-                        inf.anotar(tabla, nombre, "union");
-                    }
-                    continue;
+            if es_catalogo && let Some(local) = por_nombre.get(&normalizar_nombre(&nombre)).cloned()
+            {
+                unidos.insert((tabla, id), local);
+                cuenta.unidas += v;
+                if es_viva {
+                    inf.anotar(tabla, nombre, "union");
                 }
+                continue;
             }
             if tabla == "trabajadores" && es_viva {
                 let i = pos("correo").ok_or("correo")?;
@@ -304,6 +385,8 @@ pub fn fusionar(
                 let Value::Text(valor) = fila[*i].clone() else {
                     continue;
                 };
+                // una vista sin su árbol no es una vista del árbol completo: no entra
+                let requerida = *requerida || tabla == "vistas";
                 let destino = CATALOGOS
                     .iter()
                     .chain(NEGOCIO)
@@ -326,7 +409,7 @@ pub fn fusionar(
                     if tabla == "unidades" && destino == "puestos" {
                         jefes.push((id.clone(), valor));
                     }
-                } else if *requerida {
+                } else if requerida {
                     no_entra = true;
                 } else {
                     fila[*i] = Value::Null;
@@ -344,11 +427,19 @@ pub fn fusionar(
             if tabla == "unidades"
                 && let Some(padre) = padres.get(id.as_str())
             {
-                let lugar = if viva(dst, "unidades", padre)? {
-                    Some((*padre).to_string())
-                } else {
-                    lugares.get(&id).cloned().flatten()
+                let lugar = match padre {
+                    Some(p) if viva(dst, "unidades", p)? => Some((*p).to_string()),
+                    Some(_) => lugares.get(&id).cloned().flatten(),
+                    None => None,
                 };
+                // al final de sus hermanos: no se mezcla con el orden que ya hay
+                let ultimo: i64 = dst.query_row(
+                    "SELECT COALESCE(MAX(orden), -1) + 1 FROM unidades
+                     WHERE parent_id IS ?1 AND deleted_at IS NULL",
+                    [&lugar],
+                    |f| f.get(0),
+                )?;
+                fila[pos("orden").ok_or("orden")?] = Value::Integer(ultimo);
                 fila[pos("parent_id").ok_or("parent_id")?] = lugar.map_or(Value::Null, Value::Text);
                 cambiada = true;
             }
@@ -362,13 +453,26 @@ pub fn fusionar(
                 inf.anotar(tabla, nombre, "choque");
                 continue;
             }
-            if es_viva {
-                cuenta.nuevas += 1;
-            } else {
-                inf.historial += 1;
+            cuenta.nuevas += v;
+            if es_catalogo && es_viva {
+                por_nombre.insert(normalizar_nombre(&nombre), id);
             }
         }
         inf.tablas.push(cuenta);
+    }
+
+    // una base sin nombre (recién instalada) se llama como la del archivo
+    let sin_nombre: bool = dst.query_row(
+        "SELECT COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''",
+        [],
+        |f| f.get(0),
+    )?;
+    if sin_nombre && !meta.organizacion.is_empty() {
+        dst.execute(
+            "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?1)",
+            [&meta.organizacion],
+        )?;
+        inf.nombre_heredado = Some(meta.organizacion.clone());
     }
 
     for (unidad, puesto) in jefes {
@@ -474,15 +578,22 @@ mod tests {
         let (d, origen) = base_con_datos();
         let (_d2, mut dst) = destino("");
         let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
-        assert_eq!(tabla(&inf, "trabajadores").nuevas, 3);
+        assert_eq!(tabla(&inf, "trabajadores").nuevas, 4);
         assert_eq!(tabla(&inf, "unidades").nuevas, 4);
         assert_eq!(tabla(&inf, "tipos_unidad").existentes, 4);
         // sin omisiones: las semillas con el mismo id no cuentan
         assert_eq!(inf.total_detalle, 0, "{:?}", inf.detalle);
-        // lo eliminado entra como historial, sin contarse como nuevo
-        assert_eq!(inf.historial, 3);
+        // lo eliminado no entra, y es lo único que falta
         for t in CATALOGOS.iter().chain(NEGOCIO) {
-            let sql = format!("SELECT count(*) FROM {t}");
+            let sql = format!("SELECT count(*) FROM {t} WHERE deleted_at IS NULL");
+            let eliminadas: i64 = dst
+                .query_row(
+                    &format!("SELECT count(*) FROM {t} WHERE deleted_at IS NOT NULL"),
+                    [],
+                    |f| f.get(0),
+                )
+                .unwrap();
+            assert_eq!(eliminadas, 0, "{t}");
             let (a, b): (i64, i64) = (
                 origen.query_row(&sql, [], |f| f.get(0)).unwrap(),
                 dst.query_row(&sql, [], |f| f.get(0)).unwrap(),
@@ -499,7 +610,7 @@ mod tests {
         dst.execute_batch("UPDATE trabajadores SET nombre = 'Ana Local' WHERE id = 'ana';")
             .unwrap();
         let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
-        assert_eq!(tabla(&inf, "trabajadores").existentes, 3);
+        assert_eq!(tabla(&inf, "trabajadores").existentes, 4);
         assert_eq!(tabla(&inf, "trabajadores").nuevas, 0);
         assert_eq!(
             uno(&dst, "SELECT nombre FROM trabajadores WHERE id = 'ana'").unwrap(),
@@ -578,7 +689,7 @@ mod tests {
         let inf = fusion(&mut dst, &origen, d.path(), Some(&rama()), &Lugares::new()).unwrap();
         // el puesto (unidad obligatoria) no entra, ni lo que depende de él
         assert_eq!(tabla(&inf, "puestos").omitidas, 1);
-        assert_eq!(tabla(&inf, "asignaciones").omitidas, 1);
+        assert_eq!(tabla(&inf, "asignaciones").omitidas, 2);
         assert_eq!(
             uno(
                 &dst,
@@ -692,6 +803,149 @@ mod tests {
         assert_eq!(
             uno(&dst, "SELECT parent_id FROM unidades WHERE id = 'rama'").unwrap(),
             "raiz"
+        );
+    }
+
+    #[test]
+    fn normaliza_como_la_interfaz() {
+        for (a, b) in [
+            (
+                "  GERENCIA   DE  ADMINISTRACIÓN ",
+                "gerencia de administracion",
+            ),
+            ("Área\tTécnica", "area tecnica"),
+            ("Nin\u{0303}o", "nino"),
+            ("Ñandú Über", "nandu uber"),
+            // como NFD: estas no se descomponen
+            ("Øre Straße", "øre straße"),
+        ] {
+            assert_eq!(normalizar_nombre(a), b, "{a}");
+        }
+    }
+
+    #[test]
+    fn una_fila_viva_que_apunta_a_algo_eliminado_en_el_archivo_lo_resuelve() {
+        let (d, origen) = base_con_datos();
+        origen
+            .execute_batch(
+                "UPDATE unidades SET deleted_at = 'y' WHERE id = 'raiz';
+                 UPDATE puestos SET deleted_at = 'y' WHERE id = 'p-fuera';
+                 UPDATE cargos SET deleted_at = 'y' WHERE id = 'cargo-a';
+                 UPDATE sedes SET deleted_at = 'y' WHERE id = 'sede-b';",
+            )
+            .unwrap();
+        let (_d2, mut dst) = destino("");
+        let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        // su superior eliminado no entra: quedan como raíces, y se avisa
+        assert_eq!(
+            uno(&dst, "SELECT parent_id FROM unidades WHERE id = 'rama'"),
+            None
+        );
+        assert_eq!(
+            uno(
+                &dst,
+                "SELECT count(*) || '' FROM unidades WHERE id = 'raiz'"
+            )
+            .unwrap(),
+            "0"
+        );
+        // jefatura hacia un puesto eliminado
+        assert_eq!(
+            uno(
+                &dst,
+                "SELECT jefe_puesto_id FROM unidades WHERE id = 'rama'"
+            ),
+            None
+        );
+        assert!(inf.vaciadas >= 3);
+        // el valor desactivado que un puesto vivo usa entra como desactivado; el que nadie vivo usa, no
+        assert_eq!(
+            uno(&dst, "SELECT deleted_at FROM cargos WHERE id = 'cargo-a'").unwrap(),
+            "y"
+        );
+        assert_eq!(
+            uno(&dst, "SELECT cargo_id FROM puestos WHERE id = 'p-rama'").unwrap(),
+            "cargo-a"
+        );
+        assert_eq!(
+            uno(&dst, "SELECT deleted_at FROM sedes WHERE id = 'sede-b'").unwrap(),
+            "y",
+            "lo usa una persona viva"
+        );
+    }
+
+    #[test]
+    fn un_valor_eliminado_que_nadie_usa_no_entra() {
+        let (d, origen) = base_con_datos();
+        origen
+            .execute_batch(
+                "INSERT INTO jornadas (id, nombre, created_at, updated_at, deleted_at)
+                   VALUES ('j-vieja', 'Vieja', 'x', 'x', 'y');",
+            )
+            .unwrap();
+        let (_d2, mut dst) = destino("");
+        fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        assert_eq!(
+            uno(&dst, "SELECT count(*) || '' FROM jornadas").unwrap(),
+            "0"
+        );
+    }
+
+    #[test]
+    fn una_vista_cuyo_arbol_no_entro_se_omite_y_se_informa() {
+        let (d, origen) = base_con_datos();
+        // el subárbol ya existe eliminado aquí: la vista no pasa a ser del árbol completo
+        let (_d2, mut dst) = destino(&format!(
+            "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at) VALUES ('raiz', '{TIPO}', 'R', 'x', 'x'), ('rama', '{TIPO}', 'Rama', 'x', 'x');
+             INSERT INTO subarboles_guardados (id, unidad_id, created_at, updated_at, deleted_at) VALUES ('sub-a', 'rama', 'x', 'x', 'y');"
+        ));
+        let inf = fusion(&mut dst, &origen, d.path(), Some(&rama()), &Lugares::new()).unwrap();
+        assert_eq!(
+            uno(
+                &dst,
+                "SELECT count(*) || '' FROM vistas WHERE id = 'vis-sub'"
+            )
+            .unwrap(),
+            "0"
+        );
+        assert_eq!(tabla(&inf, "vistas").omitidas, 1);
+        assert!(inf.detalle.contains(&Detalle {
+            tabla: "vistas",
+            nombre: "Vista A".into(),
+            motivo: "referencia"
+        }));
+    }
+
+    #[test]
+    fn una_rama_colocada_va_al_final_de_sus_hermanos() {
+        let (d, origen) = base_con_datos();
+        origen
+            .execute_batch("UPDATE unidades SET orden = 1 WHERE id = 'rama';")
+            .unwrap();
+        let (_d2, mut dst) = destino(&format!(
+            "INSERT INTO unidades (id, tipo_id, nombre, parent_id, orden, created_at, updated_at) VALUES
+               ('aqui', '{TIPO}', 'Aquí', NULL, 0, 'x', 'x'),
+               ('h1', '{TIPO}', 'H1', 'aqui', 5, 'x', 'x'),
+               ('h2', '{TIPO}', 'H2', 'aqui', 9, 'x', 'x');"
+        ));
+        let lugares = Lugares::from([("rama".to_string(), Some("aqui".to_string()))]);
+        fusion(&mut dst, &origen, d.path(), Some(&rama()), &lugares).unwrap();
+        assert_eq!(
+            uno(&dst, "SELECT orden || '' FROM unidades WHERE id = 'rama'").unwrap(),
+            "10"
+        );
+    }
+
+    #[test]
+    fn una_base_con_nombre_no_toma_el_del_archivo() {
+        let (d, origen) = base_con_datos();
+        let (_d2, mut dst) =
+            destino("INSERT INTO meta (clave, valor) VALUES ('org_nombre', 'La mía');");
+        let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        assert_eq!(inf.nombre_heredado, None);
+        assert_eq!(
+            uno(&dst, "SELECT valor FROM meta WHERE clave = 'org_nombre'").unwrap(),
+            "La mía"
         );
     }
 

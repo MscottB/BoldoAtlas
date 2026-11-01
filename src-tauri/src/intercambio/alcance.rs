@@ -1,21 +1,22 @@
 //! Lo que lleva cada exportación: la copia de toda la base, o la misma copia sin lo que queda fuera de las ramas elegidas.
 use super::Temporal;
-use super::validar::RamaExportada;
+use super::validar::{self, RamaExportada};
+use crate::db;
 use crate::respaldos::Fallo;
 use rusqlite::Connection;
 use serde::Serialize;
 use std::path::Path;
 
 /// Cada tabla de negocio con lo que se conserva en una copia parcial, en orden: cada regla ve la tabla anterior ya
-/// recortada. `alc` son las unidades vivas de las ramas elegidas. En una copia parcial no van filas eliminadas: quien
-/// exporta no las ve, salvo los valores de mantenedor desactivados que una fila viva sigue usando.
+/// recortada. `alc` son las unidades vivas de las ramas elegidas y `presentes` las personas con una asignación vigente en
+/// ellas: por minimización de datos, quienes ya no están no viajan, ni sus asignaciones cerradas. En una copia parcial no
+/// van filas eliminadas: quien exporta no las ve, salvo los valores de mantenedor desactivados que una fila viva sigue usando.
 pub const PODA: &[(&str, &str)] = &[
     ("unidades", "id IN alc"),
     ("puestos", "deleted_at IS NULL AND unidad_id IN alc"),
     (
         "asignaciones",
-        "deleted_at IS NULL AND puesto_id IN (SELECT id FROM puestos)
-         AND trabajador_id IN (SELECT id FROM trabajadores WHERE deleted_at IS NULL)",
+        "deleted_at IS NULL AND puesto_id IN (SELECT id FROM puestos) AND trabajador_id IN presentes",
     ),
     (
         "trabajadores",
@@ -67,6 +68,7 @@ pub struct Cortes {
     pub jefaturas: i64,
     pub roles: i64,
     pub vistas: i64,
+    pub asignaciones: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -144,7 +146,13 @@ fn recortar(copia: Temporal, datos: &Path, raices: &[String]) -> Result<(Tempora
            WITH RECURSIVE r(id) AS (
              SELECT id FROM elegidas
              UNION SELECT u.id FROM unidades u JOIN r ON u.parent_id = r.id WHERE u.deleted_at IS NULL
-           ) SELECT id FROM r;",
+           ) SELECT id FROM r;
+         -- vigente como en `vigentesEn` de la interfaz: sin fin, o con un fin que aún no llega (un reemplazo)
+         CREATE TEMP TABLE presentes AS
+           SELECT DISTINCT a.trabajador_id AS id FROM asignaciones a
+           JOIN puestos p ON p.id = a.puesto_id AND p.deleted_at IS NULL AND p.unidad_id IN alc
+           JOIN trabajadores t ON t.id = a.trabajador_id AND t.deleted_at IS NULL
+           WHERE a.deleted_at IS NULL AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime'));",
     )?;
     // marcar una unidad y también otra de su rama es una sola rama
     let ramas: Vec<RamaExportada> = tx
@@ -169,6 +177,11 @@ fn recortar(copia: Temporal, datos: &Path, raices: &[String]) -> Result<(Tempora
         vistas: contar(
             &tx,
             "SELECT count(*) FROM vistas WHERE deleted_at IS NULL AND arbol_id IS NULL",
+        )?,
+        asignaciones: contar(
+            &tx,
+            "SELECT count(*) FROM asignaciones WHERE deleted_at IS NULL AND trabajador_id NOT IN presentes
+             AND puesto_id IN (SELECT id FROM puestos WHERE deleted_at IS NULL AND unidad_id IN alc)",
         )?,
         ..Default::default()
     };
@@ -217,6 +230,8 @@ pub fn preparar(
             (copia, Cortes::default())
         }
     };
+    // lo mismo que se le exigirá al abrirlo: mejor saberlo aquí que dejar un archivo que nadie puede importar
+    validar::revisar(temporal.ruta(), db::MIGRACIONES)?;
     let filas = cuentas(&Connection::open(temporal.ruta())?)?;
     Ok((
         temporal,
@@ -232,8 +247,6 @@ pub fn preparar(
 mod tests {
     use super::super::prueba::*;
     use super::*;
-    use crate::db;
-    use crate::intercambio::validar;
     use std::collections::BTreeSet;
 
     #[test]
@@ -293,6 +306,7 @@ mod tests {
                 jefaturas: 1,
                 roles: 1,
                 vistas: 1,
+                asignaciones: 1,
             }
         );
         let jefe: Option<String> = c
@@ -330,6 +344,9 @@ mod tests {
             b"fuera@x.cl",
             b"PersonaBorrada",
             b"UnidadFuera",
+            b"PersonaYaNoEsta",
+            b"yanoesta@x.cl",
+            b"motivo-yanoesta",
         ] {
             assert!(
                 !contiene(&b, secreto),
@@ -338,6 +355,39 @@ mod tests {
             );
         }
         assert!(contiene(&b, b"Ana"));
+    }
+
+    #[test]
+    fn van_las_asignaciones_cerradas_de_quien_sigue_en_la_rama() {
+        let (dir, conn) = base_con_datos();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, _) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
+        let c = Connection::open(t.ruta()).unwrap();
+        let ids: Vec<String> = c
+            .prepare("SELECT id FROM asignaciones ORDER BY id")
+            .unwrap()
+            .query_map([], |f| f.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        // ana también estuvo antes en otro puesto de la rama; la persona que ya no está no va
+        assert_eq!(ids, ["as-ana-antes", "as-hija", "as-rama"]);
+    }
+
+    #[test]
+    fn un_reemplazo_con_fin_futuro_cuenta_como_vigente() {
+        let (dir, conn) = base_con_datos();
+        conn.execute_batch(
+            "UPDATE asignaciones SET hasta = '2999-01-01' WHERE id = 'as-yanoesta';",
+        )
+        .unwrap();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, r) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
+        assert_eq!(r.cortes.asignaciones, 0);
+        assert!(contiene(
+            &std::fs::read(t.ruta()).unwrap(),
+            b"PersonaYaNoEsta"
+        ));
     }
 
     #[test]

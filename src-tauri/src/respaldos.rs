@@ -1,4 +1,5 @@
 use crate::db;
+use crate::intercambio::validar;
 use rusqlite::{Connection, OpenFlags};
 use serde::Serialize;
 use std::fs;
@@ -151,9 +152,13 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
     hecho.map(|_| nombre)
 }
 
-/// Borra los temporales que dejó un respaldo o un `.boldo` interrumpido. Se llama al iniciar, cuando ninguno está en curso.
+/// Borra los temporales que dejó un respaldo, un `.boldo` o una restauración interrumpidos. Se llama en `setup`, ya pasado
+/// el plugin de instancia única: una segunda instancia sale antes y no le borra nada a la que está trabajando.
 pub fn limpiar_parciales(dir: &Path) {
     let temporal = format!(".db{SUFIJO_TEMPORAL}");
+    // la copia de `cambiar_base` nunca es lo único que hay: la base se reemplaza con un renombre atómico, así que si la
+    // copia sigue ahí no se llegó a usar. Sin la base al lado no se toca, por si acaso.
+    let hay_base = dir.join("boldo.db").is_file();
     for e in fs::read_dir(dir).into_iter().flatten().flatten() {
         let nombre = e.file_name().to_string_lossy().into_owned();
         // solo los temporales propios (`boldo-….db.tmp`, con su diario de SQLite), nunca otro .tmp de la carpeta
@@ -161,7 +166,9 @@ pub fn limpiar_parciales(dir: &Path) {
             .iter()
             .find_map(|s| nombre.strip_suffix(s))
             .unwrap_or(&nombre);
-        if nombre.starts_with(PREFIJO) && base.ends_with(&temporal) {
+        if (nombre.starts_with(PREFIJO) && base.ends_with(&temporal))
+            || (hay_base && base == "boldo.restaurando")
+        {
             let _ = fs::remove_file(e.path());
         }
     }
@@ -289,6 +296,9 @@ pub fn restaurar(
         if version > migraciones.len() as i64 {
             return Err(Fallo::de("esquema_nuevo", version));
         }
+        // triggers, vistas o tablas extra quedarían activos en la base local. Un respaldo legítimo tiene el de su versión.
+        validar::revisar_solo_esquema(&origen, version.max(0) as usize, migraciones)
+            .map_err(|e| Fallo::de("danado", e.detalle))?;
     }
     cambiar_base(conexion, bd, dir, &origen, migraciones, PREFIJO_SEGURIDAD)
 }
@@ -467,6 +477,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (_, respaldos, conn) = base(dir.path());
         let ajenos = [
+            // los de antes de la migración, con el nombre de ahora y con el de versiones anteriores
+            "antes-migracion-1-20200101000000-abcd1234.db",
             "antes-migracion-1-20200101000000-abcd1234.boldo",
             "boldo-antes-de-restaurar-20200101-0000.db",
             "boldo-2020.db",
@@ -676,6 +688,61 @@ mod tests {
         assert_eq!(err.codigo, "esquema_nuevo");
         assert_eq!(revision(slot.as_ref().unwrap()), 2);
         assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));
+    }
+
+    #[test]
+    fn limpiar_parciales_borra_una_restauracion_interrumpida_si_esta_la_base() {
+        let dir = tempfile::tempdir().unwrap();
+        let (bd, _respaldos, conn) = base(dir.path());
+        drop(conn);
+        let copia = bd.with_extension("restaurando");
+        fs::write(&copia, "a medias").unwrap();
+        fs::write(con_sufijo(&copia, "-wal"), "x").unwrap();
+        limpiar_parciales(dir.path());
+        assert!(!copia.exists() && !con_sufijo(&copia, "-wal").exists());
+        assert!(bd.exists());
+        // sin la base al lado no se toca
+        fs::write(&copia, "lo único").unwrap();
+        fs::remove_file(&bd).unwrap();
+        limpiar_parciales(dir.path());
+        assert!(copia.exists());
+    }
+
+    #[test]
+    fn restaurar_rechaza_un_respaldo_con_objetos_ajenos_al_esquema() {
+        for sql in [
+            "CREATE TRIGGER t AFTER INSERT ON meta BEGIN DELETE FROM unidades; END;",
+            "CREATE VIEW v AS SELECT * FROM meta;",
+            "CREATE TABLE extra (x);",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let (bd, respaldos, mut conn) = base(dir.path());
+            let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+            Connection::open(respaldos.join(&nombre))
+                .unwrap()
+                .execute_batch(sql)
+                .unwrap();
+            escribir(&mut conn, 2);
+            let mut slot = Some(conn);
+            let err = restaurar(&mut slot, &bd, &respaldos, &nombre, MIGRACIONES).unwrap_err();
+            assert_eq!(err.codigo, "danado", "{sql}");
+            assert_eq!(revision(slot.as_ref().unwrap()), 2);
+        }
+    }
+
+    #[test]
+    fn restaurar_acepta_un_respaldo_con_otros_fines_de_linea() {
+        let dir = tempfile::tempdir().unwrap();
+        let (bd, respaldos, conn) = base(dir.path());
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        // el mismo respaldo visto por una app compilada con los fines de línea del otro sistema
+        let otro = if MIGRACIONES[0].contains("\r\n") {
+            MIGRACIONES[0].replace("\r\n", "\n")
+        } else {
+            MIGRACIONES[0].replace('\n', "\r\n")
+        };
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &bd, &respaldos, &nombre, &[otro.as_str()]).unwrap();
     }
 
     #[test]

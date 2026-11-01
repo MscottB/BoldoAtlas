@@ -54,11 +54,11 @@ pub fn generar_codigo() -> Result<String, Fallo> {
     Ok(codigo)
 }
 
-/// El código tal como lo escriben: sin importar mayúsculas, espacios ni guiones.
+/// El código tal como lo escriben o lo pegan: sin importar mayúsculas ni lo que no sea letra o número.
 fn normalizar(codigo: &str) -> Option<String> {
     let limpio: String = codigo
         .chars()
-        .filter(|c| !c.is_whitespace() && *c != '-')
+        .filter(|c| c.is_alphanumeric())
         .map(|c| c.to_ascii_uppercase())
         .collect();
     (limpio.len() == LARGO_CODIGO && limpio.bytes().all(|b| ALFABETO.contains(&b)))
@@ -241,6 +241,14 @@ mod tests {
             normalizar(&a.to_lowercase().replace('-', " ")),
             normalizar(&a)
         );
+        // pegado desde un correo, con guiones tipográficos o comillas
+        assert_eq!(
+            normalizar(&format!("«{}»\n", a.replace('-', "–"))),
+            normalizar(&a)
+        );
+        // el alfabeto se sigue exigiendo
+        assert_eq!(normalizar("0000-0000-0000-0000-0000"), None);
+        assert_eq!(normalizar("ÁÁÁÁ-2222-2222-2222-2222"), None);
     }
 
     #[test]

@@ -118,7 +118,7 @@ fn respaldar(conn: &Connection, dir_respaldos: &Path, version: i64) -> Result<()
     // sufijo aleatorio: dos instancias en el mismo segundo no chocan
     let azar = uuid::Uuid::now_v7().simple().to_string();
     let destino = dir_respaldos.join(format!(
-        "antes-migracion-{version}-{sello}-{}.boldo",
+        "antes-migracion-{version}-{sello}-{}.db",
         &azar[azar.len() - 8..]
     ));
     conn.execute("VACUUM INTO ?1", [destino.to_string_lossy()])
@@ -381,7 +381,7 @@ mod tests {
             .into_string()
             .unwrap();
         assert!(
-            nombre.starts_with("antes-migracion-1-") && nombre.ends_with(".boldo"),
+            nombre.starts_with("antes-migracion-1-") && nombre.ends_with(".db"),
             "{nombre}"
         );
     }
