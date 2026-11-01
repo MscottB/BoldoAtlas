@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { rutaTexto } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
+import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useRetornoFoco } from "@/lib/foco";
@@ -303,15 +304,13 @@ watch(persona, (w) => previa.value && !w && void volver());
           </ul>
         </details>
       </div>
-      <Button
-        type="button"
-        size="sm"
-        class="justify-self-start"
-        @click="ficha.intentarAbrir(previa.personaId)"
-      >
-        <SquareArrowOutUpRight aria-hidden="true" />
-        {{ t("personas.abrirFicha") }}
-      </Button>
+      <div class="flex flex-wrap gap-2">
+        <Button type="button" size="sm" @click="ficha.intentarAbrir(previa.personaId)">
+          <SquareArrowOutUpRight aria-hidden="true" />
+          {{ t("personas.abrirFicha") }}
+        </Button>
+        <BotonUbicar :persona-id="previa.personaId" />
+      </div>
     </section>
   </div>
 </template>

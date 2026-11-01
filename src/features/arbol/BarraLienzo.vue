@@ -80,7 +80,8 @@ async function guardarEnArboles() {
         <Plus aria-hidden="true" />
         {{ t("arbol.nuevaUnidad") }}
       </Button>
-      <span class="relative">
+      <!-- Crece con el espacio libre (el texto largo cabe a 1280 px) sin obligar a la fila a partirse. -->
+      <span class="relative max-w-60 min-w-48 flex-1 basis-48">
         <Search
           class="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground"
           aria-hidden="true"
@@ -89,7 +90,7 @@ async function guardarEnArboles() {
           v-model="config.resaltar.texto"
           data-buscar-lienzo
           type="search"
-          class="h-7 w-48 pr-1.5 pl-7 text-ellipsis @min-[62rem]:w-52"
+          class="h-7 w-full pr-1.5 pl-7 text-ellipsis"
           :placeholder="t('arbol.buscarDiagrama')"
           :aria-label="t('arbol.buscarDiagrama')"
           :title="t('arbol.buscarAtajo')"

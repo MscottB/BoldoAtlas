@@ -21,6 +21,6 @@ There is one column for each unit type you use (for example Division, Area, Suba
 
 Press the **Person**, **Job title** or first visible unit column header (it sorts by the full unit path) to sort; press again to reverse. Empty cells always stay at the end.
 
-Press a row (or Tab to the name and Enter) to open the person's record; on a vacancy, the position opens.
+Press a row (or Tab to the name and Enter) to open the person's record; on a vacancy, the position opens. The locate icon, next to the name, shows that position in the org chart (`Ctrl` + click: in a new tab); for a person with no current position it is disabled.
 
 Coming soon: export this list to Excel.

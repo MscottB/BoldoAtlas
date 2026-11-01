@@ -30,7 +30,7 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 
 ## Positions
 
-**Positions** lists the person's current positions (job title, unit, whether holder or replacement, and since when) and, under **History**, the ones that have ended. Press one to open the position.
+**Positions** lists the person's current positions (job title, unit, whether holder or replacement, and since when) and, under **History**, the ones that have ended. Press one to open the position. **Show in the org chart** closes the record and shows the person on the tree (with several positions, you choose which).
 
 ## Delete
 

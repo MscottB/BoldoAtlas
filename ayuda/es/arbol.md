@@ -88,9 +88,15 @@ El botón **Duplicar rama** (en **Avanzado**, en el Resumen del panel de la unid
 
 ## Resaltar
 
-En la barra del lienzo, **Buscar en el diagrama** (`F` lleva a ese campo) resalta las unidades cuyo nombre contiene el texto, sin importar tildes ni mayúsculas. Las unidades que no coinciden quedan atenuadas, pero no se ocultan.
+En la barra del lienzo, **Buscar unidad o persona** (`F` lleva a ese campo) resalta las unidades cuyo nombre contiene el texto y también las unidades donde trabaja una persona cuyo nombre o correo lo contiene (titular o reemplazo vigente, a la fecha que se ve), sin importar tildes ni mayúsculas. Las unidades que no coinciden quedan atenuadas, pero no se ocultan.
 
-El botón **Resaltar** suma más criterios: **Etiqueta** y **Con vacantes** a la vista, y **Sede**, **Tipo de contrato**, **Jornada** y **Cargo** en **Más filtros** (se abre solo si alguno está elegido); el número en el botón cuenta los que están activos y **Quitar filtros** los vacía (el texto de **Buscar en el diagrama** queda). Una unidad se resalta solo si cumple todos los criterios elegidos (también el texto): tiene la etiqueta y, en sus propios puestos (no en los de su rama; no hace falta que sea el mismo puesto), tiene una vacante, una persona titular vigente con esa sede, una con ese tipo de contrato, una con esa jornada y un puesto con ese cargo; los criterios que no elijas no cuentan. El resaltado dura mientras la app está abierta; las vistas guardadas sí lo incluyen.
+El botón **Resaltar** suma más criterios: **Etiqueta** y **Con vacantes** a la vista, y **Sede**, **Tipo de contrato**, **Jornada** y **Cargo** en **Más filtros** (se abre solo si alguno está elegido); el número en el botón cuenta los que están activos y **Quitar filtros** los vacía (el texto de **Buscar unidad o persona** queda). Una unidad se resalta solo si cumple todos los criterios elegidos (también el texto): tiene la etiqueta y, en sus propios puestos (no en los de su rama; no hace falta que sea el mismo puesto), tiene una vacante, una persona titular vigente con esa sede, una con ese tipo de contrato, una con esa jornada y un puesto con ese cargo; los criterios que no elijas no cuentan. El resaltado dura mientras la app está abierta; las vistas guardadas sí lo incluyen.
+
+## Ver a una persona en el organigrama
+
+Para saber dónde está alguien, usa **Ver en el organigrama**: en su ficha (junto a **Puestos**), en la vista previa de la pestaña **Personas** del panel de una unidad, con el ícono de ubicar en su fila del **Directorio** o, en la paleta de comandos (`Ctrl+K`), con la opción **Ver a … en el organigrama** que aparece bajo cada persona. Se abre el árbol con su unidad seleccionada y centrada, abriendo las ramas plegadas que la escondían; el foco queda en la tarjeta. Con **Ver puestos** encendido se centra y marca la tarjeta de su puesto (salvo la jefatura que va dentro de la tarjeta de la unidad). Con `Ctrl` + clic (o `Ctrl+Enter` en la paleta) se abre en una pestaña nueva.
+
+Si la persona tiene varios puestos vigentes, se elige cuál en un menú «Cargo · Unidad»; un reemplazo se marca **(reemplazo)**. Al ver otra fecha se usan los puestos vigentes ese día. Si su unidad está fuera de la rama o del subárbol que estás viendo, se pasa al árbol completo. Sin ningún puesto vigente, el botón queda deshabilitado y lo explica: **Sin puesto vigente**.
 
 ## Moverse por el lienzo
 

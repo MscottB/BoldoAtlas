@@ -11,7 +11,7 @@ import { VISTA_POR_DEFECTO } from "./vista";
 import { claseSelect, cn } from "@/lib/utils";
 
 // Resalta las unidades con cierta etiqueta, con vacantes o con puestos/personas de cierta sede, contrato, jornada o
-// cargo. Se suma al texto de «Buscar en el diagrama»: las que no coinciden se atenúan, no se ocultan.
+// cargo. Se suma al texto de «Buscar unidad o persona»: las que no coinciden se atenúan, no se ocultan.
 const { t } = useI18n();
 const org = useOrganizacion();
 const { config } = useVista();
@@ -27,7 +27,7 @@ const activos = computed(() => {
   const r = config.value.resaltar;
   return [r.etiqueta, r.vacantes, r.sede, r.contrato, r.jornada, r.cargo].filter(Boolean).length;
 });
-// El texto de «Buscar en el diagrama» queda: es de la barra, no de este panel.
+// El texto de «Buscar unidad o persona» queda: es de la barra, no de este panel.
 const quitar = () =>
   (config.value.resaltar = { ...VISTA_POR_DEFECTO.resaltar, texto: config.value.resaltar.texto });
 </script>

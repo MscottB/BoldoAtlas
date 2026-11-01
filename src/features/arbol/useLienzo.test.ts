@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { TIPO_GERENCIA, type Trabajador } from "@/db/tipos";
-import { a, p, u, unidades } from "./fixture";
+import { a, asignaciones, p, puestos, u, unidades } from "./fixture";
 import { vigentesPorPuesto } from "./jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
-import { coincideFiltro, destinoAlSoltar, unidadesQueCumplen, useLienzo } from "./useLienzo";
+import { coincideFiltro, destinoAlSoltar, puestoUbicado, unidadesQueCumplen, useLienzo } from "./useLienzo";
+import { useVista } from "./useVista";
 import { VISTA_POR_DEFECTO } from "./vista";
 
 const mantencion = unidades.find((x) => x.id === "mantencion")!;
@@ -37,6 +38,14 @@ describe("lógica del lienzo", () => {
     expect(destinoAlSoltar("a", { x: 310, y: 10 }, pos, tam)).toBe("b"); // centro en (420, 66)
     expect(destinoAlSoltar("a", { x: 0, y: 0 }, pos, tam)).toBeNull(); // sobre sí misma
     expect(destinoAlSoltar("a", { x: 0, y: 500 }, pos, tam)).toBeNull(); // en el vacío
+  });
+
+  it("coincideFiltro por texto también acepta las unidades de una persona que coincide (unidadesConPersona)", () => {
+    const conPersona = new Set(["mantencion"]);
+    expect(coincideFiltro(mantencion, "beatriz", null, null, conPersona)).toBe(true);
+    expect(coincideFiltro(mantencion, "beatriz", null, null, new Set())).toBe(false);
+    expect(coincideFiltro(mantencion, "mante", null, null, new Set())).toBe(true); // el nombre de la unidad sigue
+    expect(coincideFiltro(mantencion, "beatriz", new Set(["finanzas"]), null, conPersona)).toBe(false); // y la etiqueta manda
   });
 
   it("coincideFiltro con unidades que cumplen los criterios de puestos: exige también el texto y la etiqueta", () => {
@@ -263,4 +272,47 @@ describe("ver personas", () => {
     l.verPersonas("mecanica", false);
     expect([l.pestanaPanel.value, l.seleccion.value, l.ramaPersonas.value]).toEqual(["personas", "mecanica", false]);
   });
+});
+
+describe("ver a una persona en el organigrama", () => {
+  const nuevo = (verPuestos: boolean) => {
+    setActivePinia(createPinia());
+    const org = useOrganizacion();
+    org.$patch({
+      unidades: unidades.filter((x) => !x.deleted_at),
+      puestos,
+      asignaciones,
+      trabajadores: [{ id: "t4", nombre: "Beatriz Rojas", correo: "brojas@empresa.cl" } as Trabajador],
+    });
+    useVista().config.value = { ...VISTA_POR_DEFECTO, verPuestos };
+    const l = useLienzo();
+    l.seleccion.value = null;
+    l.colapsados.value = new Set(["gg", "operaciones", "mantencion"]); // Mecánica escondida
+    return l;
+  };
+
+  it("sin «Ver puestos»: abre las ramas, selecciona la unidad y la centra y enfoca", () => {
+    const l = nuevo(false);
+    expect(l.revelarPuesto("p4")).toEqual({ ok: true });
+    expect(l.colapsados.value).toEqual(new Set());
+    expect([l.seleccion.value, l.centrarEn.value, l.enfocar.value]).toEqual(["mecanica", "mecanica", "mecanica"]);
+    expect(puestoUbicado.value).toBeNull();
+  });
+
+  it("con «Ver puestos»: selecciona la unidad y centra, marca y enfoca la tarjeta del puesto", () => {
+    const l = nuevo(true);
+    expect(l.revelarPuesto("p4").ok).toBe(true);
+    expect([l.seleccion.value, l.centrarEn.value, l.enfocar.value]).toEqual(["mecanica", "p4", "p4"]);
+    expect(puestoUbicado.value).toBe("p4");
+    l.seleccionar("finanzas"); // otra selección quita la marca
+    expect(puestoUbicado.value).toBeNull();
+  });
+
+  it("un puesto que no está en lo que se ve no se revela y lo dice", () => {
+    const l = nuevo(true);
+    const r = l.revelarPuesto("no-existe");
+    expect(r.ok).toBe(false);
+    expect(l.seleccion.value).toBeNull();
+  });
+
 });

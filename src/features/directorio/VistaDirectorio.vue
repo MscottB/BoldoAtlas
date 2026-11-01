@@ -19,6 +19,7 @@ import { tiposEnUso } from "@/features/arbol/jerarquia";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
+import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -342,13 +343,19 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
                 @mousedown.middle.prevent
               >
                 <th scope="row" class="px-3 py-1.5 font-normal whitespace-nowrap">
-                  <button
-                    type="button"
-                    class="rounded-sm text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                    :class="!f.persona && 'font-normal text-muted-foreground italic'"
-                  >
-                    {{ f.persona ?? t("directorio.vacante") }}
-                  </button>
+                  <span class="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      class="rounded-sm text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                      :class="!f.persona && 'font-normal text-muted-foreground italic'"
+                    >
+                      {{ f.persona ?? t("directorio.vacante") }}
+                    </button>
+                    <!-- «Ver en el organigrama»: el puesto de la fila; una persona sin puesto, los suyos (si tiene). -->
+                    <span class="-my-1 inline-flex">
+                      <BotonUbicar :persona-id="f.personaId" :puesto-id="f.puestoId" icono />
+                    </span>
+                  </span>
                 </th>
                 <td class="px-3 py-1.5 whitespace-nowrap">
                   <span v-if="f.estado === 'sinPuesto'" class="text-muted-foreground italic">{{

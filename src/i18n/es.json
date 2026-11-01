@@ -111,8 +111,8 @@
     "vacantes": "{n} vacante | {n} vacantes",
     "expandir": "Mostrar {n} subunidad | Mostrar {n} subunidades",
     "plegar": "Plegar rama",
-    "buscarDiagrama": "Buscar en el diagrama",
-    "buscarAtajo": "Buscar en el diagrama (F)",
+    "buscarDiagrama": "Buscar unidad o persona",
+    "buscarAtajo": "Buscar unidad o persona: su nombre o el nombre o correo de alguien con puesto en ella (F)",
     "alejar": "Alejar",
     "alejarAtajo": "Alejar (Ctrl+-)",
     "acercar": "Acercar",
@@ -188,7 +188,7 @@
       "jornada": "Jornada",
       "cargo": "Cargo",
       "cualquiera": "Cualquiera",
-      "ayuda": "Se resaltan las unidades que cumplen todo lo elegido: la etiqueta y, en sus propios puestos, lo demás. Se suma a «Buscar en el diagrama».",
+      "ayuda": "Se resaltan las unidades que cumplen todo lo elegido: la etiqueta y, en sus propios puestos, lo demás. Se suma a «Buscar unidad o persona».",
       "masFiltros": "Más filtros",
       "quitar": "Quitar filtros"
     },
@@ -591,16 +591,27 @@
     "errorNombre": "Escribe el nombre de la entrada.",
     "deLeyenda": "Leyenda: {nombre}"
   },
+  "ubicar": {
+    "ver": "Ver en el organigrama",
+    "verAyuda": "Ver en el organigrama (Ctrl+clic: en una pestaña nueva)",
+    "verSinPuesto": "Ver en el organigrama: sin puesto vigente",
+    "sinPuesto": "Sin puesto vigente",
+    "cual": "¿Cuál puesto?",
+    "opcion": "{cargo} · {unidad}",
+    "opcionReemplazo": "{cargo} · {unidad} (reemplazo)",
+    "noEsta": "Ese puesto no está en el organigrama que se ve. Revisa la fecha."
+  },
   "paleta": {
     "titulo": "Paleta de comandos",
     "descripcion": "Busca unidades, personas, puestos vacantes y acciones.",
     "buscar": "Buscar unidades, personas o acciones",
     "ayudaVacia": "Escribe para buscar unidades, personas y puestos vacantes.",
-    "ayudaPestana": "Ctrl+Enter o Ctrl+clic: abrir unidades, personas y vistas en una pestaña nueva.",
+    "ayudaPestana": "Ctrl+Enter o Ctrl+clic: abrir unidades, personas, su lugar en el organigrama y vistas en una pestaña nueva.",
     "sinResultados": "Sin coincidencias.",
     "resultados": "Sin resultados | {n} resultado | {n} resultados",
     "mas": "Hay {n} más: sigue escribiendo para acotar.",
     "sinCargo": "Sin cargo vigente",
+    "verEnOrganigrama": "Ver a {nombre} en el organigrama",
     "grupos": {
       "unidades": "Unidades",
       "personas": "Personas",

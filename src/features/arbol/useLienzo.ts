@@ -3,25 +3,30 @@ import { toast } from "vue-sonner";
 import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
-import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
 import { colapsadosIniciales, contraerRama, expandirRama, subgrafoVisible } from "./layout";
 import { sumar, type Seleccion } from "./multiple";
 import { debeAvisar, hastaNivel, nivelBajoLimite } from "./rendimiento";
 import { useVista } from "./useVista";
+import { indicePersonas, puestoConTarjeta, puestosPorPersona, unidadesConPersona, type Ubicacion } from "./ubicar";
 import { jefeEnTarjeta, type Resaltado } from "./vista";
 
-/** Sin filtros todo coincide; con texto, etiqueta y criterios de puestos (`cumplen`) deben cumplirse todos. */
+/**
+ * Sin filtros todo coincide; con texto, etiqueta y criterios de puestos (`cumplen`) deben cumplirse todos. El texto
+ * coincide con el nombre de la unidad o con una persona de ella (`conPersona`: unidadesConPersona del mismo texto).
+ */
 export function coincideFiltro(
   u: Unidad,
   texto: string,
   etiquetadas: Set<string> | null,
   cumplen: Set<string> | null = null,
+  conPersona: Set<string> | null = null,
 ): boolean {
   if (etiquetadas && !etiquetadas.has(u.id)) return false;
   if (cumplen && !cumplen.has(u.id)) return false;
   const buscado = normalizarTexto(texto);
-  return !buscado || normalizarTexto(u.nombre).includes(buscado);
+  return !buscado || normalizarTexto(u.nombre).includes(buscado) || !!conPersona?.has(u.id);
 }
 
 /**
@@ -105,6 +110,13 @@ const pestanaPanel = ref<string | null>(null);
 const ramaPersonas = ref<boolean | null>(null);
 let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
 let cumplen: ComputedRef<Set<string> | null> | undefined;
+let porPersona: ComputedRef<Map<string, Ubicacion[]>> | undefined;
+let conPersona: ComputedRef<Set<string> | null> | undefined;
+/** Puesto ubicado de una persona («Ver en el organigrama»): su tarjeta se marca hasta que cambia la selección. */
+export const puestoUbicado = ref<string | null>(null);
+watch(seleccion, () => (puestoUbicado.value = null), { flush: "sync" });
+/** Tarjeta (unidad o puesto) que recibe el foco en cuanto VistaArbol la centra (lo atiende y lo deja en null). */
+const enfocar = ref<string | null>(null);
 
 /** Una expansión que dejaría demasiadas tarjetas: VistaArbol pregunta si aplicar `todo`, `hasta` (nivel `nivel`) o nada. */
 export interface AvisoExpansion {
@@ -143,6 +155,13 @@ export function useLienzo() {
       org.enFecha.trabajadores,
     ),
   );
+  porPersona ??= computed(() => puestosPorPersona(org.enFecha.puestos, org.enFecha.vigentes));
+  // El índice se rehace solo si cambian las personas; cada tecla solo lo recorre. Lo lee cada tarjeta (`coincide`):
+  // cambiar el texto no rehace los nodos (17h).
+  if (!conPersona) {
+    const indice = computed(() => indicePersonas(org.enFecha.trabajadores));
+    conPersona = computed(() => unidadesConPersona(config.value.resaltar.texto, indice.value, porPersona!.value));
+  }
 
   // Tarjetas a la vista con esas ramas plegadas (de `unidades`, las que se dibujan), con sus puestos si se ven.
   const tarjetas = (unidades: Unidad[], c: Set<string>) => {
@@ -203,6 +222,21 @@ export function useLienzo() {
     seleccion.value = centrarEn.value = id;
   }
 
+  /**
+   * «Ver en el organigrama» de una persona: revela la unidad del puesto y centra la tarjeta del puesto si se dibuja (si
+   * no, la de la unidad); esa tarjeta recibe el foco. Un puesto que no está en lo que se ve (otra fecha) no se revela.
+   */
+  function revelarPuesto(id: string): Resultado {
+    const p = org.enFecha.puestos.find((x) => x.id === id);
+    const u = p && org.enFecha.porId.get(p.unidad_id);
+    if (!p || !u) return { ok: false, mensaje: i18n.global.t("ubicar.noEsta") };
+    revelar(u.id);
+    const tarjeta = puestoConTarjeta(p, u, config.value) ? p.id : u.id;
+    puestoUbicado.value = tarjeta === p.id ? p.id : null; // tras revelar: cambiar la selección la borra
+    centrarEn.value = enfocar.value = tarjeta;
+    return { ok: true };
+  }
+
   /** Mayús+flecha: suma la unidad a la selección, la revela y pide centrarla. */
   function extender(id: string) {
     if (org.fechaVista) return; // solo lectura: no hay selección múltiple
@@ -250,6 +284,10 @@ export function useLienzo() {
     nuevaUnidad,
     nuevaHija,
     revelar,
+    revelarPuesto,
+    enfocar,
+    /** Puestos vigentes de cada persona en lo que muestra el lienzo (hoy o la fecha que se ve). */
+    puestosDePersona: porPersona,
     extender,
     duplicar,
     /** Ctrl+clic (`alternar`) o Mayús+clic sobre una tarjeta. */
@@ -293,6 +331,6 @@ export function useLienzo() {
       seleccion.value = id;
     },
     coincide: (u: Unidad) =>
-      coincideFiltro(u, config.value.resaltar.texto, etiquetadas!.value, cumplen!.value),
+      coincideFiltro(u, config.value.resaltar.texto, etiquetadas!.value, cumplen!.value, conPersona!.value),
   };
 }

@@ -34,6 +34,7 @@ import { base64De, leerComoUrl } from "@/features/configuracion/logo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
 import BloquePlegable from "@/components/BloquePlegable.vue";
+import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
 import {
@@ -155,6 +156,16 @@ async function hayCambios() {
 }
 // Quien quiera abrir otra ficha (p. ej. el diálogo de un puesto) pasa por esta misma comprobación.
 ficha.registrarGuardia(hayCambios);
+
+// «Ver en el organigrama»: la ficha se cierra para dejar ver el lienzo (con cambios sin guardar, se pregunta como al cerrar).
+async function cerrarParaUbicar() {
+  if (await hayCambios()) {
+    confirmando.value = true;
+    return false;
+  }
+  ficha.cerrar();
+  return true;
+}
 
 async function pedirCerrar() {
   if (!ficha.abierta.value) return;
@@ -315,7 +326,10 @@ const alAbrir = (e: Event) => {
         </div>
 
         <div v-if="id" class="grid gap-1 sm:col-span-2">
-          <p class="text-sm font-medium">{{ t("ficha.puestos") }}</p>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-medium">{{ t("ficha.puestos") }}</p>
+            <BotonUbicar :persona-id="id" :antes="cerrarParaUbicar" />
+          </div>
           <ul v-if="misPuestos.vigentes.length" class="grid gap-0.5">
             <li v-for="f in misPuestos.vigentes" :key="f.asignacion.id">
               <button
