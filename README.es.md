@@ -66,7 +66,7 @@ Abrir BoldoAtlas cuando ya está abierto trae su ventana al frente. La instalada
 
 ### Actualizar
 
-BoldoAtlas busca versiones nuevas cada día (en la portable y en el instalado) y avisa en la barra superior; también con **Buscar actualizaciones** en Acerca de, en el menú de la app o con Ctrl+K. La ventana de actualización muestra las notas de todas las versiones que te saltaste y nunca instala sin confirmar. Cada paquete va firmado y se rechaza si la firma no calza.
+BoldoAtlas busca versiones nuevas al abrir y cada día (en la portable y en el instalado; el plazo se cambia en Configuración) y avisa en Inicio y en la barra superior; también con **Buscar actualizaciones** en Acerca de, en el menú de la app o con Ctrl+K. La ventana de actualización muestra las notas de todas las versiones que te saltaste y nunca instala sin confirmar. Cada paquete va firmado y se rechaza si la firma no calza.
 
 - **Portable de Windows:** reemplaza `BoldoAtlas.exe` dentro de su carpeta (el anterior queda como `BoldoAtlas.old.exe` hasta el siguiente arranque) y se reinicia; `datos/` no se toca y nada se escribe fuera de la carpeta. Un solo rastro queda fuera, y no lo escribe BoldoAtlas: Windows anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja.
 - **Portable de Linux y macOS:** reemplaza el AppImage o el `.app` en su carpeta; los temporales van en `datos/`.

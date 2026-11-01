@@ -920,7 +920,9 @@
     "frecuencia": {
       "etiqueta": "Check automatically",
       "nunca": "Never",
-      "abrir": "When opening",
+      "abrir": "Only when opening",
+      "cadaHora": "Every hour",
+      "seisHoras": "Every 6 hours",
       "diaria": "Every day",
       "semanal": "Every week"
     }

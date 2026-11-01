@@ -8,7 +8,7 @@ BoldoAtlas busca versiones nuevas por su cuenta y te avisa; nunca descarga ni in
 
 ## Cómo se busca
 
-Por defecto busca **cada día**, igual en la versión portable y en la instalada. Cuando hay una versión nueva aparece un aviso discreto en la barra superior, **Versión X disponible**; un clic abre la ventana de actualización.
+Busca **cada vez que abres la app** y, por defecto, **cada día** mientras sigue abierta, igual en la versión portable y en la instalada. Cuando hay una versión nueva aparece un aviso discreto en Inicio y en la barra superior, **Versión X disponible**; un clic abre la ventana de actualización.
 
 También puedes buscar cuando quieras:
 
@@ -54,7 +54,7 @@ Los archivos temporales de la actualización (el instalador descargado, el progr
 
 ## Apagarlo y privacidad
 
-En **Configuración › Actualizaciones › Buscar automáticamente** eliges **Nunca**, **Al abrir**, **Cada día** (lo normal) o **Cada semana**. La elección vale solo para este computador. Con **Nunca** BoldoAtlas no se conecta a nada por su cuenta.
+En **Configuración › Actualizaciones › Buscar automáticamente** eliges **Nunca**, **Solo al abrir**, **Cada hora**, **Cada 6 horas**, **Cada día** (lo normal) o **Cada semana**. La elección vale solo para este computador. Con **Nunca** BoldoAtlas no se conecta a nada por su cuenta.
 
 La búsqueda es la única conexión que BoldoAtlas hace por su cuenta: lee la lista pública de versiones en GitHub y las notas de la versión nueva. No envía datos de tu organización ni identificadores.
 

@@ -9,8 +9,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 
-const { CADA_HORA, PREFERENCIA, ULTIMA, mensajeError, useActualizaciones } =
-  await import("./actualizaciones");
+const CADA_HORA = 3_600_000;
+const { PREFERENCIA, ULTIMA, mensajeError, useActualizaciones } = await import("./actualizaciones");
 
 const disponible = { version: "9.9.9", modo: "portable", pagina: "https://x", novedades: null };
 
