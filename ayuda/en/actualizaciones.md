@@ -8,7 +8,7 @@ BoldoAtlas looks for new versions on its own and tells you; it never downloads o
 
 ## How it checks
 
-By default it checks **every day**, the same in the portable and the installed version. When there is a new version a discreet notice appears in the top bar, **Version X available**; one click opens the update window.
+It checks **every time you open the app** and, by default, **every day** while it stays open, the same in the portable and the installed version. When there is a new version a discreet notice appears on Home and in the top bar, **Version X available**; one click opens the update window.
 
 You can also check whenever you want:
 
@@ -54,7 +54,7 @@ The update's temporary files (the downloaded installer, the portable's previous 
 
 ## Turning it off and privacy
 
-In **Settings › Updates › Check automatically** you choose **Never**, **When opening**, **Every day** (the default) or **Every week**. The choice applies only to this computer. With **Never** BoldoAtlas connects to nothing on its own.
+In **Settings › Updates › Check automatically** you choose **Never**, **Only when opening**, **Every hour**, **Every 6 hours**, **Every day** (the default) or **Every week**. The choice applies only to this computer. With **Never** BoldoAtlas connects to nothing on its own.
 
 Checking is the only connection BoldoAtlas makes on its own: it reads the public list of releases on GitHub and the new version's notes. It sends no organization data or identifiers.
 

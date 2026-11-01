@@ -18,7 +18,8 @@ import {
 export const PREFERENCIA = "actualizaciones";
 export const ULTIMA = "actualizaciones.ultima";
 export const VERSION_USADA = "actualizaciones.version";
-export const CADA_HORA = 3_600_000;
+// Bastante menor que el plazo más corto (una hora): si coincidieran, la demora de la respuesta saltaría una revisión.
+const REVISION = 300_000;
 
 export const VERSION_ACTUAL = __APP_VERSION_CORTA__;
 /** Las novedades que viajan dentro de la app (generadas en el release). */
@@ -137,7 +138,7 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
   let temporizador: ReturnType<typeof setInterval> | null = null;
   /**
    * Al arrancar (una vez): «Novedades» si esta versión es más nueva que la última usada en este PC, y la consulta
-   * periódica (al abrir y luego cada hora, según la preferencia). Sigue consultando aunque ya haya una versión
+   * periódica (al abrir y luego según la preferencia). Sigue consultando aunque ya haya una versión
    * nueva, por si sale otra más nueva; no con la ventana de actualización abierta (no se le cambia ni se queda en
    * blanco) ni durante una instalación. La consulta automática falla en silencio.
    */
@@ -157,7 +158,7 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
         void buscar(false);
     };
     revisar(true);
-    temporizador = setInterval(() => revisar(false), CADA_HORA);
+    temporizador = setInterval(() => revisar(false), REVISION);
   }
 
   return {

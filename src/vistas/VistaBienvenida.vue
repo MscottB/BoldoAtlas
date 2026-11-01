@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
 import {
   Dialog,
   DialogContent,
@@ -126,7 +127,10 @@ onMounted(() => {
     <header class="flex flex-col gap-2">
       <div class="flex items-start justify-between gap-4">
         <img :src="icono" alt="" class="size-12 dark:rounded-lg dark:bg-primary dark:p-1" />
-        <SelectorIdioma />
+        <div class="flex items-center gap-2">
+          <AvisoActualizacion />
+          <SelectorIdioma />
+        </div>
       </div>
       <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
       <p class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
