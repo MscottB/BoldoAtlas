@@ -103,13 +103,12 @@ function cerrarForm() {
 async function crear() {
   errorNuevo.value = "";
   if (!cargoNuevo.value || !unidad.value) return void (errorNuevo.value = t("puesto.error.cargo"));
-  const r = await org.crearPuesto({
-    unidad_id: unidad.value.id,
-    cargo_id: cargoNuevo.value,
-    descripcion: descripcion.value.trim() || null,
-  });
-  if (r.ok) ctl.abrir(r.id!);
-  else errorNuevo.value = r.mensaje;
+  const r = await org.crearPuesto(
+    { unidad_id: unidad.value.id, cargo_id: cargoNuevo.value, descripcion: descripcion.value.trim() || null },
+    ctl.abierta.value?.comoJefatura, // viene de «Nuevo puesto…» en la lista de Jefatura: se crea y queda como jefatura en un solo lote
+  );
+  if (!r.ok) return void (errorNuevo.value = r.mensaje);
+  ctl.abrir(r.id!);
 }
 
 async function cambiarCargo(id: string | null) {

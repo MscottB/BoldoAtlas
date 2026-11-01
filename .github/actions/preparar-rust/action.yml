@@ -15,13 +15,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: dtolnay/rust-toolchain@stable
+    # SHA de la rama `stable` (su toolchain por defecto es `stable`: siempre el Rust estable actual). Dependabot no
+    # la actualiza (ver dependabot.yml); para refrescarla: gh api repos/dtolnay/rust-toolchain/branches/stable
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       with:
         components: ${{ inputs.componentes }}
         targets: ${{ inputs.objetivos }}
     # Una caché por perfil, compartida por todos los workflows del mismo SO y guardada solo desde main:
     # los PR las leen y no las llenan.
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       with:
         workspaces: src-tauri
         shared-key: ${{ inputs.cache }}

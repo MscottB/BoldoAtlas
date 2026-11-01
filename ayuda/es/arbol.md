@@ -174,10 +174,10 @@ Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un 
 
 La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las cifras y las etiquetas. Lo demás está en **Avanzado**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes. **Eliminar unidad** va al pie, aparte. Reúne:
 
-- **Tipo** y **nombre**, a la vista, y **descripción**, en **Avanzado**. Se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo).
+- **Tipo** y **nombre**, a la vista, y **descripción**, en **Avanzado**. El nombre y la descripción se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo). El **tipo** se elige de la lista de tipos de unidad, igual que en las fichas: escribe para filtrar y, si no existe, **Agregar «texto» a la lista** lo crea y lo deja elegido, sin ir a los mantenedores.
 - **Superior** (en **Avanzado**): un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
 - **Marca** (en **Avanzado**): un color y un código de hasta 4 caracteres, que se ven al elegir «Colorear por» en **Personalizar**. **Quitar marca** borra ambos.
-- **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.
+- **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Con **Nuevo puesto…**, al final de la lista, se abre el puesto nuevo: eliges su cargo, pulsas **Crear puesto** y queda como jefatura de la unidad. Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.
 - La **dotación** directa (puestos con titular en la propia unidad), la total (con toda la rama) y las **vacantes** de la rama.
 - **Etiquetas**: quita una con la X, agrega una existente o elige **Nueva etiqueta…** para crearla con su color. Si el nombre ya existe, se usa esa etiqueta en vez de duplicarla.
 - **Conexiones laterales** (en **Avanzado**): escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles.

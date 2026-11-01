@@ -153,6 +153,17 @@
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
     }
+  /* El tema también en CSS (useTema lo repite inline): controles nativos, barras de desplazamiento y selector de fecha oscuros. */
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+  /*
+   * Lista desplegable de los <select> nativos. El campo es translúcido en oscuro (dark:bg-input/30) y el popup de WebView2 no
+   * hereda ese fondo: salía blanco con el texto claro del tema. Las opciones llevan fondo y texto opacos de los tokens del popover.
+   */
+  select option, select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    }
 }
 /* Texto de las páginas de Ayuda (Markdown renderizado). */
 .ayuda h1 { @apply mb-4 text-2xl font-semibold; }

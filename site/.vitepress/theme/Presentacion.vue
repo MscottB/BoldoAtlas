@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { withBase } from "vitepress";
 
 // Portada bajo el hero: beneficios, funciones con su captura, comparación, confianza, preguntas y llamada a descargar.
-// Todo lo que dice debe ser cierto en la versión actual (alfa); lo que aún no existe va solo en «Próximamente».
+// Todo lo que dice debe ser cierto en la versión actual (alfa).
 const props = defineProps<{ lang: "es" | "en" }>();
 
 const REPO = "https://github.com/MscottB/BoldoAtlas";
@@ -310,8 +310,9 @@ const TEXTOS = {
           r: "Sí, está pensada para eso. Se probó con 2.000 unidades, 3.000 puestos y 10.000 personas: las ramas se pliegan, el directorio dibuja solo las filas a la vista y la búsqueda responde en una fracción de segundo.",
         },
         {
-          p: "¿Está terminada?",
-          r: "Es una versión alfa: lo que muestra esta página ya funciona. Próximamente: procesos (SIPOC) y actividades (matriz RACI), indicadores, escenarios, exportar a PDF, Excel e imágenes, carga desde Excel y archivos .boldo cifrados para compartir. Mientras no existan, no aparecen en la app.",
+          p: "¿Es una versión final?",
+          r: "No: es una versión de prueba (alfa). Lo que muestra esta página ya funciona; si algo falla, cuéntalo en GitHub.",
+          enlace: { texto: "Avisar de un problema", href: `${REPO}/issues` },
         },
       ],
     },
@@ -586,8 +587,9 @@ const TEXTOS = {
           r: "Yes, it is built for them. It was tested with 2,000 units, 3,000 positions and 10,000 people: branches fold away, the directory draws only the rows in view and search answers in a fraction of a second.",
         },
         {
-          p: "Is it finished?",
-          r: "It is an alpha version: everything on this page already works. Coming soon: processes (SIPOC) and activities (RACI matrix), indicators, scenarios, export to PDF, Excel and images, loading from Excel and encrypted .boldo files for sharing. Until they exist, they don't appear in the app.",
+          p: "Is it a final version?",
+          r: "No: it is a test (alpha) version. Everything on this page already works; if something fails, tell us on GitHub.",
+          enlace: { texto: "Report a problem", href: `${REPO}/issues` },
         },
       ],
     },

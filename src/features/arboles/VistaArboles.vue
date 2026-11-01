@@ -10,7 +10,7 @@ import type { Unidad } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { clicNuevaPestana } from "@/features/pestanas/usePestanas";
 import { dotacionPorUnidad, ruta, rutaTexto, tipoHijo } from "@/features/arbol/jerarquia";
-import { claseSelect, cn } from "@/lib/utils";
+import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -101,11 +101,15 @@ async function renombrar(id: string) {
         :placeholder="t('arboles.nombreArbol')"
         autofocus
       />
-      <select v-model="tipoNuevo" :class="cn(claseSelect, 'h-7')" :aria-label="t('arboles.tipoArbol')">
-        <option v-for="tipo in org.activos('tipos_unidad')" :key="tipo.id" :value="tipo.id">
-          {{ tipo.nombre }}
-        </option>
-      </select>
+      <div class="w-48">
+        <SelectorCatalogo
+          v-model="tipoNuevo"
+          tabla="tipos_unidad"
+          requerido
+          class="h-7"
+          :aria-label="t('arboles.tipoArbol')"
+        />
+      </div>
       <Button type="submit" size="sm" :disabled="!nombreNuevo.trim() || !tipoNuevo">{{
         t("arboles.crear")
       }}</Button>

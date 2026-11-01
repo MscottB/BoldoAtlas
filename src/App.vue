@@ -38,7 +38,7 @@ import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
 import { ID_AREA, clicNuevaPestana, idPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
-// Sin `to`, la entrada aún no existe: se muestra deshabilitada con el aviso de la fase en que llega.
+// Sin `to`, la entrada aún no existe: solo con MOSTRAR_PROXIMAMENTE se muestra, deshabilitada y con el aviso de la fase en que llega.
 // `etiqueta` y `aviso` son claves de i18n. `contador`, si da más de 0, se muestra como insignia.
 interface Entrada {
   to?: string;

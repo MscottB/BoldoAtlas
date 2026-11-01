@@ -330,7 +330,12 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => (ultimoBorrado.value = { tipo: "trabajador", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
 
-  const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0]) => escribir(() => P.crearPuesto(datos));
+  /** `comoJefatura`: el puesto nuevo queda de una vez como jefatura de su unidad (mismo lote: o se hace todo o nada). */
+  const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0], comoJefatura = false) =>
+    escribir(() => {
+      const p = P.crearPuesto(datos);
+      return { id: p.id, sentencias: comoJefatura ? [...p.sentencias, ...U.asignarJefe(datos.unidad_id, p.id)] : p.sentencias };
+    });
   const editarPuesto = (id: string, cambios: Parameters<typeof P.editarPuesto>[1]) =>
     escribir(() => P.editarPuesto(id, cambios));
   const eliminarPuesto = (id: string) =>

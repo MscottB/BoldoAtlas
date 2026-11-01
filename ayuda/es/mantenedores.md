@@ -26,6 +26,8 @@ Los **mantenedores** son las listas controladas que usan las fichas y el árbol.
 | Tipos de unidad | Cada unidad del árbol | Unidades |
 | Leyendas | Color de los puestos | Puestos |
 
+No hace falta venir aquí para sumar un valor: en las fichas, los puestos, las unidades, las leyendas de un puesto y las etiquetas, la propia lista ofrece **Agregar** (o **Nueva…**) al final y deja el valor nuevo elegido. Aquí se ordenan, renombran y desactivan.
+
 En cada lista puedes:
 
 Para agregar un valor a una lista:

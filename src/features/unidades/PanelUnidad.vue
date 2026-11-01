@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import type { Unidad } from "@/db/tipos";
 import { dotacion, jefeVisible } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
@@ -27,6 +28,7 @@ import BloquePlegable from "@/components/BloquePlegable.vue";
 import EditorConexiones from "./EditorConexiones.vue";
 import EditorEtiquetas from "./EditorEtiquetas.vue";
 import PersonasUnidad from "./PersonasUnidad.vue";
+import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 import { decisionEliminar, excluidasComoSuperior, filasDePuestos, migas, validarMarca } from "./panel";
 import { claseSelect } from "@/lib/utils";
@@ -88,13 +90,9 @@ watch(
 );
 
 const migasRuta = computed(() => migas(org.enFecha.unidades, org.catalogos.tipos_unidad, props.unidad.id));
-// El tipo actual se ofrece aunque lo hayan desactivado.
-const tipos = computed(() => {
-  const activos = org.activos("tipos_unidad");
-  const actual = org.catalogos.tipos_unidad.find((x) => x.id === props.unidad.tipo_id);
-  return actual && !activos.includes(actual) ? [...activos, actual] : activos;
-});
-const tipoInactivo = (id: string) => !org.activos("tipos_unidad").some((x) => x.id === id);
+async function cambiarTipo(id: string | null) {
+  if (id && id !== props.unidad.tipo_id) avisar(await org.editarUnidad(props.unidad.id, { tipo_id: id }));
+}
 
 async function guardarNombre() {
   const n = nombre.value.trim();
@@ -161,6 +159,14 @@ const personal = computed(() =>
   ),
 );
 const textoPuesto = (f: (typeof filas.value)[number]) => `${f.cargo} · ${f.titular ?? t("puesto.vacante")}`;
+const NUEVO_PUESTO = "__nuevo__";
+async function cambiarJefatura(e: Event) {
+  const el = e.target as HTMLSelectElement;
+  if (el.value !== NUEVO_PUESTO) return avisar(await org.asignarJefe(props.unidad.id, el.value || null));
+  // «Nuevo puesto…» no es un valor: el select vuelve a la jefatura actual y se abre el diálogo del puesto, que lo elige al guardar.
+  el.value = props.unidad.jefe_puesto_id ?? "";
+  puesto.nuevo(props.unidad.id, true);
+}
 
 // Guardar en Árboles: una raíz ya es un árbol en Árboles, solo se guardan ramas.
 const guardable = computed(() => props.unidad.parent_id !== null);
@@ -242,7 +248,7 @@ async function eliminar() {
         <TabsTrigger value="resumen">{{ t("unidad.resumen") }}</TabsTrigger>
         <TabsTrigger value="puestos">{{ t("puesto.puestos", { n: filas.length }) }}</TabsTrigger>
         <TabsTrigger value="personas">{{ t("personas.pestana") }}</TabsTrigger>
-        <TabsTrigger value="procesos">{{ t("unidad.procesos") }}</TabsTrigger>
+        <TabsTrigger v-if="MOSTRAR_PROXIMAMENTE" value="procesos">{{ t("unidad.procesos") }}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="resumen">
@@ -250,21 +256,14 @@ async function eliminar() {
         <fieldset :key="unidad.id" :disabled="soloLectura" class="grid min-w-0 gap-4 pt-2">
           <div class="grid gap-1.5">
             <Label :for="`${uid}-tipo`">{{ t("unidad.tipo") }}</Label>
-            <select
+            <!-- Combobox sobre el mantenedor: también agrega un tipo nuevo sin ir a Mantenedores. -->
+            <SelectorCatalogo
               :id="`${uid}-tipo`"
-              :class="claseSelect"
-              :value="unidad.tipo_id"
-              @change="
-                async (e) =>
-                  avisar(
-                    await org.editarUnidad(unidad.id, { tipo_id: (e.target as HTMLSelectElement).value }),
-                  )
-              "
-            >
-              <option v-for="x in tipos" :key="x.id" :value="x.id">
-                {{ tipoInactivo(x.id) ? `${x.nombre} ${t("ficha.selector.inactivo")}` : x.nombre }}
-              </option>
-            </select>
+              tabla="tipos_unidad"
+              requerido
+              :model-value="unidad.tipo_id"
+              @update:model-value="cambiarTipo"
+            />
           </div>
           <div class="grid gap-1.5">
             <Label :for="`${uid}-nombre`">{{ t("arbol.nombre") }}</Label>
@@ -276,17 +275,19 @@ async function eliminar() {
               :id="`${uid}-jefatura`"
               :class="claseSelect"
               :value="unidad.jefe_puesto_id ?? ''"
-              @change="
-                async (e) =>
-                  avisar(await org.asignarJefe(unidad.id, (e.target as HTMLSelectElement).value || null))
-              "
+              @change="cambiarJefatura"
             >
               <option value="">{{ t("arbol.sinJefatura") }}</option>
               <option v-for="f in filas" :key="f.id" :value="f.id">{{ textoPuesto(f) }}</option>
+              <option v-if="!soloLectura" :value="NUEVO_PUESTO">{{ t("unidad.nuevoPuestoJefatura") }}</option>
             </select>
             <p v-if="jefe" class="text-sm">{{ jefe }}</p>
             <p v-else class="text-sm text-amber-800 dark:text-amber-400">
-              {{ filas.length ? t("arbol.sinJefatura") : t("unidad.sinPuestosJefatura") }}
+              {{
+                filas.length
+                  ? t("arbol.sinJefatura")
+                  : t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura")
+              }}
             </p>
           </div>
 
@@ -459,7 +460,7 @@ async function eliminar() {
         <PersonasUnidad :unidad="unidad" />
       </TabsContent>
 
-      <TabsContent value="procesos">
+      <TabsContent v-if="MOSTRAR_PROXIMAMENTE" value="procesos">
         <p class="pt-4 text-sm text-muted-foreground">{{ t("unidad.procesosVacio") }}</p>
       </TabsContent>
     </Tabs>

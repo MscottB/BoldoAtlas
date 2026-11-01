@@ -39,10 +39,9 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 flate2 = "1"
 futures-util = { version = "0.3", default-features = false }
 
-# Linux: probar si está libayatana-appindicator3 antes de crear la bandeja (actualizar::bandeja_disponible);
-# misma versión que ya usa libappindicator-sys
+# Linux: probar si está libayatana-appindicator3 antes de crear la bandeja (actualizar::bandeja_disponible)
 [target.'cfg(target_os = "linux")'.dependencies]
-libloading = "0.7"
+libloading = "0.9"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

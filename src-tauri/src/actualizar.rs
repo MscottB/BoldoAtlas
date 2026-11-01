@@ -288,7 +288,7 @@ fn appindicator() -> bool {
     ]
     .iter()
     // SAFETY: son bibliotecas del sistema que tray-icon cargaría igual; solo se abren y se sueltan
-    .any(|l| unsafe { libloading::Library::new(l) }.is_ok())
+    .any(|l| unsafe { libloading::Library::new(*l) }.is_ok())
 }
 
 #[cfg(not(target_os = "linux"))]
