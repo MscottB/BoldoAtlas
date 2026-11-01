@@ -22,11 +22,10 @@ funcionar sin servidor ni conexiones a otras plataformas, y poder intercambiar d
 **Incluido en v1:** todo lo descrito en las secciones 3–15.
 
 **Fuera de v1 (explícito):**
-- Cualquier integración con otras plataformas (RR.HH., SSO, Slack/Teams, enlaces web para compartir).
+- Cualquier integración con otras plataformas (RR.HH., SSO, Slack/Teams, enlaces web para compartir). El visor HTML (§11) es un archivo, no un enlace, y leer archivos exportados por otros sistemas (§10) no conecta con ellos.
 - Sincronización en vivo / multiusuario simultáneo / servidor.
-- Usuarios, contraseñas y permisos dentro de la app.
+- Usuarios y permisos dentro de la app. (La contraseña de la base y el candado por árbol sí están previstos: plan, Tasks 19d y 19f.)
 - Funciones "premium" del modelo open core (solo se elige la licencia ahora).
-- Historial de cambios (auditoría) y deshacer/rehacer general → candidatos a v2. (v1 sí tiene "Deshacer" al eliminar; ver sección 7.)
 - Campos personalizados definidos por el usuario.
 - Instalar actualizaciones sin preguntar: la app solo **consulta** si hay versión nueva (a pedido o cada cierto tiempo según Configuración, ver §12 "Actualizar") y siempre pide confirmación antes de descargar e instalar.
 - Envío por correo desde la app (se guarda el archivo y se ofrece "Abrir carpeta").
@@ -89,6 +88,8 @@ detectar el modo portable, resolver rutas (sección 12) y un puente mínimo con 
 | `data_revision` | entero; +1 en cada transacción de escritura |
 | `app_version_ultima` | versión de la app que escribió por última vez |
 | `logo_png` | logo de la organización en base64 (viaja con la base) |
+| `costos_activos` | `1` si la organización usa costos por puesto; sin la clave, los costos no se muestran en ninguna parte (§5 "Costo por puesto") |
+| `moneda` | código de la moneda de los costos (`CLP` por defecto) |
 
 La versión de esquema la lleva `PRAGMA user_version`.
 
@@ -99,7 +100,7 @@ La versión de esquema la lleva `PRAGMA user_version`.
 | `nombre` | TEXT | NOT NULL, CHECK largo > 0 |
 | `descripcion` | TEXT | NULL |
 | `parent_id` | TEXT | NULL → `unidades.id`; NULL = raíz (permite árboles sueltos) |
-| `jefe_id` | TEXT | NULL → `trabajadores.id` (la jefatura de la unidad) |
+| `jefe_puesto_id` | TEXT | NULL → `puestos.id` (la jefatura de la unidad; ver "Puestos y asignaciones") |
 | `orden` | INTEGER | NOT NULL DEFAULT 0 |
 
 Profundidad libre. La ausencia de ciclos se valida en la capa de datos antes de guardar (SQLite no puede expresarlo con CHECK). El jefe puede pertenecer a la propia unidad o a la superior.
@@ -172,7 +173,7 @@ Una vacante es una fila con `estado = 'vacante'`: un cargo sin persona asignada.
 
 ### Puestos y asignaciones (pedido del autor; reemplaza el modelo "vacante = trabajador sin nombre")
 El **puesto** (un cargo en una unidad) y la **persona** son cosas distintas, para registrar reemplazos sin pisar al titular y conservar el historial de cada puesto.
-- `puestos`: `unidad_id` NOT NULL → `unidades.id`, `cargo_id` NOT NULL → `cargos.id`, `descripcion` NULL, `orden` + comunes.
+- `puestos`: `unidad_id` NOT NULL → `unidades.id`, `cargo_id` NOT NULL → `cargos.id`, `descripcion` NULL, `orden` + comunes. Con los costos activos, también `costo_mensual` (ver "Costo por puesto").
 - `asignaciones`: `puesto_id` NOT NULL → `puestos.id`, `trabajador_id` NOT NULL → `trabajadores.id`, `tipo` NOT NULL CHECK in ('titular','reemplazo'), `desde` TEXT NOT NULL (fecha `AAAA-MM-DD`), `hasta` TEXT NULL (NULL = vigente; CHECK `hasta IS NULL OR hasta >= desde`), `motivo` NULL + comunes. Únicos parciales: un **titular vigente** por puesto y un **reemplazo vigente** por puesto (`WHERE hasta IS NULL AND deleted_at IS NULL`, por tipo).
 - `trabajadores` pasa a ser solo la **persona**: `nombre` NOT NULL, `correo`, `telefono`, `tipo_contrato_id`, `sede_id`, `jornada_id`, `foto_png`, `notas` (sin `estado`, `cargo_id` ni `unidad_id`).
 - **Vacante** = puesto sin titular vigente; si tiene reemplazo vigente se muestra "Vacante · cubre <persona> (reemplazo)". Asignar un titular nuevo cierra la asignación titular anterior (`hasta` = fecha), nunca la borra: así queda el historial.
@@ -180,6 +181,12 @@ El **puesto** (un cargo en una unidad) y la **persona** son cosas distintas, par
 - **Dotación:** puestos con titular vigente (directa y de la rama); vacantes = puestos sin titular vigente. Un reemplazo no suma dotación.
 - La unidad, gerencia y área de una persona se derivan de sus asignaciones vigentes (puede tener más de una: titular en un puesto y reemplazo en otro).
 - Ficha de la persona: sus puestos vigentes y su historial. Puesto: titular, reemplazo vigente e historial completo, con acciones "Asignar titular", "Registrar reemplazo" y "Terminar asignación" (fecha y motivo).
+
+### Costo por puesto (pedido del autor, 2026-11-01)
+Para que un escenario muestre cuánto cuesta una reorganización. Es opcional y va apagado: se activa en Configuración.
+- `puestos.costo_mensual` INTEGER NULL, CHECK `>= 0`: costo estimado del puesto en unidades enteras de `meta.moneda`. Es una cifra de planificación, no un registro de remuneraciones: va en el puesto y no en la persona, y un reemplazo no lo cambia.
+- **Totales:** costo de la unidad y de su rama = suma de sus puestos, con las vacantes aparte. Un puesto sin costo no cuenta como 0: los totales avisan "N puestos sin costo".
+- **Dato sensible:** en un puesto con una sola persona, el costo puede revelar su sueldo. No aparece en la tarjeta del árbol; en Excel sale solo si se marca (§11) y nunca va en el visor HTML. Hasta que exista la base cifrada (Task 19d) queda sin cifrar en el equipo, y Configuración lo advierte al activarlo.
 
 ### Preferencias por PC (no van en la BD, no viajan)
 Tema, color de acento, columnas elegidas para Excel, filtros del directorio, última carpeta usada, lista de escenarios recientes. En `localStorage` del webview; si la lectura falla se usan valores por defecto.
@@ -252,6 +259,15 @@ crear organización vacía · cargar desde Excel (con enlace a la plantilla) · 
 - Progreso visible en tareas largas (PDF, carga masiva, fusión) con opción de cancelar antes de escribir.
 - Mensajes de error en lenguaje claro, indicando qué pasó y qué hacer; nunca códigos sueltos.
 
+### Al cerrar la ventana (pedido del autor, 2026-11-01)
+Reemplaza la regla anterior "cerrar la ventana siempre cierra la app".
+- El diálogo "¿Seguro que quieres salir?" ofrece tres salidas: **Cancelar**, **Dejar en la bandeja** (oculta la ventana y la app sigue abierta con su icono, disponible al instante) y **Cerrar la app**, con la casilla **No volver a preguntar**, que recuerda la elección.
+- En Configuración: "Al cerrar la ventana": Preguntar (por defecto) | Dejar en la bandeja | Cerrar la app. Por PC.
+- **Trabajo en curso:** si se está generando un archivo, importando o respaldando, el diálogo dice qué trabajo es y que cerrar lo interrumpirá, aunque se haya marcado "No volver a preguntar". Dejar en la bandeja no lo interrumpe, y al terminar avisa con el icono de la bandeja o una notificación del sistema. Cerrar con un trabajo en curso lo cancela y borra su archivo parcial.
+- Sin bandeja disponible (Linux sin appindicator) no se ofrece "Dejar en la bandeja", y una preferencia guardada con esa opción vale como "Preguntar".
+- **Salir de verdad:** "Salir" de la bandeja y del menú de la app siempre cierra la app, con la misma pregunta si hay un trabajo en curso. Dejar en la bandeja no aplica a actualizar, restaurar un respaldo, el instalador ni el apagado del sistema, que cierran como hasta ahora.
+- Con la app en la bandeja, volver a abrirla (acceso directo o clic en el icono) muestra la ventana sin arrancar otra copia.
+
 ### Accesibilidad y aspecto
 - Contraste mínimo WCAG AA en ambos temas; si el color de acento elegido no alcanza contraste sobre el fondo, el texto encima del acento cambia automáticamente a blanco o negro.
 - Foco visible y toda acción alcanzable por teclado (incluido el lienzo: flechas recorren nodos).
@@ -279,6 +295,7 @@ Aristas jerárquicas sólidas; conexiones laterales punteadas con etiqueta.
 - Dirección: vertical (arriba→abajo) u horizontal (izquierda→derecha); densidad: normal o compacta (menos separación y tarjetas de una línea, para árboles gigantes).
 - Tarjeta: qué datos muestra (tipo, jefe, foto del jefe, dotación, vacantes, etiquetas, ruta por tipo, puestos) y estilo de líneas (rectas en ángulo o curvas).
 - **Vistas guardadas:** una combinación de dirección, densidad, tarjeta, "Colorear por", filtros de resaltado y ramas plegadas se guarda con nombre por árbol (raíz o subárbol guardado) y se aplica con un clic. Viajan con la base (tabla `vistas`: `arbol_id` NULL = árbol completo, `nombre`, `config` JSON validado al leer + comunes). Las exportaciones de la Fase 4 ofrecen elegir una vista guardada.
+- **"Colorear por" con escala (pedido del autor, 2026-11-01):** además de las marcas y la leyenda, antigüedad del titular en el puesto (desde `asignaciones.desde`; las vacantes, aparte) y personas a cargo, con la leyenda de rangos a la vista y sin depender solo del color (el valor también se lee en la tarjeta).
 
 **Selección múltiple (pedido del autor):** `Ctrl`/`Shift`+clic o recuadro con arrastre; mover las seleccionadas bajo otro superior en un lote (validando ciclos), plegarlas, etiquetarlas o eliminarlas (un solo "Deshacer"). **Duplicar rama:** copia una unidad con sus descendientes, etiquetas y puestos (sin asignaciones: las copias nacen vacantes), con nombre "<nombre> (copia)".
 
@@ -304,12 +321,13 @@ Calculados al vuelo con funciones puras sobre los datos (sin tablas extra):
 
 | Indicador | Definición |
 |---|---|
-| Dotación directa | trabajadores activos con `unidad_id` = la unidad |
+| Dotación directa | puestos de la unidad con titular vigente (§5; un reemplazo no suma) |
 | Dotación total | dotación directa de la unidad + toda su rama |
-| Vacantes (directas / rama) | igual que dotación, con `estado = 'vacante'` |
-| Personas a cargo del jefe | trabajadores activos de la unidad (menos el propio jefe) + jefes de sus subunidades directas |
+| Vacantes (directas / rama) | puestos sin titular vigente |
+| Personas a cargo del jefe | titulares vigentes de la unidad (menos el propio jefe) + jefes de sus subunidades directas |
 | Procesos / actividades | conteos directos y de rama |
 | Cobertura RACI | % de actividades con al menos un R y exactamente un A |
+| Costo (directo / rama), con costos activos | suma de `puestos.costo_mensual`, con las vacantes aparte y el aviso de puestos sin costo (§5) |
 
 Vista Indicadores: tarjetas con totales de la organización, tabla por unidad ordenable, y listas "unidades sin jefatura", "procesos sin actividades", "actividades sin responsable". Clic en cualquier fila lleva a la unidad en el árbol.
 
@@ -317,6 +335,8 @@ Vista Indicadores: tarjetas con totales de la organización, tabla por unidad or
 - **Guardar como escenario:** copia la base actual con `VACUUM INTO` a `escenarios/<nombre>.db` (archivo interno sin cifrar: no sale del equipo), con nuevo `db_id`, `escenario_nombre` y `escenario_origen_id`. Para compartir un escenario se exporta como cualquier base (`.boldo` cifrado).
 - **Abrir escenario:** cambia la base activa; la barra superior muestra la insignia del escenario y "Volver a la base principal".
 - **Comparar:** elige dos bases (p. ej. principal vs escenario) y muestra el resultado de `diff.ts` en solo lectura: unidades nuevas, eliminadas, movidas (cambio de `parent_id`), cambios de jefatura, personas reasignadas, y diferencia de indicadores (dotación, vacantes) por unidad. Exportable a Excel. Modo "lado a lado" (pedido del autor): los dos árboles en paralelo con encuadre sincronizado y las diferencias resaltadas.
+- **Costo de la reorganización (pedido del autor, 2026-11-01):** con costos activos, la comparación agrega la diferencia de costo por unidad y en total, y avisa si alguna de las dos bases tiene puestos sin costo, porque entonces la diferencia es parcial.
+- **Notas por cambio (pedido del autor, 2026-11-01):** en un escenario se puede explicar el porqué de un cambio en una unidad o un puesto (tabla `escenario_notas`: `entidad`, `entidad_id`, `texto` + comunes, solo con contenido en escenarios). Salen junto al cambio en la comparación y en su Excel.
 - Pasar un escenario a la base principal = importar con "Reemplazar todo" o "Fusionar" (sección 9), sin flujo nuevo.
 
 ## 9. Exportar e importar `.boldo`
@@ -359,17 +379,21 @@ Limitación aceptada: sin una base común de referencia, "Diferente" no distingu
 
 ## 10. Carga masiva desde Excel/CSV
 
-- **Plantilla descargable** `Plantilla_BoldoAtlas.xlsx` con hojas `Unidades` y `Trabajadores`, encabezados fijos, validación de listas (tipo, estado) y 3 filas de ejemplo. Una hoja `Instrucciones` explica cada columna.
-- **Unidades:** columnas `tipo, nombre, unidad_superior, jefe_correo, descripcion, etiquetas`. La unidad superior se escribe como ruta con `›` o `/` (ej. `Gerencia de Operaciones / Logística`); las rutas inexistentes se crean en orden.
-- **Trabajadores:** columnas `estado, nombre, correo, telefono, cargo, tipo_contrato, sede, jornada, unidad, notas`. Cargo, tipo de contrato, sede y jornada se escriben por nombre; los que no existan en su mantenedor aparecen en la vista previa como "valores nuevos" y se crean solo al confirmar. `unidad` se escribe como ruta. Si el correo ya existe en la base → se **actualiza** esa persona; si no → se crea.
+- **Plantilla descargable** `Plantilla_BoldoAtlas.xlsx` con hojas `Unidades`, `Trabajadores` y `Puestos`, encabezados fijos, validación de listas (tipo) y 3 filas de ejemplo. Una hoja `Instrucciones` explica cada columna.
+- **Unidades:** columnas `tipo, nombre, unidad_superior, jefe_correo, descripcion, etiquetas`. La unidad superior se escribe como ruta con `›` o `/` (ej. `Gerencia de Operaciones / Logística`); las rutas inexistentes se crean en orden. `jefe_correo` marca como jefatura (`jefe_puesto_id`) el puesto de esa persona en la unidad; si no tiene uno ahí, la vista previa da un error de fila.
+- **Trabajadores:** una fila por persona, con columnas `nombre, correo, telefono, tipo_contrato, sede, jornada, notas`. Tipo de contrato, sede y jornada se escriben por nombre; los que no existan en su mantenedor aparecen en la vista previa como "valores nuevos" y se crean solo al confirmar. Si el correo ya existe en la base → se **actualiza** esa persona; si no → se crea. Sin correo siempre se crea, y la vista previa lo avisa si ya hay alguien con ese nombre.
+- **Puestos:** una fila por puesto (§5 "Puestos y asignaciones"), con columnas `unidad, cargo, descripcion, titular, reemplazo, desde`. `unidad` se escribe como ruta y `cargo` por nombre, igual que los mantenedores. `titular` y `reemplazo` son el correo de la persona o su nombre si es único en el archivo; un puesto sin titular es una vacante. Las asignaciones nuevas empiezan en `desde` (hoy si va vacío). Si el puesto ya tiene otro titular, se cierra la asignación anterior, nunca se borra, y la vista previa lo muestra.
 - Se aceptan `.xlsx` y `.csv` (UTF-8, separador `,` o `;` detectado). En CSV se carga una hoja por archivo y se elige cuál es.
-- **Vista previa obligatoria:** resumen (unidades a crear, personas a crear/actualizar) y tabla de errores por fila con hoja, fila, columna y mensaje (p. ej. "tipo 'gerncia' no válido", "unidad 'X' no existe y no tiene ruta completa", "correo repetido en el archivo"). Con errores no se puede aplicar; se puede descargar el archivo de errores para corregir.
+- **Vista previa obligatoria:** resumen (unidades a crear, personas a crear/actualizar, puestos a crear, vacantes y titulares que cambian) y tabla de errores por fila con hoja, fila, columna y mensaje (p. ej. "tipo 'gerncia' no válido", "unidad 'X' no existe y no tiene ruta completa", "correo repetido en el archivo"). Con errores no se puede aplicar; se puede descargar el archivo de errores para corregir.
 - Al aplicar: respaldo automático, una sola transacción, `data_revision` +1.
 - Validación en función pura `src/features/carga/validar.ts`.
+- **Archivos de otros sistemas (pedido del autor, 2026-11-01):** la carga reconoce por sus encabezados los Excel que exportan sistemas de RR.HH. como Buk y Talana, y propone cómo asignar sus columnas a las de `Trabajadores`; se puede corregir a mano y sigue pasando por la misma vista previa. Es de una sola vía y sin API. Antes de implementarlo hay que conseguir archivos reales: sus formatos no están verificados.
 
-## 11. Capturas, PDF y Excel
+## 11. Capturas, PDF, Excel y visor
 
-Todas las exportaciones comparten un **selector de alcance**: toda la organización / una gerencia / una rama (unidad + descendientes). Tras guardar se ofrece "Abrir carpeta".
+Todas las exportaciones comparten un **selector de alcance**: toda la organización / una gerencia / una rama (unidad + descendientes). Tras guardar se ofrece "Abrir carpeta". Respetan la fecha elegida en "Organigrama a una fecha" y el escenario abierto, y lo dicen en el archivo. Los registros eliminados no salen. 
+
+**Aceptación obligatoria (pedido del autor, 2026-11-01).** Salvo el `.boldo`, los archivos exportados no van cifrados. Antes de generar un Excel, un PDF, una captura o un visor HTML, un diálogo avisa que la información quedará sin cifrar y que es responsabilidad de quien genera el archivo, y hay que aceptarlo para continuar. Se pide en cada exportación, sin opción de no volver a preguntar. Sin aceptar no se genera nada.
 
 ### Capturas (SVG/PNG)
 **Renderizador propio de SVG** (`src/features/export/treeSvg.ts`): a partir de las posiciones de elkjs dibuja tarjetas (nombre, jefe, dotación, etiquetas), aristas y conexiones con la paleta de exportación (siempre fondo claro), más logo, título y fecha. Se usa para SVG, PNG y PDF, así todo se ve igual y el PDF queda vectorial. (No se usa `html-to-image`: genera `foreignObject`, que pdfmake no renderiza.)
@@ -385,21 +409,42 @@ Opciones: alcance + secciones a incluir (diagrama, indicadores, procesos con SIP
 5. Una sección por unidad: nombre destacado, ruta Gerencia › Área › Subárea, jefe, indicadores de la unidad, diagrama de su rama, procesos (atributos + SIPOC en tabla de 4 columnas), actividades con su RACI, y personas.
 6. Pie en cada página: logo pequeño, página N de M, versiones.
 
+**Organigramas grandes (pedido del autor, 2026-11-01):** tamaño de hoja (carta, oficio, A4, A3 y A2) y orientación; el diagrama se puede ajustar a una página o repartir en varias, con marcas de continuación que indican en qué página sigue cada rama. Imprimir solo una rama ya lo cubre el selector de alcance. El mismo diagrama se puede exportar a **PPTX** (una diapositiva por rama), en una entrega posterior.
+
+**Manual de organización y funciones (pedido del autor, 2026-11-01):** una plantilla de este PDF con todas las secciones activas y, en cada unidad, sus puestos con su `descripcion`, titular y vacantes. No agrega datos nuevos: ordena en un documento formal lo que ya está en la base.
+
 ### Excel (ExcelJS)
-Opciones: alcance + qué hojas incluir + qué columnas de cada hoja (casillas, todas marcadas por defecto; la selección se recuerda por PC).
+Hay dos formas de exportar los registros (pedido del autor, 2026-11-01):
+- **Exportación completa**, desde el menú: las hojas de la tabla de abajo.
+- **"Exportar esta lista a Excel"**, en cada lista de la app (Directorio, Revisión, Mantenedores, personas de una unidad, y Procesos, Indicadores e Historial cuando existan): exporta lo que se ve, con sus filtros, orden y columnas, más la hoja Información con los filtros aplicados.
+
+Opciones de la exportación completa: alcance + qué hojas incluir + qué columnas de cada hoja (casillas, todas marcadas por defecto salvo notas y costos; la selección se recuerda por PC).
 
 | Hoja | Columnas disponibles |
 |---|---|
 | Información | organización, escenario, fecha de generación, versión app, versión esquema, revisión, `db_id`, alcance elegido (siempre incluida) |
 | Unidades | tipo, nombre, descripción, unidad superior, ruta completa, jefe, correo del jefe, etiquetas, dotación directa, dotación total, vacantes, nº procesos |
+| Puestos | unidad, ruta completa, cargo, descripción, leyenda, titular, reemplazo vigente, vacante (sí/no), días vacante, costo mensual (con costos activos) |
+| Asignaciones | persona, correo, cargo, unidad, tipo (titular/reemplazo), desde, hasta, motivo |
 | Conexiones | origen, destino, etiqueta |
 | Procesos | unidad, ruta, nombre, descripción, frecuencia, criticidad, estado, documento, proveedores, entradas, salidas, clientes, nº actividades |
 | Actividades | unidad, proceso, nombre, descripción, responsables (R), aprobador (A), consultados (C), informados (I) |
 | Matriz RACI | filas = actividades (agrupadas por proceso), columnas = personas involucradas, celdas = R/A/C/I |
-| Trabajadores | estado, nombre, correo, teléfono, cargo, tipo de contrato, sede, jornada, gerencia, área, subárea, ruta completa, jefe, notas |
+| Trabajadores | nombre, correo, teléfono, tipo de contrato, sede, jornada, cargos vigentes, unidades vigentes, rutas completas, jefes, notas (una fila por persona; si tiene varios puestos vigentes, separados por ` · `) |
+| Mantenedores | catálogo (cargo, tipo de contrato, sede, jornada, tipo de unidad, etiqueta), nombre, usos |
 | Indicadores | una fila por unidad con todos los indicadores de la sección 8 |
 
-Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajustado, logo en la hoja Información. Los IDs internos no se exportan salvo que se marque la columna opcional "ID". Nombre: `Organizacion_AAAA-MM-DD_rN.xlsx`.
+Las hojas de procesos, actividades e indicadores se ofrecen cuando esas funciones existan. Las fotos no se exportan.
+
+Formato: encabezado con color de marca y fijo, autofiltro, ancho de columna ajustado, logo en la hoja Información. Las fechas y los números van como tales, para poder filtrarlos y sumarlos. **El texto siempre se escribe como texto, nunca como fórmula**: un nombre que empieza con `=`, `+`, `-` o `@` no se ejecuta al abrir el archivo. Los IDs internos no se exportan salvo que se marque la columna opcional "ID". Nombre: `Organizacion_AAAA-MM-DD_rN.xlsx`.
+
+### Visor HTML (pedido del autor, 2026-11-01)
+Para compartir el organigrama con quien no tiene la app, sin servidor: un solo archivo `.html` que se abre en cualquier navegador, con zoom, plegar ramas y búsqueda.
+- **Qué lleva:** alcance + vista guardada + campos elegidos. Por defecto: estructura, cargo y nombre del titular. Correo y teléfono se marcan a mano; notas, fotos y costos no se pueden incluir.
+- **Es una foto:** muestra su fecha de generación y no se actualiza. Hay que volver a exportarlo.
+- **Autónomo y seguro:** sin recursos externos ni conexiones (CSP que lo impide), y con los datos escapados, para que un nombre con `</script>` no ejecute nada al abrirlo.
+- **Accesible:** se recorre con teclado y las ramas también se pueden leer como lista.
+- Se dibuja con el mismo `treeSvg.ts` de las capturas, así se ve igual que el PDF.
 
 ## 12. Modo portable e instalador
 
