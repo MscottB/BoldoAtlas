@@ -21,6 +21,10 @@ describe("partirCoincidencia", () => {
     expect(partirCoincidencia("Ana Pérez", "perez")).toEqual(["Ana ", "Pérez", ""]);
     expect(partirCoincidencia("MECÁNICA norte", "canica")).toEqual(["ME", "CÁNICA", " norte"]);
   });
+  it("varios espacios seguidos cuentan como uno, como en el filtro", () => {
+    expect(partirCoincidencia("Ana  Pérez", "ana p")).toEqual(["", "Ana  P", "érez"]);
+    expect(partirCoincidencia("Ana  Pérez  Soto", "soto")).toEqual(["Ana  Pérez  ", "Soto", ""]);
+  });
   it("sin búsqueda o sin coincidencia, null", () => {
     expect(partirCoincidencia("Ana", "")).toBeNull();
     expect(partirCoincidencia("Ana", "zz")).toBeNull();

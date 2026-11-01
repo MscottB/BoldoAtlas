@@ -75,16 +75,26 @@ const resumen = computed(() => resumenPorCargo(alcance.value, org.enFecha.vigent
 // no con cada tecla: la búsqueda parte de las filas ya filtradas de la lista.
 const vista = ref(leerPreferencia<unknown>("personas:vista", "lista") === "arbol" ? "arbol" : "lista");
 watch(vista, (v) => guardarPreferencia("personas:vista", v));
-const arbol = computed(() =>
-  arbolDePersonas(
+const arbol = computed(() => {
+  const { unidades, puestos, vigentes, trabajadores, porId } = org.enFecha;
+  const cargos = org.catalogos.cargos;
+  const deJefatura = new Set(unidades.map((u) => u.jefe_puesto_id));
+  return arbolDePersonas(
     props.unidad,
-    conRama.value ? org.enFecha.unidades : [],
+    conRama.value ? unidades : [],
     alcance.value,
     filtrarPersonasUnidad(todas.value, "", orden.value),
-    org.enFecha.vigentes,
-    org.catalogos.cargos,
-  ),
-);
+    vigentes,
+    cargos,
+    personasDelAlcance(
+      puestos.filter((p) => deJefatura.has(p.id)),
+      vigentes,
+      trabajadores,
+      cargos,
+      porId,
+    ),
+  );
+});
 const coinciden = computed(() => new Set(filas.value.map((f) => f.clave)));
 const vistaArbol = useTemplateRef<InstanceType<typeof ArbolPersonas>>("vistaArbol");
 

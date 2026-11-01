@@ -16,7 +16,7 @@ export interface NodoArbol {
   personas: FilaPersonaUnidad[];
   vacantes: VacanteArbol[];
   hijos: NodoArbol[];
-  /** Filas de persona de toda la rama, jefes incluidos: cuenta como la lista (una persona con dos puestos, dos). */
+  /** Titulares de toda la rama: la misma cifra que la dotación de la tarjeta. Los reemplazos se ven, pero no suman. */
   total: number;
 }
 
@@ -25,7 +25,8 @@ export const claveUnidad = (id: string) => `u:${id}`;
 /**
  * El árbol de `raiz` en O(unidades + puestos + filas). `filas` son las de `personasDelAlcance`, ya en el orden pedido;
  * ese orden se conserva dentro de cada unidad. `unidades` son las que pueden colgar de la raíz: sin ellas (`[]`) queda
- * solo la raíz, como «Incluir subunidades» apagado.
+ * solo la raíz, como «Incluir subunidades» apagado. `jefaturas` son las filas de los puestos de jefatura: un puesto
+ * movido a otra unidad sigue siendo su jefatura (la de Resumen), aunque su fila no esté entre las de la unidad.
  */
 export function arbolDePersonas(
   raiz: Unidad,
@@ -34,8 +35,10 @@ export function arbolDePersonas(
   filas: FilaPersonaUnidad[],
   vigentes: Vigentes,
   cargos: ValorCatalogo[],
+  jefaturas: FilaPersonaUnidad[] = [],
 ): NodoArbol {
   const indice = indiceHijos(unidades);
+  const deJefatura = new Map(jefaturas.map((f) => [f.clave, f]));
   const nombreCargo = new Map(cargos.map((c) => [c.id, c.nombre]));
   const agrupar = <T>(grupos: Map<string, T[]>, id: string, x: T) => {
     const lista = grupos.get(id);
@@ -56,7 +59,9 @@ export function arbolDePersonas(
     vistos.add(unidad.id);
     const propias = gente.get(unidad.id) ?? [];
     const asignacion = jefeVisible(unidad, vigentes);
-    const jefe = (asignacion && propias.find((f) => f.clave === asignacion.id)) ?? null;
+    const jefe =
+      (asignacion && (propias.find((f) => f.clave === asignacion.id) ?? deJefatura.get(asignacion.id))) ??
+      null;
     const hijos = (indice.get(unidad.id) ?? []).filter((h) => !vistos.has(h.id)).map(armar);
     return {
       unidad,
@@ -64,7 +69,7 @@ export function arbolDePersonas(
       personas: jefe ? propias.filter((f) => f !== jefe) : propias,
       vacantes: (vacios.get(unidad.id) ?? []).sort((a, b) => collator.compare(a.cargo, b.cargo)),
       hijos,
-      total: hijos.reduce((suma, h) => suma + h.total, propias.length),
+      total: hijos.reduce((suma, h) => suma + h.total, propias.filter((f) => f.tipo === "titular").length),
     };
   };
   return armar(raiz);
@@ -163,15 +168,69 @@ export function idsDelArbol(raiz: NodoArbol): string[] {
   return ids;
 }
 
-export type AccionTecla =
-  { tipo: "ir"; indice: number } | { tipo: "plegar"; id: string; abrir: boolean } | { tipo: "nada" };
+/**
+ * Qué está abierto. Sin búsqueda manda `abiertas`; con búsqueda todo parte abierto y manda `cerradas`, que se olvida
+ * al cambiar el texto.
+ */
+export interface Pliegue {
+  abiertas: Set<string>;
+  cerradas: Set<string>;
+}
 
-/** Patrón «tree» de WAI-ARIA sobre las filas aplanadas: flechas, Inicio y Fin. `null`: la tecla no es del árbol. */
-export function accionTecla(filas: FilaArbol[], i: number, tecla: string): AccionTecla | null {
+export const estaAbierta = (p: Pliegue, buscando: boolean, id: string) =>
+  buscando ? !p.cerradas.has(id) : p.abiertas.has(id);
+
+export function plegarUnidad(p: Pliegue, buscando: boolean, id: string, abrir: boolean): Pliegue {
+  const s = new Set(buscando ? p.cerradas : p.abiertas);
+  if (abrir === !buscando) s.add(id);
+  else s.delete(id);
+  return buscando ? { ...p, cerradas: s } : { ...p, abiertas: s };
+}
+
+export function expandirTodo(p: Pliegue, buscando: boolean, raiz: NodoArbol): Pliegue {
+  return buscando ? { ...p, cerradas: new Set() } : { ...p, abiertas: new Set(idsDelArbol(raiz)) };
+}
+
+/** Deja la raíz con su primer nivel: como la carpeta raíz de un explorador, ella sigue abierta. */
+export function contraerTodo(p: Pliegue, buscando: boolean, raiz: NodoArbol): Pliegue {
+  const id = raiz.unidad.id;
+  return buscando
+    ? { ...p, cerradas: new Set(idsDelArbol(raiz).filter((x) => x !== id)) }
+    : { ...p, abiertas: new Set([id]) };
+}
+
+/** El árbol pasa a partir de `id`: lo abierto se conserva, para volver atrás con las mismas ramas abiertas. */
+export function cambiarRaiz(p: Pliegue, id: string): Pliegue {
+  return { abiertas: new Set([...p.abiertas, id]), cerradas: new Set() };
+}
+
+export type AccionFila =
+  { tipo: "persona"; fila: FilaPersonaUnidad } | { tipo: "unidad"; id: string } | { tipo: "nada" };
+
+/** Lo que hace una fila al pulsarla. Con `jefatura` (Mayús+Enter), una unidad abre a quien la encabeza, si tiene. */
+export function accionFila(f: FilaArbol, jefatura = false): AccionFila {
+  if (f.clase === "persona") return { tipo: "persona", fila: f.fila };
+  if (f.clase === "vacante") return { tipo: "nada" };
+  return jefatura && f.nodo.jefe
+    ? { tipo: "persona", fila: f.nodo.jefe }
+    : { tipo: "unidad", id: f.nodo.unidad.id };
+}
+
+export type AccionTecla =
+  AccionFila | { tipo: "ir"; indice: number } | { tipo: "plegar"; id: string; abrir: boolean };
+
+/** Patrón «tree» de WAI-ARIA sobre las filas aplanadas. `null`: la tecla no es del árbol. */
+export function accionTecla(filas: FilaArbol[], i: number, tecla: string, mayus = false): AccionTecla | null {
   const f = filas[i];
   const ir = (indice: number): AccionTecla =>
     indice >= 0 && indice < filas.length ? { tipo: "ir", indice } : { tipo: "nada" };
   switch (tecla) {
+    case "Enter":
+    case " ":
+      return accionFila(f, mayus);
+    // Supr en el lienzo elimina la unidad seleccionada: desde una fila del árbol no debe llegar a ese atajo.
+    case "Delete":
+      return { tipo: "nada" };
     case "ArrowDown":
       return ir(i + 1);
     case "ArrowUp":

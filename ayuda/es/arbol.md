@@ -174,7 +174,7 @@ Pulsa una persona para ver su **vista previa** en el mismo panel: foto, correo, 
 
 **Lista** y **Árbol** cambian cómo se ven esas mismas personas; la elección se recuerda en este computador. El **árbol** parte de la unidad del panel y muestra lo que tiene debajo, padre e hijo:
 
-- Cada unidad muestra su nombre, su tipo, su jefatura (foto o iniciales, nombre y cargo) y cuántas personas hay en su rama, contadas como en la lista. Debajo van sus demás personas (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Con **Incluir subunidades** apagado se ve solo la unidad.
+- Cada unidad muestra su nombre, su tipo, su jefatura (foto o iniciales, nombre y cargo) y cuántas personas tiene su rama: los titulares, la misma cifra de la tarjeta (los reemplazos se ven, pero no suman). Arriba, **asignaciones** cuenta todas las filas de personas, como la lista. Debajo van sus demás personas (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Con **Incluir subunidades** apagado se ve solo la unidad.
 - Al abrirlo se ve el primer nivel. La flecha de una unidad la abre o la cierra; **Expandir todo** abre todas y **Contraer todo** vuelve al primer nivel.
 - Pulsa una persona o el nombre de una jefatura para ver su vista previa; **Volver al árbol** (o `Esc`) vuelve al mismo lugar. Pulsa una unidad para seleccionarla en el lienzo: el panel y el árbol pasan a partir de ella. Los puestos vacantes no abren nada.
 - El buscador deja a quienes coinciden, con las unidades que los contienen, y resalta el texto encontrado (si coincide el correo, que no se ve en el árbol, la persona aparece sin resaltar). Son las mismas personas que en la lista, y **Copiar correos** copia esas.

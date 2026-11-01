@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { Trabajador, Unidad, ValorCatalogo } from "@/db/tipos";
 import { a, asignaciones, p, puestos, u, unidades } from "@/features/arbol/fixture";
-import { indexar, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { dotacion, indexar, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { TIPO_AREA } from "@/db/tipos";
 import {
+  accionFila,
   accionTecla,
   aplanarArbol,
   arbolDePersonas,
+  cambiarRaiz,
   claveUnidad,
+  contraerTodo,
+  estaAbierta,
+  expandirTodo,
   idsDelArbol,
+  plegarUnidad,
   visiblesDeBusqueda,
+  type Pliegue,
 } from "./arbolPersonas";
 import { filtrarPersonasUnidad, personasDelAlcance, puestosDelAlcance } from "./personas";
 
@@ -50,13 +57,16 @@ function construir(id: string, rama = true, us: Unidad[] = unidades) {
 const todo = () => true;
 
 describe("arbolDePersonas", () => {
-  it("cuelga personas y subunidades de cada unidad y suma las filas de la rama como la lista", () => {
+  it("cuelga personas y subunidades de cada unidad; la cifra es la dotación de la tarjeta (solo titulares)", () => {
     const { arbol, filas } = construir("mantencion");
-    expect(arbol.total).toBe(filas.length);
+    expect(filas).toHaveLength(6); // incluye a una persona de reemplazo
+    expect(arbol.total).toBe(dotacion(unidades, puestos, asignaciones, "mantencion").total);
+    expect(arbol.total).toBe(5);
     expect(arbol.hijos.map((h) => h.unidad.id)).toEqual(["electrica", "mecanica"]);
     const mecanica = arbol.hijos[1];
     expect(mecanica.personas.map((f) => f.nombre)).toEqual(["Carla Muñoz", "Diego Soto", "Elena Vidal"]);
-    expect(mecanica.total).toBe(3);
+    expect(mecanica.total).toBe(2);
+    expect(construir("gg").arbol.total).toBe(dotacion(unidades, puestos, asignaciones, "gg").total);
   });
 
   it("sin subunidades queda solo la unidad", () => {
@@ -71,7 +81,29 @@ describe("arbolDePersonas", () => {
     const { arbol } = construir("mecanica", false, us);
     expect(arbol.jefe?.nombre).toBe("Diego Soto");
     expect(arbol.personas.map((f) => f.nombre)).not.toContain("Diego Soto");
-    expect(arbol.total).toBe(3);
+    expect(arbol.total).toBe(2);
+  });
+
+  it("si quien encabeza tiene otro puesto en la unidad, ese puesto sí va debajo: una fila por puesto", () => {
+    const con = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j1" };
+    const alcance = [p("j1", "x"), p("j2", "x")];
+    const vig = vigentesPorPuesto([a("b1", "j1", "t1"), a("b2", "j2", "t1")]);
+    const filas = personasDelAlcance(alcance, vig, trabajadores, cargos, indexar([con]));
+    const arbol = arbolDePersonas(con, [], alcance, filas, vig, cargos);
+    expect(arbol.jefe?.clave).toBe("b1");
+    expect(arbol.personas.map((f) => f.clave)).toEqual(["b2"]);
+    expect(arbol.total).toBe(2);
+  });
+
+  it("una jefatura cuyo puesto quedó en otra unidad igual se muestra, sin sumar ni repetirse debajo", () => {
+    const con = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j1" };
+    const jefatura = p("j1", "otra");
+    const vig = vigentesPorPuesto([a("b1", "j1", "t1")]);
+    const deJefatura = personasDelAlcance([jefatura], vig, trabajadores, cargos, indexar([con]));
+    const arbol = arbolDePersonas(con, [], [], [], vig, cargos, deJefatura);
+    expect(arbol.jefe?.nombre).toBe("Ana Pérez");
+    expect(arbol.personas).toEqual([]);
+    expect(arbol.total).toBe(0);
   });
 
   it("marca como vacante el puesto sin nadie; el cubierto por un reemplazo va con su persona", () => {
@@ -184,6 +216,74 @@ describe("accionTecla", () => {
 
   it("otra tecla no es del árbol", () => {
     expect(accionTecla(filas, 0, "a")).toBeNull();
+  });
+
+  it("Supr es del árbol y no hace nada: no debe llegar al atajo que elimina la unidad", () => {
+    expect(accionTecla(filas, 0, "Delete")).toEqual({ tipo: "nada" });
+  });
+
+  it("Enter y Espacio activan la fila; Mayús+Enter en una unidad abre a su jefatura, si tiene", () => {
+    const con = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j1" };
+    const alcance = [p("j1", "x"), p("j2", "x"), p("j3", "x")];
+    const vig = vigentesPorPuesto([a("b1", "j1", "t1"), a("b2", "j2", "t2")]);
+    const propias = personasDelAlcance(alcance, vig, trabajadores, cargos, indexar([con]));
+    const arbolX = arbolDePersonas(con, [], alcance, propias, vig, cargos);
+    const [unidad, persona, vacante] = aplanarArbol(arbolX, todo, null);
+    const lista = [unidad, persona, vacante];
+    expect(persona.clase).toBe("persona");
+    expect(vacante.clase).toBe("vacante");
+
+    expect(accionTecla(lista, 0, "Enter")).toEqual({ tipo: "unidad", id: "x" });
+    expect(accionTecla(lista, 0, " ")).toEqual({ tipo: "unidad", id: "x" });
+    expect(accionTecla(lista, 0, "Enter", true)).toMatchObject({ tipo: "persona", fila: { clave: "b1" } });
+    expect(accionTecla(lista, 1, "Enter")).toMatchObject({ tipo: "persona", fila: { clave: "b2" } });
+    expect(accionTecla(lista, 2, "Enter")).toEqual({ tipo: "nada" });
+    // Sin jefatura, Mayús no cambia nada.
+    expect(accionTecla(filas, mecanica, "Enter", true)).toEqual({ tipo: "unidad", id: "mecanica" });
+    expect(accionFila(unidad)).toEqual({ tipo: "unidad", id: "x" });
+  });
+});
+
+describe("pliegue", () => {
+  const { arbol } = construir("mantencion");
+  const inicial: Pliegue = { abiertas: new Set(["mantencion"]), cerradas: new Set() };
+
+  it("sin búsqueda, abre y cierra en `abiertas`", () => {
+    const abierto = plegarUnidad(inicial, false, "mecanica", true);
+    expect(estaAbierta(abierto, false, "mecanica")).toBe(true);
+    expect(estaAbierta(inicial, false, "mecanica")).toBe(false); // no muta
+    expect(estaAbierta(plegarUnidad(abierto, false, "mecanica", false), false, "mecanica")).toBe(false);
+  });
+
+  it("con búsqueda todo parte abierto y lo plegado va en `cerradas`, sin tocar lo de antes", () => {
+    expect(estaAbierta(inicial, true, "mecanica")).toBe(true);
+    const plegado = plegarUnidad(inicial, true, "mecanica", false);
+    expect(estaAbierta(plegado, true, "mecanica")).toBe(false);
+    expect(plegado.abiertas).toEqual(inicial.abiertas);
+    expect(estaAbierta(plegarUnidad(plegado, true, "mecanica", true), true, "mecanica")).toBe(true);
+  });
+
+  it("expandir abre todo en cada modo", () => {
+    const todas = expandirTodo(inicial, false, arbol);
+    expect([...todas.abiertas].sort()).toEqual(["electrica", "mantencion", "mecanica"]);
+    const buscando = expandirTodo({ ...inicial, cerradas: new Set(["mecanica"]) }, true, arbol);
+    expect(buscando.cerradas.size).toBe(0);
+  });
+
+  it("contraer deja solo la raíz abierta en cada modo", () => {
+    const abierto = expandirTodo(inicial, false, arbol);
+    expect([...contraerTodo(abierto, false, arbol).abiertas]).toEqual(["mantencion"]);
+    const buscando = contraerTodo(inicial, true, arbol);
+    expect(estaAbierta(buscando, true, "mantencion")).toBe(true);
+    expect(estaAbierta(buscando, true, "mecanica")).toBe(false);
+  });
+
+  it("al cambiar de raíz conserva lo abierto y abre la nueva, para volver atrás igual", () => {
+    const abierto = plegarUnidad(inicial, false, "mecanica", true);
+    const bajando = cambiarRaiz({ ...abierto, cerradas: new Set(["x"]) }, "electrica");
+    expect([...bajando.abiertas].sort()).toEqual(["electrica", "mantencion", "mecanica"]);
+    expect(bajando.cerradas.size).toBe(0);
+    expect(estaAbierta(cambiarRaiz(bajando, "mantencion"), false, "mecanica")).toBe(true);
   });
 });
 

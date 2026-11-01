@@ -22,7 +22,8 @@ export function partirCoincidencia(texto: string, buscado: string): [string, str
   let plano = "";
   const origen: number[] = [];
   for (let i = 0; i < texto.length; i++) {
-    const c = /\s/.test(texto[i]) ? " " : normalizarTexto(texto[i]);
+    // Como `normalizarTexto`, varios espacios seguidos cuentan como uno.
+    const c = /\s/.test(texto[i]) ? (plano.endsWith(" ") ? "" : " ") : normalizarTexto(texto[i]);
     plano += c;
     for (let k = 0; k < c.length; k++) origen.push(i);
   }

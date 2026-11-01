@@ -174,7 +174,7 @@ Press a person to see their **preview** in the same panel: photo, email, phone, 
 
 **List** and **Tree** change how those same people are shown; your choice is remembered on this computer. The **tree** starts at the panel's unit and shows what sits below it, parent and child:
 
-- Each unit shows its name, its type, its head (photo or initials, name and job title) and how many people are in its branch, counted as in the list. Below it come its other people (replacements, marked), its positions with nobody as **Vacant** and then its sub-units. With **Include sub-units** off you see only the unit.
+- Each unit shows its name, its type, its head (photo or initials, name and job title) and how many people its branch has: the holders, the same figure as the card (replacements show but do not add up). Above, **assignments** counts every row of people, like the list. Below it come its other people (replacements, marked), its positions with nobody as **Vacant** and then its sub-units. With **Include sub-units** off you see only the unit.
 - It opens at the first level. A unit's arrow opens or closes it; **Expand all** opens them all and **Collapse all** goes back to the first level.
 - Press a person or a head's name to see their preview; **Back to the tree** (or `Esc`) returns to the same place. Press a unit to select it on the canvas: the panel and the tree then start from it. Vacant positions open nothing.
 - The search box leaves the people who match, with the units that contain them, and highlights the text found (if the email matches, which the tree does not show, the person appears with no highlight). They are the same people as in the list, and **Copy emails** copies those.

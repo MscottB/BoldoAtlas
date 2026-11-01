@@ -7,13 +7,20 @@ import { useLienzo } from "@/features/arbol/useLienzo";
 import { iniciales, normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
+  accionFila,
   accionTecla,
   aplanarArbol,
+  cambiarRaiz,
   claveUnidad,
-  idsDelArbol,
+  contraerTodo,
+  estaAbierta,
+  expandirTodo,
+  plegarUnidad,
   visiblesDeBusqueda,
+  type AccionTecla,
   type FilaArbol,
   type NodoArbol,
+  type Pliegue,
 } from "./arbolPersonas";
 import type { FilaPersonaUnidad } from "./personas";
 import TextoResaltado from "./TextoResaltado.vue";
@@ -32,21 +39,15 @@ const visibles = computed(() =>
   buscado.value ? visiblesDeBusqueda(props.raiz, props.coinciden, buscado.value) : null,
 );
 
-// Sin búsqueda se abre lo pedido (al comienzo, el primer nivel). Con búsqueda todo parte abierto para ver lo que
-// coincide, y lo que se pliegue se olvida al cambiar el texto.
-const abiertas = shallowRef(new Set([raizId.value]));
-const cerradas = shallowRef(new Set<string>());
-const estaAbierta = (id: string) => (buscado.value ? !cerradas.value.has(id) : abiertas.value.has(id));
-function plegar(id: string, abrir: boolean) {
-  const conjunto = buscado.value ? cerradas : abiertas;
-  const s = new Set(conjunto.value);
-  if (abrir === !buscado.value) s.add(id);
-  else s.delete(id);
-  conjunto.value = s;
-}
-watch(buscado, () => (cerradas.value = new Set()));
+const pliegue = shallowRef<Pliegue>({ abiertas: new Set([raizId.value]), cerradas: new Set() });
+const buscando = computed(() => !!buscado.value);
+const plegar = (id: string, abrir: boolean) =>
+  (pliegue.value = plegarUnidad(pliegue.value, buscando.value, id, abrir));
+watch(buscado, () => (pliegue.value = { ...pliegue.value, cerradas: new Set() }));
 
-const filas = computed(() => aplanarArbol(props.raiz, estaAbierta, visibles.value));
+const filas = computed(() =>
+  aplanarArbol(props.raiz, (id) => estaAbierta(pliegue.value, buscando.value, id), visibles.value),
+);
 
 // Como la lista: solo las filas a la vista van al DOM. Todas miden lo mismo (dos líneas); se mide la primera dibujada.
 const altoFila = ref(49);
@@ -98,34 +99,26 @@ watch(ventana, () => {
   });
 });
 
-// Otra unidad en el panel: el árbol parte de nuevo desde ella.
+// Otra unidad en el panel: el árbol pasa a partir de ella, con lo que ya estaba abierto.
 watch(raizId, (id) => {
-  abiertas.value = new Set([id]);
-  cerradas.value = new Set();
+  pliegue.value = cambiarRaiz(pliegue.value, id);
   activa.value = claveUnidad(id);
   scrollTo(0);
 });
 
-function activar(f: FilaArbol) {
-  if (f.clase === "persona") emit("persona", f.fila);
-  else if (f.clase === "unidad") revelar(f.nodo.unidad.id);
+function ejecutar(accion: AccionTecla) {
+  if (accion.tipo === "persona") emit("persona", accion.fila);
+  else if (accion.tipo === "unidad") revelar(accion.id);
+  else if (accion.tipo === "ir") void irA(accion.indice);
+  else if (accion.tipo === "plegar") plegar(accion.id, accion.abrir);
 }
-function alTeclear(e: KeyboardEvent, f: FilaArbol, i: number) {
+function alTeclear(e: KeyboardEvent, i: number) {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    e.stopPropagation();
-    const jefe = e.shiftKey && f.clase === "unidad" ? f.nodo.jefe : null;
-    if (jefe) emit("persona", jefe);
-    else activar(f);
-    return;
-  }
-  const accion = accionTecla(filas.value, i, e.key);
+  const accion = accionTecla(filas.value, i, e.key, e.shiftKey);
   if (!accion) return;
   e.preventDefault();
   e.stopPropagation();
-  if (accion.tipo === "ir") void irA(accion.indice);
-  else if (accion.tipo === "plegar") plegar(accion.id, accion.abrir);
+  ejecutar(accion);
 }
 
 const nombreTipo = computed(() => new Map(org.catalogos.tipos_unidad.map((x) => [x.id, x.nombre])));
@@ -135,15 +128,11 @@ const personaDe = (f: FilaArbol) =>
   f.clase === "persona" ? f.fila : f.clase === "unidad" ? f.nodo.jefe : null;
 
 defineExpose({
-  /** Abre todo lo que se ve. */
   expandirTodo() {
-    if (buscado.value) cerradas.value = new Set();
-    else abiertas.value = new Set(idsDelArbol(props.raiz));
+    pliegue.value = expandirTodo(pliegue.value, buscando.value, props.raiz);
   },
-  /** Deja la unidad del panel con su primer nivel: como la carpeta raíz de un explorador, ella sigue abierta. */
   contraerTodo() {
-    if (buscado.value) cerradas.value = new Set(idsDelArbol(props.raiz).filter((id) => id !== raizId.value));
-    else abiertas.value = new Set([raizId.value]);
+    pliegue.value = contraerTodo(pliegue.value, buscando.value, props.raiz);
     scrollTo(0);
   },
 });
@@ -174,8 +163,8 @@ defineExpose({
         class="flex items-center gap-2 border-b py-1.5 pr-2 pl-1 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         :class="f.clase !== 'vacante' && 'cursor-pointer hover:bg-accent'"
         @focus="activa = f.clave"
-        @click="activar(f)"
-        @keydown="alTeclear($event, f, index)"
+        @click="ejecutar(accionFila(f))"
+        @keydown="alTeclear($event, index)"
       >
         <!-- Las guías de la sangría, una línea por nivel; sin tope, una cadena muy honda se comería la fila. -->
         <span
@@ -222,7 +211,7 @@ defineExpose({
           </span>
           <span v-if="f.nodo.jefe" class="truncate text-xs text-muted-foreground">
             <span
-              class="hover:underline"
+              class="underline underline-offset-2"
               :title="t('personas.arbol.verJefe')"
               @click.stop="emit('persona', f.nodo.jefe!)"
             >
