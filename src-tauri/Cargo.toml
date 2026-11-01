@@ -38,6 +38,12 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 # solo para darle a zip el descompresor de flate2 en Rust (miniz_oxide); en Windows nadie más lo elige
 flate2 = "1"
 futures-util = { version = "0.3", default-features = false }
+# abrir la app ya abierta trae su ventana al frente (lib.rs)
+tauri-plugin-single-instance = "2"
+
+# inicio con el sistema (src/inicio.rs); misma versión que ya trae hyper-util
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.6"
 
 # Linux: probar si está libayatana-appindicator3 antes de crear la bandeja (actualizar::bandeja_disponible)
 [target.'cfg(target_os = "linux")'.dependencies]

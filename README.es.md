@@ -56,6 +56,14 @@ Requisitos: en Windows, WebView2 (ya viene en Windows 11 y en casi todo Windows 
 
 En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos. En macOS, las preferencias de la ventana (tema, escala, pestañas) y sus cachés web las guarda el sistema en tu carpeta `~/Library` (`WebKit`, `Caches`); los datos y los respaldos sí quedan en `datos/`.
 
+En Windows, abre el instalador desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación. Las aplicaciones empaquetadas como MSIX, como Claude Desktop, guardan en una zona privada lo que abren: la app no arrancaría al terminar, los accesos directos no tendrían icono y no saldría en Aplicaciones instaladas. El instalador se reabre solo fuera de esa aplicación o, si no puede, te pide moverlo a Descargas.
+
+Si ya quedó instalado así (sus accesos directos apuntan a `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): cierra BoldoAtlas, abre esa carpeta en el Explorador, haz doble clic en `uninstall.exe` **sin marcar borrar datos** y vuelve a instalar con doble clic en el instalador. Tus datos están en `%APPDATA%` y no se tocan. En la zona privada de esa aplicación queda una entrada de desinstalación vieja, sin efecto. Estos pasos se probaron con una copia de prueba, no con una instalación real.
+
+Para iniciar con el sistema en Windows, la versión instalada tiene una casilla en la última página del instalador y en **Configuración › Inicio con el sistema**; se abre minimizada y la entrada se quita al desinstalar. No se ofrece en la portable, porque escribiría fuera de su carpeta, ni por ahora en Linux y macOS. En Windows 11, los iconos nuevos de la bandeja quedan dentro de la flecha **^** junto al reloj; para tener a mano el de BoldoAtlas, arrástralo a la barra de tareas.
+
+Abrir BoldoAtlas cuando ya está abierto trae su ventana al frente. La instalada y las portables, y portables en carpetas distintas, pueden estar abiertas a la vez.
+
 ### Actualizar
 
 BoldoAtlas busca versiones nuevas cada día (en la portable y en el instalado) y avisa en la barra superior; también con **Buscar actualizaciones** en Acerca de, en el menú de la app o con Ctrl+K. La ventana de actualización muestra las notas de todas las versiones que te saltaste y nunca instala sin confirmar. Cada paquete va firmado y se rechaza si la firma no calza.

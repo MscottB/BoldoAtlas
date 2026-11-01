@@ -38,6 +38,12 @@ Si algo falla, se deja la versión anterior y se muestra el error. También pued
 
 La primera vez que abres una versión nueva aparece **Novedades de la versión X**, con lo nuevo desde la última versión que usaste en este PC. Puedes volver a verlas en **Acerca de › Novedades**; vienen dentro de la app, así que se ven sin conexión. Las notas de versión se escriben en español.
 
+## Instalar
+
+Abre el instalador de Windows desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación: abierto desde una aplicación empaquetada, como Claude Desktop, la instalación queda incompleta. El instalador se reabre solo o te pide moverlo a Descargas.
+
+En Windows, la versión instalada puede iniciarse con el sistema: casilla en la última página del instalador y en **Configuración › Inicio con el sistema**. Se abre minimizada. Por ahora no se ofrece en la portable, ni en Linux y macOS.
+
 ## Icono en la bandeja
 
 Mientras BoldoAtlas está abierto, su icono aparece en la bandeja del sistema. Un clic lo trae al frente; el menú (clic derecho) tiene Abrir BoldoAtlas, **Actualizar a vX** cuando hay una versión nueva (si no, Buscar actualizaciones), Respaldar ahora, Abrir carpeta de datos, Ayuda y Salir. Cerrar la ventana cierra BoldoAtlas por completo: no queda nada en segundo plano. Con una versión nueva, el texto del icono lo avisa. En Linux, si falta la biblioteca de la bandeja (AppIndicator), no aparece el icono y la app funciona igual. En Windows, el sistema anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja, también de la portable: es el único rastro fuera de su carpeta y no lo escribe BoldoAtlas.
