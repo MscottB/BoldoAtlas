@@ -30,6 +30,8 @@ concurrency:
   group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.ref) || 'pages' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Acciones fijadas por SHA de commit (la versión va en el comentario): una etiqueta movida no cambia lo que corre.
+# upload-pages-artifact v4+ deja fuera los archivos ocultos (.algo); el sitio de VitePress no los usa.
 jobs:
   construir:
     runs-on: ubuntu-latest
@@ -39,8 +41,10 @@ jobs:
     outputs:
       pages: ${{ steps.pages.outputs.activado }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -68,7 +72,7 @@ jobs:
           fi
           echo "activado=false" >> "$GITHUB_OUTPUT"
       - if: github.event_name != 'pull_request' && steps.pages.outputs.activado == 'true'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site/.vitepress/dist
 
@@ -84,4 +88,4 @@ jobs:
       url: ${{ steps.despliegue.outputs.page_url }}
     steps:
       - id: despliegue
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

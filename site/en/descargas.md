@@ -48,7 +48,7 @@ On Windows and macOS, compare the result with the line for the same file in `SHA
 
 ## How to update
 
-The next version of BoldoAtlas will check for updates by itself (it's on the way). Until then, download the new version from this page:
+BoldoAtlas checks for new versions once a day (you can turn this off in Settings) and shows you what's new before updating. If you prefer to do it by hand, download the new version from this page:
 
 - **Portable:** close BoldoAtlas and replace the program (`BoldoAtlas.exe`, `.AppImage` or `.app`) with the new one. The `datos/` folder, with your database and backups, stays where it is. If you extract the new zip into another folder, copy `datos/` there.
 - **Installer:** run the new installer. Your data is in your user folder and doesn't change.
