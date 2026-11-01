@@ -38,6 +38,8 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 # solo para darle a zip el descompresor de flate2 en Rust (miniz_oxide); en Windows nadie más lo elige
 flate2 = "1"
 futures-util = { version = "0.3", default-features = false }
+# inicio con el sistema (src/inicio.rs): el valor de Run con la ruta entre comillas, y LaunchAgent / autostart en macOS y Linux
+auto-launch = "0.6"
 
 # Linux: probar si está libayatana-appindicator3 antes de crear la bandeja (actualizar::bandeja_disponible);
 # misma versión que ya usa libappindicator-sys

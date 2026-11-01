@@ -297,7 +297,7 @@ fn appindicator() -> bool {
 }
 
 /// Si este exe corre dentro de un AppImage (como `rutas::carpeta_programa`: un `$APPIMAGE` heredado no vale).
-fn es_appimage() -> bool {
+pub fn es_appimage() -> bool {
     let (Some(_), Some(dir)) = (std::env::var_os("APPIMAGE"), std::env::var_os("APPDIR")) else {
         return false;
     };

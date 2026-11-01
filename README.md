@@ -63,6 +63,8 @@ Requirements: on Windows, WebView2 (included in Windows 11 and almost every Wind
 
 In portable mode, extract the zip first: running it from inside the zip cannot save data. On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`); data and backups do stay in `datos/`.
 
+To start with the system, installed versions have a checkbox on the installer's last page (Windows) and in **Settings › Start with the system**; it opens minimized and is removed when you uninstall. The portable doesn't offer it, because it would write outside its folder. On Windows 11, new tray icons stay inside the **^** arrow next to the clock; to keep BoldoAtlas in sight, drag it onto the taskbar.
+
 ### Updating
 
 BoldoAtlas checks for new versions every day (portable and installed) and shows a notice in the top bar; you can also use **Check for updates** in About, in the app menu or with Ctrl+K. The update window shows the notes of every version you skipped and never installs without confirmation. Every package is signed and rejected if the signature doesn't match.

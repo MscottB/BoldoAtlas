@@ -1,6 +1,7 @@
 mod actualizar;
 mod comandos;
 mod db;
+mod inicio;
 mod respaldos;
 mod rutas;
 
@@ -31,7 +32,12 @@ pub fn run() {
             if let Some(dir) = webview {
                 ventana = ventana.data_directory(dir);
             }
-            ventana.build()?;
+            let ventana = ventana.build()?;
+            // arrancada por el sistema no le quita el foco a lo que el usuario abre al iniciar sesión; minimizada
+            // y no oculta, porque cerrar la ventana cierra la app y no siempre hay bandeja desde donde volver
+            if std::env::args().any(|a| a == inicio::ARGUMENTO) {
+                ventana.minimize()?;
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -48,7 +54,9 @@ pub fn run() {
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
             actualizar::cancelar_actualizacion,
-            actualizar::bandeja_disponible
+            actualizar::bandeja_disponible,
+            inicio::inicio_sistema,
+            inicio::cambiar_inicio_sistema
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
