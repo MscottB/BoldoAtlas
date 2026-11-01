@@ -1,8 +1,10 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { intercambioCancelar } from "@/db/cliente";
 import type { Unidad } from "@/db/tipos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
+import { nuevoId } from "@/lib/ids";
 
 export const RUTA_INTERCAMBIO = "/importar-exportar";
 
@@ -24,20 +26,44 @@ export async function intentar<T>(hacer: () => Promise<T>): Promise<Intento<T>> 
 }
 
 export interface Avance {
+  trabajo?: string;
   etapa: string;
   hecho: number;
   total: number;
 }
 
-/** El avance que informa Rust mientras trabaja en otro hilo. */
-export function useAvance() {
+/** El avance que informa Rust mientras trabaja en otro hilo; solo el del trabajo actual. */
+export function useAvance(trabajo: () => string | null) {
   const avance = ref<Avance | null>(null);
   let soltar: UnlistenFn | undefined;
+  let desmontado = false;
   onMounted(async () => {
-    soltar = await listen<Avance>("intercambio-avance", (e) => (avance.value = e.payload));
+    const f = await listen<Avance>("intercambio-avance", (e) => {
+      if (e.payload.trabajo === trabajo()) avance.value = e.payload;
+    });
+    if (desmontado) f();
+    else soltar = f;
   });
-  onUnmounted(() => soltar?.());
+  onUnmounted(() => {
+    desmontado = true;
+    soltar?.();
+  });
   return avance;
+}
+
+/** Un trabajo del asistente: cancelarlo o reemplazarlo deja sin efecto lo que termine tarde. */
+export function useTrabajo() {
+  const actual = ref<string | null>(null);
+  return {
+    actual,
+    nuevo: () => (actual.value = nuevoId()),
+    /** Lo olvida aquí y en Rust, donde se borran sus temporales. */
+    soltar: async () => {
+      const t = actual.value;
+      actual.value = null;
+      if (t) await intercambioCancelar(t);
+    },
+  };
 }
 
 export interface FilaUnidad {

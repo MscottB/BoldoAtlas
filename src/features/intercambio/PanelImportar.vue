@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -22,7 +22,6 @@ import {
   importarAgregar,
   importarElegir,
   importarReemplazar,
-  intercambioCancelar,
   type InformeImportacion,
   type ResumenImportacion,
 } from "@/db/cliente";
@@ -32,13 +31,14 @@ import { claseSelect } from "@/lib/utils";
 import { useOrganizacion } from "@/stores/organizacion";
 import BarraAvance from "./BarraAvance.vue";
 import ListaDetalle from "./ListaDetalle.vue";
-import { conFilas, intentar, useAvance } from "./intercambio";
+import { conFilas, intentar, useAvance, useTrabajo } from "./intercambio";
 
 const emit = defineEmits<{ terminar: [] }>();
 const { t, locale } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
-const avance = useAvance();
+const trabajo = useTrabajo();
+const avance = useAvance(() => trabajo.actual.value);
 
 type Paso = "elegir" | "abriendo" | "revision" | "aplicando" | "hecho";
 const paso = ref<Paso>("elegir");
@@ -46,20 +46,28 @@ const archivo = ref<{ nombre: string; bytes: number } | null>(null);
 const codigo = ref("");
 const error = ref("");
 
+// Al cambiar de paso, el foco va al título: lector de pantalla y teclado siguen el asistente.
+const titulo = ref<HTMLElement | null>(null);
+watch(paso, () => nextTick(() => titulo.value?.focus()));
+
 async function elegir() {
   error.value = "";
-  const r = await intentar(importarElegir);
+  const propio = trabajo.actual.value ?? trabajo.nuevo();
+  const r = await intentar(() => importarElegir(propio));
+  if (trabajo.actual.value !== propio) return;
   if (!r.ok) error.value = r.mensaje;
   else if (r.valor) archivo.value = r.valor;
 }
 
 const resumen = ref<ResumenImportacion | null>(null);
 async function abrir() {
+  const propio = trabajo.actual.value;
+  if (!propio) return;
   error.value = "";
   paso.value = "abriendo";
   avance.value = null;
-  const r = await intentar(() => importarAbrir(codigo.value));
-  if (paso.value !== "abriendo") return; // se canceló mientras tanto
+  const r = await intentar(() => importarAbrir(propio, codigo.value));
+  if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
   if (!r.ok) {
     paso.value = "elegir";
     if (r.codigo !== "cancelado") error.value = r.mensaje;
@@ -67,9 +75,9 @@ async function abrir() {
   }
   codigo.value = ""; // ya cumplió: no se queda en memoria de la interfaz
   resumen.value = r.valor;
-  modo.value = "agregar";
+  modo.value = r.valor.informe ? "agregar" : "reemplazar";
   lugares.value = Object.fromEntries(
-    r.valor.informe.ramas.filter((x) => x.pideLugar).map((x) => [x.id, ""]),
+    (r.valor.informe?.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
   );
   paso.value = "revision";
 }
@@ -77,7 +85,8 @@ async function abrir() {
 const modo = ref<"agregar" | "reemplazar">("agregar");
 // "" = como árbol independiente
 const lugares = ref<Record<string, string>>({});
-const filas = computed(() => conFilas(resumen.value?.informe.tablas ?? [], (f) => f.trae));
+const filas = computed(() => conFilas(resumen.value?.informe?.tablas ?? [], (f) => f.trae));
+const agregadas = computed(() => informe.value?.tablas.filter((x) => x.nuevas > 0) ?? []);
 const opciones = computed(() =>
   org.unidades
     .map((u) => ({ id: u.id, texto: rutaTexto(org.unidades, u.id) }))
@@ -86,10 +95,12 @@ const opciones = computed(() =>
 
 const informe = ref<InformeImportacion | null>(null);
 async function agregar() {
+  const propio = trabajo.actual.value;
+  if (!propio) return;
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   const destino = Object.fromEntries(Object.entries(lugares.value).map(([k, v]) => [k, v || null]));
-  const r = await intentar(() => importarAgregar(destino));
+  const r = await intentar(() => importarAgregar(propio, destino));
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -98,6 +109,7 @@ async function agregar() {
   informe.value = r.valor;
   const cargado = await org.cargar();
   if (!cargado.ok) toast.error(cargado.mensaje);
+  await trabajo.soltar();
   paso.value = "hecho";
 }
 
@@ -107,9 +119,11 @@ function aplicar() {
   else void agregar();
 }
 async function reemplazar() {
+  const propio = trabajo.actual.value;
+  if (!propio) return;
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
-  const r = await intentar(importarReemplazar); // si sale bien, la app se reinicia
+  const r = await intentar(() => importarReemplazar(propio)); // si sale bien, la app se reinicia
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -121,7 +135,7 @@ async function cancelar() {
   codigo.value = "";
   archivo.value = null;
   resumen.value = null;
-  await intercambioCancelar();
+  await trabajo.soltar();
 }
 async function salir() {
   await cancelar();
@@ -132,13 +146,13 @@ async function verResultado() {
 }
 onUnmounted(() => {
   codigo.value = "";
-  void intercambioCancelar();
+  void trabajo.soltar();
 });
 </script>
 
 <template>
   <div class="grid gap-4">
-    <h2 class="font-medium">{{ t("intercambio.importar.titulo") }}</h2>
+    <h2 ref="titulo" tabindex="-1" class="font-medium outline-none">{{ t("intercambio.importar.titulo") }}</h2>
 
     <form v-if="paso === 'elegir'" class="grid gap-4" @submit.prevent="abrir">
       <div class="flex flex-wrap items-center gap-3">
@@ -183,7 +197,10 @@ onUnmounted(() => {
           })
         }}
       </p>
-      <div class="overflow-x-auto">
+      <p v-if="resumen.informe?.nombreHeredado" class="text-sm">
+        {{ t("intercambio.importar.tomaraNombre", { nombre: resumen.informe.nombreHeredado }) }}
+      </p>
+      <div v-if="resumen.informe" class="overflow-x-auto">
         <table class="text-sm">
           <thead>
             <tr class="border-b text-left text-xs text-muted-foreground">
@@ -208,11 +225,13 @@ onUnmounted(() => {
 
       <fieldset class="grid gap-3">
         <legend class="mb-1 text-sm font-medium">{{ t("intercambio.importar.queHacer") }}</legend>
-        <label class="flex items-start gap-2 text-sm">
-          <input v-model="modo" type="radio" value="agregar" class="mt-1" />
+        <label class="flex items-start gap-2 text-sm" :class="!resumen.informe && 'text-muted-foreground'">
+          <input v-model="modo" type="radio" value="agregar" class="mt-1" :disabled="!resumen.informe" />
           <span>
             <span class="font-medium">{{ t("intercambio.importar.agregar") }}</span>
-            <span class="block text-muted-foreground">{{ t("intercambio.importar.agregarAyuda") }}</span>
+            <span class="block text-muted-foreground">
+              {{ t(resumen.informe ? "intercambio.importar.agregarAyuda" : "intercambio.importar.agregarNoDisponible") }}
+            </span>
           </span>
         </label>
         <label class="flex items-start gap-2 text-sm" :class="resumen.parcial && 'text-muted-foreground'">
@@ -226,7 +245,7 @@ onUnmounted(() => {
         </label>
       </fieldset>
 
-      <template v-if="modo === 'agregar'">
+      <template v-if="modo === 'agregar' && resumen.informe">
         <div v-if="Object.keys(lugares).length" class="grid gap-3 rounded-lg border p-3">
           <p class="text-sm font-medium">{{ t("intercambio.importar.dondeVa") }}</p>
           <template v-for="r in resumen.informe.ramas" :key="r.id">
@@ -250,24 +269,28 @@ onUnmounted(() => {
           <li v-if="resumen.informe.vaciadas">
             {{ t("intercambio.importar.vaciadas", resumen.informe.vaciadas) }}
           </li>
-          <li v-if="resumen.informe.historial">
-            {{ t("intercambio.importar.historial", resumen.informe.historial) }}
-          </li>
         </ul>
         <ListaDetalle :informe="resumen.informe" />
       </template>
 
       <p class="text-sm text-muted-foreground">{{ t("intercambio.importar.respaldo") }}</p>
       <div class="flex gap-2">
-        <Button type="button" @click="aplicar">{{ t("intercambio.importar.aplicar") }}</Button>
+        <Button type="button" :disabled="resumen.parcial && !resumen.informe" @click="aplicar">
+          {{ t("intercambio.importar.aplicar") }}
+        </Button>
         <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
       </div>
     </template>
 
     <template v-else-if="paso === 'hecho' && informe">
-      <p role="status" class="text-sm">{{ t("intercambio.importar.hecho") }}</p>
-      <dl class="grid grid-cols-[auto_auto] justify-start gap-x-6 gap-y-1 text-sm">
-        <template v-for="f in informe.tablas.filter((x) => x.nuevas > 0)" :key="f.tabla">
+      <p role="status" class="text-sm">
+        {{ t(agregadas.length ? "intercambio.importar.hecho" : "intercambio.importar.hechoNada") }}
+      </p>
+      <p v-if="informe.nombreHeredado" class="text-sm">
+        {{ t("intercambio.importar.tomoNombre", { nombre: informe.nombreHeredado }) }}
+      </p>
+      <dl v-if="agregadas.length" class="grid grid-cols-[auto_auto] justify-start gap-x-6 gap-y-1 text-sm">
+        <template v-for="f in agregadas" :key="f.tabla">
           <dt class="text-muted-foreground">{{ t(`intercambio.tablas.${f.tabla}`) }}</dt>
           <dd class="text-right tabular-nums">{{ f.nuevas }}</dd>
         </template>

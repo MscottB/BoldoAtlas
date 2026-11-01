@@ -1,28 +1,45 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRouter,
+  type RouteLocationNormalized,
+} from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { ChevronRight, Copy, Save } from "@lucide/vue";
-import { Button } from "@/components/ui/button";
 import {
-  exportarGuardar,
-  exportarPreparar,
-  intercambioCancelar,
-  type ResumenExportacion,
-} from "@/db/cliente";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { exportarGuardar, exportarPreparar, type ResumenExportacion } from "@/db/cliente";
 import { indiceHijos } from "@/features/arbol/jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
 import BarraAvance from "./BarraAvance.vue";
-import { conFilas, filasVisibles, intentar, useAvance } from "./intercambio";
+import { conFilas, filasVisibles, intentar, useAvance, useTrabajo } from "./intercambio";
 
 const emit = defineEmits<{ terminar: [] }>();
 const { t } = useI18n();
+const router = useRouter();
 const org = useOrganizacion();
-const avance = useAvance();
+const trabajo = useTrabajo();
+const avance = useAvance(() => trabajo.actual.value);
 
 type Paso = "alcance" | "trabajando" | "resumen" | "codigo";
 const paso = ref<Paso>("alcance");
 const modo = ref<"todo" | "ramas">("todo");
+
+// Al cambiar de paso, el foco va al título: lector de pantalla y teclado siguen el asistente.
+const titulo = ref<HTMLElement | null>(null);
+watch(paso, () => nextTick(() => titulo.value?.focus()));
 
 const indice = computed(() => indiceHijos(org.unidades));
 // Se abre mostrando los árboles y su primer nivel: quien quiere una rama suele buscarla ahí.
@@ -36,7 +53,9 @@ const resumen = ref<ResumenExportacion | null>(null);
 const puedeSeguir = computed(() => modo.value === "todo" || marcadas.value.size > 0);
 const cortes = computed(() => {
   const c = resumen.value?.cortes;
-  return c ? (["conexiones", "jefaturas", "roles", "vistas"] as const).filter((k) => c[k] > 0) : [];
+  return c
+    ? (["conexiones", "jefaturas", "roles", "vistas", "asignaciones"] as const).filter((k) => c[k] > 0)
+    : [];
 });
 const filasResumen = computed(() => conFilas(resumen.value?.filas ?? [], (f) => f.filas));
 
@@ -46,10 +65,11 @@ const fallar = (mensaje: string, codigo: string, volverA: Paso) => {
 };
 
 async function preparar() {
+  const propio = trabajo.nuevo();
   paso.value = "trabajando";
   avance.value = null;
-  const r = await intentar(() => exportarPreparar(modo.value === "todo" ? null : [...marcadas.value]));
-  if (paso.value !== "trabajando") return; // se canceló mientras tanto
+  const r = await intentar(() => exportarPreparar(propio, modo.value === "todo" ? null : [...marcadas.value]));
+  if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
   if (!r.ok) return fallar(r.mensaje, r.codigo, "alcance");
   resumen.value = r.valor;
   paso.value = "resumen";
@@ -58,47 +78,83 @@ async function preparar() {
 // El código vive solo aquí, hasta cerrar esta pantalla.
 const codigo = ref("");
 const nombreArchivo = ref("");
+const copiado = ref(false);
 async function guardar() {
+  const propio = trabajo.actual.value;
+  if (!propio) return;
   paso.value = "trabajando";
   avance.value = null;
-  const r = await intentar(exportarGuardar);
-  if (paso.value !== "trabajando") return;
-  if (!r.ok) return fallar(r.mensaje, r.codigo, "alcance");
+  const r = await intentar(() => exportarGuardar(propio));
+  if (trabajo.actual.value !== propio) return;
+  if (!r.ok) {
+    // otro nombre es otro intento: la copia sigue preparada
+    return fallar(r.mensaje, r.codigo, r.codigo === "ya_existe" ? "resumen" : "alcance");
+  }
   if (!r.valor) {
     paso.value = "resumen"; // no se eligió un lugar: la copia sigue preparada
     return;
   }
   codigo.value = r.valor.codigo;
   nombreArchivo.value = r.valor.nombre;
+  copiado.value = false;
   paso.value = "codigo";
 }
 
 async function copiar() {
   try {
     await navigator.clipboard.writeText(codigo.value);
+    copiado.value = true;
     toast.success(t("intercambio.exportar.copiado"));
-  } catch (e) {
-    toast.error(t("intercambio.exportar.errorCopiar", { detalle: String(e) }));
+  } catch {
+    toast.error(t("intercambio.exportar.errorCopiar"));
   }
 }
 
 async function cancelar() {
   paso.value = "alcance";
-  await intercambioCancelar();
+  await trabajo.soltar();
 }
-function listo() {
+
+// Salir sin copiar el código deja un archivo que nadie puede abrir: se pregunta una vez.
+const preguntando = ref(false);
+let destinoPendiente: RouteLocationNormalized | null = null;
+const faltaCopiar = () => paso.value === "codigo" && !copiado.value;
+function retener(destino: RouteLocationNormalized) {
+  if (!faltaCopiar()) return true;
+  destinoPendiente = destino;
+  preguntando.value = true;
+  return false;
+}
+onBeforeRouteLeave(retener);
+onBeforeRouteUpdate(retener);
+
+function terminar() {
   codigo.value = "";
+  copiado.value = true;
   emit("terminar");
 }
+function listo() {
+  if (faltaCopiar()) preguntando.value = true;
+  else terminar();
+}
+function salirSinCopiar() {
+  const destino = destinoPendiente;
+  destinoPendiente = null;
+  codigo.value = "";
+  copiado.value = true;
+  if (destino) void router.push(destino);
+  else emit("terminar");
+}
+
 onUnmounted(() => {
   codigo.value = "";
-  void intercambioCancelar();
+  void trabajo.soltar();
 });
 </script>
 
 <template>
   <div class="grid gap-4">
-    <h2 class="font-medium">{{ t("intercambio.exportar.titulo") }}</h2>
+    <h2 ref="titulo" tabindex="-1" class="font-medium outline-none">{{ t("intercambio.exportar.titulo") }}</h2>
 
     <template v-if="paso === 'alcance'">
       <fieldset class="grid gap-2">
@@ -207,5 +263,18 @@ onUnmounted(() => {
         <Button type="button" @click="listo">{{ t("intercambio.listo") }}</Button>
       </div>
     </template>
+
+    <AlertDialog v-model:open="preguntando">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t("intercambio.exportar.sinCopiarTitulo") }}</AlertDialogTitle>
+          <AlertDialogDescription>{{ t("intercambio.exportar.sinCopiarTexto") }}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{{ t("intercambio.exportar.seguirAqui") }}</AlertDialogCancel>
+          <AlertDialogAction @click="salirSinCopiar">{{ t("intercambio.exportar.salirSinCopiar") }}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

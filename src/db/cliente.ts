@@ -22,12 +22,21 @@ export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> 
   return invoke<T[]>("db_consultar", { sql, params });
 }
 
+// Rust atiende los comandos fuera del hilo principal y en paralelo: las escrituras se ponen en cola para que lleguen a la
+// base en el orden en que se pidieron.
+let colaLotes: Promise<unknown> = Promise.resolve();
+
 /** Ejecuta todo en una transacción: o se aplican todas las sentencias o ninguna. */
 export function lote(sentencias: Sentencia[]): Promise<void> {
-  return invoke("db_lote", {
-    sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
-    versionApp: __APP_VERSION__,
-  });
+  const hecho = colaLotes.then(() =>
+    invoke<void>("db_lote", {
+      sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
+      versionApp: __APP_VERSION__,
+    }),
+  );
+  // un lote que falla no detiene a los siguientes; quien lo pidió ya recibe su error en `hecho`
+  colaLotes = hecho.catch(() => undefined);
+  return hecho;
 }
 
 export async function leerMeta(): Promise<Record<string, string>> {
@@ -94,10 +103,11 @@ export function abrirCarpetaDatos(): Promise<void> {
 }
 
 // Exportar e importar .boldo: el cifrado, la lectura del archivo y las rutas quedan en Rust.
+// Cada paso lleva el identificador del trabajo: Rust rechaza guardar o aplicar lo que no sea lo que se revisó.
 export interface ResumenExportacion {
   parcial: boolean;
   filas: { tabla: string; filas: number }[];
-  cortes: { conexiones: number; jefaturas: number; roles: number; vistas: number };
+  cortes: { conexiones: number; jefaturas: number; roles: number; vistas: number; asignaciones: number };
 }
 
 export interface Detalle {
@@ -118,45 +128,50 @@ export interface InformeImportacion {
   tablas: { tabla: string; trae: number; nuevas: number; existentes: number; unidas: number; omitidas: number }[];
   detalle: Detalle[];
   totalDetalle: number;
-  historial: number;
   vaciadas: number;
   ramas: RamaImportada[];
+  /** El nombre que toma una base que no tenía. */
+  nombreHeredado: string | null;
 }
 
 export interface ResumenImportacion {
   organizacion: string;
   parcial: boolean;
-  informe: InformeImportacion;
+  /** null si la revisión falló: «Agregar» no se ofrece. */
+  informe: InformeImportacion | null;
 }
 
 /** `raices` null: toda la base. */
-export function exportarPreparar(raices: string[] | null): Promise<ResumenExportacion> {
-  return invoke("exportar_preparar", { raices });
+export function exportarPreparar(trabajo: string, raices: string[] | null): Promise<ResumenExportacion> {
+  return invoke("exportar_preparar", { trabajo, raices });
 }
 
 /** Abre «Guardar como» y cifra. null si no se eligió un lugar; el código se entrega solo aquí. */
-export function exportarGuardar(): Promise<{ nombre: string; codigo: string } | null> {
-  return invoke("exportar_guardar");
+export function exportarGuardar(trabajo: string): Promise<{ nombre: string; codigo: string } | null> {
+  return invoke("exportar_guardar", { trabajo });
 }
 
-export function importarElegir(): Promise<{ nombre: string; bytes: number } | null> {
-  return invoke("importar_elegir");
+export function importarElegir(trabajo: string): Promise<{ nombre: string; bytes: number } | null> {
+  return invoke("importar_elegir", { trabajo });
 }
 
-export function importarAbrir(codigo: string): Promise<ResumenImportacion> {
-  return invoke("importar_abrir", { codigo });
+export function importarAbrir(trabajo: string, codigo: string): Promise<ResumenImportacion> {
+  return invoke("importar_abrir", { trabajo, codigo });
 }
 
 /** `lugares`: id de cada rama → unidad donde colocarla (null: árbol independiente). */
-export function importarAgregar(lugares: Record<string, string | null>): Promise<InformeImportacion> {
-  return invoke("importar_agregar", { lugares, versionApp: __APP_VERSION__ });
+export function importarAgregar(
+  trabajo: string,
+  lugares: Record<string, string | null>,
+): Promise<InformeImportacion> {
+  return invoke("importar_agregar", { trabajo, lugares, versionApp: __APP_VERSION__ });
 }
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
-export function importarReemplazar(): Promise<void> {
-  return invoke("importar_reemplazar");
+export function importarReemplazar(trabajo: string): Promise<void> {
+  return invoke("importar_reemplazar", { trabajo });
 }
 
-export function intercambioCancelar(): Promise<void> {
-  return invoke("intercambio_cancelar");
+export function intercambioCancelar(trabajo: string): Promise<void> {
+  return invoke("intercambio_cancelar", { trabajo });
 }
