@@ -1,10 +1,12 @@
 # Inicio
 
+::: info En resumen
+BoldoAtlas arma el organigrama de tu organización en tu computador. Aquí ves cómo empezar, qué hace el menú de la app, dónde quedan tus datos y cómo abrir el programa la primera vez.
+:::
+
 ## Qué es BoldoAtlas
 
 BoldoAtlas es una app de escritorio para Windows, Linux y macOS con la que armas el organigrama de tu organización: gerencias, áreas y subáreas, conectadas entre sí, y la ficha de cada persona que trabaja en ellas. Puedes explorar el resultado en el lienzo del árbol o en el directorio.
-
-**Próximamente:** procesos, indicadores, escenarios, importar y exportar a Excel y abrir archivos .boldo. Mientras no existan, sus botones no aparecen en la app (la pestaña «Procesos» del panel de unidad solo avisa que llega más adelante).
 
 ## Primer uso
 
@@ -13,7 +15,11 @@ Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con dos caminos
 - **Crear una organización vacía:** te pide el nombre de la organización y el de su unidad raíz (del primer tipo de unidad activo) y te lleva al árbol.
 - **Explorar un ejemplo:** crea una organización de muestra, en el idioma de la interfaz, para recorrer la app.
 
-Debajo, una línea avisa lo que viene: cargar desde Excel y abrir un archivo .boldo.
+![Pantalla de bienvenida de BoldoAtlas con dos tarjetas: Crear una organización vacía y Explorar un ejemplo.](../img/es/inicio-bienvenida.webp "La bienvenida. 1: crear una organización vacía. 2: explorar una organización de ejemplo."){width=728 height=268}
+
+::: tip Consejo
+Si es tu primera vez, empieza por el ejemplo: puedes recorrerlo sin miedo a equivocarte y, cuando quieras, crear tu propia organización desde el menú de la app (antes se hace un respaldo automático).
+:::
 
 Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuración**, y las listas de cargos, sedes y demás en **Configuración › Mantenedores**.
 
@@ -26,11 +32,15 @@ El botón con el logo, a la izquierda de la barra superior, abre el **menú de l
 - **Respaldos** y **Configuración** abren esas secciones; **Datos del proyecto** muestra dónde están tus datos.
 - **Idioma** cambia al instante toda la app entre Español y English. La pantalla de bienvenida tiene el mismo selector **ES / EN**; tu elección se recuerda en este equipo y, la primera vez, la app sigue el idioma del sistema.
 
+![Menú de la app abierto: Inicio, Nueva organización vacía, Explorar el ejemplo, Respaldos, Configuración, Datos del proyecto, Buscar actualizaciones e Idioma.](../img/es/inicio-menu.webp "El menú de la app, que se abre con el botón del logo."){width=276 height=364}
+
 Las mismas acciones están en la paleta de comandos (`Ctrl+K`). **Configuración**, **Ayuda** y **Acerca de** se cierran con su botón **Cerrar**, con `Esc` o con un segundo clic en su entrada del menú lateral, y vuelves a la vista anterior (o al árbol si no hay ninguna). La barra lateral se pliega y se vuelve a fijar abierta con el botón del pie de la barra, sobre **Configuración** (**Ocultar barra lateral** / **Mostrar barra lateral**); queda en el mismo lugar abierta o plegada. Plegada, se despliega sobre el contenido al dejar el mouse encima un momento (o al llegar a ella con `Tab`) y se vuelve a plegar al salir o con `Esc`; esto se apaga en **Configuración › Apariencia › Abrir la barra lateral al pasar el mouse**. Con la ventana angosta (menos de 1100 px) la barra se pliega sola. El panel de una unidad se cierra con la **×** de su encabezado.
 
 ## Qué proyecto está abierto
 
-El título de la ventana y la barra superior muestran el nombre de la organización con la insignia **Principal** (por ahora hay una sola base). Al pulsarlos se abre **Datos del proyecto**: el modo (portable o instalado), la ruta del archivo de la base, su tamaño y la última modificación, con **Copiar ruta** y **Abrir carpeta**.
+El título de la ventana y la barra superior muestran el nombre de la organización con la insignia **Principal**. Al pulsarlos se abre **Datos del proyecto**: el modo (portable o instalado), la ruta del archivo de la base, su tamaño y la última modificación, con **Copiar ruta** y **Abrir carpeta**.
+
+![Ventana Datos del proyecto con el modo, la ruta del archivo de la base, su tamaño y la última modificación.](../img/es/inicio-proyecto.webp "La ventana Datos del proyecto."){width=524 height=274}
 
 ## Modo portable e instalado
 
@@ -45,7 +55,9 @@ El título de la ventana y la barra superior muestran el nombre de la organizaci
 
 En macOS, las preferencias de la ventana (tema, escala, pestañas) y sus cachés web las guarda el sistema en tu carpeta `~/Library` (`WebKit`, `Caches`), también en la portable; los datos y los respaldos sí quedan en `datos/`.
 
-BoldoAtlas aún no tiene firma digital, así que la primera vez el sistema avisa:
+::: warning Importante
+BoldoAtlas aún no tiene firma digital, así que la primera vez el sistema avisa. Esto es lo que debes hacer según tu sistema:
+:::
 
 - **Windows:** si aparece «Windows protegió su PC», pulsa **Más información → Ejecutar de todas formas**.
 - **macOS:** clic derecho sobre `BoldoAtlas.app` → **Abrir** → **Abrir**. Si dice que está dañada o no deja abrirla, ejecuta en Terminal `xattr -dr com.apple.quarantine <carpeta>` sobre la carpeta de la portable (o sobre `/Applications/BoldoAtlas.app`), o usa **Configuración del Sistema › Privacidad y seguridad › Abrir igualmente**. Con la portable hazlo antes de abrirla: si no, macOS la abre desde una copia de solo lectura y no puede guardar.
@@ -67,3 +79,5 @@ Los cambios se guardan solos: no hay botón "Guardar". El indicador de la barra 
 ## Privacidad
 
 Tus datos no salen de tu computador. BoldoAtlas no usa cuentas ni tiene servidor. Lo único que hace por su cuenta es buscar versiones nuevas (cada día; se apaga en **Configuración › Actualizaciones**): lee la lista pública de versiones en GitHub y no envía datos ni identificadores. Ver **Actualizaciones**.
+
+**Ver también:** [El árbol](arbol.md) · [Respaldos](respaldos.md) · [Actualizaciones](actualizaciones.md).

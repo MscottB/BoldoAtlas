@@ -1,5 +1,9 @@
 # Respaldos
 
+::: info En resumen
+BoldoAtlas copia tus datos solo, por si algo sale mal. Aquí ves dónde quedan los respaldos, cómo hacer uno a mano y cómo restaurarlo.
+:::
+
 BoldoAtlas guarda copias de tus datos en la carpeta **respaldos**, dentro de la carpeta de datos:
 
 - **Portable:** `datos/respaldos/`, junto al programa.
@@ -20,11 +24,21 @@ En **Configuración › Respaldos** se ve la fecha del **último respaldo** junt
 - **Respaldar ahora** hace un respaldo en el momento.
 - **Abrir carpeta** abre la carpeta de respaldos en el Explorador, por ejemplo para copiarlos a un pendrive.
 
+![Configuración, sección Respaldos: último respaldo, Respaldar ahora, Abrir carpeta y la lista de respaldos con su botón Restaurar.](../img/es/respaldos-lista.webp "Configuración › Respaldos (lista de ejemplo). 1: Respaldar ahora. 2: Abrir carpeta. 3: Restaurar."){width=760 height=440}
+
+::: tip Consejo
+Para llevarte una copia a otro lugar, pulsa **Abrir carpeta** y copia el archivo `.db` que quieras, por ejemplo a un pendrive.
+:::
+
 ## Antes de reemplazar los datos
 
 Al elegir **Nueva organización vacía** o **Explorar el ejemplo** con datos cargados, BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Como el de restaurar, nunca se borra solo: si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
 
 ## Restaurar
+
+::: warning Importante
+Restaurar reemplaza tus datos actuales por los del respaldo y reinicia la app.
+:::
 
 1. En **Ver respaldos y restaurar**, pulsa **Restaurar** en la fila del respaldo que quieres recuperar.
 2. Confirma con **Restaurar y reiniciar**.
@@ -34,3 +48,5 @@ Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la l
 - Un respaldo hecho con una versión anterior de BoldoAtlas se actualiza al restaurarlo. Uno hecho con una versión **más nueva** no se puede restaurar hasta que actualices BoldoAtlas.
 - Si hay otra ventana de BoldoAtlas abierta con los mismos datos, ciérrala antes.
 - Si algo falla, tus datos actuales quedan como estaban.
+
+**Ver también:** [Inicio](inicio.md) · [Actualizaciones](actualizaciones.md).

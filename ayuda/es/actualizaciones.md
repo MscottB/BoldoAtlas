@@ -1,5 +1,9 @@
 # Actualizaciones
 
+::: info En resumen
+BoldoAtlas busca versiones nuevas y te avisa; nunca descarga ni instala nada sin que lo confirmes. Aquí ves cómo buscar, instalar y apagar la búsqueda.
+:::
+
 BoldoAtlas busca versiones nuevas por su cuenta y te avisa; nunca descarga ni instala nada sin que lo confirmes.
 
 ## Cómo se busca
@@ -13,6 +17,8 @@ También puedes buscar cuando quieras:
 - **Configuración › Actualizaciones › Buscar actualizaciones**.
 
 Si no hay nada nuevo verás «Ya tienes la última versión»; sin conexión, «No se pudo consultar: revisa tu conexión».
+
+![Configuración, sección Actualizaciones con la frecuencia de búsqueda y el botón Buscar actualizaciones.](../img/es/actualizaciones-config.webp "Configuración › Actualizaciones. 1: cada cuánto se busca. 2: buscar ahora."){width=760 height=170}
 
 ## La ventana de actualización
 
@@ -45,3 +51,9 @@ Los archivos temporales de la actualización (el instalador descargado, el progr
 En **Configuración › Actualizaciones › Buscar automáticamente** eliges **Nunca**, **Al abrir**, **Cada día** (lo normal) o **Cada semana**. La elección vale solo para este computador. Con **Nunca** BoldoAtlas no se conecta a nada por su cuenta.
 
 La búsqueda es la única conexión que BoldoAtlas hace por su cuenta: lee la lista pública de versiones en GitHub y las notas de la versión nueva. No envía datos de tu organización ni identificadores.
+
+::: tip Consejo
+Si trabajas sin conexión, elige **Nunca** en **Buscar automáticamente**: BoldoAtlas no se conectará a nada por su cuenta.
+:::
+
+**Ver también:** [Inicio](inicio.md) · [Respaldos](respaldos.md).

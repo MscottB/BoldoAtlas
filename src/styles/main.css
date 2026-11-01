@@ -160,6 +160,23 @@
 .ayuda p { @apply my-3 text-sm leading-relaxed; }
 .ayuda ul { @apply my-3 list-disc space-y-1 pl-5 text-sm leading-relaxed; }
 .ayuda h4 { @apply mb-1 mt-3 text-sm font-medium; }
+.ayuda h3 { @apply mb-1 mt-4 text-base font-semibold; }
+.ayuda ol { @apply my-3 list-decimal space-y-1 pl-5 text-sm leading-relaxed; }
+.ayuda li > ul, .ayuda li > ol { @apply my-1; }
+.ayuda a { @apply underline underline-offset-2 hover:decoration-2; }
+.ayuda hr { @apply my-6; }
+/* Figuras de la ayuda: la captura con su pie; el ancho y el alto vienen en la imagen, así que no salta al cargar. */
+.ayuda figure { @apply my-4; }
+.ayuda figure img { @apply h-auto max-w-full rounded-lg border; }
+.ayuda figcaption { @apply mt-1.5 text-xs text-muted-foreground; }
+/* Avisos (::: info | tip | warning): el color va en el borde izquierdo y en un fondo muy suave; el texto conserva el
+   color normal, así que el contraste es el de siempre en los dos temas. */
+.ayuda .aviso { @apply my-4 rounded-lg border border-l-4 px-4 py-2; border-left-color: var(--aviso); background: color-mix(in oklab, var(--aviso) 9%, var(--card)); }
+.ayuda .aviso p { @apply my-1.5; }
+.ayuda .aviso .aviso-titulo { @apply mt-1 font-semibold; }
+.ayuda .aviso-info { --aviso: oklch(0.55 0.14 255); }
+.ayuda .aviso-tip { --aviso: oklch(0.55 0.13 150); }
+.ayuda .aviso-warning { --aviso: oklch(0.68 0.15 70); }
 .ayuda blockquote { @apply my-3 border-l-2 pl-3 text-sm text-muted-foreground; }
 .novedades > :first-child { @apply mt-1; }
 .ayuda code, .ayuda kbd { @apply rounded bg-muted px-1 py-0.5 font-mono text-xs; }

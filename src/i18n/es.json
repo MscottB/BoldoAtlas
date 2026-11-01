@@ -342,7 +342,15 @@
   "ayuda": {
     "titulo": "Ayuda",
     "paginas": "Páginas de ayuda",
-    "noExiste": "Esa página de ayuda no existe."
+    "noExiste": "Esa página de ayuda no existe.",
+    "indice": "Todos los temas",
+    "bienvenida": "¿Qué quieres hacer? Elige un tema o busca una palabra.",
+    "temas": "Temas",
+    "buscar": "Buscar en la ayuda",
+    "buscarPlaceholder": "Buscar…",
+    "limpiar": "Borrar la búsqueda",
+    "resultados": "Sin resultados | {n} resultado | {n} resultados",
+    "sinResultados": "No hay resultados para «{texto}». Prueba con otra palabra."
   },
   "errores": {
     "correoDuplicado": "Ya existe una persona con ese correo.",

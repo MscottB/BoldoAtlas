@@ -34,3 +34,20 @@
   border-radius: 24px;
   padding: 12px;
 }
+
+/* Figuras del manual (src/lib/markdownAyuda.ts): la captura con su pie; ancho y alto vienen en la imagen. */
+.vp-doc figure.figura {
+  margin: 16px 0;
+}
+.vp-doc figure.figura img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+}
+.vp-doc figure.figura figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}

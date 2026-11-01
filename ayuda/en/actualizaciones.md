@@ -1,5 +1,9 @@
 # Updates
 
+::: info In short
+BoldoAtlas looks for new versions and tells you; it never downloads or installs anything without your confirmation. Here you see how to check, install and turn the check off.
+:::
+
 BoldoAtlas looks for new versions on its own and tells you; it never downloads or installs anything until you confirm.
 
 ## How it checks
@@ -13,6 +17,8 @@ You can also check whenever you want:
 - **Settings › Updates › Check for updates**.
 
 If there is nothing new you'll see "You have the latest version"; offline, "Could not check: check your connection".
+
+![Settings, Updates section with the check frequency and the Check for updates button.](../img/en/actualizaciones-config.webp "Settings › Updates. 1: how often it checks. 2: check now."){width=760 height=170}
 
 ## The update window
 
@@ -45,3 +51,9 @@ The update's temporary files (the downloaded installer, the portable's previous 
 In **Settings › Updates › Check automatically** you choose **Never**, **When opening**, **Every day** (the default) or **Every week**. The choice applies only to this computer. With **Never** BoldoAtlas connects to nothing on its own.
 
 Checking is the only connection BoldoAtlas makes on its own: it reads the public list of releases on GitHub and the new version's notes. It sends no organization data or identifiers.
+
+::: tip Tip
+If you work offline, choose **Never** under **Check automatically**: BoldoAtlas will not connect to anything on its own.
+:::
+
+**See also:** [Getting started](inicio.md) · [Backups](respaldos.md).

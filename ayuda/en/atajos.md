@@ -1,5 +1,9 @@
 # Keyboard shortcuts
 
+::: info In short
+All BoldoAtlas keyboard shortcuts in one table, and when they work and when they do not.
+:::
+
 BoldoAtlas's own shortcuts:
 
 | Key                                       | What it does                                                                                                                                                           |
@@ -24,6 +28,14 @@ BoldoAtlas's own shortcuts:
 | `Ctrl` + click / middle click             | On a menu entry, a palette result, a person in the Directory or **Show in the org chart**: opens it in a new tab                                                                                  |
 | `Ctrl` + `Enter`                          | In the command palette: opens the chosen result in a new tab                                                                                                           |
 
+![Command palette with the text Inés typed and, below, the person Inés Lagos and the option Show Inés Lagos in the org chart.](../img/en/atajos-paleta.webp "The command palette (Ctrl + K) searching for “Inés”. 1: search field. 2: the person. 3: “Show … in the org chart”."){width=444 height=326}
+
+::: tip Tip
+The palette works even while you type in a field: use it to jump to any unit, person or action.
+:::
+
 `N`, `F`, `Del`, `Ctrl` + `D`, `Ctrl` + `=` / `+` / `-`, `F2`, `Shift` + `F10` and the arrow keys (also with `Shift`) only act on the tree, when you are not typing in a text field and no dialog is open. Except for zoom, they also do not act with focus on a button, a row or another control inside the unit panel, so a key press never deletes or creates anything by surprise; they do act with focus on the panel itself, as right after it opens. While viewing the chart at a past date, `N`, `Del`, `Ctrl` + `D` and `F2` do nothing (read-only) and there is no multiple selection. `Ctrl` + `D` only duplicates when exactly one unit is selected. With `Del`, a unit that has content asks for confirmation before it is deleted; several selected units always ask for it.
 
 In the tab bar (shown from the second tab on): `←` `→` move between tabs, `Enter` opens the focused one, `Del` closes it and `Ctrl` + `Shift` + `←` `→` move it. More on the “Work tabs” page.
+
+**See also:** [Work tabs](pestanas.md) · [The tree](arbol.md).
