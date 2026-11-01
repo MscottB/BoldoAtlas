@@ -24,6 +24,7 @@ import {
   importarElegir,
   importarReemplazar,
   importarVolver,
+  revisionAplicar,
   revisionResumen,
   type InformeImportacion,
   type InformeRevision,
@@ -89,7 +90,7 @@ async function abrir() {
   }
   codigo.value = ""; // ya cumplió: no se queda en memoria de la interfaz
   resumen.value = r.valor;
-  modo.value = r.valor.informe ? "agregar" : "reemplazar";
+  modo.value = r.valor.informe ? "agregar" : r.valor.parcial ? "revisar" : "reemplazar";
   lugares.value = Object.fromEntries(
     (r.valor.informe?.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
   );
@@ -179,13 +180,55 @@ async function volverAOpciones() {
 }
 
 const informeRevision = ref<InformeRevision | null>(null);
-async function revisionHecha(hecho: InformeRevision) {
-  informeRevision.value = hecho;
+const falloAplicar = ref<{ codigo: string; mensaje: string } | null>(null);
+// Ya no se puede volver atrás ni descartar: Rust aplica. El resultado se recoge siempre, también si se salió del panel.
+let aplicandoRevision = false;
+let fuera = false;
+async function aplicarRevision(version: number) {
+  const propio = trabajo.actual.value;
+  if (!propio) return;
+  falloAplicar.value = null;
+  aplicandoRevision = true;
+  paso.value = "aplicando";
+  avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
+  const r = await intentarTrabajo(t("trabajos.importarAplicarRevision"), () =>
+    revisionAplicar(propio, version),
+  );
+  aplicandoRevision = false;
+  if (!r.ok) {
+    falloAplicar.value = { codigo: r.codigo, mensaje: r.mensaje };
+    if (fuera) {
+      toast.error(r.mensaje);
+      dejarRevision(propio);
+    } else {
+      paso.value = "decidir";
+    }
+    return;
+  }
+  revisionConDecisiones(false);
+  informeRevision.value = r.valor;
   revision.value = null;
   const cargado = await org.cargar();
   if (!cargado.ok) toast.error(cargado.mensaje);
   await trabajo.soltar();
-  paso.value = "hechoRevision";
+  if (fuera) toast.success(t("intercambio.revisar.aplicadoFuera"));
+  else paso.value = "hechoRevision";
+}
+
+/** Salir no pierde las decisiones sin avisar: un diálogo global pregunta si se vuelve o se descartan. */
+function dejarRevision(propio: string) {
+  if (!resumen.value || !decisiones.value) {
+    revisionConDecisiones(false);
+    void trabajo.soltar();
+    return;
+  }
+  revisionDejada.value = {
+    trabajo: propio,
+    decisiones: decisiones.value,
+    lugares: destinos.value,
+    importacion: resumen.value,
+    volviendo: false,
+  };
 }
 const lineasHechas = computed(() =>
   (informeRevision.value?.tablas ?? []).flatMap((f) =>
@@ -246,16 +289,11 @@ onMounted(async () => {
 });
 onUnmounted(() => {
   codigo.value = "";
-  // salir no pierde las decisiones sin avisar: un diálogo global pregunta si se vuelve o se descartan
+  fuera = true;
+  if (aplicandoRevision) return;
   const propio = trabajo.actual.value;
-  if (paso.value === "decidir" && decisiones.value > 0 && propio && resumen.value) {
-    revisionDejada.value = {
-      trabajo: propio,
-      decisiones: decisiones.value,
-      lugares: destinos.value,
-      importacion: resumen.value,
-      volviendo: false,
-    };
+  if (paso.value === "decidir" && propio) {
+    dejarRevision(propio);
     return;
   }
   revisionConDecisiones(false);
@@ -348,13 +386,11 @@ onUnmounted(() => {
             </span>
           </span>
         </label>
-        <label class="flex items-start gap-2 text-sm" :class="!resumen.informe && 'text-muted-foreground'">
-          <input v-model="modo" type="radio" value="revisar" class="mt-1" :disabled="!resumen.informe" />
+        <label class="flex items-start gap-2 text-sm">
+          <input v-model="modo" type="radio" value="revisar" class="mt-1" />
           <span>
             <span class="font-medium">{{ t("intercambio.importar.revisar") }}</span>
-            <span class="block text-muted-foreground">
-              {{ resumen.informe ? t("intercambio.importar.revisarAyuda") : porQueNoAgregar }}
-            </span>
+            <span class="block text-muted-foreground">{{ t("intercambio.importar.revisarAyuda") }}</span>
           </span>
         </label>
         <label class="flex items-start gap-2 text-sm" :class="resumen.parcial && 'text-muted-foreground'">
@@ -400,7 +436,7 @@ onUnmounted(() => {
         {{ t(modo === "revisar" ? "intercambio.importar.revisarNada" : "intercambio.importar.respaldo") }}
       </p>
       <div class="flex gap-2">
-        <Button type="button" :disabled="resumen.parcial && !resumen.informe" @click="aplicar">
+        <Button type="button" :disabled="modo === 'agregar' && !resumen.informe" @click="aplicar">
           {{ t(modo === "revisar" ? "intercambio.continuar" : "intercambio.importar.aplicar") }}
         </Button>
         <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
@@ -413,9 +449,10 @@ onUnmounted(() => {
       :trabajo="trabajo.actual.value"
       :lugares="destinos"
       :aviso-retomada="retomada"
+      :fallo="falloAplicar"
       @volver="volverAOpciones"
       @salir="salir"
-      @hecho="revisionHecha"
+      @aplicar="aplicarRevision"
     />
 
     <template v-else-if="paso === 'hechoRevision' && informeRevision">

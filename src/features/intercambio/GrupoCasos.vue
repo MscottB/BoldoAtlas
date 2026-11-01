@@ -16,6 +16,7 @@ const props = defineProps<{
   total: number;
   tablas: { tabla: string; total: number }[];
   recarga: number;
+  generacion: number;
   dudosas: boolean;
 }>();
 const emit = defineEmits<{
@@ -92,7 +93,7 @@ const acciones = computed<AccionMasiva[]>(() => {
       return ["agregar_todo", "omitir_todo"];
     case "borrado_vs_editado":
     case "borrado_sin_conflicto":
-      return ["mantener_todo", "borrar_todo"];
+      return ["mantener_todo", "borrar_todo", "restaurar_todo"];
     case "duplicado_persona":
       return ["unir_todo_mio"];
     default:
@@ -154,7 +155,7 @@ const acciones = computed<AccionMasiva[]>(() => {
       <ul class="grid gap-2" :aria-busy="cargando">
         <FilaCaso
           v-for="f in filas"
-          :key="`${f.tabla}:${f.id}`"
+          :key="`${generacion}:${f.tabla}:${f.id}`"
           :trabajo="trabajo"
           :fila="f"
           @decidir="(e: Eleccion) => alDecidir(f, e)"

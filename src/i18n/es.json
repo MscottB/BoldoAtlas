@@ -845,7 +845,8 @@
       "fallo": "No se pudo completar la operación: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",
-    "verLista": "Ver respaldos y restaurar"
+    "verLista": "Ver respaldos y restaurar",
+    "antesDeImportar": "Antes de importar"
   },
   "vista": {
     "cerrar": "Cerrar"
@@ -1259,9 +1260,10 @@
         "todo_archivo": "Todo lo del archivo",
         "agregar_todo": "Agregar todos",
         "omitir_todo": "Omitir todos",
-        "mantener_todo": "Mantener todos",
-        "borrar_todo": "Borrar todos",
-        "unir_todo_mio": "Unir todas con mis datos"
+        "mantener_todo": "Dejar todo como en mi base",
+        "borrar_todo": "Aplicar los borrados del archivo",
+        "unir_todo_mio": "Unir todas con mis datos",
+        "restaurar_todo": "Restaurar lo que borré"
       },
       "verTabla": "Ver",
       "todas": "Todo",
@@ -1279,7 +1281,7 @@
       "mezcla": "Campos de los dos lados",
       "mantener": "Mantener",
       "borrar": "Borrar",
-      "revivir": "Recuperar con los datos del archivo",
+      "revivir": "Restaurar con los datos del archivo",
       "sigueBorrada": "Que siga eliminado",
       "borradaAqui": "Lo eliminaste en tu base; en el archivo sigue.",
       "borradaArchivo": "El archivo lo trae eliminado; en tu base sigue.",
@@ -1315,7 +1317,9 @@
         "borrar": "se elimina {n} | se eliminan {n}",
         "revivir": "se recupera {n} | se recuperan {n}",
         "unir": "se une {n} | se unen {n}",
-        "omitir": "no entra {n} | no entran {n}"
+        "omitir": "no entra {n} | no entran {n}",
+        "vaciar": "queda vacía {n} referencia | quedan vacías {n} referencias",
+        "borrarLocales": "{n} de lo eliminado solo está en tu base | {n} de lo eliminado solo están en tu base"
       },
       "comprobando": "Comprobando referencias y reglas…",
       "baseCambioTitulo": "Tus datos cambiaron mientras revisabas",
@@ -1346,6 +1350,43 @@
         "regla": "«{nombre}» ({tabla}) tenía una mezcla de campos no válida.",
         "referencia": "«{nombre}» ({tabla}) apuntaba a algo que no iba a estar.",
         "ciclo": "«{nombre}» iba a quedar dentro de sí misma."
+      },
+      "borrarMuchosTitulo": "¿Eliminar {n} registro de tu base? | ¿Eliminar {n} registros de tu base?",
+      "borrarMuchosTexto": "Al aplicar se elimina {n} registro de tu base. Antes se hace un respaldo, que puedes restaurar desde Configuración. | Al aplicar se eliminan {n} registros de tu base. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
+      "borrarMuchosSi": "Eliminar {n} y aplicar | Eliminar {n} y aplicar",
+      "aplicadoFuera": "Se aplicó lo que decidiste en la revisión.",
+      "noAlcanza": "Eso no alcanzó: elige otra cosa.",
+      "posicion": "Posición {n}"
+    },
+    "valores": {
+      "tipo": {
+        "titular": "Titular",
+        "reemplazo": "Reemplazo"
+      },
+      "rol": {
+        "R": "Responsable",
+        "A": "Aprobador",
+        "C": "Consultado",
+        "I": "Informado"
+      },
+      "frecuencia": {
+        "diaria": "Diaria",
+        "semanal": "Semanal",
+        "mensual": "Mensual",
+        "trimestral": "Trimestral",
+        "anual": "Anual",
+        "eventual": "Eventual"
+      },
+      "criticidad": {
+        "baja": "Baja",
+        "media": "Media",
+        "alta": "Alta"
+      },
+      "estado": {
+        "borrador": "Borrador",
+        "documentado": "Documentado",
+        "en_revision": "En revisión",
+        "obsoleto": "Obsoleto"
       }
     }
   }

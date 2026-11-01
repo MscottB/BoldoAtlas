@@ -90,6 +90,8 @@ pub struct Comparacion {
     pub iguales: u64,
     /// Personas de una copia parcial que viajan resumidas: ver `resumidas_de`.
     pub resumidas: HashSet<String>,
+    /// Filas vivas de esta base, para saber qué parte de ella se borraría.
+    pub vivas_locales: u64,
 }
 
 /// Fecha que la app pudo haber escrito: `AAAA-MM-DDTHH:MM:SS[.mmm]Z`, en valores posibles.
@@ -284,7 +286,9 @@ const CAMPOS_RESUMIDOS: &[&str] = &[
 ];
 
 /// Las personas de una copia parcial sin asignación vigente en ella. Vigente como en `alcance.rs`: ya empezó, y sin fin o con
-/// un fin que aún no llega. Un archivo completo no tiene este caso.
+/// un fin que aún no llega. Se calcula hoy, y la copia se recortó con la fecha de la exportación: una asignación que empezó
+/// entre medio engañaría, así que quien trae vacíos los seis campos también cuenta. Da igual si el archivo lo hace a propósito:
+/// lo único que consigue es no vaciar nada. Un archivo completo no tiene este caso.
 pub fn resumidas_de(imp: &Connection, meta: &MetaArchivo) -> Result<HashSet<String>, Fallo> {
     if !meta.parcial {
         return Ok(HashSet::new());
@@ -294,7 +298,10 @@ pub fn resumidas_de(imp: &Connection, meta: &MetaArchivo) -> Result<HashSet<Stri
             "SELECT t.id FROM trabajadores t WHERE NOT EXISTS (
                SELECT 1 FROM asignaciones a JOIN puestos p ON p.id = a.puesto_id AND p.deleted_at IS NULL
                WHERE a.trabajador_id = t.id AND a.deleted_at IS NULL AND a.desde <= date('now', 'localtime')
-                 AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime')))",
+                 AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime')))
+             OR (COALESCE(t.telefono, '') = '' AND COALESCE(t.tipo_contrato_id, '') = ''
+                 AND COALESCE(t.sede_id, '') = '' AND COALESCE(t.jornada_id, '') = ''
+                 AND COALESCE(t.foto_png, '') = '' AND COALESCE(t.notas, '') = '')",
         )?
         .query_map([], |f| f.get(0))?
         .collect::<rusqlite::Result<_>>()?)
@@ -550,6 +557,11 @@ pub fn comparar(
         }
         let n_cols = d.columnas.len();
         let i_id = d.columnas.iter().position(|c| c == "id").ok_or("id")?;
+        let i_baja = d
+            .columnas
+            .iter()
+            .position(|c| c == "deleted_at")
+            .ok_or("deleted_at")?;
         // las dos por `id`, con la misma regla de orden (BINARY): se avanza en paralelo sin cargar ninguna entera
         let sql = format!("SELECT {} FROM {tabla} ORDER BY id", d.columnas.join(", "));
         let (mut consulta_l, mut consulta_a) = (local.prepare(&sql)?, imp.prepare(&sql)?);
@@ -570,6 +582,11 @@ pub fn comparar(
                 (None, Some(_)) => Ordering::Greater,
                 (Some(m), Some(a)) => texto(&m[i_id]).cmp(&texto(&a[i_id])),
             };
+            if orden != Ordering::Greater
+                && let Some(m) = &mia
+            {
+                s.vivas_locales += u64::from(m[i_baja] == Value::Null);
+            }
             match orden {
                 // solo aquí: nunca se borra por no venir en el archivo
                 Ordering::Less => mia = siguiente(&mut filas_l, n_cols)?,

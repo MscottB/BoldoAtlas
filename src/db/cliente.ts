@@ -59,6 +59,8 @@ export interface Respaldo {
   seguridad: boolean;
   /** Seguridad hecha antes de reemplazar los datos (si no, antes de restaurar). */
   reemplazo: boolean;
+  /** Hecho antes de agregar o fusionar un archivo importado. */
+  importacion: boolean;
 }
 
 /** Error de los comandos de respaldos: `codigo` se traduce con `respaldos.error.<codigo>`. */
@@ -214,6 +216,7 @@ export type AccionMasiva =
   | "omitir_todo"
   | "mantener_todo"
   | "borrar_todo"
+  | "restaurar_todo"
   | "unir_todo_mio"
   | "resolver_rotas"
   | "no_resolver_rotas";
@@ -227,9 +230,21 @@ export interface ResumenRevision {
   dudosas: number;
   /** Lo decidido a mano: se pierde si se sale. */
   decisiones: number;
-  aplicara: { agregar: number; cambiar: number; borrar: number; revivir: number; omitir: number; unir: number };
+  aplicara: {
+    agregar: number;
+    cambiar: number;
+    borrar: number;
+    revivir: number;
+    omitir: number;
+    unir: number;
+    vaciar: number;
+    /** De las que se borran, las que solo están en esta base. */
+    borrarLocales: number;
+  };
   bloqueos: { duplicado: number; unica: number; regla: number; referencia: number; ciclo: number; total: number };
   resolverRotas: boolean;
+  /** Se eliminaría mucho de una vez: «Aplicar» pide confirmar. */
+  borradoMasivo: boolean;
   restablecidas: number;
 }
 
@@ -281,6 +296,8 @@ export interface FilaBloqueo {
   vaciable: boolean;
   /** Lo ya decidido; null si sigue por resolver. */
   eleccion: Eleccion | null;
+  /** Lo decidido no alcanzó: sigue deteniendo «Aplicar». */
+  fallido: boolean;
   reasignadoA: string | null;
 }
 
@@ -293,6 +310,8 @@ export interface InformeRevision {
     revividas: number;
     unidas: number;
     omitidas: number;
+    vaciadas: number;
+    localesBorradas: number;
   }[];
   nombreHeredado: string | null;
 }

@@ -10,6 +10,8 @@ const PREFIJO: &str = "boldo-";
 const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
 /// Copia que se hace antes de reemplazar los datos por una organización nueva o el ejemplo: tampoco se poda.
 const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
+/// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: tampoco se poda.
+const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
 pub const CONSERVAR: usize = 10;
 
@@ -73,6 +75,8 @@ pub struct Respaldo {
     pub seguridad: bool,
     /// Seguridad hecha antes de reemplazar los datos (si no, antes de restaurar).
     pub reemplazo: bool,
+    /// Seguridad hecha antes de agregar o fusionar un archivo importado.
+    pub importacion: bool,
 }
 
 /// `AAAAMMDD-HHMM` en hora local.
@@ -90,14 +94,19 @@ struct Entrada {
     n: u32,
     seguridad: bool,
     reemplazo: bool,
+    importacion: bool,
 }
 
-/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
+/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-|antes-de-importar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
 fn entrada(nombre: &str) -> Option<Entrada> {
     let reemplazo = nombre.strip_prefix(PREFIJO_REEMPLAZO);
-    let (seguridad, resto) = match (reemplazo, nombre.strip_prefix(PREFIJO_SEGURIDAD)) {
-        (Some(r), _) | (_, Some(r)) => (true, r),
-        _ => (false, nombre.strip_prefix(PREFIJO)?),
+    let importacion = nombre.strip_prefix(PREFIJO_IMPORTAR);
+    let especial = reemplazo
+        .or(importacion)
+        .or_else(|| nombre.strip_prefix(PREFIJO_SEGURIDAD));
+    let (seguridad, resto) = match especial {
+        Some(r) => (true, r),
+        None => (false, nombre.strip_prefix(PREFIJO)?),
     };
     let resto = resto.strip_suffix(".db")?;
     let sello = resto.get(..13)?;
@@ -123,6 +132,7 @@ fn entrada(nombre: &str) -> Option<Entrada> {
         n,
         seguridad,
         reemplazo: reemplazo.is_some(),
+        importacion: importacion.is_some(),
     })
 }
 
@@ -209,6 +219,15 @@ pub fn respaldar_antes_de_reemplazar(
     volcar(conn, dir, PREFIJO_REEMPLAZO, sello)
 }
 
+/// Respaldo previo a agregar o fusionar un archivo importado: va aparte de los automáticos y no se poda.
+pub fn respaldar_antes_de_importar(
+    conn: &Connection,
+    dir: &Path,
+    sello: &str,
+) -> Result<String, Fallo> {
+    volcar(conn, dir, PREFIJO_IMPORTAR, sello)
+}
+
 fn revision(ruta: &Path) -> Option<i64> {
     let c = Connection::open_with_flags(ruta, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
     c.query_row(
@@ -243,6 +262,7 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
                 revision,
                 seguridad: e.seguridad,
                 reemplazo: e.reemplazo,
+                importacion: e.importacion,
                 nombre: e.nombre,
             })
         })

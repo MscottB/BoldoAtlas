@@ -58,10 +58,13 @@ function fecha(f: string | null): string {
   const d = new Date(f);
   return Number.isNaN(d.getTime()) ? t("intercambio.revisar.fechaNoValida") : d.toLocaleString(locale.value);
 }
-function textoValor(v: ValorCampo): string {
+function textoValor(columna: string, v: ValorCampo): string {
   if (v.oculto !== null && v.oculto !== undefined)
     return t("intercambio.revisar.valorOculto", { tamano: tamano(v.oculto, locale.value) });
-  return v.texto ?? t("intercambio.revisar.vacio");
+  if (v.texto === null || v.texto === undefined) return t("intercambio.revisar.vacio");
+  if (columna === "orden") return t("intercambio.revisar.posicion", { n: Number(v.texto) + 1 });
+  const clave = `intercambio.valores.${columna}.${v.texto}`;
+  return te(clave) ? t(clave) : v.texto;
 }
 const explicacion = computed(() => {
   const f = props.fila;
@@ -231,9 +234,9 @@ const verDatos = computed(() => props.fila.tipo !== "union");
                     :aria-label="t('intercambio.revisar.usarMio', { campo: nombreColumna(c.columna) })"
                     @change="campo(c.columna, 'mio')"
                   />
-                  <span class="min-w-0 break-words">{{ textoValor(c.mio) }}</span>
+                  <span class="min-w-0 break-words">{{ textoValor(c.columna, c.mio) }}</span>
                 </label>
-                <span v-else>{{ textoValor(c.mio) }}</span>
+                <span v-else>{{ textoValor(c.columna, c.mio) }}</span>
                 <span v-if="c.mio.cortado" class="text-xs text-muted-foreground"> {{ t("intercambio.revisar.cortado") }}</span>
               </td>
               <td class="py-1 pr-3 break-words">
@@ -246,9 +249,9 @@ const verDatos = computed(() => props.fila.tipo !== "union");
                     :aria-label="t('intercambio.revisar.usarArchivo', { campo: nombreColumna(c.columna) })"
                     @change="campo(c.columna, 'archivo')"
                   />
-                  <span class="min-w-0 break-words">{{ textoValor(c.archivo) }}</span>
+                  <span class="min-w-0 break-words">{{ textoValor(c.columna, c.archivo) }}</span>
                 </label>
-                <span v-else>{{ textoValor(c.archivo) }}</span>
+                <span v-else>{{ textoValor(c.columna, c.archivo) }}</span>
                 <span v-if="c.archivo.cortado" class="text-xs text-muted-foreground"> {{ t("intercambio.revisar.cortado") }}</span>
               </td>
             </tr>

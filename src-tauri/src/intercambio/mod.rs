@@ -201,6 +201,8 @@ impl Sesiones {
             return Err(cancelado());
         }
         e.importacion = Some(i.into());
+        // otra importación: lo decidido era sobre la anterior
+        e.revision = None;
         Ok(())
     }
 
@@ -389,7 +391,7 @@ pub fn agregar(
     version_app: &str,
 ) -> Result<Informe, Fallo> {
     let imp = validar::solo_lectura(i.temporal.ruta())?;
-    respaldos::respaldar_antes_de_reemplazar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
+    respaldos::respaldar_antes_de_importar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
     let marca = ahora(conn)?;
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let informe = fusion::fusionar(&tx, &imp, &i.meta, lugares, &marca)?;
@@ -661,7 +663,7 @@ mod tests {
             respaldos::listar(&respaldos)
                 .unwrap()
                 .iter()
-                .any(|r| r.reemplazo),
+                .any(|r| r.importacion && r.seguridad),
             "siempre un respaldo antes de aplicar"
         );
     }

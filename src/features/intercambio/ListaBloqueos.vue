@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import { revisionBloqueos, type AccionMasiva, type Eleccion, type FilaBloqueo } from "@/db/cliente";
@@ -46,10 +46,21 @@ const fin = computed(() => Math.min(desde.value + POR_PAGINA, cuantos.value));
 const n = (x: number) => x.toLocaleString(locale.value);
 const nombreDe = (f: FilaBloqueo) => f.nombre || t("intercambio.revisar.sinNombre");
 const claveTexto = (f: FilaBloqueo) =>
-  f.eleccion ? `intercambio.revisar.bloqueoResuelto.${f.tipo}` : `intercambio.revisar.bloqueo.${f.tipo}`;
+  f.eleccion && !f.fallido
+    ? `intercambio.revisar.bloqueoResuelto.${f.tipo}`
+    : `intercambio.revisar.bloqueo.${f.tipo}`;
 const clave = (f: FilaBloqueo) => `${f.tabla}:${f.id}:${f.columna ?? ""}`;
-const quitar = (f: FilaBloqueo) => emit("decidir", f.tabla, f.id, { que: "quitar", columna: f.columna });
-const decidir = (f: FilaBloqueo, e: Eleccion) => emit("decidir", f.tabla, f.id, e);
+// La fila que tenía el foco cambia de controles: el foco va al título, y lector y teclado siguen desde ahí.
+const titulo = ref<HTMLElement | null>(null);
+const enfocar = () => nextTick(() => titulo.value?.focus());
+const quitar = (f: FilaBloqueo) => {
+  emit("decidir", f.tabla, f.id, { que: "quitar", columna: f.columna });
+  void enfocar();
+};
+const decidir = (f: FilaBloqueo, e: Eleccion) => {
+  emit("decidir", f.tabla, f.id, e);
+  void enfocar();
+};
 const queResuelto = (f: FilaBloqueo) => {
   if (!f.eleccion) return "";
   if (f.eleccion.que === "reasignar") return t("intercambio.revisar.reasignadaA", { nombre: f.reasignadoA ?? "" });
@@ -58,8 +69,10 @@ const queResuelto = (f: FilaBloqueo) => {
 </script>
 
 <template>
-  <section v-if="cuantos" class="grid gap-2 rounded-lg border p-3" :aria-label="t('intercambio.revisar.tituloBloqueos')">
-    <h3 class="text-sm font-medium">{{ t("intercambio.revisar.tituloBloqueos") }}</h3>
+  <section v-if="cuantos || resolverRotas" class="grid gap-2 rounded-lg border p-3" :aria-label="t('intercambio.revisar.tituloBloqueos')">
+    <h3 ref="titulo" tabindex="-1" class="text-sm font-medium outline-none">
+      {{ t("intercambio.revisar.tituloBloqueos") }}
+    </h3>
     <div v-if="referencias || resolverRotas" class="flex flex-wrap items-center gap-2">
       <Button
         type="button"
@@ -85,6 +98,7 @@ const queResuelto = (f: FilaBloqueo) => {
         </p>
         <p v-if="f.eleccion" class="flex flex-wrap items-center gap-2 text-muted-foreground">
           {{ queResuelto(f) }}
+          <span v-if="f.fallido" class="text-destructive">{{ t("intercambio.revisar.noAlcanza") }}</span>
           <Button type="button" variant="ghost" size="sm" @click="quitar(f)">{{ t("intercambio.revisar.deshacer") }}</Button>
         </p>
         <div v-else-if="f.tipo === 'unica' || f.tipo === 'regla'" class="flex flex-wrap gap-2">

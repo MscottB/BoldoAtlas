@@ -15,13 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   importarComparar,
-  revisionAplicar,
   revisionDecidir,
   revisionMasivo,
   revisionVerificar,
   type AccionMasiva,
   type Eleccion,
-  type InformeRevision,
   type ResumenRevision,
   type TipoCaso,
 } from "@/db/cliente";
@@ -35,12 +33,14 @@ const props = defineProps<{
   resumen: ResumenRevision;
   lugares: Record<string, string | null>;
   avisoRetomada?: boolean;
+  /** Por qué no se aplicó, si se vuelve aquí desde «Aplicando». */
+  fallo?: { codigo: string; mensaje: string } | null;
 }>();
 const emit = defineEmits<{
   "update:resumen": [r: ResumenRevision];
   volver: [];
   salir: [];
-  hecho: [informe: InformeRevision];
+  aplicar: [version: number];
 }>();
 const { t } = useI18n();
 
@@ -51,8 +51,9 @@ const fijar = (r: ResumenRevision) => emit("update:resumen", r);
 // mover la fila que se está mirando; los bloqueos sí cambian con cada comprobación.
 const recarga = ref(0);
 const recargaBloqueos = ref(0);
+// Sube al comparar de nuevo: las filas no heredan lo que tenían abierto o escrito.
+const generacion = ref(0);
 const verificando = ref(false);
-const aplicando = ref(false);
 const baseCambio = ref(false);
 const error = ref("");
 
@@ -81,7 +82,10 @@ async function verificar() {
   if (!r.valor.verificada) pedirVerificacion();
 }
 onMounted(() => {
-  if (!resumen.value.verificada) void verificar();
+  const f = props.fallo;
+  if (f?.codigo === "base_cambio") baseCambio.value = true;
+  else if (f && f.codigo !== "bloqueada" && f.codigo !== "sin_verificar") error.value = f.mensaje;
+  if (!baseCambio.value && (f || !resumen.value.verificada)) void verificar();
 });
 onUnmounted(() => {
   desmontado = true;
@@ -116,20 +120,19 @@ const totalDe = (tipo: TipoCaso) => grupos.value.find((g) => g.tipo === tipo)?.t
 const hayDiferencias = computed(() => grupos.value.length > 0);
 const bloqueos = computed(() => resumen.value.bloqueos);
 const aplicara = computed(() =>
-  (["agregar", "cambiar", "borrar", "revivir", "unir", "omitir"] as const)
+  (["agregar", "cambiar", "borrar", "borrarLocales", "vaciar", "revivir", "unir", "omitir"] as const)
     .filter((k) => resumen.value.aplicara[k] > 0)
     .map((k) => t(`intercambio.revisar.aplicara.${k}`, resumen.value.aplicara[k])),
 );
 const nadaQueAplicar = computed(() => {
   const a = resumen.value.aplicara;
-  return a.agregar + a.cambiar + a.borrar + a.revivir === 0;
+  return a.agregar + a.cambiar + a.borrar + a.revivir + a.vaciar === 0;
 });
 const puedeAplicar = computed(
   () =>
     resumen.value.verificada &&
     bloqueos.value.total === 0 &&
     !nadaQueAplicar.value &&
-    !aplicando.value &&
     !baseCambio.value,
 );
 const estado = computed(() => {
@@ -159,30 +162,20 @@ async function compararDeNuevo() {
   baseCambio.value = false;
   error.value = "";
   fijar(r.valor);
+  generacion.value++;
   recarga.value++;
   recargaBloqueos.value++;
 }
 
-async function aplicar() {
-  aplicando.value = true;
-  error.value = "";
-  const v = resumen.value.version;
-  const r = await intentarTrabajo(t("trabajos.importarAplicarRevision"), () =>
-    revisionAplicar(props.trabajo, v),
-  );
-  aplicando.value = false;
-  if (r.ok) {
-    revisionConDecisiones(false);
-    emit("hecho", r.valor);
-    return;
-  }
-  if (r.codigo === "base_cambio") {
-    baseCambio.value = true;
-  } else if (r.codigo === "bloqueada" || r.codigo === "sin_verificar") {
-    await verificar();
-  } else {
-    error.value = r.mensaje;
-  }
+// Eliminar mucho de una vez se confirma, con el número real: un archivo puede traer toda la base marcada como eliminada.
+const confirmandoBorrado = ref(false);
+function pedirAplicar() {
+  if (resumen.value.borradoMasivo) confirmandoBorrado.value = true;
+  else aplicar();
+}
+function aplicar() {
+  confirmandoBorrado.value = false;
+  emit("aplicar", resumen.value.version);
 }
 
 // Salir con decisiones avisa antes: se pierden.
@@ -273,6 +266,7 @@ function salirYa(a: "volver" | "salir") {
         :total="g.total"
         :tablas="g.tablas"
         :recarga="recarga"
+        :generacion="generacion"
         :dudosas="resumen.dudosas > 0"
         @decidir="decidir"
         @en-bloque="enBloque"
@@ -286,17 +280,34 @@ function salirYa(a: "volver" | "salir") {
       <p class="text-muted-foreground">{{ t("intercambio.importar.respaldo") }}</p>
       <p role="status" class="min-h-5 text-muted-foreground">{{ estado }}</p>
       <div class="flex flex-wrap gap-2">
-        <Button type="button" :disabled="!puedeAplicar" @click="aplicar">
+        <Button type="button" :disabled="!puedeAplicar" @click="pedirAplicar">
           {{ t("intercambio.importar.aplicar") }}
         </Button>
-        <Button type="button" variant="outline" :disabled="aplicando" @click="pedirSalida('volver')">
+        <Button type="button" variant="outline" @click="pedirSalida('volver')">
           {{ t("intercambio.revisar.volverOpciones") }}
         </Button>
-        <Button type="button" variant="outline" :disabled="aplicando" @click="pedirSalida('salir')">
+        <Button type="button" variant="outline" @click="pedirSalida('salir')">
           {{ t("intercambio.cancelar") }}
         </Button>
       </div>
     </div>
+
+    <AlertDialog v-model:open="confirmandoBorrado">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t("intercambio.revisar.borrarMuchosTitulo", resumen.aplicara.borrar) }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t("intercambio.revisar.borrarMuchosTexto", resumen.aplicara.borrar) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{{ t("intercambio.revisar.seguir") }}</AlertDialogCancel>
+          <AlertDialogAction @click="aplicar">
+            {{ t("intercambio.revisar.borrarMuchosSi", resumen.aplicara.borrar) }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     <AlertDialog :open="saliendo !== null" @update:open="(v: boolean) => !v && (saliendo = null)">
       <AlertDialogContent>

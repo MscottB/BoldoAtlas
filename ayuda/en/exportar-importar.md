@@ -54,15 +54,15 @@ For two copies that kept working separately: you compare the file with your data
 2. Look at the summary: each type of case with its count. What is the same on both sides is not listed.
 3. Press **Accept all the most recent** to settle the common cases in one click, or open a group and decide per record. **Show fields** shows each field with its value in your data and in the file, and you can choose field by field.
 4. Resolve whatever appears in **To resolve**. While anything is left, **Apply** is stopped and a notice at the top says what is missing.
-5. Press **Apply**. The **When applying** box says beforehand how much is added, changed or deleted.
+5. Press **Apply**. The **When applying** box says beforehand how much is added, changed, deleted or left empty, including what is only in your database. If a lot is deleted at once, it asks you to confirm with the number.
 
-![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=1244}
+![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=1316}
 
 | Case | What it is | What comes selected | What you can do |
 |---|---|---|---|
 | **New** | Only in the file | They come in | Uncheck them |
 | **Different** | The same record with other data | The side edited most recently | Yours or the file's, per record or per field |
-| **Deleted on one side, edited on the other** | One side deleted it and the other edited it later | It is kept | Keep or delete |
+| **Deleted on one side, edited on the other** | One side deleted it and the other edited it later | What is in your database stays there, and what you deleted stays deleted | Keep, delete, or restore what you deleted |
 | **Deleted without conflict** | One side deleted it and the other did not change it afterwards | It stays deleted | Revert |
 | **Merged with what you already have** | Values with the same name as one of yours, ignoring capitals and accents | Yours is used | Nothing to decide |
 | **People with the same email** | A person in the file has the email of one of yours | Nothing: it stops **Apply** | Merge with your data, merge with the file's, or change their email |
@@ -78,7 +78,7 @@ What is only in your database stays: nothing is deleted for not being in the fil
 “The most recent” is only a help: that date comes from the other computer, and it may be wrong. A future date or something that is not a date is marked, never counts as the most recent and does not delete or recover anything by itself: you decide.
 :::
 
-If your data changes while you review, for example in another tab, **Apply** warns you and writes nothing. Press **Compare again**: what you decided about what did not change is kept, and a notice says how many decisions went back to their initial value.
+If your data changes while you review, **Apply** warns you and writes nothing. Press **Compare again**: what you decided about what did not change is kept, and a notice says how many decisions went back to their initial value.
 
 Decisions last as long as the review. **Cancel** and **Back to the options** warn before losing them. If you go to another screen, a notice offers to go back to the review or discard it; and if you close the app with unapplied decisions, it asks first.
 
@@ -87,7 +87,7 @@ Decisions last as long as the review. **Cancel** and **Back to the options** war
 Your current data is swapped for the file's and the app restarts. It only works with a file of **the whole database**: with a part you would erase the rest. You are asked to confirm.
 
 ::: tip Tip
-Before applying any of the three, BoldoAtlas makes a backup marked **Before replacing**. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
+Before applying, BoldoAtlas makes a backup: marked **Before importing** when adding or reviewing and deciding, and **Before replacing** when replacing everything. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
 :::
 
 ## If you close halfway

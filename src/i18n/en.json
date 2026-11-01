@@ -845,7 +845,8 @@
       "fallo": "The operation could not be completed: {detalle}"
     },
     "ultimo": "Last backup: {fecha}",
-    "verLista": "View and restore backups"
+    "verLista": "View and restore backups",
+    "antesDeImportar": "Before importing"
   },
   "vista": {
     "cerrar": "Close"
@@ -1259,9 +1260,10 @@
         "todo_archivo": "All from the file",
         "agregar_todo": "Add all",
         "omitir_todo": "Skip all",
-        "mantener_todo": "Keep all",
-        "borrar_todo": "Delete all",
-        "unir_todo_mio": "Merge all with my data"
+        "mantener_todo": "Leave everything as in my database",
+        "borrar_todo": "Apply the file's deletions",
+        "unir_todo_mio": "Merge all with my data",
+        "restaurar_todo": "Restore what I deleted"
       },
       "verTabla": "Show",
       "todas": "Everything",
@@ -1279,7 +1281,7 @@
       "mezcla": "Fields from both sides",
       "mantener": "Keep",
       "borrar": "Delete",
-      "revivir": "Recover with the file's data",
+      "revivir": "Restore with the file's data",
       "sigueBorrada": "Leave it deleted",
       "borradaAqui": "You deleted it in your database; it is still in the file.",
       "borradaArchivo": "The file has it deleted; it is still in your database.",
@@ -1315,7 +1317,9 @@
         "borrar": "{n} is deleted | {n} are deleted",
         "revivir": "{n} is recovered | {n} are recovered",
         "unir": "{n} is merged | {n} are merged",
-        "omitir": "{n} stays out | {n} stay out"
+        "omitir": "{n} stays out | {n} stay out",
+        "vaciar": "{n} reference stays empty | {n} references stay empty",
+        "borrarLocales": "{n} of those deleted is only in your database | {n} of those deleted are only in your database"
       },
       "comprobando": "Checking references and rules…",
       "baseCambioTitulo": "Your data changed while you were reviewing",
@@ -1346,6 +1350,43 @@
         "regla": "“{nombre}” ({tabla}) had an invalid mix of fields.",
         "referencia": "“{nombre}” ({tabla}) pointed to something that would not be there.",
         "ciclo": "“{nombre}” would have ended up inside itself."
+      },
+      "borrarMuchosTitulo": "Delete {n} record from your database? | Delete {n} records from your database?",
+      "borrarMuchosTexto": "Applying deletes {n} record from your database. A backup is made first, which you can restore from Settings. | Applying deletes {n} records from your database. A backup is made first, which you can restore from Settings.",
+      "borrarMuchosSi": "Delete {n} and apply | Delete {n} and apply",
+      "aplicadoFuera": "What you decided in the review was applied.",
+      "noAlcanza": "That was not enough: choose something else.",
+      "posicion": "Position {n}"
+    },
+    "valores": {
+      "tipo": {
+        "titular": "Holder",
+        "reemplazo": "Substitute"
+      },
+      "rol": {
+        "R": "Responsible",
+        "A": "Approver",
+        "C": "Consulted",
+        "I": "Informed"
+      },
+      "frecuencia": {
+        "diaria": "Daily",
+        "semanal": "Weekly",
+        "mensual": "Monthly",
+        "trimestral": "Quarterly",
+        "anual": "Yearly",
+        "eventual": "Occasional"
+      },
+      "criticidad": {
+        "baja": "Low",
+        "media": "Medium",
+        "alta": "High"
+      },
+      "estado": {
+        "borrador": "Draft",
+        "documentado": "Documented",
+        "en_revision": "In review",
+        "obsoleto": "Obsolete"
       }
     }
   }

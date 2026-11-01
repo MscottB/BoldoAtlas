@@ -661,12 +661,14 @@ pub async fn revision_verificar(
             sesiones.importacion(&trabajo)?,
             sesiones.revision(&trabajo)?,
         );
-        let (version, bloqueos) = {
+        let v = {
             let g = leer(&r);
-            estado.con_conexion(|c| revision::verificar(c, &i, &g))?
+            let sesiones = &sesiones;
+            let trabajo = &trabajo;
+            estado.con_conexion(|c| revision::verificar(c, &i, &g, || sesiones.sigue(trabajo)))?
         };
         let mut g = escribir(&r);
-        g.anotar_verificacion(version, bloqueos);
+        g.anotar_verificacion(v);
         Ok(g.resumen())
     })
     .await
@@ -715,14 +717,14 @@ pub async fn revision_aplicar(
         let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
         let dir = &estado.rutas()?.respaldos;
         let r = sesiones.revision(&trabajo)?;
-        let i = sesiones.tomar_importacion(&trabajo)?;
+        let i = sesiones.importacion(&trabajo)?;
         let hecho = {
             let g = leer(&r);
             estado.con_conexion(|c| revision::aplicar(c, dir, &i, &g, version, &version_app))
         };
-        if hecho.is_err() {
-            let _ = sesiones.guardar_importacion(&trabajo, i);
-        } else {
+        // ya aplicado no se puede aplicar dos veces
+        if hecho.is_ok() {
+            let _ = sesiones.tomar_importacion(&trabajo);
             sesiones.soltar_revision(&trabajo);
         }
         hecho
