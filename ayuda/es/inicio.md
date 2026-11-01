@@ -23,6 +23,12 @@ Si es tu primera vez, empieza por el ejemplo: puedes recorrerlo sin miedo a equi
 
 Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuración**, y las listas de cargos, sedes y demás en **Configuración › Mantenedores**.
 
+## Al abrir y al salir
+
+BoldoAtlas abre en **Inicio**, también con datos cargados. Para volver a la última vista, activa **Configuración › Al abrir y al salir › Continuar donde estaba**.
+
+Al salir (la **X** de la ventana, `Alt+F4` o **Salir** en el menú de la app y en la bandeja), pregunta si estás seguro. Lo que ya aplicaste está guardado; un formulario sin terminar se pierde. Para que no pregunte, apaga **Preguntar antes de salir** en esa misma sección.
+
 ## El menú de la app y volver a Inicio
 
 El botón con el logo, a la izquierda de la barra superior, abre el **menú de la app**:

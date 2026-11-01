@@ -38,6 +38,6 @@ Only the active tab is loaded: having several open does not slow down the canvas
 - Close it with its × button, with a middle click on it, with `Del` when it is focused or with `Ctrl` + `W` (the active one). The last tab can't be closed.
 - With the focus on the bar, `←` `→` move between tabs and `Enter` opens the focused one.
 
-Tabs are remembered on this computer, separately for each project. When you open the program again they will be as you left them; tabs for units or people that no longer exist close on their own.
+Tabs are remembered on this computer, separately for each project. When you open the program, **Home** appears and, with **Back to my organization**, your tabs are as you left them; with **Continue where I left off** (in **Settings › When opening and quitting**) you see them right away. Tabs for units or people that no longer exist close on their own.
 
 **See also:** [Keyboard shortcuts](atajos.md) · [Directory](directorio.md).

@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import { respaldarAntesDeReemplazar } from "@/db/cliente";
+import { usePestanas } from "@/features/pestanas/usePestanas";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -36,6 +37,7 @@ const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const org = useOrganizacion();
+const pestanas = usePestanas();
 
 // Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
 interface Camino {
@@ -138,7 +140,7 @@ onMounted(() => {
       <p class="min-w-0 flex-1">
         {{ t("bienvenida.hayDatos", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
       </p>
-      <Button type="button" variant="outline" size="sm" @click="router.push('/')">
+      <Button type="button" variant="outline" size="sm" @click="pestanas.volverAlProyecto()">
         {{ t("bienvenida.volver") }}
       </Button>
     </div>

@@ -72,10 +72,14 @@ export const usePestanas = defineStore("pestanas", () => {
       if (to.meta.sinMarco) return void (enProyecto = false);
       const cambios: Partial<P.Pestana> = { ruta: to.fullPath };
       if (!enProyecto) {
-        // De vuelta de la Bienvenida: la pestaña que ya muestra ese destino; si no hay, la activa pasa a mostrarlo.
-        entrar();
-        const ya = modelo.value.lista.find((p) => p.ruta === to.fullPath);
+        // De vuelta de la Bienvenida: la pestaña que ya muestra ese destino; si no hay, la activa pasa a mostrarlo. Una
+        // vista cerrable (Configuración desde la bandeja) no le quita su lugar: «Cerrar» vuelve a él.
+        const anterior = entrar();
+        const { lista, activa } = modelo.value;
+        // con dos pestañas en la misma ruta manda la activa
+        const ya = lista.find((p) => p.id === activa && p.ruta === to.fullPath) ?? lista.find((p) => p.ruta === to.fullPath);
         if (ya) modelo.value = { ...modelo.value, activa: ya.id };
+        else if (esVistaCerrable(to.name) && !esVistaCerrable(r.resolve(anterior).name)) cambios.volver = anterior;
       } else if (destino?.ruta === to.fullPath) {
         modelo.value = { ...modelo.value, activa: destino.id };
       } else if (!esVistaCerrable(to.name)) {
@@ -144,6 +148,12 @@ export const usePestanas = defineStore("pestanas", () => {
     activa,
     conectar,
     entrar,
+    /** Desde la Bienvenida, a la vista que estaba activa. */
+    async volverAlProyecto() {
+      const ruta = entrar();
+      enProyecto = false; // la llegada la trata como vuelta de la Bienvenida (ver `conectar`)
+      await router?.push(ruta);
+    },
     activar,
     abrirNueva,
     cerrar,

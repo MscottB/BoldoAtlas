@@ -21,6 +21,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BarraSuperior from "@/components/BarraSuperior.vue";
 import PaletaComandos from "@/components/PaletaComandos.vue";
+import DialogoSalir from "@/components/DialogoSalir.vue";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
@@ -227,6 +228,7 @@ function escEnBarra(e: KeyboardEvent) {
     <DatosProyecto v-if="!route.meta.sinMarco" />
     <DialogoActualizacion />
     <DialogoNovedades />
+    <DialogoSalir />
     <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>
 </template>

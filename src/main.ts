@@ -12,6 +12,7 @@ import { respaldoAutomatico } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
 import { crearBandeja } from "./features/actualizaciones/bandeja";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
+import { conectarCierre, continuarDondeEstaba } from "./app/ventana";
 import "./styles/main.css";
 
 // Antes de montar: el tema ya está aplicado en el primer pintado, sin parpadeo.
@@ -27,10 +28,11 @@ infoApp()
     // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, se muestra el motivo en vez de una app vacía.
     const falloCarga = infoSiFalloCarga(await org.cargar());
     if (falloCarga) return createApp(PantallaError, { info: falloCarga }).use(i18n).mount("#app");
-    // Las pestañas de trabajo de este proyecto (se recuerdan por PC y por base de datos); se abre en la que estaba activa.
+    // Las pestañas de trabajo de este proyecto (se recuerdan por PC y por base de datos). Se abre en Inicio o, con
+    // «Continuar donde estaba», en la que estaba activa.
     const pestanas = usePestanas(pinia);
     pestanas.conectar(router, info.rutaBd);
-    const destino = destinoInicial(org.cargado, org.vacia) ?? pestanas.entrar();
+    const destino = destinoInicial(org.cargado, org.vacia, continuarDondeEstaba.value) ?? pestanas.entrar();
     const app = createApp(App).use(pinia).use(router).use(i18n);
     await router.replace(destino);
     app.mount("#app");
@@ -38,6 +40,8 @@ infoApp()
     // «Novedades» tras actualizar y la consulta periódica de versiones nuevas (la única conexión automática)
     useActualizaciones(pinia).iniciar();
     void crearBandeja(router);
+    // Desde aquí, cerrar la ventana pregunta (si la opción sigue activa); si la app no llegó hasta aquí, se cierra sin más.
+    void conectarCierre();
   })
   .catch((e: unknown) => {
     const info = { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };

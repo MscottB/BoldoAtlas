@@ -8,12 +8,17 @@ import {
 } from "./estructura";
 
 describe("destinoInicial", () => {
-  it("va a la bienvenida solo si cargó y no hay unidades", () => {
-    expect(destinoInicial(true, true)).toBe("/bienvenida");
-    expect(destinoInicial(true, false)).toBeNull();
+  it("abre en Inicio, también con datos", () => {
+    expect(destinoInicial(true, false, false)).toBe("/bienvenida");
+    expect(destinoInicial(true, true, false)).toBe("/bienvenida");
+  });
+  it("con «Continuar donde estaba» vuelve a la última vista, salvo con la base vacía", () => {
+    expect(destinoInicial(true, false, true)).toBeNull();
+    expect(destinoInicial(true, true, true)).toBe("/bienvenida");
   });
   it("no redirige si la carga falló (vacia es true antes de cargar)", () => {
-    expect(destinoInicial(false, true)).toBeNull();
+    expect(destinoInicial(false, true, false)).toBeNull();
+    expect(destinoInicial(false, true, true)).toBeNull();
   });
 });
 

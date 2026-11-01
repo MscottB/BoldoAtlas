@@ -38,6 +38,6 @@ Solo la pestaña activa está cargada: tener varias abiertas no hace más lento 
 - Ciérrala con su botón ×, con clic central sobre ella, con `Supr` si está enfocada o con `Ctrl` + `W` (la activa). La última pestaña no se cierra.
 - Con el foco en la barra, `←` `→` recorren las pestañas y `Enter` abre la enfocada.
 
-Las pestañas se recuerdan en este computador, aparte para cada proyecto. Al volver a abrir el programa estarán como las dejaste; las de unidades o personas que ya no existen se cierran solas.
+Las pestañas se recuerdan en este computador, aparte para cada proyecto. Al abrir el programa aparece **Inicio** y, con **Volver a mi organización**, las pestañas están como las dejaste; con **Continuar donde estaba** (en **Configuración › Al abrir y al salir**) se ven directo. Las de unidades o personas que ya no existen se cierran solas.
 
 **Ver también:** [Atajos de teclado](atajos.md) · [Directorio](directorio.md).

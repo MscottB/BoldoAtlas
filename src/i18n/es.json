@@ -731,6 +731,12 @@
       "ayuda": "Estas preferencias valen solo para este computador.",
       "mas": "Más opciones de apariencia"
     },
+    "abrirSalir": {
+      "titulo": "Al abrir y al salir",
+      "continuar": "Continuar donde estaba",
+      "continuarAyuda": "Si está apagada, BoldoAtlas abre en Inicio.",
+      "preguntar": "Preguntar antes de salir"
+    },
     "barra": {
       "abrirAlPasar": "Abrir la barra lateral al pasar el mouse"
     },
@@ -932,7 +938,14 @@
   "bandeja": {
     "abrir": "Abrir BoldoAtlas",
     "actualizarA": "Actualizar a v{version}",
+    "buscarPersona": "Buscar persona",
+    "sinPersonas": "Aún no hay personas: primero crea una organización.",
     "carpeta": "Abrir carpeta de datos",
     "salir": "Salir"
+  },
+  "salida": {
+    "titulo": "¿Seguro que quieres salir?",
+    "texto": "Lo que ya aplicaste está guardado. Un formulario sin terminar se pierde.",
+    "cancelar": "Cancelar"
   }
 }

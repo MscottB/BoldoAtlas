@@ -23,6 +23,12 @@ If it is your first time, start with the example: you can explore it without fea
 
 Afterwards you can adjust the name, logo, theme and language in **Settings**, and the lists of job titles, sites and the rest in **Settings › Manage lists**.
 
+## When opening and quitting
+
+BoldoAtlas opens on **Home**, even with data loaded. To go back to your last view, turn on **Settings › When opening and quitting › Continue where I left off**.
+
+When you quit (the window's **X**, `Alt+F4` or **Quit** in the app menu and the tray), it asks if you are sure. What you already applied is saved; an unfinished form is lost. To stop the question, turn off **Ask before quitting** in that same section.
+
 ## The app menu and returning to Home
 
 The logo button on the left of the top bar opens the **app menu**:
