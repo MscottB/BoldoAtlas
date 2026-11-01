@@ -9,13 +9,11 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { RUTA_BIENVENIDA } from "@/app/estructura";
 import { bandejaLista, traerAlFrente } from "@/app/ventana";
 import { abrirCarpetaDatos } from "@/db/cliente";
-import { paletaAbierta } from "@/features/atajos/useAtajos";
+import { buscarPersona } from "@/features/atajos/buscarPersona";
 import { mensajeFallo, respaldar as hacerRespaldo } from "@/features/respaldos/respaldos";
-import { usePestanas } from "@/features/pestanas/usePestanas";
 import { i18n } from "@/i18n";
 import { trabajos, ultimoFin } from "@/lib/trabajos";
 import { useActualizaciones } from "@/stores/actualizaciones";
-import { useOrganizacion } from "@/stores/organizacion";
 import { buscarActualizaciones } from "./acciones";
 
 /**
@@ -35,19 +33,9 @@ import { buscarActualizaciones } from "./acciones";
 export async function crearBandeja(router: Router): Promise<void> {
   const { t } = i18n.global;
   const a = useActualizaciones();
-  const org = useOrganizacion();
-  const pestanas = usePestanas();
   const tras = (accion: () => unknown) => async () => {
     await traerAlFrente();
     await accion();
-  };
-  // La paleta no existe en Inicio: con datos se vuelve a la vista activa; sin datos no hay a quién buscar y se avisa.
-  const buscarPersona = async () => {
-    if (router.currentRoute.value.meta.sinMarco) {
-      if (org.vacia) return void toast.info(t("bandeja.sinPersonas"));
-      await pestanas.volverAlProyecto();
-    }
-    paletaAbierta.value = true;
   };
   // El último trabajo que terminó con la ventana oculta: se olvida al volver a la ventana.
   const terminado = ref("");
@@ -80,7 +68,11 @@ export async function crearBandeja(router: Router): Promise<void> {
       text: x.inicio,
       action: tras(() => router.push(RUTA_BIENVENIDA)),
     });
-    const buscar = await MenuItem.new({ id: "buscar", text: x.buscar, action: tras(buscarPersona) });
+    const buscar = await MenuItem.new({
+      id: "buscar",
+      text: x.buscar,
+      action: tras(() => buscarPersona(router)),
+    });
     const actualizar = await MenuItem.new({
       id: "actualizar",
       text: x.actualizar,

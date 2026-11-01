@@ -10,18 +10,34 @@ BoldoAtlas es una app de escritorio para Windows, Linux y macOS con la que armas
 
 ## Primer uso
 
-Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con dos caminos; el primero, destacado, es el principal:
+Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con tres caminos; el primero, destacado, es el principal:
 
 - **Crear una organización vacía:** te pide el nombre de la organización y el de su unidad raíz (del primer tipo de unidad activo) y te lleva al árbol.
+- **Abrir un archivo .boldo:** te lleva a **Importar/Exportar** para elegir el archivo (ver [Exportar e importar](exportar-importar.md)).
 - **Explorar un ejemplo:** crea una organización de muestra, en el idioma de la interfaz, para recorrer la app.
 
-![Pantalla de bienvenida de BoldoAtlas con dos tarjetas: Crear una organización vacía y Explorar un ejemplo.](../img/es/inicio-bienvenida.webp "La bienvenida. 1: crear una organización vacía. 2: explorar una organización de ejemplo."){width=728 height=268}
+Arriba a la derecha están el selector de idioma **ES / EN** y el botón de tema claro u oscuro: puedes elegirlos desde el primer momento, sin entrar antes a ningún camino.
+
+![Pantalla de bienvenida de BoldoAtlas con tres tarjetas (Crear una organización vacía, Abrir un archivo .boldo y Explorar un ejemplo) y el botón de tema arriba a la derecha.](../img/es/inicio-bienvenida.webp "La bienvenida. 1: crear una organización vacía. 2: abrir un archivo .boldo. 3: explorar una organización de ejemplo. 4: cambiar entre tema claro y oscuro."){width=784 height=384}
 
 ::: tip Consejo
 Si es tu primera vez, empieza por el ejemplo: puedes recorrerlo sin miedo a equivocarte y, cuando quieras, crear tu propia organización desde el menú de la app (antes se hace un respaldo automático).
 :::
 
 Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuración**, y las listas de cargos, sedes y demás en **Configuración › Mantenedores**.
+
+## Inicio con tu organización cargada
+
+Cuando la base ya tiene datos, Inicio se ordena para que retomes el trabajo:
+
+- **Tu organización:** el nombre, los totales de **Unidades**, **Personas**, **Vacantes** y **Avisos de Revisión**, la fecha del **último respaldo** y el botón **Volver a mi organización**, que te lleva a la vista que estaba activa. Cada total abre su vista: las unidades, el **Árbol**; las personas, el **Directorio**; las vacantes y los avisos, **Revisión**.
+- **Abierto recientemente:** lo último que abriste en esta organización, con su ícono y hace cuánto: un árbol o subárbol, una unidad, una persona, el **Directorio** o **Revisión**. Con un clic se abre en tu pestaña activa o, si otra pestaña ya lo muestra, se pasa a esa. Son hasta 8, sin repetidos y lo más nuevo primero. No cuentan **Inicio**, **Configuración**, **Ayuda**, **Acerca de** ni **Importar/Exportar**. Lo que ya no existe (una unidad o una persona eliminada) deja de aparecer.
+- **Accesos rápidos:** **Buscar persona** (abre la paleta de comandos), **Importar/Exportar** y **Respaldos**.
+- **Crear otra organización o explorar el ejemplo:** plegado al final, porque reemplaza los datos actuales. Antes pide confirmación y hace un respaldo automático.
+
+![Inicio con la organización cargada: sus totales, la lista de lo abierto recientemente y los accesos rápidos.](../img/es/inicio-organizacion.webp "Inicio con datos. 1: tu organización y sus totales. 2: abierto recientemente. 3: accesos rápidos."){width=784 height=818}
+
+La lista de **Abierto recientemente** nombra unidades y personas. Se guarda solo en este computador, por organización, y no sale de él. Para vaciarla, pulsa **Borrar lista**. También se vacía al crear otra organización o explorar el ejemplo, al importar un archivo con **Reemplazar todo** y al restaurar un respaldo, porque cambia la base.
 
 ## Al abrir y al salir
 
@@ -48,7 +64,7 @@ El botón con el logo, a la izquierda de la barra superior, abre el **menú de l
 - **Inicio** vuelve a la bienvenida en cualquier momento, también con datos cargados.
 - **Nueva organización vacía…** y **Explorar el ejemplo…** reemplazan los datos actuales. Antes piden confirmación y hacen un **respaldo automático** (si el respaldo falla, no se reemplaza nada); el respaldo queda en la lista de **Configuración › Respaldos** para restaurarlo.
 - **Respaldos** y **Configuración** abren esas secciones; **Datos del proyecto** muestra dónde están tus datos.
-- **Idioma** cambia al instante toda la app entre Español y English. La pantalla de bienvenida tiene el mismo selector **ES / EN**; tu elección se recuerda en este equipo y, la primera vez, la app sigue el idioma del sistema.
+- **Idioma** cambia al instante toda la app entre Español y English. La pantalla de bienvenida tiene el mismo selector **ES / EN** y el botón de tema claro u oscuro; tu elección se recuerda en este equipo y, la primera vez, la app sigue el idioma del sistema.
 
 ![Menú de la app abierto: Inicio, Nueva organización vacía, Explorar el ejemplo, Respaldos, Configuración, Datos del proyecto, Buscar actualizaciones e Idioma.](../img/es/inicio-menu.webp "El menú de la app, que se abre con el botón del logo."){width=276 height=364}
 

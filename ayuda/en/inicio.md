@@ -10,18 +10,34 @@ BoldoAtlas is a desktop app for Windows, Linux and macOS for building your organ
 
 ## First use
 
-When you open a database with no units, BoldoAtlas shows the welcome screen with two paths; the first, highlighted, is the main one:
+When you open a database with no units, BoldoAtlas shows the welcome screen with three paths; the first, highlighted, is the main one:
 
 - **Create an empty organization:** asks for the organization name and the name of its root unit (of the first active unit type) and takes you to the tree.
+- **Open a .boldo file:** takes you to **Import/Export** to choose the file (see [Export and import](exportar-importar.md)).
 - **Explore an example:** creates a sample organization, in the interface language, to look around the app.
 
-![BoldoAtlas welcome screen with two cards: Create an empty organization and Explore an example.](../img/en/inicio-bienvenida.webp "The welcome screen. 1: create an empty organization. 2: explore a sample organization."){width=728 height=268}
+At the top right are the **ES / EN** language switch and the light or dark theme button: you can choose them right away, without going into any path first.
+
+![BoldoAtlas welcome screen with three cards (Create an empty organization, Open a .boldo file and Explore an example) and the theme button at the top right.](../img/en/inicio-bienvenida.webp "The welcome screen. 1: create an empty organization. 2: open a .boldo file. 3: explore a sample organization. 4: switch between light and dark theme."){width=784 height=364}
 
 ::: tip Tip
 If it is your first time, start with the example: you can explore it without fear of making mistakes and, whenever you want, create your own organization from the app menu (an automatic backup is made first).
 :::
 
 Afterwards you can adjust the name, logo, theme and language in **Settings**, and the lists of job titles, sites and the rest in **Settings › Manage lists**.
+
+## Home with your organization loaded
+
+When the database already has data, Home is arranged so you can pick up your work:
+
+- **Your organization:** the name, the totals of **Units**, **People**, **Vacancies** and **Review warnings**, the date of the **last backup** and the **Back to my organization** button, which takes you to the view that was active. Each total opens its view: units, the **Tree**; people, the **Directory**; vacancies and warnings, **Review**.
+- **Recently opened:** the latest things you opened in this organization, with an icon and how long ago: a tree or subtree, a unit, a person, the **Directory** or **Review**. One click opens it in your active tab or, if another tab already shows it, switches to that one. There are up to 8, with no repeats and the newest first. **Home**, **Settings**, **Help**, **About** and **Import/Export** do not count. Whatever no longer exists (a deleted unit or person) stops appearing.
+- **Quick access:** **Find a person** (opens the command palette), **Import/Export** and **Backups**.
+- **Create another organization or explore the example:** folded at the bottom, because it replaces the current data. It asks for confirmation first and makes an automatic backup.
+
+![Home with the organization loaded: its totals, the recently opened list and the quick access buttons.](../img/en/inicio-organizacion.webp "Home with data. 1: your organization and its totals. 2: recently opened. 3: quick access."){width=784 height=818}
+
+The **Recently opened** list names units and people. It is kept only on this computer, per organization, and never leaves it. To empty it, press **Clear list**. It is also emptied when you create another organization or explore the example, when you import a file with **Replace everything**, and when you restore a backup, because the database changes.
 
 ## When opening and quitting
 
@@ -48,7 +64,7 @@ The logo button on the left of the top bar opens the **app menu**:
 - **Home** returns to the welcome screen at any time, also with data loaded.
 - **New empty organization…** and **Explore the example…** replace the current data. They ask for confirmation first and make an **automatic backup** (if the backup fails, nothing is replaced); the backup stays in the **Settings › Backups** list so you can restore it.
 - **Backups** and **Settings** open those sections; **Project data** shows where your data lives.
-- **Language** switches the whole app between Español and English at once. The welcome screen has the same **ES / EN** switch; your choice is remembered on this computer, and on the first run the app follows your system language.
+- **Language** switches the whole app between Español and English at once. The welcome screen has the same **ES / EN** switch and the light or dark theme button; your choice is remembered on this computer, and on the first run the app follows your system language.
 
 ![App menu open: Home, New empty organization, Explore the example, Backups, Settings, Project data, Check for updates and Language.](../img/en/inicio-menu.webp "The app menu, opened with the logo button."){width=276 height=364}
 

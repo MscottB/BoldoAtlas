@@ -159,6 +159,8 @@ export const usePestanas = defineStore("pestanas", () => {
       enProyecto = false; // la llegada la trata como vuelta de la Bienvenida (ver `conectar`)
       await router?.push(ruta);
     },
+    /** Si la ruta sigue llevando a algo que existe (una vista del proyecto; una unidad o persona no eliminada). */
+    valida,
     activar,
     abrirNueva,
     cerrar,
@@ -180,7 +182,7 @@ export const usePestanas = defineStore("pestanas", () => {
     },
     estadoDe: (id: string, ruta: string) => P.estadoDe(modelo.value, id, ruta),
     /** Título automático: el nombre del subárbol o la persona, o el de la vista. Sigue a los cambios de nombre. */
-    titulo(p: P.Pestana): string {
+    titulo(p: Pick<P.Pestana, "ruta">): string {
       const org = useOrganizacion();
       const r = router?.resolve(p.ruta);
       const q = (k: string) => (typeof r?.query[k] === "string" ? (r.query[k] as string) : "");

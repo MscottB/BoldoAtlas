@@ -855,6 +855,22 @@
     "avisos": "Avisos",
     "suprimir": "Supr"
   },
+  "inicio": {
+    "organizacion": "Tu organización",
+    "unidades": "Unidades",
+    "personas": "Personas",
+    "vacantes": "Vacantes",
+    "avisos": "Avisos de Revisión",
+    "ultimoRespaldo": "Último respaldo: {fecha}",
+    "sinRespaldo": "Todavía no hay respaldos.",
+    "recientes": "Abierto recientemente",
+    "borrarRecientes": "Borrar lista",
+    "recientesBorrada": "Lista borrada.",
+    "ahora": "hace un momento",
+    "accesos": "Accesos rápidos",
+    "buscarPersona": "Buscar persona",
+    "empezarDeNuevo": "Crear otra organización o explorar el ejemplo"
+  },
   "menu": {
     "abrir": "Menú de la app",
     "inicio": "Inicio",

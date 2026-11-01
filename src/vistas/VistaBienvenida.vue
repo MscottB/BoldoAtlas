@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, type Component } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import BloquePlegable from "@/components/BloquePlegable.vue";
+import BotonTema from "@/components/BotonTema.vue";
 import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
 import {
   Dialog,
@@ -28,7 +30,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import { respaldarAntesDeReemplazar } from "@/db/cliente";
-import { usePestanas } from "@/features/pestanas/usePestanas";
+import AccesosRapidos from "@/features/inicio/AccesosRapidos.vue";
+import ListaCaminos, { type Camino } from "@/features/inicio/ListaCaminos.vue";
+import PanelOrganizacion from "@/features/inicio/PanelOrganizacion.vue";
+import RecientesInicio from "@/features/inicio/RecientesInicio.vue";
+import { useRecientes } from "@/features/inicio/useRecientes";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -38,14 +44,8 @@ const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const org = useOrganizacion();
-const pestanas = usePestanas();
+const recientes = useRecientes();
 
-// Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
-interface Camino {
-  id: "vacia" | "excel" | "boldo" | "ejemplo";
-  icono: Component;
-  fase?: string;
-}
 const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
   { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
@@ -55,8 +55,10 @@ const todos: Camino[] = [
 const caminos = todos.filter((c) => MOSTRAR_PROXIMAMENTE || !c.fase);
 
 async function entrar(r: Resultado) {
-  if (r.ok) await router.replace("/");
-  else toast.error(r.mensaje);
+  if (!r.ok) return void toast.error(r.mensaje);
+  // Es otra organización: lo que se abrió en la anterior no vale (y la lista nombra personas).
+  recientes.vaciar();
+  await router.replace("/");
 }
 
 // Con datos en la base, empezar de nuevo los reemplaza: pide confirmación y hace antes un respaldo.
@@ -65,6 +67,9 @@ const confirmando = ref(false);
 // No se limpia al cerrar el diálogo: la acción lo necesita después de que el diálogo se cierra.
 const reemplazo = ref<"vacia" | "ejemplo">("vacia");
 const ocupado = ref(false);
+
+// Con datos, las tarjetas de empezar de nuevo van plegadas; se abren solas si llega una acción o hay un diálogo abierto.
+const accionPedida = typeof route.query.accion === "string";
 
 const creando = ref(false);
 const nombreOrg = ref("");
@@ -128,60 +133,34 @@ onMounted(() => {
     <header class="flex flex-col gap-2">
       <div class="flex items-start justify-between gap-4">
         <img :src="icono" alt="" class="size-12 dark:rounded-lg dark:bg-primary dark:p-1" />
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center justify-end gap-2">
           <AvisoActualizacion />
           <SelectorIdioma />
+          <BotonTema />
         </div>
       </div>
       <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
-      <p class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
+      <p v-if="!hayDatos" class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
     </header>
 
-    <div
-      v-if="hayDatos"
-      role="status"
-      class="flex flex-wrap items-center gap-3 rounded-lg border bg-muted p-3 text-sm"
-    >
-      <p class="min-w-0 flex-1">
-        {{ t("bienvenida.hayDatos", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
-      </p>
-      <Button type="button" variant="outline" size="sm" @click="pestanas.volverAlProyecto()">
-        {{ t("bienvenida.volver") }}
-      </Button>
-    </div>
-
-    <ul class="grid gap-3 sm:grid-cols-2">
-      <li v-for="c in caminos" :key="c.id">
-        <button
-          :id="`bienvenida-camino-${c.id}`"
-          type="button"
-          :aria-disabled="c.fase ? 'true' : undefined"
-          :disabled="!c.fase && (org.guardando || ocupado)"
-          class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring"
-          :class="[
-            c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent',
-            c.id === 'vacia' && 'border-2 border-marca bg-card',
-          ]"
-          @click="elegir(c, $event.currentTarget)"
-        >
-          <span class="flex items-center gap-2 font-medium">
-            <component
-              :is="c.icono"
-              class="size-4 shrink-0"
-              :class="c.id === 'vacia' && 'text-marca-texto'"
-              aria-hidden="true"
-            />
-            {{ t(`bienvenida.${c.id}.titulo`) }}
-            <span v-if="c.fase" class="ml-auto rounded-full border px-2 text-xs font-normal">{{
-              t(c.fase)
-            }}</span>
-          </span>
-          <span class="text-sm" :class="{ 'text-muted-foreground': !c.fase }">
-            {{ t(`bienvenida.${c.id}.texto`) }}
-          </span>
-        </button>
-      </li>
-    </ul>
+    <template v-if="hayDatos">
+      <PanelOrganizacion />
+      <RecientesInicio />
+      <AccesosRapidos />
+      <BloquePlegable
+        clave="inicio-empezar"
+        :titulo="t('inicio.empezarDeNuevo')"
+        :abrir="accionPedida || creando || confirmando"
+      >
+        <div class="flex flex-col gap-3 pt-2">
+          <p class="text-sm text-muted-foreground">
+            {{ t("bienvenida.hayDatos", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
+          </p>
+          <ListaCaminos :caminos="caminos" :ocupado="org.guardando || ocupado" @elegir="elegir" />
+        </div>
+      </BloquePlegable>
+    </template>
+    <ListaCaminos v-else :caminos="caminos" :ocupado="org.guardando || ocupado" @elegir="elegir" />
 
     <Dialog v-model:open="creando">
       <DialogContent @open-auto-focus="alAbrir" @close-auto-focus="alCerrar">
