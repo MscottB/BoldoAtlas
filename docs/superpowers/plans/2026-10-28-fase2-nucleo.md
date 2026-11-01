@@ -676,6 +676,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 
 ### Task 23e: Costo por puesto (spec §5 "Costo por puesto" y §8)
 - Migración 0002 con `puestos.costo_mensual`, activación en Configuración con la advertencia, edición en el puesto, y totales con vacantes aparte y aviso de puestos sin costo.
+- La primera migración con `ALTER TABLE` necesita una prueba de la comparación exacta del esquema de `.boldo` y `restaurar`, porque SQLite reescribe el texto guardado: entre una base nueva y una migrada, y entre archivos de versiones anteriores.
 - Comprobar que el campo viaja y se revisa en `.boldo` y en la fusión (22a y 22b). La diferencia de costo en la comparación llega con los escenarios (Fase 5); el indicador, con la Fase 3.
 
 ### Task 23f: Archivos de otros sistemas en la carga masiva (spec §10)

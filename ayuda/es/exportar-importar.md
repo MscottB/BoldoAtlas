@@ -54,10 +54,17 @@ Tus datos actuales se cambian por los del archivo y la app se reinicia. Solo se 
 Antes de aplicar cualquiera de los dos, BoldoAtlas hace un respaldo marcado **Antes de reemplazar**. Si te arrepientes, restáuralo desde [Respaldos](respaldos.md). Si algo falla al aplicar, no se escribe nada.
 :::
 
+## Si cierras a mitad de camino
+
+Mientras exporta o importa, cerrar pregunta antes y dice qué trabajo está en curso. **Dejar en la bandeja** no lo interrumpe. **Cerrar la app** sí: lo que estaba a medias nunca queda con el nombre final, tus datos no cambian y las copias temporales se borran al volver a abrir.
+
+Si te vas de la pantalla del código sin copiarlo, BoldoAtlas lo sigue mostrando en un aviso hasta que lo copies o decidas cerrarlo.
+
 ## Versiones distintas
 
 - Un archivo hecho con una versión anterior de BoldoAtlas se actualiza al abrirlo, sin tocar tu base.
 - Uno hecho con una versión **más nueva** no se abre hasta que actualices BoldoAtlas.
+- Si tu base no cabe en un solo archivo (máximo 512 MB de datos), exporta por ramas: cada archivo lleva una parte. Si un campo es demasiado largo, el aviso dice cuál es, para que lo acortes.
 - Aunque el código sea correcto, BoldoAtlas revisa el archivo antes de aplicarlo: rechaza lo que no sea una copia válida o traiga más datos de los que puede manejar. Esa revisión mira la forma, no el contenido: los datos son los que puso quien lo envió, así que importa solo archivos de personas en quienes confías y mira lo que trae antes de aplicar.
 
 **Ver también:** [Respaldos](respaldos.md) · [Mantenedores](mantenedores.md).

@@ -54,10 +54,17 @@ Your current data is swapped for the file's and the app restarts. It only works 
 Before applying either one, BoldoAtlas makes a backup marked **Before replacing**. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
 :::
 
+## If you close halfway
+
+While exporting or importing, closing asks first and says which task is in progress. **Keep in the tray** does not interrupt it. **Quit the app** does: what was half done never keeps the final name, your data does not change and the temporary copies are deleted when you open the app again.
+
+If you leave the code screen without copying the code, BoldoAtlas keeps showing it in a notice until you copy it or decide to close it.
+
 ## Different versions
 
 - A file made with an earlier version of BoldoAtlas is updated when opened, without touching your database.
 - One made with a **newer** version does not open until you update BoldoAtlas.
+- If your database does not fit in one file (512 MB of data at most), export by branches: each file carries a part. If a field is too long, the notice says which one, so you can shorten it.
 - Even if the code is correct, BoldoAtlas checks the file before applying it: it rejects anything that is not a valid copy or that carries more data than it can handle. That check looks at the form, not the content: the data is what the sender put in, so import only files from people you trust and look at what it carries before applying.
 
 **See also:** [Backups](respaldos.md) · [List values](mantenedores.md).
