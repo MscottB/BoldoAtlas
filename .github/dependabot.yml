@@ -1,0 +1,53 @@
+version: 2
+
+# Semanal y con pocos PR abiertos a la vez. Los PR de Dependabot corren ci, ci-rust y build-prueba como cualquier otro.
+# Sin `labels`: no se crean etiquetas en el repo (las version:* del flujo de versiones las pone el autor).
+updates:
+  # Las acciones van fijadas por SHA con el número de versión en el comentario (`# v7.0.1`): Dependabot cambia
+  # el SHA y el comentario juntos. Cubre .github/workflows y las acciones compuestas de .github/actions.
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/*"]
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: [] # sin etiquetas (ver arriba)
+    cooldown:
+      default-days: 3 # no adoptar una versión recién publicada el mismo día
+    groups:
+      acciones:
+        patterns: ["*"]
+    ignore:
+      # Se fija a la rama `stable` (su toolchain por defecto es el Rust estable actual), no a una etiqueta:
+      # Dependabot la movería a `v1`, donde `toolchain` es obligatorio. Se refresca a mano.
+      - dependency-name: dtolnay/rust-toolchain
+
+  - package-ecosystem: npm
+    directories: ["/", "/site"]
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: [] # sin etiquetas (ver arriba)
+    cooldown:
+      default-days: 3
+    groups:
+      tauri:
+        patterns: ["@tauri-apps/*"]
+      menores-y-parches:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: [] # sin etiquetas (ver arriba)
+    cooldown:
+      default-days: 3
+    groups:
+      tauri:
+        patterns: ["tauri", "tauri-*"]
+      menores-y-parches:
+        update-types: [minor, patch]

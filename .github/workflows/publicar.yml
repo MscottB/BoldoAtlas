@@ -38,12 +38,14 @@ jobs:
       notas: ${{ steps.v.outputs.notas }}
       prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # etiquetas
-      - uses: actions/setup-node@v4
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+          package-manager-cache: false # sin caché automática de npm
       # PR del asunto del merge (o de la API) más los fusionados desde la última etiqueta. Falla si un
       # asunto dice que es un PR y no se puede leer; no publica si el commit ya tiene etiqueta.
       - id: v

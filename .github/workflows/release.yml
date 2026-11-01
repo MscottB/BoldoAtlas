@@ -46,7 +46,9 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
       - uses: ./.github/actions/preparar-node
       - run: npm run lint
       - run: npm run typecheck
@@ -57,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NOTAS: ${{ inputs.notes }}
         run: node scripts/novedades.mjs --etiqueta "$ETIQUETA" --salida novedades.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: novedades-${{ env.ETIQUETA }}
           path: novedades.json
@@ -71,7 +73,9 @@ jobs:
         runner: [windows-latest, ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
       - uses: ./.github/actions/preparar-rust
         with:
           cache: boldo-debug # la de ci-rust
@@ -98,9 +102,10 @@ jobs:
             objetivos: aarch64-apple-darwin,x86_64-apple-darwin # binario universal
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # git describe necesita historia y etiquetas
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
       - uses: ./.github/actions/preparar-node
       - uses: ./.github/actions/preparar-rust
         with:
@@ -108,12 +113,12 @@ jobs:
           objetivos: ${{ matrix.objetivos }}
       # lo que el bundler de Tauri descarga al empaquetar (macOS no descarga nada)
       - if: matrix.herramientas
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ matrix.herramientas }}
           key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: tauri-herramientas-${{ runner.os }}-
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: novedades-${{ env.ETIQUETA }}
           path: src-tauri/target
@@ -124,7 +129,7 @@ jobs:
         env:
           BOLDO_VERSION: ${{ inputs.tag }}
           BOLDO_NOVEDADES: ${{ github.workspace }}/src-tauri/target/novedades.json # el diálogo «Novedades»
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ env.ETIQUETA }}-${{ matrix.sistema }}
           path: release/*/*
@@ -137,17 +142,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # etiquetas, para ver si este commit ya está publicado
+          persist-credentials: true # único job que hace push (la etiqueta anotada): usa el GITHUB_TOKEN del job
       # node_modules: la CLI de Tauri firma los paquetes del actualizador
       - uses: ./.github/actions/preparar-node
       # un artefacto por sistema, cada uno en su subcarpeta (salida/release-<etiqueta>-<sistema>/<versión>/)
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-${{ env.ETIQUETA }}-*
           path: salida
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: novedades-${{ env.ETIQUETA }}
           path: salida
@@ -184,7 +190,7 @@ jobs:
             git tag -a "$ETIQUETA" -m "BoldoAtlas $ETIQUETA" "$GITHUB_SHA"
             git push origin "refs/tags/$ETIQUETA"
           fi
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.ETIQUETA }}
           name: BoldoAtlas ${{ env.ETIQUETA }}

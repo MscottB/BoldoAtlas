@@ -20,12 +20,14 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # etiquetas
-      - uses: actions/setup-node@v4
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+          package-manager-cache: false # sin caché automática de npm
       - id: v
         run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
       - name: Resumen
@@ -46,9 +48,9 @@ jobs:
             echo "$NOTAS"
           } > comentario.md
           cat comentario.md >> "$GITHUB_STEP_SUMMARY"
-      # en PR desde forks el token es de solo lectura: queda el resumen del job
+      # en PR desde forks y en los de Dependabot el token es de solo lectura: queda el resumen del job
       - name: Comentario fijo
-        continue-on-error: ${{ github.event.pull_request.head.repo.fork }}
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork || github.actor == 'dependabot[bot]' }}
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

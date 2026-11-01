@@ -39,9 +39,10 @@ jobs:
         sistema: ${{ fromJSON((github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'build-todas')) && '["windows","linux","macos"]' || '["windows"]') }}
     runs-on: ${{ matrix.sistema == 'windows' && 'windows-latest' || matrix.sistema == 'linux' && 'ubuntu-22.04' || 'macos-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # etiquetas para calcular la versión
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
       - uses: ./.github/actions/preparar-node
       - uses: ./.github/actions/preparar-rust
         with:
@@ -49,7 +50,7 @@ jobs:
           objetivos: ${{ matrix.sistema == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       # linuxdeploy y sus plugins, que el bundler de Tauri descarga para armar el AppImage
       - if: matrix.sistema == 'linux'
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/tauri
           key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -62,7 +63,7 @@ jobs:
         env:
           BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
       - if: github.event_name != 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BoldoAtlas_${{ steps.v.outputs.version_prueba || github.sha }}_${{ matrix.sistema }}_${{ inputs.instaladores && 'completo' || 'portable' }}
           path: release/*/*
