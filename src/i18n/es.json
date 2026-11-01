@@ -849,8 +849,20 @@
     "progreso": "Descargado {descargado} de {total}",
     "progresoSinTotal": "Descargado {descargado}",
     "error": {
-      "consulta": "No se pudo consultar: revisa tu conexión. ({detalle})",
-      "instalar": "No se actualizó; tu versión actual sigue igual. ({detalle})"
+      "red": "No se pudo consultar: revisa tu conexión.",
+      "limite": "GitHub limitó las consultas por un rato; intenta más tarde.",
+      "respuesta": "GitHub respondió algo inesperado ({detalle}); intenta más tarde.",
+      "manifiesto": "La versión publicada no trae un paquete válido para este sistema; intenta más tarde. ({detalle})",
+      "firma": "La descarga no tiene una firma válida y se descartó; tu versión actual sigue igual.",
+      "cancelada": "Descarga cancelada; tu versión actual sigue igual.",
+      "pendiente": "La actualización ya no está disponible; búscala de nuevo.",
+      "paquete": "El paquete descargado no es válido y se descartó; tu versión actual sigue igual. ({detalle})",
+      "reemplazo": "No se pudo reemplazar el programa; tu versión actual sigue igual. ({detalle})",
+      "restaurar": "No se pudo reemplazar el programa ni dejar el anterior en su lugar. La versión anterior quedó en {detalle}: cámbiale el nombre a BoldoAtlas.exe.",
+      "instalar": "No se pudo instalar la actualización; tu versión actual sigue igual. ({detalle})",
+      "version": "No se pudo leer la versión instalada ({detalle}).",
+      "interno": "Error interno del actualizador ({detalle}).",
+      "desconocido": "No se pudo completar: {detalle}"
     }
   },
   "actualizaciones": {
@@ -871,7 +883,8 @@
     "version": "Versión {version}",
     "sinNotas": "Sin notas para esta versión.",
     "vacio": "Esta copia no trae notas de versión (es una versión de desarrollo o de prueba).",
-    "enEspanol": "Las notas de versión están en español."
+    "enEspanol": "Las notas de versión están en español.",
+    "historial": "Las notas de todas las versiones publicadas hasta esta."
   },
   "bandeja": {
     "abrir": "Abrir BoldoAtlas",

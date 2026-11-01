@@ -849,8 +849,20 @@
     "progreso": "Downloaded {descargado} of {total}",
     "progresoSinTotal": "Downloaded {descargado}",
     "error": {
-      "consulta": "Could not check: check your connection. ({detalle})",
-      "instalar": "Not updated; your current version is unchanged. ({detalle})"
+      "red": "Could not check: check your connection.",
+      "limite": "GitHub is limiting requests for a while; try again later.",
+      "respuesta": "GitHub sent an unexpected answer ({detalle}); try again later.",
+      "manifiesto": "The published version has no valid package for this system; try again later. ({detalle})",
+      "firma": "The download has no valid signature and was discarded; your current version is unchanged.",
+      "cancelada": "Download cancelled; your current version is unchanged.",
+      "pendiente": "The update is no longer available; check again.",
+      "paquete": "The downloaded package is not valid and was discarded; your current version is unchanged. ({detalle})",
+      "reemplazo": "Could not replace the program; your current version is unchanged. ({detalle})",
+      "restaurar": "Could not replace the program or put the previous one back. The previous version is at {detalle}: rename it to BoldoAtlas.exe.",
+      "instalar": "Could not install the update; your current version is unchanged. ({detalle})",
+      "version": "Could not read the installed version ({detalle}).",
+      "interno": "Internal updater error ({detalle}).",
+      "desconocido": "Could not complete: {detalle}"
     }
   },
   "actualizaciones": {
@@ -871,7 +883,8 @@
     "version": "Version {version}",
     "sinNotas": "No notes for this version.",
     "vacio": "This copy has no release notes (it is a development or test build).",
-    "enEspanol": "Release notes are written in Spanish."
+    "enEspanol": "Release notes are written in Spanish.",
+    "historial": "The notes of every version published up to this one."
   },
   "bandeja": {
     "abrir": "Open BoldoAtlas",

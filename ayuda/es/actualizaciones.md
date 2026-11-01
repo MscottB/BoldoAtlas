@@ -34,7 +34,7 @@ La primera vez que abres una versión nueva aparece **Novedades de la versión X
 
 ## Icono en la bandeja
 
-Mientras BoldoAtlas está abierto, su icono aparece en la bandeja del sistema. Un clic lo trae al frente; el menú (clic derecho) tiene Abrir BoldoAtlas, **Actualizar a vX** cuando hay una versión nueva (si no, Buscar actualizaciones), Respaldar ahora, Abrir carpeta de datos, Ayuda y Salir. Cerrar la ventana cierra BoldoAtlas por completo: no queda nada en segundo plano.
+Mientras BoldoAtlas está abierto, su icono aparece en la bandeja del sistema. Un clic lo trae al frente; el menú (clic derecho) tiene Abrir BoldoAtlas, **Actualizar a vX** cuando hay una versión nueva (si no, Buscar actualizaciones), Respaldar ahora, Abrir carpeta de datos, Ayuda y Salir. Cerrar la ventana cierra BoldoAtlas por completo: no queda nada en segundo plano. Con una versión nueva, el texto del icono lo avisa. En Linux, si falta la biblioteca de la bandeja (AppIndicator), no aparece el icono y la app funciona igual. En Windows, el sistema anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja, también de la portable: es el único rastro fuera de su carpeta y no lo escribe BoldoAtlas.
 
 ## Limpieza
 

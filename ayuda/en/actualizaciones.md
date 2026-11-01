@@ -34,7 +34,7 @@ The first time you open a new version, **What's new in version X** appears, with
 
 ## Tray icon
 
-While BoldoAtlas is open, its icon appears in the system tray. One click brings it to the front; the menu (right click) has Open BoldoAtlas, **Update to vX** when there is a new version (otherwise Check for updates), Back up now, Open data folder, Help and Quit. Closing the window quits BoldoAtlas completely: nothing stays in the background.
+While BoldoAtlas is open, its icon appears in the system tray. One click brings it to the front; the menu (right click) has Open BoldoAtlas, **Update to vX** when there is a new version (otherwise Check for updates), Back up now, Open data folder, Help and Quit. Closing the window quits BoldoAtlas completely: nothing stays in the background. When there is a new version, the icon's tooltip says so. On Linux, if the tray library (AppIndicator) is missing, there is no icon and the app works the same. On Windows, the system records in the registry (`HKCU\Control Panel\NotifyIconSettings`) the path of every program that shows a tray icon, the portable included: it is the only trace outside its folder, and BoldoAtlas does not write it.
 
 ## Cleanup
 

@@ -16,9 +16,9 @@ import {
 
 /** Preferencias por PC: frecuencia, última consulta que respondió (ms) y última versión usada en este PC. */
 export const PREFERENCIA = "actualizaciones";
-const ULTIMA = "actualizaciones.ultima";
-const VERSION_USADA = "actualizaciones.version";
-const CADA_HORA = 3_600_000;
+export const ULTIMA = "actualizaciones.ultima";
+export const VERSION_USADA = "actualizaciones.version";
+export const CADA_HORA = 3_600_000;
 
 export const VERSION_ACTUAL = __APP_VERSION_CORTA__;
 /** Las novedades que viajan dentro de la app (generadas en el release). */
@@ -39,7 +39,19 @@ export interface Progreso {
 }
 export type ResultadoActualizar = { ok: true; mensaje?: string } | { ok: false; mensaje: string };
 
-const detalle = (e: unknown) => (e instanceof Error ? e.message : String(e));
+/**
+ * Error de los comandos de Rust (`{ codigo, detalle }`, ver `Fallo` en actualizar.rs) en el idioma de la interfaz:
+ * `actualizar.error.<codigo>`; un código desconocido muestra el detalle técnico.
+ */
+export function mensajeError(e: unknown): string {
+  const { t, te } = i18n.global;
+  const f = (typeof e === "object" && e !== null ? e : { detalle: String(e) }) as {
+    codigo?: string;
+    detalle?: string;
+  };
+  const clave = `actualizar.error.${f.codigo}`;
+  return t(te(clave) ? clave : "actualizar.error.desconocido", { detalle: f.detalle ?? "" });
+}
 
 export const useActualizaciones = defineStore("actualizaciones", () => {
   const disponible = ref<Disponible | null>(null);
@@ -50,6 +62,8 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
   const ventanaAbierta = ref(false);
   const novedadesAbiertas = ref(false);
   const novedades = ref<Novedad[]>([]);
+  /** Si «Novedades» se abrió solo, al primer arranque de una versión nueva (si no, se pidió en Acerca de). */
+  const novedadesTrasActualizar = ref(false);
 
   /** Las notas de todas las versiones entre la instalada y la nueva. */
   const notasDisponible = computed(() =>
@@ -58,28 +72,38 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
       : [],
   );
 
-  /** `manual`: lo pidió el usuario (Acerca de, menú, paleta); si no hay nada nuevo, se le dice. */
-  async function buscar(manual: boolean): Promise<ResultadoActualizar> {
-    const { t } = i18n.global;
-    if (buscando.value) return { ok: true };
+  // Una sola consulta a la vez: la manual que llega durante la automática espera esa misma y muestra su resultado.
+  let enCurso: Promise<ResultadoActualizar> | null = null;
+  async function consultar(): Promise<ResultadoActualizar> {
     buscando.value = true;
     try {
       disponible.value = await invoke<Disponible | null>("buscar_actualizacion", {
         versionActual: VERSION_ACTUAL,
       });
       guardarPreferencia(ULTIMA, Date.now());
-      if (disponible.value && manual) ventanaAbierta.value = true;
-      return { ok: true, mensaje: disponible.value ? undefined : t("actualizar.alDia") };
+      return { ok: true };
     } catch (e) {
-      return { ok: false, mensaje: t("actualizar.error.consulta", { detalle: detalle(e) }) };
+      return { ok: false, mensaje: mensajeError(e) };
     } finally {
       buscando.value = false;
     }
   }
 
+  /** `manual`: lo pidió el usuario (Acerca de, menú, paleta, bandeja); si hay versión nueva abre la ventana y si
+   * no, lo dice. La automática no abre nada: solo el aviso de la barra superior. */
+  async function buscar(manual: boolean): Promise<ResultadoActualizar> {
+    enCurso ??= consultar().finally(() => (enCurso = null));
+    const r = await enCurso;
+    if (!r.ok || !manual) return r;
+    if (disponible.value) {
+      ventanaAbierta.value = true;
+      return { ok: true };
+    }
+    return { ok: true, mensaje: i18n.global.t("actualizar.alDia") };
+  }
+
   /** Descarga, verifica e instala; si sale bien la app se reinicia y la promesa no vuelve. */
   async function instalar(): Promise<ResultadoActualizar> {
-    const { t } = i18n.global;
     if (instalando.value) return { ok: true };
     instalando.value = true;
     progreso.value = { descargado: 0, total: null };
@@ -89,7 +113,7 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
       await invoke("instalar_actualizacion", { progreso: canal });
       return { ok: true };
     } catch (e) {
-      return { ok: false, mensaje: t("actualizar.error.instalar", { detalle: detalle(e) }) };
+      return { ok: false, mensaje: mensajeError(e) };
     } finally {
       instalando.value = false;
       progreso.value = null;
@@ -104,33 +128,34 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
     }
   }
 
-  function abrirNovedades(lista: Novedad[] = NOVEDADES_APP) {
+  function abrirNovedades(lista: Novedad[] = NOVEDADES_APP, trasActualizar = false) {
     novedades.value = lista;
+    novedadesTrasActualizar.value = trasActualizar;
     novedadesAbiertas.value = true;
   }
 
+  let temporizador: ReturnType<typeof setInterval> | null = null;
   /**
-   * Al arrancar: «Novedades» si esta versión es más nueva que la última usada en este PC, y la consulta periódica
-   * (al abrir y luego cada hora, según la preferencia). La consulta automática falla en silencio.
+   * Al arrancar (una vez): «Novedades» si esta versión es más nueva que la última usada en este PC, y la consulta
+   * periódica (al abrir y luego cada hora, según la preferencia). Sigue consultando aunque ya haya una versión
+   * nueva, por si sale otra más nueva; no durante una instalación. La consulta automática falla en silencio.
    */
   function iniciar() {
+    if (temporizador) return;
     const pendientes = novedadesPendientes(
       NOVEDADES_APP,
       leerPreferencia<string | null>(VERSION_USADA, null),
       VERSION_ACTUAL,
     );
     guardarPreferencia(VERSION_USADA, VERSION_ACTUAL);
-    if (pendientes.length) abrirNovedades(pendientes);
+    if (pendientes.length) abrirNovedades(pendientes, true);
     const revisar = (alAbrir: boolean) => {
       const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
-      if (
-        !disponible.value &&
-        tocaBuscar(frecuencia, leerPreferencia<number | null>(ULTIMA, null), Date.now(), alAbrir)
-      )
-        void buscar(false);
+      const ultima = leerPreferencia<number | null>(ULTIMA, null);
+      if (!instalando.value && tocaBuscar(frecuencia, ultima, Date.now(), alAbrir)) void buscar(false);
     };
     revisar(true);
-    setInterval(() => revisar(false), CADA_HORA);
+    temporizador = setInterval(() => revisar(false), CADA_HORA);
   }
 
   return {
@@ -141,6 +166,7 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
     ventanaAbierta,
     novedadesAbiertas,
     novedades,
+    novedadesTrasActualizar,
     notasDisponible,
     buscar,
     instalar,

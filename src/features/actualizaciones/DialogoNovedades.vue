@@ -28,7 +28,9 @@ const version = computed(() => a.novedades[0]?.version ?? VERSION_ACTUAL);
     <DialogContent class="sm:max-w-xl" @open-auto-focus="retorno.alAbrir" @close-auto-focus="retorno.alCerrar">
       <DialogHeader>
         <DialogTitle>{{ t("novedades.titulo", { version }) }}</DialogTitle>
-        <DialogDescription>{{ t("novedades.descripcion") }}</DialogDescription>
+        <DialogDescription>{{
+          t(a.novedadesTrasActualizar ? "novedades.descripcion" : "novedades.historial")
+        }}</DialogDescription>
       </DialogHeader>
       <div class="max-h-96 overflow-y-auto pr-1">
         <ListaNovedades v-if="a.novedades.length" :lista="a.novedades" />

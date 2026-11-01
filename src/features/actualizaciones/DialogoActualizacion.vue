@@ -98,7 +98,8 @@ const abrirPagina = () => a.disponible && openUrl(a.disponible.pagina);
       <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
 
       <DialogFooter>
-        <Button type="button" variant="ghost" @click="abrirPagina">
+        <!-- En modo paquete «Descargar el paquete» ya abre la página del release: no se repite «Ver en GitHub». -->
+        <Button v-if="a.disponible.modo !== 'paquete'" type="button" variant="ghost" @click="abrirPagina">
           <ExternalLink aria-hidden="true" />
           {{ t("actualizar.verEnGithub") }}
         </Button>

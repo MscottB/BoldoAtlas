@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import MarkdownIt from "markdown-it";
+import { abrirEnlacesFuera } from "@/lib/enlaces";
 import type { Novedad } from "./novedades";
 
 // Notas de varias versiones, de la más nueva a la más antigua. Las notas vienen de los PR, en español: con la
@@ -26,8 +27,9 @@ const fecha = (f: string) =>
           {{ t("novedades.version", { version: n.version }) }}
           <span v-if="fecha(n.fecha)" class="font-normal text-muted-foreground">· {{ fecha(n.fecha) }}</span>
         </h3>
+        <!-- los enlaces de las notas se abren en el navegador del sistema, nunca dentro de la app -->
         <!-- eslint-disable-next-line vue/no-v-html -- html: false en markdown-it -->
-        <div v-if="n.notas" class="ayuda novedades" lang="es" v-html="html(n.notas)" />
+        <div v-if="n.notas" class="ayuda novedades" lang="es" @click="abrirEnlacesFuera" v-html="html(n.notas)" />
         <p v-else class="mt-1 text-sm text-muted-foreground">{{ t("novedades.sinNotas") }}</p>
       </li>
     </ol>

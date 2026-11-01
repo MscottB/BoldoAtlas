@@ -62,7 +62,7 @@ Processes (SIPOC) and activities (RACI matrix), indicators, scenarios, export to
 
 ## Why local
 
-An org chart holds the names, emails and job titles of real people. BoldoAtlas keeps everything on your computer and does not need internet to work: no accounts to create, nothing to subscribe to, and nothing lost if a service goes down. To take it to another computer, the portable version fits on a USB drive. Later it will be able to check for updates, and that will be optional.
+An org chart holds the names, emails and job titles of real people. BoldoAtlas keeps everything on your computer and does not need internet to work: no accounts to create, nothing to subscribe to, and nothing lost if a service goes down. To take it to another computer, the portable version fits on a USB drive. It looks for new versions daily and tells you, without sending data or installing anything without asking; you can turn it off.
 
 ## License
 
