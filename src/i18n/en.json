@@ -12,8 +12,7 @@
     "ayuda": "Help",
     "acerca": "About",
     "llegaFase3": "Coming in Phase 3",
-    "llegaFase5": "Coming in Phase 5",
-    "llegaFases45": "Coming in Phases 4 and 5"
+    "llegaFase5": "Coming in Phase 5"
   },
   "barra": {
     "mostrarBarra": "Show sidebar",
@@ -684,7 +683,6 @@
       "texto": "A sample organization to try the app out."
     },
     "llegaFase4": "Phase 4",
-    "llegaFase5": "Phase 5",
     "organizacion": "Organization name",
     "raiz": "Root unit name",
     "raizEjemplo": "For example: General Management",
@@ -857,6 +855,7 @@
     "vacia": "New empty organization…",
     "ejemplo": "Explore the example…",
     "boldo": "Open .boldo file",
+    "exportar": "Export to a .boldo file",
     "excel": "Import Excel",
     "respaldos": "Backups",
     "configuracion": "Settings",
@@ -949,5 +948,117 @@
     "titulo": "Are you sure you want to quit?",
     "texto": "What you already applied is saved. An unfinished form is lost.",
     "cancelar": "Cancel"
+  },
+  "intercambio": {
+    "ayuda": "Take your organization, or just part of it, to another computer in a file protected with a code.",
+    "cancelar": "Cancel",
+    "continuar": "Continue",
+    "listo": "Done",
+    "exportar": {
+      "titulo": "Export",
+      "texto": "Save the whole database, or one or more trees or branches, to a .boldo file.",
+      "queLlevar": "What do you want to take?",
+      "todo": "The whole database",
+      "ramas": "One or more trees or branches",
+      "ramasAyuda": "Check the units. Each one includes its whole branch.",
+      "verRama": "Show the branch of {nombre}",
+      "resumenTodo": "The file will carry the whole database:",
+      "resumenRamas": "The file will carry only this:",
+      "noVan": "This stays out because it points to what is not going:",
+      "corte": {
+        "conexiones": "{n} connection with a unit that is not going | {n} connections with a unit that is not going",
+        "jefaturas": "{n} head whose position is not going: left empty | {n} heads whose position is not going: left empty",
+        "roles": "{n} role of a person who is not going | {n} roles of people who are not going",
+        "vistas": "{n} saved view of the full tree | {n} saved views of the full tree"
+      },
+      "guardar": "Save as…",
+      "guardado": "The file {nombre} was saved.",
+      "tuCodigo": "The code to open it:",
+      "copiar": "Copy code",
+      "copiado": "Code copied.",
+      "errorCopiar": "Could not copy the code: {detalle}",
+      "unaVez": "This code is shown only now and is not saved anywhere. If it is lost, the file cannot be opened and you have to export again.",
+      "canales": "Send the file and the code through different channels: for example, the file by email and the code by phone."
+    },
+    "importar": {
+      "titulo": "Import",
+      "texto": "Open a .boldo file with its code and review what it carries before applying it.",
+      "elegir": "Choose file…",
+      "codigo": "File code",
+      "codigoAyuda": "Whoever exported the file gives it to you.",
+      "abrir": "Open",
+      "traeTodo": "The file carries the whole database of “{nombre}”.",
+      "traeRamas": "The file carries part of “{nombre}”.",
+      "columna": {
+        "que": "What it carries",
+        "trae": "In the file",
+        "nuevas": "New",
+        "existentes": "Already exists or stays out"
+      },
+      "queHacer": "What do you want to do?",
+      "agregar": "Add what is new",
+      "agregarAyuda": "What does not exist comes in. What already exists stays as it is.",
+      "reemplazar": "Replace everything",
+      "reemplazarAyuda": "Your current data is swapped for the file's and the app restarts.",
+      "soloCompleta": "Not available: this file carries only a part, and replacing would erase the rest of your database.",
+      "dondeVa": "The parent unit of these branches is not in your database. Where do you place them?",
+      "independiente": "As an independent tree",
+      "dentroDe": "Inside {nombre}",
+      "vuelveA": "“{rama}” goes back inside “{nombre}”.",
+      "vaciadas": "{n} reference to something that does not come in is left empty. | {n} references to something that does not come in are left empty.",
+      "historial": "{n} deleted record also comes in, to keep the history. | {n} deleted records also come in, to keep the history.",
+      "detalle": "{n} record with a notice | {n} records with a notice",
+      "detalleMas": "And {n} more. | And {n} more.",
+      "respaldo": "A backup is made before applying. If anything fails, nothing is written.",
+      "aplicar": "Apply",
+      "hecho": "Done. This was added to your database:",
+      "ver": "See my organization",
+      "confirmarTitulo": "Replace everything?",
+      "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings."
+    },
+    "etapa": {
+      "copiando": "Preparing the copy of your data…",
+      "cifrando": "Protecting the file…",
+      "descifrando": "Opening the file…",
+      "revisando": "Reviewing what it carries…",
+      "aplicando": "Applying…"
+    },
+    "tablas": {
+      "unidades": "Units",
+      "trabajadores": "People",
+      "puestos": "Positions",
+      "asignaciones": "Assignments",
+      "conexiones": "Connections",
+      "unidad_etiquetas": "Tags on units",
+      "etiquetas": "Tags",
+      "procesos": "Processes",
+      "actividades": "Activities",
+      "actividad_roles": "Roles in activities",
+      "subarboles_guardados": "Saved branches",
+      "vistas": "Saved views",
+      "tipos_unidad": "Unit types",
+      "cargos": "Job titles",
+      "leyendas": "Legends",
+      "tipos_contrato": "Contract types",
+      "sedes": "Sites",
+      "jornadas": "Work schedules"
+    },
+    "motivo": {
+      "existe": "already exists: stays as it is",
+      "union": "joins the one with the same name",
+      "correo": "a person with that email already exists: not duplicated",
+      "choque": "clashes with what you have: does not come in",
+      "referencia": "points to something deleted in your database: does not come in",
+      "vaciada": "comes in without a reference to something that is not there"
+    },
+    "error": {
+      "no_abre": "The code is not correct or the file is damaged. Nothing was changed.",
+      "contenido_invalido": "The file is not a valid BoldoAtlas copy. Nothing was changed.",
+      "esquema_nuevo": "This file was made with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
+      "muy_grande": "The file is too large: the maximum is 2 GB.",
+      "solo_completo": "This file carries only a part: it cannot replace the whole database.",
+      "desconocido": "What you chose is no longer there. Start again.",
+      "cancelado": "Cancelled. Nothing was changed."
+    }
   }
 }

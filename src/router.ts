@@ -30,6 +30,11 @@ export const router = createRouter({
       component: () => import("@/features/revision/VistaRevision.vue"),
     },
     {
+      path: "/importar-exportar",
+      name: "importarExportar",
+      component: () => import("@/features/intercambio/VistaIntercambio.vue"),
+    },
+    {
       path: "/configuracion",
       name: "configuracion",
       component: () => import("@/vistas/VistaConfiguracion.vue"),

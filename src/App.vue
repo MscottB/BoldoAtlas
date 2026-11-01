@@ -59,7 +59,7 @@ const secciones: Entrada[] = [
   { to: "/revision", etiqueta: "nav.revision", icono: ListChecks, contador: () => avisos.value.total },
   { etiqueta: "nav.indicadores", icono: ChartColumn, aviso: "nav.llegaFase3" },
   { etiqueta: "nav.escenarios", icono: GitBranch, aviso: "nav.llegaFase5" },
-  { etiqueta: "nav.importarExportar", icono: ArrowLeftRight, aviso: "nav.llegaFases45" },
+  { to: "/importar-exportar", etiqueta: "nav.importarExportar", icono: ArrowLeftRight },
 ].filter((e) => MOSTRAR_PROXIMAMENTE || e.to);
 // Abajo, separadas de las secciones del programa.
 const utilidades: Entrada[] = [

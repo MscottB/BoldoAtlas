@@ -1,0 +1,296 @@
+<script setup lang="ts">
+import { computed, onUnmounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { toast } from "vue-sonner";
+import { FolderOpen } from "@lucide/vue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  importarAbrir,
+  importarAgregar,
+  importarElegir,
+  importarReemplazar,
+  intercambioCancelar,
+  type InformeImportacion,
+  type ResumenImportacion,
+} from "@/db/cliente";
+import { rutaTexto } from "@/features/arbol/jerarquia";
+import { tamano } from "@/lib/formato";
+import { claseSelect } from "@/lib/utils";
+import { useOrganizacion } from "@/stores/organizacion";
+import BarraAvance from "./BarraAvance.vue";
+import ListaDetalle from "./ListaDetalle.vue";
+import { conFilas, intentar, useAvance } from "./intercambio";
+
+const emit = defineEmits<{ terminar: [] }>();
+const { t, locale } = useI18n();
+const router = useRouter();
+const org = useOrganizacion();
+const avance = useAvance();
+
+type Paso = "elegir" | "abriendo" | "revision" | "aplicando" | "hecho";
+const paso = ref<Paso>("elegir");
+const archivo = ref<{ nombre: string; bytes: number } | null>(null);
+const codigo = ref("");
+const error = ref("");
+
+async function elegir() {
+  error.value = "";
+  const r = await intentar(importarElegir);
+  if (!r.ok) error.value = r.mensaje;
+  else if (r.valor) archivo.value = r.valor;
+}
+
+const resumen = ref<ResumenImportacion | null>(null);
+async function abrir() {
+  error.value = "";
+  paso.value = "abriendo";
+  avance.value = null;
+  const r = await intentar(() => importarAbrir(codigo.value));
+  if (paso.value !== "abriendo") return; // se canceló mientras tanto
+  if (!r.ok) {
+    paso.value = "elegir";
+    if (r.codigo !== "cancelado") error.value = r.mensaje;
+    return;
+  }
+  codigo.value = ""; // ya cumplió: no se queda en memoria de la interfaz
+  resumen.value = r.valor;
+  modo.value = "agregar";
+  lugares.value = Object.fromEntries(
+    r.valor.informe.ramas.filter((x) => x.pideLugar).map((x) => [x.id, ""]),
+  );
+  paso.value = "revision";
+}
+
+const modo = ref<"agregar" | "reemplazar">("agregar");
+// "" = como árbol independiente
+const lugares = ref<Record<string, string>>({});
+const filas = computed(() => conFilas(resumen.value?.informe.tablas ?? [], (f) => f.trae));
+const opciones = computed(() =>
+  org.unidades
+    .map((u) => ({ id: u.id, texto: rutaTexto(org.unidades, u.id) }))
+    .sort((a, b) => a.texto.localeCompare(b.texto, locale.value)),
+);
+
+const informe = ref<InformeImportacion | null>(null);
+async function agregar() {
+  paso.value = "aplicando";
+  avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
+  const destino = Object.fromEntries(Object.entries(lugares.value).map(([k, v]) => [k, v || null]));
+  const r = await intentar(() => importarAgregar(destino));
+  if (!r.ok) {
+    paso.value = "revision";
+    toast.error(r.mensaje);
+    return;
+  }
+  informe.value = r.valor;
+  const cargado = await org.cargar();
+  if (!cargado.ok) toast.error(cargado.mensaje);
+  paso.value = "hecho";
+}
+
+const confirmando = ref(false);
+function aplicar() {
+  if (modo.value === "reemplazar") confirmando.value = true;
+  else void agregar();
+}
+async function reemplazar() {
+  paso.value = "aplicando";
+  avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
+  const r = await intentar(importarReemplazar); // si sale bien, la app se reinicia
+  if (!r.ok) {
+    paso.value = "revision";
+    toast.error(r.mensaje);
+  }
+}
+
+async function cancelar() {
+  paso.value = "elegir";
+  codigo.value = "";
+  archivo.value = null;
+  resumen.value = null;
+  await intercambioCancelar();
+}
+async function salir() {
+  await cancelar();
+  emit("terminar");
+}
+async function verResultado() {
+  await router.replace("/");
+}
+onUnmounted(() => {
+  codigo.value = "";
+  void intercambioCancelar();
+});
+</script>
+
+<template>
+  <div class="grid gap-4">
+    <h2 class="font-medium">{{ t("intercambio.importar.titulo") }}</h2>
+
+    <form v-if="paso === 'elegir'" class="grid gap-4" @submit.prevent="abrir">
+      <div class="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" @click="elegir">
+          <FolderOpen aria-hidden="true" />
+          {{ t("intercambio.importar.elegir") }}
+        </Button>
+        <p v-if="archivo" class="min-w-0 truncate text-sm">
+          {{ archivo.nombre }}
+          <span class="text-muted-foreground">({{ tamano(archivo.bytes, locale) }})</span>
+        </p>
+      </div>
+      <div class="grid max-w-sm gap-1.5">
+        <Label for="importar-codigo">{{ t("intercambio.importar.codigo") }}</Label>
+        <Input
+          id="importar-codigo"
+          v-model="codigo"
+          class="font-mono"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          :aria-invalid="!!error"
+          :aria-describedby="error ? 'importar-error' : undefined"
+        />
+        <p class="text-xs text-muted-foreground">{{ t("intercambio.importar.codigoAyuda") }}</p>
+      </div>
+      <p v-if="error" id="importar-error" role="alert" class="text-sm text-destructive">{{ error }}</p>
+      <div class="flex gap-2">
+        <Button type="submit" :disabled="!archivo || !codigo.trim()">{{ t("intercambio.importar.abrir") }}</Button>
+        <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
+      </div>
+    </form>
+
+    <BarraAvance v-else-if="paso === 'abriendo'" :avance="avance" cancelable @cancelar="cancelar" />
+    <BarraAvance v-else-if="paso === 'aplicando'" :avance="avance" :cancelable="false" />
+
+    <template v-else-if="paso === 'revision' && resumen">
+      <p class="text-sm">
+        {{
+          t(resumen.parcial ? "intercambio.importar.traeRamas" : "intercambio.importar.traeTodo", {
+            nombre: resumen.organizacion || t("barra.sinNombre"),
+          })
+        }}
+      </p>
+      <div class="overflow-x-auto">
+        <table class="text-sm">
+          <thead>
+            <tr class="border-b text-left text-xs text-muted-foreground">
+              <th scope="col" class="py-1 pr-6 font-medium">{{ t("intercambio.importar.columna.que") }}</th>
+              <th scope="col" class="px-3 text-right font-medium">{{ t("intercambio.importar.columna.trae") }}</th>
+              <th scope="col" class="px-3 text-right font-medium">{{ t("intercambio.importar.columna.nuevas") }}</th>
+              <th scope="col" class="px-3 text-right font-medium">
+                {{ t("intercambio.importar.columna.existentes") }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            <tr v-for="f in filas" :key="f.tabla">
+              <th scope="row" class="py-1 pr-6 text-left font-normal">{{ t(`intercambio.tablas.${f.tabla}`) }}</th>
+              <td class="px-3 text-right tabular-nums">{{ f.trae }}</td>
+              <td class="px-3 text-right tabular-nums">{{ f.nuevas }}</td>
+              <td class="px-3 text-right tabular-nums">{{ f.existentes + f.unidas + f.omitidas }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <fieldset class="grid gap-3">
+        <legend class="mb-1 text-sm font-medium">{{ t("intercambio.importar.queHacer") }}</legend>
+        <label class="flex items-start gap-2 text-sm">
+          <input v-model="modo" type="radio" value="agregar" class="mt-1" />
+          <span>
+            <span class="font-medium">{{ t("intercambio.importar.agregar") }}</span>
+            <span class="block text-muted-foreground">{{ t("intercambio.importar.agregarAyuda") }}</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-2 text-sm" :class="resumen.parcial && 'text-muted-foreground'">
+          <input v-model="modo" type="radio" value="reemplazar" class="mt-1" :disabled="resumen.parcial" />
+          <span>
+            <span class="font-medium">{{ t("intercambio.importar.reemplazar") }}</span>
+            <span class="block text-muted-foreground">
+              {{ t(resumen.parcial ? "intercambio.importar.soloCompleta" : "intercambio.importar.reemplazarAyuda") }}
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
+      <template v-if="modo === 'agregar'">
+        <div v-if="Object.keys(lugares).length" class="grid gap-3 rounded-lg border p-3">
+          <p class="text-sm font-medium">{{ t("intercambio.importar.dondeVa") }}</p>
+          <template v-for="r in resumen.informe.ramas" :key="r.id">
+            <div v-if="r.pideLugar" class="grid max-w-lg gap-1.5">
+              <Label :for="`lugar-${r.id}`">{{ r.nombre }}</Label>
+              <select :id="`lugar-${r.id}`" v-model="lugares[r.id]" :class="claseSelect">
+                <option value="">{{ t("intercambio.importar.independiente") }}</option>
+                <option v-for="o in opciones" :key="o.id" :value="o.id">
+                  {{ t("intercambio.importar.dentroDe", { nombre: o.texto }) }}
+                </option>
+              </select>
+            </div>
+          </template>
+        </div>
+        <ul class="grid gap-1 text-sm text-muted-foreground">
+          <template v-for="r in resumen.informe.ramas" :key="r.id">
+            <li v-if="r.dentroDe && !r.existe">
+              {{ t("intercambio.importar.vuelveA", { rama: r.nombre, nombre: r.dentroDe }) }}
+            </li>
+          </template>
+          <li v-if="resumen.informe.vaciadas">
+            {{ t("intercambio.importar.vaciadas", resumen.informe.vaciadas) }}
+          </li>
+          <li v-if="resumen.informe.historial">
+            {{ t("intercambio.importar.historial", resumen.informe.historial) }}
+          </li>
+        </ul>
+        <ListaDetalle :informe="resumen.informe" />
+      </template>
+
+      <p class="text-sm text-muted-foreground">{{ t("intercambio.importar.respaldo") }}</p>
+      <div class="flex gap-2">
+        <Button type="button" @click="aplicar">{{ t("intercambio.importar.aplicar") }}</Button>
+        <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
+      </div>
+    </template>
+
+    <template v-else-if="paso === 'hecho' && informe">
+      <p role="status" class="text-sm">{{ t("intercambio.importar.hecho") }}</p>
+      <dl class="grid grid-cols-[auto_auto] justify-start gap-x-6 gap-y-1 text-sm">
+        <template v-for="f in informe.tablas.filter((x) => x.nuevas > 0)" :key="f.tabla">
+          <dt class="text-muted-foreground">{{ t(`intercambio.tablas.${f.tabla}`) }}</dt>
+          <dd class="text-right tabular-nums">{{ f.nuevas }}</dd>
+        </template>
+      </dl>
+      <ListaDetalle :informe="informe" />
+      <div>
+        <Button type="button" @click="verResultado">{{ t("intercambio.importar.ver") }}</Button>
+      </div>
+    </template>
+
+    <AlertDialog v-model:open="confirmando">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t("intercambio.importar.confirmarTitulo") }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t("intercambio.importar.confirmarTexto", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{{ t("intercambio.cancelar") }}</AlertDialogCancel>
+          <AlertDialogAction @click="reemplazar">{{ t("intercambio.importar.reemplazar") }}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </div>
+</template>
