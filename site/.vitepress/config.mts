@@ -1,11 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type DefaultTheme } from "vitepress";
+import { reglasAyuda } from "../../src/lib/markdownAyuda";
 
 // El manual es el de la app (ayuda/<idioma>/*.md); scripts/sync.mjs lo copia a manual/ y en/manual/.
-// Mismo orden que en la app: «inicio» primero, el resto por orden alfabético del archivo.
+// Mismo orden que en la app (ayuda/orden.json); los que falten, al final por nombre.
 const ayuda = fileURLToPath(new URL("../../ayuda/", import.meta.url));
 // Primer encabezado «# ...» fuera de los bloques de código.
+const orden: string[] = JSON.parse(readFileSync(`${ayuda}orden.json`, "utf8"));
+const posicion = (slug: string) => (orden.includes(slug) ? orden.indexOf(slug) : orden.length);
 const primerTitulo = (md: string) => /^# +(.+)$/m.exec(md.replace(/^(```|~~~)[\s\S]*?^\1/gm, ""))?.[1];
 function barraManual(idioma: "es" | "en", prefijo: string, titulo: string): DefaultTheme.SidebarItem[] {
   const paginas = readdirSync(`${ayuda}${idioma}`)
@@ -14,7 +17,7 @@ function barraManual(idioma: "es" | "en", prefijo: string, titulo: string): Defa
       slug: f.slice(0, -3),
       text: primerTitulo(readFileSync(`${ayuda}${idioma}/${f}`, "utf8")) ?? f,
     }))
-    .sort((a, b) => Number(b.slug === "inicio") - Number(a.slug === "inicio") || a.slug.localeCompare(b.slug));
+    .sort((a, b) => posicion(a.slug) - posicion(b.slug) || a.slug.localeCompare(b.slug));
   return [{ text: titulo, items: paginas.map((p) => ({ text: p.text, link: `${prefijo}/manual/${p.slug}` })) }];
 }
 
@@ -26,6 +29,9 @@ export default defineConfig({
   base: BASE,
   cleanUrls: true,
   srcExclude: ["README.md"],
+  // Las figuras de la ayuda (imagen con pie, tamaño y carga diferida) se dibujan igual que en la app; los avisos
+  // (::: info | tip | warning) ya los trae VitePress.
+  markdown: { config: (md) => reglasAyuda(md) },
   sitemap: { hostname: "https://mscottb.github.io/BoldoAtlas/" },
   head: [
     ["link", { rel: "icon", type: "image/png", href: `${BASE}icono.png` }],

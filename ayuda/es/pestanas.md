@@ -1,5 +1,9 @@
 # Pestañas de trabajo
 
+::: info En resumen
+Las pestañas te dejan tener abiertas a la vez varias partes del proyecto y pasar de una a otra sin perder dónde estabas.
+:::
+
 Las pestañas te dejan tener abiertas a la vez distintas partes del mismo proyecto: el árbol completo, un subárbol, el directorio con un filtro, una persona… y pasar de una a otra sin perder dónde estabas.
 
 ## Abrir una pestaña
@@ -10,6 +14,12 @@ Las pestañas te dejan tener abiertas a la vez distintas partes del mismo proyec
 - `Ctrl` + clic o clic central sobre una entrada del menú lateral, o sobre una persona del Directorio, también la abren en una pestaña nueva. Una persona se abre como el Directorio con solo sus filas: el filtro «Persona: …» se quita con su ×.
 
 Con una sola pestaña la barra no se muestra; aparece sobre el área central en cuanto abres la segunda. Puedes tener hasta 12 pestañas abiertas.
+
+![Barra de pestañas con tres pestañas abiertas y el botón para abrir otra.](../img/es/pestanas-barra.webp "La barra de pestañas. 1: una pestaña. 2: su botón para cerrarla. 3: abrir una pestaña nueva."){width=560 height=84}
+
+::: tip Consejo
+Deja una pestaña con el árbol completo y otra con el Directorio filtrado: así comparas sin perder tu lugar en ninguno.
+:::
 
 ## Qué recuerda cada pestaña
 
@@ -29,3 +39,5 @@ Solo la pestaña activa está cargada: tener varias abiertas no hace más lento 
 - Con el foco en la barra, `←` `→` recorren las pestañas y `Enter` abre la enfocada.
 
 Las pestañas se recuerdan en este computador, aparte para cada proyecto. Al volver a abrir el programa estarán como las dejaste; las de unidades o personas que ya no existen se cierran solas.
+
+**Ver también:** [Atajos de teclado](atajos.md) · [Directorio](directorio.md).

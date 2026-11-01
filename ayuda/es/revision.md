@@ -1,8 +1,20 @@
 # Revisión de datos
 
+::: info En resumen
+Revisión junta en una pantalla lo que conviene corregir en tus datos: puestos vacantes, correos repetidos, personas sin puesto y más.
+:::
+
 **Revisión** reúne en una sola pantalla lo que conviene corregir en tus datos. Cada fila es un botón: al pulsarla (o con Tab y Enter) se abre la unidad, el puesto o la persona para arreglarlo ahí mismo.
 
 El número junto a **Revisión** en el menú es el total de avisos pendientes. No incluye los reemplazos vigentes, que solo informan. Se actualiza solo cuando cambian los datos.
+
+![Pantalla Revisión de datos con las listas Puestos vacantes, Reemplazos vigentes y Valores sin uso.](../img/es/revision-lista.webp "La pantalla Revisión, con avisos de la organización de ejemplo."){width=888 height=440}
+
+Para corregir un aviso:
+
+1. Abre **Revisión** en el menú lateral.
+2. Pulsa la fila del aviso.
+3. Corrige en la unidad, el puesto o la ficha que se abre.
 
 ## Las listas
 
@@ -13,6 +25,8 @@ El número junto a **Revisión** en el menú es el total de avisos pendientes. N
 - **Correos repetidos**: personas con el mismo correo, sin distinguir mayúsculas ni espacios al borde. Se abre la ficha de cada una.
 - **Nombres parecidos**: personas con el mismo nombre sin considerar mayúsculas ni tildes, o con las mismas palabras en otro orden («Pérez Juan» y «Juan Perez»). Son posibles duplicados; no se compara con tolerancia a errores de tipeo.
 - **Unidades vacías**: unidades sin puestos ni subunidades.
-- **Valores sin uso**: valores activos de cargos, tipos de contrato, sedes, jornadas, tipos de unidad y leyendas que nada usa. Por ahora son solo informativos; podrás editarlos desde los mantenedores.
+- **Valores sin uso**: valores activos de cargos, tipos de contrato, sedes, jornadas, tipos de unidad y leyendas que nada usa. Son solo informativos: puedes editarlos o desactivarlos desde los mantenedores.
 
 Primero van las listas con avisos. Las que están en orden se juntan al final en una sola línea, **Sin avisos:** y sus nombres, que se despliega con un clic (y queda como la dejes) para ver cada una con «Todo en orden». Los elementos eliminados o desactivados nunca se reportan.
+
+**Ver también:** [Puestos y reemplazos](puestos.md) · [Fichas de personas](fichas.md) · [Configuración y mantenedores](mantenedores.md).

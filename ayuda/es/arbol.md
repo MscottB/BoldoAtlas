@@ -1,5 +1,9 @@
 # El árbol
 
+::: info En resumen
+El árbol es la pantalla principal: ves tu organización como un organigrama que puedes armar, reordenar, resaltar y mirar como estaba otro día.
+:::
+
 El árbol es la pantalla principal: muestra tu organización como un organigrama que puedes armar y reorganizar.
 
 ## Las tarjetas
@@ -12,6 +16,8 @@ Cada unidad es una tarjeta con:
 - la dotación total de su rama (ella y todo lo que cuelga de ella); púlsala (o `Tab` hasta ella y `Enter`) para ver quiénes son en la pestaña **Personas** del panel;
 - las vacantes de la rama, si hay;
 - un punto de color por cada etiqueta (pasa el puntero por encima para ver su nombre).
+
+![Tarjeta de la unidad Finanzas con sus partes numeradas del 1 al 7.](../img/es/arbol-tarjeta.webp "Una tarjeta. 1: tipo de unidad. 2: nombre. 3: jefatura. 4: dotación total de la rama. 5: vacantes de la rama. 6: etiqueta (punto de color). 7: botón para desplegar las subunidades ocultas."){width=342 height=218}
 
 Los tipos de unidad son una lista propia de tu organización: al comienzo trae Gerencia, Área, Subárea y Otra, que se pueden renombrar, reordenar, desactivar o complementar con otros (por ejemplo, Superintendencia o Departamento). El orden de la lista no limita la estructura: cualquier tipo puede depender de cualquier otro.
 
@@ -55,9 +61,18 @@ Viendo el organigrama a una fecha, las acciones que cambian algo aparecen desact
 - **Doble clic** sobre el nombre, o `F2` con la tarjeta enfocada o seleccionada, lo edita. `Enter` guarda y `Esc` cancela.
 - **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una raíz nueva del primer tipo de la lista.
 
+![Barra del lienzo con sus botones numerados del 1 al 7.](../img/es/arbol-barra.webp "La barra del lienzo. 1: Nueva unidad. 2: buscar unidad o persona. 3: Resaltar. 4: Personalizar. 5: Vistas guardadas. 6: ver en otra fecha (con poco ancho dice solo «Fecha»). 7: Más."){width=892 height=90}
+
+::: tip Consejo
+Selecciona una tarjeta y pulsa `N` para crear una subunidad sin usar el mouse.
+:::
+
 ## Mover una unidad
 
-Arrastra una tarjeta y suéltala sobre otra: BoldoAtlas pregunta "¿Mover X dentro de Y?" antes de cambiar su superior. No se puede mover una unidad dentro de su propia rama: en ese caso aparece un aviso y nada cambia. Si sueltas la tarjeta en el vacío, vuelve a su lugar.
+1. Arrastra la tarjeta de la unidad y suéltala sobre la que será su nueva superior.
+2. BoldoAtlas pregunta "¿Mover X dentro de Y?" antes de cambiar su superior: confirma.
+
+No se puede mover una unidad dentro de su propia rama: en ese caso aparece un aviso y nada cambia. Si sueltas la tarjeta en el vacío, vuelve a su lugar.
 
 ## Seleccionar varias unidades
 
@@ -112,6 +127,8 @@ En la tarjeta seleccionada, el botón **Abrir como árbol** muestra solo esa uni
 
 El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo se dibuja el árbol. Se recuerdan en este computador. A la vista están **Dirección**, **Densidad**, **Colorear por** y **Ver puestos**; el resto va en dos bloques plegados, **Qué mostrar en las tarjetas** y **Avanzado**, que se abren con un clic (o `Enter`) y recuerdan en este computador si los dejaste abiertos. **Restablecer** vuelve todo a como venía al comienzo, salvo el resaltado.
 
+![Panel Personalizar con Dirección, Densidad, Colorear por, Ver puestos y los bloques plegados.](../img/es/arbol-personalizar.webp "El panel Personalizar. 1: dirección del árbol. 2: densidad de las tarjetas. 3: colorear por. 4: ver puestos."){width=380 height=462}
+
 - **Ver puestos** (apagado al comienzo): bajo cada unidad visible aparece una tarjeta por cada puesto, con el cargo, la persona titular o **Vacante**, y **Reemplazo: nombre** si hay un reemplazo vigente. Pulsa una tarjeta de puesto, o enfócala y presiona `Enter`, para abrir su ficha. En **Avanzado** se puede ocultar el cargo o la persona. Con muchas unidades desplegadas, los puestos suman tarjetas: pliega las ramas que no necesitas.
 - **Mostrar en las tarjetas el superior de tipo** (en **Avanzado**): marca los tipos (por ejemplo, Gerencia o Área) cuyo superior más cercano quieres leer en cada tarjeta de unidad. Solo aparecen los tipos que alguna unidad usa.
 - **Colorear por**: **Ninguno**, **Marca de** un tipo o **Leyenda del puesto**. Con **Marca de** un tipo, cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Con **Leyenda del puesto**, las tarjetas de puesto toman el color de su leyenda (hay que activar **Ver puestos**; ver «Leyendas y colores de puestos»). Solo se aplica un criterio a la vez.
@@ -137,6 +154,10 @@ El botón **Vistas guardadas** guarda con nombre la configuración actual (direc
 
 El botón **Ver en otra fecha** de la barra del lienzo (con poco ancho dice solo **Fecha**) muestra el organigrama como estaba un día pasado. Al pulsarlo se abre el selector (se acepta desde el 1 de enero de 1900 hasta hoy). Arriba puedes escribir la fecha completa (mientras escribes el año no cambia nada, al salir del campo lo que quedó a medias se descarta, y vaciarlo vuelve a hoy); debajo, el calendario va a ese mes, y sus listas de **mes** y **año** saltan a cualquier mes en dos clics. En el calendario, los días **resaltados con un punto** tuvieron cambios, y el lector de pantalla los anuncia con su cantidad («3 cambios»). Elige un día: arriba aparece la banda **Viendo al … · solo lectura** con el botón **Volver a hoy**, el botón de la barra muestra la fecha elegida y, bajo el calendario, la lista **Cambios de este día** los cuenta en frases simples («Ana Rojas asumió como Gerente en Finanzas», «Se creó la unidad Logística»). Pulsa un cambio para seleccionar y centrar su unidad en el lienzo. **Cambio anterior** y **Cambio siguiente** saltan al día con cambios más cercano.
 
+::: warning Importante
+Viendo el organigrama a una fecha pasada todo es de solo lectura: no puedes cambiar nada hasta pulsar **Volver a hoy**.
+:::
+
 - Con el teclado: las flechas mueven entre días, **Inicio** y **Fin** van al comienzo y al final de la semana, **RePág** y **AvPág** cambian de mes, con **Mayús** cambian de año, y **Intro** o **Espacio** eligen el día. **Esc** cierra el calendario y el foco vuelve al botón.
 - **Qué cuenta como cambio:** una asignación que empieza (alguien asumió un puesto o empezó un reemplazo) o termina (alguien dejó el puesto o terminó un reemplazo), y las unidades y los puestos creados o eliminados ese día. Si un titular sale y otro entra el mismo día en el mismo puesto, se muestra como un relevo. Eliminar a una persona cuenta como que **dejó el puesto** ese día. La creación de una unidad o un puesto es el día en que se ingresó en BoldoAtlas, salvo que tenga una asignación anterior: entonces el lienzo ya lo mostraba y no aparece como creado. **Mover una unidad o renombrarla no se registra**, así que no aparece.
 
@@ -149,6 +170,8 @@ El botón **Ver en otra fecha** de la barra del lienzo (con poco ancho dice solo
 
 Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un panel a la derecha: el lienzo se reduce, no queda tapado. El foco pasa al panel. El botón **Cerrar el panel** (la X), `Esc` o un clic en el fondo del lienzo lo cierran; con la X o `Esc` el foco vuelve a la tarjeta, y `Esc` guarda antes lo que estabas escribiendo. Arriba aparece la ubicación completa de la unidad, con el tipo de cada tramo; cada tramo se puede pulsar para seleccionar esa unidad.
 
+![El árbol con la tarjeta Operaciones seleccionada y su panel de unidad abierto a la derecha.](../img/es/arbol-panel.webp "El panel de la unidad. 1: la tarjeta seleccionada. 2: las pestañas Resumen, Puestos y Personas. 3: el botón para cerrar el panel."){width=892 height=664}
+
 La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las cifras y las etiquetas. Lo demás está en **Avanzado**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes. **Eliminar unidad** va al pie, aparte. Reúne:
 
 - **Tipo** y **nombre**, a la vista, y **descripción**, en **Avanzado**. El nombre y la descripción se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo). El **tipo** se elige de la lista de tipos de unidad, igual que en las fichas: escribe para filtrar y, si no existe, **Agregar «texto» a la lista** lo crea y lo deja elegido, sin ir a los mantenedores.
@@ -160,7 +183,7 @@ La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las 
 - **Conexiones laterales** (en **Avanzado**): escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles.
 - **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol) y **Duplicar rama**, en **Avanzado**; **Eliminar unidad**, al pie.
 
-La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»). La pestaña **Procesos** llega en la Fase 3.
+La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»).
 
 La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reemplazos vigentes, con su foto (o iniciales), nombre, cargo, tipo (**Titular** o **Reemplazo**) y unidad. Una persona con dos puestos aparece una vez por puesto. Arriba de la lista:
 
@@ -184,3 +207,5 @@ Pulsa una persona para ver su **vista previa** en el mismo panel: foto, correo, 
 ### Eliminar una unidad
 
 Una unidad sin contenido se elimina de inmediato. Si tiene subunidades o puestos, BoldoAtlas pregunta antes y **mueve su contenido al superior** de la unidad eliminada. Una unidad raíz con contenido no se puede eliminar: primero mueve o elimina lo que contiene. Tras eliminar aparece un aviso con **Deshacer** durante 8 segundos, que devuelve la unidad y todo lo que contenía a su lugar.
+
+**Ver también:** [Puestos y reemplazos](puestos.md) · [Leyendas y colores de puestos](leyendas.md) · [Pestañas de trabajo](pestanas.md) · [Atajos de teclado](atajos.md).

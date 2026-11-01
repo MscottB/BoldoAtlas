@@ -1,10 +1,12 @@
 # Getting started
 
+::: info In short
+BoldoAtlas builds your organization's org chart on your own computer. Here you see how to get started, what the app menu does, where your data lives and how to open the program for the first time.
+:::
+
 ## What BoldoAtlas is
 
 BoldoAtlas is a desktop app for Windows, Linux and macOS for building your organization's org chart: divisions, areas and sub-areas connected to each other, plus a record for each person who works in them. You can explore the result on the tree canvas or in the directory.
-
-**Coming soon:** processes, indicators, scenarios, Excel import and export, and opening .boldo files. Until they exist, their buttons don't appear in the app (the unit panel's «Processes» tab only says they are coming later).
 
 ## First use
 
@@ -13,7 +15,11 @@ When you open a database with no units, BoldoAtlas shows the welcome screen with
 - **Create an empty organization:** asks for the organization name and the name of its root unit (of the first active unit type) and takes you to the tree.
 - **Explore an example:** creates a sample organization, in the interface language, to look around the app.
 
-Below them, one line says what is coming: loading from Excel and opening a .boldo file.
+![BoldoAtlas welcome screen with two cards: Create an empty organization and Explore an example.](../img/en/inicio-bienvenida.webp "The welcome screen. 1: create an empty organization. 2: explore a sample organization."){width=728 height=268}
+
+::: tip Tip
+If it is your first time, start with the example: you can explore it without fear of making mistakes and, whenever you want, create your own organization from the app menu (an automatic backup is made first).
+:::
 
 Afterwards you can adjust the name, logo, theme and language in **Settings**, and the lists of job titles, sites and the rest in **Settings › Manage lists**.
 
@@ -32,11 +38,15 @@ The logo button on the left of the top bar opens the **app menu**:
 - **Backups** and **Settings** open those sections; **Project data** shows where your data lives.
 - **Language** switches the whole app between Español and English at once. The welcome screen has the same **ES / EN** switch; your choice is remembered on this computer, and on the first run the app follows your system language.
 
+![App menu open: Home, New empty organization, Explore the example, Backups, Settings, Project data, Check for updates and Language.](../img/en/inicio-menu.webp "The app menu, opened with the logo button."){width=276 height=364}
+
 The same actions are in the command palette (`Ctrl+K`). **Settings**, **Help** and **About** close with their **Close** button, with `Esc`, or with a second click on their side-menu entry, and you return to the previous view (or to the tree if there is none). The sidebar folds, and is pinned open again, with the button at the foot of the bar, above **Settings** (**Hide sidebar** / **Show sidebar**); it stays in the same place open or folded. When folded, it opens over the content when you rest the mouse on it for a moment (or reach it with `Tab`) and folds again when you leave or press `Esc`; turn this off in **Settings › Appearance › Open the sidebar on mouse hover**. In a narrow window (under 1100 px) the sidebar folds by itself. A unit's panel closes with the **×** in its header.
 
 ## Which project is open
 
-The window title and the top bar show the organization name with the **Main** badge (there is a single database for now). Clicking them opens **Project data**: the mode (portable or installed), the path of the database file, its size and last modification, with **Copy path** and **Open folder**.
+The window title and the top bar show the organization name with the **Main** badge. Clicking them opens **Project data**: the mode (portable or installed), the path of the database file, its size and last modification, with **Copy path** and **Open folder**.
+
+![Project data window with the mode, the database file path, its size and the last change.](../img/en/inicio-proyecto.webp "The Project data window."){width=524 height=274}
 
 ## Portable and installed mode
 
@@ -51,7 +61,9 @@ The window title and the top bar show the organization name with the **Main** ba
 
 On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`), also for the portable; data and backups do stay in `datos/`.
 
-BoldoAtlas is not code-signed yet, so the first time the system warns you:
+::: warning Important
+BoldoAtlas is not digitally signed, so the first time the system warns you. Here is what to do on your system:
+:::
 
 - **Windows:** if "Windows protected your PC" appears, click **More info → Run anyway**.
 - **macOS:** right-click `BoldoAtlas.app` → **Open** → **Open**. If it says the app is damaged or won't let you open it, run `xattr -dr com.apple.quarantine <folder>` in Terminal on the portable folder (or on `/Applications/BoldoAtlas.app`), or use **System Settings › Privacy & Security › Open Anyway**. For the portable, do it before opening it: otherwise macOS opens it from a read-only copy and it cannot save.
@@ -73,3 +85,5 @@ Changes are saved automatically: there is no "Save" button. The indicator in the
 ## Privacy
 
 Your data never leaves your computer. BoldoAtlas has no accounts and no server. The only thing it does on its own is look for new versions (every day; turn it off in **Settings › Updates**): it reads the public list of releases on GitHub and sends no data or identifiers. See **Updates**.
+
+**See also:** [The tree](arbol.md) · [Backups](respaldos.md) · [Updates](actualizaciones.md).

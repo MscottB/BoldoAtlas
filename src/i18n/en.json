@@ -342,7 +342,15 @@
   "ayuda": {
     "titulo": "Help",
     "paginas": "Help pages",
-    "noExiste": "That help page does not exist."
+    "noExiste": "That help page does not exist.",
+    "indice": "All topics",
+    "bienvenida": "What do you want to do? Pick a topic or search for a word.",
+    "temas": "Topics",
+    "buscar": "Search the help",
+    "buscarPlaceholder": "Search…",
+    "limpiar": "Clear the search",
+    "resultados": "No results | {n} result | {n} results",
+    "sinResultados": "No results for “{texto}”. Try another word."
   },
   "errores": {
     "correoDuplicado": "A person with that email already exists.",
@@ -697,7 +705,7 @@
       "etiqueta": "Start BoldoAtlas with the system",
       "ayuda": "It opens minimized when you sign in, without taking focus from what you are doing. Closing the window quits it, as always.",
       "portable": "Not available in the portable version: it would store an entry outside its folder.",
-      "sistema": "For now it is only available on Windows.",
+      "sistema": "It is only available on Windows.",
       "error": "Could not change starting with the system: {detalle}"
     },
     "organizacion": {
