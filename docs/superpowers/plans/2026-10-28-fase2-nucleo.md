@@ -698,6 +698,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 1b. 28a y 28b: líneas laterales legibles e interacción directa en el lienzo.
 1c. 27a y 27b: fotos optimizadas y carga bajo demanda.
 1d. 28c: zonas, probándolas con el organigrama del autor. 28d solo si aún hace falta.
+1e. 29a: una sola copia abierta, en cuanto el autor decida el alcance. 29b: vista dividida. 29c: Revisión de datos más clara; su parte de historial, después de la 19c.
 2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
 3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
 4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
@@ -721,6 +722,18 @@ Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la funci�
 
 ### Task 28d: Posición libre (solo si aún hace falta tras la 28c)
 - Opción de una vista guardada, con "Reordenar" para volver al orden automático. Decidir con el autor antes de empezar.
+
+### Task 29a: Una sola copia abierta (pedido del autor, 2026-11-01)
+- Hoy `lib.rs` usa una instancia única por copia: la instalada y cada carpeta portable pueden abrirse a la vez, porque tienen datos distintos, y las copias sin carpeta de datos no la usan. El autor espera una sola en total. Decidir con el autor: una sola por usuario, y si es otra copia, traer la abierta y decirle cuál es y dónde están sus datos, sin abrir otra base sin avisar.
+- Las builds de prueba usan su propio identificador, y nunca deben traer al frente la app real del autor.
+
+### Task 29b: Vista dividida (pedido del autor, 2026-11-01)
+- Ver dos pestañas a la vez, lado a lado o una sobre otra, con el divisor movible. Más de un diagrama a la vez se resuelve con pestañas, no con otra ventana.
+- Hoy solo la pestaña activa está montada (`App.vue`, `:key="pestanas.activa"`) y el router tiene una sola ruta: cada panel necesita su propia ruta y estado. Definir qué pasa con atajos, menú y foco en cada panel, y medir con la organización grande, porque dos lienzos cuestan el doble.
+
+### Task 29c: Revisión de datos más clara (pedido del autor, 2026-11-01)
+- Hoy son listas por tipo (spec §8 "Revisión de datos"). Un resumen primero, con qué es importante y por qué; cada aviso explica en una frase qué significa y cómo resolverlo, con la acción a un clic. Filtrar por rama, y marcar «así está bien» con motivo, sin que reaparezca. Debe verse igual de claro con mil avisos.
+- Con el historial (19c): desde cuándo está así un aviso, qué cambio lo causó y volver atrás desde ahí. Esa parte se entrega después de la 19c.
 
 ### Task 27a: Fotos optimizadas al subir (pedido del autor, 2026-11-01)
 - Al elegir una foto, la app la reduce con `canvas`, sin dependencias: lado máximo razonable para una ficha y compresión JPEG o WebP, como en `logoComoPng` de `configuracion/logo.ts`. Hoy se guarda una imagen de hasta 1 MiB por persona. Medir peso y nitidez con fotos reales antes de fijar el tamaño. La foto solo es para presentación.
