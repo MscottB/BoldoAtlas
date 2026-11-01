@@ -1,0 +1,89 @@
+[
+  {
+    "id": "revisar-y-decidir",
+    "pagina": "exportar-importar",
+    "imagen": "importar-decidir-campos",
+    "es": {
+      "titulo": "Revisa las diferencias antes de aplicar",
+      "texto": "Cuando dos copias siguieron cambiando por separado, BoldoAtlas compara el archivo con tus datos y tú eliges qué se queda, por registro o campo a campo. Lo común se resuelve de un clic y nada se escribe hasta que aplicas.",
+      "ancla": "revisar-y-decidir",
+      "alt": "Revisar y decidir: un registro con sus campos en tus datos y en el archivo, para elegir cuál se queda."
+    },
+    "en": {
+      "titulo": "Review the differences before applying",
+      "texto": "When two copies kept changing on their own, BoldoAtlas compares the file with your data and you choose what stays, record by record or field by field. The common cases take one click, and nothing is written until you apply.",
+      "ancla": "review-and-decide",
+      "alt": "Review and decide: one record with its fields in your data and in the file, to choose which one stays."
+    }
+  },
+  {
+    "id": "inicio-con-resumen",
+    "pagina": "inicio",
+    "imagen": "inicio-organizacion",
+    "es": {
+      "titulo": "Retoma justo donde lo dejaste",
+      "texto": "Inicio resume tu organización (unidades, personas, vacantes y avisos de Revisión), muestra tu último respaldo y recuerda lo que abriste hace poco, a un clic de volver.",
+      "ancla": "inicio-con-tu-organizacion-cargada",
+      "alt": "Inicio con la organización cargada: sus totales, la lista de lo abierto recientemente y los accesos rápidos."
+    },
+    "en": {
+      "titulo": "Pick up right where you left off",
+      "texto": "Home sums up your organization (units, people, vacancies and Review alerts), shows your latest backup and remembers what you opened recently, one click away.",
+      "ancla": "home-with-your-organization-loaded",
+      "alt": "Home with the organization loaded: its totals, the list of recently opened items and the quick links."
+    }
+  },
+  {
+    "id": "exportar-importar",
+    "pagina": "exportar-importar",
+    "imagen": "exportar-alcance",
+    "es": {
+      "titulo": "Llévate la organización a otro computador",
+      "texto": "Guarda toda tu base, o solo algunas ramas, en un archivo .boldo cifrado con un código de un solo uso. Al importar ves lo que trae antes de aplicar nada, y antes se hace siempre un respaldo.",
+      "alt": "Exportar con la opción de uno o más árboles o ramas y la lista de unidades con una rama marcada."
+    },
+    "en": {
+      "titulo": "Take your organization to another computer",
+      "texto": "Save your whole database, or just some branches, in a .boldo file encrypted with a one-time code. When you import, you see what the file brings before anything is applied, and a backup is always made first.",
+      "alt": "Export with the option of one or more trees or branches and the list of units with one branch checked."
+    }
+  },
+  {
+    "id": "bandeja",
+    "pagina": "inicio",
+    "es": {
+      "titulo": "Déjala en la bandeja y vuelve al instante",
+      "texto": "Al cerrar la ventana eliges: cancelar, dejar BoldoAtlas en la bandeja o cerrarla del todo. Los respaldos automáticos siguen mientras está en la bandeja.",
+      "ancla": "al-abrir-y-al-salir"
+    },
+    "en": {
+      "titulo": "Keep it in the tray and come back instantly",
+      "texto": "When you close the window you choose: cancel, keep BoldoAtlas in the tray or quit it for good. Automatic backups keep running while it is in the tray.",
+      "ancla": "when-opening-and-quitting"
+    }
+  },
+  {
+    "id": "actualizaciones",
+    "pagina": "actualizaciones",
+    "es": {
+      "titulo": "Te avisa cuando hay una versión nueva",
+      "texto": "BoldoAtlas busca versiones nuevas y te avisa en Inicio y en la barra superior. Nunca descarga ni instala nada sin que lo confirmes, y ves las novedades de todo lo que te saltaste."
+    },
+    "en": {
+      "titulo": "It tells you when a new version is out",
+      "texto": "BoldoAtlas checks for new versions and lets you know on Home and in the top bar. It never downloads or installs anything without your confirmation, and you see what is new in everything you skipped."
+    }
+  },
+  {
+    "id": "ayuda-visual",
+    "pagina": "inicio",
+    "es": {
+      "titulo": "Una ayuda que se ve",
+      "texto": "El manual trae capturas con números, un resumen al comienzo de cada tema, pasos y consejos, con índice y buscador. Es el mismo dentro de la app y en este sitio."
+    },
+    "en": {
+      "titulo": "Help you can see",
+      "texto": "The manual has numbered screenshots, a summary at the start of each topic, steps and tips, with an index and search. It is the same inside the app and on this site."
+    }
+  }
+]
