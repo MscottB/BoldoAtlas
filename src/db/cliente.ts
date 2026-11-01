@@ -179,6 +179,187 @@ export function importarReemplazar(trabajo: string): Promise<void> {
   return invoke("importar_reemplazar", { trabajo });
 }
 
+export type TipoCaso =
+  | "nuevo"
+  | "diferente"
+  | "borrado_vs_editado"
+  | "borrado_sin_conflicto"
+  | "duplicado_persona"
+  | "union";
+
+export type Lado = "mio" | "archivo" | "igual";
+
+/** Una decisión, tal como la guarda Rust junto al trabajo. */
+export type Eleccion =
+  | { que: "nada" | "agregar" | "omitir" | "borrar" | "mantener" | "pendiente" | "unir_mio" | "unir_archivo" }
+  | { que: "campos"; archivo: string[] }
+  | { que: "editar_correo"; correo: string }
+  | { que: "conservar_mio" | "conservar_archivo" }
+  | { que: "reasignar"; columna: string; a: string }
+  | { que: "vaciar" | "descartar"; columna: string }
+  | { que: "quitar"; columna: string | null };
+
+export type AccionMasiva =
+  | "recientes"
+  | "todo_mio"
+  | "todo_archivo"
+  | "agregar_todo"
+  | "omitir_todo"
+  | "mantener_todo"
+  | "borrar_todo"
+  | "unir_todo_mio"
+  | "resolver_rotas"
+  | "no_resolver_rotas";
+
+export interface ResumenRevision {
+  version: number;
+  /** Lo que dice `bloqueos` vale para las decisiones de ahora. */
+  verificada: boolean;
+  grupos: { tipo: TipoCaso; total: number; tablas: { tabla: string; total: number }[] }[];
+  iguales: number;
+  dudosas: number;
+  /** Lo decidido a mano: se pierde si se sale. */
+  decisiones: number;
+  aplicara: { agregar: number; cambiar: number; borrar: number; revivir: number; omitir: number; unir: number };
+  bloqueos: { duplicado: number; unica: number; regla: number; referencia: number; ciclo: number; total: number };
+  resolverRotas: boolean;
+  restablecidas: number;
+}
+
+export interface FiltroRevision {
+  tipo: TipoCaso | null;
+  tabla: string | null;
+  soloDudosas: boolean;
+  desde: number;
+  cuantos: number;
+}
+
+export interface FilaCaso {
+  tabla: string;
+  id: string;
+  nombre: string;
+  tipo: TipoCaso;
+  columnas: string[];
+  eleccion: Eleccion;
+  preseleccionada: Eleccion;
+  dudosa: boolean;
+  masReciente: Lado;
+  borradoAqui: boolean;
+}
+
+export interface ValorCampo {
+  texto: string | null;
+  /** De lo que no se muestra (una foto): cuántos bytes tiene. */
+  oculto: number | null;
+  cortado: boolean;
+}
+
+export interface DetalleCaso {
+  campos: { columna: string; mio: ValorCampo; archivo: ValorCampo; distinto: boolean; delArchivo: boolean }[];
+  actualizadaMia: string | null;
+  actualizadaArchivo: string | null;
+  borradaMia: string | null;
+  borradaArchivo: string | null;
+  rival: string | null;
+}
+
+export interface FilaBloqueo {
+  tipo: "unica" | "regla" | "referencia" | "ciclo";
+  tabla: string;
+  id: string;
+  nombre: string;
+  columna: string | null;
+  destino: string | null;
+  otro: string | null;
+  vaciable: boolean;
+  /** Lo ya decidido; null si sigue por resolver. */
+  eleccion: Eleccion | null;
+  reasignadoA: string | null;
+}
+
+export interface InformeRevision {
+  tablas: {
+    tabla: string;
+    agregadas: number;
+    cambiadas: number;
+    borradas: number;
+    revividas: number;
+    unidas: number;
+    omitidas: number;
+  }[];
+  nombreHeredado: string | null;
+}
+
+/** «Revisar y decidir»: compara sin escribir nada y deja las decisiones en Rust, junto al trabajo. */
+export function importarComparar(
+  trabajo: string,
+  lugares: Record<string, string | null>,
+): Promise<ResumenRevision> {
+  return invoke("importar_comparar", { trabajo, lugares });
+}
+
+export function importarVolver(trabajo: string): Promise<void> {
+  return invoke("importar_volver", { trabajo });
+}
+
+export function revisionResumen(trabajo: string): Promise<ResumenRevision> {
+  return invoke("revision_resumen", { trabajo });
+}
+
+export function revisionPagina(
+  trabajo: string,
+  filtro: FiltroRevision,
+): Promise<{ filas: FilaCaso[]; total: number }> {
+  return invoke("revision_pagina", { trabajo, filtro });
+}
+
+export function revisionDetalle(trabajo: string, tabla: string, id: string): Promise<DetalleCaso> {
+  return invoke("revision_detalle", { trabajo, tabla, id });
+}
+
+export function revisionDecidir(
+  trabajo: string,
+  tabla: string,
+  id: string,
+  eleccion: Eleccion,
+): Promise<ResumenRevision> {
+  return invoke("revision_decidir", { trabajo, tabla, id, eleccion });
+}
+
+export function revisionMasivo(
+  trabajo: string,
+  accion: AccionMasiva,
+  tipo: TipoCaso | null = null,
+): Promise<ResumenRevision> {
+  return invoke("revision_masivo", { trabajo, accion: { accion, tipo } });
+}
+
+/** La misma pasada que al aplicar, deshecha al final. */
+export function revisionVerificar(trabajo: string): Promise<ResumenRevision> {
+  return invoke("revision_verificar", { trabajo });
+}
+
+export function revisionBloqueos(
+  trabajo: string,
+  desde: number,
+  cuantos: number,
+): Promise<{ filas: FilaBloqueo[]; total: number }> {
+  return invoke("revision_bloqueos", { trabajo, desde, cuantos });
+}
+
+export function revisionOpciones(
+  trabajo: string,
+  destino: string,
+  texto: string,
+): Promise<{ id: string; nombre: string }[]> {
+  return invoke("revision_opciones", { trabajo, destino, texto });
+}
+
+/** `version`: la de las decisiones que se vieron. Si hubo otra después, o la base cambió, no escribe nada. */
+export function revisionAplicar(trabajo: string, version: number): Promise<InformeRevision> {
+  return invoke("revision_aplicar", { trabajo, version, versionApp: __APP_VERSION__ });
+}
+
 export function intercambioCancelar(trabajo: string): Promise<void> {
   return invoke("intercambio_cancelar", { trabajo });
 }

@@ -960,7 +960,10 @@
     "exportarGuardar": "Saving the exported file",
     "importarAbrir": "Opening the file to import",
     "importarAgregar": "Adding what is new from the file",
-    "importarReemplazar": "Replacing the data with the file's"
+    "importarReemplazar": "Replacing the data with the file's",
+    "importarComparar": "Compare the file with your data",
+    "importarAplicarRevision": "Apply what you decided in the review",
+    "revisionAbierta": "Import review with unapplied decisions"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
@@ -1046,14 +1049,18 @@
       "ver": "See my organization",
       "confirmarTitulo": "Replace everything?",
       "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings.",
-      "nadaDisponible": "Not available: {motivo}. Since this file carries only a part, it cannot replace your data either."
+      "nadaDisponible": "Not available: {motivo}. Since this file carries only a part, it cannot replace your data either.",
+      "revisar": "Review and decide",
+      "revisarAyuda": "Compares the file with your data and you decide what stays: new, different, deleted and what clashes.",
+      "revisarNada": "Comparing changes nothing: your data is written only when you apply what you decided."
     },
     "etapa": {
       "copiando": "Preparing the copy of your data…",
       "cifrando": "Protecting the file…",
       "descifrando": "Opening the file…",
       "revisando": "Reviewing what it carries…",
-      "aplicando": "Applying…"
+      "aplicando": "Applying…",
+      "comparando": "Comparing the file with your data…"
     },
     "tablas": {
       "unidades": "Units",
@@ -1097,7 +1104,11 @@
       "muy_pesado_fila": "In {tabla}, “{nombre}”: {columna} is longer than BoldoAtlas can carry. Shorten it and try again; if the file is someone else's, ask them to do it. Nothing was changed.",
       "muy_pesado_total": "This file carries {exceso}, more than BoldoAtlas can load. Ask whoever sent it to export it by branches. Nothing was changed.",
       "exportar_muy_pesado": "Your database has {exceso}: it does not fit in one file. Export by branches: each file carries a part.",
-      "base_no_valida": "Your database did not pass the check before exporting, so no file was created. Try with a branch, or restore a recent backup."
+      "base_no_valida": "Your database did not pass the check before exporting, so no file was created. Try with a branch, or restore a recent backup.",
+      "base_cambio": "Your data changed while you were reviewing. Nothing was applied: compare again.",
+      "bloqueada": "There are still cases to resolve. Nothing was applied.",
+      "sin_verificar": "The decisions just changed. Nothing was applied: try again.",
+      "correo_no_valido": "Enter a valid email."
     },
     "columnas": {
       "otra": "a field",
@@ -1119,7 +1130,32 @@
       "clientes": "Customers",
       "documento_ref": "Document",
       "org_nombre": "Organization name",
-      "logo_png": "Logo"
+      "logo_png": "Logo",
+      "tipo_id": "Type",
+      "parent_id": "Parent unit",
+      "jefe_puesto_id": "Head",
+      "orden": "Order",
+      "tipo_contrato_id": "Contract type",
+      "sede_id": "Site",
+      "jornada_id": "Schedule",
+      "unidad_id": "Unit",
+      "cargo_id": "Job title",
+      "leyenda_id": "Legend",
+      "puesto_id": "Position",
+      "trabajador_id": "Person",
+      "tipo": "Type",
+      "desde": "From",
+      "hasta": "To",
+      "origen_id": "From unit",
+      "destino_id": "To unit",
+      "etiqueta_id": "Tag",
+      "frecuencia": "Frequency",
+      "criticidad": "Criticality",
+      "estado": "Status",
+      "proceso_id": "Process",
+      "actividad_id": "Activity",
+      "rol": "Role",
+      "arbol_id": "Saved branch"
     },
     "motivoRevision": {
       "contenido_invalido": "your database has broken references or a cycle, so nothing can be added to it",
@@ -1129,6 +1165,166 @@
     "exceso": {
       "filas": "more than 500,000 rows",
       "bytes": "more than 512 MB of data"
+    },
+    "revisar": {
+      "intro": "This is what differs between your data and the file. {n} record is the same on both sides and is not listed here. | This is what differs between your data and the file. {n} records are the same on both sides and are not listed here.",
+      "sinDiferencias": "Your data and the file are the same: there is nothing to decide.",
+      "retomada": "You are back in your review: what you decided is still here.",
+      "detenido": "“Apply” is stopped: {n} case left to resolve. | “Apply” is stopped: {n} cases left to resolve.",
+      "porResolver": {
+        "duplicado": "{n} person with an email you already have: decide in “People with the same email”. | {n} people with an email you already have: decide in “People with the same email”.",
+        "unica": "{n} record clashes with another: choose which to keep in “To resolve”. | {n} records clash with others: choose which to keep in “To resolve”.",
+        "regla": "{n} mix of fields the database does not accept: see “To resolve”. | {n} mixes of fields the database does not accept: see “To resolve”.",
+        "referencia": "{n} reference would point to something that will not be there: resolve it in “To resolve”. | {n} references would point to something that will not be there: resolve them in “To resolve”.",
+        "ciclo": "{n} unit would end up inside itself: change its parent in “To resolve”. | {n} units would end up inside themselves: change their parent in “To resolve”."
+      },
+      "tituloBloqueos": "To resolve",
+      "bloqueo": {
+        "unica": "“{nombre}” ({tabla}) clashes with “{otro}”: both cannot stay.",
+        "regla": "“{nombre}” ({tabla}): this mix of fields is not valid. Keep yours, or choose other fields in “Different”.",
+        "referencia": "“{nombre}” ({tabla}) points to “{otro}”, which will not be there after applying.",
+        "ciclo": "“{nombre}” would end up inside itself with these decisions. Change its parent unit."
+      },
+      "algoQueNoEsta": "something that is not there",
+      "resuelto": {
+        "conservar_mio": "Yours is kept.",
+        "conservar_archivo": "The file's is kept.",
+        "vaciar": "It stays empty.",
+        "descartar": "This record is discarded."
+      },
+      "reasignadaA": "It is reassigned to “{nombre}”.",
+      "deshacer": "Undo",
+      "conservarMio": "Keep mine",
+      "conservarArchivo": "Keep the file's",
+      "reasignar": "Reassign to…",
+      "buscar": "Search",
+      "buscarReasignar": "Search where to reassign “{nombre}”",
+      "reasignarA": "Reassign “{nombre}” to",
+      "usar": "Use",
+      "dejarVacio": "Leave empty",
+      "dejarRaiz": "Leave without a parent unit",
+      "descartarFila": "Discard the record",
+      "resolverRotas": "Resolve all references",
+      "noResolverRotas": "Resolve them one by one",
+      "resolverRotasAyuda": "Leaves empty what it can and discards the rest.",
+      "aceptarRecientes": "Accept all the most recent",
+      "aceptarRecientesAyuda": "In each different record, uses the side with the latest edit date. It is only a help: the date comes from the other computer.",
+      "dudosas": "{n} record has a future date or something that is not a date. It does not count as the most recent, and you decide it. | {n} records have a future date or something that is not a date. They do not count as the most recent, and you decide them.",
+      "fechaDudosa": "Future or invalid date",
+      "fechaNoValida": "invalid date",
+      "grupo": {
+        "duplicado_persona": {
+          "titulo": "People with the same email",
+          "ayuda": "A person in the file has the email of one of yours. Merge them or change the email: you cannot apply until you decide."
+        },
+        "diferente": {
+          "titulo": "Different",
+          "ayuda": "The same record with other data. You can decide per record or field by field."
+        },
+        "borrado_vs_editado": {
+          "titulo": "Deleted on one side, edited on the other",
+          "ayuda": "One side deleted it and the other edited it later, or the date cannot be trusted."
+        },
+        "nuevo": {
+          "titulo": "New",
+          "ayuda": "Only in the file. They come in unless you uncheck them."
+        },
+        "borrado_sin_conflicto": {
+          "titulo": "Deleted without conflict",
+          "ayuda": "One side deleted it and the other did not change it afterwards."
+        },
+        "union": {
+          "titulo": "Merged with what you already have",
+          "ayuda": "Values with the same name as one of yours, ignoring case and accents. Yours is used: they are not duplicated."
+        }
+      },
+      "masivo": {
+        "todo_mio": "All mine",
+        "todo_archivo": "All from the file",
+        "agregar_todo": "Add all",
+        "omitir_todo": "Skip all",
+        "mantener_todo": "Keep all",
+        "borrar_todo": "Delete all",
+        "unir_todo_mio": "Merge all with my data"
+      },
+      "verTabla": "Show",
+      "todas": "Everything",
+      "soloDudosas": "Only with a doubtful date",
+      "sinFilas": "No records with that filter.",
+      "sinNombre": "(no name)",
+      "paginas": "List pages",
+      "anterior": "Previous",
+      "siguiente": "Next",
+      "rango": "{desde}–{hasta} of {total}",
+      "queHacerCon": "What to do with “{nombre}”",
+      "agregarEsta": "Add",
+      "lo_mio": "Mine",
+      "lo_del_archivo": "The file's",
+      "mezcla": "Fields from both sides",
+      "mantener": "Keep",
+      "borrar": "Delete",
+      "revivir": "Recover with the file's data",
+      "sigueBorrada": "Leave it deleted",
+      "borradaAqui": "You deleted it in your database; it is still in the file.",
+      "borradaArchivo": "The file has it deleted; it is still in your database.",
+      "reciente": {
+        "mio": "Your side was edited later.",
+        "archivo": "The file was edited later."
+      },
+      "unirMio": "Merge, with my data",
+      "unirArchivo": "Merge, with the file's data",
+      "editarCorreo": "Change the email of the one in the file",
+      "correoNuevo": "New email for “{nombre}”",
+      "usarCorreo": "Use this email",
+      "seUne": "The value you already have is used.",
+      "verDetalle": "Show fields",
+      "ocultarDetalle": "Hide fields",
+      "mismoCorreoQue": "Same email as",
+      "editadaMia": "Edited in your database",
+      "editadaArchivo": "Edited in the file",
+      "eliminadaMia": "Deleted in your database",
+      "eliminadaArchivo": "Deleted in the file",
+      "camposDe": "Fields of “{nombre}”",
+      "campo": "Field",
+      "vacio": "(empty)",
+      "valorOculto": "Not shown ({tamano})",
+      "cortado": "(cut)",
+      "usarMio": "{campo}: use mine",
+      "usarArchivo": "{campo}: use the file's",
+      "alAplicar": "When applying",
+      "nadaQueAplicar": "With these decisions nothing changes.",
+      "aplicara": {
+        "agregar": "{n} is added | {n} are added",
+        "cambiar": "{n} changes | {n} change",
+        "borrar": "{n} is deleted | {n} are deleted",
+        "revivir": "{n} is recovered | {n} are recovered",
+        "unir": "{n} is merged | {n} are merged",
+        "omitir": "{n} stays out | {n} stay out"
+      },
+      "comprobando": "Checking references and rules…",
+      "baseCambioTitulo": "Your data changed while you were reviewing",
+      "baseCambioTexto": "Nothing was applied. Compare again: what you decided about what did not change is kept.",
+      "compararDeNuevo": "Compare again",
+      "restablecidas": "{n} decision went back to its initial value because that record changed. | {n} decisions went back to their initial value because those records changed.",
+      "volverOpciones": "Back to the options",
+      "perderTitulo": "Lose your decisions?",
+      "perderTexto": "You have {n} unapplied decision. If you leave this review, it is lost. | You have {n} unapplied decisions. If you leave this review, they are lost.",
+      "seguir": "Keep reviewing",
+      "perder": "Leave and lose them",
+      "dejadaTitulo": "You left a review without applying it",
+      "dejadaTexto": "It has {n} decision. If you discard it, it is lost and the file's temporary copy is deleted. | It has {n} decisions. If you discard it, they are lost and the file's temporary copy is deleted.",
+      "descartar": "Discard",
+      "volverARevision": "Back to the review",
+      "hecho": "Done. This changed in your database:",
+      "hechoNada": "Done. With those decisions nothing changed.",
+      "resultado": {
+        "agregadas": "{n} added | {n} added",
+        "cambiadas": "{n} changed | {n} changed",
+        "borradas": "{n} deleted | {n} deleted",
+        "revividas": "{n} recovered | {n} recovered",
+        "unidas": "{n} merged | {n} merged",
+        "omitidas": "{n} stayed out | {n} stayed out"
+      }
     }
   }
 }

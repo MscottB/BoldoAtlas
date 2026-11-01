@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -20,10 +20,15 @@ import { Label } from "@/components/ui/label";
 import {
   importarAbrir,
   importarAgregar,
+  importarComparar,
   importarElegir,
   importarReemplazar,
+  importarVolver,
+  revisionResumen,
   type InformeImportacion,
+  type InformeRevision,
   type ResumenImportacion,
+  type ResumenRevision,
 } from "@/db/cliente";
 import { rutaTexto } from "@/features/arbol/jerarquia";
 import { tamano } from "@/lib/formato";
@@ -31,7 +36,16 @@ import { claseSelect } from "@/lib/utils";
 import { useOrganizacion } from "@/stores/organizacion";
 import BarraAvance from "./BarraAvance.vue";
 import ListaDetalle from "./ListaDetalle.vue";
-import { conFilas, intentar, intentarTrabajo, useAvance, useTrabajo } from "./intercambio";
+import RevisarDecidir from "./RevisarDecidir.vue";
+import {
+  conFilas,
+  intentar,
+  intentarTrabajo,
+  revisionConDecisiones,
+  revisionDejada,
+  useAvance,
+  useTrabajo,
+} from "./intercambio";
 
 const emit = defineEmits<{ terminar: [] }>();
 const { t, te, locale } = useI18n();
@@ -40,7 +54,7 @@ const org = useOrganizacion();
 const trabajo = useTrabajo();
 const avance = useAvance(() => trabajo.actual.value);
 
-type Paso = "elegir" | "abriendo" | "revision" | "aplicando" | "hecho";
+type Paso = "elegir" | "abriendo" | "revision" | "comparando" | "decidir" | "aplicando" | "hecho" | "hechoRevision";
 const paso = ref<Paso>("elegir");
 const archivo = ref<{ nombre: string; bytes: number } | null>(null);
 const codigo = ref("");
@@ -82,7 +96,7 @@ async function abrir() {
   paso.value = "revision";
 }
 
-const modo = ref<"agregar" | "reemplazar">("agregar");
+const modo = ref<"agregar" | "revisar" | "reemplazar">("agregar");
 // "" = como árbol independiente
 const lugares = ref<Record<string, string>>({});
 const filas = computed(() => conFilas(resumen.value?.informe?.tablas ?? [], (f) => f.trae));
@@ -102,6 +116,11 @@ const porQueNoAgregar = computed(() => {
     { motivo },
   );
 });
+
+function salirDeComparar() {
+  // cancelar a mitad de la comparación suelta el trabajo: el archivo se vuelve a abrir con su código
+  void cancelar();
+}
 
 const informe = ref<InformeImportacion | null>(null);
 async function agregar() {
@@ -126,8 +145,56 @@ async function agregar() {
 const confirmando = ref(false);
 function aplicar() {
   if (modo.value === "reemplazar") confirmando.value = true;
+  else if (modo.value === "revisar") void comparar();
   else void agregar();
 }
+
+const revision = ref<ResumenRevision | null>(null);
+const decisiones = computed(() => revision.value?.decisiones ?? 0);
+const destinos = computed(() =>
+  Object.fromEntries(Object.entries(lugares.value).map(([k, v]) => [k, v || null])),
+);
+async function comparar() {
+  const propio = trabajo.actual.value;
+  if (!propio) return;
+  paso.value = "comparando";
+  avance.value = { etapa: "comparando", hecho: 0, total: 0 };
+  const r = await intentarTrabajo(t("trabajos.importarComparar"), () => importarComparar(propio, destinos.value));
+  if (trabajo.actual.value !== propio) return;
+  if (!r.ok) {
+    paso.value = "revision";
+    if (r.codigo !== "cancelado") toast.error(r.mensaje);
+    return;
+  }
+  revision.value = r.valor;
+  paso.value = "decidir";
+}
+
+/** De la revisión a elegir qué hacer con el archivo: se pierden las decisiones, el archivo sigue abierto. */
+async function volverAOpciones() {
+  const propio = trabajo.actual.value;
+  revision.value = null;
+  paso.value = "revision";
+  if (propio) await importarVolver(propio);
+}
+
+const informeRevision = ref<InformeRevision | null>(null);
+async function revisionHecha(hecho: InformeRevision) {
+  informeRevision.value = hecho;
+  revision.value = null;
+  const cargado = await org.cargar();
+  if (!cargado.ok) toast.error(cargado.mensaje);
+  await trabajo.soltar();
+  paso.value = "hechoRevision";
+}
+const lineasHechas = computed(() =>
+  (informeRevision.value?.tablas ?? []).flatMap((f) =>
+    (["agregadas", "cambiadas", "borradas", "revividas", "unidas", "omitidas"] as const)
+      .filter((k) => f[k] > 0)
+      .map((k) => ({ clave: `${f.tabla}-${k}`, tabla: f.tabla, que: k, n: f[k] })),
+  ),
+);
+watch(decisiones, (n) => revisionConDecisiones(n > 0));
 async function reemplazar() {
   const propio = trabajo.actual.value;
   if (!propio) return;
@@ -146,6 +213,7 @@ async function cancelar() {
   codigo.value = "";
   archivo.value = null;
   resumen.value = null;
+  revision.value = null;
   await trabajo.soltar();
 }
 async function salir() {
@@ -155,8 +223,40 @@ async function salir() {
 async function verResultado() {
   await router.replace("/");
 }
+
+// Volver a una revisión que se dejó atrás: sigue en Rust, con sus decisiones.
+const retomada = ref(false);
+onMounted(async () => {
+  const dejada = revisionDejada.value;
+  if (!dejada?.volviendo) return;
+  revisionDejada.value = null;
+  trabajo.actual.value = dejada.trabajo;
+  lugares.value = Object.fromEntries(Object.entries(dejada.lugares).map(([k, v]) => [k, v ?? ""]));
+  const r = await intentar(() => revisionResumen(dejada.trabajo));
+  if (!r.ok) {
+    await cancelar();
+    revisionConDecisiones(false);
+    error.value = r.mensaje;
+    return;
+  }
+  retomada.value = true;
+  revision.value = r.valor;
+  paso.value = "decidir";
+});
 onUnmounted(() => {
   codigo.value = "";
+  // salir no pierde las decisiones sin avisar: un diálogo global pregunta si se vuelve o se descartan
+  const propio = trabajo.actual.value;
+  if (paso.value === "decidir" && decisiones.value > 0 && propio) {
+    revisionDejada.value = {
+      trabajo: propio,
+      decisiones: decisiones.value,
+      lugares: destinos.value,
+      volviendo: false,
+    };
+    return;
+  }
+  revisionConDecisiones(false);
   void trabajo.soltar();
 });
 </script>
@@ -198,6 +298,7 @@ onUnmounted(() => {
     </form>
 
     <BarraAvance v-else-if="paso === 'abriendo'" :avance="avance" cancelable @cancelar="cancelar" />
+    <BarraAvance v-else-if="paso === 'comparando'" :avance="avance" cancelable @cancelar="salirDeComparar" />
     <BarraAvance v-else-if="paso === 'aplicando'" :avance="avance" :cancelable="false" />
 
     <template v-else-if="paso === 'revision' && resumen">
@@ -245,6 +346,15 @@ onUnmounted(() => {
             </span>
           </span>
         </label>
+        <label class="flex items-start gap-2 text-sm" :class="!resumen.informe && 'text-muted-foreground'">
+          <input v-model="modo" type="radio" value="revisar" class="mt-1" :disabled="!resumen.informe" />
+          <span>
+            <span class="font-medium">{{ t("intercambio.importar.revisar") }}</span>
+            <span class="block text-muted-foreground">
+              {{ resumen.informe ? t("intercambio.importar.revisarAyuda") : porQueNoAgregar }}
+            </span>
+          </span>
+        </label>
         <label class="flex items-start gap-2 text-sm" :class="resumen.parcial && 'text-muted-foreground'">
           <input v-model="modo" type="radio" value="reemplazar" class="mt-1" :disabled="resumen.parcial" />
           <span>
@@ -256,7 +366,7 @@ onUnmounted(() => {
         </label>
       </fieldset>
 
-      <template v-if="modo === 'agregar' && resumen.informe">
+      <template v-if="modo !== 'reemplazar' && resumen.informe">
         <div v-if="Object.keys(lugares).length" class="grid gap-3 rounded-lg border p-3">
           <p class="text-sm font-medium">{{ t("intercambio.importar.dondeVa") }}</p>
           <template v-for="r in resumen.informe.ramas" :key="r.id">
@@ -281,15 +391,45 @@ onUnmounted(() => {
             {{ t("intercambio.importar.vaciadas", resumen.informe.vaciadas) }}
           </li>
         </ul>
-        <ListaDetalle :informe="resumen.informe" />
+        <ListaDetalle v-if="modo === 'agregar'" :informe="resumen.informe" />
       </template>
 
-      <p class="text-sm text-muted-foreground">{{ t("intercambio.importar.respaldo") }}</p>
+      <p class="text-sm text-muted-foreground">
+        {{ t(modo === "revisar" ? "intercambio.importar.revisarNada" : "intercambio.importar.respaldo") }}
+      </p>
       <div class="flex gap-2">
         <Button type="button" :disabled="resumen.parcial && !resumen.informe" @click="aplicar">
-          {{ t("intercambio.importar.aplicar") }}
+          {{ t(modo === "revisar" ? "intercambio.continuar" : "intercambio.importar.aplicar") }}
         </Button>
         <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
+      </div>
+    </template>
+
+    <RevisarDecidir
+      v-else-if="paso === 'decidir' && revision && trabajo.actual.value"
+      v-model:resumen="revision"
+      :trabajo="trabajo.actual.value"
+      :lugares="destinos"
+      :aviso-retomada="retomada"
+      @volver="volverAOpciones"
+      @salir="salir"
+      @hecho="revisionHecha"
+    />
+
+    <template v-else-if="paso === 'hechoRevision' && informeRevision">
+      <p role="status" class="text-sm">
+        {{ t(lineasHechas.length ? "intercambio.revisar.hecho" : "intercambio.revisar.hechoNada") }}
+      </p>
+      <p v-if="informeRevision.nombreHeredado" class="text-sm">
+        {{ t("intercambio.importar.tomoNombre", { nombre: informeRevision.nombreHeredado }) }}
+      </p>
+      <ul v-if="lineasHechas.length" class="grid gap-1 text-sm">
+        <li v-for="l in lineasHechas" :key="l.clave">
+          {{ t(`intercambio.tablas.${l.tabla}`) }}: {{ t(`intercambio.revisar.resultado.${l.que}`, l.n) }}
+        </li>
+      </ul>
+      <div>
+        <Button type="button" @click="verResultado">{{ t("intercambio.importar.ver") }}</Button>
       </div>
     </template>
 
