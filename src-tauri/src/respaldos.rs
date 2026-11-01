@@ -20,7 +20,7 @@ pub struct Fallo {
 }
 
 impl Fallo {
-    fn de(codigo: &'static str, detalle: impl ToString) -> Self {
+    pub fn de(codigo: &'static str, detalle: impl ToString) -> Self {
         Fallo {
             codigo,
             detalle: detalle.to_string(),
@@ -28,6 +28,11 @@ impl Fallo {
     }
 }
 
+impl From<&'static str> for Fallo {
+    fn from(e: &'static str) -> Self {
+        Fallo::de("fallo", e)
+    }
+}
 impl From<String> for Fallo {
     fn from(e: String) -> Self {
         Fallo::de("fallo", e)
@@ -146,12 +151,17 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
     hecho.map(|_| nombre)
 }
 
-/// Borra los temporales que dejó un respaldo interrumpido. Se llama al iniciar, cuando ninguno está en curso.
+/// Borra los temporales que dejó un respaldo o un `.boldo` interrumpido. Se llama al iniciar, cuando ninguno está en curso.
 pub fn limpiar_parciales(dir: &Path) {
+    let temporal = format!(".db{SUFIJO_TEMPORAL}");
     for e in fs::read_dir(dir).into_iter().flatten().flatten() {
         let nombre = e.file_name().to_string_lossy().into_owned();
-        // solo los temporales de un respaldo (`boldo-….db.tmp`), nunca otro .tmp de la carpeta
-        if nombre.starts_with(PREFIJO) && nombre.ends_with(&format!(".db{SUFIJO_TEMPORAL}")) {
+        // solo los temporales propios (`boldo-….db.tmp`, con su diario de SQLite), nunca otro .tmp de la carpeta
+        let base = ["-journal", "-wal", "-shm"]
+            .iter()
+            .find_map(|s| nombre.strip_suffix(s))
+            .unwrap_or(&nombre);
+        if nombre.starts_with(PREFIJO) && base.ends_with(&temporal) {
             let _ = fs::remove_file(e.path());
         }
     }
@@ -227,11 +237,12 @@ fn con_sufijo(ruta: &Path, sufijo: &str) -> PathBuf {
     s.into()
 }
 
-/// Borra el archivo y sus -wal/-shm, si existen.
-fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
+/// Borra el archivo y sus -wal/-shm/-journal, si existen.
+pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
     for p in [
         con_sufijo(ruta, "-wal"),
         con_sufijo(ruta, "-shm"),
+        con_sufijo(ruta, "-journal"),
         ruta.into(),
     ] {
         match fs::remove_file(p) {
@@ -279,11 +290,33 @@ pub fn restaurar(
             return Err(Fallo::de("esquema_nuevo", version));
         }
     }
+    cambiar_base(conexion, bd, dir, &origen, migraciones, PREFIJO_SEGURIDAD)
+}
+
+/// Reemplaza la base por `origen`, ya revisado, con el respaldo previo a reemplazar: lo usa «Reemplazar todo» al importar.
+pub fn reemplazar_antes_respaldando(
+    conexion: &mut Option<Connection>,
+    bd: &Path,
+    dir: &Path,
+    origen: &Path,
+    migraciones: &[&str],
+) -> Result<(), Fallo> {
+    cambiar_base(conexion, bd, dir, origen, migraciones, PREFIJO_REEMPLAZO)
+}
+
+fn cambiar_base(
+    conexion: &mut Option<Connection>,
+    bd: &Path,
+    dir: &Path,
+    origen: &Path,
+    migraciones: &[&str],
+    prefijo_seguridad: &str,
+) -> Result<(), Fallo> {
     // Se prepara (y migra) una copia aparte: la base actual no se toca hasta el reemplazo final.
     let copia = bd.with_extension("restaurando");
     let mut reemplazar = || -> Result<(), Fallo> {
         borrar_bd(&copia)?;
-        fs::copy(&origen, &copia)?;
+        fs::copy(origen, &copia)?;
         let mut c = db::abrir(&copia)?;
         db::migrar_con(&mut c, migraciones, dir)?;
         db::asegurar_meta(&c)?;
@@ -293,7 +326,7 @@ pub fn restaurar(
             .take()
             .ok_or_else(|| Fallo::de("fallo", "la base no está abierta"))?;
         let seguridad = match sello_local(&actual)
-            .and_then(|sello| volcar(&actual, dir, PREFIJO_SEGURIDAD, &sello))
+            .and_then(|sello| volcar(&actual, dir, prefijo_seguridad, &sello))
         {
             Ok(nombre) => dir.join(nombre),
             Err(e) => {

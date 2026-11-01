@@ -2,6 +2,7 @@ mod actualizar;
 mod comandos;
 mod db;
 mod inicio;
+mod intercambio;
 mod respaldos;
 mod rutas;
 mod salida;
@@ -36,10 +37,12 @@ pub fn run() {
         }));
     }
     app.plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(estado)
         .manage(actualizar::Actualizador::default())
         .manage(salida::Cierre::default())
+        .manage(intercambio::Sesiones::default())
         .on_window_event(|ventana, evento| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
                 salida::al_pedir_cierre(ventana.app_handle(), api);
@@ -82,6 +85,13 @@ pub fn run() {
             comandos::abrir_carpeta_respaldos,
             comandos::info_proyecto,
             comandos::abrir_carpeta_datos,
+            comandos::exportar_preparar,
+            comandos::exportar_guardar,
+            comandos::importar_elegir,
+            comandos::importar_abrir,
+            comandos::importar_agregar,
+            comandos::importar_reemplazar,
+            comandos::intercambio_cancelar,
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
             actualizar::cancelar_actualizacion,
@@ -99,6 +109,8 @@ pub fn run() {
             if let tauri::RunEvent::Exit = evento {
                 app.state::<comandos::Estado>()
                     .cerrar_ordenado(std::time::Duration::from_secs(3));
+                // las copias en claro de un exportar o importar sin terminar no se quedan
+                app.state::<intercambio::Sesiones>().cancelar();
             }
         });
 }

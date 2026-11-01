@@ -1,13 +1,16 @@
 use crate::db::{self, Sentencia};
+use crate::intercambio::{self, Sesiones, alcance, fusion};
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Mutex, TryLockError};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_dialog::{DialogExt, FileDialogBuilder};
 use tauri_plugin_opener::OpenerExt;
 
 /// Si iniciar falla, la app no se cierra: guarda el error y el frontend lo muestra.
@@ -43,6 +46,7 @@ impl Estado {
             }
             rutas_ok = Some(r.clone());
             respaldos::limpiar_parciales(&r.respaldos);
+            respaldos::limpiar_parciales(&r.datos);
             let mut conn = db::abrir(&r.bd)?;
             let version = db::migrar(&mut conn, &r.respaldos)?;
             db::asegurar_meta(&conn)?;
@@ -274,6 +278,227 @@ pub fn info_proyecto(estado: State<Estado>) -> Result<InfoProyecto, Fallo> {
 pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
     let r = estado.rutas()?;
     abrir_carpeta(&app, r, &r.datos)
+}
+
+#[derive(Clone, Serialize)]
+struct Avance {
+    etapa: &'static str,
+    hecho: u64,
+    total: u64,
+}
+
+fn avisar(app: &AppHandle, etapa: &'static str, hecho: u64, total: u64) {
+    let _ = app.emit(
+        "intercambio-avance",
+        Avance {
+            etapa,
+            hecho,
+            total,
+        },
+    );
+}
+
+/// El avance de `etapa`; deja de seguir cuando la interfaz cancela.
+fn seguimiento(app: &AppHandle, etapa: &'static str) -> impl FnMut(u64, u64) -> bool + use<> {
+    let app = app.clone();
+    move |hecho, total| {
+        avisar(&app, etapa, hecho, total);
+        app.state::<Sesiones>().sigue()
+    }
+}
+
+/// Diálogo nativo desde Rust: la interfaz nunca ve ni envía una ruta, y no necesita ningún permiso del plugin.
+fn dialogo(app: &AppHandle) -> FileDialogBuilder<tauri::Wry> {
+    let d = app.dialog().file().add_filter("BoldoAtlas", &["boldo"]);
+    match app.get_webview_window("main") {
+        Some(v) => d.set_parent(&v),
+        None => d,
+    }
+}
+
+fn nombre_archivo(ruta: &std::path::Path) -> String {
+    ruta.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// Copia la base y le quita lo que no va (`raices` None: va toda). Queda esperando a que se elija dónde guardarla.
+#[tauri::command]
+pub async fn exportar_preparar(
+    app: AppHandle,
+    raices: Option<Vec<String>>,
+) -> Result<alcance::ResumenExportacion, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let datos = &estado.rutas()?.datos;
+        sesiones.empezar();
+        avisar(&app, "copiando", 0, 0);
+        let copia = estado.con_conexion(|c| alcance::copiar(c, datos))?;
+        let (temporal, resumen) = alcance::preparar(copia, datos, raices.as_deref())?;
+        // si se canceló mientras tanto, el temporal se borra al soltarlo
+        if sesiones.sigue() {
+            sesiones.poner_exportacion(Some(temporal));
+        }
+        Ok(resumen)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(Serialize)]
+pub struct Guardado {
+    nombre: String,
+    codigo: String,
+}
+
+/// Pregunta dónde guardar y cifra. Devuelve el código una sola vez; None si no se eligió un lugar.
+#[tauri::command]
+pub async fn exportar_guardar(app: AppHandle) -> Result<Option<Guardado>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let sesiones = app.state::<Sesiones>();
+        let temporal = sesiones
+            .tomar_exportacion()
+            .ok_or_else(|| Fallo::de("desconocido", ""))?;
+        let elegido = dialogo(&app)
+            .set_file_name(intercambio::nombre_sugerido(temporal.ruta())?)
+            .blocking_save_file();
+        let Some(destino) = elegido.and_then(|f| f.into_path().ok()) else {
+            sesiones.poner_exportacion(Some(temporal));
+            return Ok(None);
+        };
+        let destino = if destino
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("boldo"))
+        {
+            destino
+        } else {
+            let mut con = destino.into_os_string();
+            con.push(".boldo");
+            PathBuf::from(con)
+        };
+        sesiones.empezar();
+        let codigo =
+            intercambio::guardar(temporal.ruta(), &destino, seguimiento(&app, "cifrando"))?;
+        Ok(Some(Guardado {
+            nombre: nombre_archivo(&destino),
+            codigo,
+        }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(Serialize)]
+pub struct ArchivoElegido {
+    nombre: String,
+    bytes: u64,
+}
+
+/// Elige el archivo a importar. Rust se queda con la ruta; la interfaz solo recibe qué mostrar.
+#[tauri::command]
+pub async fn importar_elegir(app: AppHandle) -> Result<Option<ArchivoElegido>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(ruta) = dialogo(&app)
+            .blocking_pick_file()
+            .and_then(|f| f.into_path().ok())
+        else {
+            return Ok(None);
+        };
+        let elegido = ArchivoElegido {
+            nombre: nombre_archivo(&ruta),
+            bytes: std::fs::metadata(&ruta)?.len(),
+        };
+        app.state::<Sesiones>().poner_archivo(Some(ruta));
+        Ok(Some(elegido))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Descifra, revisa y calcula lo que pasaría, sin aplicar nada. El código no sale de esta función.
+#[tauri::command]
+pub async fn importar_abrir(
+    app: AppHandle,
+    codigo: String,
+) -> Result<intercambio::ResumenImportacion, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let archivo = sesiones
+            .archivo()
+            .ok_or_else(|| Fallo::de("desconocido", ""))?;
+        sesiones.empezar();
+        let i = intercambio::abrir(
+            &archivo,
+            &estado.rutas()?.datos,
+            &codigo,
+            db::MIGRACIONES,
+            seguimiento(&app, "descifrando"),
+        )?;
+        avisar(&app, "revisando", 0, 0);
+        let resumen = estado.con_conexion(|c| intercambio::revisar(c, &i))?;
+        if sesiones.sigue() {
+            sesiones.poner_importacion(i);
+        }
+        Ok(resumen)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// «Agregar lo nuevo». Si falla, la importación sigue abierta para reintentar o cancelar.
+#[tauri::command]
+pub async fn importar_agregar(
+    app: AppHandle,
+    lugares: HashMap<String, Option<String>>,
+    version_app: String,
+) -> Result<fusion::Informe, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let dir = &estado.rutas()?.respaldos;
+        let i = sesiones
+            .tomar_importacion()
+            .ok_or_else(|| Fallo::de("desconocido", ""))?;
+        let hecho =
+            estado.con_conexion(|c| intercambio::agregar(c, dir, &i, &lugares, &version_app));
+        if hecho.is_err() {
+            sesiones.poner_importacion(i);
+        }
+        hecho
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// «Reemplazar todo». Si sale bien, reinicia la app, como al restaurar un respaldo.
+#[tauri::command]
+pub async fn importar_reemplazar(app: AppHandle) -> Result<(), Fallo> {
+    let app2 = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app2.state::<Estado>(), app2.state::<Sesiones>());
+        let r = estado.rutas()?;
+        let i = sesiones
+            .tomar_importacion()
+            .ok_or_else(|| Fallo::de("desconocido", ""))?;
+        let mut conexion = estado
+            .conn
+            .lock()
+            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
+        let hecho =
+            intercambio::reemplazar(&mut conexion, &r.bd, &r.respaldos, &i, db::MIGRACIONES);
+        if hecho.is_err() {
+            sesiones.poner_importacion(i);
+        }
+        hecho
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    app.restart()
+}
+
+/// Detiene lo que esté en curso y borra los temporales. Nada se aplicó.
+#[tauri::command]
+pub fn intercambio_cancelar(sesiones: State<Sesiones>) {
+    sesiones.cancelar();
 }
 
 #[cfg(test)]

@@ -202,18 +202,24 @@ pub fn lote(
         tx.execute(&s.sql, params_from_iter(s.params.iter().map(a_sql)))
             .map_err(texto)?;
     }
-    tx.execute(
+    marcar_cambio(&tx, version_app)?;
+    tx.commit().map_err(texto)
+}
+
+/// Una revisión más por transacción, y con qué versión de la app se hizo.
+pub fn marcar_cambio(conn: &Connection, version_app: &str) -> Result<(), String> {
+    conn.execute(
         "UPDATE meta SET valor = CAST(CAST(valor AS INTEGER) + 1 AS TEXT) WHERE clave = 'data_revision'",
         [],
     )
     .map_err(texto)?;
-    tx.execute(
+    conn.execute(
         "INSERT INTO meta (clave, valor) VALUES ('app_version_ultima', ?1)
          ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
         [version_app],
     )
     .map_err(texto)?;
-    tx.commit().map_err(texto)
+    Ok(())
 }
 
 #[cfg(test)]
