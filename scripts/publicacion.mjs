@@ -114,10 +114,13 @@ const NOTA_DEPENDENCIAS = "- Actualización interna de dependencias, sin cambios
 /**
  * Notas de un release con todos los PR fusionados desde la última etiqueta (del más antiguo al más
  * nuevo): con uno, sus notas tal cual; con varios, un `###` por PR con su título y número. Los de
- * Dependabot van juntos al final: sus títulos son técnicos y en inglés, y llegarían a las novedades de la app.
- * @param {PR[]} prs
+ * Dependabot van juntos al final: sus títulos son técnicos y en inglés, y llegarían a las novedades de la app. Los
+ * de `docs:` no salen: son internos y pueden nombrar lo que aún no existe.
+ * @param {PR[]} todos
  */
-export function notasCombinadas(prs) {
+export function notasCombinadas(todos) {
+  const prs = todos.filter((p) => !/^docs[:(]/.test((p.title ?? "").trim()));
+  if (todos.length && !prs.length) return "- Sin cambios visibles.";
   const deps = prs.filter(esDependencias);
   const otros = prs.filter((p) => !esDependencias(p));
   if (!otros.length && deps.length) return NOTA_DEPENDENCIAS;
