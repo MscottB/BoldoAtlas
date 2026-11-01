@@ -30,7 +30,7 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 
 ## Puestos
 
-En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es titular o reemplazo y desde cuándo) y, en **Historial**, los que ya terminaron. Pulsa uno para abrir el puesto.
+En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es titular o reemplazo y desde cuándo) y, en **Historial**, los que ya terminaron. Pulsa uno para abrir el puesto. **Ver en el organigrama** cierra la ficha y muestra a la persona en el árbol (con varios puestos, eliges cuál).
 
 ## Eliminar
 

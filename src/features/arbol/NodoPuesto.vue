@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useEstilo } from "@/features/puestos/useEstilo";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
+import { puestoUbicado } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamPuesto } from "./vista";
 import { CONTEXTO_LIENZO } from "./contexto";
@@ -35,6 +36,8 @@ watch(contexto.ligera, async () => {
   await nextTick();
   raiz.value?.focus();
 });
+// El puesto de una persona que se buscó con «Ver en el organigrama»: marcado como la unidad seleccionada.
+const ubicado = computed(() => puestoUbicado.value === props.id);
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");
 // Misma función que usa el layout.
@@ -56,7 +59,8 @@ const tam = computed(() => {
     role="button"
     tabindex="0"
     class="nodrag content-center truncate rounded-md border bg-card px-2 text-xl leading-tight font-medium text-card-foreground focus-visible:outline-4 focus-visible:outline-ring"
-    :class="leyenda && 'border-l-[12px]'"
+    :class="[leyenda && 'border-l-[12px]', ubicado && 'border-marca ring-2 ring-marca']"
+    :aria-current="ubicado || undefined"
     :style="[tam, leyenda ? { borderColor: leyenda.color } : {}]"
     @click.stop="abrir(id)"
     @keydown.enter.prevent="abrir(id)"
@@ -71,7 +75,8 @@ const tam = computed(() => {
     ref="raiz"
     type="button"
     class="nodrag flex items-center gap-2 rounded-md border bg-card px-2 text-left text-xs text-card-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-    :class="leyenda && 'border-l-[6px]'"
+    :class="[leyenda && 'border-l-[6px]', ubicado && 'border-marca ring-2 ring-marca']"
+    :aria-current="ubicado || undefined"
     :style="[tam, leyenda ? { borderColor: leyenda.color } : {}]"
     :title="leyenda?.nombre"
     @click.stop="abrir(id)"

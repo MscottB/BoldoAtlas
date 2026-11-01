@@ -34,6 +34,7 @@ import { base64De, leerComoUrl } from "@/features/configuracion/logo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
 import BloquePlegable from "@/components/BloquePlegable.vue";
+import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { useFicha } from "./useFicha";
 import {
@@ -156,6 +157,22 @@ async function hayCambios() {
 // Quien quiera abrir otra ficha (p. ej. el diálogo de un puesto) pasa por esta misma comprobación.
 ficha.registrarGuardia(hayCambios);
 
+// «Ver en el organigrama»: la ficha se cierra para dejar ver el lienzo. Con cambios sin guardar se pregunta como al cerrar:
+// Descartar sigue al organigrama; Seguir editando se queda.
+let alDecidir: ((seguir: boolean) => void) | null = null;
+async function cerrarParaUbicar() {
+  if (await hayCambios()) {
+    confirmando.value = true;
+    return new Promise<boolean>((resolver) => (alDecidir = resolver));
+  }
+  ficha.cerrar();
+  return true;
+}
+const decidir = (seguir: boolean) => {
+  alDecidir?.(seguir);
+  alDecidir = null;
+};
+
 async function pedirCerrar() {
   if (!ficha.abierta.value) return;
   if (await hayCambios()) confirmando.value = true;
@@ -164,11 +181,16 @@ async function pedirCerrar() {
 
 // Hay una ficha esperando: se pregunta lo mismo que al cerrar. Descartar la abre; Seguir editando la olvida.
 watch(ficha.pendiente, (p) => p && (confirmando.value = true));
-watch(confirmando, (c) => c || (ficha.pendiente.value = null));
+watch(confirmando, (c) => {
+  if (c) return;
+  ficha.pendiente.value = null;
+  decidir(false); // Descartar ya respondió (su clic corre antes que este watcher)
+});
 function descartar() {
   const p = ficha.pendiente.value; // el diálogo ya se cerró, pero el watcher que la borra corre después
   if (p) ficha.abrir(p);
   else ficha.cerrar();
+  decidir(true);
 }
 
 function alSalir() {
@@ -315,7 +337,10 @@ const alAbrir = (e: Event) => {
         </div>
 
         <div v-if="id" class="grid gap-1 sm:col-span-2">
-          <p class="text-sm font-medium">{{ t("ficha.puestos") }}</p>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-medium">{{ t("ficha.puestos") }}</p>
+            <BotonUbicar :persona-id="id" :antes="cerrarParaUbicar" />
+          </div>
           <ul v-if="misPuestos.vigentes.length" class="grid gap-0.5">
             <li v-for="f in misPuestos.vigentes" :key="f.asignacion.id">
               <button

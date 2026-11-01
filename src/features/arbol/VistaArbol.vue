@@ -48,7 +48,8 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { destinoAlSoltar, useLienzo } from "./useLienzo";
+import { destinoAlSoltar, puestoUbicado, useLienzo } from "./useLienzo";
+import { puestoConTarjeta } from "./ubicar";
 import { recordarPorArbol, useVista } from "./useVista";
 import {
   CRITERIO_LEYENDA,
@@ -91,6 +92,7 @@ const {
   limpiarMultiple,
   avisoExpansion,
   cancelarExpansion,
+  enfocar,
 } = useLienzo();
 const {
   fitView,
@@ -146,6 +148,8 @@ recordarPorArbol(computed(() => (arbol.value === undefined ? null : (arbol.value
 let revelar: string | null = null;
 const verDeLaRuta = () =>
   typeof route.query.ver === "string" && org.enFecha.porId.has(route.query.ver) ? route.query.ver : null;
+const puestoDeLaRuta = (unidad: string) =>
+  org.enFecha.puestos.find((p) => p.id === route.query.puesto && p.unidad_id === unidad);
 let encuadrar = false;
 let centrar: string | null = null;
 watch(
@@ -156,6 +160,14 @@ watch(
     if (destino) for (const a of ruta(org.enFecha.unidades, destino).slice(0, -1)) c.delete(a.id);
     colapsados.value = c;
     seleccion.value = centrar = destino;
+    // «Ver en el organigrama» de una persona (?puesto=, un puesto de esa unidad): se centra la tarjeta del puesto si se
+    // dibuja, y esa tarjeta (o la de la unidad) recibe el foco.
+    const p = destino && !revelar ? puestoDeLaRuta(destino) : undefined;
+    if (p) {
+      const conTarjeta = puestoConTarjeta(p, org.enFecha.porId.get(destino!)!, config.value);
+      puestoUbicado.value = conTarjeta ? p.id : null;
+      centrar = enfocar.value = conTarjeta ? p.id : destino;
+    }
     encuadrar = !destino;
     revelar = null;
   },
@@ -179,7 +191,7 @@ if (previo) {
   colapsados.value = previo.colapsados;
   seleccion.value = previo.seleccion && org.enFecha.porId.has(previo.seleccion) ? previo.seleccion : null;
   config.value = { ...config.value, resaltar: leerVista({ resaltar: previo.resaltar }).resaltar };
-  centrar = null;
+  centrar = enfocar.value = null;
   encuadrar = true; // tras el primer layout se aplica `encuadre` (o se encuadra todo si no había)
 }
 
@@ -338,12 +350,37 @@ const pendiente = ref<{ centrar: string | null } | null>(null);
 watch([pendiente, areNodesInitialized], ([p, medidos]) => {
   if (!p || !medidos) return;
   pendiente.value = null;
-  const c = p.centrar && vista.value?.pos.get(p.centrar);
-  if (c) void setCenter(c.x + TAM.value.ancho / 2, c.y + TAM.value.alto / 2, { zoom: 1 });
-  else if (encuadre) void setViewport(encuadre);
+  if (p.centrar && vista.value?.pos.has(p.centrar)) {
+    if (p.centrar === enfocar.value) {
+      enfocar.value = null;
+      void enfocarTarjeta(p.centrar);
+    } else centrarTarjeta(p.centrar);
+  } else if (encuadre) void setViewport(encuadre);
   else void encuadrarTodo();
   encuadre = null;
 });
+
+function centrarTarjeta(id: string) {
+  const c = vista.value?.pos.get(id);
+  // La tarjeta de un puesto mide distinto que la de una unidad.
+  const tam = org.enFecha.porId.has(id) ? TAM.value : tamPuesto(config.value, escala.value);
+  if (c) void setCenter(c.x + tam.ancho / 2, c.y + tam.alto / 2, { zoom: 1 });
+}
+const cuadro = () => new Promise(requestAnimationFrame);
+// Centra la tarjeta ubicada y le da el foco (teclado). Antes se espera a que se cierre el diálogo o menú desde donde se
+// pidió (ficha, paleta, «¿Cuál puesto?»), que al irse devuelve el foco a quien lo tenía (con tope, por si queda otro
+// abierto), y a que el panel de la unidad recién seleccionada se monte (toma el foco) y Vue Flow mida el lienzo más angosto:
+// si no, la tarjeta podría quedar bajo el panel.
+async function enfocarTarjeta(id: string) {
+  await nextTick();
+  for (let i = 0; i < 60 && document.querySelector('[role="dialog"], [role="menu"]'); i++) await cuadro();
+  await cuadro();
+  await cuadro();
+  centrarTarjeta(id);
+  document
+    .querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"] :is(button, [role=button])`)
+    ?.focus({ preventScroll: true });
+}
 
 const visibles = computed(() => new Set(vista.value?.g.nodos.map((u) => u.id)));
 

@@ -2,11 +2,24 @@
 import { computed, ref, watch, type Component } from "vue";
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { CircleHelp, ListChecks, Network, Palette, Plus, Search, User, UserRoundX, Users } from "@lucide/vue";
+import {
+  CircleHelp,
+  ListChecks,
+  LocateFixed,
+  Network,
+  Palette,
+  Plus,
+  Search,
+  User,
+  UserRoundX,
+  Users,
+} from "@lucide/vue";
+import { toast } from "vue-sonner";
 import { ListboxFilter } from "reka-ui";
 import { CommandDialog, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { useLienzo } from "@/features/arbol/useLienzo";
+import { rutaPuesto, useUbicar } from "@/features/arbol/useUbicar";
 import { buscarEnPaleta, indexarPaleta, type Accion, type Grupo } from "@/features/atajos/paleta";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
@@ -26,6 +39,7 @@ const { revelar, nuevaHija } = useLienzo();
 const { tema } = useTema();
 const ficha = useFicha();
 const puesto = usePuesto();
+const { ubicar, ubicaciones, textoDe } = useUbicar();
 
 const busqueda = ref("");
 watch(abierto, () => (busqueda.value = ""));
@@ -118,6 +132,11 @@ function irAUnidad(id: string) {
 
 const rutaUnidad = (id: string): RouteLocationRaw => ({ name: "arbol", query: { ver: id } });
 const rutaPersona = (id: string): RouteLocationRaw => ({ name: "directorio", query: { persona: id } });
+// «Ver a X en el organigrama»: una opción bajo la persona por cada puesto vigente (así se elige entre varios).
+function verEnOrganigrama(puestoId: string) {
+  const r = ubicar(puestoId);
+  if (!r.ok) toast.error(r.mensaje);
+}
 
 // Ctrl+Enter o Ctrl+clic sobre algo que lleva a una vista: se abre en una pestaña nueva. Reka no elige con Ctrl+Enter:
 // aquí se pulsa la opción resaltada recordando que fue con Ctrl (el clic que le llega no lo trae).
@@ -194,21 +213,41 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
       </CommandGroup>
 
       <CommandGroup v-if="r.personas.items.length" :heading="t('paleta.grupos.personas')">
-        <CommandItem
-          v-for="p in r.personas.items"
-          :key="p.id"
-          :value="`persona:${p.id}`"
-          @select="elegir(() => ficha.intentarAbrir(p.id), $event, rutaPersona(p.id))"
-          @auxclick="alPulsarAux($event, rutaPersona(p.id))"
-        >
-          <User aria-hidden="true" />
-          <span class="grid min-w-0">
-            <span class="truncate">{{ p.nombre }}</span>
-            <span class="truncate text-xs text-muted-foreground">
-              {{ p.cargos.length ? p.cargos.join(", ") : t("paleta.sinCargo") }}
+        <template v-for="p in r.personas.items" :key="p.id">
+          <CommandItem
+            :value="`persona:${p.id}`"
+            @select="elegir(() => ficha.intentarAbrir(p.id), $event, rutaPersona(p.id))"
+            @auxclick="alPulsarAux($event, rutaPersona(p.id))"
+          >
+            <User aria-hidden="true" />
+            <span class="grid min-w-0">
+              <span class="truncate">{{ p.nombre }}</span>
+              <span class="truncate text-xs text-muted-foreground">
+                {{ p.cargos.length ? p.cargos.join(", ") : t("paleta.sinCargo") }}
+              </span>
             </span>
-          </span>
-        </CommandItem>
+          </CommandItem>
+          <CommandItem
+            v-for="u in ubicaciones(p.id)"
+            :key="`${p.id}:${u.puestoId}`"
+            :value="`ubicar:${p.id}:${u.puestoId}`"
+            class="pl-8"
+            @select="
+              elegir(
+                () => verEnOrganigrama(u.puestoId),
+                $event,
+                rutaPuesto({ id: u.puestoId, unidad_id: u.unidadId }),
+              )
+            "
+            @auxclick="alPulsarAux($event, rutaPuesto({ id: u.puestoId, unidad_id: u.unidadId }))"
+          >
+            <LocateFixed aria-hidden="true" />
+            <span class="grid min-w-0">
+              <span class="truncate">{{ t("paleta.verEnOrganigrama", { nombre: p.nombre }) }}</span>
+              <span class="truncate text-xs text-muted-foreground">{{ textoDe(u) }}</span>
+            </span>
+          </CommandItem>
+        </template>
         <p v-if="faltan(r.personas)" class="px-2 py-1 text-xs text-muted-foreground">
           {{ t("paleta.mas", { n: faltan(r.personas) }) }}
         </p>

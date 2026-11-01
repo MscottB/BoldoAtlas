@@ -88,9 +88,15 @@ The **Duplicate branch** button (under **Advanced** in the unit panel's Summary,
 
 ## Highlighting
 
-In the canvas bar, **Search the diagram** (`F` takes you to that field) highlights the units whose name contains the text, ignoring accents and case. Units that don't match are dimmed, not hidden.
+In the canvas bar, **Search unit or person** (`F` takes you to that field) highlights the units whose name contains the text and also the units where a person whose name or email contains it works (current holder or replacement, on the date being shown), ignoring accents and case. Units that don't match are dimmed, not hidden.
 
-The **Highlight** button adds more criteria: **Tag** and **With vacancies** in plain view, and **Site**, **Contract type**, **Schedule** and **Job title** under **More filters** (it opens by itself if any of them is chosen); the number on the button counts the active ones and **Clear filters** empties them (the **Search the diagram** text stays). A unit is highlighted only if it meets every criterion you chose (the text too): it has the tag and, in its own positions (not those of its branch; they need not be the same position), it has a vacancy, a current holder with that site, one with that contract type, one with that schedule and a position with that job title; criteria you don't choose don't count. Highlighting lasts while the app is open; saved views do include it.
+The **Highlight** button adds more criteria: **Tag** and **With vacancies** in plain view, and **Site**, **Contract type**, **Schedule** and **Job title** under **More filters** (it opens by itself if any of them is chosen); the number on the button counts the active ones and **Clear filters** empties them (the **Search unit or person** text stays). A unit is highlighted only if it meets every criterion you chose (the text too): it has the tag and, in its own positions (not those of its branch; they need not be the same position), it has a vacancy, a current holder with that site, one with that contract type, one with that schedule and a position with that job title; criteria you don't choose don't count. Highlighting lasts while the app is open; saved views do include it.
+
+## Showing a person in the org chart
+
+To find out where someone sits, use **Show in the org chart**: in their record (next to **Positions**), in the preview of the **People** tab of a unit's panel, with the locate icon on their **Directory** row or, in the command palette (`Ctrl+K`), with the **Show … in the org chart** option under each person. The tree opens with their unit selected and centered, opening the collapsed branches that hid it; focus lands on the card. With **Show positions** on, the card of their position is centered and marked (except the head position shown inside the unit card). With `Ctrl` + click (or `Ctrl+Enter` in the palette) it opens in a new tab.
+
+If the person holds several current positions, you choose one in a «Job title · Unit» menu; a replacement is marked **(replacement)**. When viewing another date, the positions current on that day are used. If their unit is outside the branch or subtree you are viewing, the full tree is shown. With no current position, the button is disabled and says why: **No current position**.
 
 ## Moving around the canvas
 

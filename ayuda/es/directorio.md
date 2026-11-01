@@ -21,6 +21,6 @@ Hay una columna por cada tipo de unidad que usas (por ejemplo Gerencia, Área, S
 
 Pulsa el encabezado de **Persona**, **Cargo** o de la primera columna de unidad a la vista (ordena por la ruta completa) para ordenar; pulsa otra vez para invertir. Las celdas vacías siempre quedan al final.
 
-Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona; en una vacante se abre el puesto.
+Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona; en una vacante se abre el puesto. El ícono de ubicar, junto al nombre, muestra ese puesto en el organigrama (`Ctrl` + clic: en una pestaña nueva); en una persona sin puesto vigente queda deshabilitado.
 
 Próximamente: exportar esta lista a Excel.
