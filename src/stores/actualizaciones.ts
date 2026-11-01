@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { i18n } from "@/i18n";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { conTrabajo } from "@/lib/trabajos";
 import { FRECUENCIA_POR_DEFECTO, tocaBuscar } from "@/features/actualizaciones/programa";
 import {
   leerNovedades,
@@ -111,7 +112,9 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
     const canal = new Channel<Progreso>();
     canal.onmessage = (p) => (progreso.value = p);
     try {
-      await invoke("instalar_actualizacion", { progreso: canal });
+      await conTrabajo(i18n.global.t("trabajos.actualizar"), () =>
+        invoke("instalar_actualizacion", { progreso: canal }),
+      );
       return { ok: true };
     } catch (e) {
       return { ok: false, mensaje: mensajeError(e) };

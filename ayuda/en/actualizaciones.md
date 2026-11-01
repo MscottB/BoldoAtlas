@@ -22,7 +22,7 @@ If there is nothing new you'll see "You have the latest version"; offline, "Coul
 
 ## The update window
 
-It shows your version and the new one, and **the release notes of every version you skipped**, newest first. When you press **Download and install** you see the download progress and can **Cancel download**; closing the window cancels it too. Every download is signed by the author and is rejected if the signature doesn't match.
+It shows your version and the new one, and **the release notes of every version you skipped**, newest first. When you press **Download and install** you see the download progress and can **Cancel download**; closing this window or the app cancels it too. Every download is signed by the author and is rejected if the signature doesn't match.
 
 What happens on install depends on how you have BoldoAtlas:
 
@@ -32,7 +32,7 @@ What happens on install depends on how you have BoldoAtlas:
 | Installed (Windows, macOS, AppImage) | Downloads the update, installs it and restarts. |
 | Linux `.deb` or `.rpm` | The system updates it: **Download the package** opens the release page so you can get it and install it with your package manager. |
 
-If something fails, the previous version stays and the error is shown. You can also update by hand: download the new zip and replace the program; `datos/` is not touched.
+If something fails, the previous version stays and the error is shown. You can also update by hand: first use **Quit**, because with the app in the tray the program stays open and can't be replaced; then download the new zip and replace the program. `datos/` is not touched.
 
 ## What's new
 
@@ -46,7 +46,7 @@ On Windows, the installed version can start with the system: a checkbox on the i
 
 ## Tray icon
 
-While BoldoAtlas is open, its icon appears in the system tray. One click brings it to the front (on Linux, the icon only opens the menu); the menu (right click) has Open BoldoAtlas, Home, Find a person, Settings, Help, **Update to vX** when there is a new version (otherwise Check for updates), Back up now, Open data folder and Quit. Closing the window quits BoldoAtlas completely: nothing stays in the background. When there is a new version, the icon's tooltip says so. On Linux, if the tray library (AppIndicator) is missing, there is no icon and the app works the same. On Windows, the system records in the registry (`HKCU\Control Panel\NotifyIconSettings`) the path of every program that shows a tray icon, the portable included: it is the only trace outside its folder, and BoldoAtlas does not write it.
+While BoldoAtlas is open, its icon appears in the system tray. One click brings it to the front (on Linux, the icon only opens the menu); the menu (right click) has Open BoldoAtlas, Home, Find a person, Settings, Help, **Update to vX** when there is a new version (otherwise Check for updates), Back up now, Open data folder and Quit. When you close the window you can keep it here, with the window hidden, or quit it completely (see **When opening and quitting** in Home); **Quit** closes it completely; if it asks first, that dialog also offers to keep it here. When there is a new version, the icon's tooltip says so. On Linux, if the tray library (AppIndicator) is missing, there is no icon and the app works the same. On Windows, the system records in the registry (`HKCU\Control Panel\NotifyIconSettings`) the path of every program that shows a tray icon, the portable included: it is the only trace outside its folder, and BoldoAtlas does not write it.
 
 ## Cleanup
 

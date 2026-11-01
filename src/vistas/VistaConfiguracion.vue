@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Check, ImagePlus, ListChecks, X } from "@lucide/vue";
@@ -16,10 +16,13 @@ import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
 import {
+  alCerrar,
+  bandejaLista,
   continuarDondeEstaba,
+  guardarAlCerrar,
   guardarContinuarDondeEstaba,
-  guardarPreguntarAlSalir,
-  preguntarAlSalir,
+  OPCIONES_AL_CERRAR,
+  type AlCerrar,
 } from "@/app/ventana";
 import { cambiarIdioma, IDIOMAS, type Idioma } from "@/i18n";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
@@ -28,6 +31,11 @@ import { claseSelect, cn } from "@/lib/utils";
 const { t, locale } = useI18n();
 const org = useOrganizacion();
 const { tema, acento, escala } = useTema();
+// Sin icono en la bandeja no se ofrece, y lo guardado con esa opción vale como «Preguntar».
+const opcionesAlCerrar = computed(() => OPCIONES_AL_CERRAR.filter((o) => o !== "bandeja" || bandejaLista.value));
+const alCerrarVigente = computed(() =>
+  opcionesAlCerrar.value.includes(alCerrar.value) ? alCerrar.value : "preguntar",
+);
 const avisar = (r: Resultado) => {
   if (!r.ok) toast.error(r.mensaje);
 };
@@ -215,15 +223,23 @@ const quitarLogo = async () => {
       <p id="cfg-continuar-ayuda" class="text-sm text-muted-foreground">
         {{ t("config.abrirSalir.continuarAyuda") }}
       </p>
-      <label class="flex items-center gap-2">
-        <input
-          type="checkbox"
-          class="size-4 accent-primary"
-          :checked="preguntarAlSalir"
-          @change="guardarPreguntarAlSalir(($event.target as HTMLInputElement).checked)"
-        />
-        {{ t("config.abrirSalir.preguntar") }}
-      </label>
+      <div class="mt-2 grid justify-items-start gap-1.5">
+        <Label for="cfg-al-cerrar">{{ t("config.abrirSalir.alCerrar") }}</Label>
+        <select
+          id="cfg-al-cerrar"
+          :class="claseSelect"
+          aria-describedby="cfg-al-cerrar-ayuda"
+          :value="alCerrarVigente"
+          @change="guardarAlCerrar(($event.target as HTMLSelectElement).value as AlCerrar)"
+        >
+          <option v-for="o in opcionesAlCerrar" :key="o" :value="o">
+            {{ t(`config.abrirSalir.opcionesCerrar.${o}`) }}
+          </option>
+        </select>
+        <p id="cfg-al-cerrar-ayuda" class="text-sm text-muted-foreground">
+          {{ t("config.abrirSalir.alCerrarAyuda") }}
+        </p>
+      </div>
     </section>
 
     <SeccionInicioSistema />

@@ -8,7 +8,7 @@ import { infoApp } from "./db/cliente";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
-import { respaldoAutomatico } from "./features/respaldos/respaldos";
+import { iniciarRespaldoAutomatico } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
 import { crearBandeja } from "./features/actualizaciones/bandeja";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
@@ -36,11 +36,11 @@ infoApp()
     const app = createApp(App).use(pinia).use(router).use(i18n);
     await router.replace(destino);
     app.mount("#app");
-    void respaldoAutomatico();
+    iniciarRespaldoAutomatico();
     // «Novedades» tras actualizar y la consulta periódica de versiones nuevas (la única conexión automática)
     useActualizaciones(pinia).iniciar();
     void crearBandeja(router);
-    // Desde aquí, cerrar la ventana pregunta (si la opción sigue activa); si la app no llegó hasta aquí, se cierra sin más.
+    // Desde aquí, cerrar la ventana sigue la opción «Al cerrar la ventana»; si la app no llegó hasta aquí, se cierra sin más.
     void conectarCierre();
   })
   .catch((e: unknown) => {
