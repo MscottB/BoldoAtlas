@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   AlertDialog,
@@ -11,13 +11,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { salidaAbierta, salir } from "@/app/ventana";
+import { bandejaLista, responderSalida, salidaAbierta } from "@/app/ventana";
 import { useRetornoFoco } from "@/lib/foco";
+import { trabajos } from "@/lib/trabajos";
 
 const { t } = useI18n();
 const foco = useRetornoFoco();
 // sync: antes de que el diálogo se monte y se lleve el foco
 watch(salidaAbierta, (abierta) => abierta && foco.alAbrir(), { flush: "sync" });
+// Sin marcar cada vez: «No volver a preguntar» es una decisión de este cierre.
+const recordar = ref(false);
+watch(salidaAbierta, () => (recordar.value = false));
+const avisoTrabajo = computed(() => {
+  if (!trabajos.value.length) return "";
+  const actualizando = bandejaLista.value && trabajos.value.includes(t("trabajos.actualizar"));
+  const aviso = t(bandejaLista.value && !actualizando ? "salida.trabajoBandeja" : "salida.trabajo", {
+    trabajos: trabajos.value.join(", "),
+  });
+  // una actualización no «avisa al terminar»: la app se reinicia sola
+  return actualizando ? `${aviso} ${t("salida.actualizacionSigue")}` : aviso;
+});
 function alCerrar(e: Event) {
   e.preventDefault();
   foco.restaurar(document.querySelector<HTMLElement>("[data-buscar-paleta]"));
@@ -27,14 +40,31 @@ function alCerrar(e: Event) {
 <template>
   <!-- Con v-if, se monta al abrirse y queda sobre cualquier otro diálogo, también los montados después de este. -->
   <AlertDialog v-if="salidaAbierta" v-model:open="salidaAbierta">
-    <AlertDialogContent data-dialogo-salir @close-auto-focus="alCerrar">
+    <!-- Más ancho que el diálogo normal: son tres botones; si aun así no caben (escala 125 %), bajan de línea. -->
+    <AlertDialogContent
+      data-dialogo-salir
+      class="data-[size=default]:sm:max-w-md"
+      @close-auto-focus="alCerrar"
+    >
       <AlertDialogHeader>
         <AlertDialogTitle>{{ t("salida.titulo") }}</AlertDialogTitle>
-        <AlertDialogDescription>{{ t("salida.texto") }}</AlertDialogDescription>
+        <AlertDialogDescription>
+          {{ t("salida.texto") }}
+          <span v-if="avisoTrabajo" data-aviso-trabajo class="mt-2 block font-medium text-foreground">
+            {{ avisoTrabajo }}
+          </span>
+        </AlertDialogDescription>
       </AlertDialogHeader>
-      <AlertDialogFooter>
+      <label class="flex items-center gap-2 text-sm">
+        <input v-model="recordar" type="checkbox" class="size-4 accent-primary" />
+        {{ t("salida.noPreguntar") }}
+      </label>
+      <AlertDialogFooter class="sm:flex-wrap">
         <AlertDialogCancel>{{ t("salida.cancelar") }}</AlertDialogCancel>
-        <AlertDialogAction @click="salir">{{ t("bandeja.salir") }}</AlertDialogAction>
+        <AlertDialogAction v-if="bandejaLista" variant="secondary" @click="responderSalida('bandeja', recordar)">
+          {{ t("salida.bandeja") }}
+        </AlertDialogAction>
+        <AlertDialogAction @click="responderSalida('cerrar', recordar)">{{ t("salida.cerrar") }}</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>

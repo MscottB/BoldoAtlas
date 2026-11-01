@@ -701,7 +701,7 @@
     "inicio": {
       "titulo": "Start with the system",
       "etiqueta": "Start BoldoAtlas with the system",
-      "ayuda": "It opens minimized when you sign in, without taking focus from what you are doing. Closing the window quits it, as always.",
+      "ayuda": "It opens minimized when you sign in, without taking focus from what you are doing.",
       "portable": "Not available in the portable version: it would store an entry outside its folder.",
       "sistema": "It is only available on Windows.",
       "error": "Could not change starting with the system: {detalle}"
@@ -733,7 +733,13 @@
       "titulo": "When opening and quitting",
       "continuar": "Continue where I left off",
       "continuarAyuda": "When off, BoldoAtlas opens on Home.",
-      "preguntar": "Ask before quitting"
+      "alCerrar": "When closing the window",
+      "alCerrarAyuda": "In the tray, the app stays open and comes back instantly. Quit in the menu closes the app; if it asks, you can choose there. With work in progress, it always asks.",
+      "opcionesCerrar": {
+        "preguntar": "Ask",
+        "bandeja": "Keep in the tray",
+        "cerrar": "Quit the app"
+      }
     },
     "barra": {
       "abrirAlPasar": "Open the sidebar on mouse hover"
@@ -805,7 +811,7 @@
     "titulo": "Backups",
     "ayuda": "Copies of your data in the backups folder on this computer. The 10 most recent backups are kept, automatic or manual.",
     "frecuencia": {
-      "etiqueta": "Automatic backup on open",
+      "etiqueta": "Automatic backup",
       "nunca": "Never",
       "abrir": "Every time",
       "24h": "Every 24 hours",
@@ -942,12 +948,25 @@
     "buscarPersona": "Find a person",
     "sinPersonas": "No people yet: create an organization first.",
     "carpeta": "Open data folder",
-    "salir": "Quit"
+    "salir": "Quit",
+    "trabajoEnCurso": "BoldoAtlas. In progress: {trabajo}",
+    "trabajoTerminado": "BoldoAtlas. Finished: {trabajo}"
+  },
+  "trabajos": {
+    "respaldar": "Data backup",
+    "restaurar": "Restoring a backup",
+    "actualizar": "Downloading and installing the update"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
-    "texto": "What you already applied is saved. An unfinished form is lost.",
-    "cancelar": "Cancel"
+    "texto": "What you already applied is saved. Quitting the app loses an unfinished form; in the tray it stays there.",
+    "cancelar": "Cancel",
+    "bandeja": "Keep in the tray",
+    "cerrar": "Quit the app",
+    "noPreguntar": "Don't ask again",
+    "trabajo": "Work in progress: {trabajos}. Quitting the app will interrupt it.",
+    "trabajoBandeja": "Work in progress: {trabajos}. Quitting the app will interrupt it. In the tray it continues, and the icon's text tells you when it finishes.",
+    "actualizacionSigue": "If you keep it in the tray, the update continues and BoldoAtlas restarts on its own once installed."
   },
   "intercambio": {
     "ayuda": "Take your organization, or just part of it, to another computer in a file protected with a code.",

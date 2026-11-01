@@ -13,7 +13,7 @@ Cada respaldo es un archivo `boldo-AAAAMMDD-HHMM.db` con la fecha y hora en que 
 
 ## Respaldo automático
 
-Al abrir la app, si el último respaldo tiene más de 24 horas, se hace uno nuevo en segundo plano: puedes seguir trabajando mientras tanto. En **Configuración › Respaldos › Ver respaldos y restaurar** eliges cada cuánto: **Nunca**, **Cada vez** que se abre, **Cada 24 horas** (lo normal) o **Cada 7 días**. La elección vale solo para este computador.
+Al abrir la app y mientras sigue abierta, también en la bandeja, si el último respaldo tiene más de 24 horas se hace uno nuevo en segundo plano: puedes seguir trabajando mientras tanto. En **Configuración › Respaldos › Ver respaldos y restaurar** eliges cada cuánto: **Nunca**, **Cada vez** que se abre (solo al abrirla), **Cada 24 horas** (lo normal) o **Cada 7 días**. La elección vale solo para este computador.
 
 Se conservan los **10 respaldos más recientes**; al hacer uno nuevo se borran los más viejos. Los demás archivos de la carpeta no se tocan. Si un respaldo automático falla, aparece un aviso.
 
