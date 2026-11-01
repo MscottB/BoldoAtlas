@@ -56,7 +56,7 @@ Antes de aplicar cualquiera de los dos, BoldoAtlas hace un respaldo marcado **An
 
 ## Si cierras a mitad de camino
 
-Mientras exporta o importa, cerrar pregunta antes y dice qué trabajo está en curso. **Dejar en la bandeja** no lo interrumpe. **Cerrar la app** sí: lo que estaba a medias nunca queda con el nombre final, tus datos no cambian y las copias temporales se borran al volver a abrir.
+Mientras exporta o importa, cerrar pregunta antes y dice qué trabajo está en curso. **Dejar en la bandeja** no lo interrumpe. **Cerrar la app** sí: lo que estaba a medias nunca queda con el nombre final y tus datos no cambian. Al volver a abrir se borran las copias en claro de la carpeta `datos`. Si un corte deja un archivo `.boldo.tmp` junto al destino, va cifrado y lo puedes borrar a mano.
 
 Si te vas de la pantalla del código sin copiarlo, BoldoAtlas lo sigue mostrando en un aviso hasta que lo copies o decidas cerrarlo.
 

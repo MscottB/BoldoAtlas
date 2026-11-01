@@ -56,7 +56,7 @@ Before applying either one, BoldoAtlas makes a backup marked **Before replacing*
 
 ## If you close halfway
 
-While exporting or importing, closing asks first and says which task is in progress. **Keep in the tray** does not interrupt it. **Quit the app** does: what was half done never keeps the final name, your data does not change and the temporary copies are deleted when you open the app again.
+While exporting or importing, closing asks first and says which task is in progress. **Keep in the tray** does not interrupt it. **Quit the app** does: what was half done never keeps the final name and your data does not change. When you open the app again, the unencrypted copies in the `datos` folder are deleted. If a cut leaves a `.boldo.tmp` file next to the destination, it is encrypted and you can delete it by hand.
 
 If you leave the code screen without copying the code, BoldoAtlas keeps showing it in a notice until you copy it or decide to close it.
 
