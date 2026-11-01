@@ -276,7 +276,11 @@ async function eliminar() {
             </select>
             <p v-if="jefe" class="text-sm">{{ jefe }}</p>
             <p v-else class="text-sm text-amber-800 dark:text-amber-400">
-              {{ filas.length ? t("arbol.sinJefatura") : t("unidad.sinPuestosJefatura") }}
+              {{
+                filas.length
+                  ? t("arbol.sinJefatura")
+                  : t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura")
+              }}
             </p>
           </div>
 
