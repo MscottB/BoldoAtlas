@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, type Component } from "vue";
+import { computed, onMounted, ref, type Component } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -15,6 +15,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
@@ -29,7 +37,7 @@ const router = useRouter();
 const route = useRoute();
 const org = useOrganizacion();
 
-// Sin `fase`, el camino está disponible; con ella, se muestra deshabilitado con la fase en que llega.
+// Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
 interface Camino {
   id: "vacia" | "excel" | "boldo" | "ejemplo";
   icono: Component;
@@ -58,8 +66,20 @@ const ocupado = ref(false);
 const creando = ref(false);
 const nombreOrg = ref("");
 const nombreRaiz = ref("");
-async function elegir(c: Camino) {
+// El foco entra al primer campo (no al botón de cerrar) y, al cerrar, vuelve a la tarjeta que abrió el diálogo; si no hubo
+// clic (menú de la app, ?accion=vacia), a la tarjeta «vacía». No depende de dónde estuviera el foco antes.
+let origen: HTMLElement | null = null;
+function alAbrir(e: Event) {
+  e.preventDefault();
+  document.getElementById("bienvenida-org")?.focus();
+}
+function alCerrar(e: Event) {
+  e.preventDefault();
+  (origen?.isConnected ? origen : document.getElementById("bienvenida-camino-vacia"))?.focus();
+}
+async function elegir(c: Camino, desde: EventTarget | null = null) {
   if (c.fase) return;
+  origen = desde instanceof HTMLElement ? desde : null;
   if (c.id === "ejemplo") {
     if (!hayDatos.value) return entrar(await org.cargarEjemplo());
     reemplazo.value = "ejemplo";
@@ -67,10 +87,9 @@ async function elegir(c: Camino) {
     return;
   }
   creando.value = true;
-  await nextTick();
-  document.getElementById("bienvenida-org")?.focus();
 }
 async function crear() {
+  if (!nombreOrg.value.trim() || !nombreRaiz.value.trim() || org.guardando || ocupado.value) return;
   if (hayDatos.value) {
     reemplazo.value = "vacia";
     confirmando.value = true;
@@ -82,10 +101,13 @@ async function reemplazar() {
   ocupado.value = true;
   const datos =
     reemplazo.value === "vacia" ? { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value } : undefined;
-  await entrar(
-    await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
-  );
-  ocupado.value = false;
+  try {
+    await entrar(
+      await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
+    );
+  } finally {
+    ocupado.value = false;
+  }
 }
 
 // El menú de la app y la paleta llegan aquí con ?accion=vacia|ejemplo.
@@ -124,6 +146,7 @@ onMounted(() => {
     <ul class="grid gap-3 sm:grid-cols-2">
       <li v-for="c in caminos" :key="c.id">
         <button
+          :id="`bienvenida-camino-${c.id}`"
           type="button"
           :aria-disabled="c.fase ? 'true' : undefined"
           :disabled="!c.fase && (org.guardando || ocupado)"
@@ -132,7 +155,7 @@ onMounted(() => {
             c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent',
             c.id === 'vacia' && 'border-2 border-marca bg-card',
           ]"
-          @click="elegir(c)"
+          @click="elegir(c, $event.currentTarget)"
         >
           <span class="flex items-center gap-2 font-medium">
             <component
@@ -153,41 +176,44 @@ onMounted(() => {
       </li>
     </ul>
 
-    <p v-if="!MOSTRAR_PROXIMAMENTE" class="text-sm text-muted-foreground">
-      {{ t("bienvenida.proximamente") }}
-    </p>
-
-    <form
-      v-if="creando"
-      class="grid max-w-sm gap-3 rounded-lg border p-4"
-      @submit.prevent="crear"
-      @keydown.esc="creando = false"
-    >
-      <div class="grid gap-1.5">
-        <Label for="bienvenida-org">{{ t("bienvenida.organizacion") }}</Label>
-        <Input id="bienvenida-org" v-model="nombreOrg" autocomplete="off" />
-      </div>
-      <div class="grid gap-1.5">
-        <Label for="bienvenida-raiz">{{ t("bienvenida.raiz") }}</Label>
-        <Input
-          id="bienvenida-raiz"
-          v-model="nombreRaiz"
-          :placeholder="t('bienvenida.raizEjemplo')"
-          autocomplete="off"
-        />
-      </div>
-      <div class="flex justify-end gap-2">
-        <Button type="button" variant="outline" @click="creando = false">{{
-          t("bienvenida.cancelar")
-        }}</Button>
-        <Button type="submit" :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || org.guardando || ocupado">
-          {{ t("bienvenida.crear") }}
-        </Button>
-      </div>
-    </form>
+    <Dialog v-model:open="creando">
+      <DialogContent @open-auto-focus="alAbrir" @close-auto-focus="alCerrar">
+        <form class="grid gap-4" @submit.prevent="crear">
+          <DialogHeader>
+            <DialogTitle>{{ t("bienvenida.vacia.titulo") }}</DialogTitle>
+            <DialogDescription>{{ t("bienvenida.vacia.texto") }}</DialogDescription>
+          </DialogHeader>
+          <div class="grid gap-1.5">
+            <Label for="bienvenida-org">{{ t("bienvenida.organizacion") }}</Label>
+            <Input id="bienvenida-org" v-model="nombreOrg" autocomplete="off" />
+          </div>
+          <div class="grid gap-1.5">
+            <Label for="bienvenida-raiz">{{ t("bienvenida.raiz") }}</Label>
+            <Input
+              id="bienvenida-raiz"
+              v-model="nombreRaiz"
+              :placeholder="t('bienvenida.raizEjemplo')"
+              autocomplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="creando = false">{{
+              t("bienvenida.cancelar")
+            }}</Button>
+            <Button
+              type="submit"
+              :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || org.guardando || ocupado"
+            >
+              {{ t("bienvenida.crear") }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
 
     <AlertDialog v-model:open="confirmando">
-      <AlertDialogContent>
+      <!-- Con el formulario abierto, Cancelar devuelve el foco a él (no a la tarjeta). -->
+      <AlertDialogContent @close-auto-focus="creando || alCerrar($event)">
         <AlertDialogHeader>
           <AlertDialogTitle>{{ t(`bienvenida.reemplazarTitulo.${reemplazo}`) }}</AlertDialogTitle>
           <AlertDialogDescription>
