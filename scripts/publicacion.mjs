@@ -107,16 +107,29 @@ export function notasDeVersion(cuerpo, titulo) {
 
 /** @typedef {{ number: number, title?: string, body?: string | null, labels?: { name: string }[] }} PR */
 
+/** @param {PR} p */
+const esDependencias = (p) => /^build\(deps/.test((p.title ?? "").trim());
+const NOTA_DEPENDENCIAS = "- Actualización interna de dependencias, sin cambios visibles.";
+
 /**
  * Notas de un release con todos los PR fusionados desde la última etiqueta (del más antiguo al más
- * nuevo): con uno, sus notas tal cual; con varios, un `###` por PR con su título y número.
+ * nuevo): con uno, sus notas tal cual; con varios, un `###` por PR con su título y número. Los de
+ * Dependabot van juntos al final: sus títulos son técnicos y en inglés, y llegarían a las novedades de la app.
  * @param {PR[]} prs
  */
 export function notasCombinadas(prs) {
-  if (prs.length === 1) return notasDeVersion(prs[0].body, prs[0].title);
-  return prs
-    .map((p) => `### ${(p.title ?? "").trim()} (#${p.number})\n\n${seccionNotas(p.body)}`.trim())
-    .join("\n\n");
+  const deps = prs.filter(esDependencias);
+  const otros = prs.filter((p) => !esDependencias(p));
+  if (!otros.length && deps.length) return NOTA_DEPENDENCIAS;
+  if (otros.length === 1 && !deps.length) return notasDeVersion(otros[0].body, otros[0].title);
+  const secciones = otros.map((p) =>
+    `### ${(p.title ?? "").trim()} (#${p.number})\n\n${seccionNotas(p.body)}`.trim(),
+  );
+  if (deps.length)
+    secciones.push(
+      `### Mantenimiento (${deps.map((p) => `#${p.number}`).join(", ")})\n\n${NOTA_DEPENDENCIAS}`,
+    );
+  return secciones.join("\n\n");
 }
 
 /**

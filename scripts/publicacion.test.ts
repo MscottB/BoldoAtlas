@@ -169,6 +169,24 @@ describe("notasCombinadas", () => {
         "- Versión en Acerca de",
       ].join("\n"),
     ));
+  const deps = [
+    { number: 22, title: "build(deps): bump tauri from 2.12.4 to 2.12.5", body: "Bumps tauri" },
+    { number: 23, title: "build(deps-dev): bump vite from 8.0.1 to 8.0.2", body: "Bumps vite" },
+  ];
+  it("solo dependencias: la nota fija, sin títulos en inglés", () =>
+    expect(notasCombinadas(deps)).toBe("- Actualización interna de dependencias, sin cambios visibles."));
+  it("una función y dependencias: las dependencias van juntas al final", () =>
+    expect(notasCombinadas([deps[0], prs[0], deps[1]])).toBe(
+      [
+        "### Fase 2 (#2)",
+        "",
+        "- Núcleo",
+        "",
+        "### Mantenimiento (#22, #23)",
+        "",
+        "- Actualización interna de dependencias, sin cambios visibles.",
+      ].join("\n"),
+    ));
 });
 
 describe("publicacion", () => {
