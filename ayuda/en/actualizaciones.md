@@ -42,7 +42,7 @@ The first time you open a new version, **What's new in version X** appears, with
 
 Open the Windows installer from File Explorer (double-click it in Downloads), not from inside another app: opened from a packaged app, such as Claude Desktop, the install ends up incomplete. The installer reopens itself or asks you to move it to Downloads.
 
-On Windows, the installed version can start with the system: a checkbox on the installer's last page and in **Settings › Start with the system**. It opens minimized. It isn't offered in the portable, nor on Linux and macOS for now.
+On Windows, the installed version can start with the system: a checkbox on the installer's last page and in **Settings › Start with the system**. It opens minimized. It isn't offered in the portable, nor on Linux and macOS.
 
 ## Tray icon
 

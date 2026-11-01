@@ -42,7 +42,7 @@ La primera vez que abres una versión nueva aparece **Novedades de la versión X
 
 Abre el instalador de Windows desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación: abierto desde una aplicación empaquetada, como Claude Desktop, la instalación queda incompleta. El instalador se reabre solo o te pide moverlo a Descargas.
 
-En Windows, la versión instalada puede iniciarse con el sistema: casilla en la última página del instalador y en **Configuración › Inicio con el sistema**. Se abre minimizada. Por ahora no se ofrece en la portable, ni en Linux y macOS.
+En Windows, la versión instalada puede iniciarse con el sistema: casilla en la última página del instalador y en **Configuración › Inicio con el sistema**. Se abre minimizada. No se ofrece en la portable, ni en Linux y macOS.
 
 ## Icono en la bandeja
 
