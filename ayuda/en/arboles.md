@@ -1,5 +1,9 @@
 # Trees
 
+::: info In short
+Trees gathers your org charts and the branches you saved so you can open them quickly, without going through the whole tree.
+:::
+
 The **Trees** section gathers your trees and the branches you saved so you can open them quickly.
 
 ## Trees
@@ -12,7 +16,14 @@ Each tree is a root unit (one with no parent). Its block shows the name, the typ
 
 A branch of a tree can be saved so you can open it as a tree of its own, while it stays attached to the unit it comes from. It appears under the block of the tree it belongs to, with its path of origin.
 
-To save a branch, select it on the canvas (or open a branch as a tree) and choose **Save in Trees** in **More**, in the canvas bar (it is also in the card's context menu and in the unit panel). If it is already saved, it says **Saved**. A root does not need saving: it already is a tree.
+To save a branch:
+
+1. Select the branch on the canvas (or open a branch as a tree).
+2. Choose **Save in Trees** under **More**, in the canvas bar (it is also in the card's context menu and in the unit panel).
+
+If it is already saved, it says **Saved**. A root does not need saving: it already is a tree.
+
+![Trees list with the General Management tree and, below it, the saved subtree Operations.](../img/en/arboles-lista.webp "The Trees section. 1: create a new tree. 2: open the tree on the canvas. Below, a saved subtree with its buttons."){width=872 height=230}
 
 On each subtree you can:
 
@@ -22,3 +33,5 @@ On each subtree you can:
 - **Remove from Trees**: this only removes the shortcut; the unit and everything under it stay in the tree.
 
 If you delete a saved unit, its subtree stops showing; it comes back if you restore the unit with **Undo**.
+
+**See also:** [The tree](arbol.md).

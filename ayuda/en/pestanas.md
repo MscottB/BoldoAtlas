@@ -1,5 +1,9 @@
 # Work tabs
 
+::: info In short
+Tabs let you keep several parts of the project open at once and switch between them without losing your place.
+:::
+
 Tabs let you keep different parts of the same project open at once: the full tree, a subtree, the directory with a filter, a person… and switch between them without losing your place.
 
 ## Opening a tab
@@ -10,6 +14,12 @@ Tabs let you keep different parts of the same project open at once: the full tre
 - `Ctrl` + click or middle click on a side menu entry, or on a person in the Directory, also opens it in a new tab. A person opens as the Directory showing only their rows: remove the “Person: …” filter with its ×.
 
 With a single tab the bar is hidden; it appears above the central area as soon as you open a second one. You can have up to 12 tabs open.
+
+![Tab bar with three open tabs and the button to open another one.](../img/en/pestanas-barra.webp "The tab bar. 1: a tab. 2: its button to close it. 3: open a new tab."){width=560 height=84}
+
+::: tip Tip
+Keep one tab with the whole tree and another with the filtered Directory: that way you compare without losing your place in either.
+:::
 
 ## What each tab remembers
 
@@ -29,3 +39,5 @@ Only the active tab is loaded: having several open does not slow down the canvas
 - With the focus on the bar, `←` `→` move between tabs and `Enter` opens the focused one.
 
 Tabs are remembered on this computer, separately for each project. When you open the program again they will be as you left them; tabs for units or people that no longer exist close on their own.
+
+**See also:** [Keyboard shortcuts](atajos.md) · [Directory](directorio.md).

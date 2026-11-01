@@ -2,7 +2,8 @@ name: pages
 
 # Construye el sitio (site/, VitePress) y lo publica en GitHub Pages: https://mscottb.github.io/BoldoAtlas/
 # - push a main con cambios en el sitio, en el manual (ayuda/, que el sitio publica sin duplicarlo) o en las
-#   capturas que usa (docs/capturas/): construye y publica;
+#   capturas que usa (docs/capturas/) o en las reglas de markdown que comparte con la app
+#   (src/lib/markdownAyuda.ts): construye y publica;
 # - pull_request con los mismos cambios: solo construye (npm run build falla con enlaces muertos o errores de
 #   plantilla), no sube el artefacto ni despliega;
 # - a mano (workflow_dispatch).
@@ -16,9 +17,9 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "ayuda/**", "docs/capturas/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "ayuda/**", "docs/capturas/**", "src/lib/markdownAyuda.ts", ".github/workflows/pages.yml"]
   pull_request:
-    paths: ["site/**", "ayuda/**", "docs/capturas/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "ayuda/**", "docs/capturas/**", "src/lib/markdownAyuda.ts", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

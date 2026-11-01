@@ -1,5 +1,9 @@
 # Backups
 
+::: info In short
+BoldoAtlas copies your data by itself, in case something goes wrong. Here you see where the backups are kept, how to make one by hand and how to restore it.
+:::
+
 BoldoAtlas keeps copies of your data in the **respaldos** (backups) folder, inside the data folder:
 
 - **Portable:** `datos/respaldos/`, next to the program.
@@ -20,11 +24,21 @@ In **Settings › Backups** you see the date of the **last backup** next to **Ba
 - **Back up now** makes a backup right away.
 - **Open folder** opens the backups folder in File Explorer, for example to copy them to a USB drive.
 
+![Settings, Backups section: last backup, Back up now, Open folder and the backup list with its Restore button.](../img/en/respaldos-lista.webp "Settings › Backups (sample list). 1: Back up now. 2: Open folder. 3: Restore."){width=760 height=440}
+
+::: tip Tip
+To take a copy elsewhere, press **Open folder** and copy the `.db` file you want, for example to a USB drive.
+:::
+
 ## Before replacing your data
 
 When you choose **New empty organization** or **Explore the example** with data loaded, BoldoAtlas first makes a backup marked **Before replacing**. Like the one made before restoring, it is never deleted automatically: if you change your mind, restore it from this list. If the backup fails, nothing is replaced.
 
 ## Restore
+
+::: warning Important
+Restoring replaces your current data with the backup's and restarts the app.
+:::
 
 1. Under **View and restore backups**, press **Restore** on the row of the backup you want to recover.
 2. Confirm with **Restore and restart**.
@@ -34,3 +48,5 @@ Before replacing anything, BoldoAtlas backs up your current data: it appears in 
 - A backup made with an older version of BoldoAtlas is updated when restored. One made with a **newer** version cannot be restored until you update BoldoAtlas.
 - If another BoldoAtlas window is open with the same data, close it first.
 - If anything fails, your current data stays as it was.
+
+**See also:** [Getting started](inicio.md) · [Updates](actualizaciones.md).

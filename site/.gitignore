@@ -3,4 +3,5 @@ node_modules
 .vitepress/dist
 # copiados por scripts/sync.mjs desde ayuda/ y docs/capturas/ (fuente única)
 manual/
+img/
 public/capturas/

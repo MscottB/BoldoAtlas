@@ -1,5 +1,9 @@
 # Árboles
 
+::: info En resumen
+Árboles reúne tus organigramas y las ramas que guardaste para abrirlas rápido, sin recorrer todo el árbol.
+:::
+
 La sección **Árboles** reúne tus árboles y las ramas que guardaste para abrirlas rápido.
 
 ## Árboles
@@ -12,7 +16,14 @@ Cada árbol es una unidad raíz (la que no tiene superior). Su bloque muestra el
 
 Una rama del árbol se puede guardar para abrirla como si fuera un árbol propio, sin dejar de colgar de la unidad de la que viene. Aparece bajo el bloque del árbol al que pertenece, con su ruta de origen.
 
-Para guardar una rama, selecciónala en el lienzo (o abre una rama como árbol) y elige **Guardar en Árboles** en **Más**, en la barra del lienzo (también está en el menú contextual de la tarjeta y en el panel de la unidad). Si ya está guardada, dice **Guardado**. Una raíz no necesita guardarse: ya es un árbol.
+Para guardar una rama:
+
+1. Selecciona la rama en el lienzo (o abre una rama como árbol).
+2. Elige **Guardar en Árboles** en **Más**, en la barra del lienzo (también está en el menú contextual de la tarjeta y en el panel de la unidad).
+
+Si ya está guardada, dice **Guardado**. Una raíz no necesita guardarse: ya es un árbol.
+
+![Lista de Árboles con el árbol Gerencia General y, debajo, el subárbol guardado Operaciones.](../img/es/arboles-lista.webp "La sección Árboles. 1: crear un árbol nuevo. 2: abrir el árbol en el lienzo. Debajo, un subárbol guardado con sus botones."){width=872 height=230}
 
 En cada subárbol puedes:
 
@@ -22,3 +33,5 @@ En cada subárbol puedes:
 - **Quitar de Árboles**: solo quita el acceso directo; la unidad y todo lo que cuelga de ella siguen en el árbol.
 
 Si eliminas una unidad guardada, su subárbol deja de aparecer; reaparece si la restauras con **Deshacer**.
+
+**Ver también:** [El árbol](arbol.md).

@@ -1,5 +1,6 @@
 // Copia al sitio lo que vive en otro lugar del repo, para no duplicarlo en git:
 //  - ayuda/<es|en>/*.md (el manual que también lee la app) → manual/ y en/manual/
+//  - ayuda/img/<es|en>/*.webp (sus capturas; el markdown las cita como ../img/<idioma>/x.webp) → img/ y en/img/
 //  - capturas de docs/capturas/sitio → public/capturas/
 import { cpSync, existsSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -13,11 +14,19 @@ const lista = (i) => readdirSync(join(repo, "ayuda", i)).filter((f) => f.endsWit
 if (lista("es") !== lista("en")) throw new Error("ayuda/es y ayuda/en no tienen las mismas páginas");
 
 const manual = { es: "manual", en: "en/manual" };
+const imagenes = { es: "img", en: "en/img" };
 for (const [idioma, destino] of Object.entries(manual)) {
   const origen = join(repo, "ayuda", idioma);
   if (!existsSync(origen) || readdirSync(origen).length === 0) throw new Error(`falta ${origen}`);
   rmSync(join(sitio, destino), { recursive: true, force: true });
   cpSync(origen, join(sitio, destino), { recursive: true });
+
+  // las capturas de ese idioma: <sitio>/img/<idioma>/ (o en/img/<idioma>/), que es donde las busca ../img/<idioma>/x.webp
+  const imgOrigen = join(repo, "ayuda", "img", idioma);
+  const imgDestino = join(sitio, imagenes[idioma], idioma);
+  rmSync(join(sitio, imagenes[idioma]), { recursive: true, force: true });
+  if (!existsSync(imgOrigen)) throw new Error(`faltan las imágenes de la ayuda en ${imgOrigen}`);
+  cpSync(imgOrigen, imgDestino, { recursive: true });
 }
 
 // capturas de la portada (WebP ya recortadas y comprimidas) → public/capturas/
