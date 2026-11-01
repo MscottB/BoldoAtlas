@@ -23,7 +23,9 @@ jobs:
         runner: [windows-latest, ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no hace push: el token no queda en el disco del runner
       # Cachés de Rust: una por perfil Cargo (boldo-debug, boldo-prueba, boldo-release) y por SO, compartidas
       # por todos los workflows y guardadas solo desde main (ver .github/actions/preparar-rust).
       - uses: ./.github/actions/preparar-rust
