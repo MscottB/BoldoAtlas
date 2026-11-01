@@ -62,7 +62,7 @@ Procesos (SIPOC) y actividades (matriz RACI), indicadores, escenarios, exportar 
 
 ## Por qué local
 
-Un organigrama tiene nombres, correos y cargos de personas reales. BoldoAtlas guarda todo en tu computador y no necesita internet para funcionar: no hay cuentas que crear, nada que contratar y nada que se pierda si cae un servicio. Si quieres llevarlo a otro equipo, la versión portable cabe en un pendrive. Más adelante podrá buscar actualizaciones, y será opcional.
+Un organigrama tiene nombres, correos y cargos de personas reales. BoldoAtlas guarda todo en tu computador y no necesita internet para funcionar: no hay cuentas que crear, nada que contratar y nada que se pierda si cae un servicio. Si quieres llevarlo a otro equipo, la versión portable cabe en un pendrive. Busca versiones nuevas cada día y te avisa, sin enviar datos y sin instalar nada sin preguntarte; se puede apagar.
 
 ## Licencia
 

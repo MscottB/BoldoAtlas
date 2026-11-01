@@ -18,4 +18,4 @@ BoldoAtlas es una app de escritorio local y portable para armar organigramas gra
 
 ## Privacidad
 
-Todo se guarda en tu computador. BoldoAtlas no necesita internet para funcionar y no tiene cuentas; más adelante podrá buscar actualizaciones, de forma opcional. Este sitio tampoco usa cookies ni análisis; la página de [Descargas](/descargas) consulta a GitHub el número de la última versión.
+Todo se guarda en tu computador. BoldoAtlas no necesita internet para funcionar y no tiene cuentas. Lo único que hace por su cuenta es buscar versiones nuevas (cada día; se cambia o se apaga en Configuración › Actualizaciones): lee la lista pública de versiones en GitHub, no envía datos y nunca instala sin preguntar. Este sitio tampoco usa cookies ni análisis; la página de [Descargas](/descargas) consulta a GitHub el número de la última versión.

@@ -5,7 +5,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { obtenerVersion, verificarEtiqueta } from "./version.mjs";
 
@@ -29,6 +29,7 @@ export function artefactos(sistema, n) {
         zip: "BoldoAtlas_windows_x64_portable.zip",
         programa: { origen: "boldo-atlas.exe", nombre: "BoldoAtlas.exe" },
         instaladores: { "BoldoAtlas_windows_x64_setup.exe": `bundle/nsis/BoldoAtlas_${n}_x64-setup.exe` },
+        comprimidos: {},
         bundles: ["nsis"],
         bundlesPortable: [], // el exe no necesita empaquetarse
         objetivo: "",
@@ -43,6 +44,7 @@ export function artefactos(sistema, n) {
           "BoldoAtlas_linux_x64.deb": `bundle/deb/BoldoAtlas_${n}_amd64.deb`,
           "BoldoAtlas_linux_x64.rpm": `bundle/rpm/BoldoAtlas-${n}-1.x86_64.rpm`,
         },
+        comprimidos: {},
         bundles: ["appimage", "deb", "rpm"],
         bundlesPortable: ["appimage"],
         objetivo: "",
@@ -53,6 +55,8 @@ export function artefactos(sistema, n) {
         zip: "BoldoAtlas_macos_universal_portable.zip",
         programa: { origen: "bundle/macos/BoldoAtlas.app", nombre: "BoldoAtlas.app" },
         instaladores: { "BoldoAtlas_macos_universal.dmg": `bundle/dmg/BoldoAtlas_${n}_universal.dmg` },
+        // lo que descarga el actualizador de macOS: el .app en un tar.gz (instalado y portable)
+        comprimidos: { "BoldoAtlas_macos_universal.app.tar.gz": "bundle/macos/BoldoAtlas.app" },
         bundles: ["app", "dmg"],
         bundlesPortable: ["app"],
         objetivo: "universal-apple-darwin", // x64 + arm64 en un solo binario
@@ -61,6 +65,19 @@ export function artefactos(sistema, n) {
       throw new Error(`Sistema no soportado: ${sistema}`);
   }
 }
+
+/**
+ * Paquete que descarga el actualizador en cada objetivo de latest.json (spec §12). `windows-x86_64-portable` es
+ * propio de BoldoAtlas: la portable de Windows se reemplaza a sí misma con el zip (ver src-tauri/src/actualizar.rs).
+ * La portable de Linux y la de macOS usan el mismo AppImage y el mismo .app que la instalada.
+ */
+export const ACTUALIZABLES = {
+  "windows-x86_64": "BoldoAtlas_windows_x64_setup.exe",
+  "windows-x86_64-portable": "BoldoAtlas_windows_x64_portable.zip",
+  "linux-x86_64": "BoldoAtlas_linux_x64.AppImage",
+  "darwin-x86_64": "BoldoAtlas_macos_universal.app.tar.gz",
+  "darwin-aarch64": "BoldoAtlas_macos_universal.app.tar.gz",
+};
 
 // el tar de Windows (bsdtar) crea zip con -a; el tar de Git Bash no, por eso la ruta explícita
 export const TAR = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
@@ -117,9 +134,16 @@ export function empaquetar({ sistema, version, dir, salida, soloPortable = false
   writeFileSync(join(portable, "datos", ".keep"), "");
   comprimir(resolve(salida, a.zip), portable, [a.programa.nombre, "portable.flag", "datos"]);
   rmSync(portable, { recursive: true });
-  if (!soloPortable)
+  if (!soloPortable) {
     for (const [nombre, origen] of Object.entries(a.instaladores))
       cpSync(join(dir, origen), join(salida, nombre));
+    for (const [nombre, origen] of Object.entries(a.comprimidos)) {
+      const tar = process.platform === "win32" ? TAR : "tar";
+      const args = ["-c", "-z", "-f", resolve(salida, nombre), "-C", join(dir, dirname(origen)), basename(origen)];
+      // sin los ._* de los atributos extendidos de macOS: dentro del .app romperían su firma
+      execFileSync(tar, args, { env: { ...process.env, COPYFILE_DISABLE: "1" } });
+    }
+  }
   escribirSumas(salida);
 }
 

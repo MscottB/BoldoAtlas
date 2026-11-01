@@ -63,6 +63,17 @@ Requisitos: en Windows, WebView2 (ya viene en Windows 11 y en casi todo Windows 
 
 En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos. En macOS, las preferencias de la ventana (tema, escala, pestañas) y sus cachés web las guarda el sistema en tu carpeta `~/Library` (`WebKit`, `Caches`); los datos y los respaldos sí quedan en `datos/`.
 
+### Actualizar
+
+BoldoAtlas busca versiones nuevas cada día (en la portable y en el instalado) y avisa en la barra superior; también con **Buscar actualizaciones** en Acerca de, en el menú de la app o con Ctrl+K. La ventana de actualización muestra las notas de todas las versiones que te saltaste y nunca instala sin confirmar. Cada paquete va firmado y se rechaza si la firma no calza.
+
+- **Portable de Windows:** reemplaza `BoldoAtlas.exe` dentro de su carpeta (el anterior queda como `BoldoAtlas.old.exe` hasta el siguiente arranque) y se reinicia; `datos/` no se toca y nada se escribe fuera de la carpeta. Un solo rastro queda fuera, y no lo escribe BoldoAtlas: Windows anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja.
+- **Portable de Linux y macOS:** reemplaza el AppImage o el `.app` en su carpeta; los temporales van en `datos/`.
+- **Instalado:** Windows corre el instalador nuevo, macOS reemplaza el `.app` y el AppImage se reemplaza a sí mismo.
+- **`.deb` y `.rpm`:** los actualiza el sistema; BoldoAtlas solo ofrece descargar el paquete nuevo.
+
+A mano siempre se puede: descarga el zip nuevo y reemplaza el programa; `datos/` no se toca. Las notas de versión se escriben en español (también se muestran así con la interfaz en inglés).
+
 ### Abrir un programa sin firma digital
 
 BoldoAtlas aún no está firmado digitalmente, así que la primera vez el sistema avisa:
@@ -73,7 +84,7 @@ BoldoAtlas aún no está firmado digitalmente, así que la primera vez el sistem
 
 ## Privacidad
 
-Todo se guarda en tu computador. BoldoAtlas no se conecta a internet ni usa cuentas. Los archivos que compartas con otras personas (`.boldo`) irán cifrados y solo se abrirán con el código generado para cada archivo.
+Todo se guarda en tu computador y BoldoAtlas no usa cuentas. Su única conexión automática es la búsqueda de versiones nuevas (cada día por defecto; se cambia o se apaga en **Configuración › Actualizaciones**): lee la lista pública de releases de GitHub y el `latest.json` y `novedades.json` de la versión nueva, sin enviar datos de tu organización ni identificadores, y nunca instala sin preguntar. Los archivos que compartas con otras personas (`.boldo`) irán cifrados y solo se abrirán con el código generado para cada archivo.
 
 ## Compilar
 

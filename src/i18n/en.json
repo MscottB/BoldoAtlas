@@ -811,7 +811,8 @@
     "excel": "Import Excel",
     "respaldos": "Backups",
     "configuracion": "Settings",
-    "datos": "Project data"
+    "datos": "Project data",
+    "actualizar": "Check for updates"
   },
   "proyecto": {
     "titulo": "Project data",
@@ -824,5 +825,71 @@
     "copiada": "Path copied.",
     "errorCopiar": "The path could not be copied: {detalle}",
     "abrirCarpeta": "Open folder"
+  },
+  "actualizar": {
+    "buscar": "Check for updates",
+    "buscando": "Checking…",
+    "alDia": "You have the latest version.",
+    "disponible": "Version {version} available",
+    "titulo": "Update available",
+    "versiones": "You have version {actual}; the new one is {nueva}.",
+    "queTrae": "What the new version brings",
+    "sinNotas": "This version has no notes here; you can read them on GitHub.",
+    "modo": {
+      "instalador": "The update will be downloaded and installed, and BoldoAtlas will restart.",
+      "portable": "BoldoAtlas will be replaced in this folder and restart; your data in datos/ is not touched.",
+      "paquete": "This copy was installed by the system (.deb or .rpm): download the new package and install it with your package manager."
+    },
+    "instalar": "Download and install",
+    "descargarPaquete": "Download the package",
+    "despues": "Later",
+    "cancelar": "Cancel download",
+    "verEnGithub": "View on GitHub",
+    "descargando": "Update download",
+    "progreso": "Downloaded {descargado} of {total}",
+    "progresoSinTotal": "Downloaded {descargado}",
+    "error": {
+      "red": "Could not check: check your connection.",
+      "limite": "GitHub is limiting requests for a while; try again later.",
+      "respuesta": "GitHub sent an unexpected answer ({detalle}); try again later.",
+      "manifiesto": "The published version has no valid package for this system; try again later. ({detalle})",
+      "firma": "The download has no valid signature and was discarded; your current version is unchanged.",
+      "cancelada": "Download cancelled; your current version is unchanged.",
+      "pendiente": "The update is no longer available; check again.",
+      "paquete": "The downloaded package is not valid and was discarded; your current version is unchanged. ({detalle})",
+      "reemplazo": "Could not replace the program; your current version is unchanged. ({detalle})",
+      "restaurar": "Could not replace the program or put the previous one back. The previous version is at {detalle}: rename it to BoldoAtlas.exe.",
+      "instalar": "Could not install the update; your current version is unchanged. ({detalle})",
+      "version": "Could not read the installed version ({detalle}).",
+      "interno": "Internal updater error ({detalle}).",
+      "desconocido": "Could not complete: {detalle}"
+    }
+  },
+  "actualizaciones": {
+    "titulo": "Updates",
+    "ayuda": "BoldoAtlas looks for new versions by reading the public list of releases on GitHub: it is the only connection it makes on its own. It sends no organization data or identifiers, and never installs without asking you.",
+    "frecuencia": {
+      "etiqueta": "Check automatically",
+      "nunca": "Never",
+      "abrir": "When opening",
+      "diaria": "Every day",
+      "semanal": "Every week"
+    }
+  },
+  "novedades": {
+    "ver": "What's new",
+    "titulo": "What's new in version {version}",
+    "descripcion": "What changed since the last version you used on this PC.",
+    "version": "Version {version}",
+    "sinNotas": "No notes for this version.",
+    "vacio": "This copy has no release notes (it is a development or test build).",
+    "enEspanol": "Release notes are written in Spanish.",
+    "historial": "The notes of every version published up to this one."
+  },
+  "bandeja": {
+    "abrir": "Open BoldoAtlas",
+    "actualizarA": "Update to v{version}",
+    "carpeta": "Open data folder",
+    "salir": "Quit"
   }
 }

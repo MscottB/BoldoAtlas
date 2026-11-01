@@ -811,7 +811,8 @@
     "excel": "Importar Excel",
     "respaldos": "Respaldos",
     "configuracion": "Configuración",
-    "datos": "Datos del proyecto"
+    "datos": "Datos del proyecto",
+    "actualizar": "Buscar actualizaciones"
   },
   "proyecto": {
     "titulo": "Datos del proyecto",
@@ -824,5 +825,71 @@
     "copiada": "Ruta copiada.",
     "errorCopiar": "No se pudo copiar la ruta: {detalle}",
     "abrirCarpeta": "Abrir carpeta"
+  },
+  "actualizar": {
+    "buscar": "Buscar actualizaciones",
+    "buscando": "Buscando…",
+    "alDia": "Ya tienes la última versión.",
+    "disponible": "Versión {version} disponible",
+    "titulo": "Actualización disponible",
+    "versiones": "Tienes la versión {actual}; la nueva es la {nueva}.",
+    "queTrae": "Qué trae la versión nueva",
+    "sinNotas": "Esta versión no trae notas aquí; puedes verlas en GitHub.",
+    "modo": {
+      "instalador": "Se descargará la actualización, se instalará y BoldoAtlas se reiniciará.",
+      "portable": "Se reemplazará BoldoAtlas en esta carpeta y se reiniciará; tus datos en datos/ no se tocan.",
+      "paquete": "Esta copia la instaló el sistema (.deb o .rpm): descarga el paquete nuevo e instálalo con tu gestor de paquetes."
+    },
+    "instalar": "Descargar e instalar",
+    "descargarPaquete": "Descargar el paquete",
+    "despues": "Más tarde",
+    "cancelar": "Cancelar descarga",
+    "verEnGithub": "Ver en GitHub",
+    "descargando": "Descarga de la actualización",
+    "progreso": "Descargado {descargado} de {total}",
+    "progresoSinTotal": "Descargado {descargado}",
+    "error": {
+      "red": "No se pudo consultar: revisa tu conexión.",
+      "limite": "GitHub limitó las consultas por un rato; intenta más tarde.",
+      "respuesta": "GitHub respondió algo inesperado ({detalle}); intenta más tarde.",
+      "manifiesto": "La versión publicada no trae un paquete válido para este sistema; intenta más tarde. ({detalle})",
+      "firma": "La descarga no tiene una firma válida y se descartó; tu versión actual sigue igual.",
+      "cancelada": "Descarga cancelada; tu versión actual sigue igual.",
+      "pendiente": "La actualización ya no está disponible; búscala de nuevo.",
+      "paquete": "El paquete descargado no es válido y se descartó; tu versión actual sigue igual. ({detalle})",
+      "reemplazo": "No se pudo reemplazar el programa; tu versión actual sigue igual. ({detalle})",
+      "restaurar": "No se pudo reemplazar el programa ni dejar el anterior en su lugar. La versión anterior quedó en {detalle}: cámbiale el nombre a BoldoAtlas.exe.",
+      "instalar": "No se pudo instalar la actualización; tu versión actual sigue igual. ({detalle})",
+      "version": "No se pudo leer la versión instalada ({detalle}).",
+      "interno": "Error interno del actualizador ({detalle}).",
+      "desconocido": "No se pudo completar: {detalle}"
+    }
+  },
+  "actualizaciones": {
+    "titulo": "Actualizaciones",
+    "ayuda": "BoldoAtlas busca versiones nuevas leyendo la lista pública de versiones en GitHub: es la única conexión que hace por su cuenta. No envía datos de tu organización ni identificadores, y nunca instala sin preguntarte.",
+    "frecuencia": {
+      "etiqueta": "Buscar automáticamente",
+      "nunca": "Nunca",
+      "abrir": "Al abrir",
+      "diaria": "Cada día",
+      "semanal": "Cada semana"
+    }
+  },
+  "novedades": {
+    "ver": "Novedades",
+    "titulo": "Novedades de la versión {version}",
+    "descripcion": "Lo nuevo desde la última versión que usaste en este PC.",
+    "version": "Versión {version}",
+    "sinNotas": "Sin notas para esta versión.",
+    "vacio": "Esta copia no trae notas de versión (es una versión de desarrollo o de prueba).",
+    "enEspanol": "Las notas de versión están en español.",
+    "historial": "Las notas de todas las versiones publicadas hasta esta."
+  },
+  "bandeja": {
+    "abrir": "Abrir BoldoAtlas",
+    "actualizarA": "Actualizar a v{version}",
+    "carpeta": "Abrir carpeta de datos",
+    "salir": "Salir"
   }
 }

@@ -394,8 +394,12 @@ mod tests {
                 let ruta = ruta.clone();
                 std::thread::spawn(move || {
                     let mut c = abrir(&ruta).unwrap();
+                    // NORMAL (seguro con WAL) evita un fsync por lote: en el runner lento de Windows el otro hilo
+                    // esperaba más de 5 s el bloqueo. La pausa deja que el otro hilo tome su turno.
+                    c.pragma_update(None, "synchronous", "NORMAL").unwrap();
                     for i in 0..50 {
                         lote(&mut c, &[insertar_unidad(&format!("U{i}"))], "1.0.0").unwrap();
+                        std::thread::sleep(std::time::Duration::from_millis(1));
                     }
                 })
             })

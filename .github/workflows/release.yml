@@ -7,6 +7,9 @@ name: release
 #   camino, por eso publicar.yml lo llama como workflow reutilizable.
 # Los checks del frontend corren una vez antes de compilar; cargo test corre en los tres SO en paralelo a los
 # builds. No se publica nada si algún job falla.
+# Actualizador (spec §12): novedades.json sale de las notas de los releases y viaja dentro de la app y en el
+# release; el job que publica firma los paquetes del actualizador con la clave del autor (solo ahí se usan los
+# secretos) y arma latest.json. Sin clave, o con una firma que no verifica, el release falla.
 on:
   push:
     tags: ["v*"]
@@ -23,6 +26,11 @@ on:
         type: boolean
         required: false
         default: true
+    secrets:
+      TAURI_SIGNING_PRIVATE_KEY:
+        required: true
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+        required: false
 
 permissions:
   contents: read
@@ -43,6 +51,18 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+      # notas de todas las versiones publicadas más las de esta; las usan los builds y el release
+      - name: Novedades
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTAS: ${{ inputs.notes }}
+        run: node scripts/novedades.mjs --etiqueta "$ETIQUETA" --salida novedades.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: novedades-${{ env.ETIQUETA }}
+          path: novedades.json
+          retention-days: 7
+          if-no-files-found: error
 
   pruebas-rust:
     strategy:
@@ -93,12 +113,17 @@ jobs:
           path: ${{ matrix.herramientas }}
           key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: tauri-herramientas-${{ runner.os }}-
+      - uses: actions/download-artifact@v4
+        with:
+          name: novedades-${{ env.ETIQUETA }}
+          path: src-tauri/target
       # mismo comando que `npm run release` en local; falla si la versión no coincide con la etiqueta.
       # Desde publicar.yml la etiqueta aún no existe: BOLDO_VERSION impone la versión.
       - run: node scripts/release.mjs --etiqueta "$ETIQUETA"
         shell: bash
         env:
           BOLDO_VERSION: ${{ inputs.tag }}
+          BOLDO_NOVEDADES: ${{ github.workspace }}/src-tauri/target/novedades.json # el diálogo «Novedades»
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ env.ETIQUETA }}-${{ matrix.sistema }}
@@ -115,14 +140,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # etiquetas, para ver si este commit ya está publicado
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
+      # node_modules: la CLI de Tauri firma los paquetes del actualizador
+      - uses: ./.github/actions/preparar-node
       # un artefacto por sistema, cada uno en su subcarpeta (salida/release-<etiqueta>-<sistema>/<versión>/)
       - uses: actions/download-artifact@v4
         with:
           pattern: release-${{ env.ETIQUETA }}-*
           path: salida
+      - uses: actions/download-artifact@v4
+        with:
+          name: novedades-${{ env.ETIQUETA }}
+          path: salida
+      # Firma cada paquete del actualizador, verifica cada firma contra la clave pública de tauri.conf.json y
+      # escribe salida/latest.json. Falla (y no se publica nada) si falta la clave o una firma no verifica.
+      - name: Firmar el actualizador (latest.json)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: node scripts/manifiesto.mjs salida "$ETIQUETA" && cat salida/latest.json
       # un solo SHA256SUMS.txt con los archivos de los tres sistemas; falla si dos se llaman igual
       - run: node scripts/release.mjs --sumas salida && cat salida/SHA256SUMS.txt
       # Solo desde publicar.yml. Nunca publica código viejo con una etiqueta existente o más nueva

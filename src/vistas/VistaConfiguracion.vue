@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
 import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
+import SeccionActualizaciones from "@/features/actualizaciones/SeccionActualizaciones.vue";
 import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
@@ -189,5 +190,7 @@ const quitarLogo = async () => {
     </section>
 
     <SeccionRespaldos />
+
+    <SeccionActualizaciones />
   </section>
 </template>

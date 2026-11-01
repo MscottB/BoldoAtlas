@@ -159,6 +159,9 @@
 .ayuda h2 { @apply mb-2 mt-6 text-lg font-semibold; }
 .ayuda p { @apply my-3 text-sm leading-relaxed; }
 .ayuda ul { @apply my-3 list-disc space-y-1 pl-5 text-sm leading-relaxed; }
+.ayuda h4 { @apply mb-1 mt-3 text-sm font-medium; }
+.ayuda blockquote { @apply my-3 border-l-2 pl-3 text-sm text-muted-foreground; }
+.novedades > :first-child { @apply mt-1; }
 .ayuda code, .ayuda kbd { @apply rounded bg-muted px-1 py-0.5 font-mono text-xs; }
 .ayuda table { @apply my-4 w-full border-collapse text-sm; }
 .ayuda th, .ayuda td { @apply border-b px-2 py-1.5 text-left align-top; }
