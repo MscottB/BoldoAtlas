@@ -165,7 +165,7 @@ pub fn info_app(estado: State<Estado>) -> InfoApp {
 }
 
 // En `spawn_blocking`: ni el hilo principal ni los trabajadores de tokio quedan esperando la conexión mientras un respaldo
-// o una importación la tienen. El orden lo guarda la cola de src/db/cola.ts.
+// o una importación la tienen. El orden de los lotes lo guarda `colaLotes` en src/db/cliente.ts.
 #[tauri::command]
 pub async fn db_consultar(
     app: AppHandle,
