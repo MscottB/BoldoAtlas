@@ -34,7 +34,9 @@ export async function crearBandeja(router: Router): Promise<void> {
   // en el idioma de la interfaz; la entrada del actualizador cambia si hay versión nueva
   const textos = () => ({
     abrir: t("bandeja.abrir"),
-    actualizar: a.disponible ? t("bandeja.actualizarA", { version: a.disponible.version }) : t("actualizar.buscar"),
+    actualizar: a.disponible
+      ? t("bandeja.actualizarA", { version: a.disponible.version })
+      : t("actualizar.buscar"),
     respaldar: t("respaldos.ahora"),
     carpeta: t("bandeja.carpeta"),
     ayuda: t("nav.ayuda"),
@@ -62,7 +64,11 @@ export async function crearBandeja(router: Router): Promise<void> {
       text: x.carpeta,
       action: () => abrirCarpetaDatos().catch((e: unknown) => toast.error(mensajeFallo(e))),
     });
-    const ayuda = await MenuItem.new({ id: "ayuda", text: x.ayuda, action: tras(() => router.push("/ayuda")) });
+    const ayuda = await MenuItem.new({
+      id: "ayuda",
+      text: x.ayuda,
+      action: tras(() => router.push("/ayuda")),
+    });
     const salir = await MenuItem.new({ id: "salir", text: x.salir, action: () => void ventana.close() });
     const menu = await Menu.new({
       items: [
