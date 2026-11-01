@@ -13,7 +13,7 @@ Each backup is a file `boldo-YYYYMMDD-HHMM.db` with the date and time it was mad
 
 ## Automatic backup
 
-When the app opens, if the last backup is more than 24 hours old, a new one is made in the background: you can keep working meanwhile. In **Settings › Backups › View and restore backups** you choose how often: **Never**, **Every time** it opens, **Every 24 hours** (the default) or **Every 7 days**. The choice applies to this computer only.
+When the app opens and while it stays open, also in the tray, if the last backup is more than 24 hours old a new one is made in the background: you can keep working meanwhile. In **Settings › Backups › View and restore backups** you choose how often: **Never**, **Every time** it opens (only when opening), **Every 24 hours** (the default) or **Every 7 days**. The choice applies to this computer only.
 
 The **10 most recent backups** are kept; making a new one deletes the oldest. Other files in the folder are not touched. If an automatic backup fails, a notice appears.
 

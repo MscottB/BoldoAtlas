@@ -94,6 +94,13 @@ describe("al pedir cerrar la ventana", () => {
     expect(llamadas()).toEqual(["ocultar_en_bandeja"]);
   });
 
+  it("con «Dejar en la bandeja» y la interfaz en blanco sale, sin ocultar una ventana muerta", async () => {
+    alCerrar.value = "bandeja";
+    dialogo = false;
+    await alPedirCierre();
+    expect(llamadas()).toEqual(["salir_app"]);
+  });
+
   it("«Salir» con «Dejar en la bandeja» sale de verdad", async () => {
     alCerrar.value = "bandeja";
     await alPedirCierre(true);

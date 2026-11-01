@@ -21,14 +21,14 @@ import { Label } from "@/components/ui/label";
 import {
   abrirCarpetaRespaldos,
   listarRespaldos,
-  respaldarAhora,
   restaurarRespaldo,
   type Respaldo,
 } from "@/db/cliente";
 import { tamano } from "@/lib/formato";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { FRECUENCIA_POR_DEFECTO, FRECUENCIAS } from "./programa";
-import { mensajeFallo, PREFERENCIA } from "./respaldos";
+import { conTrabajo } from "@/lib/trabajos";
+import { mensajeFallo, PREFERENCIA, respaldar as hacerRespaldo } from "./respaldos";
 import { claseSelect } from "@/lib/utils";
 
 const { t, locale } = useI18n();
@@ -51,7 +51,7 @@ onMounted(cargar);
 async function respaldar() {
   ocupado.value = true;
   try {
-    await respaldarAhora();
+    await hacerRespaldo();
     toast.success(t("respaldos.hecho"));
     await cargar();
   } catch (e) {
@@ -74,7 +74,8 @@ async function restaurar() {
   if (!elegido.value) return;
   ocupado.value = true;
   try {
-    await restaurarRespaldo(elegido.value.nombre); // si sale bien, la app se reinicia
+    const { nombre } = elegido.value;
+    await conTrabajo(t("trabajos.restaurar"), () => restaurarRespaldo(nombre)); // si sale bien, la app se reinicia
   } catch (e) {
     toast.error(mensajeFallo(e));
     ocupado.value = false;

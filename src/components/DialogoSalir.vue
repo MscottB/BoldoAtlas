@@ -22,11 +22,15 @@ watch(salidaAbierta, (abierta) => abierta && foco.alAbrir(), { flush: "sync" });
 // Sin marcar cada vez: «No volver a preguntar» es una decisión de este cierre.
 const recordar = ref(false);
 watch(salidaAbierta, () => (recordar.value = false));
-const avisoTrabajo = computed(() =>
-  trabajos.value.length
-    ? t(bandejaLista.value ? "salida.trabajoBandeja" : "salida.trabajo", { trabajos: trabajos.value.join(", ") })
-    : "",
-);
+const avisoTrabajo = computed(() => {
+  if (!trabajos.value.length) return "";
+  const actualizando = bandejaLista.value && trabajos.value.includes(t("trabajos.actualizar"));
+  const aviso = t(bandejaLista.value && !actualizando ? "salida.trabajoBandeja" : "salida.trabajo", {
+    trabajos: trabajos.value.join(", "),
+  });
+  // una actualización no «avisa al terminar»: la app se reinicia sola
+  return actualizando ? `${aviso} ${t("salida.actualizacionSigue")}` : aviso;
+});
 function alCerrar(e: Event) {
   e.preventDefault();
   foco.restaurar(document.querySelector<HTMLElement>("[data-buscar-paleta]"));

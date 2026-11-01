@@ -736,7 +736,7 @@
       "continuar": "Continue where I left off",
       "continuarAyuda": "When off, BoldoAtlas opens on Home.",
       "alCerrar": "When closing the window",
-      "alCerrarAyuda": "In the tray, the app stays open and comes back instantly. Quit in the menu always closes it and, with work in progress, it always asks.",
+      "alCerrarAyuda": "In the tray, the app stays open and comes back instantly. Quit in the menu closes the app; if it asks, you can choose there. With work in progress, it always asks.",
       "opcionesCerrar": {
         "preguntar": "Ask",
         "bandeja": "Keep in the tray",
@@ -813,7 +813,7 @@
     "titulo": "Backups",
     "ayuda": "Copies of your data in the backups folder on this computer. The 10 most recent backups are kept, automatic or manual.",
     "frecuencia": {
-      "etiqueta": "Automatic backup on open",
+      "etiqueta": "Automatic backup",
       "nunca": "Never",
       "abrir": "Every time",
       "24h": "Every 24 hours",
@@ -950,20 +950,23 @@
     "sinPersonas": "No people yet: create an organization first.",
     "carpeta": "Open data folder",
     "salir": "Quit",
+    "trabajoEnCurso": "BoldoAtlas. In progress: {trabajo}",
     "trabajoTerminado": "BoldoAtlas. Finished: {trabajo}"
   },
   "trabajos": {
     "respaldar": "Data backup",
-    "restaurar": "Restoring a backup"
+    "restaurar": "Restoring a backup",
+    "actualizar": "Downloading and installing the update"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
-    "texto": "What you already applied is saved. An unfinished form is lost.",
+    "texto": "What you already applied is saved. Quitting the app loses an unfinished form; in the tray it stays there.",
     "cancelar": "Cancel",
     "bandeja": "Keep in the tray",
     "cerrar": "Quit the app",
     "noPreguntar": "Don't ask again",
     "trabajo": "Work in progress: {trabajos}. Quitting the app will interrupt it.",
-    "trabajoBandeja": "Work in progress: {trabajos}. Quitting the app will interrupt it. In the tray it continues, and the icon's text tells you when it finishes."
+    "trabajoBandeja": "Work in progress: {trabajos}. Quitting the app will interrupt it. In the tray it continues, and the icon's text tells you when it finishes.",
+    "actualizacionSigue": "If you keep it in the tray, the update continues and BoldoAtlas restarts on its own once installed."
   }
 }

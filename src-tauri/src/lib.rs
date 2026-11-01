@@ -79,8 +79,6 @@ pub fn run() {
                 ventana = ventana.focused(false);
             }
             let ventana = ventana.build()?;
-            #[cfg(windows)]
-            salida::x_de_la_ventana::vigilar(&ventana);
             if por_el_sistema {
                 let _ = ventana.minimize();
             }

@@ -37,7 +37,10 @@ export function alCerrarGuardado(opcion: unknown, preguntaba: unknown): AlCerrar
   return preguntaba === false ? "cerrar" : "preguntar";
 }
 
-/** `salida`: «Salir» o un cierre que no es del usuario, que nunca termina en la bandeja. */
+/**
+ * `salida`: «Salir». Por sí solo nunca termina en la bandeja: cierra la app, salvo que toque preguntar, y ahí el usuario
+ * puede elegir la bandeja en el diálogo.
+ */
 export function decidirCierre(a: {
   opcion: AlCerrar;
   hayTrabajos: boolean;
@@ -113,6 +116,8 @@ const guardarPestanas = () => window.dispatchEvent(new Event("beforeunload"));
 
 /** Oculta la ventana: la app sigue abierta y un apagado o el instalador pueden cerrarla sin volver a mostrarla. */
 async function dejarEnBandeja(): Promise<void> {
+  // con la interfaz en blanco (`App.vue` falló al montar) no se oculta una ventana muerta
+  if (!document.querySelector("#app > *")) return salir();
   soltarEdicion();
   guardarPestanas();
   await invoke("ocultar_en_bandeja");

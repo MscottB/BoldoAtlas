@@ -1,7 +1,5 @@
 // Único punto de acceso a SQLite desde el frontend (puente Rust en src-tauri/src/comandos.rs).
 import { invoke } from "@tauri-apps/api/core";
-import { i18n } from "@/i18n";
-import { conTrabajo } from "@/lib/trabajos";
 
 export interface InfoApp {
   dirDatos: string;
@@ -60,7 +58,7 @@ export function listarRespaldos(): Promise<Respaldo[]> {
 }
 
 export function respaldarAhora(): Promise<string> {
-  return conTrabajo(i18n.global.t("trabajos.respaldar"), () => invoke<string>("respaldar_ahora"));
+  return invoke<string>("respaldar_ahora");
 }
 
 /** Respaldo previo a reemplazar los datos: no entra en la poda de los últimos 10. */
@@ -70,7 +68,7 @@ export function respaldarAntesDeReemplazar(): Promise<string> {
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function restaurarRespaldo(nombre: string): Promise<void> {
-  return conTrabajo(i18n.global.t("trabajos.restaurar"), () => invoke("restaurar_respaldo", { nombre }));
+  return invoke("restaurar_respaldo", { nombre });
 }
 
 export function abrirCarpetaRespaldos(): Promise<void> {

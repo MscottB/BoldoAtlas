@@ -22,7 +22,7 @@ Si no hay nada nuevo verás «Ya tienes la última versión»; sin conexión, «
 
 ## La ventana de actualización
 
-Muestra tu versión y la nueva, y **las novedades de todas las versiones que te saltaste**, de la más nueva a la más antigua. Al pulsar **Descargar e instalar** ves el avance de la descarga y puedes **Cancelar descarga**; cerrar la app también la cancela. Cada descarga va firmada por el autor y se rechaza si la firma no calza.
+Muestra tu versión y la nueva, y **las novedades de todas las versiones que te saltaste**, de la más nueva a la más antigua. Al pulsar **Descargar e instalar** ves el avance de la descarga y puedes **Cancelar descarga**; cerrar esta ventana o la app también la cancela. Cada descarga va firmada por el autor y se rechaza si la firma no calza.
 
 Qué pasa al instalar depende de cómo tienes BoldoAtlas:
 
@@ -32,7 +32,7 @@ Qué pasa al instalar depende de cómo tienes BoldoAtlas:
 | Instalado (Windows, macOS, AppImage) | Descarga la actualización, la instala y se reinicia. |
 | Linux `.deb` o `.rpm` | Lo actualiza el sistema: **Descargar el paquete** abre la página de la versión para bajarlo e instalarlo con tu gestor de paquetes. |
 
-Si algo falla, se deja la versión anterior y se muestra el error. También puedes actualizar a mano: descarga el zip nuevo y reemplaza el programa; `datos/` no se toca.
+Si algo falla, se deja la versión anterior y se muestra el error. También puedes actualizar a mano: usa antes **Salir**, porque con la app en la bandeja el programa sigue abierto y no se puede reemplazar; luego descarga el zip nuevo y reemplaza el programa. `datos/` no se toca.
 
 ## Novedades
 

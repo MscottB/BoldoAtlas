@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { conTrabajo, iniciarTrabajo, trabajos } from "./trabajos";
+import { conTrabajo, iniciarTrabajo, trabajos, ultimoFin } from "./trabajos";
 
 beforeEach(() => {
   trabajos.value = [];
+  ultimoFin.value = null;
 });
 
 describe("trabajos en curso", () => {
@@ -24,9 +25,22 @@ describe("trabajos en curso", () => {
     expect(trabajos.value).toEqual(["A"]);
   });
 
-  it("conTrabajo lo quita también si la acción falla", async () => {
+  it("conTrabajo lo quita también si la acción falla, y deja dicho que falló", async () => {
     await expect(conTrabajo("A", () => Promise.reject(new Error("no")))).rejects.toThrow("no");
     expect(trabajos.value).toEqual([]);
+    expect(ultimoFin.value).toEqual({ nombre: "A", fallo: true });
+  });
+
+  it("sin fallo, deja dicho que terminó bien", async () => {
+    await conTrabajo("A", async () => {});
+    expect(ultimoFin.value).toEqual({ nombre: "A", fallo: false });
+  });
+
+  it("terminar dos veces no cambia cómo terminó", () => {
+    const a = iniciarTrabajo("A");
+    a(true);
+    a();
+    expect(ultimoFin.value).toEqual({ nombre: "A", fallo: true });
   });
 
   it("conTrabajo lo mantiene mientras la acción no termina", async () => {

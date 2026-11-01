@@ -27,7 +27,7 @@ Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuraci
 
 BoldoAtlas abre en **Inicio**, también con datos cargados. Para volver a la última vista, activa **Configuración › Al abrir y al salir › Continuar donde estaba**.
 
-Al cerrar la ventana (la **X** o `Alt+F4`), pregunta qué hacer. Lo que ya aplicaste está guardado; un formulario sin terminar se pierde.
+Al cerrar la ventana (la **X** o `Alt+F4`), pregunta qué hacer. Lo que ya aplicaste está guardado. Al cerrar la app, un formulario sin terminar se pierde; en la bandeja sigue ahí.
 
 - **Cancelar** sigue como estabas.
 - **Dejar en la bandeja** oculta la ventana y BoldoAtlas sigue abierto, con su icono junto al reloj, listo para volver al instante. Para volver, haz clic en el icono o abre de nuevo el acceso directo.
@@ -35,9 +35,9 @@ Al cerrar la ventana (la **X** o `Alt+F4`), pregunta qué hacer. Lo que ya aplic
 
 Con **No volver a preguntar**, tu elección queda guardada. Para cambiarla, ve a **Configuración › Al abrir y al salir › Al cerrar la ventana**: **Preguntar**, **Dejar en la bandeja** o **Cerrar la app**. Se guarda en este computador.
 
-**Salir**, en el menú de la app y en el del icono, siempre cierra la app, nunca la deja en la bandeja; si la opción es **Preguntar**, pregunta antes.
+**Salir**, en el menú de la app y en el del icono, cierra la app: por sí solo nunca la deja en la bandeja. Si la opción es **Preguntar** o hay un trabajo en curso, pregunta antes, y en ese diálogo puedes elegir **Dejar en la bandeja**.
 
-Si hay un trabajo en curso, como un respaldo, pregunta siempre, aunque hayas marcado **No volver a preguntar**, y dice qué trabajo es: cerrar la app lo interrumpe. En la bandeja el trabajo sigue y, al terminar, el texto del icono lo avisa (se ve al pasar el mouse sobre él).
+Si hay un trabajo en curso, como un respaldo o una actualización, pregunta siempre, aunque hayas marcado **No volver a preguntar**, y dice qué trabajo es: cerrar la app lo interrumpe. En la bandeja el trabajo sigue y el texto del icono (se ve al pasar el mouse sobre él) dice que está en curso y cuándo termina. Si falla, la ventana vuelve al frente para mostrar el error. Una actualización continúa y BoldoAtlas se reinicia solo al instalarla.
 
 Si tu sistema no tiene bandeja (Linux sin AppIndicator), no aparece **Dejar en la bandeja**. Actualizar, restaurar un respaldo, el instalador y el apagado del computador cierran la app sin preguntar, también cuando está en la bandeja.
 

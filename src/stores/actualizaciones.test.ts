@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { trabajos, ultimoFin } from "@/lib/trabajos";
 
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({
@@ -35,6 +36,19 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe("instalar", () => {
+  it("cuenta como trabajo en curso mientras dura, y queda dicho si falló", async () => {
+    let fallar: (motivo: unknown) => void = () => {};
+    invoke.mockReturnValueOnce(new Promise((_, mal) => (fallar = mal)));
+    const instalacion = useActualizaciones().instalar();
+    expect(trabajos.value).toEqual(["Descargar e instalar la actualización"]);
+    fallar({ codigo: "red", detalle: "x" });
+    expect(await instalacion).toMatchObject({ ok: false });
+    expect(trabajos.value).toEqual([]);
+    expect(ultimoFin.value).toEqual({ nombre: "Descargar e instalar la actualización", fallo: true });
+  });
 });
 
 describe("consulta periódica (iniciar)", () => {

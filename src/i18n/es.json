@@ -736,7 +736,7 @@
       "continuar": "Continuar donde estaba",
       "continuarAyuda": "Si está apagada, BoldoAtlas abre en Inicio.",
       "alCerrar": "Al cerrar la ventana",
-      "alCerrarAyuda": "En la bandeja, la app sigue abierta y vuelve al instante. «Salir» del menú siempre la cierra y, con un trabajo en curso, pregunta siempre.",
+      "alCerrarAyuda": "En la bandeja, la app sigue abierta y vuelve al instante. «Salir» del menú cierra la app; si te pregunta, ahí puedes elegir. Con un trabajo en curso, pregunta siempre.",
       "opcionesCerrar": {
         "preguntar": "Preguntar",
         "bandeja": "Dejar en la bandeja",
@@ -813,7 +813,7 @@
     "titulo": "Respaldos",
     "ayuda": "Copias de tus datos en la carpeta de respaldos de este computador. Se conservan los 10 respaldos más recientes, automáticos o hechos a mano.",
     "frecuencia": {
-      "etiqueta": "Respaldo automático al abrir",
+      "etiqueta": "Respaldo automático",
       "nunca": "Nunca",
       "abrir": "Cada vez",
       "24h": "Cada 24 horas",
@@ -950,20 +950,23 @@
     "sinPersonas": "Aún no hay personas: primero crea una organización.",
     "carpeta": "Abrir carpeta de datos",
     "salir": "Salir",
+    "trabajoEnCurso": "BoldoAtlas. En curso: {trabajo}",
     "trabajoTerminado": "BoldoAtlas. Terminó: {trabajo}"
   },
   "trabajos": {
     "respaldar": "Respaldo de los datos",
-    "restaurar": "Restaurar un respaldo"
+    "restaurar": "Restaurar un respaldo",
+    "actualizar": "Descargar e instalar la actualización"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
-    "texto": "Lo que ya aplicaste está guardado. Un formulario sin terminar se pierde.",
+    "texto": "Lo que ya aplicaste está guardado. Al cerrar la app, un formulario sin terminar se pierde; en la bandeja sigue ahí.",
     "cancelar": "Cancelar",
     "bandeja": "Dejar en la bandeja",
     "cerrar": "Cerrar la app",
     "noPreguntar": "No volver a preguntar",
     "trabajo": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá.",
-    "trabajoBandeja": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá. En la bandeja sigue, y al terminar el texto del icono lo avisa."
+    "trabajoBandeja": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá. En la bandeja sigue, y al terminar el texto del icono lo avisa.",
+    "actualizacionSigue": "Si la dejas en la bandeja, la actualización continúa y BoldoAtlas se reinicia solo al instalarla."
   }
 }

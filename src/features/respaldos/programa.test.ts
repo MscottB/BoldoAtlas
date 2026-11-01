@@ -13,6 +13,23 @@ describe("tocaRespaldar", () => {
     expect(tocaRespaldar("abrir", haceHoras(0), ahora)).toBe(true);
   });
 
+  it("con la app abierta, «Cada vez» no respalda en cada revisión", () => {
+    expect(tocaRespaldar("abrir", haceHoras(24 * 30), ahora, false)).toBe(false);
+    expect(tocaRespaldar("abrir", null, ahora, false)).toBe(false);
+  });
+
+  it("con la app abierta, las demás frecuencias respetan su intervalo", () => {
+    expect(tocaRespaldar("nunca", null, ahora, false)).toBe(false);
+    expect(tocaRespaldar("24h", null, ahora, false)).toBe(true);
+    expect(tocaRespaldar("24h", haceHoras(23.9), ahora, false)).toBe(false);
+    expect(tocaRespaldar("24h", haceHoras(24), ahora, false)).toBe(true);
+    expect(tocaRespaldar("7d", haceHoras(24 * 7), ahora, false)).toBe(true);
+  });
+
+  it("con la app abierta, un respaldo «en el futuro» no hace respaldar en cada revisión", () => {
+    expect(tocaRespaldar("24h", haceHoras(-5), ahora, false)).toBe(false);
+  });
+
   it("sin respaldos previos respalda en cualquier frecuencia distinta de nunca", () => {
     for (const f of ["abrir", "24h", "7d"] as const) expect(tocaRespaldar(f, null, ahora)).toBe(true);
   });

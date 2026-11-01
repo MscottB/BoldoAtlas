@@ -8,12 +8,12 @@ import { TrayIcon } from "@tauri-apps/api/tray";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { RUTA_BIENVENIDA } from "@/app/estructura";
 import { bandejaLista, traerAlFrente } from "@/app/ventana";
-import { abrirCarpetaDatos, respaldarAhora } from "@/db/cliente";
+import { abrirCarpetaDatos } from "@/db/cliente";
 import { paletaAbierta } from "@/features/atajos/useAtajos";
-import { mensajeFallo } from "@/features/respaldos/respaldos";
+import { mensajeFallo, respaldar as hacerRespaldo } from "@/features/respaldos/respaldos";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { i18n } from "@/i18n";
-import { trabajos } from "@/lib/trabajos";
+import { trabajos, ultimoFin } from "@/lib/trabajos";
 import { useActualizaciones } from "@/stores/actualizaciones";
 import { useOrganizacion } from "@/stores/organizacion";
 import { buscarActualizaciones } from "./acciones";
@@ -24,9 +24,10 @@ import { buscarActualizaciones } from "./acciones";
  * ahora, Abrir carpeta de datos y Salir. Con la ventana oculta (`dejarEnBandeja`) es el camino de vuelta, junto con
  * abrir de nuevo el acceso directo. El clic, «Abrir» y «Salir» los atiende Rust (`salida.rs`), para que sirvan también
  * con la interfaz colgada; «Salir» nunca deja la app en la bandeja y termina en el cierre ordenado de SQLite.
- * Con una versión nueva, el texto del icono (tooltip) también lo avisa, y lo mismo un trabajo que termina con la ventana
- * oculta. shortcut: ese aviso solo se ve al pasar el mouse sobre el icono; si no basta, una notificación del sistema,
- * que pide un plugin más.
+ * Con una versión nueva, el texto del icono (tooltip) también lo avisa, y lo mismo un trabajo en curso o que termina bien
+ * con la ventana oculta; si falla, la ventana vuelve al frente para que se vea el error.
+ * shortcut: el aviso de que terminó solo se ve al pasar el mouse sobre el icono; si no basta, una notificación del
+ * sistema, que pide un plugin más.
  * En Linux, crear el icono sin libayatana-appindicator3 haría entrar en pánico a tray-icon y, con panic = "abort",
  * cerraría la app (un try/catch no lo ataja): por eso Rust prueba antes la biblioteca (`bandeja_disponible`) y,
  * si no está, no hay icono y la app funciona igual.
@@ -51,6 +52,7 @@ export async function crearBandeja(router: Router): Promise<void> {
   // El último trabajo que terminó con la ventana oculta: se olvida al volver a la ventana.
   const terminado = ref("");
   const tooltip = () => {
+    if (trabajos.value.length) return t("bandeja.trabajoEnCurso", { trabajo: trabajos.value.join(", ") });
     if (terminado.value) return t("bandeja.trabajoTerminado", { trabajo: terminado.value });
     return a.disponible ? t("actualizar.disponible", { version: a.disponible.version }) : "BoldoAtlas";
   };
@@ -98,7 +100,7 @@ export async function crearBandeja(router: Router): Promise<void> {
       id: "respaldar",
       text: x.respaldar,
       action: () =>
-        respaldarAhora().then(
+        hacerRespaldo().then(
           () => toast.success(t("respaldos.hecho")),
           (e: unknown) => toast.error(mensajeFallo(e)),
         ),
@@ -147,13 +149,11 @@ export async function crearBandeja(router: Router): Promise<void> {
       void icono.setTooltip(n.tooltip);
     });
     const ventana = getCurrentWindow();
-    watch(
-      () => [...trabajos.value],
-      async (ahora, antes) => {
-        const fin = antes.find((n) => !ahora.includes(n));
-        if (fin && !(await ventana.isVisible())) terminado.value = fin;
-      },
-    );
+    watch(ultimoFin, async (fin) => {
+      if (!fin || (await ventana.isVisible())) return;
+      if (fin.fallo) await traerAlFrente();
+      else terminado.value = fin.nombre;
+    });
     await ventana.onFocusChanged((e) => {
       if (e.payload) terminado.value = "";
     });

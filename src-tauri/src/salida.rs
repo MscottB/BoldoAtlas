@@ -1,16 +1,13 @@
-//! Qué pasa al cerrar: preguntar, dejar en la bandeja o salir. Solo la X, Alt+F4 y «Salir» del menú y de la bandeja pasan
-//! por `CloseRequested`. Restaurar un respaldo (`app.restart`), el reemplazo de la portable y el actualizador (`app.exit`),
-//! el instalador (Restart Manager: `RmForceShutdown`, que llega como `WM_ENDSESSION`) y el apagado del sistema
-//! (`WM_ENDSESSION`) no, y por eso cierran de verdad, sin preguntar y aunque la preferencia sea la bandeja.
+//! Qué pasa al cerrar: preguntar, dejar en la bandeja o salir. Solo la X, Alt+F4, un `WM_CLOSE` y «Salir» del menú y de la
+//! bandeja pasan por `CloseRequested`. Restaurar un respaldo (`app.restart`), el reemplazo de la portable y el actualizador
+//! (`app.exit`), el instalador y el desinstalador (Restart Manager: `RmForceShutdown`, que llega como `WM_ENDSESSION`) y el
+//! apagado del sistema (`WM_ENDSESSION`) no, y por eso cierran de verdad, sin preguntar y aunque la preferencia sea la bandeja.
 //!
 //! Lo decide la interfaz. Para que cerrar nunca quede bloqueado: mientras la interfaz no avisa que está lista (no cargó o
 //! muestra un error) la ventana se cierra sin más y, si no responde en `ESPERA` (diálogo a la vista o ventana oculta), la
 //! app sale igual: una ventana colgada no se oculta. Abrir y «Salir» de la bandeja se atienden aquí, porque con la
-//! interfaz colgada su JavaScript ya no corre.
-//!
-//! Dejar en la bandeja solo vale para un cierre del usuario. En Windows, un `WM_CLOSE` de otro programa llega igual que la
-//! X; lo que los separa es que la X y Alt+F4 entran antes como `WM_SYSCOMMAND`/`SC_CLOSE`. Sin eso se trata como «Salir» y,
-//! con la ventana ya oculta, sale sin más: ahí no hay a quién preguntarle y el otro programa quedaría esperando.
+//! interfaz colgada su JavaScript ya no corre. Con la ventana ya oculta, un cierre que no es «Salir» no viene del usuario
+//! (no hay X que pulsar): sale sin más, sin preguntarle a nadie ni dejar esperando al programa que lo pidió.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
@@ -19,6 +16,16 @@ use tauri::{AppHandle, CloseRequestApi, Emitter, Manager, Runtime, State};
 const EVENTO: &str = "cierre-pedido";
 const ESPERA: Duration = Duration::from_secs(3);
 const VENTANA: &str = "main";
+
+#[derive(Debug, PartialEq)]
+enum Pedido {
+    /// Ventana oculta y no es «Salir»: nadie pulsó la X.
+    SalirYa,
+    /// La interfaz no está lista: no hay a quién preguntarle, la ventana se cierra.
+    CerrarSinMas,
+    /// Le toca decidir a la interfaz, que debe responder en `ESPERA`. `salir`: nunca termina en la bandeja.
+    Interfaz { numero: u64, salir: bool },
+}
 
 #[derive(Default)]
 pub struct Cierre {
@@ -30,11 +37,17 @@ pub struct Cierre {
 }
 
 impl Cierre {
-    /// Número del pedido, o None si la interfaz no está lista para atenderlo.
-    fn pedir(&self) -> Option<u64> {
-        self.lista
-            .load(Ordering::SeqCst)
-            .then(|| self.pedidos.fetch_add(1, Ordering::SeqCst) + 1)
+    /// Clasifica un `CloseRequested`. El aviso de «Salir» se gasta aquí, pase lo que pase.
+    fn pedido(&self, oculta: bool) -> Pedido {
+        let salir = self.salir.swap(false, Ordering::SeqCst);
+        if !salir && oculta {
+            return Pedido::SalirYa;
+        }
+        if !self.lista.load(Ordering::SeqCst) {
+            return Pedido::CerrarSinMas;
+        }
+        let numero = self.pedidos.fetch_add(1, Ordering::SeqCst) + 1;
+        Pedido::Interfaz { numero, salir }
     }
 
     fn atender(&self) {
@@ -48,30 +61,29 @@ impl Cierre {
 }
 
 pub fn al_pedir_cierre<R: Runtime>(app: &AppHandle<R>, api: &CloseRequestApi) {
-    let cierre = app.state::<Cierre>();
-    let salir = cierre.salir.swap(false, Ordering::SeqCst);
-    let del_usuario = x_de_la_ventana::pulsada();
     let oculta = app
         .get_webview_window(VENTANA)
         .is_some_and(|v| v.is_visible().is_ok_and(|visible| !visible));
-    if !salir && !del_usuario && oculta {
-        api.prevent_close();
-        return app.exit(0);
-    }
-    let Some(pedido) = cierre.pedir() else {
-        return;
-    };
-    if app.emit(EVENTO, salir || !del_usuario).is_err() {
-        return;
-    }
-    api.prevent_close();
-    let app = app.clone();
-    std::thread::spawn(move || {
-        std::thread::sleep(ESPERA);
-        if !app.state::<Cierre>().atendido(pedido) {
+    match app.state::<Cierre>().pedido(oculta) {
+        Pedido::SalirYa => {
+            api.prevent_close();
             app.exit(0);
         }
-    });
+        Pedido::CerrarSinMas => {}
+        Pedido::Interfaz { numero, salir } => {
+            if app.emit(EVENTO, salir).is_err() {
+                return;
+            }
+            api.prevent_close();
+            let app = app.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(ESPERA);
+                if !app.state::<Cierre>().atendido(numero) {
+                    app.exit(0);
+                }
+            });
+        }
+    }
 }
 
 /// Trae la ventana al frente, también si está minimizada u oculta en la bandeja.
@@ -123,88 +135,91 @@ pub fn salir_app<R: Runtime>(app: AppHandle<R>) {
     app.exit(0);
 }
 
-#[cfg(windows)]
-pub mod x_de_la_ventana {
-    use std::cell::Cell;
-    use std::ffi::c_void;
-
-    const WM_SYSCOMMAND: u32 = 0x0112;
-    const SC_CLOSE: usize = 0xF060;
-    const ID: usize = 1;
-
-    type Hwnd = *mut c_void;
-    type Subclase = unsafe extern "system" fn(Hwnd, u32, usize, isize, usize, usize) -> isize;
-
-    #[link(name = "comctl32")]
-    unsafe extern "system" {
-        fn SetWindowSubclass(ventana: Hwnd, subclase: Subclase, id: usize, datos: usize) -> i32;
-        fn DefSubclassProc(ventana: Hwnd, mensaje: u32, w: usize, l: isize) -> isize;
-    }
-
-    thread_local!(static PULSADA: Cell<bool> = const { Cell::new(false) });
-
-    /// Si el `CloseRequested` en curso viene de la X o de Alt+F4 (corre dentro de `SC_CLOSE`, en el mismo hilo).
-    pub fn pulsada() -> bool {
-        PULSADA.get()
-    }
-
-    /// Sin esto (no se pudo instalar) `pulsada` da false: cerrar nunca termina en la bandeja, que es lo seguro.
-    pub fn vigilar<R: tauri::Runtime>(ventana: &tauri::WebviewWindow<R>) {
-        if let Ok(hwnd) = ventana.hwnd() {
-            // SAFETY: la ventana existe y la subclase solo marca `PULSADA` y sigue con el procedimiento original
-            unsafe { SetWindowSubclass(hwnd.0, subclase, ID, 0) };
-        }
-    }
-
-    unsafe extern "system" fn subclase(
-        ventana: Hwnd,
-        mensaje: u32,
-        w: usize,
-        l: isize,
-        _id: usize,
-        _datos: usize,
-    ) -> isize {
-        // los 4 bits bajos de wParam son de uso interno del sistema
-        let cerrar = mensaje == WM_SYSCOMMAND && w & 0xFFF0 == SC_CLOSE;
-        if cerrar {
-            PULSADA.set(true);
-        }
-        // SAFETY: son los argumentos recibidos, tal como pide la API
-        let r = unsafe { DefSubclassProc(ventana, mensaje, w, l) };
-        if cerrar {
-            PULSADA.set(false);
-        }
-        r
-    }
-}
-
-/// Fuera de Windows no hay `WM_CLOSE` de otros programas: lo que no es «Salir» es la X.
-#[cfg(not(windows))]
-pub mod x_de_la_ventana {
-    pub fn pulsada() -> bool {
-        true
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn lista() -> Cierre {
+        let c = Cierre::default();
+        c.lista.store(true, Ordering::SeqCst);
+        c
+    }
+
     #[test]
-    fn sin_interfaz_lista_no_hay_a_quien_preguntar() {
-        assert_eq!(Cierre::default().pedir(), None);
+    fn sin_interfaz_lista_la_ventana_se_cierra_sin_mas() {
+        assert_eq!(Cierre::default().pedido(false), Pedido::CerrarSinMas);
+    }
+
+    #[test]
+    fn con_la_ventana_oculta_un_cierre_que_no_es_salir_sale_ya() {
+        assert_eq!(lista().pedido(true), Pedido::SalirYa);
+        assert_eq!(Cierre::default().pedido(true), Pedido::SalirYa);
+    }
+
+    #[test]
+    fn la_x_le_pregunta_a_la_interfaz() {
+        assert_eq!(
+            lista().pedido(false),
+            Pedido::Interfaz {
+                numero: 1,
+                salir: false
+            }
+        );
+    }
+
+    #[test]
+    fn salir_pasa_por_la_interfaz_tambien_oculta_y_se_gasta_una_vez() {
+        let c = lista();
+        c.salir.store(true, Ordering::SeqCst);
+        assert_eq!(
+            c.pedido(true),
+            Pedido::Interfaz {
+                numero: 1,
+                salir: true
+            }
+        );
+        assert_eq!(c.pedido(true), Pedido::SalirYa);
+        c.salir.store(true, Ordering::SeqCst);
+        assert_eq!(
+            c.pedido(false),
+            Pedido::Interfaz {
+                numero: 2,
+                salir: true
+            }
+        );
+        assert_eq!(
+            c.pedido(false),
+            Pedido::Interfaz {
+                numero: 3,
+                salir: false
+            }
+        );
+    }
+
+    #[test]
+    fn un_salir_sin_interfaz_lista_no_queda_pendiente() {
+        let c = Cierre::default();
+        c.salir.store(true, Ordering::SeqCst);
+        assert_eq!(c.pedido(false), Pedido::CerrarSinMas);
+        c.lista.store(true, Ordering::SeqCst);
+        assert_eq!(
+            c.pedido(false),
+            Pedido::Interfaz {
+                numero: 1,
+                salir: false
+            }
+        );
     }
 
     #[test]
     fn un_pedido_sin_respuesta_queda_pendiente_hasta_atenderlo() {
-        let c = Cierre::default();
-        c.lista.store(true, Ordering::SeqCst);
-        let primero = c.pedir().unwrap();
-        assert!(!c.atendido(primero));
+        let c = lista();
+        c.pedido(false);
+        assert!(!c.atendido(1));
         c.atender();
-        assert!(c.atendido(primero));
+        assert!(c.atendido(1));
         // una respuesta anterior no vale por un intento nuevo: si la interfaz dejó de responder, se sale igual
-        let segundo = c.pedir().unwrap();
-        assert!(!c.atendido(segundo));
+        c.pedido(false);
+        assert!(!c.atendido(2));
     }
 }
