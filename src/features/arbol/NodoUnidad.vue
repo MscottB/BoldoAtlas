@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { Handle, Position } from "@vue-flow/core";
 import { toast } from "vue-sonner";
-import { Copy, Minus, Plus, SquareArrowOutUpRight, Users } from "@lucide/vue";
+import { Copy, Minus, SquareArrowOutUpRight, Users } from "@lucide/vue";
 import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { iniciales } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -15,6 +15,7 @@ import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
 import { rutaSuperiores, type PersonasDeUnidad } from "./jerarquia";
 import { CONTEXTO_LIENZO } from "./contexto";
+import AccionesTarjeta from "./AccionesTarjeta.vue";
 
 export interface DatosNodo extends PersonasDeUnidad {
   unidad: Unidad;
@@ -39,7 +40,6 @@ const {
   sumarASeleccion,
   alternarRama,
   coincide,
-  nuevaUnidad,
   duplicar,
   verPersonas,
 } = useLienzo();
@@ -81,6 +81,8 @@ const soloLectura = computed(() => !!org.fechaVista);
 const seleccionada = computed(() => seleccionadas.value.has(props.id));
 // Los botones de la tarjeta son de la selección simple; con varias, mandan la barra y sus atajos.
 const sola = computed(() => seleccionada.value && seleccionadas.value.size === 1);
+// Las acciones aparecen al pasar o enfocar: en reposo la tarjeta no carga botones (ni sus elementos en el DOM).
+const conAcciones = computed(() => sola.value || contexto.tarjetaActiva.value === props.id);
 
 // Ctrl+clic alterna la unidad en la selección; Mayús+clic la suma. Con una fecha elegida no hay selección múltiple.
 function alHacerClic(e: MouseEvent) {
@@ -95,7 +97,18 @@ const tipo = computed(
 );
 // Jefatura con cargo y caras del equipo; la tarjeta compacta (una línea) no las muestra.
 const personas = computed(() => config.value.personasEnTarjetas && !compacta.value);
-const vFoco: Directive<HTMLInputElement> = { mounted: (el) => (el.focus(), el.select()) };
+// Una tarjeta recién creada nace oculta hasta que Vue Flow la mide: el foco se reintenta hasta que pueda recibirlo.
+const vFoco: Directive<HTMLInputElement> = {
+  mounted(el) {
+    const intentar = (veces: number) => {
+      el.focus();
+      el.select();
+      if (document.activeElement !== el && el.isConnected && veces)
+        requestAnimationFrame(() => intentar(veces - 1));
+    };
+    intentar(30);
+  },
+};
 
 function renombrar() {
   if (!soloLectura.value) editando.value = props.id;
@@ -301,16 +314,6 @@ async function guardar(e: Event) {
             v-if="!soloLectura"
             type="button"
             class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-            :aria-label="t('arbol.nuevaSubunidad')"
-            :title="t('arbol.nuevaSubunidad')"
-            @click.stop="nuevaUnidad(data.unidad)"
-          >
-            <Plus class="size-3" aria-hidden="true" />
-          </button>
-          <button
-            v-if="!soloLectura"
-            type="button"
-            class="nodrag grid size-5 place-items-center rounded border hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             :aria-label="t('unidad.duplicar')"
             :title="t('unidad.duplicar')"
             @click.stop="duplicar(id)"
@@ -331,6 +334,12 @@ async function guardar(e: Event) {
         </button>
       </span>
     </div>
+    <AccionesTarjeta
+      v-if="conAcciones && editando !== id"
+      :id="id"
+      :unidad="data.unidad"
+      :hijos="data.hijos"
+    />
     <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   </div>
 </template>

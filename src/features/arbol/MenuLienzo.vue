@@ -95,10 +95,6 @@ function seleccionarRama(id: string) {
   lienzo.seleccionar(null);
   lienzo.sumarVarias([...rama, id]); // la última queda como foco
 }
-function renombrar(id: string) {
-  lienzo.seleccionar(id);
-  lienzo.editando.value = id;
-}
 async function guardar(id: string) {
   const r = await org.guardarSubarbol(id);
   if (!r.ok) toast.error(r.mensaje);
@@ -121,7 +117,7 @@ const abrirVista = () => (panelAbierto.value = true);
         <ContextMenuItem :disabled="soloLectura" @select="pedir(nuevaSubunidad)">
           {{ t("arbol.nuevaSubunidad") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => renombrar(id))">
+        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => lienzo.renombrar(id))">
           {{ t("arbol.menu.renombrar") }}
           <ContextMenuShortcut>F2</ContextMenuShortcut>
         </ContextMenuItem>

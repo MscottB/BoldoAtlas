@@ -3,7 +3,7 @@ import { useRoute } from "vue-router";
 import { useEventListener } from "@vueuse/core";
 import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
-import { useLienzo } from "@/features/arbol/useLienzo";
+import { abrirMenuContextual, useLienzo } from "@/features/arbol/useLienzo";
 import { esVistaCerrable } from "@/app/estructura";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
@@ -145,9 +145,7 @@ export function useAtajos() {
         (elegida ? document.querySelector(elegida) : null) ??
         document.querySelector(".vue-flow__pane");
       if (!el) return;
-      const r = el.getBoundingClientRect();
-      const centro = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-      el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, ...centro }));
+      abrirMenuContextual(el);
     } else if (atajo === "renombrar") {
       // La unidad de la tarjeta enfocada; si no, la única seleccionada.
       const enfocada = destino?.closest<HTMLElement>(".vue-flow__node")?.dataset.id;

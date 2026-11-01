@@ -21,11 +21,13 @@ Each unit is a card with:
 
 Unit types are your organization's own list: it starts with Gerencia, Área, Subárea and Otra, which you can rename, reorder, deactivate or add to (for example, Superintendency or Department). The order of the list doesn't restrict the structure: any type can report to any other.
 
-Solid lines join each unit to its parent. Dotted lines are lateral connections between units, with their description.
+Solid lines join each unit to its parent. Dotted lines are lateral connections between units: they run through the free space between cards, and their description reads on the line. A long one is shortened: hover over it, or reach it with `Tab`, to see it in full. When you hover over a card or focus it, its connections stand out and the others fade. To hide them, turn off **Lateral connections** in **Customize**.
 
 ## Collapsing and expanding branches
 
 When the tree opens you see the roots and their first level; the rest is collapsed. The button at the bottom right of a card shows how many sub-units are hidden (for example `+3`): press it to expand them and again to collapse them.
+
+At the bottom left of the canvas, **1**, **2**, **3** and **All** show that many levels (1 = just the roots) and fit the tree to the window.
 
 In **More** (the last button of the canvas toolbar), the **Branches** group expands or collapses everything at once:
 
@@ -35,11 +37,11 @@ In **More** (the last button of the canvas toolbar), the **Branches** group expa
 
 In a unit's context menu, **Expand branch** opens the unit and everything under it, and **Collapse branch** folds it together with its sub-branches: when you open it again you see one level. In a branch opened as a tree, levels are counted from its root.
 
-If expanding (with **More › Branches**, the context menu or a saved view) would leave more than 1,000 cards in view, you are warned first with the number: **Expand anyway**, **Expand to level** (the deepest level that still fits) or **Cancel**. With that many cards the canvas gets slow.
+If expanding (with the levels, **More › Branches**, the context menu or a saved view) would leave more than 1,000 cards in view, you are warned first with the number: **Expand anyway**, **Expand to level** (the deepest level that still fits) or **Cancel**. With that many cards the canvas gets slow.
 
 ## Tidy diagram
 
-The tree is drawn tidy: each parent sits centered over its sub-units, sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they are only drawn on top. With **Show positions**, each unit's positions are stacked right under its card (to its right, when horizontal), in their order, and the lines to the sub-units leave from the last position.
+The tree is drawn tidy: each parent sits centered over its sub-units, sibling units keep their order and each level takes one row (or column, when horizontal). Several roots sit side by side. Lateral connections do not change the drawing: they only run through the free space. If a card is surrounded and no free path is left, the line crosses as few cards as possible. With **Show positions**, each unit's positions are stacked right under its card (to its right, when horizontal), in their order, and the lines to the sub-units leave from the last position.
 
 **Rearrange**, in **More**, lays out the drawing again, puts back any card that was left out of place and fits it to the window. With a large tree this takes a few seconds: meanwhile **Arranging…** shows at the top right and you can keep using the canvas.
 
@@ -56,7 +58,8 @@ While viewing the chart at a past date, actions that change something are disabl
 ## Selecting, creating and renaming
 
 - **Click** a card to select it. Click the background to clear the selection.
-- The selected card shows **+**: it creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
+- When you hover over a card, focus it with `Tab` or select it, its actions appear above it, without moving anything on the card: **+**, the pencil (**Rename**), **Collapse branch** or show its sub-units if it has any, and **More actions**, which opens the context menu. `Tab` reaches them after the card's own buttons.
+- **+** creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
 - Selecting a card opens the **unit panel**, to the right of the canvas (see "Unit panel"): its positions and all its data are there.
 - **Double-click** the name, or press `F2` with the card focused or selected, to edit it. `Enter` saves and `Esc` cancels.
 - **+ New unit**, in the canvas bar, creates a sub-unit of the selected card; if none is selected, of the root of the focused view, or a new root of the first type in the list.
@@ -69,10 +72,10 @@ Select a card and press `N` to create a sub-unit without using the mouse.
 
 ## Moving a unit
 
-1. Drag the unit's card and drop it on the one that will be its new parent.
-2. BoldoAtlas asks "Move X into Y?" before changing its parent: confirm.
+1. Drag the unit's card over the one that will be its new parent. While you drag, dotted lines mark where it will go, and a notice above the canvas says what will happen if you drop it.
+2. Drop it. BoldoAtlas asks "Move X into Y?" before changing its parent: confirm.
 
-A unit can't be moved inside its own branch: a warning appears and nothing changes. If you drop the card on empty space, it goes back to its place.
+A unit can't be moved inside its own branch: the target is marked as not valid and, if you drop it there, a warning appears and nothing changes. If you drop the card on empty space, or on its current parent, it goes back to its place. `Esc`, while dragging, cancels and the card goes back to its place.
 
 ## Selecting several units
 
@@ -117,7 +120,7 @@ If the person holds several current positions, you choose one in a «Job title �
 
 Drag the background to pan and use the mouse wheel or the **−** and **+** buttons in the bottom-right corner of the canvas to zoom out or in (with the keyboard, `Ctrl` + `-` and `Ctrl` + `=`; `Tab` reaches those buttons right after the toolbar). Next to them, **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The **minimap** shows where you are: it starts off and is turned on in **More › Show minimap**; turning it on fits the tree once. It sits at the bottom right, above the zoom buttons, in the theme colors, and fitting the tree leaves its space free so it doesn't cover cards.
 
-With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the color of its mark, and the lines become steps. This keeps the canvas smooth. Zoom back in and all the detail returns; with the keyboard, each simplified card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent color.
+With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the color of its mark, and the lines become steps. Lateral connections show as solid lines, without their description, and the card actions and the highlighting don't appear. This keeps the canvas smooth. Dragging a card still shows where it will go. Zoom back in and all the detail returns; with the keyboard, each simplified card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent color.
 
 ## Opening a branch as a tree
 
@@ -125,12 +128,13 @@ On the selected card, the **Open as tree** button shows only that unit and every
 
 ## Customize
 
-The **Customize** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer. **Direction**, **Density**, **Color by** and **Show positions** are in plain view; the rest is in two folded blocks, **What to show on cards** and **Advanced**, which open with a click (or `Enter`) and remember on this computer whether you left them open. **Reset** puts everything back as it was at first, except the highlighting.
+The **Customize** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer. **Direction**, **Density**, **Color by**, **Show positions** and, if there are lateral connections, **Lateral connections** are in plain view; the rest is in two folded blocks, **What to show on cards** and **Advanced**, which open with a click (or `Enter`) and remember on this computer whether you left them open. **Reset** puts everything back as it was at first, except the highlighting.
 
-![Customize panel with Direction, Density, Color by, Show positions and the folded blocks.](../img/en/arbol-personalizar.webp "The Customize panel. 1: tree direction. 2: card density. 3: color by. 4: show positions."){width=380 height=462}
+![Customize panel with Direction, Density, Color by, Show positions, Lateral connections and the folded blocks.](../img/en/arbol-personalizar.webp "The Customize panel. 1: tree direction. 2: card density. 3: color by. 4: show positions. 5: lateral connections."){width=380 height=490}
 
 - **Show positions** (off at first): under each visible unit there is one card per position, with the job title, the holder or **Vacant**, and **Replacement: name** when a replacement is current. Press a position card, or focus it and press `Enter`, to open its record. In **Advanced** you can hide the job title or the person. With many units expanded, positions add cards: collapse the branches you don't need.
 - **Show on cards the parent unit of type** (in **Advanced**): tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
+- **Lateral connections** (on at first, if there are any): draws the lateral connections. Off, they are hidden without being deleted. It is saved with the view.
 - **Color by**: **None**, the **mark** of a type, or **Position legend**. With the mark of a type, each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. With **Position legend**, position cards take the color of their legend (turn on **Show positions**; see "Legends and position colors"). Only one criterion applies at a time.
 
 With a color criterion active, a **legend** appears in a strip below the canvas with the color, code and name of the unit that defines each mark you can see. If it doesn't fit, the row scrolls sideways. It can be folded and opened again from its header. A very dark (or very light) mark that barely stands out from the card gets a gray outline on its stripe and code.
@@ -148,7 +152,7 @@ Each tree (the full one or a subtree saved in Trees) remembers on this computer 
 
 ## Saved views
 
-The **Saved views** button saves the current configuration (direction, density, lines, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
+The **Saved views** button saves the current configuration (direction, density, lines, lateral connections, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
 
 ## Viewing a past date
 
@@ -180,7 +184,7 @@ The **Summary** tab shows the type, name, head, figures and tags in plain view. 
 - **Head**: choose which of the unit's positions is the head (or **No head**). With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see who holds it: the holder or, if there is none, **Replacement: name**.
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
-- **Lateral connections** (under **Advanced**): type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible.
+- **Lateral connections** (under **Advanced**): type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible and **Lateral connections** is on in **Customize**.
 - **Save in Trees** (not shown on roots, which already are a tree) and **Duplicate branch**, under **Advanced**; **Delete unit**, at the bottom.
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements").

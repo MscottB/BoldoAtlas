@@ -114,6 +114,10 @@ const restablecer = () => (config.value = { ...leerVista(null), resaltar: config
         <input v-model="config.verPuestos" type="checkbox" class="size-4 accent-primary" />
         {{ t("arbol.vista.verPuestos") }}
       </label>
+      <label v-if="org.conexiones.length" class="flex items-center gap-2">
+        <input v-model="config.relacionesLaterales" type="checkbox" class="size-4 accent-primary" />
+        {{ t("arbol.vista.relacionesLaterales") }}
+      </label>
 
       <BloquePlegable
         clave="personalizar.tarjeta"

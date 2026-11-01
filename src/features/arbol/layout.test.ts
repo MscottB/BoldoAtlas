@@ -3,11 +3,13 @@ import type { Conexion } from "../../db/tipos";
 import { p, puestos, tipos, u, unidades } from "./fixture";
 import {
   aristasDibujadas,
+  cajasDibujadas,
   calcularLayout,
   colapsadosIniciales,
   contraerRama,
   expandirRama,
   filasPorTipo,
+  lugarPrevisto,
   subgrafoVisible,
   unidadesDeRama,
   type Subgrafo,
@@ -17,6 +19,49 @@ import { VISTA_POR_DEFECTO, separaciones, tamPuesto, tamUnidad, type ConfigVista
 
 const lateral: Conexion = { id: "c1", origen_id: "mecanica", destino_id: "finanzas", etiqueta: null };
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id).sort();
+
+describe("lugarPrevisto: dónde se ve la tarjeta antes de soltarla", () => {
+  const g = subgrafoVisible(unidades, [], new Set(), puestos);
+  const tam = { ancho: 220, alto: 112 };
+  const tamP = { ancho: 200, alto: 68 };
+  const pos = new Map([...g.nodos, ...g.puestos].map((x, i) => [x.id, { x: i * 300, y: i * 200 }]));
+  const cajas = cajasDibujadas(g, pos, tam, tamP);
+  const vertical = { direccion: "vertical", densidad: "normal" } as const;
+
+  it("con hijas a la vista: a continuación de la última, como hermana", () => {
+    const hijas = g.nodos.filter((x) => x.parent_id === "operaciones");
+    const ultima = cajas.get(hijas[hijas.length - 1]!.id)!;
+    const sep = separaciones(vertical);
+    expect(lugarPrevisto(g, cajas, "finanzas", "operaciones", vertical)).toEqual({
+      x: ultima.x + ultima.ancho + sep.hermanos,
+      y: ultima.y,
+    });
+    expect(
+      lugarPrevisto(g, cajas, "finanzas", "operaciones", { ...vertical, direccion: "horizontal" }),
+    ).toEqual({
+      x: ultima.x,
+      y: ultima.y + ultima.alto + sep.hermanos,
+    });
+  });
+
+  it("sin hijas a la vista: tras la tarjeta y sus puestos, un nivel más allá", () => {
+    const delDestino = g.puestos.filter((p) => p.unidad_id === "mecanica").map((p) => cajas.get(p.id)!);
+    const fin = Math.max(...[cajas.get("mecanica")!, ...delDestino].map((c) => c.y + c.alto));
+    expect(lugarPrevisto(g, cajas, "finanzas", "mecanica", vertical)).toEqual({
+      x: cajas.get("mecanica")!.x,
+      y: fin + separaciones(vertical).niveles,
+    });
+  });
+
+  it("no cuenta a la propia tarjeta como hija y no inventa un lugar si el destino no se dibuja", () => {
+    const mecanica = cajas.get("mecanica")!;
+    expect(lugarPrevisto(g, cajas, "electrica", "mantencion", vertical)).toEqual({
+      x: mecanica.x + mecanica.ancho + separaciones(vertical).hermanos,
+      y: mecanica.y,
+    });
+    expect(lugarPrevisto(g, cajas, "finanzas", "nadie", vertical)).toBeNull();
+  });
+});
 
 describe("layout del árbol", () => {
   it("colapsadosIniciales colapsa desde el nivel 1 con hijos, no la raíz", () => {

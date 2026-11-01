@@ -4,7 +4,7 @@ import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
-import { hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
+import { creaCiclo, hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
 import { colapsadosIniciales, contraerRama, expandirRama, subgrafoVisible } from "./layout";
 import { sumar, type Seleccion } from "./multiple";
 import { debeAvisar, hastaNivel, nivelBajoLimite } from "./rendimiento";
@@ -75,6 +75,30 @@ export function destinoAlSoltar(
   for (const [otro, p] of posiciones)
     if (otro !== id && cx >= p.x && cx <= p.x + tam.ancho && cy >= p.y && cy <= p.y + tam.alto) return otro;
   return null;
+}
+
+/** Qué pasaría al soltar `unidad` sobre `destino`: se mueve, ya depende de él, o crearía un ciclo (su propia rama). */
+export type EstadoMover = "valido" | "igual" | "ciclo";
+export function estadoMover(
+  unidades: Unidad[],
+  unidad: Pick<Unidad, "id" | "parent_id">,
+  destino: string,
+): EstadoMover {
+  if (destino === unidad.parent_id) return "igual";
+  return creaCiclo(unidades, unidad.id, destino) ? "ciclo" : "valido";
+}
+
+/** Abre el menú contextual del lienzo sobre `el`, en su centro (lo atiende MenuLienzo). */
+export function abrirMenuContextual(el: Element) {
+  const r = el.getBoundingClientRect();
+  el.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: r.left + r.width / 2,
+      clientY: r.top + r.height / 2,
+    }),
+  );
 }
 
 // Estado compartido por el lienzo y el panel de unidad: hay un solo lienzo en la app.
@@ -324,6 +348,10 @@ export function useLienzo() {
     },
     seleccionar(id: string | null) {
       seleccion.value = id;
+    },
+    /** Selecciona la unidad y deja su nombre en edición, en la tarjeta. */
+    renombrar(id: string) {
+      seleccion.value = editando.value = id;
     },
     /**
      * Abre el panel de la unidad en la pestaña Personas: con `rama`, también sus subunidades (dotación de la tarjeta y

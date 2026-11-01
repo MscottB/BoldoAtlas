@@ -1,6 +1,7 @@
 import type { ElkNode } from "elkjs/lib/elk.bundled.js";
 import type { Conexion, Puesto, Unidad, ValorCatalogo } from "../../db/tipos";
 import { descendientes, indiceHijos, porOrden } from "./jerarquia";
+import type { Caja } from "./lateral";
 import {
   VISTA_POR_DEFECTO,
   opcionesElk,
@@ -283,6 +284,49 @@ export function reubicar(
     const n = nodo(id);
     if (n) n.position = p;
   }
+}
+
+/** La caja de cada tarjeta dibujada: su lugar y lo que mide (las de un puesto miden distinto). */
+export function cajasDibujadas(
+  g: Subgrafo,
+  pos: ReadonlyMap<string, { x: number; y: number }>,
+  tam: Tam,
+  tamDelPuesto: Tam,
+): Map<string, Caja> {
+  const puestos = new Set(g.puestos.map((p) => p.id));
+  return new Map(
+    [...pos].map(([id, p]): [string, Caja] => [id, { ...p, ...(puestos.has(id) ? tamDelPuesto : tam) }]),
+  );
+}
+
+/**
+ * Dónde se verá `id` antes de soltarla sobre `destino`: como última hija de las que se ven o, si no se ve ninguna, tras la
+ * tarjeta y los puestos del destino. Es una guía: al confirmar, el layout reacomoda todo.
+ */
+export function lugarPrevisto(
+  g: Subgrafo,
+  cajas: ReadonlyMap<string, Caja>,
+  id: string,
+  destino: string,
+  vista: Pick<ConfigVista, "direccion" | "densidad">,
+): { x: number; y: number } | null {
+  const padre = cajas.get(destino);
+  if (!padre) return null;
+  const sep = separaciones(vista);
+  const horizontal = vista.direccion === "horizontal";
+  const puestos = new Set(g.puestos.map((p) => p.id));
+  const propias = g.jerarquicas.flatMap(([a, b]) => (a === destino && b !== id && cajas.has(b) ? [b] : []));
+  const hijas = propias.filter((x) => !puestos.has(x));
+  if (hijas.length) {
+    const c = cajas.get(hijas[hijas.length - 1]!)!;
+    return horizontal
+      ? { x: c.x, y: c.y + c.alto + sep.hermanos }
+      : { x: c.x + c.ancho + sep.hermanos, y: c.y };
+  }
+  const bloque = [padre, ...propias.map((x) => cajas.get(x)!)];
+  return horizontal
+    ? { x: Math.max(...bloque.map((c) => c.x + c.ancho)) + sep.niveles, y: padre.y }
+    : { x: padre.x, y: Math.max(...bloque.map((c) => c.y + c.alto)) + sep.niveles };
 }
 
 /**
