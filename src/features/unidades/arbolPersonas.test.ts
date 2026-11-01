@@ -218,10 +218,6 @@ describe("accionTecla", () => {
     expect(accionTecla(filas, 0, "a")).toBeNull();
   });
 
-  it("Supr es del árbol y no hace nada: no debe llegar al atajo que elimina la unidad", () => {
-    expect(accionTecla(filas, 0, "Delete")).toEqual({ tipo: "nada" });
-  });
-
   it("Enter y Espacio activan la fila; Mayús+Enter en una unidad abre a su jefatura, si tiene", () => {
     const con = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j1" };
     const alcance = [p("j1", "x"), p("j2", "x"), p("j3", "x")];

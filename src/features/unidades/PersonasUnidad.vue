@@ -250,7 +250,7 @@ watch(persona, (w) => previa.value && !w && void volver());
 
       <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p class="text-xs text-muted-foreground" aria-live="polite">
-          {{ t(vista === "arbol" ? "personas.arbol.cantidad" : "personas.cantidad", filas.length) }}
+          {{ t("personas.cantidad", filas.length) }}
         </p>
         <div v-if="vista === 'arbol'" class="flex gap-1">
           <Button type="button" variant="ghost" size="xs" @click="vistaArbol?.expandirTodo()">

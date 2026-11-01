@@ -228,9 +228,6 @@ export function accionTecla(filas: FilaArbol[], i: number, tecla: string, mayus 
     case "Enter":
     case " ":
       return accionFila(f, mayus);
-    // Supr en el lienzo elimina la unidad seleccionada: desde una fila del árbol no debe llegar a ese atajo.
-    case "Delete":
-      return { tipo: "nada" };
     case "ArrowDown":
       return ir(i + 1);
     case "ArrowUp":

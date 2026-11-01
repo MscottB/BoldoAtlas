@@ -550,7 +550,7 @@
     "nPuestos": "{n} puesto | {n} puestos",
     "nVacantes": "{n} vacante | {n} vacantes",
     "nCubiertas": "{n} con reemplazo | {n} con reemplazo",
-    "cantidad": "Nadie | {n} persona en la lista | {n} personas en la lista",
+    "cantidad": "Sin asignaciones | {n} asignación | {n} asignaciones",
     "lista": "Personas de la unidad",
     "vacia": "Nadie ocupa sus puestos.",
     "sinResultados": "Nadie coincide con la búsqueda.",
@@ -567,7 +567,6 @@
       "ayuda": "Flechas arriba y abajo para moverse, derecha e izquierda para abrir y cerrar. Enter abre a la persona o selecciona la unidad en el lienzo; Mayús+Enter abre a la jefatura de la unidad.",
       "expandir": "Expandir todo",
       "contraer": "Contraer todo",
-      "cantidad": "Sin asignaciones en el árbol | {n} asignación en el árbol | {n} asignaciones en el árbol",
       "nPersonas": "{n} personas | {n} persona | {n} personas",
       "verJefe": "Ver a la jefatura (Mayús+Enter)"
     }
