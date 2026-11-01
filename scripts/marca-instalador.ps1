@@ -50,8 +50,8 @@ $fuente = Icono 1024
 $fuente.Save("$raiz\assets\brand\icono-app.png", [Drawing.Imaging.ImageFormat]::Png)
 $fuente.Dispose()
 
-# icon.ico: el primero es el que Tauri usa para la ventana y la bandeja (32 px). Hasta 64 px en BMP (el formato que
-# entienden todas las rutas del shell) y 256 en PNG.
+# icon.ico: Tauri usa la imagen más grande para la ventana y la bandeja, y Windows la escala. Hasta 64 px en BMP (el
+# formato que entienden todas las rutas del shell) y 256 en PNG.
 $tamanos = 32, 16, 20, 24, 40, 48, 64, 256
 $imagenes = foreach ($t in $tamanos) {
   $b = Icono $t

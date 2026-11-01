@@ -447,19 +447,21 @@ Var AppStartMenuFolder
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-; BoldoAtlas: casilla «Iniciar con Windows», apagada salvo que ya estuviera. Es el mismo valor de Run que lee y cambia
-; Configuración (src-tauri/src/inicio.rs). En modo pasivo (actualizaciones) esta página no se muestra y no se toca.
+; BoldoAtlas: casilla «Iniciar con Windows», apagada salvo que ya estuviera antes de instalar ($RunPrevio: desinstalar
+; antes de actualizar borra el valor). Es el mismo valor de Run que lee y cambia Configuración (src-tauri/src/inicio.rs).
+; En modo pasivo (actualizaciones) esta página no se muestra y no se toca. La casilla manda sobre lo que hubiera anotado
+; el Administrador de tareas.
 !define RUNKEY "Software\Microsoft\Windows\CurrentVersion\Run"
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinalMostrar
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE FinalSalir
 !insertmacro MUI_PAGE_FINISH
 Var CasillaInicio
+Var RunPrevio
 Function FinalMostrar
   ${NSD_CreateCheckbox} 120u 125u 195u 10u "$(iniciarConWindows)"
   Pop $CasillaInicio
   SetCtlColors $CasillaInicio "" "${MUI_BGCOLOR}"
-  ReadRegStr $0 HKCU "${RUNKEY}" "${PRODUCTNAME}"
-  ${If} $0 != ""
+  ${If} $RunPrevio != ""
     ${NSD_Check} $CasillaInicio
   ${EndIf}
 FunctionEnd
@@ -470,6 +472,7 @@ Function FinalSalir
   ${Else}
     DeleteRegValue HKCU "${RUNKEY}" "${PRODUCTNAME}"
   ${EndIf}
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "${PRODUCTNAME}"
 FunctionEnd
 
 Function RunMainBinary
@@ -535,6 +538,9 @@ LangString choowHowToInstall 0 ""
 ; BoldoAtlas: el texto de la casilla de la página final
 LangString iniciarConWindows ${LANG_SPANISH} "Iniciar ${PRODUCTNAME} con Windows"
 LangString iniciarConWindows ${LANG_ENGLISH} "Start ${PRODUCTNAME} with Windows"
+; BoldoAtlas: el aviso de .onInit cuando no se puede reabrir fuera de la app que lo abrió
+LangString moverInstalador ${LANG_SPANISH} "Este instalador se abrió desde otra aplicación y no puede continuar desde esa carpeta.$\r$\n$\r$\nMuévelo a Descargas y ábrelo desde el Explorador de archivos."
+LangString moverInstalador ${LANG_ENGLISH} "This installer was opened from another app and can't continue from that folder.$\r$\n$\r$\nMove it to Downloads and open it from File Explorer."
 !insertmacro MUI_RESERVEFILE_LANGDLL
 {{#each language_files}}
   !include "{{this}}"
@@ -560,8 +566,11 @@ Function .onInit
   ; y el registro a la zona privada de esa app. El Explorador no ve el programa: «Ejecutar» al terminar no hace nada,
   ; los accesos directos no tienen icono hasta el primer clic y no aparece en «Aplicaciones instaladas». Se vuelve a
   ; abrir con explorer.exe, que lo lanza desde el shell, fuera del contenedor (RunAsUser no sale: sigue redirigido).
-  ; La variable evita un bucle si Windows no lo sacara: un proceso del shell no la hereda.
-  ; shortcut: se pierden los parámetros y, si el instalador está en una carpeta redirigida, no se encuentra; es muy raro.
+  ; La variable evita un bucle si Windows no lo sacara: un proceso del shell no la hereda. Si el instalador está en
+  ; AppData puede que solo exista dentro del contenedor y el shell no lo encuentre: se pide moverlo.
+  ; shortcut: se pierden los parámetros y el código de salida (winget --interactive recibe 0 enseguida), y SmartScreen
+  ; puede avisar dos veces; vale mientras esto solo pase al abrirlo desde otra app.
+  ReadRegStr $RunPrevio HKCU "${RUNKEY}" "${PRODUCTNAME}"
   ReadEnvStr $R0 BOLDOATLAS_REABIERTO
   ${If} $R0 == ""
   ${AndIf} $PassiveMode <> 1
@@ -570,6 +579,15 @@ Function .onInit
     System::Call 'kernel32::GetCurrentPackageFullName(*i 0 r1, p 0) i .r0'
     ; 122 = ERROR_INSUFFICIENT_BUFFER: hay paquete (sin paquete es 15700)
     ${If} $0 = 122
+      ; %TEMP% suele venir en forma corta (ADMINI~1), que no se reconocería
+      System::Call 'kernel32::GetLongPathName(t "$EXEPATH", t .R3, i ${NSIS_MAX_STRLEN}) i .r0'
+      ${StrLoc} $R1 "$R3" "$LOCALAPPDATA" ">"
+      ${StrLoc} $R2 "$R3" "$APPDATA" ">"
+      ${If} $R1 != ""
+      ${OrIf} $R2 != ""
+        MessageBox MB_ICONEXCLAMATION|MB_OK "$(moverInstalador)"
+        Quit
+      ${EndIf}
       System::Call 'kernel32::SetEnvironmentVariable(t "BOLDOATLAS_REABIERTO", t "1")'
       Exec '"$WINDIR\explorer.exe" "$EXEPATH"'
       Quit
@@ -839,6 +857,11 @@ Section Install
   !endif
   ; BoldoAtlas: al actualizar sobre una versión con otro logo, que el Explorador no siga mostrando el de su caché
   !insertmacro UPDATEFILEASSOC
+  ; BoldoAtlas: si se desinstaló antes de actualizar, el inicio con el sistema no se pierde aunque se cierre la ventana
+  ; sin pasar por la página final
+  ${If} $RunPrevio != ""
+    WriteRegStr HKCU "${RUNKEY}" "${PRODUCTNAME}" '"$INSTDIR\${MAINBINARYNAME}.exe" --autostart'
+  ${EndIf}
 
   ; Auto close this page for passive mode
   ${If} $PassiveMode = 1
@@ -853,8 +876,9 @@ Function .onInstSuccess
   ${OrIf} ${Silent}
     ${GetOptions} $CMDLINE "/R" $R0
     ${IfNot} ${Errors}
-      ${GetOptions} $CMDLINE "/ARGS" $R0
-      nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" "$R0"
+      ; BoldoAtlas: sin /ARGS. La app no tiene otros argumentos, y --autostart (el actualizador reenvía los del proceso)
+      ; la reabriría minimizada tras actualizar, como si se hubiera cerrado
+      nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
     ${EndIf}
   ${EndIf}
 FunctionEnd

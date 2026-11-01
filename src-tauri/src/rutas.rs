@@ -14,6 +14,16 @@ pub struct Rutas {
     pub portable: bool,
 }
 
+/// Identificador con que la portable se identifica ante el sistema: el normal más su carpeta de datos, para que una
+/// instalada y portables en distintas carpetas no se tomen por otra instancia (`tauri-plugin-single-instance` usa el
+/// identificador). El sufijo empieza con letra: en Linux forma parte de un nombre de D-Bus.
+pub fn identificador_portable(id: &str, datos: &Path) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    datos.to_string_lossy().to_lowercase().hash(&mut h);
+    format!("{id}.p{:016x}", h.finish())
+}
+
 /// Carpeta donde se busca `portable.flag`: la del AppImage en Linux (`$APPIMAGE`; el exe corre desde su
 /// montaje temporal, `$APPDIR`), la que contiene `BoldoAtlas.app` en macOS y la del exe en los demás casos.
 pub fn carpeta_programa(
@@ -150,6 +160,18 @@ fn abierto_desde_zip(exe_dir: &Path) -> bool {
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn identificador_portable_distingue_carpetas() {
+        let a = identificador_portable("io.x.app", Path::new("C:/Portables/A/datos"));
+        let b = identificador_portable("io.x.app", Path::new("C:/Portables/B/datos"));
+        assert_ne!(a, b);
+        assert_eq!(
+            a,
+            identificador_portable("io.x.app", Path::new("c:/portables/a/datos"))
+        );
+        assert!(a.starts_with("io.x.app.p"), "{a}");
+    }
 
     #[test]
     fn detecta_exe_abierto_desde_zip() {

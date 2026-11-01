@@ -63,7 +63,13 @@ Requirements: on Windows, WebView2 (included in Windows 11 and almost every Wind
 
 In portable mode, extract the zip first: running it from inside the zip cannot save data. On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`); data and backups do stay in `datos/`.
 
-To start with the system, installed versions have a checkbox on the installer's last page (Windows) and in **Settings › Start with the system**; it opens minimized and is removed when you uninstall. The portable doesn't offer it, because it would write outside its folder. On Windows 11, new tray icons stay inside the **^** arrow next to the clock; to keep BoldoAtlas in sight, drag it onto the taskbar.
+On Windows, open the installer from File Explorer (double-click it in Downloads), not from inside another app. Apps packaged as MSIX, such as Claude Desktop, keep what they open in a private area: the app wouldn't start when setup finishes, the shortcuts would have no icon and it wouldn't appear in Installed apps. The installer reopens itself outside that app, or asks you to move it to Downloads if it can't.
+
+If it's already installed that way (its shortcuts point to `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): close BoldoAtlas, open that folder in File Explorer, double-click `uninstall.exe` **without ticking delete data**, and install again by double-clicking the installer. Your data is in `%APPDATA%` and is not touched. An old uninstall entry stays in that app's private area, with no effect. These steps were tested with a test copy, not with a real install.
+
+To start with the system on Windows, the installed version has a checkbox on the installer's last page and in **Settings › Start with the system**; it opens minimized and is removed when you uninstall. It isn't offered in the portable, because it would write outside its folder, nor on Linux and macOS for now. On Windows 11, new tray icons stay inside the **^** arrow next to the clock; to keep BoldoAtlas in sight, drag it onto the taskbar.
+
+Opening BoldoAtlas when it's already open brings its window to the front. Installed and portable copies, and portables in different folders, can stay open at the same time.
 
 ### Updating
 
