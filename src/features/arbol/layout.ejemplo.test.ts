@@ -2,7 +2,15 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { useOrganizacion } from "@/stores/organizacion";
-import { aristasDibujadas, calcularLayout, reubicar, subgrafoVisible, type Subgrafo } from "./layout";
+import {
+  aristasDibujadas,
+  cajasDibujadas,
+  calcularLayout,
+  reubicar,
+  subgrafoVisible,
+  type Subgrafo,
+} from "./layout";
+import { trazarLaterales } from "./lateral";
 import { VISTA_POR_DEFECTO, separaciones, tamPuesto, tamUnidad, type ConfigVista } from "./vista";
 
 const h = vi.hoisted(() => ({ bd: null as BasePrueba | null }));
@@ -89,6 +97,48 @@ describe("layout del ejemplo con puestos", () => {
                 ).toBe(false);
           expect(separaciones(c).puestos).toBeGreaterThan(0);
         });
+
+  const sinPuestos = (): Subgrafo => ({
+    ...g,
+    puestos: [],
+    jerarquicas: g.jerarquicas.filter(([, b]) => g.nodos.some((u) => u.id === b)),
+  });
+  // Cada unidad con la siguiente: la misma fila y distinta profundidad, vecinas y lejanas, con y sin puestos.
+  for (const direccion of ["vertical", "horizontal"] as const)
+    for (const densidad of ["normal", "compacta"] as const)
+      for (const conPuestos of [false, true])
+        it(`laterales del ejemplo sin cruzar tarjetas (${direccion}, ${densidad}${conPuestos ? ", con puestos" : ""})`, async () => {
+          const c: ConfigVista = { ...VISTA_POR_DEFECTO, direccion, densidad };
+          const sub = conPuestos ? g : sinPuestos();
+          const [tu, tp] = [tamUnidad(c, false), tamPuesto(c)];
+          const pos = await calcularLayout(sub, tu, tp, c);
+          const cajas = cajasDibujadas(sub, pos, tu, tp);
+          const laterales = sub.nodos.flatMap((a, i) =>
+            sub.nodos.slice(i + 1).map((b) => ({
+              id: `${a.id}-${b.id}`,
+              origen_id: a.id,
+              destino_id: b.id,
+              etiqueta: i % 2 ? "Abastecimiento de repuestos" : null,
+            })),
+          );
+          const trazados = trazarLaterales(laterales, cajas, direccion);
+          expect(trazados.size).toBe(laterales.length);
+          for (const [id, t] of trazados) expect(t.cruces, id).toBe(0);
+        });
+
+  it("la conexión del ejemplo (Mantención con Compras): su etiqueta no tapa ninguna tarjeta", async () => {
+    const c = VISTA_POR_DEFECTO;
+    const sub = sinPuestos();
+    const [tu, tp] = [tamUnidad(c, false), tamPuesto(c)];
+    const cajas = cajasDibujadas(sub, await calcularLayout(sub, tu, tp, c), tu, tp);
+    const { etiqueta, cruces } = trazarLaterales(sub.laterales, cajas, "vertical").get(sub.laterales[0]!.id)!;
+    expect(cruces).toBe(0);
+    for (const k of cajas.values()) {
+      const dentroX = etiqueta.x + 96 > k.x && etiqueta.x - 96 < k.x + k.ancho;
+      const dentroY = etiqueta.y + 10 > k.y && etiqueta.y - 10 < k.y + k.alto;
+      expect(dentroX && dentroY).toBe(false);
+    }
+  });
 
   it("aristasDibujadas: la unidad baja por sus puestos y de su último puesto salen las líneas a las hijas", () => {
     const gg = g.nodos.find((x) => x.parent_id === null)!;

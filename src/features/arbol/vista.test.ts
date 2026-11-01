@@ -18,6 +18,14 @@ import {
   tipoDeMarca,
 } from "./vista";
 
+describe("relaciones laterales", () => {
+  it("vienen encendidas; lo guardado manda y un valor dañado vuelve al de por defecto", () => {
+    expect(leerVista(null).relacionesLaterales).toBe(true);
+    expect(leerVista({ relacionesLaterales: false }).relacionesLaterales).toBe(false);
+    expect(leerVista({ relacionesLaterales: "no" }).relacionesLaterales).toBe(true);
+  });
+});
+
 describe("leerVista", () => {
   it("sin datos o con basura devuelve los valores por defecto", () => {
     for (const crudo of [null, undefined, 3, "x", [], true])

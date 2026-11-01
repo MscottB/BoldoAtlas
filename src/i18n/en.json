@@ -132,6 +132,7 @@
     "vista": {
       "titulo": "Customize",
       "verPuestos": "Show positions",
+      "relacionesLaterales": "Lateral connections",
       "mostrarCargo": "Show the job title",
       "mostrarPersona": "Show the person",
       "rutaPorTipo": "Show on cards the parent unit of type",
@@ -214,6 +215,26 @@
       "hastaNivel": "Expand to level {n}"
     },
     "reordenarAyuda": "Lays out the diagram again and fits it to the view",
+    "lateral": {
+      "conEtiqueta": "Lateral connection between {origen} and {destino}: {etiqueta}",
+      "sinEtiqueta": "Lateral connection between {origen} and {destino}"
+    },
+    "acciones": {
+      "titulo": "Actions for {unidad}",
+      "mas": "More actions"
+    },
+    "niveles": {
+      "titulo": "Levels in view",
+      "ver": "Show {n} level | Show {n} levels",
+      "todo": "All",
+      "verTodo": "Show all levels"
+    },
+    "previa": {
+      "valido": "It will go inside “{destino}”. Drop to confirm or press Esc to cancel.",
+      "igual": "It already reports to “{destino}”: dropping it here changes nothing.",
+      "ciclo": "Not possible: “{destino}” is inside the branch you are moving.",
+      "vacio": "Drop it on another unit. Here it goes back to its place; Esc cancels."
+    },
     "ramas": {
       "titulo": "Branches",
       "expandirTodo": "Expand all",

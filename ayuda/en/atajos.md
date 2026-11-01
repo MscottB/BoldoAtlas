@@ -12,7 +12,7 @@ BoldoAtlas's own shortcuts:
 | `N`                                       | New child unit of the selected unit                                                                                                                                    |
 | `F`                                       | Goes to the **Search unit or person** field in the canvas bar                                                                                                             |
 | `Del`                                     | Deletes the selection (you have 8 seconds to undo); with several units selected, deletes them all at once                                                              |
-| `Esc`                                     | Closes the open panel or dialog; with several units selected, clears the selection                                                                                     |
+| `Esc`                                     | Closes the open panel or dialog; with several units selected, clears the selection; while dragging a card, cancels it                                                  |
 | `Ctrl` + `0`                              | Fits the whole tree in the window                                                                                                                                      |
 | `Ctrl` + `=` / `Ctrl` + `+`               | Zooms the canvas in                                                                                                                                                    |
 | `Ctrl` + `-`                              | Zooms the canvas out                                                                                                                                                   |

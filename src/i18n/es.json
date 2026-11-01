@@ -132,6 +132,7 @@
     "vista": {
       "titulo": "Personalizar",
       "verPuestos": "Ver puestos",
+      "relacionesLaterales": "Relaciones laterales",
       "mostrarCargo": "Mostrar el cargo",
       "mostrarPersona": "Mostrar la persona",
       "rutaPorTipo": "Mostrar en las tarjetas el superior de tipo",
@@ -214,6 +215,26 @@
       "hastaNivel": "Expandir hasta el nivel {n}"
     },
     "reordenarAyuda": "Vuelve a ordenar el diagrama y lo encuadra",
+    "lateral": {
+      "conEtiqueta": "Relación lateral entre {origen} y {destino}: {etiqueta}",
+      "sinEtiqueta": "Relación lateral entre {origen} y {destino}"
+    },
+    "acciones": {
+      "titulo": "Acciones de {unidad}",
+      "mas": "Más acciones"
+    },
+    "niveles": {
+      "titulo": "Niveles a la vista",
+      "ver": "Ver {n} nivel | Ver {n} niveles",
+      "todo": "Todo",
+      "verTodo": "Ver todos los niveles"
+    },
+    "previa": {
+      "valido": "Quedará dentro de «{destino}». Suelta para confirmar o pulsa Esc para cancelar.",
+      "igual": "Ya depende de «{destino}»: si la sueltas aquí, nada cambia.",
+      "ciclo": "No se puede: «{destino}» está dentro de la rama que mueves.",
+      "vacio": "Suéltala sobre otra unidad. Aquí vuelve a su lugar; Esc cancela."
+    },
     "ramas": {
       "titulo": "Ramas",
       "expandirTodo": "Expandir todo",

@@ -8,6 +8,7 @@ import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
 import "@vue-flow/minimap/dist/style.css";
 import { toast } from "vue-sonner";
+import { useEventListener } from "@vueuse/core";
 import { ArrowUp, CalendarClock, LoaderCircle, Network } from "@lucide/vue";
 import {
   AlertDialog,
@@ -23,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import type { Etiqueta, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
-  creaCiclo,
   dotacionPorUnidad,
   indiceHijos,
   jefeVisible,
@@ -36,7 +36,9 @@ import {
 } from "./jerarquia";
 import {
   aristasDibujadas,
+  cajasDibujadas,
   grafoElk,
+  lugarPrevisto,
   posiciones,
   reubicar,
   subgrafoVisible,
@@ -48,7 +50,8 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { destinoAlSoltar, puestoUbicado, useLienzo } from "./useLienzo";
+import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo } from "./useLienzo";
+import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
 import { recordarPorArbol, useVista } from "./useVista";
 import {
@@ -61,9 +64,13 @@ import {
   tamUnidad,
   tipoArista,
   tipoDeMarca,
+  type ConfigVista,
 } from "./vista";
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
+import AristaLateral from "./AristaLateral.vue";
+import NivelesLienzo from "./NivelesLienzo.vue";
+import PreviaMover, { type Previa } from "./PreviaMover.vue";
 import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
 import MenuLienzo from "./MenuLienzo.vue";
@@ -197,11 +204,19 @@ if (previo) {
 
 // El layout corre en un worker (la interfaz sigue respondiendo): solo aplica el del último cambio, junto con el subgrafo
 // que lo produjo; mientras tanto se avisa «Ordenando…».
-const vista = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
+// `cajas` y `direccion`: los de ese layout, para trazar las laterales sobre lo que de verdad está dibujado.
+type VistaLienzo = {
+  g: Subgrafo;
+  pos: Map<string, Punto>;
+  cajas: Map<string, Caja>;
+  direccion: ConfigVista["direccion"];
+  densidad: ConfigVista["densidad"];
+};
+const vista = shallowRef<VistaLienzo | null>(null);
 // Lo dibujado (nodos y líneas de Vue Flow): solo se reemplaza si cambian las tarjetas o las líneas. Si no (reordenar, volver
 // a aplicar una vista, otra densidad), las tarjetas se mueven en su lugar: rehacer los nodos de Vue Flow compara todos contra
 // todos (~1 s con 2.000 tarjetas); moverlos cuesta unos ms.
-const dibujo = shallowRef<{ g: Subgrafo; pos: Map<string, Punto> } | null>(null);
+const dibujo = shallowRef<VistaLienzo | null>(null);
 const forma = (g: Subgrafo) =>
   JSON.stringify([
     g.nodos.map((u) => u.id),
@@ -299,7 +314,13 @@ watch(
       if (este !== secuencia) return; // mientras se encuadraba llegó otro cambio
     }
     const antes = dibujo.value;
-    vista.value = { g, pos };
+    vista.value = {
+      g,
+      pos,
+      cajas: cajasDibujadas(g, pos, tam, tamDelPuesto),
+      direccion: opciones.direccion,
+      densidad: opciones.densidad,
+    };
     // Sin avisar a `nodos`: las tarjetas se mueven en su lugar.
     if (antes && forma(antes.g) === forma(g)) reubicar(pos, antes.pos, findNode);
     else dibujo.value = vista.value;
@@ -475,6 +496,54 @@ const ligera = computed(() => tarjetasLigeras(viewport.value.zoom, nodos.value.l
 // encuadrar: se deja libre esa franja a la derecha.
 const MINIMAPA = { ancho: 160, alto: 100 };
 const conMapa = computed(() => minimapa.value && conMinimapa(nodos.value.length));
+// Solo cambia con un layout: mover el puntero no vuelve a trazar nada.
+const trazados = computed(() =>
+  vista.value && config.value.relacionesLaterales
+    ? trazarLaterales(
+        vista.value.g.laterales,
+        vista.value.cajas,
+        vista.value.direccion,
+        escalaMaxEtiqueta(vista.value.densidad),
+      )
+    : new Map<string, Trazado>(),
+);
+// La tarjeta activa: bajo el puntero o, si no, con el foco del teclado (un clic con el mouse no cuenta como foco).
+const bajoPuntero = ref<string | null>(null);
+const conFoco = ref<string | null>(null);
+const tarjetaDe = (el: EventTarget | null) =>
+  el instanceof Element ? (el.closest<HTMLElement>(".vue-flow__node")?.dataset.id ?? null) : null;
+let tabAtras = false; // la última tecla fue Mayús+Tab
+async function alEnfocar({ target, relatedTarget }: FocusEvent) {
+  const id = target instanceof Element && target.matches(":focus-visible") ? tarjetaDe(target) : null;
+  conFoco.value = id;
+  const volviendo = tabAtras && id && id !== tarjetaDe(relatedTarget);
+  tabAtras = false;
+  if (!volviendo) return;
+  // La barra se monta con el foco y va al final de la tarjeta: Mayús+Tab ya la pasó de largo. El foco sigue a su último botón,
+  // que es donde habría caído de existir ya.
+  await nextTick();
+  document
+    .querySelector<HTMLElement>(
+      `.vue-flow__node[data-id="${CSS.escape(id)}"] [data-acciones-tarjeta] button:last-of-type`,
+    )
+    ?.focus();
+}
+// Si el foco sigue en la misma tarjeta no se toca: quitar sus acciones ahora botaría el foco que va hacia una de ellas.
+function alDesenfocar({ relatedTarget }: FocusEvent) {
+  if (tarjetaDe(relatedTarget) !== conFoco.value) conFoco.value = null;
+}
+const arrastrando = ref(false);
+const tarjetaActiva = computed(() =>
+  ligera.value || arrastrando.value ? null : (bajoPuntero.value ?? conFoco.value),
+);
+const tarjetaEnfocada = computed(() => (ligera.value || arrastrando.value ? null : conFoco.value));
+const relacionesActivas = computed(() => {
+  const id = tarjetaActiva.value;
+  const propias = id
+    ? vista.value?.g.laterales.filter((c) => c.origen_id === id || c.destino_id === id).map((c) => c.id)
+    : null;
+  return propias?.length ? new Set(propias) : null;
+});
 const encuadrarTodo = () =>
   fitView(conMapa.value ? { padding: { x: 0.1, y: 0.1, right: `${MINIMAPA.ancho + 30}px` } } : undefined);
 // Al encender el minimapa se encuadra una vez, para que no tape tarjetas.
@@ -484,6 +553,10 @@ provide(CONTEXTO_LIENZO, {
   rutas,
   leyendas: computed(() => (porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null)),
   ligera,
+  trazados,
+  tarjetaActiva,
+  tarjetaEnfocada,
+  relacionesActivas,
   encuadrar: encuadrarTodo,
 });
 
@@ -529,15 +602,26 @@ const aristas = computed<Edge[]>(() => {
         type: ligera.value ? "step" : tipoArista(config.value.lineas),
         interactionWidth: ligera.value ? 0 : undefined,
       })),
-    ...g.laterales
+    ...(config.value.relacionesLaterales ? g.laterales : [])
       .filter((c) => entre(c.origen_id, c.destino_id))
-      .map((c) => ({
-        id: c.id,
-        source: c.origen_id,
-        target: c.destino_id,
-        label: c.etiqueta ?? undefined,
-        style: { stroke: "var(--marca)", strokeDasharray: "6 4" },
-      })),
+      .map((c) => {
+        const descripcion = t(c.etiqueta ? "arbol.lateral.conEtiqueta" : "arbol.lateral.sinEtiqueta", {
+          origen: org.enFecha.porId.get(c.origen_id)?.nombre,
+          destino: org.enFecha.porId.get(c.destino_id)?.nombre,
+          etiqueta: c.etiqueta,
+        });
+        return {
+          id: c.id,
+          source: c.origen_id,
+          target: c.destino_id,
+          type: "lateral",
+          label: c.etiqueta ?? undefined,
+          selectable: false,
+          focusable: false,
+          ariaLabel: descripcion,
+          data: { descripcion },
+        };
+      }),
   ];
 });
 
@@ -547,7 +631,10 @@ watch(avisoExpansion, (a) => (avisoAbierto.value = !!a));
 // Cerrado sin elegir (Cancelar, Esc): nada cambia. Los botones de acción ya dejaron el aviso en null antes de esto.
 watch(avisoAbierto, (abierto) => abierto || cancelarExpansion());
 function expandirConAviso(colapsadosNuevos: Set<string> | null | undefined) {
-  if (colapsadosNuevos) colapsados.value = colapsadosNuevos;
+  if (colapsadosNuevos) {
+    colapsados.value = colapsadosNuevos;
+    encuadrar = true; // tanto cambio de forma se encuadra, como los niveles rápidos cuando no hay aviso
+  }
   avisoExpansion.value = null;
 }
 
@@ -555,17 +642,72 @@ function expandirConAviso(colapsadosNuevos: Set<string> | null | undefined) {
 const confirmando = ref(false);
 const moviendo = ref<{ unidad: Unidad; destino: Unidad } | null>(null);
 
+// Los puestos no reciben tarjetas: solo las unidades son destino.
+const unidadesPos = computed(
+  () => new Map([...(vista.value?.pos ?? [])].filter(([id]) => org.porId.has(id))),
+);
+const destinoDe = ({ id, position }: Pick<Node, "id" | "position">) =>
+  destinoAlSoltar(id, position, unidadesPos.value, TAM.value);
+
+// Vista previa al arrastrar: se rehace solo si cambia el destino, y se dibuja encima del lienzo (también en ligero).
+const previa = shallowRef<Previa | null>(null);
+let cancelado = false;
+function alEmpezarArrastre() {
+  arrastrando.value = true;
+  cancelado = false;
+}
+function alArrastrar({ node }: NodeDragEvent) {
+  const destino = destinoDe(node);
+  if (previa.value && (previa.value.destino?.id ?? null) === destino) return;
+  const unidad = org.porId.get(node.id);
+  const v = vista.value;
+  if (!unidad || !v) return;
+  const estado = destino ? estadoMover(org.unidades, unidad, destino) : null;
+  previa.value = {
+    destino: destino ? org.porId.get(destino) : undefined,
+    estado,
+    caja: destino ? v.cajas.get(destino) : undefined,
+    lugar:
+      destino && estado === "valido" ? lugarPrevisto(v.g, v.cajas, node.id, destino, config.value) : null,
+    tam: TAM.value,
+  };
+}
+// Esc al arrastrar: se termina el gesto (Vue Flow no trae cómo cancelarlo) y la tarjeta vuelve a su lugar sin preguntar.
+useEventListener(
+  window,
+  "keydown",
+  (e: KeyboardEvent) => {
+    tabAtras = e.key === "Tab" && e.shiftKey;
+    if (e.key !== "Escape" || !arrastrando.value) return;
+    e.preventDefault();
+    e.stopImmediatePropagation(); // ni el panel ni el resto de los atajos ven este Esc
+    cancelado = true;
+    window.dispatchEvent(new MouseEvent("mouseup", { view: window }));
+    // Al soltar de verdad el botón, el navegador haría clic en la tarjeta: ese clic no cuenta.
+    const sinClic = (ev: Event) => ev.stopPropagation();
+    window.addEventListener("click", sinClic, true);
+    window.addEventListener(
+      "mouseup",
+      () => setTimeout(() => window.removeEventListener("click", sinClic, true)),
+      { once: true, capture: true },
+    );
+  },
+  { capture: true },
+);
+
 function alSoltar({ node }: NodeDragEvent) {
+  arrastrando.value = false;
+  previa.value = null;
   const pos = vista.value?.pos;
   if (!pos) return;
-  // Los puestos no reciben tarjetas: solo las unidades son destino.
-  const unidadesPos = new Map([...pos].filter(([id]) => org.porId.has(id)));
-  const destino = destinoAlSoltar(node.id, node.position, unidadesPos, TAM.value);
+  const destino = cancelado ? null : destinoDe(node);
   const unidad = org.porId.get(node.id);
   // La tarjeta vuelve a su lugar; si se confirma el movimiento, el layout la reubica.
   updateNode(node.id, { position: pos.get(node.id) });
-  if (!unidad || !destino || destino === unidad.parent_id) return;
-  if (creaCiclo(org.unidades, unidad.id, destino)) return void toast.warning(t("store.cicloRama"));
+  if (!unidad || !destino) return;
+  const estado = estadoMover(org.unidades, unidad, destino);
+  if (estado === "igual") return;
+  if (estado === "ciclo") return void toast.warning(t("store.cicloRama"));
   moviendo.value = { unidad, destino: org.porId.get(destino)! };
   confirmando.value = true;
 }
@@ -673,8 +815,16 @@ function verCompleto() {
     </div>
     <!-- Lienzo y leyenda en la primera columna; el panel de la unidad ocupa la segunda a todo el alto. -->
     <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)_auto]">
-      <div class="relative min-w-0" @keydown.esc="escEnLienzo">
+      <div
+        class="relative min-w-0"
+        @keydown.esc="escEnLienzo"
+        @pointerover="bajoPuntero = tarjetaDe($event.target)"
+        @pointerleave="bajoPuntero = null"
+        @focusin="alEnfocar"
+        @focusout="alDesenfocar"
+      >
         <ZoomLienzo />
+        <NivelesLienzo v-if="!org.vacia" :unidades="mostradas" @encuadrar="encuadrar = true" />
         <MenuLienzo :unidades="mostradas" :visibles="visibles" :raiz="raiz" @reordenar="reordenar">
           <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
           <VueFlow
@@ -691,6 +841,8 @@ function verCompleto() {
             :delete-key-code="null"
             class="lienzo"
             :class="ligera && 'lienzo-ligero'"
+            @node-drag-start="alEmpezarArrastre"
+            @node-drag="alArrastrar"
             @node-drag-stop="alSoltar"
             @node-click="removeSelectedElements()"
             @selection-end="alTerminarRecuadro"
@@ -702,11 +854,15 @@ function verCompleto() {
             <template #node-puesto="p">
               <NodoPuesto :id="p.id" :data="p.data" />
             </template>
+            <template #edge-lateral="p">
+              <AristaLateral :id="p.id" :etiqueta="p.label as string" :descripcion="p.data.descripcion" />
+            </template>
             <MiniMap v-if="conMapa" pannable zoomable :width="MINIMAPA.ancho" :height="MINIMAPA.alto" />
           </VueFlow>
         </MenuLienzo>
+        <PreviaMover :previa="previa" />
         <div
-          v-if="seleccionadas.size >= 2 && !org.fechaVista"
+          v-if="seleccionadas.size >= 2 && !org.fechaVista && !arrastrando"
           class="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-center"
         >
           <BarraSeleccion class="pointer-events-auto" />
@@ -780,15 +936,20 @@ function verCompleto() {
 </template>
 
 <style scoped>
-/* Líneas, etiquetas de las conexiones laterales y minimapa con los colores del tema (las laterales traen su color). */
+/* Líneas y minimapa con los colores del tema (las laterales traen su color). */
 .lienzo :deep(.vue-flow__edge-path) {
   stroke: var(--arista);
 }
-.lienzo :deep(.vue-flow__edge-textbg) {
-  fill: var(--background);
+/* Las etiquetas de las laterales van sobre las tarjetas; la tarjeta con sus acciones, sobre las etiquetas y las vecinas. */
+.lienzo :deep(.vue-flow__edge-labels) {
+  z-index: 1;
 }
-.lienzo :deep(.vue-flow__edge-text) {
-  fill: var(--foreground);
+.lienzo :deep(.vue-flow__node:has([data-acciones-tarjeta])) {
+  z-index: 999 !important;
+}
+/* La tarjeta que se arrastra va sobre todo lo demás, también sobre su destino. */
+.lienzo :deep(.vue-flow__node.dragging) {
+  z-index: 1000 !important;
 }
 .lienzo :deep(.vue-flow__minimap) {
   background: var(--card);

@@ -4,7 +4,14 @@ import { TIPO_GERENCIA, type Trabajador } from "@/db/tipos";
 import { a, asignaciones, p, puestos, u, unidades } from "./fixture";
 import { vigentesPorPuesto } from "./jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
-import { coincideFiltro, destinoAlSoltar, puestoUbicado, unidadesQueCumplen, useLienzo } from "./useLienzo";
+import {
+  coincideFiltro,
+  destinoAlSoltar,
+  estadoMover,
+  puestoUbicado,
+  unidadesQueCumplen,
+  useLienzo,
+} from "./useLienzo";
 import { useVista } from "./useVista";
 import { VISTA_POR_DEFECTO } from "./vista";
 
@@ -27,6 +34,12 @@ describe("lógica del lienzo", () => {
     expect(coincideFiltro(mantencion, "", new Set(["finanzas"]))).toBe(false);
     expect(coincideFiltro(mantencion, "mante", new Set(["mantencion"]))).toBe(true);
     expect(coincideFiltro(mantencion, "otra", new Set(["mantencion"]))).toBe(false);
+  });
+
+  it("estadoMover: lo que la vista previa anuncia es lo que pasará al soltar", () => {
+    expect(estadoMover(unidades, mantencion, "finanzas")).toBe("valido");
+    expect(estadoMover(unidades, mantencion, mantencion.parent_id!)).toBe("igual");
+    expect(estadoMover(unidades, mantencion, "mecanica")).toBe("ciclo"); // su propia rama
   });
 
   it("destinoAlSoltar da la tarjeta bajo el centro de la arrastrada, nunca ella misma", () => {

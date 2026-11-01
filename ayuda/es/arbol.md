@@ -21,11 +21,13 @@ Cada unidad es una tarjeta con:
 
 Los tipos de unidad son una lista propia de tu organización: al comienzo trae Gerencia, Área, Subárea y Otra, que se pueden renombrar, reordenar, desactivar o complementar con otros (por ejemplo, Superintendencia o Departamento). El orden de la lista no limita la estructura: cualquier tipo puede depender de cualquier otro.
 
-Las líneas continuas unen cada unidad con su superior. Las líneas punteadas son conexiones laterales entre unidades, con su descripción.
+Las líneas continuas unen cada unidad con su superior. Las líneas punteadas son conexiones laterales entre unidades: van por el espacio libre entre las tarjetas, y su descripción se lee sobre la línea. Si es larga se abrevia: pasa el puntero por encima, o llega a ella con `Tab`, para verla completa. Al pasar por una tarjeta o enfocarla, sus conexiones se resaltan y las demás se atenúan. Para ocultarlas, apaga **Relaciones laterales** en **Personalizar**.
 
 ## Plegar y desplegar ramas
 
 Al abrir el árbol se ven las raíces y su primer nivel; el resto está plegado. El botón de abajo a la derecha de una tarjeta muestra cuántas subunidades tiene ocultas (por ejemplo `+3`): púlsalo para desplegarlas y otra vez para plegarlas.
+
+Abajo a la izquierda del lienzo, **1**, **2**, **3** y **Todo** muestran esa cantidad de niveles (1 = solo las raíces) y encuadran el árbol.
 
 En **Más** (el último botón de la barra del lienzo), el grupo **Ramas** pliega o despliega todo de una vez:
 
@@ -35,11 +37,11 @@ En **Más** (el último botón de la barra del lienzo), el grupo **Ramas** plieg
 
 En el menú contextual de una unidad, **Expandir rama** abre la unidad y todo lo que cuelga de ella, y **Contraer rama** la pliega junto con sus subramas: al volver a abrirla se ve un nivel. En una rama abierta como árbol, los niveles se cuentan desde su raíz.
 
-Si al expandir (con **Más › Ramas**, el menú contextual o una vista guardada) quedarían más de 1.000 tarjetas a la vista, primero se avisa con la cifra: **Expandir igual**, **Expandir hasta el nivel** que todavía cabe, o **Cancelar**. Con tantas tarjetas el lienzo se vuelve lento.
+Si al expandir (con los niveles, **Más › Ramas**, el menú contextual o una vista guardada) quedarían más de 1.000 tarjetas a la vista, primero se avisa con la cifra: **Expandir igual**, **Expandir hasta el nivel** que todavía cabe, o **Cancelar**. Con tantas tarjetas el lienzo se vuelve lento.
 
 ## Diagrama ordenado
 
-El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades, las unidades hermanas van en su orden y cada nivel ocupa una misma fila (o columna, en horizontal). Si hay varias raíces, quedan lado a lado. Las conexiones laterales no cambian el dibujo: solo se trazan encima. Con **Ver puestos**, los puestos de cada unidad van apilados justo debajo de su tarjeta (a su derecha, en horizontal), en su orden, y las líneas a las subunidades salen del último puesto.
+El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades, las unidades hermanas van en su orden y cada nivel ocupa una misma fila (o columna, en horizontal). Si hay varias raíces, quedan lado a lado. Las conexiones laterales no cambian el dibujo: solo se trazan por los espacios libres. Si una tarjeta está rodeada y no queda ningún camino libre, la línea cruza las menos tarjetas posibles. Con **Ver puestos**, los puestos de cada unidad van apilados justo debajo de su tarjeta (a su derecha, en horizontal), en su orden, y las líneas a las subunidades salen del último puesto.
 
 **Reordenar**, en **Más**, vuelve a calcular el dibujo, devuelve a su lugar cualquier tarjeta que haya quedado fuera de él y lo encuadra en la ventana. Con un árbol grande el cálculo tarda unos segundos: mientras tanto se ve **Ordenando…** arriba a la derecha y puedes seguir usando el lienzo.
 
@@ -56,7 +58,8 @@ Viendo el organigrama a una fecha, las acciones que cambian algo aparecen desact
 ## Seleccionar, crear y renombrar
 
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
-- En la tarjeta seleccionada aparece **+**: crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
+- Al pasar el puntero por una tarjeta, enfocarla con `Tab` o seleccionarla, aparecen sobre ella sus acciones, sin mover nada de la tarjeta: **+**, el lápiz (**Renombrar**), **Plegar rama** o mostrar sus subunidades si tiene, y **Más acciones**, que abre el menú contextual. Con `Tab` se llega a ellas después de los botones de la tarjeta.
+- **+** crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
 - Al seleccionar una tarjeta se abre el **panel de la unidad**, a la derecha del lienzo (ver «Panel de unidad»): ahí están sus puestos y todos sus datos.
 - **Doble clic** sobre el nombre, o `F2` con la tarjeta enfocada o seleccionada, lo edita. `Enter` guarda y `Esc` cancela.
 - **+ Nueva unidad**, en la barra del lienzo, crea una subunidad de la tarjeta seleccionada; si no hay ninguna seleccionada, de la raíz de la vista enfocada, o una raíz nueva del primer tipo de la lista.
@@ -69,10 +72,10 @@ Selecciona una tarjeta y pulsa `N` para crear una subunidad sin usar el mouse.
 
 ## Mover una unidad
 
-1. Arrastra la tarjeta de la unidad y suéltala sobre la que será su nueva superior.
-2. BoldoAtlas pregunta "¿Mover X dentro de Y?" antes de cambiar su superior: confirma.
+1. Arrastra la tarjeta de la unidad sobre la que será su nueva superior. Mientras arrastras se ve dónde quedará, marcado con líneas punteadas, y arriba del lienzo un aviso dice qué pasará si la sueltas.
+2. Suéltala. BoldoAtlas pregunta "¿Mover X dentro de Y?" antes de cambiar su superior: confirma.
 
-No se puede mover una unidad dentro de su propia rama: en ese caso aparece un aviso y nada cambia. Si sueltas la tarjeta en el vacío, vuelve a su lugar.
+No se puede mover una unidad dentro de su propia rama: el destino se marca como no válido y, si la sueltas ahí, aparece un aviso y nada cambia. Si sueltas la tarjeta en el vacío, o sobre su superior actual, vuelve a su lugar. `Esc`, mientras arrastras, cancela y la tarjeta vuelve a su lugar.
 
 ## Seleccionar varias unidades
 
@@ -117,7 +120,7 @@ Si la persona tiene varios puestos vigentes, se elige cuál en un menú «Cargo 
 
 Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** de la esquina inferior derecha del lienzo para alejar o acercar (con el teclado, `Ctrl` + `-` y `Ctrl` + `=`; con `Tab` se llega a esos botones justo después de la barra). A su lado, **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El **minimapa** muestra dónde estás: viene apagado y se enciende en **Más › Mostrar minimapa**; al encenderlo, el árbol se encuadra una vez. Aparece abajo a la derecha, sobre los botones de zoom, con los colores del tema, y al encuadrar el árbol se deja libre su espacio para que no tape tarjetas.
 
-Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Así el lienzo se mueve con fluidez. Al acercarte vuelve todo el detalle; con el teclado, cada tarjeta ligera se enfoca con `Tab` y se elige con `Enter` o la barra espaciadora. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. Con más de 300 tarjetas no hay minimapa, con cualquier zoom. La tarjeta seleccionada se ve rellena con el color de acento.
+Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Las conexiones laterales se ven como líneas continuas, sin su descripción, y no aparecen las acciones de la tarjeta ni el resaltado. Así el lienzo se mueve con fluidez. Arrastrar una tarjeta sigue mostrando dónde quedará. Al acercarte vuelve todo el detalle; con el teclado, cada tarjeta ligera se enfoca con `Tab` y se elige con `Enter` o la barra espaciadora. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. Con más de 300 tarjetas no hay minimapa, con cualquier zoom. La tarjeta seleccionada se ve rellena con el color de acento.
 
 ## Abrir una rama como árbol
 
@@ -125,12 +128,13 @@ En la tarjeta seleccionada, el botón **Abrir como árbol** muestra solo esa uni
 
 ## Personalizar
 
-El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo se dibuja el árbol. Se recuerdan en este computador. A la vista están **Dirección**, **Densidad**, **Colorear por** y **Ver puestos**; el resto va en dos bloques plegados, **Qué mostrar en las tarjetas** y **Avanzado**, que se abren con un clic (o `Enter`) y recuerdan en este computador si los dejaste abiertos. **Restablecer** vuelve todo a como venía al comienzo, salvo el resaltado.
+El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo se dibuja el árbol. Se recuerdan en este computador. A la vista están **Dirección**, **Densidad**, **Colorear por**, **Ver puestos** y, si hay conexiones laterales, **Relaciones laterales**; el resto va en dos bloques plegados, **Qué mostrar en las tarjetas** y **Avanzado**, que se abren con un clic (o `Enter`) y recuerdan en este computador si los dejaste abiertos. **Restablecer** vuelve todo a como venía al comienzo, salvo el resaltado.
 
-![Panel Personalizar con Dirección, Densidad, Colorear por, Ver puestos y los bloques plegados.](../img/es/arbol-personalizar.webp "El panel Personalizar. 1: dirección del árbol. 2: densidad de las tarjetas. 3: colorear por. 4: ver puestos."){width=380 height=462}
+![Panel Personalizar con Dirección, Densidad, Colorear por, Ver puestos, Relaciones laterales y los bloques plegados.](../img/es/arbol-personalizar.webp "El panel Personalizar. 1: dirección del árbol. 2: densidad de las tarjetas. 3: colorear por. 4: ver puestos. 5: relaciones laterales."){width=380 height=490}
 
 - **Ver puestos** (apagado al comienzo): bajo cada unidad visible aparece una tarjeta por cada puesto, con el cargo, la persona titular o **Vacante**, y **Reemplazo: nombre** si hay un reemplazo vigente. Pulsa una tarjeta de puesto, o enfócala y presiona `Enter`, para abrir su ficha. En **Avanzado** se puede ocultar el cargo o la persona. Con muchas unidades desplegadas, los puestos suman tarjetas: pliega las ramas que no necesitas.
 - **Mostrar en las tarjetas el superior de tipo** (en **Avanzado**): marca los tipos (por ejemplo, Gerencia o Área) cuyo superior más cercano quieres leer en cada tarjeta de unidad. Solo aparecen los tipos que alguna unidad usa.
+- **Relaciones laterales** (encendido al comienzo, si hay conexiones): dibuja las conexiones laterales. Apagado, se ocultan sin borrarlas. Se guarda con la vista.
 - **Colorear por**: **Ninguno**, **Marca de** un tipo o **Leyenda del puesto**. Con **Marca de** un tipo, cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Con **Leyenda del puesto**, las tarjetas de puesto toman el color de su leyenda (hay que activar **Ver puestos**; ver «Leyendas y colores de puestos»). Solo se aplica un criterio a la vez.
 
 Con un criterio de color activo, en una franja bajo el lienzo aparece una **leyenda** con el color, el código y el nombre de la unidad que define cada marca que se ve. Si no cabe, la fila se desplaza a lo ancho. Se puede plegar y volver a abrir con su encabezado. Una marca muy oscura (o muy clara) que casi no se distingue de la tarjeta lleva un contorno gris en la franja y el código.
@@ -148,7 +152,7 @@ Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este c
 
 ## Vistas guardadas
 
-El botón **Vistas guardadas** guarda con nombre la configuración actual (dirección, densidad, líneas, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.
+El botón **Vistas guardadas** guarda con nombre la configuración actual (dirección, densidad, líneas, relaciones laterales, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.
 
 ## Ver a una fecha
 
@@ -180,7 +184,7 @@ La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las 
 - **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Con **Nuevo puesto…**, al final de la lista, se abre el puesto nuevo: eliges su cargo, pulsas **Crear puesto** y queda como jefatura de la unidad. Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.
 - La **dotación** directa (puestos con titular en la propia unidad), la total (con toda la rama) y las **vacantes** de la rama.
 - **Etiquetas**: quita una con la X, agrega una existente o elige **Nueva etiqueta…** para crearla con su color. Si el nombre ya existe, se usa esa etiqueta en vez de duplicarla.
-- **Conexiones laterales** (en **Avanzado**): escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles.
+- **Conexiones laterales** (en **Avanzado**): escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles y **Relaciones laterales** está encendido en **Personalizar**.
 - **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol) y **Duplicar rama**, en **Avanzado**; **Eliminar unidad**, al pie.
 
 La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»).

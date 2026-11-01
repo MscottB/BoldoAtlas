@@ -12,7 +12,7 @@ Atajos propios de BoldoAtlas:
 | `N`                                       | Nueva unidad hija de la unidad seleccionada                                                                                                                   |
 | `F`                                       | Va al campo **Buscar unidad o persona** de la barra del lienzo                                                                                                  |
 | `Supr`                                    | Elimina lo seleccionado (hay 8 segundos para deshacer); con varias unidades seleccionadas, las elimina todas a la vez                                         |
-| `Esc`                                     | Cierra el panel o el diálogo abierto; con varias unidades seleccionadas, quita la selección                                                                   |
+| `Esc`                                     | Cierra el panel o el diálogo abierto; con varias unidades seleccionadas, quita la selección; mientras arrastras una tarjeta, lo cancela                       |
 | `Ctrl` + `0`                              | Encuadra todo el árbol en la ventana                                                                                                                          |
 | `Ctrl` + `=` / `Ctrl` + `+`               | Acerca el lienzo                                                                                                                                              |
 | `Ctrl` + `-`                              | Aleja el lienzo                                                                                                                                               |
