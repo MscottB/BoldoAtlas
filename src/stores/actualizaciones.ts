@@ -138,7 +138,8 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
   /**
    * Al arrancar (una vez): «Novedades» si esta versión es más nueva que la última usada en este PC, y la consulta
    * periódica (al abrir y luego cada hora, según la preferencia). Sigue consultando aunque ya haya una versión
-   * nueva, por si sale otra más nueva; no durante una instalación. La consulta automática falla en silencio.
+   * nueva, por si sale otra más nueva; no con la ventana de actualización abierta (no se le cambia ni se queda en
+   * blanco) ni durante una instalación. La consulta automática falla en silencio.
    */
   function iniciar() {
     if (temporizador) return;
@@ -152,7 +153,8 @@ export const useActualizaciones = defineStore("actualizaciones", () => {
     const revisar = (alAbrir: boolean) => {
       const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
       const ultima = leerPreferencia<number | null>(ULTIMA, null);
-      if (!instalando.value && tocaBuscar(frecuencia, ultima, Date.now(), alAbrir)) void buscar(false);
+      if (!instalando.value && !ventanaAbierta.value && tocaBuscar(frecuencia, ultima, Date.now(), alAbrir))
+        void buscar(false);
     };
     revisar(true);
     temporizador = setInterval(() => revisar(false), CADA_HORA);

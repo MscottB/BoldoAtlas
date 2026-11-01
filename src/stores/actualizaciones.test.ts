@@ -9,7 +9,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 
-const { CADA_HORA, PREFERENCIA, ULTIMA, mensajeError, useActualizaciones } = await import("./actualizaciones");
+const { CADA_HORA, PREFERENCIA, ULTIMA, mensajeError, useActualizaciones } =
+  await import("./actualizaciones");
 
 const disponible = { version: "9.9.9", modo: "portable", pagina: "https://x", novedades: null };
 
@@ -68,6 +69,7 @@ describe("consulta periódica (iniciar)", () => {
     const a = useActualizaciones();
     a.iniciar();
     a.iniciar();
+    expect(vi.getTimerCount()).toBe(1);
     await vi.waitFor(() => expect(a.disponible?.version).toBe("9.9.9"));
     expect(invoke).toHaveBeenCalledTimes(1);
     // la automática no abre la ventana: solo el aviso de la barra
@@ -83,6 +85,18 @@ describe("consulta periódica (iniciar)", () => {
 });
 
 describe("buscar", () => {
+  it("con la ventana de actualización abierta, la consulta automática espera (la ventana no queda en blanco)", async () => {
+    invoke.mockResolvedValue(disponible);
+    const a = useActualizaciones();
+    a.iniciar();
+    await vi.waitFor(() => expect(a.disponible).not.toBeNull());
+    a.ventanaAbierta = true;
+    invoke.mockResolvedValue(null);
+    await vi.advanceTimersByTimeAsync(CADA_HORA * 48);
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(a.disponible?.version).toBe("9.9.9");
+  });
+
   it("manual durante la automática espera la misma consulta y muestra su resultado", async () => {
     let responder: (v: unknown) => void = () => {};
     invoke.mockReturnValueOnce(new Promise((r) => (responder = r)));
