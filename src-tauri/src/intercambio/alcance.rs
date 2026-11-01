@@ -8,15 +8,16 @@ use serde::Serialize;
 use std::path::Path;
 
 /// Cada tabla de negocio con lo que se conserva en una copia parcial, en orden: cada regla ve la tabla anterior ya
-/// recortada. `alc` son las unidades vivas de las ramas elegidas y `presentes` las personas con una asignación vigente en
-/// ellas: por minimización de datos, quienes ya no están no viajan, ni sus asignaciones cerradas. En una copia parcial no
-/// van filas eliminadas: quien exporta no las ve, salvo los valores de mantenedor desactivados que una fila viva sigue usando.
+/// recortada. `alc` son las unidades vivas de las ramas elegidas. Todo el historial de sus puestos viaja con el archivo;
+/// `recortar` deja solo nombre y correo de quienes ya no están. En una copia parcial no van filas eliminadas: quien exporta
+/// no las ve, salvo los valores de mantenedor desactivados que una fila viva sigue usando.
 pub const PODA: &[(&str, &str)] = &[
     ("unidades", "id IN alc"),
     ("puestos", "deleted_at IS NULL AND unidad_id IN alc"),
     (
         "asignaciones",
-        "deleted_at IS NULL AND puesto_id IN (SELECT id FROM puestos) AND trabajador_id IN presentes",
+        "deleted_at IS NULL AND puesto_id IN (SELECT id FROM puestos)
+         AND trabajador_id IN (SELECT id FROM trabajadores WHERE deleted_at IS NULL)",
     ),
     (
         "trabajadores",
@@ -68,7 +69,8 @@ pub struct Cortes {
     pub jefaturas: i64,
     pub roles: i64,
     pub vistas: i64,
-    pub asignaciones: i64,
+    /// Personas que ya no están y viajan solo con nombre y correo, por su historial en la rama.
+    pub historial: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -179,13 +181,15 @@ fn recortar(copia: Temporal, datos: &Path, raices: &[String]) -> Result<(Tempora
             &tx,
             "SELECT count(*) FROM vistas WHERE deleted_at IS NULL AND arbol_id IS NULL",
         )?,
-        asignaciones: contar(
-            &tx,
-            "SELECT count(*) FROM asignaciones WHERE deleted_at IS NULL AND trabajador_id NOT IN presentes
-             AND puesto_id IN (SELECT id FROM puestos WHERE deleted_at IS NULL AND unidad_id IN alc)",
-        )?,
         ..Default::default()
     };
+    // Antes de podar: así tampoco viajan los valores de mantenedor que solo ellos usaban.
+    tx.execute(
+        "UPDATE trabajadores SET telefono = NULL, tipo_contrato_id = NULL, sede_id = NULL, jornada_id = NULL,
+           foto_png = NULL, notas = NULL
+         WHERE id NOT IN presentes",
+        [],
+    )?;
     for (tabla, conservar) in PODA {
         tx.execute(
             &format!(
@@ -194,6 +198,10 @@ fn recortar(copia: Temporal, datos: &Path, raices: &[String]) -> Result<(Tempora
             [],
         )?;
     }
+    cortes.historial = contar(
+        &tx,
+        "SELECT count(*) FROM trabajadores WHERE id NOT IN presentes",
+    )?;
     cortes.jefaturas = tx.execute(
         "UPDATE unidades SET jefe_puesto_id = NULL
          WHERE jefe_puesto_id IS NOT NULL AND jefe_puesto_id NOT IN (SELECT id FROM puestos)",
@@ -292,7 +300,7 @@ mod tests {
         };
         assert_eq!(ids("unidades"), ["hija", "rama"]);
         assert_eq!(ids("puestos"), ["p-hija", "p-rama"]);
-        assert_eq!(ids("trabajadores"), ["ana", "bruno"]);
+        assert_eq!(ids("trabajadores"), ["ana", "bruno", "yanoesta"]);
         assert_eq!(ids("cargos"), ["cargo-a"]);
         assert_eq!(ids("sedes"), ["sede-a"]);
         assert_eq!(ids("leyendas"), ["ley-a"]);
@@ -312,7 +320,7 @@ mod tests {
                 jefaturas: 1,
                 roles: 1,
                 vistas: 1,
-                asignaciones: 1,
+                historial: 1,
             }
         );
         let jefe: Option<String> = c
@@ -350,9 +358,6 @@ mod tests {
             b"fuera@x.cl",
             b"PersonaBorrada",
             b"UnidadFuera",
-            b"PersonaYaNoEsta",
-            b"yanoesta@x.cl",
-            b"motivo-yanoesta",
         ] {
             assert!(
                 !contiene(&b, secreto),
@@ -364,7 +369,7 @@ mod tests {
     }
 
     #[test]
-    fn van_las_asignaciones_cerradas_de_quien_sigue_en_la_rama() {
+    fn el_historial_de_la_rama_viaja_siempre() {
         let (dir, conn) = base_con_datos();
         let copia = copiar(&conn, dir.path()).unwrap();
         let (t, _) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
@@ -376,8 +381,47 @@ mod tests {
             .unwrap()
             .map(Result::unwrap)
             .collect();
-        // ana también estuvo antes en otro puesto de la rama; la persona que ya no está no va
-        assert_eq!(ids, ["as-ana-antes", "as-hija", "as-rama"]);
+        assert_eq!(ids, ["as-ana-antes", "as-hija", "as-rama", "as-yanoesta"]);
+    }
+
+    #[test]
+    fn quien_ya_no_esta_viaja_solo_con_nombre_y_correo() {
+        let (dir, conn) = base_con_datos();
+        conn.execute_batch(
+            "INSERT INTO sedes (id, nombre, created_at, updated_at)
+               VALUES ('sede-yanoesta', 'SedeDeQuienSeFue', '2020-01-01', '2020-01-01');
+             UPDATE trabajadores SET telefono = 'fono-yanoesta', notas = 'nota-yanoesta', foto_png = 'foto-yanoesta',
+               sede_id = 'sede-yanoesta' WHERE id = 'yanoesta';",
+        )
+        .unwrap();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, r) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
+        assert_eq!(r.cortes.historial, 1);
+        validar::revisar(t.ruta(), db::MIGRACIONES).unwrap();
+        let b = std::fs::read(t.ruta()).unwrap();
+        for se_queda in [
+            &b"PersonaYaNoEsta"[..],
+            b"yanoesta@x.cl",
+            b"motivo-yanoesta",
+        ] {
+            assert!(
+                contiene(&b, se_queda),
+                "{}",
+                String::from_utf8_lossy(se_queda)
+            );
+        }
+        for no_viaja in [
+            &b"fono-yanoesta"[..],
+            b"nota-yanoesta",
+            b"foto-yanoesta",
+            b"SedeDeQuienSeFue",
+        ] {
+            assert!(
+                !contiene(&b, no_viaja),
+                "{}",
+                String::from_utf8_lossy(no_viaja)
+            );
+        }
     }
 
     #[test]
@@ -387,13 +431,12 @@ mod tests {
             "UPDATE asignaciones SET desde = '2999-01-01', hasta = '3000-01-01' WHERE id = 'as-yanoesta';",
         )
         .unwrap();
+        conn.execute_batch("UPDATE trabajadores SET notas = 'nota-futura' WHERE id = 'yanoesta';")
+            .unwrap();
         let copia = copiar(&conn, dir.path()).unwrap();
         let (t, r) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
-        assert_eq!(r.cortes.asignaciones, 1);
-        assert!(!contiene(
-            &std::fs::read(t.ruta()).unwrap(),
-            b"PersonaYaNoEsta"
-        ));
+        assert_eq!(r.cortes.historial, 1);
+        assert!(!contiene(&std::fs::read(t.ruta()).unwrap(), b"nota-futura"));
     }
 
     #[test]
@@ -431,7 +474,7 @@ mod tests {
         .unwrap();
         let copia = copiar(&conn, dir.path()).unwrap();
         let (t, r) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
-        assert_eq!(r.cortes.asignaciones, 0);
+        assert_eq!(r.cortes.historial, 0);
         assert!(contiene(
             &std::fs::read(t.ruta()).unwrap(),
             b"PersonaYaNoEsta"
