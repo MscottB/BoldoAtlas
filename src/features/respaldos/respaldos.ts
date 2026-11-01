@@ -35,7 +35,11 @@ export async function respaldoAutomatico(alAbrir = true): Promise<void> {
     if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir)) await respaldar();
   } catch (e) {
     noAntesDe = Date.now() + ESPERA_TRAS_FALLO;
-    toast(i18n.global.t("respaldos.automaticoFallo"), { description: mensajeFallo(e) });
+    // Sin caducar: con la ventana oculta nadie lo ve antes de volver a ella.
+    toast(i18n.global.t("respaldos.automaticoFallo"), {
+      description: mensajeFallo(e),
+      duration: Infinity,
+    });
   }
 }
 

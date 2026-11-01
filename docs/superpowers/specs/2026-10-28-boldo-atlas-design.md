@@ -265,7 +265,7 @@ Reemplaza la regla anterior "cerrar la ventana siempre cierra la app".
 - En Configuración: "Al cerrar la ventana": Preguntar (por defecto) | Dejar en la bandeja | Cerrar la app. Por PC.
 - **Trabajo en curso:** si se está generando un archivo, importando o respaldando, el diálogo dice qué trabajo es y que cerrar lo interrumpirá, aunque se haya marcado "No volver a preguntar". Dejar en la bandeja no lo interrumpe, y el icono de la bandeja dice que está en curso y cuándo termina; si falla, la ventana vuelve al frente con el error. Cerrar con un trabajo en curso lo interrumpe: un archivo parcial nunca queda con nombre válido y se borra al volver a abrir la app.
 - Sin bandeja disponible (Linux sin appindicator) no se ofrece "Dejar en la bandeja", y una preferencia guardada con esa opción vale como "Preguntar".
-- **Salir de verdad:** "Salir" de la bandeja y del menú de la app siempre cierra la app, con la misma pregunta si hay un trabajo en curso. Dejar en la bandeja no aplica a actualizar, restaurar un respaldo, el instalador ni el apagado del sistema, que cierran como hasta ahora.
+- **Salir de verdad:** "Salir" de la bandeja y del menú de la app cierra la app. Con "Preguntar" o con un trabajo en curso muestra el mismo diálogo, que también ofrece la bandeja; una preferencia guardada de bandeja no lo oculta. Dejar en la bandeja no aplica a actualizar, restaurar un respaldo, el instalador ni el apagado del sistema, que cierran como hasta ahora.
 - Con la app en la bandeja, volver a abrirla (acceso directo o clic en el icono) muestra la ventana sin arrancar otra copia.
 
 ### Accesibilidad y aspecto
@@ -454,7 +454,7 @@ Para compartir el organigrama con quien no tiene la app, sin servidor: un solo a
   - `BoldoAtlas_windows_x64_setup.exe` (instalador NSIS).
   - (Nombres sin versión a propósito; ver sección 14.)
 - Requisito: WebView2 (incluido en Windows 11 y casi todo Windows 10).
-- **Respaldos automáticos (pedido del autor):** al abrir la app, si el último respaldo tiene más de 24 h (configurable: nunca, al abrir, cada 24 h, cada 7 días), se crea `respaldos/boldo-AAAAMMDD-HHMM.db` con `VACUUM INTO`, sin bloquear el uso; se conservan los últimos N (por defecto 10). En Configuración › Respaldos: lista con fecha, tamaño y revisión de datos; "Respaldar ahora", "Abrir carpeta" y "Restaurar" (confirma, respalda la base actual antes y reinicia la app sobre el respaldo elegido). Funciona igual en portable (carpeta `datos/respaldos/`) e instalado.
+- **Respaldos automáticos (pedido del autor):** al abrir la app y, mientras sigue abierta o en la bandeja, cada 15 minutos se revisa; si el último respaldo tiene más de 24 h (configurable: nunca, al abrir, cada 24 h, cada 7 días), se crea `respaldos/boldo-AAAAMMDD-HHMM.db` con `VACUUM INTO`, sin bloquear el uso; se conservan los últimos N (por defecto 10). En Configuración › Respaldos: lista con fecha, tamaño y revisión de datos; "Respaldar ahora", "Abrir carpeta" y "Restaurar" (confirma, respalda la base actual antes y reinicia la app sobre el respaldo elegido). Funciona igual en portable (carpeta `datos/respaldos/`) e instalado.
 - **Aviso conocido:** un `.exe` sin firmar descargado de internet también dispara SmartScreen en modo portable (no solo el instalador). Mitigación v1: instrucciones en el README ("Más información → Ejecutar de todas formas"). Mejora futura: firma gratuita para proyectos open source vía SignPath Foundation.
 
 ### Actualizar
