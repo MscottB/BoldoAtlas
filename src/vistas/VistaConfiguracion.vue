@@ -15,6 +15,12 @@ import SeccionInicioSistema from "@/features/configuracion/SeccionInicioSistema.
 import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
+import {
+  continuarDondeEstaba,
+  guardarContinuarDondeEstaba,
+  guardarPreguntarAlSalir,
+  preguntarAlSalir,
+} from "@/app/ventana";
 import { cambiarIdioma, IDIOMAS, type Idioma } from "@/i18n";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { claseSelect, cn } from "@/lib/utils";
@@ -193,6 +199,32 @@ const quitarLogo = async () => {
     <SeccionRespaldos />
 
     <SeccionActualizaciones />
+
+    <section class="grid gap-2" aria-labelledby="cfg-abrir-salir">
+      <h2 id="cfg-abrir-salir" class="font-medium">{{ t("config.abrirSalir.titulo") }}</h2>
+      <label class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          class="size-4 accent-primary"
+          aria-describedby="cfg-continuar-ayuda"
+          :checked="continuarDondeEstaba"
+          @change="guardarContinuarDondeEstaba(($event.target as HTMLInputElement).checked)"
+        />
+        {{ t("config.abrirSalir.continuar") }}
+      </label>
+      <p id="cfg-continuar-ayuda" class="text-sm text-muted-foreground">
+        {{ t("config.abrirSalir.continuarAyuda") }}
+      </p>
+      <label class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          class="size-4 accent-primary"
+          :checked="preguntarAlSalir"
+          @change="guardarPreguntarAlSalir(($event.target as HTMLInputElement).checked)"
+        />
+        {{ t("config.abrirSalir.preguntar") }}
+      </label>
+    </section>
 
     <SeccionInicioSistema />
   </section>

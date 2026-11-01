@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { ChevronDown } from "@lucide/vue";
+import { ChevronDown, LogOut } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import icono from "../../../assets/brand/icono.png";
+import { pedirSalir } from "@/app/ventana";
 import { IDIOMAS, cambiarIdioma, type Idioma } from "@/i18n";
 import { GRUPOS_MENU, irAEntrada } from "./menuApp";
 
@@ -51,6 +52,11 @@ const router = useRouter();
           {{ t(`idioma.${i}`) }}
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem @select="pedirSalir">
+        <LogOut aria-hidden="true" />
+        {{ t("bandeja.salir") }}
+      </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>

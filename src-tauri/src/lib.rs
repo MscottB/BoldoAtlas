@@ -4,6 +4,7 @@ mod db;
 mod inicio;
 mod respaldos;
 mod rutas;
+mod salida;
 
 use tauri::Manager;
 
@@ -38,6 +39,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(estado)
         .manage(actualizar::Actualizador::default())
+        .manage(salida::Cierre::default())
+        .on_window_event(|ventana, evento| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
+                salida::al_pedir_cierre(ventana.app_handle(), api);
+            }
+        })
         .setup(move |app| {
             // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
             if let Some(datos) = datos {
@@ -80,7 +87,10 @@ pub fn run() {
             actualizar::cancelar_actualizacion,
             actualizar::bandeja_disponible,
             inicio::inicio_sistema,
-            inicio::cambiar_inicio_sistema
+            inicio::cambiar_inicio_sistema,
+            salida::cierre_listo,
+            salida::cierre_atendido,
+            salida::salir_app
         ])
         .build(contexto)
         .expect("error while building tauri application")

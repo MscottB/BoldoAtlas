@@ -723,6 +723,12 @@
       "ayuda": "These preferences apply to this computer only.",
       "mas": "More appearance options"
     },
+    "abrirSalir": {
+      "titulo": "When opening and quitting",
+      "continuar": "Continue where I left off",
+      "continuarAyuda": "When off, BoldoAtlas opens on Home.",
+      "preguntar": "Ask before quitting"
+    },
     "barra": {
       "abrirAlPasar": "Open the sidebar on mouse hover"
     },
@@ -924,7 +930,12 @@
   "bandeja": {
     "abrir": "Open BoldoAtlas",
     "actualizarA": "Update to v{version}",
-    "carpeta": "Open data folder",
+    "buscarPersona": "Find a person",
     "salir": "Quit"
+  },
+  "salida": {
+    "titulo": "Are you sure you want to quit?",
+    "texto": "Changes save automatically: there is no need to save before quitting.",
+    "cancelar": "Cancel"
   }
 }

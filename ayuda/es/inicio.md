@@ -17,6 +17,12 @@ Debajo, una línea avisa lo que viene: cargar desde Excel y abrir un archivo .bo
 
 Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuración**, y las listas de cargos, sedes y demás en **Configuración › Mantenedores**.
 
+## Al abrir y al salir
+
+BoldoAtlas abre en **Inicio**, también con datos cargados. Para volver a la última vista, activa **Configuración › Al abrir y al salir › Continuar donde estaba**.
+
+Al salir (la **X** de la ventana, `Alt+F4` o **Salir** en el menú de la app y en la bandeja), pregunta si estás seguro. Los cambios se guardan solos, así que no hace falta guardar antes. Para que no pregunte, apaga **Preguntar antes de salir** en esa misma sección.
+
 ## El menú de la app y volver a Inicio
 
 El botón con el logo, a la izquierda de la barra superior, abre el **menú de la app**:

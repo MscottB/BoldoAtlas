@@ -1,22 +1,23 @@
 import { watch } from "vue";
 import type { Router } from "vue-router";
-import { toast } from "vue-sonner";
 import { defaultWindowIcon } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { TrayIcon } from "@tauri-apps/api/tray";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { abrirCarpetaDatos, respaldarAhora } from "@/db/cliente";
+import { RUTA_BIENVENIDA } from "@/app/estructura";
+import { pedirSalir, traerAlFrente } from "@/app/ventana";
+import { paletaAbierta } from "@/features/atajos/useAtajos";
+import { usePestanas } from "@/features/pestanas/usePestanas";
 import { i18n } from "@/i18n";
-import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { useActualizaciones } from "@/stores/actualizaciones";
+import { useOrganizacion } from "@/stores/organizacion";
 import { buscarActualizaciones } from "./acciones";
 
 /**
- * Icono en la bandeja del sistema mientras la app está abierta (spec §12), instalada y portable. Menú: Abrir,
- * «Actualizar a vX» (si hay versión nueva) o «Buscar actualizaciones», Respaldar ahora, Abrir carpeta de datos,
- * Ayuda y Salir. No deja la app en segundo plano: cerrar la ventana la cierra (y con ella el icono), y «Salir»
- * cierra la ventana por el mismo camino, que termina en el cierre ordenado de SQLite (RunEvent::Exit).
+ * Icono en la bandeja del sistema mientras la app está abierta (spec §12), instalada y portable. Menú: Abrir, Inicio,
+ * Buscar persona, «Actualizar a vX» (si hay versión nueva) o «Buscar actualizaciones», Configuración y Salir. No deja
+ * la app en segundo plano: cerrar la ventana la cierra (y con ella el icono), y «Salir» cierra la ventana por el mismo
+ * camino: pregunta si la opción está activa y termina en el cierre ordenado de SQLite (RunEvent::Exit).
  * Con una versión nueva, el texto del icono (tooltip) también lo avisa.
  * En Linux, crear el icono sin libayatana-appindicator3 haría entrar en pánico a tray-icon y, con panic = "abort",
  * cerraría la app (un try/catch no lo ataja): por eso Rust prueba antes la biblioteca (`bandeja_disponible`) y,
@@ -25,64 +26,60 @@ import { buscarActualizaciones } from "./acciones";
 export async function crearBandeja(router: Router): Promise<void> {
   const { t } = i18n.global;
   const a = useActualizaciones();
-  const ventana = getCurrentWindow();
-  const mostrar = async () => {
-    await ventana.unminimize();
-    await ventana.show();
-    await ventana.setFocus();
-  };
+  const org = useOrganizacion();
+  const pestanas = usePestanas();
   const tras = (accion: () => unknown) => async () => {
-    await mostrar();
+    await traerAlFrente();
     await accion();
+  };
+  // La paleta no existe en Inicio: con datos se vuelve a la vista activa; sin datos no hay a quién buscar y sigue en Inicio.
+  const buscarPersona = async () => {
+    if (router.currentRoute.value.meta.sinMarco) {
+      if (org.vacia) return;
+      await pestanas.volverAlProyecto();
+    }
+    paletaAbierta.value = true;
   };
   // en el idioma de la interfaz; la entrada del actualizador cambia si hay versión nueva
   const textos = () => ({
     abrir: t("bandeja.abrir"),
+    inicio: t("menu.inicio"),
+    buscar: t("bandeja.buscarPersona"),
     actualizar: a.disponible
       ? t("bandeja.actualizarA", { version: a.disponible.version })
       : t("actualizar.buscar"),
-    respaldar: t("respaldos.ahora"),
-    carpeta: t("bandeja.carpeta"),
-    ayuda: t("nav.ayuda"),
+    configuracion: t("nav.configuracion"),
     salir: t("bandeja.salir"),
   });
   const x = textos();
   try {
     if (!(await invoke<boolean>("bandeja_disponible"))) return;
-    const abrir = await MenuItem.new({ id: "abrir", text: x.abrir, action: () => void mostrar() });
+    const abrir = await MenuItem.new({ id: "abrir", text: x.abrir, action: () => void traerAlFrente() });
+    const inicio = await MenuItem.new({
+      id: "inicio",
+      text: x.inicio,
+      action: tras(() => router.push(RUTA_BIENVENIDA)),
+    });
+    const buscar = await MenuItem.new({ id: "buscar", text: x.buscar, action: tras(buscarPersona) });
     const actualizar = await MenuItem.new({
       id: "actualizar",
       text: x.actualizar,
       action: tras(() => (a.disponible ? (a.ventanaAbierta = true) : buscarActualizaciones())),
     });
-    const respaldar = await MenuItem.new({
-      id: "respaldar",
-      text: x.respaldar,
-      action: () =>
-        respaldarAhora().then(
-          () => toast.success(t("respaldos.hecho")),
-          (e: unknown) => toast.error(mensajeFallo(e)),
-        ),
+    const configuracion = await MenuItem.new({
+      id: "configuracion",
+      text: x.configuracion,
+      action: tras(() => router.push("/configuracion")),
     });
-    const carpeta = await MenuItem.new({
-      id: "carpeta",
-      text: x.carpeta,
-      action: () => abrirCarpetaDatos().catch((e: unknown) => toast.error(mensajeFallo(e))),
-    });
-    const ayuda = await MenuItem.new({
-      id: "ayuda",
-      text: x.ayuda,
-      action: tras(() => router.push("/ayuda")),
-    });
-    const salir = await MenuItem.new({ id: "salir", text: x.salir, action: () => void ventana.close() });
+    const salir = await MenuItem.new({ id: "salir", text: x.salir, action: () => void pedirSalir() });
     const menu = await Menu.new({
       items: [
         abrir,
-        actualizar,
         await PredefinedMenuItem.new({ item: "Separator" }),
-        respaldar,
-        carpeta,
-        ayuda,
+        inicio,
+        buscar,
+        actualizar,
+        configuracion,
         await PredefinedMenuItem.new({ item: "Separator" }),
         salir,
       ],
@@ -96,15 +93,15 @@ export async function crearBandeja(router: Router): Promise<void> {
       showMenuOnLeftClick: false,
       // clic izquierdo: trae la ventana; el menú va con el derecho
       action: (e) => {
-        if (e.type === "Click" && e.button === "Left" && e.buttonState === "Up") void mostrar();
+        if (e.type === "Click" && e.button === "Left" && e.buttonState === "Up") void traerAlFrente();
       },
     });
     watch(textos, (n) => {
       void abrir.setText(n.abrir);
+      void inicio.setText(n.inicio);
+      void buscar.setText(n.buscar);
       void actualizar.setText(n.actualizar);
-      void respaldar.setText(n.respaldar);
-      void carpeta.setText(n.carpeta);
-      void ayuda.setText(n.ayuda);
+      void configuracion.setText(n.configuracion);
       void salir.setText(n.salir);
       void icono.setTooltip(tooltip());
     });

@@ -91,6 +91,38 @@ describe("usePestanas", () => {
     expect(p.lista).toHaveLength(MAX_PESTANAS);
   });
 
+  it("«Volver» desde la Bienvenida vuelve a la vista activa sin cambiar sus pestañas", async () => {
+    const guardado = {
+      lista: [
+        { id: "a", ruta: "/" },
+        { id: "b", ruta: "/directorio" },
+      ],
+      activa: "b",
+    };
+    datos.set("boldo:pestanas:C:/datos/boldo.db", JSON.stringify(guardado));
+    const p = usePestanas();
+    p.conectar(router, "C:/datos/boldo.db");
+    await router.replace("/bienvenida"); // al abrir en Inicio aún no se leyeron las pestañas
+    await p.volverAlProyecto();
+    expect(rutaActual()).toBe("/directorio");
+    expect(p.activa).toBe("b");
+    expect(rutas()).toEqual(["/", "/directorio"]);
+  });
+
+  it("Configuración abierta desde la Bienvenida no le quita su ruta a la pestaña: «Cerrar» vuelve a ella", async () => {
+    datos.set(
+      "boldo:pestanas:C:/datos/boldo.db",
+      JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }),
+    );
+    const p = usePestanas();
+    p.conectar(router, "C:/datos/boldo.db");
+    await router.replace("/bienvenida");
+    await router.push("/configuracion");
+    await p.cerrarVista();
+    expect(rutaActual()).toBe("/directorio");
+    expect(rutas()).toEqual(["/directorio"]);
+  });
+
   it("la Bienvenida no se abre en una pestaña", async () => {
     const p = await arrancar();
     expect(p.abrirNueva("/bienvenida").ok).toBe(false);
