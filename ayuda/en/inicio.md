@@ -27,7 +27,7 @@ Afterwards you can adjust the name, logo, theme and language in **Settings**, an
 
 BoldoAtlas opens on **Home**, even with data loaded. To go back to your last view, turn on **Settings › When opening and quitting › Continue where I left off**.
 
-When you quit (the window's **X**, `Alt+F4` or **Quit** in the app menu and the tray), it asks if you are sure. Changes save automatically, so there is no need to save first. To stop the question, turn off **Ask before quitting** in that same section.
+When you quit (the window's **X**, `Alt+F4` or **Quit** in the app menu and the tray), it asks if you are sure. What you already applied is saved; an unfinished form is lost. To stop the question, turn off **Ask before quitting** in that same section.
 
 ## The app menu and returning to Home
 

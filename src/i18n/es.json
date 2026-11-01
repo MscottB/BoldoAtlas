@@ -939,11 +939,13 @@
     "abrir": "Abrir BoldoAtlas",
     "actualizarA": "Actualizar a v{version}",
     "buscarPersona": "Buscar persona",
+    "sinPersonas": "Aún no hay personas: primero crea una organización.",
+    "carpeta": "Abrir carpeta de datos",
     "salir": "Salir"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
-    "texto": "Los cambios se guardan solos: no hace falta guardar antes de salir.",
+    "texto": "Lo que ya aplicaste está guardado. Un formulario sin terminar se pierde.",
     "cancelar": "Cancelar"
   }
 }

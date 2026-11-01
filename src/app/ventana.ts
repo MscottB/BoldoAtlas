@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -50,11 +50,16 @@ export async function pedirSalir(): Promise<void> {
   }
 }
 
-/** Rust pidió cerrar (`salida.rs`): se le avisa que la interfaz responde y se pregunta, o se sale. */
+/**
+ * Rust pidió cerrar (`salida.rs`): se pregunta o se sale. Solo se responde a Rust si el diálogo existe de verdad: con la
+ * interfaz en blanco (`App.vue` falló al montar) no hay quien pregunte y, sin respuesta, Rust sale solo.
+ */
 export async function alPedirCierre(): Promise<void> {
-  await invoke("cierre_atendido");
   if (!preguntarAlSalir.value) return salir();
   salidaAbierta.value = true;
+  await nextTick();
+  if (!document.querySelector("[data-dialogo-salir]")) return;
+  await invoke("cierre_atendido");
   await traerAlFrente();
 }
 

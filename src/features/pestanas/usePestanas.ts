@@ -75,7 +75,9 @@ export const usePestanas = defineStore("pestanas", () => {
         // De vuelta de la Bienvenida: la pestaña que ya muestra ese destino; si no hay, la activa pasa a mostrarlo. Una
         // vista cerrable (Configuración desde la bandeja) no le quita su lugar: «Cerrar» vuelve a él.
         const anterior = entrar();
-        const ya = modelo.value.lista.find((p) => p.ruta === to.fullPath);
+        const { lista, activa } = modelo.value;
+        // con dos pestañas en la misma ruta manda la activa
+        const ya = lista.find((p) => p.id === activa && p.ruta === to.fullPath) ?? lista.find((p) => p.ruta === to.fullPath);
         if (ya) modelo.value = { ...modelo.value, activa: ya.id };
         else if (esVistaCerrable(to.name) && !esVistaCerrable(r.resolve(anterior).name)) cambios.volver = anterior;
       } else if (destino?.ruta === to.fullPath) {

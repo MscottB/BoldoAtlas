@@ -1,9 +1,11 @@
 //! Cerrar la ventana (X, Alt+F4, y «Salir» del menú y de la bandeja, que la cierran) pregunta antes de salir. Solo esa
 //! acción pasa por `CloseRequested`: restaurar un respaldo (`app.restart`), el reemplazo de la portable (`app.exit`), el
-//! instalador (termina el proceso) y el apagado del sistema (`WM_ENDSESSION`) no, y por eso no preguntan.
+//! instalador (Restart Manager: `RmForceShutdown`, que llega como `WM_ENDSESSION`) y el apagado del sistema
+//! (`WM_ENDSESSION`) no, y por eso no preguntan.
 //!
 //! La pregunta la hace la interfaz. Para que cerrar nunca quede bloqueado: mientras la interfaz no avisa que está lista
-//! (no cargó o muestra un error) la ventana se cierra sin más y, si no responde al pedido en `ESPERA`, la app sale igual.
+//! (no cargó o muestra un error) la ventana se cierra sin más y, si no confirma en `ESPERA` que el diálogo está a la vista,
+//! la app sale igual.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;

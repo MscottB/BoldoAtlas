@@ -109,6 +109,25 @@ describe("usePestanas", () => {
     expect(rutas()).toEqual(["/", "/directorio"]);
   });
 
+  it("«Volver» con dos pestañas en la misma ruta se queda en la activa", async () => {
+    datos.set(
+      "boldo:pestanas:C:/datos/boldo.db",
+      JSON.stringify({
+        lista: [
+          { id: "a", ruta: "/" },
+          { id: "b", ruta: "/" },
+        ],
+        activa: "b",
+      }),
+    );
+    const p = usePestanas();
+    p.conectar(router, "C:/datos/boldo.db");
+    await router.replace("/bienvenida");
+    await p.volverAlProyecto();
+    expect(p.activa).toBe("b");
+    expect(rutaActual()).toBe("/");
+  });
+
   it("Configuración abierta desde la Bienvenida no le quita su ruta a la pestaña: «Cerrar» vuelve a ella", async () => {
     datos.set(
       "boldo:pestanas:C:/datos/boldo.db",

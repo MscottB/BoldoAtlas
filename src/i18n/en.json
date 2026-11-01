@@ -939,11 +939,13 @@
     "abrir": "Open BoldoAtlas",
     "actualizarA": "Update to v{version}",
     "buscarPersona": "Find a person",
+    "sinPersonas": "No people yet: create an organization first.",
+    "carpeta": "Open data folder",
     "salir": "Quit"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
-    "texto": "Changes save automatically: there is no need to save before quitting.",
+    "texto": "What you already applied is saved. An unfinished form is lost.",
     "cancelar": "Cancel"
   }
 }

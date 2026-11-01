@@ -1,12 +1,15 @@
 import { watch } from "vue";
 import type { Router } from "vue-router";
+import { toast } from "vue-sonner";
 import { defaultWindowIcon } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { RUTA_BIENVENIDA } from "@/app/estructura";
 import { pedirSalir, traerAlFrente } from "@/app/ventana";
+import { abrirCarpetaDatos, respaldarAhora } from "@/db/cliente";
 import { paletaAbierta } from "@/features/atajos/useAtajos";
+import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { i18n } from "@/i18n";
 import { useActualizaciones } from "@/stores/actualizaciones";
@@ -15,8 +18,8 @@ import { buscarActualizaciones } from "./acciones";
 
 /**
  * Icono en la bandeja del sistema mientras la app está abierta (spec §12), instalada y portable. Menú: Abrir, Inicio,
- * Buscar persona, «Actualizar a vX» (si hay versión nueva) o «Buscar actualizaciones», Configuración y Salir. No deja
- * la app en segundo plano: cerrar la ventana la cierra (y con ella el icono), y «Salir» cierra la ventana por el mismo
+ * Buscar persona, Configuración, Ayuda, «Actualizar a vX» (si hay versión nueva) o «Buscar actualizaciones», Respaldar
+ * ahora, Abrir carpeta de datos y Salir. No deja la app en segundo plano: cerrar la ventana la cierra (y con ella el icono), y «Salir» cierra la ventana por el mismo
  * camino: pregunta si la opción está activa y termina en el cierre ordenado de SQLite (RunEvent::Exit).
  * Con una versión nueva, el texto del icono (tooltip) también lo avisa.
  * En Linux, crear el icono sin libayatana-appindicator3 haría entrar en pánico a tray-icon y, con panic = "abort",
@@ -32,10 +35,10 @@ export async function crearBandeja(router: Router): Promise<void> {
     await traerAlFrente();
     await accion();
   };
-  // La paleta no existe en Inicio: con datos se vuelve a la vista activa; sin datos no hay a quién buscar y sigue en Inicio.
+  // La paleta no existe en Inicio: con datos se vuelve a la vista activa; sin datos no hay a quién buscar y se avisa.
   const buscarPersona = async () => {
     if (router.currentRoute.value.meta.sinMarco) {
-      if (org.vacia) return;
+      if (org.vacia) return void toast.info(t("bandeja.sinPersonas"));
       await pestanas.volverAlProyecto();
     }
     paletaAbierta.value = true;
@@ -49,6 +52,9 @@ export async function crearBandeja(router: Router): Promise<void> {
       ? t("bandeja.actualizarA", { version: a.disponible.version })
       : t("actualizar.buscar"),
     configuracion: t("nav.configuracion"),
+    ayuda: t("nav.ayuda"),
+    respaldar: t("respaldos.ahora"),
+    carpeta: t("bandeja.carpeta"),
     salir: t("bandeja.salir"),
   });
   const x = textos();
@@ -71,6 +77,25 @@ export async function crearBandeja(router: Router): Promise<void> {
       text: x.configuracion,
       action: tras(() => router.push("/configuracion")),
     });
+    const ayuda = await MenuItem.new({
+      id: "ayuda",
+      text: x.ayuda,
+      action: tras(() => router.push("/ayuda")),
+    });
+    const respaldar = await MenuItem.new({
+      id: "respaldar",
+      text: x.respaldar,
+      action: () =>
+        respaldarAhora().then(
+          () => toast.success(t("respaldos.hecho")),
+          (e: unknown) => toast.error(mensajeFallo(e)),
+        ),
+    });
+    const carpeta = await MenuItem.new({
+      id: "carpeta",
+      text: x.carpeta,
+      action: () => abrirCarpetaDatos().catch((e: unknown) => toast.error(mensajeFallo(e))),
+    });
     const salir = await MenuItem.new({ id: "salir", text: x.salir, action: () => void pedirSalir() });
     const menu = await Menu.new({
       items: [
@@ -78,8 +103,12 @@ export async function crearBandeja(router: Router): Promise<void> {
         await PredefinedMenuItem.new({ item: "Separator" }),
         inicio,
         buscar,
-        actualizar,
         configuracion,
+        ayuda,
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        actualizar,
+        respaldar,
+        carpeta,
         await PredefinedMenuItem.new({ item: "Separator" }),
         salir,
       ],
@@ -102,6 +131,9 @@ export async function crearBandeja(router: Router): Promise<void> {
       void buscar.setText(n.buscar);
       void actualizar.setText(n.actualizar);
       void configuracion.setText(n.configuracion);
+      void ayuda.setText(n.ayuda);
+      void respaldar.setText(n.respaldar);
+      void carpeta.setText(n.carpeta);
       void salir.setText(n.salir);
       void icono.setTooltip(tooltip());
     });
