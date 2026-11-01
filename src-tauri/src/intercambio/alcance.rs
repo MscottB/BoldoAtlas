@@ -235,7 +235,7 @@ pub fn preparar(
     // local, no un archivo: los mensajes son otros.
     validar::revisar(temporal.ruta(), db::MIGRACIONES).map_err(|e| match e.codigo {
         "contenido_invalido" => Fallo::de("base_no_valida", e.detalle),
-        "muy_pesado_total" => Fallo::de("exportar_muy_pesado", ""),
+        "muy_pesado_total" => Fallo::de("exportar_muy_pesado", e.detalle),
         _ => e,
     })?;
     let filas = cuentas(&Connection::open(temporal.ruta())?)?;

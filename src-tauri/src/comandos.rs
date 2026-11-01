@@ -389,12 +389,10 @@ pub async fn exportar_elegir_destino(app: AppHandle, trabajo: String) -> Result<
 #[tauri::command]
 pub async fn exportar_guardar(app: AppHandle, trabajo: String) -> Result<Guardado, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
-        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
-        let (temporal, destino) = sesiones.tomar_exportacion(&trabajo)?;
+        let (temporal, destino) = app.state::<Sesiones>().tomar_exportacion(&trabajo)?;
         let codigo = intercambio::guardar(
             temporal.ruta(),
             &destino,
-            &estado.rutas()?.datos,
             seguimiento(&app, &trabajo, "cifrando"),
         )?;
         Ok(Guardado {

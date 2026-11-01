@@ -269,40 +269,22 @@ pub fn nombre_sugerido(copia: &Path) -> Result<String, Fallo> {
     Ok(format!("{base}_{fecha}_r{revision}.boldo"))
 }
 
-/// Anota en `datos/` qué archivo a medias se está escribiendo fuera de la carpeta: si la app se cierra de golpe, se borra al
-/// volver a abrir (`limpiar_guardado`).
-const GUARDANDO: &str = "boldo-guardando.txt";
-
 /// Cifra a `destino` pasando por un nombre aparte: un corte a mitad nunca deja un `.boldo` a medias con ese nombre.
 pub fn guardar(
     copia: &Path,
     destino: &Path,
-    datos: &Path,
     seguir: impl FnMut(u64, u64) -> bool,
 ) -> Result<String, Fallo> {
     let codigo = formato::generar_codigo()?;
     let mut parcial = destino.as_os_str().to_owned();
     parcial.push(".tmp");
     let parcial = PathBuf::from(parcial);
-    fs::write(datos.join(GUARDANDO), parcial.to_string_lossy().as_bytes())?;
     let hecho = formato::cifrar(copia, &parcial, &codigo, seguir)
         .and_then(|_| fs::rename(&parcial, destino).map_err(Fallo::from));
     if hecho.is_err() {
         let _ = fs::remove_file(&parcial);
     }
-    let _ = fs::remove_file(datos.join(GUARDANDO));
     hecho.map(|_| codigo)
-}
-
-/// Al abrir, ya pasada la instancia única: borra el `.boldo.tmp` de un guardado que no terminó. Solo un nombre así.
-pub fn limpiar_guardado(datos: &Path) {
-    let nota = datos.join(GUARDANDO);
-    if let Ok(parcial) = fs::read_to_string(&nota)
-        && parcial.ends_with(".boldo.tmp")
-    {
-        let _ = fs::remove_file(parcial);
-    }
-    let _ = fs::remove_file(nota);
 }
 
 /// Descifra y revisa. Si el archivo es de un esquema anterior, migra la copia temporal (nunca la base local).
@@ -486,10 +468,6 @@ mod tests {
 
     const SIGUE: fn(u64, u64) -> bool = |_, _| true;
 
-    fn dir_de(archivo: &Path) -> &Path {
-        archivo.parent().unwrap()
-    }
-
     /// Solo los temporales: las demás cosas de la carpeta no importan aquí.
     fn temporales(dir: &Path) -> Vec<String> {
         fs::read_dir(dir)
@@ -515,7 +493,7 @@ mod tests {
         let copia = alcance::copiar(origen, dir).unwrap();
         let (t, _) = alcance::preparar(copia, dir, raices).unwrap();
         let archivo = dir.join(nombre_sugerido(t.ruta()).unwrap());
-        let codigo = guardar(t.ruta(), &archivo, dir_de(&archivo), SIGUE).unwrap();
+        let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
         (archivo, codigo)
     }
 
@@ -692,7 +670,7 @@ mod tests {
             .execute_batch(sql)
             .unwrap();
         let archivo = d.path().join("hostil.boldo");
-        let codigo = guardar(t.ruta(), &archivo, dir_de(&archivo), SIGUE).unwrap();
+        let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
         (d, archivo, codigo)
     }
 
@@ -753,7 +731,7 @@ mod tests {
         let (d, origen) = base_con_datos();
         let copia = alcance::copiar(&origen, d.path()).unwrap();
         let destino = d.path().join("a.boldo");
-        let e = guardar(copia.ruta(), &destino, d.path(), |_, _| false).unwrap_err();
+        let e = guardar(copia.ruta(), &destino, |_, _| false).unwrap_err();
         assert_eq!(e.codigo, "cancelado");
         assert!(!destino.exists());
         assert!(!d.path().join("a.boldo.tmp").exists());
@@ -847,39 +825,6 @@ mod tests {
     }
 
     #[test]
-    fn guardar_a_medias_se_borra_al_volver_a_abrir() {
-        let d = tempfile::tempdir().unwrap();
-        let (datos, afuera) = (d.path().join("datos"), d.path().join("afuera"));
-        fs::create_dir_all(&datos).unwrap();
-        fs::create_dir_all(&afuera).unwrap();
-        // lo que deja un cierre de golpe mientras se cifra
-        let parcial = afuera.join("a.boldo.tmp");
-        fs::write(&parcial, "a medias").unwrap();
-        fs::write(datos.join(GUARDANDO), parcial.to_string_lossy().as_bytes()).unwrap();
-        limpiar_guardado(&datos);
-        assert!(!parcial.exists() && !datos.join(GUARDANDO).exists());
-        // una nota que apunte a otra cosa no borra nada
-        let ajeno = afuera.join("mio.txt");
-        fs::write(&ajeno, "x").unwrap();
-        fs::write(datos.join(GUARDANDO), ajeno.to_string_lossy().as_bytes()).unwrap();
-        limpiar_guardado(&datos);
-        assert!(ajeno.exists() && !datos.join(GUARDANDO).exists());
-        // sin nota, nada
-        limpiar_guardado(&datos);
-    }
-
-    #[test]
-    fn guardar_bien_no_deja_la_nota_ni_el_parcial() {
-        let (d, origen) = base_con_datos();
-        let copia = alcance::copiar(&origen, d.path()).unwrap();
-        let destino = d.path().join("a.boldo");
-        guardar(copia.ruta(), &destino, d.path(), SIGUE).unwrap();
-        assert!(destino.exists());
-        assert!(!d.path().join("a.boldo.tmp").exists());
-        assert!(!d.path().join(GUARDANDO).exists());
-    }
-
-    #[test]
     fn empezar_otro_trabajo_borra_los_temporales_del_anterior() {
         let (dd, ..) = destino();
         let s = Sesiones::default();
@@ -907,7 +852,6 @@ mod tests {
         let i = importacion(d.path(), &origen, dd.path());
         let r = revisar(&mut conn, &i).unwrap();
         assert!(r.informe.is_none());
-        assert_eq!(r.motivo_revision, Some("contenido_invalido"));
         assert_eq!(r.motivo_revision, Some("contenido_invalido"));
         let mut slot = Some(conn);
         reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();

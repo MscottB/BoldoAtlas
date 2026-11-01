@@ -100,7 +100,20 @@ fn pesado_en(tabla: &str, columna: &str, nombre: Option<String>) -> Fallo {
     }
 }
 
-/// Solo lo vivo: lo eliminado no se carga en la app, no se ve ni se puede corregir, y el archivo ya tiene un tope total.
+/// Tablas que la app carga enteras, con lo eliminado (`sqlValores` y `SQL_LEYENDAS`): sus valores desactivados se ven en los
+/// mantenedores y persisten, así que cuentan como vivos. Al cambiar esas consultas, revisar esta lista.
+const CARGADAS_CON_ELIMINADAS: &[&str] = &[
+    "cargos",
+    "tipos_contrato",
+    "sedes",
+    "jornadas",
+    "tipos_unidad",
+    "leyendas",
+];
+
+/// Lo que la app carga siempre: las filas vivas y las tablas de `CARGADAS_CON_ELIMINADAS`. Las demás filas eliminadas no se
+/// ven ni se pueden corregir, y el archivo ya tiene un tope total. `SQL_HISTORICO` las trae al ver una fecha, y no se cuenta:
+/// una fila que nadie ve bloquearía la exportación.
 fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), Fallo> {
     let tablas: Vec<String> = c
         .prepare(
@@ -130,7 +143,8 @@ fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), F
             }
             continue;
         }
-        let con_baja = columnas.iter().any(|x| x == "deleted_at");
+        let con_baja = columnas.iter().any(|x| x == "deleted_at")
+            && !CARGADAS_CON_ELIMINADAS.contains(&tabla.as_str());
         let vivas = if con_baja {
             " WHERE deleted_at IS NULL"
         } else {
@@ -166,8 +180,11 @@ fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), F
         let sql = format!("SELECT count(*) FROM {tabla}{vivas}");
         filas += c.query_row(&sql, [], |f| f.get::<_, i64>(0))?;
     }
-    if filas > max_filas || bytes > max_bytes {
-        return Err(Fallo::de("muy_pesado_total", ""));
+    if filas > max_filas {
+        return Err(Fallo::de("muy_pesado_total", "filas"));
+    }
+    if bytes > max_bytes {
+        return Err(Fallo::de("muy_pesado_total", "bytes"));
     }
     Ok(())
 }
@@ -528,6 +545,46 @@ mod tests {
         );
         let e = revisar(&ruta, MIGRACIONES).unwrap_err();
         assert_eq!(e.donde.unwrap().nombre, None);
+    }
+
+    #[test]
+    fn un_valor_de_mantenedor_desactivado_cuenta_como_vivo() {
+        for tabla in CARGADAS_CON_ELIMINADAS {
+            let color = if *tabla == "leyendas" { ", color" } else { "" };
+            let valor = if *tabla == "leyendas" {
+                ", '#000000'"
+            } else {
+                ""
+            };
+            let (_d, ruta) = copia();
+            alterar(
+                &ruta,
+                &format!(
+                    "INSERT INTO {tabla} (id, nombre{color}, created_at, updated_at, deleted_at) VALUES ('a', '{}'{valor}, 'x', 'x', 'y');",
+                    "x".repeat(3 * 1024 * 1024)
+                ),
+            );
+            let e = revisar(&ruta, MIGRACIONES).unwrap_err();
+            assert_eq!(e.codigo, "muy_pesado", "{tabla}");
+            let d = e.donde.unwrap();
+            assert_eq!((d.tabla.as_str(), d.columna.as_str()), (*tabla, "nombre"));
+        }
+    }
+
+    #[test]
+    fn el_presupuesto_cuenta_los_valores_desactivados() {
+        let (_d, ruta) = copia();
+        alterar(
+            &ruta,
+            "INSERT INTO cargos (id, nombre, created_at, updated_at, deleted_at) VALUES ('a', 'A', 'x', 'x', 'y');",
+        );
+        let c = solo_lectura(&ruta).unwrap();
+        let semillas = 4; // tipos de unidad
+        assert_eq!(
+            revisar_topes(&c, semillas, 10_000).unwrap_err().detalle,
+            "filas"
+        );
+        revisar_topes(&c, semillas + 1, 10_000).unwrap();
     }
 
     #[test]
