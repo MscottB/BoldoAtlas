@@ -566,6 +566,39 @@ describe("mantenedores", () => {
   });
 });
 
+describe("agregar desde la lista (tipo de unidad y jefatura)", () => {
+  it("un tipo de unidad nuevo se agrega y se elige para la unidad", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    const t = await s.crearValor("tipos_unidad", "Dirección");
+    if (!t.ok) throw new Error("no se creó el tipo");
+    expect((await s.editarUnidad(u, { tipo_id: t.id })).ok).toBe(true);
+    expect(s.porId.get(u)?.tipo_id).toBe(t.id);
+    expect(s.activos("tipos_unidad").map((v) => v.id)).toContain(t.id);
+  });
+
+  it("un tipo repetido (otra caja o acentos) devuelve el existente, sin crear otro", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    await s.crearValor("tipos_unidad", "Dirección");
+    const antes = s.catalogos.tipos_unidad.length;
+    const r = await s.crearValor("tipos_unidad", " DIRECCION ");
+    if (r.ok || !r.existente) throw new Error("debía devolver el existente");
+    expect(s.catalogos.tipos_unidad).toHaveLength(antes);
+    expect((await s.editarUnidad(u, { tipo_id: r.existente })).ok).toBe(true);
+    expect(s.porId.get(u)?.tipo_id).toBe(r.existente);
+  });
+
+  it("un puesto nuevo puede quedar como jefatura de su unidad", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Raíz");
+    expect(s.porId.get(u)?.jefe_puesto_id).toBeNull();
+    const p = await puesto(s, u);
+    expect((await s.asignarJefe(u, p)).ok).toBe(true);
+    expect(s.porId.get(u)?.jefe_puesto_id).toBe(p);
+  });
+});
+
 describe("organización, etiquetas y conexiones", () => {
   it("guarda el nombre y el logo de la organización", async () => {
     const s = nuevo();

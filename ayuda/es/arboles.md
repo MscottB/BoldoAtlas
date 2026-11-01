@@ -6,7 +6,7 @@ La sección **Árboles** reúne tus árboles y las ramas que guardaste para abri
 
 Cada árbol es una unidad raíz (la que no tiene superior). Su bloque muestra el nombre, el tipo y la dotación total, con el botón **Abrir**, que lo muestra en el lienzo.
 
-**+ Nuevo árbol** crea otra raíz independiente: escribe el nombre, elige el tipo y pulsa **Crear**.
+**+ Nuevo árbol** crea otra raíz independiente: escribe el nombre, elige el tipo (si no existe, escríbelo en la lista y pulsa **Agregar «texto» a la lista**) y pulsa **Crear**.
 
 ## Subárboles guardados
 

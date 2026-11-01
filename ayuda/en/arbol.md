@@ -145,10 +145,10 @@ Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on 
 
 The **Summary** tab shows the type, name, head, figures and tags in plain view. The rest is under **Advanced**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it. **Delete unit** sits apart at the bottom. It holds:
 
-- **Type** and **name**, in plain view, and **description**, under **Advanced**. They are saved when you finish typing (`Enter`, `Tab` or leaving the field).
+- **Type** and **name**, in plain view, and **description**, under **Advanced**. The name and description are saved when you finish typing (`Enter`, `Tab` or leaving the field). The **type** is chosen from the unit-type list, as in the person records: type to filter and, if it does not exist, **Add “text” to the list** creates it and selects it, without going to the lists screen.
 - **Parent unit** (under **Advanced**): a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
 - **Mark** (under **Advanced**): a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
-- **Head**: choose which of the unit's positions is the head (or **No head**). Below you see who holds it: the holder or, if there is none, **Replacement: name**.
+- **Head**: choose which of the unit's positions is the head (or **No head**). With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see who holds it: the holder or, if there is none, **Replacement: name**.
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
 - **Lateral connections** (under **Advanced**): type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible.
