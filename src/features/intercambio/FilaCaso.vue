@@ -48,6 +48,10 @@ function campo(c: string, lado: "mio" | "archivo") {
 // Duplicado: el correo nuevo se confirma, no se manda con cada tecla
 const correo = ref(props.fila.eleccion.que === "editar_correo" ? props.fila.eleccion.correo : "");
 const editandoCorreo = ref(props.fila.eleccion.que === "editar_correo");
+function unir(que: "unir_mio" | "unir_archivo") {
+  editandoCorreo.value = false;
+  emit("decidir", { que });
+}
 
 function fecha(f: string | null): string {
   if (!f) return t("intercambio.revisar.fechaNoValida");
@@ -75,7 +79,7 @@ const verDatos = computed(() => props.fila.tipo !== "union");
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span class="min-w-0 font-medium break-words">{{ nombre }}</span>
       <span class="text-xs text-muted-foreground">{{ t(`intercambio.tablas.${fila.tabla}`) }}</span>
-      <span v-if="fila.dudosa" class="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+      <span v-if="fila.dudosa" class="flex items-center gap-1 text-xs text-amber-800 dark:text-amber-400">
         <TriangleAlert class="size-3.5 shrink-0" aria-hidden="true" />
         {{ t("intercambio.revisar.fechaDudosa") }}
       </span>
@@ -137,7 +141,7 @@ const verDatos = computed(() => props.fila.tipo !== "union");
             type="radio"
             :name="grupo"
             :checked="fila.eleccion.que === 'unir_mio'"
-            @change="emit('decidir', { que: 'unir_mio' })"
+            @change="unir('unir_mio')"
           />
           {{ t("intercambio.revisar.unirMio") }}
         </label>
@@ -146,7 +150,7 @@ const verDatos = computed(() => props.fila.tipo !== "union");
             type="radio"
             :name="grupo"
             :checked="fila.eleccion.que === 'unir_archivo'"
-            @change="emit('decidir', { que: 'unir_archivo' })"
+            @change="unir('unir_archivo')"
           />
           {{ t("intercambio.revisar.unirArchivo") }}
         </label>

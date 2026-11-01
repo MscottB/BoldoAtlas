@@ -1,7 +1,7 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "vue-sonner";
-import { intercambioCancelar } from "@/db/cliente";
+import { intercambioCancelar, type ResumenImportacion } from "@/db/cliente";
 import type { Unidad } from "@/db/tipos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
@@ -163,6 +163,8 @@ export interface RevisionDejada {
   trabajo: string;
   decisiones: number;
   lugares: Record<string, string | null>;
+  /** Lo que se mostró del archivo antes de la revisión, para poder volver a las opciones. */
+  importacion: ResumenImportacion;
   /** Se pidió volver: el panel de importar la retoma al montarse. */
   volviendo: boolean;
 }

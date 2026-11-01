@@ -28,7 +28,7 @@ The code is shown only once and is not saved anywhere. If it is lost, the file c
 3. Review what it carries: how much is in the file, how much is new and how much already exists. Up to here your database has not changed, and **Cancel** deletes the temporary copy of the file.
 4. Choose what to do and press **Apply**.
 
-![Import: what the file carries in a table, the Add what is new and Replace everything options, and where to place the branch.](../img/en/importar-revision.webp "Import: you review what it carries before applying anything."){width=768 height=794}
+![Import: what the file carries in a table and the Add what is new, Review and decide and Replace everything options.](../img/en/importar-revision.webp "Import: you review what it carries before applying anything."){width=768 height=706}
 
 If the code does not match or the file was altered, you see the same notice: “The code is not correct or the file is damaged”. Your database is not touched.
 
@@ -56,7 +56,7 @@ For two copies that kept working separately: you compare the file with your data
 4. Resolve whatever appears in **To resolve**. While anything is left, **Apply** is stopped and a notice at the top says what is missing.
 5. Press **Apply**. The **When applying** box says beforehand how much is added, changed or deleted.
 
-![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=REV1EN}
+![Review and decide: the notice of what is missing, Accept all the most recent and the groups of cases with their counts.](../img/en/importar-decidir-resumen.webp "First the summary: you open only what you want to look at."){width=768 height=1244}
 
 | Case | What it is | What comes selected | What you can do |
 |---|---|---|---|
@@ -70,9 +70,9 @@ For two copies that kept working separately: you compare the file with your data
 | **Reference to something that will not be there** | Something points to what you chose not to bring or to what will end up deleted | Nothing: it stops **Apply** | Reassign, leave empty if allowed, or discard the record. **Resolve all references** does it at once |
 | **Would end up inside itself** | With what you chose, a unit ends up hanging from itself | Nothing: it stops **Apply** | Change its parent unit or leave it without one |
 
-What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. A photo or a view's settings are compared without being shown, and it says how much they weigh.
+What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. For people who are no longer there, a branch carries only name and email: what comes empty does not erase their data in your database. A photo or a view's settings are compared without being shown, and it says how much they weigh.
 
-![Show fields of a different record: each field with its value in your data and in the file, to choose one by one.](../img/en/importar-decidir-campos.webp "Field by field: you choose which value stays."){width=768 height=REV2EN}
+![Show fields of a different record: each field with its value in your data and in the file, to choose one by one.](../img/en/importar-decidir-campos.webp "Field by field: you choose which value stays."){width=768 height=736}
 
 ::: warning Important
 “The most recent” is only a help: that date comes from the other computer, and it may be wrong. A future date or something that is not a date is marked, never counts as the most recent and does not delete or recover anything by itself: you decide.

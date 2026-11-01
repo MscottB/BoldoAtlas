@@ -45,6 +45,8 @@ watch(desde, cargar);
 const fin = computed(() => Math.min(desde.value + POR_PAGINA, cuantos.value));
 const n = (x: number) => x.toLocaleString(locale.value);
 const nombreDe = (f: FilaBloqueo) => f.nombre || t("intercambio.revisar.sinNombre");
+const claveTexto = (f: FilaBloqueo) =>
+  f.eleccion ? `intercambio.revisar.bloqueoResuelto.${f.tipo}` : `intercambio.revisar.bloqueo.${f.tipo}`;
 const clave = (f: FilaBloqueo) => `${f.tabla}:${f.id}:${f.columna ?? ""}`;
 const quitar = (f: FilaBloqueo) => emit("decidir", f.tabla, f.id, { que: "quitar", columna: f.columna });
 const decidir = (f: FilaBloqueo, e: Eleccion) => emit("decidir", f.tabla, f.id, e);
@@ -74,7 +76,7 @@ const queResuelto = (f: FilaBloqueo) => {
       <li v-for="f in filas" :key="clave(f)" class="grid gap-2 rounded border p-2 text-sm">
         <p class="break-words">
           {{
-            t(`intercambio.revisar.bloqueo.${f.tipo}`, {
+            t(claveTexto(f), {
               nombre: nombreDe(f),
               tabla: t(`intercambio.tablas.${f.tabla}`),
               otro: f.otro || t("intercambio.revisar.algoQueNoEsta"),

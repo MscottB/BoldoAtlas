@@ -386,7 +386,7 @@ Disponible con archivos completos y parciales. Comparación por `id` en todas la
 
 Primero se ve un resumen por tipo de caso con contador; el detalle se abre si se quiere, paginado de a 50 y sin mostrar nunca un id. `foto_png` y `config` se comparan sin mostrar su contenido, y un texto se corta a 1.000 caracteres.
 
-En un archivo parcial, lo que la exportación corta no es una diferencia: su raíz vuelve a colgar de su superior o queda donde está, una jefatura vacía porque su puesto no viajó no borra la local, y lo que no viajó no se borra.
+En un archivo parcial, lo que la exportación corta no es una diferencia: su raíz vuelve a colgar de su superior o queda donde está, una jefatura vacía porque su puesto no viajó no borra la local, lo que no viajó no se borra, y una persona sin asignación vigente en el archivo viaja resumida: lo que trae vacío (teléfono, tipo de contrato, sede, jornada, foto, notas) nunca se ofrece ni vacía sus datos locales, tampoco al unirla o recuperarla. Vigente se calcula como en `alcance.rs`.
 
 **Antes de aplicar:** las reglas de referencias, ciclos e índices únicos se revisan con la misma pasada que aplica, deshecha al final (`verificar`), sobre la selección real; corre sola al decidir. Si una regla única choca solo por el orden de escritura (una cadena de renombres) se reintenta; dos filas que se cambian un valor entre sí quedan como bloqueo.
 

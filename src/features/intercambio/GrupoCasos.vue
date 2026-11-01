@@ -81,6 +81,9 @@ function alDecidir(f: Fila, e: Eleccion) {
   emit("decidir", f.tabla, f.id, e);
 }
 
+const conFechas = computed(() =>
+  ["diferente", "borrado_vs_editado", "borrado_sin_conflicto"].includes(props.tipo),
+);
 const acciones = computed<AccionMasiva[]>(() => {
   switch (props.tipo) {
     case "diferente":
@@ -138,7 +141,7 @@ const acciones = computed<AccionMasiva[]>(() => {
             </option>
           </select>
         </label>
-        <label v-if="dudosas && tipo !== 'nuevo' && tipo !== 'union'" class="flex items-center gap-2 text-sm">
+        <label v-if="dudosas && conFechas" class="flex items-center gap-2 text-sm">
           <input v-model="soloDudosas" type="checkbox" />
           {{ t("intercambio.revisar.soloDudosas") }}
         </label>

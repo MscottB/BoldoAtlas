@@ -1324,6 +1324,12 @@
         "revividas": "{n} recovered | {n} recovered",
         "unidas": "{n} merged | {n} merged",
         "omitidas": "{n} stayed out | {n} stayed out"
+      },
+      "bloqueoResuelto": {
+        "unica": "“{nombre}” ({tabla}) clashed with another record.",
+        "regla": "“{nombre}” ({tabla}) had an invalid mix of fields.",
+        "referencia": "“{nombre}” ({tabla}) pointed to something that would not be there.",
+        "ciclo": "“{nombre}” would have ended up inside itself."
       }
     }
   }

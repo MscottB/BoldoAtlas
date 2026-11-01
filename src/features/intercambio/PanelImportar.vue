@@ -194,7 +194,6 @@ const lineasHechas = computed(() =>
       .map((k) => ({ clave: `${f.tabla}-${k}`, tabla: f.tabla, que: k, n: f[k] })),
   ),
 );
-watch(decisiones, (n) => revisionConDecisiones(n > 0));
 async function reemplazar() {
   const propio = trabajo.actual.value;
   if (!propio) return;
@@ -240,6 +239,8 @@ onMounted(async () => {
     return;
   }
   retomada.value = true;
+  resumen.value = dejada.importacion;
+  modo.value = "revisar";
   revision.value = r.valor;
   paso.value = "decidir";
 });
@@ -247,11 +248,12 @@ onUnmounted(() => {
   codigo.value = "";
   // salir no pierde las decisiones sin avisar: un diálogo global pregunta si se vuelve o se descartan
   const propio = trabajo.actual.value;
-  if (paso.value === "decidir" && decisiones.value > 0 && propio) {
+  if (paso.value === "decidir" && decisiones.value > 0 && propio && resumen.value) {
     revisionDejada.value = {
       trabajo: propio,
       decisiones: decisiones.value,
       lugares: destinos.value,
+      importacion: resumen.value,
       volviendo: false,
     };
     return;

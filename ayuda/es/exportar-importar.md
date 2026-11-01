@@ -28,7 +28,7 @@ El código se muestra una sola vez y no se guarda en ninguna parte. Si se pierde
 3. Revisa lo que trae: cuánto hay en el archivo, cuánto es nuevo y cuánto ya existe. Hasta aquí tu base no cambió, y **Cancelar** borra la copia temporal del archivo.
 4. Elige qué hacer y pulsa **Aplicar**.
 
-![Importar: lo que trae el archivo en una tabla, las opciones Agregar lo nuevo y Reemplazar todo, y dónde colocar la rama.](../img/es/importar-revision.webp "Importar: revisas lo que trae antes de aplicar nada."){width=768 height=794}
+![Importar: lo que trae el archivo en una tabla y las opciones Agregar lo nuevo, Revisar y decidir y Reemplazar todo.](../img/es/importar-revision.webp "Importar: revisas lo que trae antes de aplicar nada."){width=768 height=706}
 
 Si el código no corresponde o el archivo se alteró, verás el mismo aviso: «El código no es correcto o el archivo está dañado». Tu base no se toca.
 
@@ -56,7 +56,7 @@ Para dos copias que siguieron trabajando por separado: comparas el archivo con t
 4. Resuelve lo que aparezca en **Por resolver**. Mientras quede algo, **Aplicar** está detenido y un aviso arriba dice qué falta.
 5. Pulsa **Aplicar**. El recuadro **Al aplicar** dice antes cuánto se agrega, cambia o elimina.
 
-![Revisar y decidir: el aviso de lo que falta, Aceptar todos los más recientes y los grupos de casos con su cantidad.](../img/es/importar-decidir-resumen.webp "Primero el resumen: abres solo lo que quieras mirar."){width=768 height=REV1ES}
+![Revisar y decidir: el aviso de lo que falta, Aceptar todos los más recientes y los grupos de casos con su cantidad.](../img/es/importar-decidir-resumen.webp "Primero el resumen: abres solo lo que quieras mirar."){width=768 height=1224}
 
 | Caso | Qué es | Qué viene elegido | Qué puedes hacer |
 |---|---|---|---|
@@ -70,9 +70,9 @@ Para dos copias que siguieron trabajando por separado: comparas el archivo con t
 | **Referencia a algo que no estará** | Algo apunta a lo que decidiste no traer o a lo que quedará eliminado | Nada: detiene **Aplicar** | Reasignar, dejar vacío si se puede o descartar el registro. **Resolver todas las referencias** lo hace de una vez |
 | **Quedaría dentro de sí misma** | Con lo elegido, una unidad termina colgando de sí misma | Nada: detiene **Aplicar** | Cambiar su unidad superior o dejarla sin superior |
 
-Lo que solo está en tu base se queda: nada se borra por no venir en el archivo. Eso es lo que permite traer una sola rama sin tocar el resto. Una foto o la configuración de una vista se comparan sin mostrarse, y dice cuánto pesan.
+Lo que solo está en tu base se queda: nada se borra por no venir en el archivo. Eso es lo que permite traer una sola rama sin tocar el resto. De quien ya no está, una rama trae solo nombre y correo: lo que viene vacío no borra sus datos en tu base. Una foto o la configuración de una vista se comparan sin mostrarse, y dice cuánto pesan.
 
-![Ver campos de un registro distinto: cada campo con su valor en tus datos y en el archivo, para elegir uno por uno.](../img/es/importar-decidir-campos.webp "Campo a campo: eliges qué valor se queda."){width=768 height=REV2ES}
+![Ver campos de un registro distinto: cada campo con su valor en tus datos y en el archivo, para elegir uno por uno.](../img/es/importar-decidir-campos.webp "Campo a campo: eliges qué valor se queda."){width=768 height=736}
 
 ::: warning Importante
 «El más reciente» es solo una ayuda: esa fecha la pone el otro computador, y puede estar mal. Una fecha futura o que no es una fecha se marca, nunca cuenta como la más reciente y no borra ni recupera nada sola: lo decides tú.

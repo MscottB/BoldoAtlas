@@ -47,8 +47,10 @@ const { t } = useI18n();
 const resumen = computed(() => props.resumen);
 const fijar = (r: ResumenRevision) => emit("update:resumen", r);
 
-// Sube con cada cambio en bloque: las listas abiertas vuelven a pedir su página.
+// Sube con cada cambio en bloque: las listas abiertas vuelven a pedir su página. Una decisión suelta no las recarga, para no
+// mover la fila que se está mirando; los bloqueos sí cambian con cada comprobación.
 const recarga = ref(0);
+const recargaBloqueos = ref(0);
 const verificando = ref(false);
 const aplicando = ref(false);
 const baseCambio = ref(false);
@@ -74,7 +76,7 @@ async function verificar() {
   }
   error.value = "";
   fijar(r.valor);
-  recarga.value++;
+  recargaBloqueos.value++;
   // se decidió algo mientras tanto
   if (!r.valor.verificada) pedirVerificacion();
 }
@@ -90,6 +92,8 @@ async function decidir(tabla: string, id: string, eleccion: Eleccion) {
   const r = await intentar(() => revisionDecidir(props.trabajo, tabla, id, eleccion));
   if (!r.ok) {
     toast.error(r.mensaje);
+    // la fila ya mostraba lo que se eligió: vuelve a lo que Rust tiene
+    recarga.value++;
     return;
   }
   fijar(r.valor);
@@ -156,6 +160,7 @@ async function compararDeNuevo() {
   error.value = "";
   fijar(r.valor);
   recarga.value++;
+  recargaBloqueos.value++;
 }
 
 async function aplicar() {
@@ -243,7 +248,7 @@ function salirYa(a: "volver" | "salir") {
 
     <ListaBloqueos
       :trabajo="trabajo"
-      :recarga="recarga"
+      :recarga="recargaBloqueos"
       :resolver-rotas="resumen.resolverRotas"
       :referencias="bloqueos.referencia"
       @decidir="decidir"
@@ -255,7 +260,7 @@ function salirYa(a: "volver" | "salir") {
       <p class="text-sm text-muted-foreground">{{ t("intercambio.revisar.aceptarRecientesAyuda") }}</p>
     </div>
     <p v-if="resumen.dudosas" class="flex items-start gap-2 text-sm">
-      <TriangleAlert class="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
+      <TriangleAlert class="mt-0.5 size-4 shrink-0 text-amber-800 dark:text-amber-400" aria-hidden="true" />
       {{ t("intercambio.revisar.dudosas", resumen.dudosas) }}
     </p>
 

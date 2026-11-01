@@ -1324,6 +1324,12 @@
         "revividas": "{n} recuperado | {n} recuperados",
         "unidas": "{n} unido | {n} unidos",
         "omitidas": "{n} no entró | {n} no entraron"
+      },
+      "bloqueoResuelto": {
+        "unica": "«{nombre}» ({tabla}) chocaba con otro registro.",
+        "regla": "«{nombre}» ({tabla}) tenía una mezcla de campos no válida.",
+        "referencia": "«{nombre}» ({tabla}) apuntaba a algo que no iba a estar.",
+        "ciclo": "«{nombre}» iba a quedar dentro de sí misma."
       }
     }
   }
