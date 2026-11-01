@@ -10,7 +10,7 @@ const PREFIJO: &str = "boldo-";
 const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
 /// Copia que se hace antes de reemplazar los datos por una organización nueva o el ejemplo: tampoco se poda.
 const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
-/// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: tampoco se poda.
+/// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: de estas quedan las últimas `CONSERVAR_IMPORTAR`.
 const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
 pub const CONSERVAR: usize = 10;
@@ -233,8 +233,9 @@ pub fn respaldar_antes_de_importar(
     for viejo in entradas(dir)
         .unwrap_or_default()
         .iter()
-        .filter(|e| e.importacion)
-        .skip(CONSERVAR_IMPORTAR)
+        // el recién hecho nunca, aunque su sello sea anterior: el reloj pudo cambiar
+        .filter(|e| e.importacion && e.nombre != nombre)
+        .skip(CONSERVAR_IMPORTAR - 1)
     {
         let _ = fs::remove_file(dir.join(&viejo.nombre));
     }
@@ -835,6 +836,37 @@ mod tests {
         assert_eq!(revision(&otra), 3);
         // un intento fallido no deja una copia «antes de restaurar» suelta
         assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));
+    }
+
+    #[test]
+    fn la_poda_de_importar_nunca_se_lleva_el_respaldo_recien_hecho() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("boldo.db")).unwrap();
+        conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
+            .unwrap();
+        let carpeta = dir.path().join("respaldos");
+        fs::create_dir(&carpeta).unwrap();
+        // 20 con sellos posteriores: el reloj volvió atrás
+        let mut posteriores = Vec::new();
+        for n in 0..CONSERVAR_IMPORTAR {
+            posteriores.push(
+                respaldar_antes_de_importar(&conn, &carpeta, &format!("20300101-{n:04}")).unwrap(),
+            );
+        }
+        let nuevo = respaldar_antes_de_importar(&conn, &carpeta, "20200101-0000").unwrap();
+        assert!(carpeta.join(&nuevo).exists(), "el recién hecho sigue");
+        assert!(
+            !carpeta.join(&posteriores[0]).exists(),
+            "se va el más viejo de los demás"
+        );
+        assert_eq!(
+            entradas(&carpeta)
+                .unwrap()
+                .iter()
+                .filter(|e| e.importacion)
+                .count(),
+            CONSERVAR_IMPORTAR
+        );
     }
 
     #[test]

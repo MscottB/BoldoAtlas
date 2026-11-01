@@ -884,9 +884,7 @@ impl Revision {
                 a.borrar_locales += t.locales_borradas;
             }
         }
-        // vaciar también es perder datos: 25 unidades sin superior piden confirmar igual que 25 eliminadas
-        let masa = a.borrar + a.vaciar;
-        let borrado_masivo = masa >= 20 || masa * 5 > self.vivas_locales;
+        let borrado_masivo = es_masivo(a.borrar + a.vaciar, self.vivas_locales);
         let mut b = Bloqueos {
             duplicado,
             total: duplicado + self.bloqueos.len() as u64,
@@ -1241,6 +1239,11 @@ impl Revision {
         }
         Ok(n)
     }
+}
+
+/// Vaciar también es perder datos: 25 unidades sin superior piden confirmar igual que 25 eliminadas.
+fn es_masivo(borradas_y_vaciadas: u64, vivas: u64) -> bool {
+    borradas_y_vaciadas >= 20 || borradas_y_vaciadas * 5 > vivas
 }
 
 fn correo_valido(correo: &str) -> bool {
@@ -2126,6 +2129,11 @@ pub fn aplicar(
     let s = pasada(&tx, &imp, &i.meta, r, &marca, &mut || true)?;
     if !s.bloqueos.is_empty() {
         return Err(Fallo::de("bloqueada", ""));
+    }
+    // lo que de verdad va a pasar: una fila sin decisión pudo cambiar desde la verificación, y con ella el total
+    let masa: u64 = s.tablas.iter().map(|t| t.borradas + t.vaciadas).sum();
+    if es_masivo(masa, r.vivas_locales) && !confirmado {
+        return Err(Fallo::de("falta_confirmar", ""));
     }
     db::marcar_cambio(&tx, version_app)?;
     tx.commit()?;
@@ -4573,6 +4581,64 @@ mod tests {
             "no escribe"
         );
         assert_eq!(b.respaldos(), 0, "ni deja respaldo");
+        aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1").unwrap();
+        assert_eq!(
+            b.uno("SELECT parent_id FROM unidades WHERE id = 'h0'"),
+            None
+        );
+    }
+
+    #[test]
+    fn el_umbral_se_recalcula_con_lo_que_de_verdad_va_a_pasar() {
+        // unidades de aquí bajo una unidad que el archivo borra; base grande, para que no cuente el 20 %
+        let mut b = banco();
+        let mut sql = String::new();
+        for n in 0..5 {
+            sql += &format!(
+                "INSERT INTO unidades (id, tipo_id, nombre, parent_id, created_at, updated_at) VALUES ('h{n}', '{TIPO}', 'H{n}', 'hija', '{F0}', '{F0}');"
+            );
+        }
+        for n in 0..400 {
+            sql += &format!(
+                "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('m{n:03}', 'M', '{F0}', '{F0}');"
+            );
+        }
+        b.mia(&sql);
+        con_puesto_local(&mut b);
+        let mut r = b.abrir();
+        r.masivo(Masivo {
+            accion: AccionMasiva::ResolverRotas,
+            tipo: None,
+        });
+        b.verificar(&mut r);
+        let resumen = r.resumen();
+        assert!(!resumen.borrado_masivo, "{:?}", resumen.aplicara);
+        let masa = resumen.aplicara.borrar + resumen.aplicara.vaciar;
+        assert!(masa < 20, "{masa}");
+        // aparecen filas sin decisión, sin caso ni huella, y el total cruza el umbral
+        let mut mas = String::new();
+        for n in masa..20 {
+            mas += &format!(
+                "INSERT INTO unidades (id, tipo_id, nombre, parent_id, created_at, updated_at) VALUES ('n{n}', '{TIPO}', 'N{n}', 'hija', '{F0}', '{F0}');"
+            );
+        }
+        b.mia(&mas);
+        let dir = b.dir.path().join("respaldos");
+        std::fs::create_dir_all(&dir).unwrap();
+        let v = r.version;
+        let e = aplicar(&mut b.local, &dir, &b.i, &r, v, false, "1")
+            .err()
+            .unwrap();
+        assert_eq!(e.codigo, "falta_confirmar");
+        assert_eq!(
+            b.uno("SELECT parent_id FROM unidades WHERE id = 'h0'")
+                .unwrap(),
+            "hija",
+            "no se escribió nada"
+        );
+        assert!(b.viva("unidades", "hija"));
+        assert_eq!(b.revision_datos(), "0");
+        // confirmado, se aplica
         aplicar(&mut b.local, &dir, &b.i, &r, v, true, "1").unwrap();
         assert_eq!(
             b.uno("SELECT parent_id FROM unidades WHERE id = 'h0'"),
