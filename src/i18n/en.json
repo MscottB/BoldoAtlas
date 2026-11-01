@@ -994,7 +994,7 @@
         "jefaturas": "{n} head whose position is not going: left empty | {n} heads whose position is not going: left empty",
         "roles": "{n} role of a person who is not going | {n} roles of people who are not going",
         "vistas": "{n} saved view of the full tree | {n} saved views of the full tree",
-        "asignaciones": "{n} assignment of a person who is no longer there | {n} assignments of people who are no longer there"
+        "historial": "{n} person who is no longer there goes with name and email only, for their history | {n} people who are no longer there go with name and email only, for their history"
       },
       "guardar": "Save as…",
       "guardado": "The file {nombre} was saved.",

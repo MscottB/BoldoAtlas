@@ -585,7 +585,7 @@ mod tests {
 
         let hecho = agregar(&mut conn, &respaldos, &i, &HashMap::new(), "1.2.3").unwrap();
         assert_eq!(cuenta(&conn, "unidades"), 2);
-        assert_eq!(cuenta(&conn, "trabajadores"), 2);
+        assert_eq!(cuenta(&conn, "trabajadores"), 3);
         let por = |inf: &Informe| -> Vec<i64> { inf.tablas.iter().map(|t| t.nuevas).collect() };
         assert_eq!(por(&hecho), por(&previa));
         assert_eq!(hecho.nombre_heredado.as_deref(), Some("Mi Org / SA"));
