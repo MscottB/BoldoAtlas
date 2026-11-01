@@ -68,6 +68,9 @@ pub fn run() {
             for dir in datos.iter().chain(respaldos_dir.iter()) {
                 respaldos::limpiar_parciales(dir);
             }
+            if let Some(datos) = &datos {
+                intercambio::limpiar_guardado(datos);
+            }
             // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
             if let Some(datos) = datos {
                 actualizar::limpiar_al_iniciar(datos);
@@ -105,6 +108,7 @@ pub fn run() {
             comandos::info_proyecto,
             comandos::abrir_carpeta_datos,
             comandos::exportar_preparar,
+            comandos::exportar_elegir_destino,
             comandos::exportar_guardar,
             comandos::importar_elegir,
             comandos::importar_abrir,

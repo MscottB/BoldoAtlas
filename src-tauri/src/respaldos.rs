@@ -18,6 +18,16 @@ pub const CONSERVAR: usize = 10;
 pub struct Fallo {
     pub codigo: &'static str,
     pub detalle: String,
+    /// Para un archivo o una base que se pasa de un tope: en qué fila y campo, para poder corregirlo.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub donde: Option<Donde>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Donde {
+    pub tabla: String,
+    pub columna: String,
+    pub nombre: Option<String>,
 }
 
 impl Fallo {
@@ -25,6 +35,7 @@ impl Fallo {
         Fallo {
             codigo,
             detalle: detalle.to_string(),
+            donde: None,
         }
     }
 }
@@ -277,6 +288,16 @@ pub fn restaurar(
     {
         let c = Connection::open_with_flags(&origen, OpenFlags::SQLITE_OPEN_READ_ONLY)
             .map_err(danado)?;
+        let version: i64 = c
+            .pragma_query_value(None, "user_version", |f| f.get(0))
+            .map_err(danado)?;
+        if version > migraciones.len() as i64 {
+            return Err(Fallo::de("esquema_nuevo", version));
+        }
+        // lo primero: triggers, vistas o tablas extra quedarían activos en la base local. Un respaldo legítimo tiene el de
+        // su versión.
+        validar::revisar_solo_esquema(&origen, version.max(0) as usize, migraciones)
+            .map_err(|e| Fallo::de("danado", e.detalle))?;
         let estado: String = c
             .query_row("PRAGMA quick_check", [], |f| f.get(0))
             .map_err(danado)?;
@@ -290,15 +311,6 @@ pub fn restaurar(
             |_| Ok(()),
         )
         .map_err(danado)?;
-        let version: i64 = c
-            .pragma_query_value(None, "user_version", |f| f.get(0))
-            .map_err(danado)?;
-        if version > migraciones.len() as i64 {
-            return Err(Fallo::de("esquema_nuevo", version));
-        }
-        // triggers, vistas o tablas extra quedarían activos en la base local. Un respaldo legítimo tiene el de su versión.
-        validar::revisar_solo_esquema(&origen, version.max(0) as usize, migraciones)
-            .map_err(|e| Fallo::de("danado", e.detalle))?;
     }
     cambiar_base(conexion, bd, dir, &origen, migraciones, PREFIJO_SEGURIDAD)
 }

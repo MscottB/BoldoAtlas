@@ -1,7 +1,7 @@
 //! La base descifrada no es confiable, aunque el código sea correcto: quien la envía puede ser cualquiera.
-use crate::respaldos::Fallo;
+use crate::respaldos::{Donde, Fallo};
 use rusqlite::config::DbConfig;
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -88,8 +88,20 @@ fn tope_de(columna: &str) -> i64 {
     }
 }
 
+/// Dónde está lo que se pasó, para poder corregirlo: nunca el contenido, y el nombre de la fila solo si no es lo que se pasó.
+fn pesado_en(tabla: &str, columna: &str, nombre: Option<String>) -> Fallo {
+    Fallo {
+        donde: Some(Donde {
+            tabla: tabla.to_string(),
+            columna: columna.to_string(),
+            nombre,
+        }),
+        ..Fallo::de("muy_pesado", "")
+    }
+}
+
+/// Solo lo vivo: lo eliminado no se carga en la app, no se ve ni se puede corregir, y el archivo ya tiene un tope total.
 fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), Fallo> {
-    let pesado = || Fallo::de("muy_pesado", "");
     let tablas: Vec<String> = c
         .prepare(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
@@ -103,30 +115,48 @@ fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), F
             .query_map([&tabla], |f| f.get(0))?
             .collect::<rusqlite::Result<_>>()?;
         if tabla == "meta" {
-            let excede: bool = c.query_row(
-                "SELECT EXISTS (SELECT 1 FROM meta WHERE length(CAST(clave AS BLOB)) > ?1
-                   OR length(CAST(valor AS BLOB)) >
-                     CASE clave WHEN 'logo_png' THEN ?2 WHEN 'raices' THEN ?3 ELSE ?1 END)",
-                [MAX_CORTO, MAX_IMAGEN, MAX_LARGO],
-                |f| f.get(0),
-            )?;
-            if excede {
-                return Err(pesado());
+            let excede: Option<String> = c
+                .query_row(
+                    "SELECT substr(clave, 1, 40) FROM meta WHERE length(CAST(clave AS BLOB)) > ?1
+                       OR length(CAST(valor AS BLOB)) >
+                         CASE clave WHEN 'logo_png' THEN ?2 WHEN 'raices' THEN ?3 ELSE ?1 END
+                     LIMIT 1",
+                    [MAX_CORTO, MAX_IMAGEN, MAX_LARGO],
+                    |f| f.get(0),
+                )
+                .optional()?;
+            if let Some(clave) = excede {
+                return Err(pesado_en("meta", &clave, None));
             }
             continue;
         }
-        let vivas = if columnas.iter().any(|x| x == "deleted_at") {
+        let con_baja = columnas.iter().any(|x| x == "deleted_at");
+        let vivas = if con_baja {
             " WHERE deleted_at IS NULL"
         } else {
             ""
         };
+        let viva_y = if con_baja {
+            "deleted_at IS NULL AND"
+        } else {
+            ""
+        };
+        let con_nombre = columnas.iter().any(|x| x == "nombre");
         for columna in &columnas {
             // los nombres ya coinciden con las migraciones: no vienen del archivo
+            let nombre = if con_nombre && columna != "nombre" {
+                "substr(nombre, 1, 80)"
+            } else {
+                "NULL"
+            };
             let sql = format!(
-                "SELECT EXISTS (SELECT 1 FROM {tabla} WHERE length(CAST({columna} AS BLOB)) > ?1)"
+                "SELECT {nombre} FROM {tabla} WHERE {viva_y} length(CAST({columna} AS BLOB)) > ?1 LIMIT 1"
             );
-            if c.query_row(&sql, [tope_de(columna)], |f| f.get::<_, bool>(0))? {
-                return Err(pesado());
+            let excede: Option<Option<String>> = c
+                .query_row(&sql, [tope_de(columna)], |f| f.get(0))
+                .optional()?;
+            if let Some(nombre) = excede {
+                return Err(pesado_en(&tabla, columna, nombre));
             }
             let sql = format!(
                 "SELECT COALESCE(SUM(length(CAST({columna} AS BLOB))), 0) FROM {tabla}{vivas}"
@@ -137,7 +167,7 @@ fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), F
         filas += c.query_row(&sql, [], |f| f.get::<_, i64>(0))?;
     }
     if filas > max_filas || bytes > max_bytes {
-        return Err(pesado());
+        return Err(Fallo::de("muy_pesado_total", ""));
     }
     Ok(())
 }
@@ -425,7 +455,7 @@ mod tests {
     }
 
     #[test]
-    fn rechaza_campos_mas_largos_que_lo_que_la_app_admite() {
+    fn rechaza_campos_vivos_mas_largos_que_el_tope() {
         const T: &str = "'00000000-0000-7000-8000-000000000001'";
         let kib = |n: usize| "x".repeat(n * 1024 + 1);
         for sql in [
@@ -471,6 +501,49 @@ mod tests {
     }
 
     #[test]
+    fn el_fallo_dice_donde_esta_sin_el_contenido() {
+        let (_d, ruta) = copia();
+        let largo = "secreto".repeat(50_000);
+        alterar(
+            &ruta,
+            &format!(
+                "INSERT INTO trabajadores (id, nombre, notas, created_at, updated_at) VALUES ('a', 'Ana Rojas', '{largo}', 'x', 'x');"
+            ),
+        );
+        let e = revisar(&ruta, MIGRACIONES).unwrap_err();
+        let d = e.donde.as_ref().expect("dónde");
+        assert_eq!(
+            (d.tabla.as_str(), d.columna.as_str(), d.nombre.as_deref()),
+            ("trabajadores", "notas", Some("Ana Rojas"))
+        );
+        assert!(!e.detalle.contains("secreto"));
+        // si lo que se pasó es el nombre, no se repite
+        let (_d, ruta) = copia();
+        alterar(
+            &ruta,
+            &format!(
+                "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('a', '{}', 'x', 'x');",
+                "secreto".repeat(500)
+            ),
+        );
+        let e = revisar(&ruta, MIGRACIONES).unwrap_err();
+        assert_eq!(e.donde.unwrap().nombre, None);
+    }
+
+    #[test]
+    fn una_fila_eliminada_no_bloquea_aunque_pase_el_tope() {
+        let (_d, ruta) = copia();
+        alterar(
+            &ruta,
+            &format!(
+                "INSERT INTO trabajadores (id, nombre, notas, created_at, updated_at, deleted_at) VALUES ('a', 'A', '{}', 'x', 'x', 'y');",
+                "x".repeat(300 * 1024)
+            ),
+        );
+        revisar(&ruta, MIGRACIONES).unwrap();
+    }
+
+    #[test]
     fn rechaza_mas_filas_o_bytes_vivos_que_el_presupuesto_y_no_cuenta_lo_eliminado() {
         let (_d, ruta) = copia();
         alterar(
@@ -483,9 +556,12 @@ mod tests {
         revisar_topes(&c, semillas + 1, 10_000).unwrap();
         assert_eq!(
             revisar_topes(&c, semillas, 10_000).unwrap_err().codigo,
-            "muy_pesado"
+            "muy_pesado_total"
         );
-        assert_eq!(revisar_topes(&c, 100, 10).unwrap_err().codigo, "muy_pesado");
+        assert_eq!(
+            revisar_topes(&c, 100, 10).unwrap_err().codigo,
+            "muy_pesado_total"
+        );
     }
 
     #[test]

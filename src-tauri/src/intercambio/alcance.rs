@@ -147,12 +147,13 @@ fn recortar(copia: Temporal, datos: &Path, raices: &[String]) -> Result<(Tempora
              SELECT id FROM elegidas
              UNION SELECT u.id FROM unidades u JOIN r ON u.parent_id = r.id WHERE u.deleted_at IS NULL
            ) SELECT id FROM r;
-         -- vigente como en `vigentesEn` de la interfaz: sin fin, o con un fin que aún no llega (un reemplazo)
+         -- vigente como en `vigentesEn` de la interfaz: ya empezó, y sin fin o con un fin que aún no llega (un reemplazo)
          CREATE TEMP TABLE presentes AS
            SELECT DISTINCT a.trabajador_id AS id FROM asignaciones a
            JOIN puestos p ON p.id = a.puesto_id AND p.deleted_at IS NULL AND p.unidad_id IN alc
            JOIN trabajadores t ON t.id = a.trabajador_id AND t.deleted_at IS NULL
-           WHERE a.deleted_at IS NULL AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime'));",
+           WHERE a.deleted_at IS NULL AND a.desde <= date('now', 'localtime')
+             AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime'));",
     )?;
     // marcar una unidad y también otra de su rama es una sola rama
     let ramas: Vec<RamaExportada> = tx
@@ -230,8 +231,13 @@ pub fn preparar(
             (copia, Cortes::default())
         }
     };
-    // lo mismo que se le exigirá al abrirlo: mejor saberlo aquí que dejar un archivo que nadie puede importar
-    validar::revisar(temporal.ruta(), db::MIGRACIONES)?;
+    // lo mismo que se le exigirá al abrirlo: mejor saberlo aquí que dejar un archivo que nadie puede importar. Es la base
+    // local, no un archivo: los mensajes son otros.
+    validar::revisar(temporal.ruta(), db::MIGRACIONES).map_err(|e| match e.codigo {
+        "contenido_invalido" => Fallo::de("base_no_valida", e.detalle),
+        "muy_pesado_total" => Fallo::de("exportar_muy_pesado", ""),
+        _ => e,
+    })?;
     let filas = cuentas(&Connection::open(temporal.ruta())?)?;
     Ok((
         temporal,
@@ -372,6 +378,48 @@ mod tests {
             .collect();
         // ana también estuvo antes en otro puesto de la rama; la persona que ya no está no va
         assert_eq!(ids, ["as-ana-antes", "as-hija", "as-rama"]);
+    }
+
+    #[test]
+    fn una_asignacion_que_aun_no_empieza_no_cuenta_como_vigente() {
+        let (dir, conn) = base_con_datos();
+        conn.execute_batch(
+            "UPDATE asignaciones SET desde = '2999-01-01', hasta = '3000-01-01' WHERE id = 'as-yanoesta';",
+        )
+        .unwrap();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, r) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
+        assert_eq!(r.cortes.asignaciones, 1);
+        assert!(!contiene(
+            &std::fs::read(t.ruta()).unwrap(),
+            b"PersonaYaNoEsta"
+        ));
+    }
+
+    #[test]
+    fn un_fallo_de_la_base_al_exportar_tiene_su_propio_codigo() {
+        let (dir, conn) = base_con_datos();
+        conn.execute_batch(
+            "PRAGMA foreign_keys = OFF;
+             UPDATE unidades SET parent_id = 'nadie' WHERE id = 'otra';
+             PRAGMA foreign_keys = ON;",
+        )
+        .unwrap();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let e = preparar(copia, dir.path(), None).unwrap_err();
+        assert_eq!(e.codigo, "base_no_valida");
+    }
+
+    #[test]
+    fn una_fila_eliminada_pesada_no_impide_exportar_toda_la_base() {
+        let (dir, conn) = base_con_datos();
+        conn.execute(
+            "UPDATE trabajadores SET notas = ?1 WHERE id = 'muerta'",
+            ["x".repeat(300 * 1024)],
+        )
+        .unwrap();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        preparar(copia, dir.path(), None).unwrap();
     }
 
     #[test]

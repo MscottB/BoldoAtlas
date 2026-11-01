@@ -164,24 +164,34 @@ pub fn info_app(estado: State<Estado>) -> InfoApp {
     }
 }
 
-// `async`: fuera del hilo principal, que no debe quedar esperando la conexión mientras un respaldo o una importación la
-// tienen. El orden de las escrituras lo guarda la cola de `lote` en src/db/cliente.ts.
-#[tauri::command(async)]
-pub fn db_consultar(
-    estado: State<Estado>,
+// En `spawn_blocking`: ni el hilo principal ni los trabajadores de tokio quedan esperando la conexión mientras un respaldo
+// o una importación la tienen. El orden lo guarda la cola de src/db/cola.ts.
+#[tauri::command]
+pub async fn db_consultar(
+    app: AppHandle,
     sql: String,
     params: Vec<Value>,
 ) -> Result<Vec<Map<String, Value>>, String> {
-    estado.con_conexion(|c| db::consultar(c, &sql, &params))
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(|c| db::consultar(c, &sql, &params))
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
-#[tauri::command(async)]
-pub fn db_lote(
-    estado: State<Estado>,
+#[tauri::command]
+pub async fn db_lote(
+    app: AppHandle,
     sentencias: Vec<Sentencia>,
     version_app: String,
 ) -> Result<(), String> {
-    estado.con_conexion(|c| db::lote(c, &sentencias, &version_app))
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(|c| db::lote(c, &sentencias, &version_app))
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -338,7 +348,7 @@ pub async fn exportar_preparar(
     tauri::async_runtime::spawn_blocking(move || {
         let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
         let datos = &estado.rutas()?.datos;
-        sesiones.empezar(&trabajo);
+        sesiones.empezar(&trabajo)?;
         avisar(&app, &trabajo, "copiando", 0, 0);
         let copia = estado.con_conexion(|c| alcance::copiar(c, datos))?;
         let (temporal, resumen) = alcance::preparar(copia, datos, raices.as_deref())?;
@@ -356,36 +366,41 @@ pub struct Guardado {
     codigo: String,
 }
 
-/// Pregunta dónde guardar y cifra. Devuelve el código una sola vez; None si no se eligió un lugar.
+/// Pregunta dónde guardar. false si no se eligió un lugar; la copia sigue preparada. No es un trabajo: espera al usuario.
 #[tauri::command]
-pub async fn exportar_guardar(app: AppHandle, trabajo: String) -> Result<Option<Guardado>, Fallo> {
+pub async fn exportar_elegir_destino(app: AppHandle, trabajo: String) -> Result<bool, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let sesiones = app.state::<Sesiones>();
-        let temporal = sesiones.tomar_exportacion(&trabajo)?;
+        let copia = sesiones.ruta_exportacion(&trabajo)?;
         let elegido = dialogo(&app)
-            .set_file_name(intercambio::nombre_sugerido(temporal.ruta())?)
+            .set_file_name(intercambio::nombre_sugerido(&copia)?)
             .blocking_save_file();
         let Some(destino) = elegido.and_then(|f| f.into_path().ok()) else {
-            sesiones.guardar_exportacion(&trabajo, temporal)?;
-            return Ok(None);
+            return Ok(false);
         };
-        let destino = match intercambio::con_extension(destino) {
-            Ok(d) => d,
-            Err(e) => {
-                // la copia sigue preparada: se puede elegir otro nombre
-                sesiones.guardar_exportacion(&trabajo, temporal)?;
-                return Err(e);
-            }
-        };
+        sesiones.guardar_destino(&trabajo, intercambio::con_extension(destino)?)?;
+        Ok(true)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Cifra al destino elegido. Devuelve el código una sola vez.
+#[tauri::command]
+pub async fn exportar_guardar(app: AppHandle, trabajo: String) -> Result<Guardado, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let (temporal, destino) = sesiones.tomar_exportacion(&trabajo)?;
         let codigo = intercambio::guardar(
             temporal.ruta(),
             &destino,
+            &estado.rutas()?.datos,
             seguimiento(&app, &trabajo, "cifrando"),
         )?;
-        Ok(Some(Guardado {
+        Ok(Guardado {
             nombre: nombre_archivo(&destino),
             codigo,
-        }))
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -407,7 +422,7 @@ pub async fn importar_elegir(
         let sesiones = app.state::<Sesiones>();
         // no elegir nada deja como estaba lo que ya se había elegido
         if !sesiones.sigue(&trabajo) {
-            sesiones.empezar(&trabajo);
+            sesiones.empezar(&trabajo)?;
         }
         let Some(ruta) = dialogo(&app)
             .blocking_pick_file()

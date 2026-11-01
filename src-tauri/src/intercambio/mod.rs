@@ -10,7 +10,7 @@ use crate::respaldos::{self, Fallo};
 use fusion::Informe;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
@@ -48,15 +48,23 @@ pub struct Importacion {
 struct EstadoSesion {
     trabajo: Option<String>,
     exportacion: Option<Temporal>,
+    destino: Option<PathBuf>,
     archivo: Option<PathBuf>,
     importacion: Option<Importacion>,
 }
+
+/// Cancelados que se recuerdan, por si su comando aún no empieza.
+const CANCELADOS_RECORDADOS: usize = 16;
 
 /// Lo que hay entre un paso y el siguiente del asistente, de un solo trabajo a la vez. El identificador lo pone la
 /// interfaz: «Guardar» y «Aplicar» solo valen para lo que se revisó, y lo que termina tarde, ya cancelado o reemplazado
 /// por otro trabajo, no deja nada.
 #[derive(Default)]
-pub struct Sesiones(Mutex<EstadoSesion>);
+pub struct Sesiones {
+    estado: Mutex<EstadoSesion>,
+    /// La interfaz genera el identificador antes del comando: su cancelar puede llegar primero, y gana.
+    cancelados: Mutex<VecDeque<String>>,
+}
 
 fn no_esta() -> Fallo {
     Fallo::de("desconocido", "")
@@ -68,15 +76,24 @@ fn cancelado() -> Fallo {
 
 impl Sesiones {
     fn estado(&self) -> MutexGuard<'_, EstadoSesion> {
-        self.0.lock().unwrap_or_else(|p| p.into_inner())
+        self.estado.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    /// Este trabajo pasa a ser el único; lo que hubiera de otro se suelta y sus temporales se borran.
-    pub fn empezar(&self, trabajo: &str) {
+    fn cancelados(&self) -> MutexGuard<'_, VecDeque<String>> {
+        self.cancelados.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// Este trabajo pasa a ser el único; lo que hubiera de otro se suelta y sus temporales se borran. Si ya se había
+    /// cancelado, no empieza.
+    pub fn empezar(&self, trabajo: &str) -> Result<(), Fallo> {
+        if self.cancelados().iter().any(|c| c == trabajo) {
+            return Err(cancelado());
+        }
         *self.estado() = EstadoSesion {
             trabajo: Some(trabajo.to_string()),
             ..Default::default()
         };
+        Ok(())
     }
 
     pub fn sigue(&self, trabajo: &str) -> bool {
@@ -85,6 +102,13 @@ impl Sesiones {
 
     /// Detiene ese trabajo y borra sus temporales. Si ya hay otro, no le pasa nada.
     pub fn cancelar(&self, trabajo: &str) {
+        {
+            let mut c = self.cancelados();
+            if c.len() == CANCELADOS_RECORDADOS {
+                c.pop_front();
+            }
+            c.push_back(trabajo.to_string());
+        }
         let mut e = self.estado();
         if e.trabajo.as_deref() == Some(trabajo) {
             *e = EstadoSesion::default();
@@ -105,12 +129,36 @@ impl Sesiones {
         Ok(())
     }
 
-    pub fn tomar_exportacion(&self, trabajo: &str) -> Result<Temporal, Fallo> {
+    /// La ruta de la copia preparada, sin tomarla: para sugerir el nombre.
+    pub fn ruta_exportacion(&self, trabajo: &str) -> Result<PathBuf, Fallo> {
+        let e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.exportacion
+            .as_ref()
+            .map(|t| t.ruta().to_path_buf())
+            .ok_or_else(no_esta)
+    }
+
+    pub fn guardar_destino(&self, trabajo: &str, destino: PathBuf) -> Result<(), Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(cancelado());
+        }
+        e.destino = Some(destino);
+        Ok(())
+    }
+
+    /// La copia y dónde va, para cifrarla.
+    pub fn tomar_exportacion(&self, trabajo: &str) -> Result<(Temporal, PathBuf), Fallo> {
         let mut e = self.estado();
         if e.trabajo.as_deref() != Some(trabajo) {
             return Err(no_esta());
         }
-        e.exportacion.take().ok_or_else(no_esta)
+        let destino = e.destino.take().ok_or_else(no_esta)?;
+        let temporal = e.exportacion.take().ok_or_else(no_esta)?;
+        Ok((temporal, destino))
     }
 
     /// Elegir otro archivo deja sin efecto lo que se había revisado.
@@ -157,6 +205,8 @@ pub struct ResumenImportacion {
     pub parcial: bool,
     /// None si la revisión falló: «Agregar» no se ofrece, pero un archivo completo y válido se puede reemplazar igual.
     pub informe: Option<Informe>,
+    /// Por qué falló: solo el código, que nunca lleva datos personales.
+    pub motivo_revision: Option<&'static str>,
 }
 
 /// Lo que quedó en `meta` al reemplazar: nada más que lo que la app escribe y lee.
@@ -219,22 +269,40 @@ pub fn nombre_sugerido(copia: &Path) -> Result<String, Fallo> {
     Ok(format!("{base}_{fecha}_r{revision}.boldo"))
 }
 
+/// Anota en `datos/` qué archivo a medias se está escribiendo fuera de la carpeta: si la app se cierra de golpe, se borra al
+/// volver a abrir (`limpiar_guardado`).
+const GUARDANDO: &str = "boldo-guardando.txt";
+
 /// Cifra a `destino` pasando por un nombre aparte: un corte a mitad nunca deja un `.boldo` a medias con ese nombre.
 pub fn guardar(
     copia: &Path,
     destino: &Path,
+    datos: &Path,
     seguir: impl FnMut(u64, u64) -> bool,
 ) -> Result<String, Fallo> {
     let codigo = formato::generar_codigo()?;
     let mut parcial = destino.as_os_str().to_owned();
     parcial.push(".tmp");
     let parcial = PathBuf::from(parcial);
+    fs::write(datos.join(GUARDANDO), parcial.to_string_lossy().as_bytes())?;
     let hecho = formato::cifrar(copia, &parcial, &codigo, seguir)
         .and_then(|_| fs::rename(&parcial, destino).map_err(Fallo::from));
     if hecho.is_err() {
         let _ = fs::remove_file(&parcial);
     }
+    let _ = fs::remove_file(datos.join(GUARDANDO));
     hecho.map(|_| codigo)
+}
+
+/// Al abrir, ya pasada la instancia única: borra el `.boldo.tmp` de un guardado que no terminó. Solo un nombre así.
+pub fn limpiar_guardado(datos: &Path) {
+    let nota = datos.join(GUARDANDO);
+    if let Ok(parcial) = fs::read_to_string(&nota)
+        && parcial.ends_with(".boldo.tmp")
+    {
+        let _ = fs::remove_file(parcial);
+    }
+    let _ = fs::remove_file(nota);
 }
 
 /// Descifra y revisa. Si el archivo es de un esquema anterior, migra la copia temporal (nunca la base local).
@@ -269,10 +337,15 @@ pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportac
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         fusion::fusionar(&tx, &imp, &i.meta, &HashMap::new(), &marca)
     })();
+    let (informe, motivo_revision) = match pasada {
+        Ok(informe) => (Some(informe), None),
+        Err(e) => (None, Some(e.codigo)),
+    };
     Ok(ResumenImportacion {
         organizacion: i.meta.organizacion.clone(),
         parcial: i.meta.parcial,
-        informe: pasada.ok(),
+        informe,
+        motivo_revision,
     })
 }
 
@@ -413,6 +486,10 @@ mod tests {
 
     const SIGUE: fn(u64, u64) -> bool = |_, _| true;
 
+    fn dir_de(archivo: &Path) -> &Path {
+        archivo.parent().unwrap()
+    }
+
     /// Solo los temporales: las demás cosas de la carpeta no importan aquí.
     fn temporales(dir: &Path) -> Vec<String> {
         fs::read_dir(dir)
@@ -438,7 +515,7 @@ mod tests {
         let copia = alcance::copiar(origen, dir).unwrap();
         let (t, _) = alcance::preparar(copia, dir, raices).unwrap();
         let archivo = dir.join(nombre_sugerido(t.ruta()).unwrap());
-        let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+        let codigo = guardar(t.ruta(), &archivo, dir_de(&archivo), SIGUE).unwrap();
         (archivo, codigo)
     }
 
@@ -615,7 +692,7 @@ mod tests {
             .execute_batch(sql)
             .unwrap();
         let archivo = d.path().join("hostil.boldo");
-        let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+        let codigo = guardar(t.ruta(), &archivo, dir_de(&archivo), SIGUE).unwrap();
         (d, archivo, codigo)
     }
 
@@ -676,7 +753,7 @@ mod tests {
         let (d, origen) = base_con_datos();
         let copia = alcance::copiar(&origen, d.path()).unwrap();
         let destino = d.path().join("a.boldo");
-        let e = guardar(copia.ruta(), &destino, |_, _| false).unwrap_err();
+        let e = guardar(copia.ruta(), &destino, d.path(), |_, _| false).unwrap_err();
         assert_eq!(e.codigo, "cancelado");
         assert!(!destino.exists());
         assert!(!d.path().join("a.boldo.tmp").exists());
@@ -689,7 +766,7 @@ mod tests {
         let t = Temporal::nuevo(dd.path(), "exportando");
         fs::write(t.ruta(), "x").unwrap();
         let ruta = t.ruta().to_path_buf();
-        s.empezar("t1");
+        s.empezar("t1").unwrap();
         assert!(s.sigue("t1"));
         s.guardar_exportacion("t1", t).unwrap();
         // cancelar otro trabajo no le hace nada
@@ -712,11 +789,11 @@ mod tests {
         let s = Sesiones::default();
 
         // el trabajo A se cancela mientras está en curso, y se empieza B con otro archivo
-        s.empezar("A");
+        s.empezar("A").unwrap();
         let a = importacion(d.path(), &origen, dd.path());
         let ruta_a = a.temporal.ruta().to_path_buf();
         s.cancelar("A");
-        s.empezar("B");
+        s.empezar("B").unwrap();
         s.guardar_archivo("B", d.path().join("otro.boldo")).unwrap();
         let b = importacion(d.path(), &origen, dd.path());
         let ruta_b = b.temporal.ruta().to_path_buf();
@@ -738,10 +815,11 @@ mod tests {
 
         // la exportación sigue la misma regla, y lo ya tomado no se puede aplicar dos veces
         assert_eq!(s.tomar_importacion("B").unwrap_err().codigo, "desconocido");
-        s.empezar("C");
+        s.empezar("C").unwrap();
         let t = Temporal::nuevo(dd.path(), "exportando");
         fs::write(t.ruta(), "x").unwrap();
         s.guardar_exportacion("C", t).unwrap();
+        s.guardar_destino("C", dd.path().join("a.boldo")).unwrap();
         assert_eq!(s.tomar_exportacion("B").unwrap_err().codigo, "desconocido");
         s.tomar_exportacion("C").unwrap();
         let tarde = Temporal::nuevo(dd.path(), "exportando");
@@ -752,15 +830,65 @@ mod tests {
     }
 
     #[test]
+    fn un_cancelar_que_llega_antes_de_empezar_gana() {
+        let s = Sesiones::default();
+        s.empezar("otro").unwrap();
+        s.cancelar("X");
+        // no le hace nada al que está en curso
+        assert!(s.sigue("otro"));
+        // y el cancelado ya no empieza: tampoco le quita el lugar al otro
+        assert_eq!(s.empezar("X").unwrap_err().codigo, "cancelado");
+        assert!(s.sigue("otro") && !s.sigue("X"));
+        // sin crecer para siempre
+        for i in 0..CANCELADOS_RECORDADOS {
+            s.cancelar(&format!("c{i}"));
+        }
+        s.empezar("X").unwrap();
+    }
+
+    #[test]
+    fn guardar_a_medias_se_borra_al_volver_a_abrir() {
+        let d = tempfile::tempdir().unwrap();
+        let (datos, afuera) = (d.path().join("datos"), d.path().join("afuera"));
+        fs::create_dir_all(&datos).unwrap();
+        fs::create_dir_all(&afuera).unwrap();
+        // lo que deja un cierre de golpe mientras se cifra
+        let parcial = afuera.join("a.boldo.tmp");
+        fs::write(&parcial, "a medias").unwrap();
+        fs::write(datos.join(GUARDANDO), parcial.to_string_lossy().as_bytes()).unwrap();
+        limpiar_guardado(&datos);
+        assert!(!parcial.exists() && !datos.join(GUARDANDO).exists());
+        // una nota que apunte a otra cosa no borra nada
+        let ajeno = afuera.join("mio.txt");
+        fs::write(&ajeno, "x").unwrap();
+        fs::write(datos.join(GUARDANDO), ajeno.to_string_lossy().as_bytes()).unwrap();
+        limpiar_guardado(&datos);
+        assert!(ajeno.exists() && !datos.join(GUARDANDO).exists());
+        // sin nota, nada
+        limpiar_guardado(&datos);
+    }
+
+    #[test]
+    fn guardar_bien_no_deja_la_nota_ni_el_parcial() {
+        let (d, origen) = base_con_datos();
+        let copia = alcance::copiar(&origen, d.path()).unwrap();
+        let destino = d.path().join("a.boldo");
+        guardar(copia.ruta(), &destino, d.path(), SIGUE).unwrap();
+        assert!(destino.exists());
+        assert!(!d.path().join("a.boldo.tmp").exists());
+        assert!(!d.path().join(GUARDANDO).exists());
+    }
+
+    #[test]
     fn empezar_otro_trabajo_borra_los_temporales_del_anterior() {
         let (dd, ..) = destino();
         let s = Sesiones::default();
-        s.empezar("A");
+        s.empezar("A").unwrap();
         let t = Temporal::nuevo(dd.path(), "exportando");
         fs::write(t.ruta(), "x").unwrap();
         let ruta = t.ruta().to_path_buf();
         s.guardar_exportacion("A", t).unwrap();
-        s.empezar("B");
+        s.empezar("B").unwrap();
         assert!(!ruta.exists());
     }
 
@@ -779,6 +907,8 @@ mod tests {
         let i = importacion(d.path(), &origen, dd.path());
         let r = revisar(&mut conn, &i).unwrap();
         assert!(r.informe.is_none());
+        assert_eq!(r.motivo_revision, Some("contenido_invalido"));
+        assert_eq!(r.motivo_revision, Some("contenido_invalido"));
         let mut slot = Some(conn);
         reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
     }
