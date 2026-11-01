@@ -243,6 +243,14 @@ Tema, color de acento, columnas elegidas para Excel, filtros del directorio, úl
 Pantalla de bienvenida con cuatro caminos, cada uno con una línea de explicación:
 crear organización vacía · cargar desde Excel (con enlace a la plantilla) · abrir/importar un `.boldo` · explorar un ejemplo (base de muestra que se puede borrar).
 
+El selector de idioma y el de tema (claro/oscuro) están en Inicio desde el primer momento, con la misma lógica que la barra superior.
+
+**Inicio con datos** (pedido del autor, 2026-11-01). Revelación progresiva: con la base vacía, Inicio sigue siendo solo los caminos para empezar. Con datos se ordena así:
+- **Tu organización:** nombre; totales de unidades, personas, vacantes y avisos de Revisión (cada uno lleva a su vista; se calculan tras el primer pintado, para no demorar una organización grande); fecha del último respaldo; y el botón principal «Volver a mi organización».
+- **Abierto recientemente:** lo último que se abrió *en esta organización* (no archivos `.boldo`): árboles o subárboles, una unidad, una persona, Directorio, Revisión. Se registra al navegar, por PC y por proyecto (clave `recientes:<rutaBd>`, la misma base que las pestañas); máximo 8, sin repetidos, lo más nuevo primero; no cuentan Inicio, Configuración, Ayuda, Acerca de ni Importar/Exportar. Muestra el título de las pestañas, un ícono y la hora relativa. Al leerla se descarta lo que ya no existe (unidad o persona eliminada). Abrir una entrada usa la navegación de pestañas: la pestaña activa, o la que ya muestra esa ruta. «Borrar lista» la vacía (nombra personas); crear otra organización, el ejemplo, importar con «Reemplazar todo» y restaurar un respaldo también la vacían, porque cambian la base.
+- **Accesos rápidos:** Buscar persona (la paleta), Importar/Exportar y Respaldos.
+- Las tarjetas de crear una organización o explorar el ejemplo quedan debajo, plegadas: con datos se usan poco y reemplazan la base (conservan su confirmación y su respaldo previo).
+
 ### Edición
 - **Guardado automático**: no existe botón "Guardar"; cada cambio se guarda al confirmar el campo y el indicador pasa a "Guardado".
 - En el lienzo: botón "+" en la tarjeta para crear subunidad; arrastrar una tarjeta sobre otra cambia su superior (con validación de ciclo y aviso); doble clic edita el nombre.
