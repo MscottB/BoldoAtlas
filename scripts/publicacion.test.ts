@@ -187,6 +187,12 @@ describe("notasCombinadas", () => {
         "- Actualización interna de dependencias, sin cambios visibles.",
       ].join("\n"),
     ));
+  const interno = { number: 34, title: "docs(plan): lo que aún no existe", body: null };
+  it("los PR de documentación no salen en las notas", () => {
+    expect(notasCombinadas([interno, prs[0]])).toBe("- Núcleo");
+    expect(notasCombinadas([interno])).toBe("- Sin cambios visibles.");
+    expect(notasCombinadas([{ ...interno, title: "docs: otro" }, prs[0], prs[2]])).not.toContain("otro");
+  });
 });
 
 describe("publicacion", () => {

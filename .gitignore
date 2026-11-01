@@ -25,5 +25,7 @@ dist-ssr
 
 # BoldoAtlas
 .superpowers/
+.claude/
+graphify-out/
 datos/
 release/
