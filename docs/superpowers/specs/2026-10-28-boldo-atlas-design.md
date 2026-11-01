@@ -289,6 +289,14 @@ Reemplaza la regla anterior "cerrar la ventana siempre cierra la app".
 Vue Flow con el árbol completo, zoom, mover, minimapa, colapsar/expandir ramas.
 Tarjeta de unidad: tipo, nombre, foto y nombre del jefe (o "Sin jefatura"), dotación total de la rama, vacantes (si hay), chips de etiquetas.
 Aristas jerárquicas sólidas; conexiones laterales punteadas con etiqueta.
+
+**Conexiones laterales legibles (pedido del autor, 2026-11-01):** se trazan por el espacio libre entre filas, sin cruzar tarjetas. La etiqueta se lee siempre, sobre la línea y con fondo; si no cabe se abrevia y se ve completa al pasar el mouse. Al pasar por una tarjeta se resaltan sus relaciones y se atenúan las demás. El interruptor "Relaciones laterales" las oculta, y la elección se guarda con la vista.
+
+**Interacción directa (pedido del autor, 2026-11-01):** al pasar por una tarjeta o enfocarla con el teclado aparecen sus acciones a la vista (agregar, editar, expandir o retraer, más). Niveles rápidos de expansión: 1, 2, 3 y todo. Al arrastrar una tarjeta se ve antes de soltar dónde quedará y si el movimiento es válido.
+
+**Zonas (pedido del autor, 2026-11-01):** un recuadro de color con nombre que agrupa unidades, también de ramas distintas, como en un diagrama de arquitectura: "Zona Norte", "Proyecto X". No cambia la jerarquía. El recuadro se calcula a partir de las unidades elegidas, se guarda en la base (tablas `zonas` y `zona_unidades`), viaja en los `.boldo` y se puede mostrar u ocultar. Si las unidades están lejos en el árbol, el recuadro no debe cubrir a otras: se decide con el organigrama real del autor entre acercarlas o marcarlas con color y leyenda.
+
+**Posición libre (a evaluar, pedido del autor):** el orden automático es lo que mantiene legible un organigrama grande. Si tras las zonas aún hace falta, se ofrece como opción de una vista guardada, con "Reordenar" para volver al orden automático.
 **Filtro por etiqueta o por texto:** las unidades que coinciden se resaltan y el resto se atenúa (no se ocultan, para no perder contexto). Además se puede resaltar por **vacantes**, **sede**, **tipo de contrato**, **jornada** o **cargo** (pedido del autor).
 
 **Personalizar el diagrama (pedido del autor; preferencias del árbol, no datos de la organización):**
