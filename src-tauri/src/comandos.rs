@@ -114,6 +114,11 @@ impl Estado {
         Some(r.datos.join("webview"))
     }
 
+    /// Rutas de datos, si se pudieron ubicar (las usa el actualizador).
+    pub fn rutas_app(&self) -> Option<&Rutas> {
+        self.rutas.as_ref()
+    }
+
     fn rutas(&self) -> Result<&Rutas, Fallo> {
         self.rutas
             .as_ref()

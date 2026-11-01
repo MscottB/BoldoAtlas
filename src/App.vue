@@ -25,6 +25,8 @@ import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import { paletaAbierta, useAtajos } from "@/features/atajos/useAtajos";
 import { useAvisos } from "@/features/revision/useAvisos";
 import DatosProyecto from "@/features/proyecto/DatosProyecto.vue";
+import DialogoActualizacion from "@/features/actualizaciones/DialogoActualizacion.vue";
+import DialogoNovedades from "@/features/actualizaciones/DialogoNovedades.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
@@ -223,6 +225,8 @@ function escEnBarra(e: KeyboardEvent) {
     <FichaTrabajador />
     <DialogoPuesto />
     <DatosProyecto v-if="!route.meta.sinMarco" />
+    <DialogoActualizacion />
+    <DialogoNovedades />
     <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>
 </template>

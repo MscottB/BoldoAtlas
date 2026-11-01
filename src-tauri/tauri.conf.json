@@ -25,6 +25,12 @@
       "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYyRjgxNTVFMEJDNUYyOTIKUldTUzhzVUxYaFg0OHZsQWt5aDhHd2M0VllmUlY5aEFXZFVCMWJuMFZCQ1VsMUY0TnFtaWgxRlYK",
+      "requireSignedVersion": true
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [

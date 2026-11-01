@@ -1,0 +1,43 @@
+# Updates
+
+BoldoAtlas looks for new versions on its own and tells you; it never downloads or installs anything until you confirm.
+
+## How it checks
+
+By default it checks **every day**, the same in the portable and the installed version. When there is a new version a discreet notice appears in the top bar, **Version X available**; one click opens the update window.
+
+You can also check whenever you want:
+
+- **About › Check for updates**.
+- **Check for updates** in the app menu and in the command palette (Ctrl+K).
+- **Settings › Updates › Check for updates**.
+
+If there is nothing new you'll see "You have the latest version"; offline, "Could not check: check your connection".
+
+## The update window
+
+It shows your version and the new one, and **the release notes of every version you skipped**, newest first. When you press **Download and install** you see the download progress and can **Cancel download**; closing the window cancels it too. Every download is signed by the author and is rejected if the signature doesn't match.
+
+What happens on install depends on how you have BoldoAtlas:
+
+| Type | What it does |
+|---|---|
+| Portable | Replaces the program inside its folder and restarts. Your data in `datos/` is not touched. |
+| Installed (Windows, macOS, AppImage) | Downloads the update, installs it and restarts. |
+| Linux `.deb` or `.rpm` | The system updates it: **Download the package** opens the release page so you can get it and install it with your package manager. |
+
+If something fails, the previous version stays and the error is shown. You can also update by hand: download the new zip and replace the program; `datos/` is not touched.
+
+## What's new
+
+The first time you open a new version, **What's new in version X** appears, with what changed since the last version you used on this PC. You can see it again in **About › What's new**; the notes ship inside the app, so they work offline. Release notes are written in Spanish.
+
+## Cleanup
+
+The update's temporary files (the downloaded installer, the portable's previous program) are deleted when it finishes or on the next start. In the portable all of that stays inside its folder, in `datos/`.
+
+## Turning it off and privacy
+
+In **Settings › Updates › Check automatically** you choose **Never**, **When opening**, **Every day** (the default) or **Every week**. The choice applies only to this computer. With **Never** BoldoAtlas connects to nothing on its own.
+
+Checking is the only connection BoldoAtlas makes on its own: it reads the public list of releases on GitHub and the new version's notes. It sends no organization data or identifiers.

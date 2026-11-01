@@ -82,3 +82,7 @@ jobs:
       tag: ${{ needs.version.outputs.etiqueta }}
       notes: ${{ needs.version.outputs.notas }}
       prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+    # solo para firmar latest.json en el job que publica (release.yml)
+    secrets:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

@@ -6,3 +6,5 @@ declare const __APP_VERSION_CORTA__: string;
 declare const __APP_FECHA__: string;
 /** SHA corto del commit, o "" sin git. */
 declare const __APP_COMMIT__: string;
+/** novedades.json del release (scripts/novedades.mjs): notas de cada versión, de la más nueva a la más antigua. */
+declare const __APP_NOVEDADES__: { versiones: { version: string; fecha: string; notas: string }[] };

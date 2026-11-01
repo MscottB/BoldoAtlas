@@ -1,3 +1,4 @@
+mod actualizar;
 mod comandos;
 mod db;
 mod respaldos;
@@ -10,9 +11,14 @@ pub fn run() {
     // antes del Builder: la portable ajusta el entorno del proceso y aún no hay otros hilos
     let estado = comandos::Estado::iniciar();
     let webview = estado.dir_webview();
+    if let Some(r) = estado.rutas_app() {
+        actualizar::limpiar_al_iniciar(r.datos.clone());
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(estado)
+        .manage(actualizar::Actualizador::default())
         .setup(move |app| {
             // la ventana se crea aquí y no desde tauri.conf.json ("create": false) para que la portable
             // guarde el perfil del WebView en datos/ y no en %LOCALAPPDATA%
@@ -36,7 +42,10 @@ pub fn run() {
             comandos::restaurar_respaldo,
             comandos::abrir_carpeta_respaldos,
             comandos::info_proyecto,
-            comandos::abrir_carpeta_datos
+            comandos::abrir_carpeta_datos,
+            actualizar::buscar_actualizacion,
+            actualizar::instalar_actualizacion,
+            actualizar::cancelar_actualizacion
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
