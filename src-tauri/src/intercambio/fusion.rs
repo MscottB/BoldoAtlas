@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 /// Valores de mantenedor: si no está su id, uno con el mismo nombre se une al que ya existe. Una fila viva puede apuntar a
 /// uno desactivado (la ficha conserva su id).
-const CATALOGOS: &[&str] = &[
+pub const CATALOGOS: &[&str] = &[
     "tipos_unidad",
     "cargos",
     "tipos_contrato",
@@ -95,7 +95,7 @@ impl Informe {
     }
 }
 
-type Lugares = HashMap<String, Option<String>>;
+pub type Lugares = HashMap<String, Option<String>>;
 
 /// Quién usa cada valor de mantenedor. Uno desactivado solo entra si una fila viva lo usa: la ficha conserva su id.
 const USOS: &[(&str, &str, &str)] = &[
@@ -142,14 +142,18 @@ pub fn normalizar_nombre(s: &str) -> String {
     plano.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn estado_fila(dst: &Connection, tabla: &str, id: &str) -> Result<Option<Option<String>>, Fallo> {
+pub fn estado_fila(
+    dst: &Connection,
+    tabla: &str,
+    id: &str,
+) -> Result<Option<Option<String>>, Fallo> {
     Ok(dst
         .prepare_cached(&format!("SELECT deleted_at FROM {tabla} WHERE id = ?1"))?
         .query_row([id], |f| f.get(0))
         .optional()?)
 }
 
-fn viva(dst: &Connection, tabla: &str, id: &str) -> Result<bool, Fallo> {
+pub fn viva(dst: &Connection, tabla: &str, id: &str) -> Result<bool, Fallo> {
     Ok(matches!(estado_fila(dst, tabla, id)?, Some(None)))
 }
 
@@ -192,6 +196,113 @@ fn etiqueta(
         ),
         _ => Ok(de("nombre").unwrap_or_default()),
     }
+}
+
+/// Columnas de una tabla y sus claves foráneas: (columna, tabla a la que apunta, obligatoria).
+pub struct Tabla {
+    pub columnas: Vec<String>,
+    pub referencias: Vec<(usize, String, bool)>,
+}
+
+pub fn describir(c: &Connection, tabla: &str) -> Result<Tabla, Fallo> {
+    let columnas: Vec<String> = c
+        .prepare("SELECT name FROM pragma_table_info(?1)")?
+        .query_map([tabla], |f| f.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    let referencias: Vec<(usize, String, bool)> = c
+        .prepare(
+            "SELECT k.\"from\", k.\"table\", c.\"notnull\" FROM pragma_foreign_key_list(?1) k
+             JOIN pragma_table_info(?1) c ON c.name = k.\"from\"",
+        )?
+        .query_map([tabla], |f| {
+            Ok((f.get::<_, String>(0)?, f.get(1)?, f.get(2)?))
+        })?
+        .map(|r| {
+            r.map(|(col, destino, requerida)| {
+                (
+                    columnas.iter().position(|c| *c == col).unwrap_or(0),
+                    destino,
+                    requerida,
+                )
+            })
+        })
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(Tabla {
+        columnas,
+        referencias,
+    })
+}
+
+/// Los valores desactivados del archivo que una fila viva usa: la ficha conserva su id, así que entran con ella.
+pub fn desactivados_en_uso(imp: &Connection) -> Result<HashSet<(&'static str, String)>, Fallo> {
+    let mut en_uso = HashSet::new();
+    for &(catalogo, tabla, columna) in USOS {
+        let sql = format!(
+            "SELECT DISTINCT c.id FROM {catalogo} c JOIN {tabla} t ON t.{columna} = c.id
+             WHERE c.deleted_at IS NOT NULL AND t.deleted_at IS NULL"
+        );
+        for id in imp
+            .prepare(&sql)?
+            .query_map([], |f| f.get::<_, String>(0))?
+        {
+            en_uso.insert((catalogo, id?));
+        }
+    }
+    Ok(en_uso)
+}
+
+/// La persona viva de esta base con ese correo, sin contar mayúsculas ni espacios: la misma regla que `ux_trabajadores_correo`.
+pub fn persona_con_correo(dst: &Connection, correo: &Value) -> Result<Option<String>, Fallo> {
+    Ok(dst
+        .prepare_cached(
+            "SELECT id FROM trabajadores WHERE deleted_at IS NULL AND ?1 IS NOT NULL AND trim(?1) <> ''
+             AND lower(trim(correo)) = lower(trim(?1))",
+        )?
+        .query_row([correo], |f| f.get(0))
+        .optional()?)
+}
+
+/// Pone una raíz de rama en su lugar, al final de sus hermanos: no se mezcla con el orden que ya hay.
+pub fn colocar_rama(
+    dst: &Connection,
+    padre: Option<&str>,
+    lugares: &Lugares,
+    id: &str,
+    columnas: &[String],
+    fila: &mut [Value],
+) -> Result<(), Fallo> {
+    let pos = |col: &str| columnas.iter().position(|c| c == col);
+    let lugar = match padre {
+        Some(p) if viva(dst, "unidades", p)? => Some(p.to_string()),
+        Some(_) => lugares.get(id).cloned().flatten(),
+        None => None,
+    };
+    let ultimo: i64 = dst.query_row(
+        "SELECT COALESCE(MAX(orden), -1) + 1 FROM unidades
+         WHERE parent_id IS ?1 AND deleted_at IS NULL",
+        [&lugar],
+        |f| f.get(0),
+    )?;
+    fila[pos("orden").ok_or("orden")?] = Value::Integer(ultimo);
+    fila[pos("parent_id").ok_or("parent_id")?] = lugar.map_or(Value::Null, Value::Text);
+    Ok(())
+}
+
+/// Una base sin nombre (recién instalada) se llama como la del archivo.
+pub fn heredar_nombre(dst: &Connection, meta: &MetaArchivo) -> Result<Option<String>, Fallo> {
+    let sin_nombre: bool = dst.query_row(
+        "SELECT COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''",
+        [],
+        |f| f.get(0),
+    )?;
+    if !sin_nombre || meta.organizacion.is_empty() {
+        return Ok(None);
+    }
+    dst.execute(
+        "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?1)",
+        [&meta.organizacion],
+    )?;
+    Ok(Some(meta.organizacion.clone()))
 }
 
 /// Lo que dice el archivo de cada rama frente a esta base: la pregunta de la interfaz.
@@ -249,19 +360,7 @@ pub fn fusionar(
 
     // Lo eliminado del archivo no entra: es invisible y no se podría purgar. Se sabe antes de empezar, porque una fila viva
     // puede aparecer antes que la eliminada a la que apunta. Se salvan los valores de mantenedor que una fila viva usa.
-    let mut desactivados_en_uso: HashSet<(&str, String)> = HashSet::new();
-    for &(catalogo, tabla, columna) in USOS {
-        let sql = format!(
-            "SELECT DISTINCT c.id FROM {catalogo} c JOIN {tabla} t ON t.{columna} = c.id
-             WHERE c.deleted_at IS NOT NULL AND t.deleted_at IS NULL"
-        );
-        for id in imp
-            .prepare(&sql)?
-            .query_map([], |f| f.get::<_, String>(0))?
-        {
-            desactivados_en_uso.insert((catalogo, id?));
-        }
-    }
+    let desactivados_en_uso = desactivados_en_uso(imp)?;
     for &tabla in CATALOGOS.iter().chain(NEGOCIO) {
         let sql = format!("SELECT id FROM {tabla} WHERE deleted_at IS NOT NULL");
         for id in imp
@@ -290,28 +389,10 @@ pub fn fusionar(
                 por_nombre.insert(normalizar_nombre(&nombre), id);
             }
         }
-        let columnas: Vec<String> = imp
-            .prepare("SELECT name FROM pragma_table_info(?1)")?
-            .query_map([tabla], |f| f.get(0))?
-            .collect::<rusqlite::Result<_>>()?;
-        let referencias: Vec<(usize, String, bool)> = imp
-            .prepare(
-                "SELECT k.\"from\", k.\"table\", c.\"notnull\" FROM pragma_foreign_key_list(?1) k
-                 JOIN pragma_table_info(?1) c ON c.name = k.\"from\"",
-            )?
-            .query_map([tabla], |f| {
-                Ok((f.get::<_, String>(0)?, f.get(1)?, f.get(2)?))
-            })?
-            .map(|r| {
-                r.map(|(col, destino, requerida)| {
-                    (
-                        columnas.iter().position(|c| *c == col).unwrap_or(0),
-                        destino,
-                        requerida,
-                    )
-                })
-            })
-            .collect::<rusqlite::Result<_>>()?;
+        let Tabla {
+            columnas,
+            referencias,
+        } = describir(imp, tabla)?;
         let pos = |col: &str| columnas.iter().position(|c| c == col);
         let (i_id, i_borrado, i_actualizado) = (
             pos("id").ok_or("id")?,
@@ -364,13 +445,7 @@ pub fn fusionar(
             }
             if tabla == "trabajadores" && es_viva {
                 let i = pos("correo").ok_or("correo")?;
-                let igual: Option<String> = dst
-                    .prepare_cached(
-                        "SELECT id FROM trabajadores WHERE deleted_at IS NULL AND ?1 IS NOT NULL AND trim(?1) <> ''
-                         AND lower(trim(correo)) = lower(trim(?1))",
-                    )?
-                    .query_row([&fila[i]], |f| f.get(0))
-                    .optional()?;
+                let igual = persona_con_correo(dst, &fila[i])?;
                 if let Some(local) = igual {
                     unidos.insert((tabla, id), local);
                     cuenta.omitidas += 1;
@@ -427,20 +502,7 @@ pub fn fusionar(
             if tabla == "unidades"
                 && let Some(padre) = padres.get(id.as_str())
             {
-                let lugar = match padre {
-                    Some(p) if viva(dst, "unidades", p)? => Some((*p).to_string()),
-                    Some(_) => lugares.get(&id).cloned().flatten(),
-                    None => None,
-                };
-                // al final de sus hermanos: no se mezcla con el orden que ya hay
-                let ultimo: i64 = dst.query_row(
-                    "SELECT COALESCE(MAX(orden), -1) + 1 FROM unidades
-                     WHERE parent_id IS ?1 AND deleted_at IS NULL",
-                    [&lugar],
-                    |f| f.get(0),
-                )?;
-                fila[pos("orden").ok_or("orden")?] = Value::Integer(ultimo);
-                fila[pos("parent_id").ok_or("parent_id")?] = lugar.map_or(Value::Null, Value::Text);
+                colocar_rama(dst, *padre, lugares, &id, &columnas, &mut fila)?;
                 cambiada = true;
             }
             if cambiada {
@@ -461,19 +523,7 @@ pub fn fusionar(
         inf.tablas.push(cuenta);
     }
 
-    // una base sin nombre (recién instalada) se llama como la del archivo
-    let sin_nombre: bool = dst.query_row(
-        "SELECT COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''",
-        [],
-        |f| f.get(0),
-    )?;
-    if sin_nombre && !meta.organizacion.is_empty() {
-        dst.execute(
-            "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?1)",
-            [&meta.organizacion],
-        )?;
-        inf.nombre_heredado = Some(meta.organizacion.clone());
-    }
+    inf.nombre_heredado = heredar_nombre(dst, meta)?;
 
     for (unidad, puesto) in jefes {
         if fuera.contains(&("puestos", puesto)) {

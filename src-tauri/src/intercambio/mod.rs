@@ -1,8 +1,10 @@
 //! Exportar e importar archivos `.boldo`. Todo el cifrado y la lectura del archivo ocurren aquí; no usa el camino de SQL
 //! de la interfaz (`db::consultar`, `db::lote`) y la interfaz nunca envía una ruta.
 pub mod alcance;
+pub mod comparar;
 pub mod formato;
 pub mod fusion;
+pub mod revision;
 pub mod validar;
 
 use crate::db;
@@ -13,7 +15,7 @@ use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 use validar::MetaArchivo;
 
 /// Copia en claro de una base, dentro de `datos/`. Se borra al soltarla; si la app se cierra de golpe, la borra
@@ -44,13 +46,21 @@ pub struct Importacion {
     meta: MetaArchivo,
 }
 
+impl Importacion {
+    pub fn solo_lectura(&self) -> Result<Connection, Fallo> {
+        validar::solo_lectura(self.temporal.ruta())
+    }
+}
+
 #[derive(Default)]
 struct EstadoSesion {
     trabajo: Option<String>,
     exportacion: Option<Temporal>,
     destino: Option<PathBuf>,
     archivo: Option<PathBuf>,
-    importacion: Option<Importacion>,
+    importacion: Option<Arc<Importacion>>,
+    /// «Revisar y decidir»: las decisiones viven aquí, junto al trabajo, y se pierden con él.
+    revision: Option<Arc<RwLock<revision::Revision>>>,
 }
 
 /// Cancelados que se recuerdan, por si su comando aún no empieza.
@@ -169,6 +179,7 @@ impl Sesiones {
         }
         e.archivo = Some(ruta);
         e.importacion = None;
+        e.revision = None;
         Ok(())
     }
 
@@ -180,21 +191,59 @@ impl Sesiones {
         e.archivo.clone().ok_or_else(no_esta)
     }
 
-    pub fn guardar_importacion(&self, trabajo: &str, i: Importacion) -> Result<(), Fallo> {
+    pub fn guardar_importacion(
+        &self,
+        trabajo: &str,
+        i: impl Into<Arc<Importacion>>,
+    ) -> Result<(), Fallo> {
         let mut e = self.estado();
         if e.trabajo.as_deref() != Some(trabajo) {
             return Err(cancelado());
         }
-        e.importacion = Some(i);
+        e.importacion = Some(i.into());
         Ok(())
     }
 
-    pub fn tomar_importacion(&self, trabajo: &str) -> Result<Importacion, Fallo> {
+    pub fn tomar_importacion(&self, trabajo: &str) -> Result<Arc<Importacion>, Fallo> {
         let mut e = self.estado();
         if e.trabajo.as_deref() != Some(trabajo) {
             return Err(no_esta());
         }
         e.importacion.take().ok_or_else(no_esta)
+    }
+
+    /// La importación abierta, sin tomarla: se puede seguir revisando, y cancelar borra el temporal cuando nadie la use.
+    pub fn importacion(&self, trabajo: &str) -> Result<Arc<Importacion>, Fallo> {
+        let e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.importacion.clone().ok_or_else(no_esta)
+    }
+
+    pub fn guardar_revision(&self, trabajo: &str, r: revision::Revision) -> Result<(), Fallo> {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(cancelado());
+        }
+        e.revision = Some(Arc::new(RwLock::new(r)));
+        Ok(())
+    }
+
+    pub fn revision(&self, trabajo: &str) -> Result<Arc<RwLock<revision::Revision>>, Fallo> {
+        let e = self.estado();
+        if e.trabajo.as_deref() != Some(trabajo) {
+            return Err(no_esta());
+        }
+        e.revision.clone().ok_or_else(no_esta)
+    }
+
+    /// Volver a elegir qué hacer con el archivo: las decisiones se pierden, la importación sigue abierta.
+    pub fn soltar_revision(&self, trabajo: &str) {
+        let mut e = self.estado();
+        if e.trabajo.as_deref() == Some(trabajo) {
+            e.revision = None;
+        }
     }
 }
 
@@ -303,7 +352,7 @@ pub fn abrir(
     Ok(Importacion { temporal, meta })
 }
 
-fn ahora(conn: &Connection) -> Result<String, Fallo> {
+pub(crate) fn ahora(conn: &Connection) -> Result<String, Fallo> {
     Ok(
         conn.query_row("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')", [], |f| {
             f.get(0)

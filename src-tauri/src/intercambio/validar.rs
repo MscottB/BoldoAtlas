@@ -218,19 +218,29 @@ fn revisar_tipos(c: &Connection) -> rusqlite::Result<bool> {
 
 /// Si la jerarquía de unidades (también las eliminadas) forma un círculo.
 pub fn hay_ciclo(c: &Connection) -> rusqlite::Result<bool> {
+    Ok(!en_ciclo(c)?.is_empty())
+}
+
+/// Las unidades que forman un círculo, en orden.
+pub fn en_ciclo(c: &Connection) -> rusqlite::Result<Vec<String>> {
     let padres: HashMap<String, String> = c
         .prepare("SELECT id, parent_id FROM unidades WHERE parent_id IS NOT NULL")?
         .query_map([], |f| Ok((f.get(0)?, f.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
-    // ya revisadas: desde ahí se llega a una raíz
+    let mut ciclos: Vec<String> = Vec::new();
+    // ya revisadas: desde ahí se llega a una raíz o a un círculo ya anotado
     let mut revisadas: HashSet<&str> = HashSet::new();
     for inicio in padres.keys() {
-        let mut camino = HashSet::new();
+        let mut vistas = HashSet::new();
+        let mut camino = Vec::new();
         let mut actual = inicio.as_str();
         while !revisadas.contains(actual) {
-            if !camino.insert(actual) {
-                return Ok(true);
+            if !vistas.insert(actual) {
+                let desde = camino.iter().position(|x| *x == actual).unwrap_or(0);
+                ciclos.extend(camino[desde..].iter().map(|x: &&str| x.to_string()));
+                break;
             }
+            camino.push(actual);
             match padres.get(actual) {
                 Some(p) => actual = p,
                 None => break,
@@ -238,7 +248,8 @@ pub fn hay_ciclo(c: &Connection) -> rusqlite::Result<bool> {
         }
         revisadas.extend(camino);
     }
-    Ok(false)
+    ciclos.sort();
+    Ok(ciclos)
 }
 
 /// Rama de una exportación parcial: su raíz y la unidad de la que colgaba en la base de origen.
