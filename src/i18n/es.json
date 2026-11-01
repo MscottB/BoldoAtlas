@@ -1095,8 +1095,8 @@
       "desconocido": "Ya no está lo que elegiste. Vuelve a empezar.",
       "cancelado": "Cancelado. No se cambió nada.",
       "muy_pesado_fila": "En {tabla}, «{nombre}»: {columna} es más largo de lo que BoldoAtlas puede llevar. Acórtalo e inténtalo de nuevo; si el archivo es de otra persona, pídele que lo haga. No se cambió nada.",
-      "muy_pesado_total": "Este archivo trae más datos de los que BoldoAtlas puede cargar (máximo 512 MB). Pide a quien lo envió que lo exporte por ramas. No se cambió nada.",
-      "exportar_muy_pesado": "Tu base tiene más datos de los que caben en un solo archivo (máximo 512 MB). Exporta por ramas: cada archivo lleva una parte.",
+      "muy_pesado_total": "Este archivo trae {exceso}, más de lo que BoldoAtlas puede cargar. Pide a quien lo envió que lo exporte por ramas. No se cambió nada.",
+      "exportar_muy_pesado": "Tu base tiene {exceso}: no cabe en un solo archivo. Exporta por ramas: cada archivo lleva una parte.",
       "base_no_valida": "Tu base no pasó la revisión previa a exportar, así que no se creó el archivo. Prueba con una rama, o restaura un respaldo reciente."
     },
     "columnas": {
@@ -1125,6 +1125,10 @@
       "contenido_invalido": "tu base tiene referencias rotas o un ciclo y no se puede agregar sobre ella",
       "fallo": "no se pudo revisar el archivo contra tu base",
       "desconocido": "no se pudo revisar el archivo contra tu base"
+    },
+    "exceso": {
+      "filas": "más de 500.000 filas",
+      "bytes": "más de 512 MB de datos"
     }
   }
 }

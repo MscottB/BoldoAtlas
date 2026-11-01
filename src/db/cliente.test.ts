@@ -4,8 +4,7 @@ const invoke = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.stubGlobal("__APP_VERSION__", "prueba");
 
-const { lote } = await import("./cliente");
-const { lectura } = await import("./cola");
+const { consultar, lote } = await import("./cliente");
 
 const orden = (l: unknown[][]) => l.map((c) => (c[1] as { sentencias: { sql: string }[] }).sentencias[0]!.sql);
 
@@ -36,41 +35,13 @@ describe("lote", () => {
     expect(orden(invoke.mock.calls)).toEqual(["a", "b", "c"]);
   });
 
-  it("un lote no se intercala entre las lecturas de una carga en la cola", async () => {
-    const eventos: string[] = [];
-    invoke.mockImplementation(async () => void eventos.push("lote"));
-    let terminarCarga = () => {};
-    const carga = lectura(async () => {
-      eventos.push("lectura 1");
-      await new Promise<void>((r) => (terminarCarga = r));
-      eventos.push("lectura 2");
-    });
-    const l = lote([{ sql: "a" }]);
-    await vi.waitFor(() => expect(eventos).toEqual(["lectura 1"]));
-    await new Promise((r) => setTimeout(r, 10));
-    expect(eventos).toEqual(["lectura 1"]);
-    terminarCarga();
-    await Promise.all([carga, l]);
-    expect(eventos).toEqual(["lectura 1", "lectura 2", "lote"]);
-  });
-
-  it("una carga lenta no detiene a otra, y la que sigue a un lote lo ve aplicado", async () => {
-    const eventos: string[] = [];
-    let terminarLenta = () => {};
-    const lenta = lectura(() => new Promise<void>((r) => (terminarLenta = r)));
-    await lectura(async () => void eventos.push("rápida"));
-    expect(eventos).toEqual(["rápida"]);
-    let terminarLote = () => {};
-    invoke.mockImplementation(() => new Promise<void>((r) => (terminarLote = r)));
-    const l = lote([{ sql: "a" }]);
-    const despues = lectura(async () => void eventos.push("después"));
-    terminarLenta();
-    await lenta;
-    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
-    expect(eventos).toEqual(["rápida"]);
-    terminarLote();
-    await Promise.all([l, despues]);
-    expect(eventos).toEqual(["rápida", "después"]);
+  it("un lote llega a Rust aunque haya una carga en curso", async () => {
+    invoke.mockImplementation((comando: string) =>
+      comando === "db_consultar" ? new Promise(() => {}) : Promise.resolve(),
+    );
+    void consultar("SELECT 1");
+    await lote([{ sql: "a" }]);
+    expect(invoke.mock.calls.map((c) => c[0])).toEqual(["db_consultar", "db_lote"]);
   });
 
   it("un lote que falla da su error a quien lo pidió y no detiene al siguiente", async () => {

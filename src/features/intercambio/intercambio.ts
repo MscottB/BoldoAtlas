@@ -39,7 +39,10 @@ function mensajeDe(e: unknown): string {
   const donde = typeof e === "object" && e !== null && "donde" in e ? (e.donde as Donde | null) : null;
   if (donde) return mensajeTope(donde);
   const clave = `intercambio.error.${codigoDe(e)}`;
-  return te(clave) ? t(clave) : mensajeFallo(e);
+  if (!te(clave)) return mensajeFallo(e);
+  // qué se excedió del total: «filas» o «bytes»
+  const detalle = typeof e === "object" && e !== null && "detalle" in e ? String(e.detalle) : "";
+  return t(clave, { exceso: te(`intercambio.exceso.${detalle}`) ? t(`intercambio.exceso.${detalle}`) : "" });
 }
 
 /** Lo mismo que el contrato del store: no lanza, y el fallo ya viene traducido. */

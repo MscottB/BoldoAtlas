@@ -57,7 +57,8 @@ const cortes = computed(() => {
 const filasResumen = computed(() => conFilas(resumen.value?.filas ?? [], (f) => f.filas));
 
 const fallar = (mensaje: string, codigo: string, volverA: Paso) => {
-  paso.value = volverA;
+  // lo que llegue tarde no quita un código que ya está a la vista
+  if (paso.value !== "codigo") paso.value = volverA;
   if (codigo !== "cancelado") toast.error(mensaje);
 };
 
@@ -78,11 +79,14 @@ async function preparar() {
 const codigo = ref("");
 const nombreArchivo = ref("");
 const copiado = ref(false);
+const eligiendo = ref(false);
 async function guardar() {
   const propio = trabajo.actual.value;
-  if (!propio) return;
+  if (!propio || eligiendo.value) return;
   // el diálogo de archivos no es un trabajo: espera al usuario, y cerrar no interrumpiría nada
+  eligiendo.value = true;
   const elegido = await intentar(() => exportarElegirDestino(propio));
+  eligiendo.value = false;
   if (trabajo.actual.value !== propio) return;
   if (!elegido.ok) return fallar(elegido.mensaje, elegido.codigo, "resumen"); // la copia sigue preparada
   if (!elegido.valor) return;
@@ -197,7 +201,7 @@ onUnmounted(() => {
         </ul>
       </div>
       <div class="flex gap-2">
-        <Button type="button" @click="guardar">
+        <Button type="button" :disabled="eligiendo" @click="guardar">
           <Save aria-hidden="true" />
           {{ t("intercambio.exportar.guardar") }}
         </Button>

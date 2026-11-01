@@ -67,8 +67,11 @@ describe("intentar", () => {
   });
 
   it("si lo que se pasa es el total, sugiere exportar por ramas", async () => {
-    const r = await intentar(() => Promise.reject({ codigo: "exportar_muy_pesado", detalle: "" }));
+    const r = await intentar(() => Promise.reject({ codigo: "exportar_muy_pesado", detalle: "bytes" }));
     expect(r).toMatchObject({ ok: false, mensaje: expect.stringContaining("Exporta por ramas") });
+    expect(r).toMatchObject({ mensaje: expect.stringContaining("512 MB") });
+    const filas = await intentar(() => Promise.reject({ codigo: "muy_pesado_total", detalle: "filas" }));
+    expect(filas).toMatchObject({ mensaje: expect.stringContaining("500.000 filas") });
   });
 });
 

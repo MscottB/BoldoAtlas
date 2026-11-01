@@ -1095,8 +1095,8 @@
       "desconocido": "What you chose is no longer there. Start again.",
       "cancelado": "Cancelled. Nothing was changed.",
       "muy_pesado_fila": "In {tabla}, “{nombre}”: {columna} is longer than BoldoAtlas can carry. Shorten it and try again; if the file is someone else's, ask them to do it. Nothing was changed.",
-      "muy_pesado_total": "This file carries more data than BoldoAtlas can load (512 MB at most). Ask whoever sent it to export it by branches. Nothing was changed.",
-      "exportar_muy_pesado": "Your database has more data than fits in one file (512 MB at most). Export by branches: each file carries a part.",
+      "muy_pesado_total": "This file carries {exceso}, more than BoldoAtlas can load. Ask whoever sent it to export it by branches. Nothing was changed.",
+      "exportar_muy_pesado": "Your database has {exceso}: it does not fit in one file. Export by branches: each file carries a part.",
       "base_no_valida": "Your database did not pass the check before exporting, so no file was created. Try with a branch, or restore a recent backup."
     },
     "columnas": {
@@ -1125,6 +1125,10 @@
       "contenido_invalido": "your database has broken references or a cycle, so nothing can be added to it",
       "fallo": "the file could not be checked against your database",
       "desconocido": "the file could not be checked against your database"
+    },
+    "exceso": {
+      "filas": "more than 500,000 rows",
+      "bytes": "more than 512 MB of data"
     }
   }
 }

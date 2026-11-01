@@ -1,6 +1,5 @@
 // Único punto de acceso a SQLite desde el frontend (puente Rust en src-tauri/src/comandos.rs).
 import { invoke } from "@tauri-apps/api/core";
-import { escritura } from "./cola";
 
 export interface InfoApp {
   dirDatos: string;
@@ -23,14 +22,21 @@ export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> 
   return invoke<T[]>("db_consultar", { sql, params });
 }
 
+// Rust atiende los comandos fuera del hilo principal y en paralelo: las escrituras van en cola, de a una y en orden. No
+// esperan a las cargas, para no perderse al salir; una lectura mezclada se acepta: `escribir` recarga y `ultimaCarga` evita lo viejo.
+let colaLotes: Promise<unknown> = Promise.resolve();
+
 /** Ejecuta todo en una transacción: o se aplican todas las sentencias o ninguna. */
 export function lote(sentencias: Sentencia[]): Promise<void> {
-  return escritura(() =>
+  const hecho = colaLotes.then(() =>
     invoke<void>("db_lote", {
       sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
       versionApp: __APP_VERSION__,
     }),
   );
+  // un lote que falla no detiene a los siguientes; quien lo pidió ya recibe su error en `hecho`
+  colaLotes = hecho.catch(() => undefined);
+  return hecho;
 }
 
 export async function leerMeta(): Promise<Record<string, string>> {

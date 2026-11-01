@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 import { leerMeta, lote, consultar, type Sentencia } from "@/db/cliente";
-import { lectura } from "@/db/cola";
 import { traducirError } from "@/db/errores";
 import {
   TABLAS_CATALOGO,
@@ -196,8 +195,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      // un lote no se intercala entre estas lecturas
-      const [u, t, pu, as, et, ue, co, sa, le, vi, meta, hist, ...cats] = await lectura(() => Promise.all([
+      const [u, t, pu, as, et, ue, co, sa, le, vi, meta, hist, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
         consultar<Puesto>(P.SQL_PUESTOS),
@@ -211,7 +209,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
         leerMeta(),
         fechaVista.value ? leerHistorico() : null, // lo histórico se mantiene al día si se escribe mientras se ve una fecha
         ...TABLAS_CATALOGO.map((tabla) => consultar<ValorCatalogo>(C.sqlValores(tabla))),
-      ]));
+      ]);
       if (esta !== ultimaCarga) return { ok: true };
       unidades.value = u;
       trabajadores.value = t;
