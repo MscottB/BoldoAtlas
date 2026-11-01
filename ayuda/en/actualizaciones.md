@@ -32,6 +32,12 @@ If something fails, the previous version stays and the error is shown. You can a
 
 The first time you open a new version, **What's new in version X** appears, with what changed since the last version you used on this PC. You can see it again in **About › What's new**; the notes ship inside the app, so they work offline. Release notes are written in Spanish.
 
+## Installing
+
+Open the Windows installer from File Explorer (double-click it in Downloads), not from inside another app: opened from a packaged app, such as Claude Desktop, the install ends up incomplete. The installer reopens itself or asks you to move it to Downloads.
+
+On Windows, the installed version can start with the system: a checkbox on the installer's last page and in **Settings › Start with the system**. It opens minimized. It isn't offered in the portable, nor on Linux and macOS for now.
+
 ## Tray icon
 
 While BoldoAtlas is open, its icon appears in the system tray. One click brings it to the front; the menu (right click) has Open BoldoAtlas, **Update to vX** when there is a new version (otherwise Check for updates), Back up now, Open data folder, Help and Quit. Closing the window quits BoldoAtlas completely: nothing stays in the background. When there is a new version, the icon's tooltip says so. On Linux, if the tray library (AppIndicator) is missing, there is no icon and the app works the same. On Windows, the system records in the registry (`HKCU\Control Panel\NotifyIconSettings`) the path of every program that shows a tray icon, the portable included: it is the only trace outside its folder, and BoldoAtlas does not write it.

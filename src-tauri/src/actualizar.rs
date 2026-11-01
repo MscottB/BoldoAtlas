@@ -484,6 +484,9 @@ fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Resul
                 estado.cerrar_ordenado(Duration::from_secs(3));
             },
             || {
+                // antes de abrirla: esta copia aún tarda en salir y, si no, la nueva se toma por segunda instancia y
+                // se cierra, y no queda nada abierto. Desde este hilo basta: al cerrar el mutex se libera el nombre
+                tauri_plugin_single_instance::destroy(app);
                 std::process::Command::new(&exe)
                     .current_dir(exe.parent().unwrap_or(Path::new(".")))
                     .spawn()

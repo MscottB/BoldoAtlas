@@ -692,6 +692,14 @@
     "reemplazar": "Respaldar y reemplazar"
   },
   "config": {
+    "inicio": {
+      "titulo": "Inicio con el sistema",
+      "etiqueta": "Iniciar BoldoAtlas con el sistema",
+      "ayuda": "Se abre minimizada al iniciar sesión, sin quitarle el foco a lo que estés haciendo. Cerrar la ventana la cierra, como siempre.",
+      "portable": "No disponible en la versión portable: guardaría una entrada fuera de su carpeta.",
+      "sistema": "Por ahora solo está disponible en Windows.",
+      "error": "No se pudo cambiar el inicio con el sistema: {detalle}"
+    },
     "organizacion": {
       "titulo": "Organización",
       "nombre": "Nombre de la organización"
