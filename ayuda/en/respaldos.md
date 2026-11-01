@@ -32,7 +32,7 @@ To take a copy elsewhere, press **Open folder** and copy the `.db` file you want
 
 ## Before replacing your data
 
-When you choose **New empty organization** or **Explore the example** with data loaded, BoldoAtlas first makes a backup marked **Before replacing**. Like the one made before restoring, it is never deleted automatically: if you change your mind, restore it from this list. If the backup fails, nothing is replaced.
+When you choose **New empty organization** or **Explore the example** with data loaded, or when you apply a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. Like the one made before restoring, it is never deleted automatically: if you change your mind, restore it from this list. If the backup fails, nothing is replaced.
 
 ## Restore
 
