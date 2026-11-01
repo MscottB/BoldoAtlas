@@ -695,7 +695,9 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 **Orden de trabajo:**
 0. 20e: opciones al cerrar la ventana, junto a la 22a.
 1. 22a y 22b: exportar e importar, y fusión con revisión.
-1b. 27a y 27b: fotos optimizadas y carga bajo demanda.
+1b. 28a y 28b: líneas laterales legibles e interacción directa en el lienzo.
+1c. 27a y 27b: fotos optimizadas y carga bajo demanda.
+1d. 28c: zonas, probándolas con el organigrama del autor. 28d solo si aún hace falta.
 2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
 3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
 4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
@@ -707,6 +709,18 @@ Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la funci�
 
 ### Task 20e: Opciones al cerrar la ventana (spec §7 "Al cerrar la ventana")
 - Diálogo con Cancelar, Dejar en la bandeja, Cerrar la app y No volver a preguntar; preferencia en Configuración. Un registro de trabajos en curso que usan respaldos y las tareas 22a, 22b, 23a y 25a, para avisar antes de interrumpir. Se apoya en `src-tauri/src/salida.rs` y `src/app/ventana.ts`: cerrar nunca queda bloqueado.
+
+### Task 28a: Líneas laterales legibles (spec §8 "Árbol")
+- Hoy `VistaArbol.vue` las dibuja rectas de una tarjeta a otra, con la etiqueta en la mitad, y pueden quedar detrás de las tarjetas. Trazado por el espacio libre, etiqueta con fondo sobre la línea, resaltado al pasar por una tarjeta e interruptor guardado con la vista. Probar con la organización grande y en modo ligero, que no debe perder fluidez.
+
+### Task 28b: Interacción directa (spec §8 "Árbol")
+- Acciones a la vista en la tarjeta, con teclado; niveles rápidos de expansión; vista previa al arrastrar. Sin cargar de botones cada tarjeta: aparecen al pasar o enfocar. Deshacer llega con la 19c.
+
+### Task 28c: Zonas (spec §8 "Árbol")
+- Migración nueva con `zonas` y `zona_unidades`, repositorio, store, recuadro en el lienzo, crear y editar desde la selección múltiple. Agrega las tablas a la clasificación de `alcance.rs`, a la validación y fusión de `.boldo`, al Excel (23a) y al SVG (23b). Probar con el organigrama del autor antes de cerrar la forma: con unidades lejanas, el recuadro no debe cubrir a otras.
+
+### Task 28d: Posición libre (solo si aún hace falta tras la 28c)
+- Opción de una vista guardada, con "Reordenar" para volver al orden automático. Decidir con el autor antes de empezar.
 
 ### Task 27a: Fotos optimizadas al subir (pedido del autor, 2026-11-01)
 - Al elegir una foto, la app la reduce con `canvas`, sin dependencias: lado máximo razonable para una ficha y compresión JPEG o WebP, como en `logoComoPng` de `configuracion/logo.ts`. Hoy se guarda una imagen de hasta 1 MiB por persona. Medir peso y nitidez con fotos reales antes de fijar el tamaño. La foto solo es para presentación.
