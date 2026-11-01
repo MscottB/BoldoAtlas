@@ -650,3 +650,79 @@ Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase públ
 
 ### Task 19e: Página «Seguridad y privacidad» (al final)
 - En el sitio y la ayuda, es y en: «te ayuda a cumplir» Ley 21.719 y RGPD, tabla honesta de lo que hace la app y lo que le toca a la organización, y nota de que no es asesoría legal. Revisar el estado de la ley chilena al publicar: rige el 1 de diciembre de 2026 salvo que se apruebe el proyecto que la posterga.
+
+---
+
+## Anexo 7 (pedidos del autor, 2026-11-01): exportar registros, costos y salidas para compartir
+
+Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frente al Anexo 6 está en el Anexo 8.
+
+### Task 23a: Exportar los registros a Excel (spec §11 "Excel")
+- Exportación completa desde el menú y «Exportar esta lista a Excel» en Directorio (su botón ya existe, oculto), Revisión, Mantenedores y personas de una unidad.
+- Agrega `exceljs`, cargado solo al exportar. Armar las filas en funciones puras con pruebas: respeta alcance, fecha y filtros, deja fuera los eliminados y escribe el texto como texto, también si empieza con `=`, `+`, `-` o `@`.
+- Antes de generar, el diálogo de aceptación obligatoria de spec §11 (sin cifrar, responsabilidad de quien genera), en cada exportación. Prueba: sin aceptar no se escribe ningún archivo.
+- Probar con la organización grande de prueba que no bloquee la ventana.
+- Las hojas de procesos, actividades e indicadores se suman cuando exista la Fase 3.
+
+### Task 23b: Capturas y PDF para organigramas grandes (spec §11 "Capturas" y "PDF")
+- Es la base de la Fase 4: `treeSvg.ts`, SVG, PNG y PDF con `pdfmake`, con tamaño de hoja, orientación y reparto en varias páginas con marcas de continuación. Probarlo con la organización grande.
+- PPTX después, en su propia entrega.
+
+### Task 23c: Manual de organización y funciones (spec §11 "PDF")
+- Plantilla del PDF de la 23b con los puestos, su descripción, titular y vacantes. Se puede entregar sin procesos y sumarlos cuando exista la Fase 3.
+
+### Task 23d: Visor HTML (spec §11 "Visor HTML")
+- Después de la 23b, porque usa `treeSvg.ts`. Prueba obligatoria: un nombre con `</script>` o HTML no se ejecuta, y el archivo no pide nada a la red.
+
+### Task 23e: Costo por puesto (spec §5 "Costo por puesto" y §8)
+- Migración 0002 con `puestos.costo_mensual`, activación en Configuración con la advertencia, edición en el puesto, y totales con vacantes aparte y aviso de puestos sin costo.
+- Comprobar que el campo viaja y se revisa en `.boldo` y en la fusión (22a y 22b). La diferencia de costo en la comparación llega con los escenarios (Fase 5); el indicador, con la Fase 3.
+
+### Task 23f: Archivos de otros sistemas en la carga masiva (spec §10)
+- Necesita la carga masiva (Task 25a) y archivos reales de Buk y Talana; sin ellos no se implementa.
+
+### Task 23g: Colorear por antigüedad y personas a cargo (spec §8 "Personalizar el diagrama")
+- Funciones puras con pruebas para los rangos, y leyenda a la vista. No depende de otras fases.
+
+### Task 23h: Notas por cambio en un escenario (spec §8 "Escenarios")
+- Con los escenarios (Tasks 26a y 26b): tabla `escenario_notas`, edición en el escenario, y las notas en la comparación y en su Excel.
+
+---
+
+## Anexo 8 (decisión del autor, 2026-11-01): orden y lo que faltaba de las fases 3, 4 y 5
+
+**Orden de trabajo:**
+0. 20e: opciones al cerrar la ventana, junto a la 22a.
+1. 22a y 22b: exportar e importar, y fusión con revisión.
+2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
+3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
+4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
+5. 25a: carga masiva. 23f, cuando haya archivos reales de Buk y Talana.
+6. 24a, 24b y 24c: procesos, RACI e indicadores.
+7. 26a, 26b y 23h: escenarios, comparación y notas.
+
+Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la función exista, y actualiza la ayuda en es y en. La prueba de `src/i18n/ayuda.test.ts` deja de prohibir `Excel` en la 23a.
+
+### Task 20e: Opciones al cerrar la ventana (spec §7 "Al cerrar la ventana")
+- Diálogo con Cancelar, Dejar en la bandeja, Cerrar la app y No volver a preguntar; preferencia en Configuración. Un registro de trabajos en curso que usan respaldos y las tareas 22a, 22b, 23a y 25a, para avisar antes de interrumpir. Se apoya en `src-tauri/src/salida.rs` y `src/app/ventana.ts`: cerrar nunca queda bloqueado.
+
+### Task 24a: Procesos con SIPOC (spec §5 `procesos` y §8 "Proceso")
+- Migración, repositorio y store con la tabla `procesos`. Pestaña Procesos en el panel de unidad, formulario con atributos, SIPOC y documento (se abre con el programa del sistema, validando la ruta o URL).
+- Agrega la tabla a la clasificación de `.boldo` y a la fusión (22a, 22b), y al historial si ya existe (19c).
+
+### Task 24b: Actividades y RACI (spec §5 `actividades`, `actividad_roles` y §8)
+- Actividades por proceso, mini-matriz RACI, regla de un solo Aprobador y aviso si falta un R. En la ficha, las actividades en que participa la persona.
+- Agrega `actividades` y `actividad_roles` a `.boldo`, y a las hojas de Excel (23a).
+
+### Task 24c: Indicadores (spec §8 "Indicadores")
+- Funciones puras sobre `dotacion` y `dotacionPorUnidad` de `jerarquia.ts`, sin tablas nuevas. Vista con tarjetas, tabla por unidad y listas de faltantes; un clic lleva a la unidad en el árbol. Probarla con la organización grande. Con 23e, suma los costos.
+
+### Task 25a: Carga masiva desde Excel y CSV (spec §10)
+- Plantilla con `Unidades`, `Trabajadores` y `Puestos`, validación en `src/features/carga/validar.ts`, vista previa obligatoria con errores por fila y archivo de errores, respaldo y una sola transacción. Reutiliza `exceljs` de la 23a.
+- El archivo no es confiable: límites de tamaño y de filas, y el texto nunca se interpreta como fórmula.
+
+### Task 26a: Escenarios (spec §8 "Escenarios")
+- Guardar como escenario, abrir, insignia en la barra y volver a la base principal. La portable los guarda dentro de su carpeta. Definir con la 19d cómo van cifrados: la spec los describe sin cifrar, y hay que corregirla.
+
+### Task 26b: Comparar y lado a lado (spec §8 "Escenarios")
+- Comparación en solo lectura con `src/features/sync/diff.ts` de la 22b, diferencia de indicadores (24c) y de costo (23e), exportable a Excel (23a), y lado a lado con encuadre sincronizado.
