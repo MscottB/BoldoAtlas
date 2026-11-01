@@ -31,6 +31,10 @@ updates:
     labels: [] # sin etiquetas (ver arriba)
     cooldown:
       default-days: 3
+    ignore:
+      # TypeScript 7 no compila con vue-tsc hoy (PR #25): adoptarlo es una tarea aparte.
+      - dependency-name: typescript
+        versions: [">=7.0.0"]
     groups:
       tauri:
         patterns: ["@tauri-apps/*"]
@@ -46,6 +50,10 @@ updates:
     labels: [] # sin etiquetas (ver arriba)
     cooldown:
       default-days: 3
+    ignore:
+      # La sonda de la bandeja en Linux usa la misma versión que libappindicator-sys (0.7): 0.9 no compila (PR #24).
+      - dependency-name: libloading
+        versions: [">=0.8.0"]
     groups:
       tauri:
         patterns: ["tauri", "tauri-*"]
