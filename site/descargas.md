@@ -48,7 +48,7 @@ En Windows y macOS, compara el resultado con la línea del mismo archivo en `SHA
 
 ## Cómo actualizar
 
-La próxima versión de BoldoAtlas buscará actualizaciones por sí misma (está en camino). Mientras tanto, descarga la versión nueva desde esta página:
+BoldoAtlas busca versiones nuevas una vez al día (puedes desactivarlo en Configuración) y te avisa con sus novedades antes de actualizar. Si prefieres hacerlo a mano, descarga la versión nueva desde esta página:
 
 - **Portable:** cierra BoldoAtlas y reemplaza el programa (`BoldoAtlas.exe`, `.AppImage` o `.app`) por el nuevo. La carpeta `datos/`, con tu base y tus respaldos, se queda donde está. Si extraes el zip nuevo en otra carpeta, copia `datos/` ahí.
 - **Instalador:** ejecuta el instalador nuevo. Tus datos están en la carpeta de tu usuario y no cambian.
