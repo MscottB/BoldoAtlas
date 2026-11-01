@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { Download, ExternalLink } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { abrirExterna } from "@/lib/enlaces";
 import {
   Dialog,
   DialogClose,
@@ -52,7 +52,7 @@ const textoProgreso = computed(() => {
     ? t("actualizar.progreso", { descargado, total: tamano(p.total, locale.value) })
     : t("actualizar.progresoSinTotal", { descargado });
 });
-const abrirPagina = () => a.disponible && openUrl(a.disponible.pagina);
+const abrirPagina = () => abrirExterna(a.disponible?.pagina);
 </script>
 
 <template>

@@ -50,7 +50,7 @@ Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (it i
 | Linux (x64) | `BoldoAtlas_linux_x64_portable.zip` → `BoldoAtlas.AppImage` | `BoldoAtlas_linux_x64.deb`, `BoldoAtlas_linux_x64.rpm` or `BoldoAtlas_linux_x64.AppImage` | `~/.local/share/io.github.mscottb.boldoatlas` |
 | macOS 11 or newer (Intel and Apple Silicon) | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
 
-`SHA256SUMS.txt` holds the checksums of every file: `Get-FileHash <file> -Algorithm SHA256` on Windows, `sha256sum -c SHA256SUMS.txt --ignore-missing` on Linux and `shasum -a 256 <file>` on macOS.
+`SHA256SUMS.txt` holds the checksums of every file: `Get-FileHash <file> -Algorithm SHA256` on Windows, `sha256sum -c SHA256SUMS.txt --ignore-missing` on Linux and `shasum -a 256 <file>` on macOS. Each release also lists its components (SBOM, in CycloneDX format): `BoldoAtlas_sbom_npm.cdx.json` and `BoldoAtlas_sbom_cargo.cdx.json`.
 
 Requirements: on Windows, WebView2 (included in Windows 11 and almost every Windows 10); on Linux, a 2022 or newer distribution (Ubuntu 22.04, Debian 12, Fedora 36…) and, for the AppImage, FUSE 2 (`sudo apt install libfuse2`; on Ubuntu 24.04, `libfuse2t64`).
 
@@ -85,7 +85,7 @@ BoldoAtlas is not code-signed yet, so the first time the system warns you:
 
 ## Privacy
 
-Everything is stored on your computer and BoldoAtlas has no accounts. Its only automatic connection is the check for new versions (daily by default; change it or turn it off in **Settings › Updates**): it reads the public list of GitHub releases and the new version's `latest.json` and `novedades.json`, sends no organization data or identifiers, and never installs without asking.
+Everything is stored on your computer and BoldoAtlas has no accounts. Its only automatic connection is the check for new versions (daily by default; change it or turn it off in **Settings › Updates**): it reads the public list of GitHub releases and the new version's `latest.json` and `novedades.json`, sends no organization data or identifiers, and never installs without asking. [SECURITY.md](SECURITY.md) explains what the app protects, what it does not, and how to report a problem.
 
 ## Build from source
 

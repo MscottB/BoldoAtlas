@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const openUrl = vi.fn<(u: string) => Promise<void>>(() => Promise.resolve());
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: (u: string) => openUrl(u) }));
-const { abrirEnlacesFuera, urlExterna } = await import("./enlaces");
+const { abrirEnlacesFuera, abrirExterna, urlExterna } = await import("./enlaces");
 
 describe("urlExterna", () => {
   it("solo http, https y mailto", () => {
@@ -13,6 +13,18 @@ describe("urlExterna", () => {
     expect(urlExterna("respaldos.md")).toBeNull();
     expect(urlExterna("#ancla")).toBeNull();
     expect(urlExterna(null)).toBeNull();
+  });
+});
+
+describe("abrirExterna (la página de una versión nueva)", () => {
+  it("abre https y no abre lo demás", () => {
+    openUrl.mockClear();
+    abrirExterna("file:///C:/Windows/notepad.exe");
+    abrirExterna("javascript:alert(1)");
+    abrirExterna(undefined);
+    expect(openUrl).not.toHaveBeenCalled();
+    abrirExterna("https://github.com/MscottB/BoldoAtlas/releases/tag/v1");
+    expect(openUrl).toHaveBeenCalledWith("https://github.com/MscottB/BoldoAtlas/releases/tag/v1");
   });
 });
 

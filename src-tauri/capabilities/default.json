@@ -4,13 +4,21 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "core:default",
+    "core:event:default",
+    "core:image:default",
+    "core:menu:default",
+    "core:resources:default",
+    "core:tray:default",
+    "core:window:default",
     "core:window:allow-set-title",
     "core:window:allow-show",
     "core:window:allow-unminimize",
     "core:window:allow-set-focus",
     "core:window:allow-close",
     "core:app:allow-default-window-icon",
-    "opener:default"
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }, { "url": "mailto:*" }]
+    }
   ]
 }

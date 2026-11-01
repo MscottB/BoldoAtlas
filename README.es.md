@@ -50,7 +50,7 @@ Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (es
 | Linux (x64) | `BoldoAtlas_linux_x64_portable.zip` → `BoldoAtlas.AppImage` | `BoldoAtlas_linux_x64.deb`, `BoldoAtlas_linux_x64.rpm` o `BoldoAtlas_linux_x64.AppImage` | `~/.local/share/io.github.mscottb.boldoatlas` |
 | macOS 11 o más nuevo (Intel y Apple Silicon) | `BoldoAtlas_macos_universal_portable.zip` → `BoldoAtlas.app` | `BoldoAtlas_macos_universal.dmg` | `~/Library/Application Support/io.github.mscottb.boldoatlas` |
 
-`SHA256SUMS.txt` trae las sumas de todos los archivos para verificar la descarga: `Get-FileHash <archivo> -Algorithm SHA256` en Windows, `sha256sum -c SHA256SUMS.txt --ignore-missing` en Linux y `shasum -a 256 <archivo>` en macOS.
+`SHA256SUMS.txt` trae las sumas de todos los archivos para verificar la descarga: `Get-FileHash <archivo> -Algorithm SHA256` en Windows, `sha256sum -c SHA256SUMS.txt --ignore-missing` en Linux y `shasum -a 256 <archivo>` en macOS. Cada versión trae también la lista de sus componentes (SBOM, en formato CycloneDX): `BoldoAtlas_sbom_npm.cdx.json` y `BoldoAtlas_sbom_cargo.cdx.json`.
 
 Requisitos: en Windows, WebView2 (ya viene en Windows 11 y en casi todo Windows 10); en Linux, una distribución de 2022 o más nueva (Ubuntu 22.04, Debian 12, Fedora 36…) y, para el AppImage, FUSE 2 (`sudo apt install libfuse2`; en Ubuntu 24.04, `libfuse2t64`).
 
@@ -85,7 +85,7 @@ BoldoAtlas aún no está firmado digitalmente, así que la primera vez el sistem
 
 ## Privacidad
 
-Todo se guarda en tu computador y BoldoAtlas no usa cuentas. Su única conexión automática es la búsqueda de versiones nuevas (cada día por defecto; se cambia o se apaga en **Configuración › Actualizaciones**): lee la lista pública de releases de GitHub y el `latest.json` y `novedades.json` de la versión nueva, sin enviar datos de tu organización ni identificadores, y nunca instala sin preguntar.
+Todo se guarda en tu computador y BoldoAtlas no usa cuentas. Su única conexión automática es la búsqueda de versiones nuevas (cada día por defecto; se cambia o se apaga en **Configuración › Actualizaciones**): lee la lista pública de releases de GitHub y el `latest.json` y `novedades.json` de la versión nueva, sin enviar datos de tu organización ni identificadores, y nunca instala sin preguntar. [SECURITY.md](SECURITY.md) explica qué protege la app, qué no, y cómo reportar un problema.
 
 ## Compilar
 

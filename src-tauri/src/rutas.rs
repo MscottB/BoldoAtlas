@@ -104,6 +104,12 @@ pub fn dir_datos(exe_dir: &Path, appdata: Option<&Path>) -> Result<Rutas, String
             datos.display()
         )
     })?;
+    // instalada: la base y los respaldos son solo de este usuario. La carpeta de una portable la elige quien la usa.
+    #[cfg(unix)]
+    if !portable {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&datos, std::fs::Permissions::from_mode(0o700));
+    }
     Ok(Rutas {
         bd: datos.join("boldo.db"),
         datos,
@@ -160,6 +166,23 @@ fn abierto_desde_zip(exe_dir: &Path) -> bool {
 mod tests {
     use super::*;
     use std::fs;
+
+    #[cfg(unix)]
+    #[test]
+    fn instalada_la_carpeta_de_datos_es_solo_del_usuario() {
+        use std::os::unix::fs::PermissionsExt;
+        let modo = |d: &Path| fs::metadata(d).unwrap().permissions().mode() & 0o777;
+        let dir = tempfile::tempdir().unwrap();
+        let (exe, appdata) = (dir.path().join("exe"), dir.path().join("appdata"));
+        fs::create_dir_all(&exe).unwrap();
+        fs::create_dir_all(&appdata).unwrap();
+        assert_eq!(modo(&dir_datos(&exe, Some(&appdata)).unwrap().datos), 0o700);
+        // la portable no cambia lo que eligió quien la usa
+        fs::write(exe.join("portable.flag"), "").unwrap();
+        fs::create_dir(exe.join("datos")).unwrap();
+        fs::set_permissions(exe.join("datos"), fs::Permissions::from_mode(0o750)).unwrap();
+        assert_eq!(modo(&dir_datos(&exe, None).unwrap().datos), 0o750);
+    }
 
     #[test]
     fn identificador_portable_distingue_carpetas() {
