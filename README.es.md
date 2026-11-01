@@ -42,7 +42,7 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 
 ## Descarga
 
-Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases/latest)** (es una versión alfa: de prueba). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta (salvo en macOS: las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
+Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (es una versión alfa: de prueba). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta (salvo en macOS: las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
 
 | Sistema | Portable | Instalador | Datos del instalado |
 |---|---|---|---|
