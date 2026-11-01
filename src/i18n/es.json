@@ -672,7 +672,7 @@
     },
     "logo": {
       "titulo": "Logo",
-      "ayuda": "PNG, JPG o WebP de hasta 1 MB. Se usa en las exportaciones.",
+      "ayuda": "PNG, JPG o WebP de hasta 1 MB.",
       "alt": "Logo de la organización",
       "sin": "Sin logo",
       "elegir": "Elegir imagen…",

@@ -27,7 +27,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import { respaldarAntesDeReemplazar } from "@/db/cliente";
-import { useRetornoFoco } from "@/lib/foco";
 import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -36,10 +35,9 @@ import icono from "../../assets/brand/icono.png";
 const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
-const retorno = useRetornoFoco();
 const org = useOrganizacion();
 
-// Sin `fase`, el camino está disponible; con ella, se muestra deshabilitado con la fase en que llega.
+// Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
 interface Camino {
   id: "vacia" | "excel" | "boldo" | "ejemplo";
   icono: Component;
@@ -68,14 +66,20 @@ const ocupado = ref(false);
 const creando = ref(false);
 const nombreOrg = ref("");
 const nombreRaiz = ref("");
-// El foco va al primer campo (no al botón de cerrar) y, al cerrar, vuelve a la tarjeta que abrió el diálogo.
+// El foco entra al primer campo (no al botón de cerrar) y, al cerrar, vuelve a la tarjeta que abrió el diálogo; si no hubo
+// clic (menú de la app, ?accion=vacia), a la tarjeta «vacía». No depende de dónde estuviera el foco antes.
+let origen: HTMLElement | null = null;
 function alAbrir(e: Event) {
-  retorno.alAbrir();
   e.preventDefault();
   document.getElementById("bienvenida-org")?.focus();
 }
-async function elegir(c: Camino) {
+function alCerrar(e: Event) {
+  e.preventDefault();
+  (origen?.isConnected ? origen : document.getElementById("bienvenida-camino-vacia"))?.focus();
+}
+async function elegir(c: Camino, desde: EventTarget | null = null) {
   if (c.fase) return;
+  origen = desde instanceof HTMLElement ? desde : null;
   if (c.id === "ejemplo") {
     if (!hayDatos.value) return entrar(await org.cargarEjemplo());
     reemplazo.value = "ejemplo";
@@ -97,10 +101,13 @@ async function reemplazar() {
   ocupado.value = true;
   const datos =
     reemplazo.value === "vacia" ? { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value } : undefined;
-  await entrar(
-    await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
-  );
-  ocupado.value = false;
+  try {
+    await entrar(
+      await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
+    );
+  } finally {
+    ocupado.value = false;
+  }
 }
 
 // El menú de la app y la paleta llegan aquí con ?accion=vacia|ejemplo.
@@ -139,6 +146,7 @@ onMounted(() => {
     <ul class="grid gap-3 sm:grid-cols-2">
       <li v-for="c in caminos" :key="c.id">
         <button
+          :id="`bienvenida-camino-${c.id}`"
           type="button"
           :aria-disabled="c.fase ? 'true' : undefined"
           :disabled="!c.fase && (org.guardando || ocupado)"
@@ -147,7 +155,7 @@ onMounted(() => {
             c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent',
             c.id === 'vacia' && 'border-2 border-marca bg-card',
           ]"
-          @click="elegir(c)"
+          @click="elegir(c, $event.currentTarget)"
         >
           <span class="flex items-center gap-2 font-medium">
             <component
@@ -169,7 +177,7 @@ onMounted(() => {
     </ul>
 
     <Dialog v-model:open="creando">
-      <DialogContent @open-auto-focus="alAbrir" @close-auto-focus="retorno.alCerrar">
+      <DialogContent @open-auto-focus="alAbrir" @close-auto-focus="alCerrar">
         <form class="grid gap-4" @submit.prevent="crear">
           <DialogHeader>
             <DialogTitle>{{ t("bienvenida.vacia.titulo") }}</DialogTitle>
@@ -204,7 +212,8 @@ onMounted(() => {
     </Dialog>
 
     <AlertDialog v-model:open="confirmando">
-      <AlertDialogContent>
+      <!-- Con el formulario abierto, Cancelar devuelve el foco a él (no a la tarjeta). -->
+      <AlertDialogContent @close-auto-focus="creando || alCerrar($event)">
         <AlertDialogHeader>
           <AlertDialogTitle>{{ t(`bienvenida.reemplazarTitulo.${reemplazo}`) }}</AlertDialogTitle>
           <AlertDialogDescription>

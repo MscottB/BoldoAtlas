@@ -312,6 +312,7 @@ const TEXTOS = {
         {
           p: "¿Es una versión final?",
           r: "No: es una versión de prueba (alfa). Lo que muestra esta página ya funciona; si algo falla, cuéntalo en GitHub.",
+          enlace: { texto: "Avisar de un problema", href: `${REPO}/issues` },
         },
       ],
     },
@@ -588,6 +589,7 @@ const TEXTOS = {
         {
           p: "Is it a final version?",
           r: "No: it is a test (alpha) version. Everything on this page already works; if something fails, tell us on GitHub.",
+          enlace: { texto: "Report a problem", href: `${REPO}/issues` },
         },
       ],
     },

@@ -18,7 +18,7 @@ import { IDIOMAS, cambiarIdioma, type Idioma } from "@/i18n";
 import { GRUPOS_MENU, irAEntrada } from "./menuApp";
 
 // Menú de la app: el logo en la barra superior. Cada entrada lleva a una ruta o hace una acción (p. ej. buscar
-// actualizaciones); las de fases futuras salen deshabilitadas.
+// actualizaciones); las de fases futuras solo salen (deshabilitadas) con MOSTRAR_PROXIMAMENTE.
 const { t, locale } = useI18n();
 const router = useRouter();
 </script>
