@@ -42,13 +42,13 @@ interface Funcion {
   titulo: string;
   texto: string;
   puntos: string[];
-  imagen: { nombre: string; ancho: number; alto: number; alt: string; temas: boolean };
+  imagen: { nombre: string; ancho: number; alto: number; alt: string; temas: boolean; leyenda?: string };
   enlace?: { texto: string; href: string };
 }
 
 const TEXTOS = {
   es: {
-    chips: ["Gratis y de código abierto", "Sin cuentas", "Funciona sin internet", "Windows · Linux · macOS"],
+    chips: ["Gratis y de código abierto", "Sin cuentas", "No necesita internet", "Windows · Linux · macOS"],
     beneficios: {
       etiqueta: "Para qué sirve",
       titulo: "Todo tu organigrama, claro y bajo control",
@@ -57,9 +57,9 @@ const TEXTOS = {
       items: [
         {
           icono: "arbol",
-          titulo: "Ve toda tu organización de un vistazo, aunque tenga miles de personas",
+          titulo: "Recorre organizaciones de miles de personas sin perderte",
           texto:
-            "Gerencias, áreas y subáreas en un árbol que pliegas y despliegas. Probado con 2.000 unidades y 10.000 personas.",
+            "Gerencias, áreas y subáreas en un árbol que pliegas y despliegas, y una búsqueda que te lleva a cualquiera. Probado con 2.000 unidades y 10.000 personas.",
         },
         {
           icono: "vacante",
@@ -76,7 +76,8 @@ const TEXTOS = {
         {
           icono: "candado",
           titulo: "Tus datos no salen de tu computador",
-          texto: "Sin servidor, sin cuentas y sin internet. Una base local con respaldos automáticos.",
+          texto:
+            "Sin servidor ni cuentas, y no necesita internet para funcionar. Una base local con respaldos automáticos.",
         },
       ],
     },
@@ -101,6 +102,7 @@ const TEXTOS = {
             ancho: 1100,
             alto: 915,
             temas: true,
+            leyenda: "Organización de ejemplo que trae la app (16 personas)",
             alt: "Organigrama de ejemplo: Gerencia General con Operaciones, Finanzas y Personas; Operaciones abierta hasta Mantención, Producción, Mecánica y Eléctrica, con jefaturas, dotación y vacantes.",
           },
         },
@@ -164,9 +166,9 @@ const TEXTOS = {
         {
           id: "portable",
           etiqueta: "100 % local y portable",
-          titulo: "Llévalo en un pendrive, sin perder nada",
+          titulo: "Llévalo en un pendrive, con tus datos y respaldos",
           texto:
-            "La versión portable guarda todo en la carpeta datos/, junto al programa. No instala nada y no necesita internet.",
+            "La versión portable guarda tus datos y respaldos en la carpeta datos/, junto al programa, y no necesita internet para funcionar. En macOS, el sistema guarda además las preferencias de la ventana y sus cachés en ~/Library.",
           puntos: [
             "Respaldo automático al abrir, y a mano cuando quieras.",
             "Se conservan los 10 más recientes y se restauran desde la misma pantalla.",
@@ -211,16 +213,35 @@ const TEXTOS = {
       si: "Sí",
       no: "No",
       filas: [
-        ["El organigrama sale de los datos, sin dibujarlo", ["si", "no", "no", "si"]],
+        [
+          "El organigrama sale de los datos, sin dibujarlo",
+          ["si", ["parcial", "Según la herramienta"], ["parcial", "Según la herramienta"], "si"],
+        ],
         ["Fichas, puestos y vacantes en el mismo lugar", ["si", ["parcial", "A mano"], "no", "si"]],
         ["Ver la organización en una fecha pasada", ["si", "no", "no", ["parcial", "Según el producto"]]],
-        ["Los datos se quedan en tu computador", ["si", "si", ["parcial", "Según la herramienta"], "no"]],
-        ["Funciona sin internet", ["si", "si", ["parcial", "Según la herramienta"], "no"]],
+        [
+          "Los datos se quedan en tu computador",
+          [
+            "si",
+            ["parcial", "Según la herramienta"],
+            ["parcial", "Según la herramienta"],
+            ["parcial", "Según el producto"],
+          ],
+        ],
+        [
+          "Funciona sin internet",
+          [
+            "si",
+            ["parcial", "Según la herramienta"],
+            ["parcial", "Según la herramienta"],
+            ["parcial", "Según el producto"],
+          ],
+        ],
         [
           "Gratis y de código abierto",
           [
             "si",
-            ["parcial", "Según el programa"],
+            ["parcial", "Según la herramienta"],
             ["parcial", "Según la herramienta"],
             ["parcial", "Rara vez"],
           ],
@@ -240,7 +261,8 @@ const TEXTOS = {
         {
           icono: "escudo",
           titulo: "Descargas verificables",
-          texto: "Cada versión publica SHA256SUMS.txt para comprobar que el archivo es el original.",
+          texto:
+            "Cada versión publica SHA256SUMS.txt para comprobar que la descarga llegó completa e intacta.",
           enlace: { texto: "Cómo verificar", href: "/descargas#verificar-la-descarga" },
         },
         {
@@ -250,10 +272,15 @@ const TEXTOS = {
         },
         {
           icono: "sinRastreo",
-          titulo: "Sin rastreo",
-          texto: "La app no tiene servidor ni analítica, y no envía tus datos a ninguna parte.",
+          titulo: "Sin rastreo en la app",
+          texto: "La app no tiene analítica ni telemetría, y no envía tus datos a ninguna parte.",
         },
-        { icono: "sinRed", titulo: "Sin internet", texto: "Funciona completa sin conexión." },
+        {
+          icono: "sinRed",
+          titulo: "No necesita internet",
+          texto:
+            "Funciona completa sin conexión. Cuando busca versiones nuevas (puedes desactivarlo), solo descarga la lista de versiones y no envía datos.",
+        },
       ],
     },
     preguntas: {
@@ -266,7 +293,7 @@ const TEXTOS = {
         },
         {
           p: "¿Dónde quedan mis datos?",
-          r: "En una base SQLite en tu computador: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas. BoldoAtlas no se conecta a internet.",
+          r: "En una base SQLite en tu computador: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas. BoldoAtlas no necesita internet para funcionar y no envía tus datos a ninguna parte.",
         },
         {
           p: "¿En qué sistemas funciona?",
@@ -275,7 +302,7 @@ const TEXTOS = {
         },
         {
           p: "¿Cómo se actualiza?",
-          r: "Por ahora, descargando la versión nueva desde este sitio. En la portable reemplazas el programa y la carpeta datos/ se queda donde está. Si la versión nueva cambia la base, antes hace un respaldo. La búsqueda automática de actualizaciones está en camino.",
+          r: "Descargando la versión nueva desde este sitio. En la portable reemplazas el programa y la carpeta datos/ se queda donde está. Si la versión nueva cambia la base, antes hace un respaldo. Cuando BoldoAtlas busca versiones nuevas (puedes desactivarlo), solo descarga la lista de versiones y no envía datos.",
           enlace: { texto: "Cómo actualizar", href: "/descargas#como-actualizar" },
         },
         {
@@ -291,17 +318,17 @@ const TEXTOS = {
     final: {
       titulo: "Arma tu organigrama hoy",
       texto:
-        "Descárgalo gratis, ábrelo y recorre la organización de ejemplo en un par de minutos. La versión portable no instala nada.",
+        "Descárgalo gratis, ábrelo y recorre la organización de ejemplo en un par de minutos. La versión portable guarda tus datos y respaldos junto al programa.",
       descargar: "Descargar portable",
       recomendada: "recomendada",
       manual: "Ver el manual",
-      para: "Descargar para",
+      para: "ver las descargas",
       nota: "Gratis · AGPL-3.0 · Sin cuentas",
     },
     rutas: { descargas: "/descargas", manual: "/manual/inicio", prefijo: "" },
   },
   en: {
-    chips: ["Free and open source", "No accounts", "Works offline", "Windows · Linux · macOS"],
+    chips: ["Free and open source", "No accounts", "No internet needed", "Windows · Linux · macOS"],
     beneficios: {
       etiqueta: "What it's for",
       titulo: "Your whole org chart, clear and under control",
@@ -310,9 +337,9 @@ const TEXTOS = {
       items: [
         {
           icono: "arbol",
-          titulo: "See your whole organization at a glance, even with thousands of people",
+          titulo: "Find your way around organizations of thousands of people",
           texto:
-            "Divisions, areas and sub-areas in a tree you fold and unfold. Tested with 2,000 units and 10,000 people.",
+            "Divisions, areas and sub-areas in a tree you fold and unfold, and a search that takes you to anyone. Tested with 2,000 units and 10,000 people.",
         },
         {
           icono: "vacante",
@@ -328,7 +355,8 @@ const TEXTOS = {
         {
           icono: "candado",
           titulo: "Your data never leaves your computer",
-          texto: "No server, no accounts and no internet. A local database with automatic backups.",
+          texto:
+            "No server and no accounts, and it doesn't need the internet to work. A local database with automatic backups.",
         },
       ],
     },
@@ -352,7 +380,8 @@ const TEXTOS = {
             ancho: 1100,
             alto: 915,
             temas: true,
-            alt: "Sample org chart: Gerencia General with Operaciones, Finanzas and Personas; Operaciones open down to Mantención, Producción, Mecánica and Eléctrica, with heads, headcount and vacancies.",
+            leyenda: "The sample organization that comes with the app (16 people)",
+            alt: "Sample org chart: General Management with Operations, Finance and People; Operations open down to Maintenance, Production, Mechanical and Electrical, with heads, headcount and vacancies.",
           },
         },
         {
@@ -371,7 +400,7 @@ const TEXTOS = {
             ancho: 1100,
             alto: 813,
             temas: true,
-            alt: "Person record for Andrés Soto: name, email, the unit he heads, his Gerente position with its history, contract type, site and shift.",
+            alt: "Person record for Andrés Soto: name, email, the unit he heads, his Manager position with its history, contract type, site and shift.",
           },
         },
         {
@@ -407,15 +436,15 @@ const TEXTOS = {
             ancho: 1100,
             alto: 533,
             temas: true,
-            alt: "Directory with 18 rows: person, job title, division, area and email, with search, a unit filter and a column picker.",
+            alt: "Directory with 18 rows: person, job title, management, area and email, with search, a unit filter and a column picker.",
           },
         },
         {
           id: "portable",
           etiqueta: "100% local and portable",
-          titulo: "Carry it on a USB drive, lose nothing",
+          titulo: "Carry it on a USB drive, with your data and backups",
           texto:
-            "The portable version keeps everything in the datos/ folder, next to the program. It installs nothing and needs no internet.",
+            "The portable version keeps your data and backups in the datos/ folder, next to the program, and doesn't need the internet to work. On macOS, the system also keeps the window preferences and caches in ~/Library.",
           puntos: [
             "Automatic backup when it opens, and manual backups whenever you like.",
             "The 10 most recent are kept, and you restore them from the same screen.",
@@ -460,16 +489,35 @@ const TEXTOS = {
       si: "Yes",
       no: "No",
       filas: [
-        ["The org chart comes from the data, no drawing", ["si", "no", "no", "si"]],
+        [
+          "The org chart comes from the data, no drawing",
+          ["si", ["parcial", "Depends on the tool"], ["parcial", "Depends on the tool"], "si"],
+        ],
         ["Records, positions and vacancies in one place", ["si", ["parcial", "By hand"], "no", "si"]],
         ["See the organization on a past date", ["si", "no", "no", ["parcial", "Depends on the product"]]],
-        ["Your data stays on your computer", ["si", "si", ["parcial", "Depends on the tool"], "no"]],
-        ["Works offline", ["si", "si", ["parcial", "Depends on the tool"], "no"]],
+        [
+          "Your data stays on your computer",
+          [
+            "si",
+            ["parcial", "Depends on the tool"],
+            ["parcial", "Depends on the tool"],
+            ["parcial", "Depends on the product"],
+          ],
+        ],
+        [
+          "Works offline",
+          [
+            "si",
+            ["parcial", "Depends on the tool"],
+            ["parcial", "Depends on the tool"],
+            ["parcial", "Depends on the product"],
+          ],
+        ],
         [
           "Free and open source",
           [
             "si",
-            ["parcial", "Depends on the program"],
+            ["parcial", "Depends on the tool"],
             ["parcial", "Depends on the tool"],
             ["parcial", "Rarely"],
           ],
@@ -489,7 +537,8 @@ const TEXTOS = {
         {
           icono: "escudo",
           titulo: "Verifiable downloads",
-          texto: "Every release publishes SHA256SUMS.txt so you can check the file is the original.",
+          texto:
+            "Every release publishes SHA256SUMS.txt so you can check the download arrived complete and intact.",
           enlace: { texto: "How to verify", href: "/en/descargas#verify-the-download" },
         },
         {
@@ -499,10 +548,15 @@ const TEXTOS = {
         },
         {
           icono: "sinRastreo",
-          titulo: "No tracking",
-          texto: "The app has no server and no analytics, and it sends your data nowhere.",
+          titulo: "No tracking in the app",
+          texto: "The app has no analytics and no telemetry, and it sends your data nowhere.",
         },
-        { icono: "sinRed", titulo: "No internet needed", texto: "It works fully offline." },
+        {
+          icono: "sinRed",
+          titulo: "No internet needed",
+          texto:
+            "It works fully offline. When it checks for new versions (you can turn this off), it only downloads the list of versions and sends no data.",
+        },
       ],
     },
     preguntas: {
@@ -515,7 +569,7 @@ const TEXTOS = {
         },
         {
           p: "Where does my data live?",
-          r: "In a SQLite database on your computer: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it. BoldoAtlas does not connect to the internet.",
+          r: "In a SQLite database on your computer: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it. BoldoAtlas doesn't need the internet to work and sends your data nowhere.",
         },
         {
           p: "Which systems does it run on?",
@@ -524,7 +578,7 @@ const TEXTOS = {
         },
         {
           p: "How do I update it?",
-          r: "For now, by downloading the new version from this site. With the portable version you replace the program and the datos/ folder stays where it is. If the new version changes the database, it makes a backup first. Automatic update checks are on the way.",
+          r: "By downloading the new version from this site. With the portable version you replace the program and the datos/ folder stays where it is. If the new version changes the database, it makes a backup first. When BoldoAtlas checks for new versions (you can turn this off), it only downloads the list of versions and sends no data.",
           enlace: { texto: "How to update", href: "/en/descargas#how-to-update" },
         },
         {
@@ -540,11 +594,11 @@ const TEXTOS = {
     final: {
       titulo: "Build your org chart today",
       texto:
-        "Download it for free, open it and explore the sample organization in a couple of minutes. The portable version installs nothing.",
+        "Download it for free, open it and explore the sample organization in a couple of minutes. The portable version keeps your data and backups next to the program.",
       descargar: "Download portable",
       recomendada: "recommended",
       manual: "Read the manual",
-      para: "Download for",
+      para: "see the downloads",
       nota: "Free · AGPL-3.0 · No accounts",
     },
     rutas: { descargas: "/en/descargas", manual: "/en/manual/inicio", prefijo: "/en" },
@@ -635,6 +689,7 @@ const SISTEMAS = ["Windows", "Linux", "macOS"];
               loading="lazy"
               decoding="async"
             />
+            <figcaption v-if="f.imagen.leyenda">{{ f.imagen.leyenda }}</figcaption>
           </figure>
         </article>
       </div>
@@ -723,7 +778,7 @@ const SISTEMAS = ["Windows", "Linux", "macOS"];
         </div>
         <ul class="sistemas" role="list">
           <li v-for="s in SISTEMAS" :key="s">
-            <a :href="enlace(`${t.rutas.descargas}#portable`)" :aria-label="`${t.final.para} ${s}`">{{
+            <a :href="enlace(`${t.rutas.descargas}#portable`)" :aria-label="`${s}: ${t.final.para}`">{{
               s
             }}</a>
           </li>
@@ -981,6 +1036,13 @@ ul[role="list"] {
   overflow: hidden;
   background: var(--vp-c-bg);
   box-shadow: var(--pr-sombra);
+}
+.pantalla figcaption {
+  padding: 8px 16px;
+  border-top: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-2);
+  font-size: 0.8125rem;
 }
 .pantalla img {
   display: block;
