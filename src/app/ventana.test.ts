@@ -1,14 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { alPedirCierre, conectarCierre, pedirSalir, preguntarAlSalir, salidaAbierta, salir } from "./ventana";
+import { trabajos } from "@/lib/trabajos";
+import {
+  alCerrar,
+  alCerrarGuardado,
+  alPedirCierre,
+  bandejaLista,
+  conectarCierre,
+  decidirCierre,
+  pedirSalir,
+  responderSalida,
+  salidaAbierta,
+  salir,
+} from "./ventana";
 
 const ventana = vi.hoisted(() => ({
   unminimize: vi.fn(async () => {}),
   show: vi.fn(async () => {}),
   setFocus: vi.fn(async () => {}),
-  close: vi.fn(async () => {}),
 }));
 const org = vi.hoisted(() => ({ guardando: false }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => {}) }));
@@ -20,6 +30,7 @@ const llamadas = () => vi.mocked(invoke).mock.calls.map((c) => c[0]);
 class Elemento {
   blur = vi.fn();
 }
+let guardado: Map<string, string>;
 /** Si el diálogo de salir está en la página. */
 let dialogo: boolean;
 
@@ -31,7 +42,14 @@ beforeEach(() => {
   vi.stubGlobal("window", { dispatchEvent: vi.fn() });
   vi.stubGlobal("HTMLElement", Elemento);
   salidaAbierta.value = false;
-  preguntarAlSalir.value = true;
+  alCerrar.value = "preguntar";
+  bandejaLista.value = true;
+  trabajos.value = [];
+  guardado = new Map();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => guardado.get(k) ?? null,
+    setItem: (k: string, v: string) => guardado.set(k, v),
+  });
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -62,10 +80,102 @@ describe("al pedir cerrar la ventana", () => {
     expect(llamadas()).toEqual(["cierre_atendido", "cierre_atendido"]);
   });
 
-  it("con la opción apagada sale sin preguntar", async () => {
-    preguntarAlSalir.value = false;
+  it("con «Cerrar la app» sale sin preguntar", async () => {
+    alCerrar.value = "cerrar";
     await alPedirCierre();
     expect(salidaAbierta.value).toBe(false);
+    expect(llamadas()).toEqual(["salir_app"]);
+  });
+
+  it("con «Dejar en la bandeja» oculta sin preguntar y no sale", async () => {
+    alCerrar.value = "bandeja";
+    await alPedirCierre();
+    expect(salidaAbierta.value).toBe(false);
+    expect(llamadas()).toEqual(["ocultar_en_bandeja"]);
+  });
+
+  it("«Salir» con «Dejar en la bandeja» sale de verdad", async () => {
+    alCerrar.value = "bandeja";
+    await alPedirCierre(true);
+    expect(llamadas()).toEqual(["salir_app"]);
+  });
+
+  it("con un trabajo en curso pregunta, sea cual sea la opción, y responde a Rust", async () => {
+    for (const opcion of ["bandeja", "cerrar"] as const) {
+      vi.clearAllMocks();
+      salidaAbierta.value = false;
+      alCerrar.value = opcion;
+      trabajos.value = ["Respaldo"];
+      await alPedirCierre();
+      expect(salidaAbierta.value).toBe(true);
+      expect(llamadas()).toEqual(["cierre_atendido"]);
+    }
+  });
+
+  it("con el diálogo abierto, otro intento no lo deja atrás aunque el trabajo ya terminó", async () => {
+    alCerrar.value = "bandeja";
+    salidaAbierta.value = true;
+    await alPedirCierre();
+    expect(llamadas()).toEqual(["cierre_atendido"]);
+  });
+});
+
+describe("decidir qué hacer al cerrar", () => {
+  const base = { opcion: "preguntar", hayTrabajos: false, hayBandeja: true, salida: false } as const;
+
+  it("cada opción, con la X", () => {
+    expect(decidirCierre(base)).toBe("preguntar");
+    expect(decidirCierre({ ...base, opcion: "bandeja" })).toBe("bandeja");
+    expect(decidirCierre({ ...base, opcion: "cerrar" })).toBe("cerrar");
+  });
+
+  it("«Salir» nunca termina en la bandeja, y con «Preguntar» sigue preguntando", () => {
+    expect(decidirCierre({ ...base, salida: true })).toBe("preguntar");
+    expect(decidirCierre({ ...base, opcion: "bandeja", salida: true })).toBe("cerrar");
+    expect(decidirCierre({ ...base, opcion: "cerrar", salida: true })).toBe("cerrar");
+  });
+
+  it("con un trabajo en curso siempre pregunta", () => {
+    for (const opcion of ["preguntar", "bandeja", "cerrar"] as const)
+      for (const salida of [false, true])
+        expect(decidirCierre({ ...base, opcion, salida, hayTrabajos: true })).toBe("preguntar");
+  });
+
+  it("sin bandeja, «Dejar en la bandeja» vale como «Preguntar»", () => {
+    expect(decidirCierre({ ...base, opcion: "bandeja", hayBandeja: false })).toBe("preguntar");
+  });
+});
+
+describe("la opción guardada", () => {
+  it("sin elegir, vale la casilla de antes: quien la apagó sigue sin pregunta", () => {
+    expect(alCerrarGuardado(null, false)).toBe("cerrar");
+    expect(alCerrarGuardado(null, true)).toBe("preguntar");
+  });
+
+  it("la opción nueva manda sobre la casilla de antes", () => {
+    expect(alCerrarGuardado("bandeja", false)).toBe("bandeja");
+    expect(alCerrarGuardado("preguntar", false)).toBe("preguntar");
+    expect(alCerrarGuardado("cerrar", true)).toBe("cerrar");
+  });
+
+  it("lo dañado vale el valor por defecto", () => {
+    expect(alCerrarGuardado("otra", "x")).toBe("preguntar");
+    expect(alCerrarGuardado(1, null)).toBe("preguntar");
+  });
+});
+
+describe("responder el diálogo", () => {
+  it("«No volver a preguntar» guarda la acción elegida", async () => {
+    await responderSalida("bandeja", true);
+    expect(alCerrar.value).toBe("bandeja");
+    expect(localStorage.getItem("boldo:alCerrar")).toBe('"bandeja"');
+    expect(llamadas()).toEqual(["ocultar_en_bandeja"]);
+  });
+
+  it("sin la casilla no guarda nada", async () => {
+    await responderSalida("cerrar", false);
+    expect(alCerrar.value).toBe("preguntar");
+    expect(localStorage.getItem("boldo:alCerrar")).toBeNull();
     expect(llamadas()).toEqual(["salir_app"]);
   });
 });
@@ -105,9 +215,9 @@ describe("salir", () => {
 });
 
 describe("pedirSalir", () => {
-  it("cierra la ventana: el mismo camino que la X", async () => {
+  it("se lo pide a Rust, que lo distingue de la X", async () => {
     await pedirSalir();
-    expect(ventana.close).toHaveBeenCalled();
+    expect(llamadas()).toEqual(["pedir_salida"]);
   });
 });
 
@@ -116,11 +226,11 @@ describe("sin Tauri (navegador)", () => {
     const sinTauri = () => {
       throw new TypeError("window.__TAURI_INTERNALS__ is undefined");
     };
-    vi.mocked(getCurrentWindow).mockImplementationOnce(sinTauri);
+    vi.mocked(invoke).mockImplementationOnce(sinTauri);
     vi.mocked(listen).mockImplementationOnce(sinTauri);
     await expect(pedirSalir()).resolves.toBeUndefined();
     await expect(conectarCierre()).resolves.toBeUndefined();
-    expect(llamadas()).toEqual([]);
+    expect(llamadas()).toEqual(["pedir_salida"]);
   });
 });
 

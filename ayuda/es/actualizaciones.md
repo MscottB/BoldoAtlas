@@ -22,7 +22,7 @@ Si no hay nada nuevo verás «Ya tienes la última versión»; sin conexión, «
 
 ## La ventana de actualización
 
-Muestra tu versión y la nueva, y **las novedades de todas las versiones que te saltaste**, de la más nueva a la más antigua. Al pulsar **Descargar e instalar** ves el avance de la descarga y puedes **Cancelar descarga**; cerrar la ventana también la cancela. Cada descarga va firmada por el autor y se rechaza si la firma no calza.
+Muestra tu versión y la nueva, y **las novedades de todas las versiones que te saltaste**, de la más nueva a la más antigua. Al pulsar **Descargar e instalar** ves el avance de la descarga y puedes **Cancelar descarga**; cerrar la app también la cancela. Cada descarga va firmada por el autor y se rechaza si la firma no calza.
 
 Qué pasa al instalar depende de cómo tienes BoldoAtlas:
 
@@ -46,7 +46,7 @@ En Windows, la versión instalada puede iniciarse con el sistema: casilla en la 
 
 ## Icono en la bandeja
 
-Mientras BoldoAtlas está abierto, su icono aparece en la bandeja del sistema. Un clic lo trae al frente (en Linux, el icono solo abre el menú); el menú (clic derecho) tiene Abrir BoldoAtlas, Inicio, Buscar persona, Configuración, Ayuda, **Actualizar a vX** cuando hay una versión nueva (si no, Buscar actualizaciones), Respaldar ahora, Abrir carpeta de datos y Salir. Cerrar la ventana cierra BoldoAtlas por completo: no queda nada en segundo plano. Con una versión nueva, el texto del icono lo avisa. En Linux, si falta la biblioteca de la bandeja (AppIndicator), no aparece el icono y la app funciona igual. En Windows, el sistema anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja, también de la portable: es el único rastro fuera de su carpeta y no lo escribe BoldoAtlas.
+Mientras BoldoAtlas está abierto, su icono aparece en la bandeja del sistema. Un clic lo trae al frente (en Linux, el icono solo abre el menú); el menú (clic derecho) tiene Abrir BoldoAtlas, Inicio, Buscar persona, Configuración, Ayuda, **Actualizar a vX** cuando hay una versión nueva (si no, Buscar actualizaciones), Respaldar ahora, Abrir carpeta de datos y Salir. Al cerrar la ventana puedes dejarlo aquí, con la ventana oculta, o cerrarlo del todo (mira **Al abrir y al salir** en Inicio); **Salir** siempre lo cierra del todo y no queda nada en segundo plano. Con una versión nueva, el texto del icono lo avisa. En Linux, si falta la biblioteca de la bandeja (AppIndicator), no aparece el icono y la app funciona igual. En Windows, el sistema anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja, también de la portable: es el único rastro fuera de su carpeta y no lo escribe BoldoAtlas.
 
 ## Limpieza
 

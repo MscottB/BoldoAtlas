@@ -7,6 +7,7 @@ mod rutas;
 mod salida;
 
 use tauri::Manager;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,11 +29,7 @@ pub fn run() {
             if args.iter().any(|a| a == inicio::ARGUMENTO) {
                 return;
             }
-            if let Some(v) = app.get_webview_window("main") {
-                let _ = v.unminimize();
-                let _ = v.show();
-                let _ = v.set_focus();
-            }
+            salida::mostrar(app);
         }));
     }
     app.plugin(tauri_plugin_opener::init())
@@ -43,6 +40,22 @@ pub fn run() {
         .on_window_event(|ventana, evento| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
                 salida::al_pedir_cierre(ventana.app_handle(), api);
+            }
+        })
+        // Abrir y Salir del icono se atienden aquí: con la interfaz colgada, su JavaScript ya no corre
+        .on_menu_event(|app, evento| match evento.id().as_ref() {
+            "abrir" => salida::mostrar(app),
+            "salir" => salida::pedir_salida(app.clone()),
+            _ => {}
+        })
+        .on_tray_icon_event(|app, evento| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = evento
+            {
+                salida::mostrar(app);
             }
         })
         .setup(move |app| {
@@ -60,12 +73,14 @@ pub fn run() {
                 ventana = ventana.data_directory(dir);
             }
             // arrancada por el sistema no le quita el foco a lo que el usuario abre al iniciar sesión; minimizada
-            // y no oculta, porque cerrar la ventana cierra la app y no siempre hay bandeja desde donde volver
+            // y no oculta, porque no siempre hay bandeja desde donde volver
             let por_el_sistema = std::env::args().any(|a| a == inicio::ARGUMENTO);
             if por_el_sistema {
                 ventana = ventana.focused(false);
             }
             let ventana = ventana.build()?;
+            #[cfg(windows)]
+            salida::x_de_la_ventana::vigilar(&ventana);
             if por_el_sistema {
                 let _ = ventana.minimize();
             }
@@ -90,6 +105,8 @@ pub fn run() {
             inicio::cambiar_inicio_sistema,
             salida::cierre_listo,
             salida::cierre_atendido,
+            salida::pedir_salida,
+            salida::ocultar_en_bandeja,
             salida::salir_app
         ])
         .build(contexto)
@@ -99,6 +116,11 @@ pub fn run() {
             if let tauri::RunEvent::Exit = evento {
                 app.state::<comandos::Estado>()
                     .cerrar_ordenado(std::time::Duration::from_secs(3));
+            }
+            // el Dock de macOS: abrir la app ya abierta no pasa por la instancia única
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = evento {
+                salida::mostrar(app);
             }
         });
 }

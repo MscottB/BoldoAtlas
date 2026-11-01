@@ -703,7 +703,7 @@
     "inicio": {
       "titulo": "Inicio con el sistema",
       "etiqueta": "Iniciar BoldoAtlas con el sistema",
-      "ayuda": "Se abre minimizada al iniciar sesión, sin quitarle el foco a lo que estés haciendo. Cerrar la ventana la cierra, como siempre.",
+      "ayuda": "Se abre minimizada al iniciar sesión, sin quitarle el foco a lo que estés haciendo.",
       "portable": "No disponible en la versión portable: guardaría una entrada fuera de su carpeta.",
       "sistema": "Solo está disponible en Windows.",
       "error": "No se pudo cambiar el inicio con el sistema: {detalle}"
@@ -735,7 +735,13 @@
       "titulo": "Al abrir y al salir",
       "continuar": "Continuar donde estaba",
       "continuarAyuda": "Si está apagada, BoldoAtlas abre en Inicio.",
-      "preguntar": "Preguntar antes de salir"
+      "alCerrar": "Al cerrar la ventana",
+      "alCerrarAyuda": "En la bandeja, la app sigue abierta y vuelve al instante. «Salir» del menú siempre la cierra y, con un trabajo en curso, pregunta siempre.",
+      "opcionesCerrar": {
+        "preguntar": "Preguntar",
+        "bandeja": "Dejar en la bandeja",
+        "cerrar": "Cerrar la app"
+      }
     },
     "barra": {
       "abrirAlPasar": "Abrir la barra lateral al pasar el mouse"
@@ -943,11 +949,21 @@
     "buscarPersona": "Buscar persona",
     "sinPersonas": "Aún no hay personas: primero crea una organización.",
     "carpeta": "Abrir carpeta de datos",
-    "salir": "Salir"
+    "salir": "Salir",
+    "trabajoTerminado": "BoldoAtlas. Terminó: {trabajo}"
+  },
+  "trabajos": {
+    "respaldar": "Respaldo de los datos",
+    "restaurar": "Restaurar un respaldo"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
     "texto": "Lo que ya aplicaste está guardado. Un formulario sin terminar se pierde.",
-    "cancelar": "Cancelar"
+    "cancelar": "Cancelar",
+    "bandeja": "Dejar en la bandeja",
+    "cerrar": "Cerrar la app",
+    "noPreguntar": "No volver a preguntar",
+    "trabajo": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá.",
+    "trabajoBandeja": "Trabajo en curso: {trabajos}. Cerrar la app lo interrumpirá. En la bandeja sigue, y al terminar el texto del icono lo avisa."
   }
 }

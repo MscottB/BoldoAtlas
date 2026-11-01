@@ -40,7 +40,7 @@ infoApp()
     // «Novedades» tras actualizar y la consulta periódica de versiones nuevas (la única conexión automática)
     useActualizaciones(pinia).iniciar();
     void crearBandeja(router);
-    // Desde aquí, cerrar la ventana pregunta (si la opción sigue activa); si la app no llegó hasta aquí, se cierra sin más.
+    // Desde aquí, cerrar la ventana sigue la opción «Al cerrar la ventana»; si la app no llegó hasta aquí, se cierra sin más.
     void conectarCierre();
   })
   .catch((e: unknown) => {

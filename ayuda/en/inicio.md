@@ -27,7 +27,19 @@ Afterwards you can adjust the name, logo, theme and language in **Settings**, an
 
 BoldoAtlas opens on **Home**, even with data loaded. To go back to your last view, turn on **Settings › When opening and quitting › Continue where I left off**.
 
-When you quit (the window's **X**, `Alt+F4` or **Quit** in the app menu and the tray), it asks if you are sure. What you already applied is saved; an unfinished form is lost. To stop the question, turn off **Ask before quitting** in that same section.
+When you close the window (the **X** or `Alt+F4`), it asks what to do. What you already applied is saved; an unfinished form is lost.
+
+- **Cancel** leaves things as they were.
+- **Keep in the tray** hides the window and BoldoAtlas stays open, with its icon next to the clock, ready to come back instantly. To come back, click the icon or open the shortcut again.
+- **Quit the app** closes it completely.
+
+With **Don't ask again**, your choice is saved. To change it, go to **Settings › When opening and quitting › When closing the window**: **Ask**, **Keep in the tray** or **Quit the app**. It is saved on this computer.
+
+**Quit**, in the app menu and the icon's menu, always closes the app and never leaves it in the tray; if the option is **Ask**, it asks first.
+
+If work is in progress, such as a backup, it always asks, even if you checked **Don't ask again**, and says which work it is: quitting the app interrupts it. In the tray the work continues and, when it finishes, the icon's text tells you (you see it when you hover over the icon).
+
+If your system has no tray (Linux without AppIndicator), **Keep in the tray** does not appear. Updating, restoring a backup, the installer and shutting down the computer close the app without asking, also when it is in the tray.
 
 ## The app menu and returning to Home
 

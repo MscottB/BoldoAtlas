@@ -27,7 +27,19 @@ Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuraci
 
 BoldoAtlas abre en **Inicio**, también con datos cargados. Para volver a la última vista, activa **Configuración › Al abrir y al salir › Continuar donde estaba**.
 
-Al salir (la **X** de la ventana, `Alt+F4` o **Salir** en el menú de la app y en la bandeja), pregunta si estás seguro. Lo que ya aplicaste está guardado; un formulario sin terminar se pierde. Para que no pregunte, apaga **Preguntar antes de salir** en esa misma sección.
+Al cerrar la ventana (la **X** o `Alt+F4`), pregunta qué hacer. Lo que ya aplicaste está guardado; un formulario sin terminar se pierde.
+
+- **Cancelar** sigue como estabas.
+- **Dejar en la bandeja** oculta la ventana y BoldoAtlas sigue abierto, con su icono junto al reloj, listo para volver al instante. Para volver, haz clic en el icono o abre de nuevo el acceso directo.
+- **Cerrar la app** la cierra del todo.
+
+Con **No volver a preguntar**, tu elección queda guardada. Para cambiarla, ve a **Configuración › Al abrir y al salir › Al cerrar la ventana**: **Preguntar**, **Dejar en la bandeja** o **Cerrar la app**. Se guarda en este computador.
+
+**Salir**, en el menú de la app y en el del icono, siempre cierra la app, nunca la deja en la bandeja; si la opción es **Preguntar**, pregunta antes.
+
+Si hay un trabajo en curso, como un respaldo, pregunta siempre, aunque hayas marcado **No volver a preguntar**, y dice qué trabajo es: cerrar la app lo interrumpe. En la bandeja el trabajo sigue y, al terminar, el texto del icono lo avisa (se ve al pasar el mouse sobre él).
+
+Si tu sistema no tiene bandeja (Linux sin AppIndicator), no aparece **Dejar en la bandeja**. Actualizar, restaurar un respaldo, el instalador y el apagado del computador cierran la app sin preguntar, también cuando está en la bandeja.
 
 ## El menú de la app y volver a Inicio
 
