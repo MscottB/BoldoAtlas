@@ -87,7 +87,8 @@ export const estadoDe = (m: Pestanas, id: string, ruta: string): unknown =>
 /**
  * Lee las pestañas guardadas (JSON ya parseado, de cualquier forma): descarta lo mal formado, los ids repetidos y las
  * rutas que `valida` rechaza (una vista que ya no existe, una unidad o persona eliminada). Siempre deja al menos una.
- * Una pestaña sin `org` (guardada antes de que hubiera varias organizaciones) queda de `orgActual`.
+ * Una pestaña sin `org` (guardada antes de que hubiera varias organizaciones) queda de `orgActual`. Admite una más que
+ * el máximo: la que se abre para la organización abierta cuando las otras ya lo llenan.
  */
 export function leerPestanas(
   crudo: unknown,
@@ -99,7 +100,7 @@ export function leerPestanas(
   const vistos = new Set<string>();
   const lista: Pestana[] = [];
   for (const x of Array.isArray(c.lista) ? c.lista : []) {
-    if (lista.length >= MAX_PESTANAS) break;
+    if (lista.length > MAX_PESTANAS) break;
     const p = (typeof x === "object" && x !== null ? x : {}) as Record<string, unknown>;
     const org = typeof p.org === "string" && p.org ? p.org : orgActual;
     if (

@@ -328,6 +328,38 @@ describe("usePestanas con varias organizaciones", () => {
     expect(datos.get(ANTIGUA)).toBe(antigua);
   });
 
+  it("la migración ocurre al conectar, sin validar, y no depende de qué organización se abra después", async () => {
+    const antigua = JSON.stringify({
+      lista: [
+        { id: "a", ruta: "/?raiz=otra" },
+        { id: "b", ruta: "/directorio" },
+      ],
+      activa: "a",
+    });
+    datos.set(ANTIGUA, antigua);
+    const p = usePestanas();
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
+    const migradas = datos.get(CLAVE);
+    expect(guardadas().lista).toMatchObject([
+      { id: "a", org: "A", ruta: "/?raiz=otra" },
+      { id: "b", org: "A", ruta: "/directorio" },
+    ]);
+    fijarBase("B");
+    expect(datos.get(CLAVE)).toBe(migradas);
+    await router.replace(p.entrar());
+    expect(p.lista.filter((x) => x.org === "A").map((x) => x.id)).toEqual(["a", "b"]);
+    expect(p.lista.find((x) => x.id === p.activa)!.org).toBe("B");
+    expect(datos.get(ANTIGUA)).toBe(antigua);
+  });
+
+  it("JSON roto en la clave nueva cae a la antigua", async () => {
+    datos.set(CLAVE, "{roto");
+    datos.set(ANTIGUA, JSON.stringify({ lista: [{ id: "x", ruta: "/revision" }], activa: "x" }));
+    const p = await arrancar();
+    expect(p.lista).toMatchObject([{ id: "x", org: "A", ruta: "/revision" }]);
+    expect(guardadas().activa).toBe("x");
+  });
+
   it("con la clave nueva, la antigua no se mira", async () => {
     datos.set(ANTIGUA, JSON.stringify({ lista: [{ id: "x", ruta: "/revision" }], activa: "x" }));
     const p = await arrancar({ lista: [{ id: "a", org: "A", ruta: "/directorio" }], activa: "a" });
@@ -362,6 +394,33 @@ describe("usePestanas con varias organizaciones", () => {
     expect(p.lista).toHaveLength(MAX_PESTANAS + 1);
     expect(p.lista.find((x) => x.id === p.activa)!.org).toBe("A");
     expect(p.lista.filter((x) => x.org === "B")).toHaveLength(MAX_PESTANAS);
+  });
+
+  it("la 13.ª se relee sin perder ninguna, aunque esté al frente o haya navegado", async () => {
+    const lista = Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `p${i}`, org: "B", ruta: "/" }));
+    const ultima = { ...lista[MAX_PESTANAS - 1]!, estado: { ruta: "/", datos: { x: 1 } } };
+    const p = await arrancar({ lista: [...lista.slice(0, -1), ultima], activa: "p0" });
+    const nueva = p.activa;
+    p.mover(nueva, 0);
+    await router.push("/directorio");
+    await router.push("/bienvenida");
+    await p.volverAlProyecto();
+    expect(p.activa).toBe(nueva);
+    expect(p.lista[0]).toMatchObject({ id: nueva, org: "A", ruta: "/directorio" });
+    expect(p.lista.filter((x) => x.org === "B")).toHaveLength(MAX_PESTANAS);
+    expect(p.estadoDe(`p${MAX_PESTANAS - 1}`, "/")).toEqual({ x: 1 });
+    expect(p.abrirNueva("/").ok).toBe(false);
+  });
+
+  it("«Volver» con solo pestañas de otra organización deja una sola de la abierta", async () => {
+    datos.set(CLAVE, JSON.stringify({ lista: [{ id: "a", org: "B", ruta: "/directorio" }], activa: "a" }));
+    const p = usePestanas();
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
+    await router.replace("/bienvenida");
+    await p.volverAlProyecto();
+    expect(p.lista.filter((x) => x.org === "A")).toHaveLength(1);
+    expect(p.lista).toHaveLength(2);
+    expect(rutaActual()).toBe("/");
   });
 
   it("al volver de la Bienvenida no activa una pestaña de otra organización con la misma ruta", async () => {

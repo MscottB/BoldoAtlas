@@ -160,10 +160,10 @@ describe("leerPestanas", () => {
     expect(m.lista[3]!.volver).toBe("/directorio");
   });
 
-  it("conserva la activa válida y no pasa del máximo", () => {
+  it("conserva la activa válida y no pasa del máximo más la de la organización abierta", () => {
     const lista = Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, ruta: "/" }));
     const m = leerPestanas({ lista, activa: "p3" }, todas, nuevoId, "A");
-    expect(m.lista).toHaveLength(MAX_PESTANAS);
+    expect(m.lista).toHaveLength(MAX_PESTANAS + 1);
     expect(m.activa).toBe("p3");
   });
 

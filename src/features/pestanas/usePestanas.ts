@@ -32,8 +32,6 @@ export const usePestanas = defineStore("pestanas", () => {
   const modelo = ref<P.Pestanas>(P.unaPestana(nuevoId(), baseActual()));
   let router: Router | null = null;
   let clave: string | null = null;
-  /** La clave de antes de las organizaciones (por base): de ella salen las pestañas la primera vez; no se borra. */
-  let claveAntigua = "";
   /** false mientras se ve la Bienvenida (fuera del proyecto): al volver se recargan y validan sus pestañas. */
   let enProyecto = false;
   /** Pestaña que pasa a activa cuando llegue la navegación a su ruta: así la vista vieja no se remonta con otra key. */
@@ -65,8 +63,8 @@ export const usePestanas = defineStore("pestanas", () => {
     const suya = m.lista.find(de);
     if (suya) return { ...m, activa: suya.id };
     const id = nuevoId();
-    // shortcut: con el tope lleno de otras se pasa por una y, al releer, se recorta esta (va al final) en vez de otra
-    // ajena; cuando el cambio de organización ofrezca qué cerrar al llegar al tope, se quita.
+    // Con el tope lleno de otras se pasa por una, que `leerPestanas` admite. shortcut: con esa de más y una tercera
+    // organización sin pestañas habría 14 y al releer se recorta la última; ver al abrir pestañas de otra organización.
     return (
       P.abrir(m, id, P.RUTA_INICIO, org) ?? {
         lista: [...m.lista, { id, org, ruta: P.RUTA_INICIO }],
@@ -77,9 +75,7 @@ export const usePestanas = defineStore("pestanas", () => {
 
   /** Carga las pestañas guardadas del proyecto (validadas) y devuelve la ruta de la activa. */
   function entrar(): string {
-    const guardadas = clave
-      ? (leerPreferencia<unknown>(clave, null) ?? leerPreferencia<unknown>(claveAntigua, null))
-      : null;
+    const guardadas = clave ? leerPreferencia<unknown>(clave, null) : null;
     modelo.value = aLaAbierta(P.leerPestanas(guardadas, valida, nuevoId, baseActual()));
     enProyecto = true;
     const p = modelo.value.lista.find((x) => x.id === modelo.value.activa)!;
@@ -87,11 +83,20 @@ export const usePestanas = defineStore("pestanas", () => {
     return esVistaCerrable(router?.resolve(p.ruta).name) ? (p.volver ?? P.RUTA_INICIO) : p.ruta;
   }
 
-  /** Una sola vez, al arrancar: `dirDatos` identifica esta copia de la app; `rutaBd`, su clave antigua. */
+  /** Una sola vez, al arrancar y con la base fijada: `dirDatos` identifica esta copia; `rutaBd`, su clave antigua. */
   function conectar(r: Router, dirDatos: string, rutaBd: string) {
     router = r;
     clave = `pestanas:${dirDatos}`;
-    claveAntigua = `pestanas:${rutaBd}`;
+    // Aquí y no en `entrar`: al arrancar solo existe `boldo.db`, y después se podría entrar con otra abierta.
+    // Sin validar, para no descartar nada; la clave antigua no se borra.
+    if (leerPreferencia<unknown>(clave, null) === null) {
+      const antigua = leerPreferencia<unknown>(`pestanas:${rutaBd}`, null);
+      if (antigua !== null)
+        guardarPreferencia(
+          clave,
+          P.leerPestanas(antigua, () => true, nuevoId, baseActual()),
+        );
+    }
     r.afterEach((to, from, fallo) => {
       if (fallo) {
         // Cancelada por otra navegación más nueva (p. ej. un segundo Ctrl+Tab antes de cargar la vista): el cambio de
