@@ -88,6 +88,15 @@ pub fn run() {
             if let Some(dir) = webview {
                 ventana = ventana.data_directory(dir);
             }
+            // maximizada en la pantalla principal: con el tamaño fijo de tauri.conf.json, una pantalla pequeña o con
+            // escalado la dejaba con una parte afuera. Restaurarla la deja en esa pantalla, con ese tamaño.
+            if let Some(pantalla) = app.primary_monitor()? {
+                let origen = pantalla
+                    .position()
+                    .to_logical::<f64>(pantalla.scale_factor());
+                ventana = ventana.position(origen.x, origen.y);
+            }
+            ventana = ventana.maximized(true);
             // arrancada por el sistema no le quita el foco a lo que el usuario abre al iniciar sesión; minimizada
             // y no oculta, porque no siempre hay bandeja desde donde volver
             let por_el_sistema = std::env::args().any(|a| a == inicio::ARGUMENTO);
