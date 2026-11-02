@@ -69,3 +69,8 @@ jobs:
           path: release/*/*
           retention-days: 14
           if-no-files-found: error
+      # Tras subirla: si falla, la portable queda para revisarla. En main no: ahí solo se calienta la caché.
+      - if: matrix.sistema == 'windows' && github.event_name != 'push'
+        name: Prueba de humo de la portable
+        run: node scripts/probar-app.mjs
+        timeout-minutes: 5
