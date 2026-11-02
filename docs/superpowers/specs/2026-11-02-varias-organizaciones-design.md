@@ -123,9 +123,9 @@ Pruebas obligatorias: lote y consulta con `baseId` antiguo rechazados; respuesta
 
 | Alcance | Cuáles |
 |---|---|
-| Por organización (`<clave>:<db_id>`) | vistas (`vista:*`), filtros y columnas del directorio, `personas:vista`, `plegado:*`, minimapa |
+| Por organización (`<clave>:<db_id>`) | vistas (`vista:*`), filtros y columnas del directorio, `personas:vista`, minimapa |
 | De la copia | pestañas, que ahora incluyen a qué organización pertenecen |
-| Por PC, como hoy | tema, acento, escala, idioma, frecuencia de respaldos y de actualizaciones, barra lateral, al cerrar |
+| Por PC, como hoy | tema, acento, escala, idioma, frecuencia de respaldos y de actualizaciones, barra lateral, secciones plegadas, al cerrar |
 
 **Migración:** al primer arranque, `pestanas:<rutaBd>` y las claves de datos que hoy no llevan base se copian a su clave nueva, con la organización de `boldo.db`. Las claves antiguas no se borran hasta una versión posterior.
 
@@ -144,7 +144,7 @@ Pruebas obligatorias: lote y consulta con `baseId` antiguo rechazados; respuesta
 - **Inicio, «Abierto recientemente»:** organizaciones con logo o inicial, nombre, color y fecha de apertura, hasta 8. Reemplaza la lista de módulos: `useRecientes.ts` se quita y `recientes:*` deja de escribirse. Un clic abre la organización. Menú de cada entrada: **Quitar de la lista**, que no borra el archivo, y **Eliminar organización**, que sí. Si el archivo no está, lo dice y ofrece **Buscar archivo** o **Quitar de la lista**.
 - **Inicio, abrir:** botones **Crear organización**, **Abrir archivo…** y **Explorar el ejemplo**, siempre visibles. Sin datos, los caminos de hoy.
 - **Crear:** crea un archivo nuevo y lo abre. Ya no vacía la base: se retira `reemplazarCon`, su diálogo de confirmación y `respaldarAntesDeReemplazar` en este camino. `boldo-antes-de-reemplazar-` sigue para importar.
-- **Explorar el ejemplo:** igual que Crear, con nombre «Ejemplo». Si ya hay uno en la lista, lo abre en vez de crear otro.
+- **Explorar el ejemplo:** igual que Crear, con el nombre de hoy, «Compañía Demo». Si ya hay uno en la lista, lo abre en vez de crear otro.
 - **Eliminar organización:** borra de verdad del disco, para que no se acumulen bases: el archivo con su `-wal` y `-shm`, y sus respaldos. Pide escribir el nombre y muestra cuánto espacio libera. La casilla **Guardar una copia antes**, marcada por defecto, deja una copia en `organizaciones-eliminadas/`; desmarcada, no se puede recuperar, y el diálogo lo dice. Si tiene pestañas abiertas, pide cerrarlas antes; si es la abierta, primero vuelve a Inicio.
   - **Nueva:** borra su carpeta `organizaciones/<id>/`.
   - **`boldo.db`:** borra el archivo y `respaldos/`. Al abrir la app sin ese archivo se crea uno vacío, que no se lista, y la próxima organización lo usa («Primera organización»).
