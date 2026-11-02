@@ -1269,6 +1269,146 @@ describe("selección múltiple", () => {
   });
 });
 
+describe("zonas", () => {
+  const fijas = (s: ReturnType<typeof nuevo>, zona: string) =>
+    s.zonaUnidades
+      .filter((x) => x.zona_id === zona)
+      .map((x) => x.unidad_id)
+      .sort();
+  async function dos(s: ReturnType<typeof nuevo>) {
+    return [await unidad(s, "A"), await unidad(s, "B")];
+  }
+  async function zona(s: ReturnType<typeof nuevo>, nombre: string, ids: string[]) {
+    const r = await s.crearZona(nombre, "#0F766E", ids);
+    if (!r.ok) throw new Error(r.mensaje);
+    return r.id;
+  }
+
+  it("crea la zona con sus unidades en un solo lote y normaliza el color", async () => {
+    const s = nuevo();
+    const [a, b] = await dos(s);
+    const antes = revision();
+    const z = await zona(s, " Norte ", [a, b]);
+    expect(revision()).toBe(antes + 1);
+    expect(s.zonas).toEqual([{ id: z, nombre: "Norte", color: "#0f766e" }]);
+    expect(fijas(s, z)).toEqual([a, b].sort());
+  });
+
+  it("un nombre repetido no crea otra: avisa cuál existe; nombre vacío y color inválido se rechazan", async () => {
+    const s = nuevo();
+    const [a] = await dos(s);
+    const z = await zona(s, "Zona Núñez", [a]);
+    const antes = revision();
+    const r = await s.crearZona("  zona nunez ", "#be123c", [a]);
+    expect(r).toMatchObject({ ok: false, existente: z });
+    expect((await s.crearZona("  ", "#be123c")).ok).toBe(false);
+    expect((await s.crearZona("Sur", "rojo")).ok).toBe(false);
+    expect(revision()).toBe(antes);
+  });
+
+  it("agregar salta a las que ya están, con un solo lote; sin nada que hacer no escribe", async () => {
+    const s = nuevo();
+    const [a, b] = await dos(s);
+    const z = await zona(s, "Norte", [a]);
+    const antes = revision();
+    expect((await s.agregarAZona([a, b], z)).ok).toBe(true);
+    expect(fijas(s, z)).toEqual([a, b].sort());
+    expect(revision()).toBe(antes + 1);
+    expect((await s.agregarAZona([a, b], z)).ok).toBe(true);
+    expect(revision()).toBe(antes + 1);
+  });
+
+  it("quitar saca solo a las indicadas", async () => {
+    const s = nuevo();
+    const [a, b] = await dos(s);
+    const z = await zona(s, "Norte", [a, b]);
+    expect((await s.quitarDeZona([a], z)).ok).toBe(true);
+    expect(fijas(s, z)).toEqual([b]);
+  });
+
+  it("editar cambia nombre y color; no toma el nombre de otra", async () => {
+    const s = nuevo();
+    const [a] = await dos(s);
+    const z = await zona(s, "Norte", [a]);
+    await zona(s, "Sur", [a]);
+    expect((await s.editarZona(z, { nombre: "Centro", color: "#BE123C" })).ok).toBe(true);
+    expect(s.zonas.find((x) => x.id === z)).toEqual({ id: z, nombre: "Centro", color: "#be123c" });
+    expect((await s.editarZona(z, { nombre: " sur " })).ok).toBe(false);
+    expect((await s.editarZona(z, { nombre: "centro" })).ok).toBe(true); // la propia no choca
+    expect((await s.editarZona(z, { nombre: "  " })).ok).toBe(false);
+    expect((await s.editarZona(z, { color: "rojo" })).ok).toBe(false);
+  });
+
+  it("eliminar la zona se puede deshacer, con sus unidades", async () => {
+    const s = nuevo();
+    const [a, b] = await dos(s);
+    const z = await zona(s, "Norte", [a, b]);
+    expect((await s.eliminarZona(z)).ok).toBe(true);
+    expect(s.zonas).toEqual([]);
+    expect(s.zonaUnidades).toEqual([]);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.zonas).toHaveLength(1);
+    expect(fijas(s, z)).toEqual([a, b].sort());
+  });
+
+  it("eliminar una unidad la saca de sus zonas y deshacer la devuelve", async () => {
+    const s = nuevo();
+    const [a, b] = await dos(s);
+    const z = await zona(s, "Norte", [a, b]);
+    expect((await s.eliminarUnidad(a)).ok).toBe(true);
+    expect(fijas(s, z)).toEqual([b]);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(fijas(s, z)).toEqual([a, b].sort());
+  });
+
+  it("eliminar varias en un lote: un solo deshacer las devuelve a todas a sus zonas", async () => {
+    const s = nuevo();
+    const raiz = await unidad(s, "Raíz");
+    const a = await unidad(s, "A", raiz);
+    const b = await unidad(s, "B", raiz);
+    const z = await zona(s, "Norte", [a, b]);
+    expect((await s.eliminarUnidades([a, b])).ok).toBe(true);
+    expect(fijas(s, z)).toEqual([]);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(fijas(s, z)).toEqual([a, b].sort());
+  });
+
+  it("duplicar una rama entra en las mismas zonas", async () => {
+    const s = nuevo();
+    const [a] = await dos(s);
+    const z = await zona(s, "Norte", [a]);
+    const r = await s.duplicarRama(a);
+    expect(r.ok && r.id && fijas(s, z)).toEqual([a, r.ok ? r.id! : ""].sort());
+  });
+
+  it("viendo otra fecha no se cambia nada, y se ven las zonas de hoy", async () => {
+    const s = nuevo();
+    const [a, b] = await dos(s);
+    const z = await zona(s, "Norte", [a]);
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    for (const r of [
+      await s.crearZona("Sur", "#be123c", [a]),
+      await s.agregarAZona([b], z),
+      await s.quitarDeZona([a], z),
+      await s.editarZona(z, { nombre: "Otra" }),
+      await s.eliminarZona(z),
+    ])
+      expect(r.ok).toBe(false);
+    expect(revision()).toBe(antes);
+    expect(fijas(s, z)).toEqual([a]);
+  });
+
+  it("reemplazar la organización borra las zonas", async () => {
+    const s = nuevo();
+    const [a] = await dos(s);
+    await zona(s, "Norte", [a]);
+    expect((await s.reemplazarCon("vacia", { nombre: "N", nombreRaiz: "R" })).ok).toBe(true);
+    expect(s.zonas).toEqual([]);
+    expect(h.bd!.consultar("SELECT 1 FROM zona_unidades")).toEqual([]);
+  });
+});
+
 describe("duplicar rama", () => {
   afterEach(() => cambiarIdioma("es"));
 
@@ -1378,6 +1518,8 @@ describe("reemplazarCon", () => {
       leyendas: 0,
       etiquetas: 0,
       unidad_etiquetas: 0,
+      zonas: 0,
+      zona_unidades: 0,
       conexiones: 0,
       cargos: 0,
       tipos_contrato: 0,

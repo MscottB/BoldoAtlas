@@ -7,6 +7,7 @@ import { crearPuesto, eliminarPuesto } from "@/db/repos/puestos";
 import { crearValor } from "@/db/repos/catalogos";
 import { crearEtiqueta, etiquetarUnidad } from "@/db/repos/etiquetas";
 import { crearConexion, eliminarConexion } from "@/db/repos/conexiones";
+import { agregarAZona, crearZona, quitarDeZona } from "@/db/repos/zonas";
 import { crearLeyenda } from "@/db/repos/leyendas";
 import { crearTrabajador } from "@/db/repos/trabajadores";
 import { asignarTitular } from "@/db/repos/asignaciones";
@@ -23,6 +24,7 @@ const estado = (): EstadoRama => ({
   puestos: bd.consultar<Puesto & { deleted_at: string | null }>("SELECT * FROM puestos"),
   unidadEtiquetas: bd.consultar("SELECT unidad_id, etiqueta_id, deleted_at FROM unidad_etiquetas"),
   conexiones: bd.consultar<Conexion & { deleted_at: string | null }>("SELECT * FROM conexiones"),
+  zonaUnidades: bd.consultar("SELECT zona_id, unidad_id, deleted_at FROM zona_unidades"),
 });
 const vivas = <T>(tabla: string) => bd.consultar<T>(`SELECT * FROM ${tabla} WHERE deleted_at IS NULL`);
 const aplicar = (...partes: ({ sentencias: Sentencia[] } | Sentencia[])[]) =>
@@ -176,6 +178,33 @@ describe("duplicarRama", () => {
     expect(etiquetasDe(a1.id)).toEqual([o.t1.id, o.t2.id].sort());
     expect(etiquetasDe(o.a.id)).toEqual([o.t1.id]); // la original conserva las suyas
     expect(vivas("unidad_etiquetas")).toHaveLength(antes + 3); // 1 de la raíz y 2 de A1
+  });
+
+  it("la copia entra en las mismas zonas, sin las que ya dejó", () => {
+    const o = organizacion();
+    const norte = crearZona("Norte", "#0f766e");
+    const sur = crearZona("Sur", "#be123c");
+    aplicar(
+      norte,
+      sur,
+      agregarAZona(norte.id, o.a.id),
+      agregarAZona(sur.id, o.a1.id),
+      agregarAZona(sur.id, o.a.id),
+      quitarDeZona(sur.id, o.a.id),
+    );
+    const copia = duplicarRama(estado(), o.a.id, "A (copia)");
+    aplicar(copia);
+    const zonasDe = (id: string) =>
+      bd
+        .consultar<{ zona_id: string }>(
+          "SELECT zona_id FROM zona_unidades WHERE unidad_id = ? AND deleted_at IS NULL",
+          [id],
+        )
+        .map((x) => x.zona_id);
+    const a1 = vivas<Unidad>("unidades").find((x) => x.nombre === "A1" && x.id !== o.a1.id)!;
+    expect(zonasDe(copia.id)).toEqual([norte.id]);
+    expect(zonasDe(a1.id)).toEqual([sur.id]);
+    expect(zonasDe(o.a.id)).toEqual([norte.id]); // la original sigue donde estaba
   });
 
   it("copia solo las conexiones con los dos extremos dentro de la rama", () => {

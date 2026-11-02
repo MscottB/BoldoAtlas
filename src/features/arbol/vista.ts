@@ -30,6 +30,8 @@ export interface ConfigVista {
   verPuestos: boolean;
   /** Las conexiones laterales se dibujan (se ocultan sin borrarlas). */
   relacionesLaterales: boolean;
+  /** Las zonas se dibujan (se ocultan sin borrarlas). */
+  zonas: boolean;
   /** Cada unidad en la fila (o columna) de su tipo, en el orden del catálogo de tipos (ver filasPorTipo). */
   alinearPorTipo: boolean;
   mostrarCargo: boolean;
@@ -56,6 +58,7 @@ export const VISTA_POR_DEFECTO: ConfigVista = {
   personasEnTarjetas: true,
   verPuestos: false,
   relacionesLaterales: true,
+  zonas: true,
   alinearPorTipo: false,
   mostrarCargo: true,
   mostrarPersona: true,
@@ -160,6 +163,7 @@ export function leerVista(crudo: unknown): ConfigVista {
     personasEnTarjetas: bool(c, d, "personasEnTarjetas"),
     verPuestos: bool(c, d, "verPuestos"),
     relacionesLaterales: bool(c, d, "relacionesLaterales"),
+    zonas: bool(c, d, "zonas"),
     // Antes se llamaba nivelesEstrictos: se acepta en preferencias y vistas guardadas con ese nombre.
     alinearPorTipo:
       typeof c.alinearPorTipo === "boolean"

@@ -133,6 +133,7 @@
       "titulo": "Personalizar",
       "verPuestos": "Ver puestos",
       "relacionesLaterales": "Relaciones laterales",
+      "zonas": "Zonas",
       "mostrarCargo": "Mostrar el cargo",
       "mostrarPersona": "Mostrar la persona",
       "rutaPorTipo": "Mostrar en las tarjetas el superior de tipo",
@@ -375,6 +376,8 @@
   "errores": {
     "correoDuplicado": "Ya existe una persona con ese correo.",
     "etiquetaDuplicada": "Ya existe una etiqueta con ese nombre.",
+    "zonaDuplicada": "Ya existe una zona con ese nombre.",
+    "unidadYaEnZona": "La unidad ya está en esa zona.",
     "unidadYaEtiquetada": "La unidad ya tiene esa etiqueta.",
     "valorDuplicado": "Ese valor ya existe en la lista.",
     "asignacionVigenteDuplicada": "Ese puesto ya tiene una asignación vigente de ese tipo.",
@@ -606,6 +609,24 @@
       "nPersonas": "{n} personas | {n} persona | {n} personas",
       "verJefe": "Ver a la jefatura (Mayús+Enter)"
     }
+  },
+  "zonas": {
+    "boton": "Zona…",
+    "titulo": "Zonas",
+    "cuantas": "{n} de {total}",
+    "agregar": "Agregar",
+    "quitar": "Quitar",
+    "agregarA": "Agregar las seleccionadas a {nombre}",
+    "quitarDe": "Quitar las seleccionadas de {nombre}",
+    "editar": "Editar {nombre}",
+    "nueva": "Nueva zona",
+    "nombre": "Nombre de la zona",
+    "color": "Color de la zona",
+    "crear": "Crear y agregar",
+    "guardar": "Guardar",
+    "eliminar": "Eliminar zona",
+    "eliminada": "Zona «{nombre}» eliminada",
+    "en": "Zona: {nombres}"
   },
   "seleccion": {
     "barra": "Acciones sobre las unidades seleccionadas",
@@ -950,7 +971,7 @@
     "buscar": "Buscar actualizaciones",
     "buscando": "Buscando…",
     "alDia": "Ya tienes la última versión.",
-    "disponible": "Versión {version} disponible",
+    "disponible": "Actualizar a {version}",
     "titulo": "Actualización disponible",
     "versiones": "Tienes la versión {actual}; la nueva es la {nueva}.",
     "queTrae": "Qué trae la versión nueva",
@@ -1010,6 +1031,7 @@
   },
   "bandeja": {
     "abrir": "Abrir BoldoAtlas",
+    "versionNueva": "Versión {version} disponible",
     "actualizarA": "Actualizar a v{version}",
     "buscarPersona": "Buscar persona",
     "sinPersonas": "Aún no hay personas: primero crea una organización.",
@@ -1137,6 +1159,8 @@
       "asignaciones": "Asignaciones",
       "conexiones": "Conexiones",
       "unidad_etiquetas": "Etiquetas en unidades",
+      "zonas": "Zonas",
+      "zona_unidades": "Unidades en zonas",
       "etiquetas": "Etiquetas",
       "procesos": "Procesos",
       "actividades": "Actividades",

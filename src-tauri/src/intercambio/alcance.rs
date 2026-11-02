@@ -35,6 +35,13 @@ pub const PODA: &[(&str, &str)] = &[
         "etiquetas",
         "id IN (SELECT etiqueta_id FROM unidad_etiquetas)",
     ),
+    // sin zona viva no hay nada que mostrar: la pertenencia no viaja, ni la zona eliminada con ella
+    (
+        "zona_unidades",
+        "deleted_at IS NULL AND unidad_id IN alc
+         AND zona_id IN (SELECT id FROM zonas WHERE deleted_at IS NULL)",
+    ),
+    ("zonas", "id IN (SELECT zona_id FROM zona_unidades)"),
     ("procesos", "deleted_at IS NULL AND unidad_id IN alc"),
     (
         "actividades",
@@ -306,6 +313,8 @@ mod tests {
         assert_eq!(ids("leyendas"), ["ley-a"]);
         assert_eq!(ids("etiquetas"), ["et-a"]);
         assert_eq!(ids("unidad_etiquetas"), ["ue-a"]);
+        assert_eq!(ids("zonas"), ["zo-a"]);
+        assert_eq!(ids("zona_unidades"), ["zu-a"]);
         assert_eq!(ids("conexiones"), ["x-dentro"]);
         assert_eq!(ids("procesos"), ["pr-a"]);
         assert_eq!(ids("actividades"), ["ac-a"]);
@@ -358,6 +367,7 @@ mod tests {
             b"fuera@x.cl",
             b"PersonaBorrada",
             b"UnidadFuera",
+            b"ZonaFuera",
         ] {
             assert!(
                 !contiene(&b, secreto),
@@ -366,6 +376,37 @@ mod tests {
             );
         }
         assert!(contiene(&b, b"Ana"));
+    }
+
+    #[test]
+    fn una_parcial_lleva_las_zonas_de_la_rama_con_solo_sus_unidades_y_exige_zona_viva() {
+        let (dir, conn) = base_con_datos();
+        conn.execute_batch(
+            "INSERT INTO zonas (id, nombre, color, created_at, updated_at, deleted_at) VALUES
+               ('zo-muerta', 'ZonaMuerta', '#000000', 'x', 'x', 'y');
+             INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES
+               ('zu-muerta', 'zo-muerta', 'hija', 'x', 'x'),
+               ('zu-a-otra', 'zo-a', 'otra', 'x', 'x');
+             INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at, deleted_at) VALUES
+               ('zu-baja', 'zo-a', 'hija', 'x', 'x', 'y');",
+        )
+        .unwrap();
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, r) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
+        let c = Connection::open(t.ruta()).unwrap();
+        let ids = |tabla: &str| -> Vec<String> {
+            c.prepare(&format!("SELECT id FROM {tabla} ORDER BY id"))
+                .unwrap()
+                .query_map([], |f| f.get(0))
+                .unwrap()
+                .map(Result::unwrap)
+                .collect()
+        };
+        assert_eq!(ids("zonas"), ["zo-a"]);
+        assert_eq!(ids("zona_unidades"), ["zu-a"]);
+        assert!(!contiene(&std::fs::read(t.ruta()).unwrap(), b"ZonaMuerta"));
+        // una zona con unidades fuera de la rama no es un corte: viaja con las de adentro
+        assert_eq!(r.cortes.conexiones, 1);
     }
 
     #[test]

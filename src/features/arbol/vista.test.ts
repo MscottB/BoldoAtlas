@@ -23,6 +23,9 @@ describe("relaciones laterales", () => {
     expect(leerVista(null).relacionesLaterales).toBe(true);
     expect(leerVista({ relacionesLaterales: false }).relacionesLaterales).toBe(false);
     expect(leerVista({ relacionesLaterales: "no" }).relacionesLaterales).toBe(true);
+    // las vistas guardadas antes de las zonas no dicen nada: se ven
+    expect(leerVista({}).zonas).toBe(true);
+    expect(leerVista({ zonas: false }).zonas).toBe(false);
   });
 });
 

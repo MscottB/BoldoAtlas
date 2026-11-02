@@ -89,17 +89,35 @@ Con dos o más unidades seleccionadas no se abre el panel de la unidad: sobre el
 - **Mover a…**: elige el nuevo superior (o **Sin superior (raíz)**). No se ofrecen las unidades seleccionadas ni lo que cuelga de ellas. Si una seleccionada cuelga de otra, solo se mueve la de arriba y lleva consigo su rama. Todo cambia en un solo paso.
 - **Plegar**: pliega las ramas de todas.
 - **Etiquetar…**: agrega a todas una etiqueta existente o una nueva (si el nombre ya existe, se usa esa). Las que ya tienen la etiqueta no se repiten.
+- **Zona…**: agrega las seleccionadas a una zona, las quita o crea una nueva (ver «Zonas»).
 - **Eliminar…**: pregunta cuántas unidades se eliminarán; el contenido de cada una (subunidades y puestos) pasa a su superior. Una unidad raíz con contenido no se elimina: el aviso de después dice cuántas se omitieron. El aviso trae un solo **Deshacer** (8 segundos) que lo devuelve todo. `Supr` hace lo mismo que el botón.
 - La **X** quita la selección.
 
 Viendo el organigrama a una fecha no hay selección múltiple.
+
+## Zonas
+
+Una zona agrupa unidades con un nombre y un color, también de ramas distintas: «Zona Norte», «Proyecto X». No cambia quién depende de quién.
+
+Selecciona dos o más unidades y pulsa **Zona…**. Ahí ves cada zona con cuántas de las seleccionadas tiene: **Agregar** suma las que faltan y **Quitar** saca las que están. **Nueva zona** crea otra con las seleccionadas; si el nombre ya existe, se usa esa. El lápiz cambia el nombre y el color, o elimina la zona (hay 8 segundos para deshacerlo).
+
+En el lienzo, una zona se ve de una de dos formas:
+
+- **Un recuadro** de su color, con el nombre arriba, si envuelve a sus unidades sin cubrir a ninguna otra.
+- **Una franja de color** arriba de cada una de sus tarjetas, si el recuadro cubriría a otras unidades. Pasa el puntero por la franja de la tarjeta para ver el nombre.
+
+La franja **Zonas** bajo el lienzo nombra todas las zonas a la vista, para que el nombre siempre se pueda leer.
+
+Solo cuentan las unidades a la vista: al plegar o abrir una rama, la zona se vuelve a dibujar. Para ocultar las zonas sin borrarlas, apaga **Zonas** en **Personalizar**.
+
+Si eliminas una unidad, sale de sus zonas; **Deshacer** la devuelve. Una rama duplicada entra en las mismas zonas. Viendo el organigrama a una fecha se muestran las zonas de hoy.
 
 ## Duplicar una rama
 
 El botón **Duplicar rama** (en **Avanzado**, en el Resumen del panel de la unidad, y en la tarjeta seleccionada) y `Ctrl` + `D` copian la unidad con todo lo que cuelga de ella:
 
 - La copia queda a continuación de la original, con el nombre «X (copia)» (solo la unidad de arriba; las de abajo conservan su nombre), y queda seleccionada. También se puede duplicar una raíz: la copia es otra raíz.
-- Se copian el tipo, la descripción, la marca, las etiquetas y los puestos (cargo, descripción y leyenda). La jefatura de cada copia apunta al puesto copiado.
+- Se copian el tipo, la descripción, la marca, las etiquetas, las zonas y los puestos (cargo, descripción y leyenda). La jefatura de cada copia apunta al puesto copiado.
 - Se copian las conexiones laterales cuyos dos extremos están dentro de la rama.
 - Los puestos copiados nacen **vacantes**: no se copian titulares, reemplazos ni historial.
 - Todo es un solo cambio, sin aviso de **Deshacer**: si no quieres la copia, elimínala.
@@ -135,6 +153,7 @@ El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo s
 - **Ver puestos** (apagado al comienzo): bajo cada unidad visible aparece una tarjeta por cada puesto, con el cargo, la persona titular o **Vacante**, y **Reemplazo: nombre** si hay un reemplazo vigente. Pulsa una tarjeta de puesto, o enfócala y presiona `Enter`, para abrir su ficha. En **Avanzado** se puede ocultar el cargo o la persona. Con muchas unidades desplegadas, los puestos suman tarjetas: pliega las ramas que no necesitas.
 - **Mostrar en las tarjetas el superior de tipo** (en **Avanzado**): marca los tipos (por ejemplo, Gerencia o Área) cuyo superior más cercano quieres leer en cada tarjeta de unidad. Solo aparecen los tipos que alguna unidad usa.
 - **Relaciones laterales** (encendido al comienzo, si hay conexiones): dibuja las conexiones laterales. Apagado, se ocultan sin borrarlas. Se guarda con la vista.
+- **Zonas** (encendido al comienzo, si hay zonas): dibuja las zonas. Apagado, se ocultan sin borrarlas. Se guarda con la vista.
 - **Colorear por**: **Ninguno**, **Marca de** un tipo o **Leyenda del puesto**. Con **Marca de** un tipo, cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Con **Leyenda del puesto**, las tarjetas de puesto toman el color de su leyenda (hay que activar **Ver puestos**; ver «Leyendas y colores de puestos»). Solo se aplica un criterio a la vez.
 
 Con un criterio de color activo, en una franja bajo el lienzo aparece una **leyenda** con el color, el código y el nombre de la unidad que define cada marca que se ve. Si no cabe, la fila se desplaza a lo ancho. Se puede plegar y volver a abrir con su encabezado. Una marca muy oscura (o muy clara) que casi no se distingue de la tarjeta lleva un contorno gris en la franja y el código.

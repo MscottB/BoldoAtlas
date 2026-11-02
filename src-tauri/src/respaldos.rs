@@ -719,15 +719,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (bd, respaldos, conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
-        let dos = [MIGRACIONES[0], "CREATE TABLE extra (x INTEGER);"];
+        let otra = [MIGRACIONES, &["CREATE TABLE extra (x INTEGER);"]].concat();
         let mut slot = Some(conn);
-        restaurar(&mut slot, &bd, &respaldos, &nombre, &dos).unwrap();
+        restaurar(&mut slot, &bd, &respaldos, &nombre, &otra).unwrap();
         assert!(slot.is_none());
         let c = db::abrir(&bd).unwrap();
         let v: i64 = c
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .unwrap();
-        assert_eq!(v, 2);
+        assert_eq!(v, MIGRACIONES.len() as i64 + 1);
         c.execute("INSERT INTO extra VALUES (1)", []).unwrap();
     }
 
@@ -737,7 +737,7 @@ mod tests {
         let (bd, respaldos, mut conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         escribir(&mut conn, 2);
-        let rota = [MIGRACIONES[0], "ESTO NO ES SQL;"];
+        let rota = [MIGRACIONES, &["ESTO NO ES SQL;"]].concat();
         let mut slot = Some(conn);
         let err = restaurar(&mut slot, &bd, &respaldos, &nombre, &rota).unwrap_err();
         assert_eq!(err.codigo, "fallo");
@@ -812,13 +812,19 @@ mod tests {
         let (bd, respaldos, conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         // el mismo respaldo visto por una app compilada con los fines de línea del otro sistema
-        let otro = if MIGRACIONES[0].contains("\r\n") {
-            MIGRACIONES[0].replace("\r\n", "\n")
-        } else {
-            MIGRACIONES[0].replace('\n', "\r\n")
-        };
+        let otras: Vec<String> = MIGRACIONES
+            .iter()
+            .map(|m| {
+                if m.contains("\r\n") {
+                    m.replace("\r\n", "\n")
+                } else {
+                    m.replace('\n', "\r\n")
+                }
+            })
+            .collect();
+        let otras: Vec<&str> = otras.iter().map(String::as_str).collect();
         let mut slot = Some(conn);
-        restaurar(&mut slot, &bd, &respaldos, &nombre, &[otro.as_str()]).unwrap();
+        restaurar(&mut slot, &bd, &respaldos, &nombre, &otras).unwrap();
     }
 
     #[test]

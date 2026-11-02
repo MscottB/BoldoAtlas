@@ -133,6 +133,7 @@
       "titulo": "Customize",
       "verPuestos": "Show positions",
       "relacionesLaterales": "Lateral connections",
+      "zonas": "Zones",
       "mostrarCargo": "Show the job title",
       "mostrarPersona": "Show the person",
       "rutaPorTipo": "Show on cards the parent unit of type",
@@ -375,6 +376,8 @@
   "errores": {
     "correoDuplicado": "A person with that email already exists.",
     "etiquetaDuplicada": "A tag with that name already exists.",
+    "zonaDuplicada": "A zone with that name already exists.",
+    "unidadYaEnZona": "The unit is already in that zone.",
     "unidadYaEtiquetada": "The unit already has that tag.",
     "valorDuplicado": "That value already exists in the list.",
     "asignacionVigenteDuplicada": "That position already has a current assignment of that type.",
@@ -606,6 +609,24 @@
       "nPersonas": "{n} people | {n} person | {n} people",
       "verJefe": "View the head (Shift+Enter)"
     }
+  },
+  "zonas": {
+    "boton": "Zone…",
+    "titulo": "Zones",
+    "cuantas": "{n} of {total}",
+    "agregar": "Add",
+    "quitar": "Remove",
+    "agregarA": "Add the selected units to {nombre}",
+    "quitarDe": "Remove the selected units from {nombre}",
+    "editar": "Edit {nombre}",
+    "nueva": "New zone",
+    "nombre": "Zone name",
+    "color": "Zone color",
+    "crear": "Create and add",
+    "guardar": "Save",
+    "eliminar": "Delete zone",
+    "eliminada": "Zone “{nombre}” deleted",
+    "en": "Zone: {nombres}"
   },
   "seleccion": {
     "barra": "Actions on the selected units",
@@ -950,7 +971,7 @@
     "buscar": "Check for updates",
     "buscando": "Checking…",
     "alDia": "You have the latest version.",
-    "disponible": "Version {version} available",
+    "disponible": "Update to {version}",
     "titulo": "Update available",
     "versiones": "You have version {actual}; the new one is {nueva}.",
     "queTrae": "What the new version brings",
@@ -1010,6 +1031,7 @@
   },
   "bandeja": {
     "abrir": "Open BoldoAtlas",
+    "versionNueva": "Version {version} available",
     "actualizarA": "Update to v{version}",
     "buscarPersona": "Find a person",
     "sinPersonas": "No people yet: create an organization first.",
@@ -1137,6 +1159,8 @@
       "asignaciones": "Assignments",
       "conexiones": "Connections",
       "unidad_etiquetas": "Tags on units",
+      "zonas": "Zones",
+      "zona_unidades": "Units in zones",
       "etiquetas": "Tags",
       "procesos": "Processes",
       "actividades": "Activities",

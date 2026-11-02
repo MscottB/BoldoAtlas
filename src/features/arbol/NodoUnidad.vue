@@ -49,6 +49,8 @@ const { escala, oscuro } = useTema();
 const contexto = inject(CONTEXTO_LIENZO)!;
 // Marca efectiva según «Colorear por» (null = sin color) y superiores por tipo elegido (null = la vista no los muestra).
 const marca = computed(() => contexto.marcas.value?.get(props.id) ?? null);
+const zonas = computed(() => contexto.zonas.value?.get(props.id) ?? []);
+const nombresZonas = computed(() => t("zonas.en", { nombres: zonas.value.map((z) => z.nombre).join(", ") }));
 // Una marca que casi no se distingue de la tarjeta (azul marino en oscuro) lleva contorno en la franja y el código.
 const tenue = computed(() => !!marca.value?.color && marcaTenue(marca.value.color, oscuro.value));
 const ruta = computed(() =>
@@ -143,7 +145,7 @@ async function guardar(e: Event) {
     role="button"
     tabindex="0"
     :aria-pressed="seleccionada"
-    class="line-clamp-2 rounded-lg border px-2 py-1 text-2xl leading-tight font-semibold break-words focus-visible:outline-4 focus-visible:outline-ring"
+    class="relative line-clamp-2 rounded-lg border px-2 py-1 text-2xl leading-tight font-semibold break-words focus-visible:outline-4 focus-visible:outline-ring"
     :class="[
       seleccionada
         ? 'border-marca bg-marca text-marca-foreground ring-8 ring-marca'
@@ -159,6 +161,13 @@ async function guardar(e: Event) {
     @keydown.space.self.prevent="seleccionar(id)"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+    <span
+      v-if="zonas.length"
+      class="absolute inset-x-0 top-0 flex h-3 overflow-hidden rounded-t-lg"
+      :title="nombresZonas"
+    >
+      <span v-for="z in zonas" :key="z.id" class="flex-1" :style="{ background: z.color }" />
+    </span>
     {{ data.unidad.nombre }}
     <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   </div>
@@ -177,6 +186,15 @@ async function guardar(e: Event) {
     @click="alHacerClic"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
+    <!-- Franja arriba con el color de cada zona que como recuadro cubriría a otras; se nombra al pasar y en la leyenda. -->
+    <span
+      v-if="zonas.length"
+      class="absolute inset-x-0 top-0 flex h-1.5 overflow-hidden rounded-t-lg"
+      :title="nombresZonas"
+    >
+      <span v-for="z in zonas" :key="z.id" class="flex-1" :style="{ background: z.color }" />
+      <span class="sr-only">{{ nombresZonas }}</span>
+    </span>
     <!-- Contorno sobre la franja de la marca (el borde izquierdo de 4 px). -->
     <span
       v-if="tenue"

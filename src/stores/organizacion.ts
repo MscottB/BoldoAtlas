@@ -12,6 +12,7 @@ import {
   type SubarbolGuardado,
   type Vista,
   type Etiqueta,
+  type Zona,
   type Leyenda,
   type TablaCatalogo,
   type Trabajador,
@@ -23,6 +24,7 @@ import * as T from "@/db/repos/trabajadores";
 import * as C from "@/db/repos/catalogos";
 import type { TablaOrdenable } from "@/db/repos/catalogos";
 import * as E from "@/db/repos/etiquetas";
+import * as Z from "@/db/repos/zonas";
 import * as X from "@/db/repos/conexiones";
 import * as S from "@/db/repos/subarboles";
 import * as V from "@/db/repos/vistas";
@@ -56,7 +58,7 @@ export type ResultadoEliminar =
 type Contenido = { hijos: string[]; puestos: string[] };
 
 export interface Borrado {
-  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista";
+  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista" | "zona";
   id: string;
   contenido?: Contenido;
   /** `unidades`: lo que contenía cada una de las eliminadas en el mismo lote. */
@@ -87,6 +89,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const asignaciones = ref<Asignacion[]>([]);
   const etiquetas = ref<Etiqueta[]>([]);
   const unidadEtiquetas = ref<{ unidad_id: string; etiqueta_id: string }[]>([]);
+  const zonas = ref<Zona[]>([]);
+  const zonaUnidades = ref<{ zona_id: string; unidad_id: string }[]>([]);
   const conexiones = ref<Conexion[]>([]);
   const subarboles = ref<SubarbolGuardado[]>([]);
   const vistas = ref<Vista[]>([]);
@@ -195,13 +199,15 @@ export const useOrganizacion = defineStore("organizacion", () => {
   async function cargar(): Promise<Resultado> {
     const esta = ++ultimaCarga;
     try {
-      const [u, t, pu, as, et, ue, co, sa, le, vi, meta, hist, ...cats] = await Promise.all([
+      const [u, t, pu, as, et, ue, zo, zu, co, sa, le, vi, meta, hist, ...cats] = await Promise.all([
         consultar<Unidad>(U.SQL_UNIDADES),
         consultar<Trabajador>(T.SQL_TRABAJADORES),
         consultar<Puesto>(P.SQL_PUESTOS),
         consultar<Asignacion>(A.SQL_ASIGNACIONES),
         consultar<Etiqueta>(E.SQL_ETIQUETAS),
         consultar<{ unidad_id: string; etiqueta_id: string }>(E.SQL_UNIDAD_ETIQUETAS),
+        consultar<Zona>(Z.SQL_ZONAS),
+        consultar<{ zona_id: string; unidad_id: string }>(Z.SQL_ZONA_UNIDADES),
         consultar<Conexion>(X.SQL_CONEXIONES),
         consultar<SubarbolGuardado>(S.SQL_SUBARBOLES),
         consultar<Leyenda>(L.SQL_LEYENDAS),
@@ -217,6 +223,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
       asignaciones.value = as;
       etiquetas.value = et;
       unidadEtiquetas.value = ue;
+      zonas.value = zo;
+      zonaUnidades.value = zu;
       conexiones.value = co;
       subarboles.value = sa;
       leyendas.value = le;
@@ -375,6 +383,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     trabajador: (b: Borrado) => T.restaurarTrabajador(b.id),
     puesto: (b: Borrado) => P.restaurarPuesto(b.id),
     vista: (b: Borrado) => V.restaurarVista(b.id),
+    zona: (b: Borrado) => Z.restaurarZona(b.id),
   };
 
   async function deshacer(): Promise<Resultado> {
@@ -428,6 +437,59 @@ export const useOrganizacion = defineStore("organizacion", () => {
     });
     return r.ok ? { ok: true, id: r.id! } : r;
   }
+  /** Crea la zona con esas unidades, en un lote. Como con las etiquetas, un nombre repetido sugiere la existente. */
+  async function crearZona(nombre: string, color: string, unidades: string[] = []): Promise<ResultadoValor> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
+    const c = L.normalizarColor(color);
+    if (!c) return rechazar(t("errores.colorInvalido"));
+    const clave = normalizarTexto(nombre);
+    const igual = zonas.value.find((z) => normalizarTexto(z.nombre) === clave);
+    if (igual) {
+      const mensaje = t("store.valorExiste", { nombre: igual.nombre });
+      error.value = mensaje;
+      return { ok: false, mensaje, existente: igual.id };
+    }
+    const r = await escribir(() => {
+      const nueva = Z.crearZona(nombre, c);
+      return {
+        id: nueva.id,
+        sentencias: [...nueva.sentencias, ...unidades.flatMap((u) => Z.agregarAZona(nueva.id, u))],
+      };
+    });
+    return r.ok ? { ok: true, id: r.id! } : r;
+  }
+  async function editarZona(id: string, cambios: { nombre?: string; color?: string }): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const color = cambios.color === undefined ? undefined : L.normalizarColor(cambios.color);
+    if (color === null) return rechazar(t("errores.colorInvalido"));
+    if (cambios.nombre !== undefined) {
+      if (!cambios.nombre.trim()) return rechazar(t("store.nombreVacio"));
+      const clave = normalizarTexto(cambios.nombre);
+      const igual = zonas.value.find((z) => z.id !== id && normalizarTexto(z.nombre) === clave);
+      if (igual) return rechazar(t("store.valorExiste", { nombre: igual.nombre }));
+    }
+    return escribir(() => Z.editarZona(id, { nombre: cambios.nombre, color }));
+  }
+  /** Agrega a todas en un lote; las que ya están se saltan (el índice no admite repetirlas). */
+  async function agregarAZona(ids: string[], zonaId: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const estan = new Set(zonaUnidades.value.filter((x) => x.zona_id === zonaId).map((x) => x.unidad_id));
+    const faltan = ids.filter((id) => !estan.has(id));
+    return faltan.length ? escribir(() => faltan.flatMap((id) => Z.agregarAZona(zonaId, id))) : { ok: true };
+  }
+  async function quitarDeZona(ids: string[], zonaId: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    return escribir(() => ids.flatMap((id) => Z.quitarDeZona(zonaId, id)));
+  }
+  async function eliminarZona(id: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    return escribir(
+      () => Z.eliminarZona(id),
+      () => (ultimoBorrado.value = { tipo: "zona", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
+    );
+  }
+
   const crearConexion = (origen: string, destino: string, etiqueta: string | null = null) =>
     escribir(() => X.crearConexion(origen, destino, etiqueta));
   const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));
@@ -442,6 +504,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       puestos: puestos.value,
       unidadEtiquetas: unidadEtiquetas.value,
       conexiones: conexiones.value,
+      zonaUnidades: zonaUnidades.value,
     };
     return escribir(() => copiarRama(estado, id, t("unidad.copiaDe", { nombre: u.nombre })));
   }
@@ -767,6 +830,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     asignaciones,
     etiquetas,
     unidadEtiquetas,
+    zonas,
+    zonaUnidades,
     conexiones,
     subarboles,
     vistas,
@@ -815,6 +880,11 @@ export const useOrganizacion = defineStore("organizacion", () => {
     etiquetarUnidades,
     quitarEtiqueta,
     crearEtiqueta,
+    crearZona,
+    editarZona,
+    agregarAZona,
+    quitarDeZona,
+    eliminarZona,
     crearConexion,
     eliminarConexion,
     guardarSubarbol,
