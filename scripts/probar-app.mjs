@@ -45,11 +45,30 @@ const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
 /** @template T @param {() => Promise<T | false | null | undefined>} f @param {string} que @param {number} [ms] @returns {Promise<T>} */
 async function esperar(f, que, ms = 30_000) {
   const limite = Date.now() + ms;
+  let ultimo = "";
   for (;;) {
-    const r = await f().catch(() => null);
+    const r = await f().catch((/** @type {Error} */ e) => {
+      ultimo = ` (último error: ${e.message}; causa: ${String(e.cause ?? "")})`;
+      return null;
+    });
     if (r) return r;
-    if (Date.now() > limite) throw new Error(`Pasaron ${ms / 1000} s esperando: ${que}`);
+    if (Date.now() > limite) throw new Error(`Pasaron ${ms / 1000} s esperando: ${que}${ultimo}`);
     await pausa(200);
+  }
+}
+
+/** Por qué no apareció la página: si hay WebView2, con qué argumentos corre y qué puertos escucha. */
+function procesosDeWebview() {
+  const comando = `
+    $p = Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe' or name='BoldoAtlas.exe'"
+    $p | ForEach-Object { "$($_.ProcessId) $($_.Name) $($_.CommandLine)".Substring(0, [Math]::Min(400, "$($_.ProcessId) $($_.Name) $($_.CommandLine)".Length)) }
+    "Puertos: " + ((Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $p.ProcessId -contains $_.OwningProcess } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort)/$($_.OwningProcess)" }) -join " ")
+    "Runtime: " + (Get-ItemProperty "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4F5}" -ErrorAction SilentlyContinue).pv
+  `;
+  try {
+    return execFileSync("pwsh", ["-NoProfile", "-Command", comando], { encoding: "utf8" });
+  } catch (e) {
+    return `(sin datos de procesos: ${String(e)})`;
   }
 }
 
@@ -134,18 +153,36 @@ async function abrirApp(exe) {
   });
   void termino.catch(() => undefined);
 
+  const matar = () => {
+    if (salio) return;
+    try {
+      // solo este PID y sus hijos
+      execFileSync("taskkill", ["/PID", String(proceso.pid), "/T", "/F"], { stdio: "ignore" });
+    } catch {
+      /* ya no estaba */
+    }
+  };
+
   /** @type {string} */
   const url = await esperar(
     async () => {
-      if (salio) throw new Error("salió");
+      if (salio) throw new Error(`la app salió (${proceso.exitCode}) antes de abrir la ventana`);
       /** @type {{ type: string, url: string, webSocketDebuggerUrl: string }[]} */
       const lista = await (await fetch(`http://127.0.0.1:${puerto}/json/list`)).json();
-      return lista.find((t) => t.type === "page" && t.url.startsWith("http://tauri.localhost"))
-        ?.webSocketDebuggerUrl;
+      const pagina = lista.find((t) => t.type === "page" && t.url.startsWith("http://tauri.localhost"));
+      if (!pagina)
+        throw new Error(`sin la página; hay: ${lista.map((t) => `${t.type} ${t.url}`).join(", ")}`);
+      return pagina.webSocketDebuggerUrl;
     },
-    "que la ventana cargue la página de la app (¿abre WebView2 en este runner?)",
+    `que la ventana cargue la página de la app en el puerto ${puerto}`,
     90_000,
-  );
+  ).catch((e) => {
+    anotar(
+      `[diagnóstico] la app ${salio ? `salió con ${proceso.exitCode}` : "sigue viva"}\n${procesosDeWebview()}`,
+    );
+    matar();
+    throw e;
+  });
   const { enviar } = await conectarCdp(url);
 
   /** @param {string} expression @returns {Promise<any>} */
@@ -184,15 +221,7 @@ async function abrirApp(exe) {
       );
       return codigo;
     },
-    /** Solo este PID y sus hijos. */
-    matar() {
-      if (salio) return;
-      try {
-        execFileSync("taskkill", ["/PID", String(proceso.pid), "/T", "/F"], { stdio: "ignore" });
-      } catch {
-        /* ya no estaba */
-      }
-    },
+    matar,
   };
 }
 
