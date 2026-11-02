@@ -1010,6 +1010,7 @@
   },
   "bandeja": {
     "abrir": "Abrir BoldoAtlas",
+    "versionNueva": "Versión {version} disponible",
     "actualizarA": "Actualizar a v{version}",
     "buscarPersona": "Buscar persona",
     "sinPersonas": "Aún no hay personas: primero crea una organización.",

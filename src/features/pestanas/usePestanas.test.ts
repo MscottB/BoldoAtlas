@@ -18,6 +18,7 @@ const nuevoRouter = (lenta = false) => {
       { path: "/revision", name: "revision", component: vista },
       { path: "/configuracion", name: "configuracion", component: vacio },
       { path: "/ayuda/:pagina?", name: "ayuda", component: vacio },
+      { path: "/acerca", name: "acerca", component: vacio },
       { path: "/bienvenida", name: "bienvenida", component: vacio, meta: { sinMarco: true } },
     ],
   });
@@ -142,7 +143,7 @@ describe("usePestanas", () => {
     expect(rutas()).toEqual(["/directorio"]);
   });
 
-  it("una vista de paso abierta con un enlace de Inicio: «Cerrar» vuelve a Inicio, solo esa vez", async () => {
+  it("Acerca de abierto desde Inicio: «Cerrar» vuelve a Inicio, solo esa vez", async () => {
     datos.set(
       "boldo:pestanas:C:/datos/boldo.db",
       JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }),
@@ -150,8 +151,7 @@ describe("usePestanas", () => {
     const p = usePestanas();
     p.conectar(router, "C:/datos/boldo.db");
     await router.replace("/bienvenida");
-    p.marcarVueltaAInicio();
-    await router.push("/ayuda");
+    await router.push("/acerca");
     await p.cerrarVista();
     expect(rutaActual()).toBe("/bienvenida");
 

@@ -20,7 +20,6 @@ import BotonTema from "@/components/BotonTema.vue";
 import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
 import { versionVisible } from "@/app/version";
-import { usePestanas } from "@/features/pestanas/usePestanas";
 import { useActualizaciones } from "@/stores/actualizaciones";
 import {
   Dialog,
@@ -50,7 +49,6 @@ const route = useRoute();
 const org = useOrganizacion();
 const recientes = useRecientes();
 const actualizaciones = useActualizaciones();
-const pestanas = usePestanas();
 
 const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
@@ -149,14 +147,10 @@ onMounted(() => {
       <p v-if="!hayDatos" class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
       <p class="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
         <span>{{ versionVisible() }}</span>
-        <RouterLink
-          to="/acerca"
-          class="underline underline-offset-4 hover:text-foreground"
-          @click="pestanas.marcarVueltaAInicio"
-          >{{ t("nav.acerca") }}</RouterLink
-        >
+        <RouterLink to="/acerca" class="underline underline-offset-4 hover:text-foreground">{{
+          t("nav.acerca")
+        }}</RouterLink>
         <button
-          v-if="!actualizaciones.disponible"
           type="button"
           class="underline underline-offset-4 hover:text-foreground disabled:no-underline"
           :disabled="actualizaciones.buscando"
