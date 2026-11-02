@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { dentroDe, enCI } from "./probar-app.mjs";
+import { conPuertoAbierto, dentroDe, enCI } from "./probar-app.mjs";
+
+describe("conPuertoAbierto", () => {
+  const WRY = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+
+  it("cambia solo ese texto, con el mismo largo", () => {
+    const exe = Buffer.from(`antes${WRY}despues`);
+    const parchado = conPuertoAbierto(exe).toString();
+    expect(parchado).toHaveLength(exe.length);
+    expect(parchado).toMatch(/^antes--remote-debugging-port=\d+ --remote-allow-origins=\* +despues$/);
+  });
+
+  it("falla si el texto no está o está dos veces, en vez de abrir la app sin puerto", () => {
+    expect(() => conPuertoAbierto(Buffer.from("otra cosa"))).toThrow(/una sola vez/);
+    expect(() => conPuertoAbierto(Buffer.from(WRY + WRY))).toThrow(/una sola vez/);
+  });
+});
 
 describe("enCI", () => {
   it("solo con las tres variables del runner", () => {

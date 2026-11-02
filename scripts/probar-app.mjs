@@ -3,9 +3,8 @@
 // «registro» es lo que imprime el proceso más la consola de la página.
 // Solo en CI: abre una ventana maximizada, y en el equipo de alguien aparecería en su pantalla.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, globSync, mkdtempSync, readdirSync } from "node:fs";
-import { createServer } from "node:net";
-import { basename, join, win32 } from "node:path";
+import { existsSync, globSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TAR, artefactos } from "./release.mjs";
 
@@ -17,7 +16,9 @@ const PERSONA = { id: "humo-foto", nombre: "Persona de humo" };
 // PNG de 1×1
 const FOTO =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==";
-const POLITICA = "HKCU\\Software\\Policies\\Microsoft\\Edge\\WebView2\\AdditionalBrowserArguments";
+const PUERTO = 9222;
+// Lo que wry pasa a WebView2 cuando la app no fija sus argumentos (wry/src/webview2/mod.rs).
+const ARGUMENTOS_WRY = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 const ESPERA_ARRANQUE_MS = 8000; // ESPERA_ARRANQUE de organizaciones.rs: una segunda instancia no debe llegar a esperarla
 
 /** @param {NodeJS.ProcessEnv} e */
@@ -27,6 +28,30 @@ export const enCI = (e) => e.CI === "true" && e.GITHUB_ACTIONS === "true" && Boo
 export function dentroDe(ruta, carpeta) {
   const r = win32.relative(carpeta, ruta);
   return r !== "" && !r.startsWith("..") && !win32.isAbsolute(r);
+}
+
+/**
+ * El exe con el puerto de depuración abierto en vez de los argumentos de wry, del mismo largo: un `&str` guarda su largo
+ * aparte. WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS no sirve: wry siempre fija argumentos, y mandan sobre la variable y sobre
+ * la política de WebView2 (probado en el runner: el navegador corre sin el puerto). Así se prueba el binario publicado y
+ * no otro compilado aparte. Solo la copia temporal: la que se sube a Actions queda igual.
+ * shortcut: depende de ese texto de wry. Si cambia, falla aquí mismo; entonces, compilar con `additionalBrowserArgs`.
+ * @param {Buffer} exe
+ */
+export function conPuertoAbierto(exe) {
+  const buscado = Buffer.from(ARGUMENTOS_WRY);
+  const primero = exe.indexOf(buscado);
+  if (primero < 0 || exe.indexOf(buscado, primero + 1) >= 0) {
+    throw new Error(
+      `El exe debe tener una sola vez «${ARGUMENTOS_WRY}»: ¿cambió wry o se fijó additionalBrowserArgs?`,
+    );
+  }
+  const parchado = Buffer.from(exe);
+  parchado.write(
+    `--remote-debugging-port=${PUERTO} --remote-allow-origins=*`.padEnd(buscado.length, " "),
+    primero,
+  );
+  return parchado;
 }
 
 /** @type {string[]} */
@@ -72,16 +97,6 @@ function procesosDeWebview() {
     return `(sin datos de procesos: ${String(e)})`;
   }
 }
-
-/** @returns {Promise<number>} */
-const puertoLibre = () =>
-  new Promise((ok, mal) => {
-    const s = createServer().once("error", mal);
-    s.listen(0, "127.0.0.1", () => {
-      const direccion = s.address();
-      s.close(() => ok(typeof direccion === "object" && direccion ? direccion.port : 0));
-    });
-  });
 
 /** @param {string} url */
 async function conectarCdp(url) {
@@ -132,13 +147,6 @@ async function conectarCdp(url) {
 
 /** La app abierta y lo que se le puede pedir por su página. @param {string} exe */
 async function abrirApp(exe) {
-  const puerto = await puertoLibre();
-  // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS no llega: wry pasa sus propios argumentos, y mandan sobre la variable. La política
-  // de WebView2 del usuario del runner, sí. Por eso esto va solo en CI: es un ajuste del usuario que corre la prueba.
-  const argumentos = `--remote-debugging-port=${puerto} --remote-allow-origins=*`;
-  execFileSync("reg", ["add", POLITICA, "/v", basename(exe), "/t", "REG_SZ", "/d", argumentos, "/f"], {
-    stdio: "ignore",
-  });
   const proceso = spawn(exe, [], { stdio: ["ignore", "pipe", "pipe"] });
   for (const salida of [proceso.stdout, proceso.stderr]) {
     salida.on("data", (b) => anotar(`[proceso] ${String(b).trimEnd()}`));
@@ -169,13 +177,13 @@ async function abrirApp(exe) {
     async () => {
       if (salio) throw new Error(`la app salió (${proceso.exitCode}) antes de abrir la ventana`);
       /** @type {{ type: string, url: string, webSocketDebuggerUrl: string }[]} */
-      const lista = await (await fetch(`http://127.0.0.1:${puerto}/json/list`)).json();
+      const lista = await (await fetch(`http://127.0.0.1:${PUERTO}/json/list`)).json();
       const pagina = lista.find((t) => t.type === "page" && t.url.startsWith("http://tauri.localhost"));
       if (!pagina)
         throw new Error(`sin la página; hay: ${lista.map((t) => `${t.type} ${t.url}`).join(", ")}`);
       return pagina.webSocketDebuggerUrl;
     },
-    `que la ventana cargue la página de la app en el puerto ${puerto}`,
+    `que la ventana cargue la página de la app en el puerto ${PUERTO}`,
     90_000,
   ).catch((e) => {
     anotar(
@@ -214,7 +222,7 @@ async function abrirApp(exe) {
       // el perfil de WebView2 no se comparte con un proceso que se está yendo: la siguiente copia tomaría sus argumentos
       await esperar(
         () =>
-          fetch(`http://127.0.0.1:${puerto}/json/version`).then(
+          fetch(`http://127.0.0.1:${PUERTO}/json/version`).then(
             () => false,
             () => true,
           ),
@@ -240,10 +248,8 @@ async function versionDe(bd) {
 
 /** @param {string} exe */
 function segundaInstancia(exe) {
-  const env = { ...process.env };
-  delete env.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS;
   const inicio = Date.now();
-  const p = spawn(exe, [], { env, stdio: "ignore" });
+  const p = spawn(exe, [], { stdio: "ignore" });
   return Promise.race([
     new Promise((ok, mal) => {
       p.once("error", mal);
@@ -436,16 +442,17 @@ async function reapertura(exe, carpeta, primera, usar) {
 }
 
 async function principal() {
-  const a = artefactos("windows", "");
-  const [zip, ...otros] = globSync(`release/*/${a.zip}`);
-  if (!zip || otros.length) throw new Error(`Se esperaba un solo ${a.zip} en release/*/: ${[zip, ...otros]}`);
-  const carpeta = mkdtempSync(join(process.env.RUNNER_TEMP ?? "", "boldo-humo-"));
-  execFileSync(TAR, ["-x", "-f", zip, "-C", carpeta]);
-  const exe = join(carpeta, a.programa.nombre);
   /** @type {Awaited<ReturnType<typeof abrirApp>> | undefined} */
   let abierta;
   const usar = (/** @type {Awaited<ReturnType<typeof abrirApp>>} */ app) => void (abierta = app);
   try {
+    const a = artefactos("windows", "");
+    const [zip, ...otros] = globSync(`release/*/${a.zip}`);
+    if (!zip || otros.length) throw new Error(`Se esperaba un solo ${a.zip} en release/*/: ${[zip, ...otros]}`);
+    const carpeta = mkdtempSync(join(process.env.RUNNER_TEMP ?? "", "boldo-humo-"));
+    execFileSync(TAR, ["-x", "-f", zip, "-C", carpeta]);
+    const exe = join(carpeta, a.programa.nombre);
+    writeFileSync(exe, conPuertoAbierto(readFileSync(exe)));
     const info = await primeraApertura(exe, carpeta, usar);
     await reapertura(exe, carpeta, info, usar);
     if (fallos.length) throw new Error(`${fallos.length} comprobaciones fallaron: ${fallos.join("; ")}`);
