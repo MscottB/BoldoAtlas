@@ -1,10 +1,11 @@
 //! Las fotos de las personas, sin pasar por JSON: el protocolo `foto` las sirve para `<img src>` y dos comandos binarios
 //! las leen y las guardan al optimizarlas. La columna guarda solo el base64 (`foto_png` admite PNG, JPEG y WebP).
-//! Forma de la URL, que arma `convertFileSrc` en el cliente: `http://foto.localhost/<id>` en Windows y
-//! `foto://localhost/<id>` en Linux y macOS.
+//! Forma de la URL, que arma `convertFileSrc` en el cliente: `http://foto.localhost/<baseId>/<id>` en Windows y
+//! `foto://localhost/<baseId>/<id>` en Linux y macOS.
 
 use crate::comandos::Estado;
 use crate::db;
+use crate::organizaciones::{OTRA_BASE, es_id_valido};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
@@ -100,6 +101,29 @@ pub fn servir(c: &Connection, metodo: &Method, ruta: &str) -> Response<Vec<u8>> 
     }
 }
 
+/// La ruta es `/<baseId>/<id>`. Solo responde con los datos de la base abierta: la foto de otra base es un 404 (sin
+/// `Cache-Control`, para que nada de ella quede guardado) y sin base abierta, un 503.
+pub fn respuesta_de(estado: &Estado, metodo: &Method, ruta: &str) -> Response<Vec<u8>> {
+    if metodo != Method::GET {
+        return sin_cuerpo(StatusCode::METHOD_NOT_ALLOWED);
+    }
+    let Some((base_id, id)) = ruta.strip_prefix('/').and_then(|r| r.split_once('/')) else {
+        return sin_cuerpo(StatusCode::BAD_REQUEST);
+    };
+    if !es_id_valido(base_id) {
+        return sin_cuerpo(StatusCode::BAD_REQUEST);
+    }
+    // `servir` quiere `/<id>` y revisa que sea solo un id
+    let r = estado.con_conexion(base_id, |c| {
+        Ok::<_, String>(servir(c, metodo, &format!("/{id}")))
+    });
+    match r {
+        Ok(r) => r,
+        Err(e) if e == OTRA_BASE => sin_cuerpo(StatusCode::NOT_FOUND),
+        Err(_) => sin_cuerpo(StatusCode::SERVICE_UNAVAILABLE),
+    }
+}
+
 /// Lo que atiende el protocolo: fuera del hilo principal, como `db_consultar`.
 pub fn atender(
     app: AppHandle,
@@ -108,12 +132,7 @@ pub fn atender(
 ) {
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
-        // shortcut: responde con la base abierta aunque la foto sea de otra, hasta que la URL lleve su base (Task 3)
-        let id = estado.base_abierta().map(|b| b.id).unwrap_or_default();
-        let r = estado.con_conexion(&id, |c| {
-            Ok::<_, String>(servir(c, pedido.method(), pedido.uri().path()))
-        });
-        responder.respond(r.unwrap_or_else(|_| sin_cuerpo(StatusCode::SERVICE_UNAVAILABLE)));
+        responder.respond(respuesta_de(&estado, pedido.method(), pedido.uri().path()));
     });
 }
 
@@ -383,6 +402,79 @@ mod tests {
             assert!(r.body().is_empty());
             assert!(r.headers().is_empty());
         }
+    }
+
+    const BASE_A: &str = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
+    const BASE_B: &str = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c";
+
+    /// Una base abierta con id `BASE_A` y la foto de `ana`; con `abierta` en falso, sin base abierta.
+    fn estado_con_foto(abierta: bool) -> Estado {
+        let c = base();
+        con_foto(&c, "ana", &STANDARD.encode(JPEG));
+        let base = abierta.then(|| Base {
+            id: BASE_A.into(),
+            bd: Default::default(),
+            respaldos: Default::default(),
+        });
+        Estado::de_prueba(abierta.then_some(c), base, None)
+    }
+
+    #[test]
+    fn foto_con_su_base_se_sirve() {
+        let e = estado_con_foto(true);
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana"));
+        assert_eq!(r.status(), StatusCode::OK);
+        assert_eq!(r.body().as_slice(), JPEG);
+        assert!(
+            r.headers()[header::CACHE_CONTROL]
+                .to_str()
+                .unwrap()
+                .contains("immutable")
+        );
+    }
+
+    #[test]
+    fn foto_de_a_con_b_abierta_da_404() {
+        let e = estado_con_foto(true);
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_B}/ana"));
+        assert_eq!(r.status(), StatusCode::NOT_FOUND);
+        assert!(r.body().is_empty());
+        assert!(r.headers().get(header::CACHE_CONTROL).is_none());
+    }
+
+    #[test]
+    fn ruta_sin_base_da_400() {
+        let e = estado_con_foto(true);
+        for ruta in [
+            "/ana",
+            "/",
+            "",
+            "/../x/ana",
+            "/a/b/c",
+            &format!("/{BASE_A}"),
+        ] {
+            let r = respuesta_de(&e, &Method::GET, ruta);
+            assert_eq!(r.status(), StatusCode::BAD_REQUEST, "{ruta}");
+            assert!(r.body().is_empty());
+        }
+        // la base va bien, el resto no es un id
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana/otro"));
+        assert_eq!(r.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn con_la_base_cerrada_da_503() {
+        let e = estado_con_foto(false);
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana"));
+        assert_eq!(r.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert!(r.body().is_empty());
+    }
+
+    #[test]
+    fn la_ruta_con_base_tambien_es_solo_get() {
+        let e = estado_con_foto(true);
+        let r = respuesta_de(&e, &Method::POST, &format!("/{BASE_A}/ana"));
+        assert_eq!(r.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
     #[test]

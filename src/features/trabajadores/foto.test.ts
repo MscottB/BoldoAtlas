@@ -12,6 +12,7 @@ import {
   tipoImagen,
   urlFoto,
 } from "./foto";
+import { fijarBase } from "@/lib/baseActiva";
 import { FOTO_MAX_BYTES } from "./validar";
 
 describe("medidasReducidas", () => {
@@ -298,12 +299,20 @@ describe("procesarFoto: la cola de la ficha", () => {
 });
 
 describe("urlFoto", () => {
-  afterEach(() => vi.unstubAllGlobals());
-  it("la forma la da Tauri y lleva la versión", () => {
-    const convertFileSrc = vi.fn((p: string, esquema: string) => `http://${esquema}.localhost/${p}`);
-    vi.stubGlobal("window", { __TAURI_INTERNALS__: { convertFileSrc } });
-    expect(urlFoto({ id: "ana-1", updated_at: "2026-11-01T10:00:00.000Z" })).toBe(
-      "http://foto.localhost/ana-1?v=2026-11-01T10%3A00%3A00.000Z",
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fijarBase("");
+  });
+  it("la forma la da Tauri, lleva la base y la versión", () => {
+    // como el real: codifica todo, también la barra
+    const convertFileSrc = vi.fn(
+      (p: string, esquema: string) => `http://${esquema}.localhost/${encodeURIComponent(p)}`,
     );
+    vi.stubGlobal("window", { __TAURI_INTERNALS__: { convertFileSrc } });
+    fijarBase("A");
+    expect(urlFoto({ id: "ana-1", updated_at: "2026-11-01T10:00:00.000Z" })).toBe(
+      "http://foto.localhost/A/ana-1?v=2026-11-01T10%3A00%3A00.000Z",
+    );
+    expect(convertFileSrc).toHaveBeenCalledWith("A", "foto");
   });
 });

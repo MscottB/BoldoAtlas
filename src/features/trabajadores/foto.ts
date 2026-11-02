@@ -1,6 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Trabajador } from "@/db/tipos";
 import { base64De, leerComoUrl } from "@/features/configuracion/logo";
+import { baseActual } from "@/lib/baseActiva";
 import { FOTO_MAX_BYTES } from "./validar";
 
 // La foto más grande en pantalla es de 56 px (vista previa de Personas); en el lienzo, 32 px con zoom 2 son 64 px. Con
@@ -175,7 +176,8 @@ export async function procesarFoto(tarea: {
 
 /**
  * URL de la foto, servida por Rust (src-tauri/src/fotos.rs). `convertFileSrc` da la forma de cada sistema:
- * `http://foto.localhost/<id>` en Windows y `foto://localhost/<id>` en Linux y macOS. Solo para quien tiene foto.
+ * `http://foto.localhost/<baseId>/<id>` en Windows y `foto://localhost/<baseId>/<id>` en Linux y macOS. Solo para quien
+ * tiene foto. `convertFileSrc` codifica la `/`: por eso solo la base pasa por él y el id va aparte.
  */
 export const urlFoto = (w: Pick<Trabajador, "id" | "updated_at">): string =>
-  `${convertFileSrc(w.id, "foto")}?v=${encodeURIComponent(w.updated_at)}`;
+  `${convertFileSrc(baseActual(), "foto")}/${w.id}?v=${encodeURIComponent(w.updated_at)}`;
