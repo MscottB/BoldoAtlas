@@ -201,8 +201,11 @@ async function abrirApp(exe) {
       throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
     return r.result.value;
   };
-  // la página puede estar aún sin los scripts de Tauri, y una recarga tampoco los deja antes de tiempo
-  await esperar(() => evaluar(`Boolean(window.__TAURI_INTERNALS__)`), "que la página tenga el puente de Tauri");
+  // la página aparece en CDP antes de tener los scripts de Tauri
+  await esperar(
+    () => evaluar(`Boolean(window.__TAURI_INTERNALS__)`),
+    "que la página tenga el puente de Tauri",
+  );
   return {
     pid: proceso.pid,
     evaluar,
@@ -450,7 +453,8 @@ async function principal() {
   try {
     const a = artefactos("windows", "");
     const [zip, ...otros] = globSync(`release/*/${a.zip}`);
-    if (!zip || otros.length) throw new Error(`Se esperaba un solo ${a.zip} en release/*/: ${[zip, ...otros]}`);
+    if (!zip || otros.length)
+      throw new Error(`Se esperaba un solo ${a.zip} en release/*/: ${[zip, ...otros]}`);
     const carpeta = mkdtempSync(join(process.env.RUNNER_TEMP ?? "", "boldo-humo-"));
     execFileSync(TAR, ["-x", "-f", zip, "-C", carpeta]);
     const exe = join(carpeta, a.programa.nombre);
