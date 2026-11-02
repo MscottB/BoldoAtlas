@@ -61,9 +61,9 @@ async function esperar(f, que, ms = 30_000) {
 function procesosDeWebview() {
   const comando = `
     $p = Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe' or name='BoldoAtlas.exe'"
-    $p | ForEach-Object { "$($_.ProcessId) $($_.Name) $($_.CommandLine)".Substring(0, [Math]::Min(400, "$($_.ProcessId) $($_.Name) $($_.CommandLine)".Length)) }
+    "Procesos: " + $p.Count
+    $p | Where-Object { $_.CommandLine -notmatch '--type=' } | ForEach-Object { "$($_.ProcessId) $($_.CommandLine)" }
     "Puertos: " + ((Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $p.ProcessId -contains $_.OwningProcess } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort)/$($_.OwningProcess)" }) -join " ")
-    "Runtime: " + (Get-ItemProperty "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4F5}" -ErrorAction SilentlyContinue).pv
   `;
   try {
     return execFileSync("pwsh", ["-NoProfile", "-Command", comando], { encoding: "utf8" });
