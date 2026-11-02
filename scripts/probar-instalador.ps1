@@ -74,7 +74,7 @@ Apuntar $escritorio $zonaPrivada
 Ejecutar '/P', '/UPDATE' 'Updating'
 Comprobar $escritorio $programa
 
-# Sin /UPDATE, sobre una copia ya instalada, como al abrir el instalador a mano
+# Sin /UPDATE, sobre una copia ya instalada: aunque se desinstale antes de instalar, sigue siendo actualizar
 Ejecutar '/P' 'Updating'
 
 Write-Output 'Instalador comprobado.'

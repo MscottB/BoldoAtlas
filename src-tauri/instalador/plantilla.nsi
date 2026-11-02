@@ -432,16 +432,17 @@ Var AppStartMenuFolder
 !insertmacro MUI_PAGE_STARTMENU Application $AppStartMenuFolder
 
 ; 7. Installation page
-; BoldoAtlas: si ya hay una copia instalada, dice «Actualizando» en vez de «Instalando». Se decide aquí y no en .onInit:
-; desinstalar antes de instalar, en la página de reinstalación, deja una instalación nueva.
+; BoldoAtlas: si ya había una copia instalada, dice «Actualizando» en vez de «Instalando». Se anota en .onInit: la página
+; de reinstalación puede desinstalarla antes de llegar aquí, y eso sigue siendo actualizar. No se compara la versión:
+; el registro guarda solo X.Y.Z, igual en todas las alpha.
+Var HabiaCopia
 Var TituloProgreso
 Var TextoProgreso
 Var TituloFin
 Var TextoFin
 Function ProgresoPreparar
-  ReadRegStr $0 SHCTX "${UNINSTKEY}" "DisplayName"
   ${If} $UpdateMode = 1
-  ${OrIf} $0 != ""
+  ${OrIf} $HabiaCopia != ""
     StrCpy $TituloProgreso "$(actualizandoTitulo)"
     StrCpy $TextoProgreso "$(actualizandoTexto)"
     StrCpy $TituloFin "$(actualizadoTitulo)"
@@ -642,6 +643,7 @@ Function .onInit
   !endif
 
   !insertmacro SetContext
+  ReadRegStr $HabiaCopia SHCTX "${UNINSTKEY}" "DisplayName"
 
   ${If} $INSTDIR == "${PLACEHOLDER_INSTALL_DIR}"
     ; Set default install location
@@ -905,6 +907,7 @@ Section Install
 
   !insertmacro MoverAccesoDeZonaPrivada "$SMPROGRAMS\${PRODUCTNAME}.lnk"
   !insertmacro MoverAccesoDeZonaPrivada "$DESKTOP\${PRODUCTNAME}.lnk"
+  !insertmacro MoverAccesoDeZonaPrivada "$APPDATA\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\${PRODUCTNAME}.lnk"
 
   !ifmacrodef NSIS_HOOK_POSTINSTALL
     !insertmacro NSIS_HOOK_POSTINSTALL
