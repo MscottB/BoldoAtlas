@@ -432,6 +432,32 @@ Var AppStartMenuFolder
 !insertmacro MUI_PAGE_STARTMENU Application $AppStartMenuFolder
 
 ; 7. Installation page
+; BoldoAtlas: si ya hay una copia instalada, dice «Actualizando» en vez de «Instalando». Se decide aquí y no en .onInit:
+; desinstalar antes de instalar, en la página de reinstalación, deja una instalación nueva.
+Var TituloProgreso
+Var TextoProgreso
+Var TituloFin
+Var TextoFin
+Function ProgresoPreparar
+  ReadRegStr $0 SHCTX "${UNINSTKEY}" "DisplayName"
+  ${If} $UpdateMode = 1
+  ${OrIf} $0 != ""
+    StrCpy $TituloProgreso "$(actualizandoTitulo)"
+    StrCpy $TextoProgreso "$(actualizandoTexto)"
+    StrCpy $TituloFin "$(actualizadoTitulo)"
+    StrCpy $TextoFin "$(actualizadoTexto)"
+  ${Else}
+    StrCpy $TituloProgreso "$(MUI_TEXT_INSTALLING_TITLE)"
+    StrCpy $TextoProgreso "$(MUI_TEXT_INSTALLING_SUBTITLE)"
+    StrCpy $TituloFin "$(MUI_TEXT_FINISH_TITLE)"
+    StrCpy $TextoFin "$(MUI_TEXT_FINISH_SUBTITLE)"
+  ${EndIf}
+FunctionEnd
+!define MUI_PAGE_CUSTOMFUNCTION_PRE ProgresoPreparar
+!define MUI_PAGE_HEADER_TEXT "$TituloProgreso"
+!define MUI_PAGE_HEADER_SUBTEXT "$TextoProgreso"
+!define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "$TituloFin"
+!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "$TextoFin"
 !insertmacro MUI_PAGE_INSTFILES
 
 ; 8. Finish page
@@ -447,6 +473,8 @@ Var AppStartMenuFolder
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
+!define MUI_FINISHPAGE_TITLE "$TituloFin"
+!define MUI_FINISHPAGE_TEXT "$TextoFin"
 ; BoldoAtlas: casilla «Iniciar con Windows», apagada salvo que ya estuviera antes de instalar ($RunPrevio: desinstalar
 ; antes de actualizar borra el valor). Es el mismo valor de Run que lee y cambia Configuración (src-tauri/src/inicio.rs).
 ; En modo pasivo (actualizaciones) esta página no se muestra y no se toca. La casilla manda sobre lo que hubiera anotado
@@ -541,6 +569,15 @@ LangString iniciarConWindows ${LANG_ENGLISH} "Start ${PRODUCTNAME} with Windows"
 ; BoldoAtlas: el aviso de .onInit cuando no se puede reabrir fuera de la app que lo abrió
 LangString moverInstalador ${LANG_SPANISH} "Este instalador se abrió desde otra aplicación y no puede continuar desde esa carpeta.$\r$\n$\r$\nMuévelo a Descargas y ábrelo desde el Explorador de archivos."
 LangString moverInstalador ${LANG_ENGLISH} "This installer was opened from another app and can't continue from that folder.$\r$\n$\r$\nMove it to Downloads and open it from File Explorer."
+; BoldoAtlas: los textos de la página de progreso y la final al actualizar
+LangString actualizandoTitulo ${LANG_SPANISH} "Actualizando"
+LangString actualizandoTitulo ${LANG_ENGLISH} "Updating"
+LangString actualizandoTexto ${LANG_SPANISH} "Espera mientras se actualiza ${PRODUCTNAME}."
+LangString actualizandoTexto ${LANG_ENGLISH} "Please wait while ${PRODUCTNAME} is being updated."
+LangString actualizadoTitulo ${LANG_SPANISH} "Actualización completada"
+LangString actualizadoTitulo ${LANG_ENGLISH} "Update complete"
+LangString actualizadoTexto ${LANG_SPANISH} "${PRODUCTNAME} se actualizó correctamente."
+LangString actualizadoTexto ${LANG_ENGLISH} "${PRODUCTNAME} was updated successfully."
 !insertmacro MUI_RESERVEFILE_LANGDLL
 {{#each language_files}}
   !include "{{this}}"
@@ -757,6 +794,20 @@ Section WebView2
   ${EndIf}
 SectionEnd
 
+; BoldoAtlas: un instalador abierto desde una app empaquetada, antes del arreglo de .onInit, dejó el programa en la zona
+; privada de esa app y sus accesos directos apuntando allí. La actualización se instala en la carpeta normal y sin tocar
+; accesos: seguirían abriendo la versión vieja. Se mueven solo esos, no el que alguien tenga hacia una copia portable.
+; IsShortcutTarget deja en $2 el destino que leyó.
+!macro MoverAccesoDeZonaPrivada lnk
+  !insertmacro IsShortcutTarget "${lnk}" "$INSTDIR\${MAINBINARYNAME}.exe"
+  Pop $0
+  ${StrLoc} $1 "$2" "\LocalCache\Local\${PRODUCTNAME}\" ">"
+  ${If} $0 = 0
+  ${AndIf} $1 != ""
+    !insertmacro SetShortcutTarget "${lnk}" "$INSTDIR\${MAINBINARYNAME}.exe"
+  ${EndIf}
+!macroend
+
 Section Install
   SetOutPath $INSTDIR
 
@@ -851,6 +902,9 @@ Section Install
   ${OrIf} ${Silent}
     Call CreateOrUpdateDesktopShortcut
   ${EndIf}
+
+  !insertmacro MoverAccesoDeZonaPrivada "$SMPROGRAMS\${PRODUCTNAME}.lnk"
+  !insertmacro MoverAccesoDeZonaPrivada "$DESKTOP\${PRODUCTNAME}.lnk"
 
   !ifmacrodef NSIS_HOOK_POSTINSTALL
     !insertmacro NSIS_HOOK_POSTINSTALL
