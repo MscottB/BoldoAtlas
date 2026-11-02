@@ -5,7 +5,8 @@ import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
 import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
-import { fijarBase } from "./lib/baseActiva";
+import { fijarBase, soltarDatos } from "./lib/baseActiva";
+import { migrarPreferencias } from "./lib/preferencias";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
@@ -26,6 +27,9 @@ infoApp()
   .then(async (info) => {
     if (info.error) return createApp(PantallaError, { info }).use(i18n).mount("#app");
     fijarBase(info.baseId);
+    // router.ts importa VistaArbol sin carga diferida: useVista ya se evaluó con la base vacía y se relee aquí.
+    migrarPreferencias(info.baseId, info.dirDatos);
+    soltarDatos();
     const pinia = createPinia();
     const org = useOrganizacion(pinia);
     // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, se muestra el motivo en vez de una app vacía.

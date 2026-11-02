@@ -27,7 +27,7 @@ import {
   type FilaPersonaUnidad,
   type OrdenPersonas,
 } from "./personas";
-import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
 import { claseSelect } from "@/lib/utils";
 import { arbolDePersonas } from "./arbolPersonas";
 import ArbolPersonas from "./ArbolPersonas.vue";
@@ -72,10 +72,10 @@ const todas = computed(() =>
 const filas = computed(() => filtrarPersonasUnidad(todas.value, texto.value, orden.value));
 const resumen = computed(() => resumenPorCargo(alcance.value, org.enFecha.vigentes, org.catalogos.cargos));
 
-// Lista o árbol: se recuerda en este computador. El árbol solo se arma si se ve, y se rehace con los datos o el orden,
+// Lista o árbol: se recuerda por organización. El árbol solo se arma si se ve, y se rehace con los datos o el orden,
 // no con cada tecla: la búsqueda parte de las filas ya filtradas de la lista.
-const vista = ref(leerPreferencia<unknown>("personas:vista", "lista") === "arbol" ? "arbol" : "lista");
-watch(vista, (v) => guardarPreferencia("personas:vista", v));
+const vista = ref(leerPreferenciaOrg<unknown>("personas:vista", "lista") === "arbol" ? "arbol" : "lista");
+watch(vista, (v) => guardarPreferenciaOrg("personas:vista", v));
 const arbol = computed(() => {
   const { unidades, puestos, vigentes, trabajadores, porId } = org.enFecha;
   const cargos = org.catalogos.cargos;
