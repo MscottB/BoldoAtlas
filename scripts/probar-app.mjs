@@ -201,6 +201,8 @@ async function abrirApp(exe) {
       throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
     return r.result.value;
   };
+  // la página puede estar aún sin los scripts de Tauri, y una recarga tampoco los deja antes de tiempo
+  await esperar(() => evaluar(`Boolean(window.__TAURI_INTERNALS__)`), "que la página tenga el puente de Tauri");
   return {
     pid: proceso.pid,
     evaluar,
