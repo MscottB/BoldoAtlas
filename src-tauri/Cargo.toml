@@ -27,6 +27,8 @@ serde_json = "1"
 dirs = "7"
 rusqlite = { version = "0.41.0", features = ["bundled"] }
 uuid = { version = "1.29.0", features = ["v7"] }
+# la misma versión que ya trae Tauri: las fotos se guardan en base64 (src/fotos.rs)
+base64 = "0.23"
 # Actualizador (src/actualizar.rs). Salvo el plugin, todas ya las trae tauri-plugin-updater, con las mismas
 # opciones: reqwest + rustls (ring) para leer la lista de releases, zip (con deflate) para la portable de
 # Windows, futures-util para cancelar la descarga.

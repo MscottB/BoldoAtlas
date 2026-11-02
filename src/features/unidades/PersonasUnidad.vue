@@ -15,6 +15,7 @@ import { formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useRetornoFoco } from "@/lib/foco";
 import { iniciales } from "@/lib/texto";
+import { urlFoto } from "@/features/trabajadores/foto";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   correosUnicos,
@@ -288,8 +289,10 @@ watch(persona, (w) => previa.value && !w && void volver());
             >
               <img
                 v-if="f.foto"
-                :src="`data:image/png;base64,${f.foto}`"
+                :src="f.foto"
                 alt=""
+                loading="lazy"
+                decoding="async"
                 class="size-8 shrink-0 rounded-full object-cover"
               />
               <span
@@ -323,9 +326,10 @@ watch(persona, (w) => previa.value && !w && void volver());
       </Button>
       <div class="flex items-center gap-3">
         <img
-          v-if="persona?.foto_png"
-          :src="`data:image/png;base64,${persona.foto_png}`"
+          v-if="persona?.tiene_foto"
+          :src="urlFoto(persona)"
           alt=""
+          decoding="async"
           class="size-14 shrink-0 rounded-full object-cover"
         />
         <span

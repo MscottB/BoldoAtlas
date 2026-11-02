@@ -66,7 +66,7 @@ impl Estado {
         }
     }
 
-    fn con_conexion<T, E: From<String>>(
+    pub(crate) fn con_conexion<T, E: From<String>>(
         &self,
         f: impl FnOnce(&mut Connection) -> Result<T, E>,
     ) -> Result<T, E> {

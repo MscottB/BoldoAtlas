@@ -10,6 +10,7 @@ import { iniciales } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
+import { urlFoto } from "@/features/trabajadores/foto";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
@@ -238,9 +239,11 @@ async function guardar(e: Event) {
     <div v-if="!compacta && config.mostrarJefe" class="flex items-center gap-1.5">
       <template v-if="data.jefe">
         <img
-          v-if="data.jefe.foto_png && config.mostrarFoto"
-          :src="`data:image/png;base64,${data.jefe.foto_png}`"
+          v-if="data.jefe.tiene_foto && config.mostrarFoto"
+          :src="urlFoto(data.jefe)"
           alt=""
+          loading="lazy"
+          decoding="async"
           class="shrink-0 rounded-full object-cover"
           :class="personas ? 'size-8' : 'size-5'"
         />
@@ -275,9 +278,11 @@ async function guardar(e: Event) {
       <span class="flex gap-0.5" aria-hidden="true">
         <template v-for="w in data.equipo" :key="w.id">
           <img
-            v-if="w.foto_png"
-            :src="`data:image/png;base64,${w.foto_png}`"
+            v-if="w.tiene_foto"
+            :src="urlFoto(w)"
             alt=""
+            loading="lazy"
+            decoding="async"
             class="size-6 rounded-full object-cover"
           />
           <span v-else class="grid size-6 place-items-center rounded-full bg-muted text-[10px]">

@@ -1,10 +1,13 @@
-import type { Trabajador } from "@/db/tipos";
+import type { CamposTrabajador } from "@/db/repos/trabajadores";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 
 const t = i18n.global.t;
 
+/** Lo que se guarda: la foto ya optimizada y el logo. */
 export const FOTO_MAX_BYTES = 1024 * 1024;
+/** Lo que se acepta elegir: la foto se reduce al elegirla, y una de teléfono pesa varios MB. */
+export const FOTO_ENTRADA_MAX_BYTES = 30 * 1024 * 1024;
 export const FOTO_TIPOS = ["image/png", "image/jpeg", "image/webp"];
 
 // Forma mínima de correo (algo@dominio.ext); la unicidad la impone la base.
@@ -22,7 +25,7 @@ export function validarFicha(f: { nombre: string; correo: string | null }): Reco
 /** Mensaje de error de la foto elegida, o null si sirve. */
 export function validarFoto(archivo: { type: string; size: number }): string | null {
   if (!FOTO_TIPOS.includes(archivo.type)) return t("ficha.error.fotoTipo");
-  if (archivo.size > FOTO_MAX_BYTES) return t("ficha.error.fotoPeso");
+  if (archivo.size > FOTO_ENTRADA_MAX_BYTES) return t("ficha.error.fotoPeso");
   return null;
 }
 
@@ -30,7 +33,22 @@ export function validarFoto(archivo: { type: string; size: number }): string | n
 export const hayCoincidenciaExacta = (valores: { nombre: string }[], texto: string): boolean =>
   valores.some((v) => normalizarTexto(v.nombre) === normalizarTexto(texto));
 
-export type DatosFicha = Omit<Trabajador, "id">;
+/**
+ * Lo que edita la ficha. Foto y notas no vienen en la lista: `notas` undefined en lo guardado es que aún no se cargaron, y
+ * `foto_png` undefined en el formulario es que no se tocó (null la quita). En ninguno de los dos casos se escribe.
+ */
+export type DatosFicha = CamposTrabajador;
+
+const CAMPOS_FICHA: (keyof DatosFicha)[] = [
+  "nombre",
+  "correo",
+  "telefono",
+  "tipo_contrato_id",
+  "sede_id",
+  "jornada_id",
+  "foto_png",
+  "notas",
+];
 
 /** Lo que se guarda: textos recortados y en blanco como null (el nombre es obligatorio: solo se recorta). */
 export const normalizarFicha = (f: DatosFicha): DatosFicha => ({
@@ -38,7 +56,8 @@ export const normalizarFicha = (f: DatosFicha): DatosFicha => ({
   nombre: f.nombre.trim(),
   correo: f.correo?.trim() || null,
   telefono: f.telefono?.trim() || null,
-  notas: f.notas?.trim() || null,
+  // Unas notas sin cargar no son unas notas vacías: convertirlas en null las borraría al guardar.
+  ...(f.notas === undefined ? {} : { notas: f.notas?.trim() || null }),
 });
 
 /** Campos del formulario que difieren de lo guardado (o de la ficha vacía si es nueva), ya normalizados. */
@@ -46,7 +65,9 @@ export function cambiosFicha(form: DatosFicha, base: DatosFicha): Partial<DatosF
   const f = normalizarFicha(form);
   const b = normalizarFicha(base);
   return Object.fromEntries(
-    Object.entries(f).filter(([k, v]) => k !== "id" && v !== b[k as keyof DatosFicha]),
+    CAMPOS_FICHA.filter(
+      (k) => f[k] !== undefined && f[k] !== b[k] && !(k === "notas" && b.notas === undefined),
+    ).map((k) => [k, f[k]]),
   );
 }
 

@@ -1,6 +1,7 @@
 mod actualizar;
 mod comandos;
 mod db;
+mod fotos;
 mod inicio;
 mod intercambio;
 mod respaldos;
@@ -41,6 +42,9 @@ pub fn run() {
         .manage(actualizar::Actualizador::default())
         .manage(salida::Cierre::default())
         .manage(intercambio::Sesiones::default())
+        .register_asynchronous_uri_scheme_protocol(fotos::ESQUEMA, |ctx, pedido, responder| {
+            fotos::atender(ctx.app_handle().clone(), pedido, responder)
+        })
         .on_window_event(|ventana, evento| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
                 salida::al_pedir_cierre(ventana.app_handle(), api);
@@ -97,6 +101,9 @@ pub fn run() {
             comandos::info_app,
             comandos::db_consultar,
             comandos::db_lote,
+            fotos::foto_bytes,
+            fotos::fotos_guardar,
+            fotos::fotos_compactar,
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
             comandos::respaldar_antes_de_reemplazar,

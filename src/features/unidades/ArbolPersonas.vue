@@ -186,8 +186,10 @@ defineExpose({
         <span v-else class="-mx-1 size-6 shrink-0" aria-hidden="true" />
         <img
           v-if="personaDe(f)?.foto"
-          :src="`data:image/png;base64,${personaDe(f)?.foto}`"
+          :src="personaDe(f)?.foto ?? undefined"
           alt=""
+          loading="lazy"
+          decoding="async"
           class="size-8 shrink-0 rounded-full object-cover"
         />
         <span

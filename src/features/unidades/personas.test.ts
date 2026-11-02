@@ -19,8 +19,8 @@ const w = (id: string, nombre: string, correo: string | null = null): Trabajador
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  foto_png: null,
-  notas: null,
+  tiene_foto: 0,
+  updated_at: "",
 });
 const trabajadores = [
   w("t1", "Ana Pérez", "ana@x.cl"),

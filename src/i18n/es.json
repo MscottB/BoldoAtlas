@@ -438,7 +438,9 @@
       "nombre": "Escribe el nombre.",
       "correo": "El correo no es válido.",
       "fotoTipo": "La foto debe ser PNG, JPG o WebP.",
-      "fotoPeso": "La foto no puede pesar más de 1 MB.",
+      "fotoPeso": "La foto no puede pesar más de 30 MB.",
+      "fotoPesada": "No se pudo dejar la foto por debajo de 1 MB.",
+      "notasLectura": "No se pudieron leer las notas. Cierra la ficha y ábrela de nuevo.",
       "fotoLectura": "No se pudo leer la foto."
     },
     "cerrar": "Cerrar",
@@ -731,6 +733,26 @@
       "titulo": "Organización",
       "nombre": "Nombre de la organización"
     },
+    "fotos": {
+      "titulo": "Fotos",
+      "ayuda": "Las fotos nuevas se reducen al elegirlas. Las que ya están guardadas se pueden reducir aquí: se ven igual y pesan mucho menos.",
+      "optimizar": "Optimizar fotos existentes",
+      "estimando": "Calculando cuánto se ahorraría…",
+      "nadaQueHacer": "Tus fotos ya están optimizadas.",
+      "confirmarTitulo": "¿Optimizar las fotos?",
+      "confirmarTexto": "{n} foto ocupa {total} y quedaría en unos {quedarian}. Antes se hace un respaldo con las originales. | {n} fotos ocupan {total} y quedarían en unos {quedarian}. Antes se hace un respaldo con las originales.",
+      "confirmar": "Optimizar",
+      "volver": "Volver",
+      "respaldo": "Haciendo el respaldo…",
+      "compactando": "Liberando el espacio en la base…",
+      "avance": "{n} de {total} fotos",
+      "avanceEtiqueta": "Avance de la optimización",
+      "cancelar": "Cancelar",
+      "resultado": "Listo. Fotos optimizadas: {n}. Espacio liberado: {ahorro}.",
+      "resultadoCancelado": "Cancelado. Fotos optimizadas: {n}. Espacio liberado: {ahorro}. Las demás siguen como estaban.",
+      "sinGanancia": "{n} foto no bajaba de peso y se dejó igual. | {n} fotos no bajaban de peso y se dejaron igual.",
+      "fallidas": "{n} foto no se pudo optimizar y sigue como estaba: | {n} fotos no se pudieron optimizar y siguen como estaban:"
+    },
     "logo": {
       "titulo": "Logo",
       "ayuda": "PNG, JPG o WebP de hasta 1 MB.",
@@ -1001,7 +1023,8 @@
     "importarReemplazar": "Reemplazar los datos por los del archivo",
     "importarComparar": "Comparar el archivo con tus datos",
     "importarAplicarRevision": "Aplicar lo decidido en la revisión",
-    "revisionAbierta": "Revisión de una importación con decisiones sin aplicar"
+    "revisionAbierta": "Revisión de una importación con decisiones sin aplicar",
+    "optimizarFotos": "Optimizar las fotos"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",

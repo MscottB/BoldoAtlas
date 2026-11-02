@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
+import SeccionFotos from "@/features/configuracion/SeccionFotos.vue";
 import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
 import SeccionActualizaciones from "@/features/actualizaciones/SeccionActualizaciones.vue";
 import SeccionInicioSistema from "@/features/configuracion/SeccionInicioSistema.vue";
@@ -205,6 +206,8 @@ const quitarLogo = async () => {
     </section>
 
     <SeccionRespaldos />
+
+    <SeccionFotos />
 
     <SeccionActualizaciones />
 
