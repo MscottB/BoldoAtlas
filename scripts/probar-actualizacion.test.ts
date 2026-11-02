@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as hijos from "node:child_process";
-import { principal, problemas } from "./probar-actualizacion.mjs";
+import { comoLoInstalaNsis, principal, problemas } from "./probar-actualizacion.mjs";
 
 vi.mock("node:child_process", () => ({
   execFileSync: vi.fn(),
@@ -52,5 +52,20 @@ describe("principal", () => {
     expect(await principal([])).toBe(1);
     expect(aviso).toHaveBeenCalledWith(expect.stringContaining("Solo en CI"));
     for (const f of [hijos.spawn, hijos.spawnSync, hijos.execFileSync]) expect(f).not.toHaveBeenCalled();
+  });
+});
+
+describe("comoLoInstalaNsis", () => {
+  it("cambia solo el tipo de paquete, con el mismo largo", () => {
+    const exe = Buffer.from("antes__TAURI_BUNDLE_TYPE_VAR_UNKdespues");
+    expect(comoLoInstalaNsis(exe).toString()).toBe("antes__TAURI_BUNDLE_TYPE_VAR_NSSdespues");
+    expect(exe.toString()).toContain("_UNK");
+  });
+
+  it("falla si el marcador no está o está dos veces", () => {
+    expect(() => comoLoInstalaNsis(Buffer.from("nada"))).toThrow(/una sola vez/);
+    expect(() => comoLoInstalaNsis(Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK".repeat(2)))).toThrow(
+      /una sola vez/,
+    );
   });
 });

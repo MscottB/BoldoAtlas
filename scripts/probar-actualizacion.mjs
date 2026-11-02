@@ -78,8 +78,35 @@ function cerrarTodo() {
   spawnSync("taskkill", ["/IM", "boldo-atlas.exe", "/T", "/F"], { stdio: "ignore", timeout: 30_000 });
 }
 
-/** @param {string} ruta */
-const sha256 = (ruta) => createHash("sha256").update(readFileSync(ruta)).digest("hex");
+/** @param {Buffer} contenido */
+const sha256 = (contenido) => createHash("sha256").update(contenido).digest("hex");
+
+/**
+ * El exe tal como lo deja el instalador NSIS: el bundler de Tauri escribe el tipo de paquete en el exe antes de empaquetarlo
+ * («Patching … with bundle type information: nsis»), cambiando UNK por NSS en una constante, y deja el de `target` sin
+ * cambiar. Es lo único que se espera distinto.
+ * shortcut: depende de ese marcador de tauri-utils. Si cambia, falla aquí; entonces, comparar con el exe extraído del setup.
+ * @param {Buffer} exe
+ */
+export function comoLoInstalaNsis(exe) {
+  const buscado = Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK");
+  const primero = exe.indexOf(buscado);
+  if (primero < 0 || exe.indexOf(buscado, primero + 1) >= 0)
+    throw new Error(
+      "El exe compilado debe tener una sola vez __TAURI_BUNDLE_TYPE_VAR_UNK: ¿cambió tauri-utils?",
+    );
+  const parchado = Buffer.from(exe);
+  parchado.write("NSS", primero + buscado.length - 3);
+  return parchado;
+}
+
+/** Dónde difieren dos archivos, para el mensaje de un fallo. @param {Buffer} a @param {Buffer} b */
+function diferencias(a, b) {
+  /** @type {number[]} */
+  const donde = [];
+  for (let i = 0; i < Math.min(a.length, b.length) && donde.length < 5; i++) if (a[i] !== b[i]) donde.push(i);
+  return `tamaños ${a.length} y ${b.length}; primeras diferencias en ${donde.join(", ") || "(ninguna: solo el largo)"}`;
+}
 
 /** @param {string} bd @param {(c: import("node:sqlite").DatabaseSync) => any} f */
 async function enBase(bd, f) {
@@ -138,9 +165,11 @@ async function correr(anterior, nuevo, compilado) {
 
   console.log("1. instalar la versión publicada");
   instalar(anterior, ["/P"]);
-  const exeCompilado = sha256(compilado);
+  const compiladoBytes = readFileSync(compilado);
+  const esperado = comoLoInstalaNsis(compiladoBytes);
+  const exeCompilado = sha256(esperado);
   if (!existsSync(programa)) throw new Error(`El instalador publicado no dejó ${programa}`);
-  const exeAntes = sha256(programa);
+  const exeAntes = sha256(readFileSync(programa));
   console.log(`   exe instalado: sha256 ${exeAntes}`);
   if (exeAntes === exeCompilado)
     throw new Error("La versión publicada es idéntica a la compilada: no se probaría ninguna actualización");
@@ -188,11 +217,16 @@ async function correr(anterior, nuevo, compilado) {
   // como el actualizador de la app (que pasa también /R); aquí la app se abre a mano en el paso siguiente
   console.log("4. instalar la nueva encima");
   instalar(nuevo, ["/P", "/UPDATE"]);
-  const exeDespues = sha256(programa);
-  console.log(`   exe instalado: sha256 ${exeDespues}; el compilado en este trabajo: ${exeCompilado}`);
+  const instalado = readFileSync(programa);
+  const exeDespues = sha256(instalado);
+  console.log(
+    `   exe instalado: sha256 ${exeDespues}; el compilado en este trabajo, con el tipo de paquete nsis: ${exeCompilado} (sin él: ${sha256(compiladoBytes)})`,
+  );
   if (exeDespues === exeAntes) throw new Error("/UPDATE terminó sin reemplazar boldo-atlas.exe");
   if (exeDespues !== exeCompilado)
-    throw new Error("El boldo-atlas.exe instalado no es el compilado en este trabajo");
+    throw new Error(
+      `El boldo-atlas.exe instalado no es el compilado en este trabajo: ${diferencias(instalado, esperado)}`,
+    );
 
   console.log("5. abrirla, esperar la lista");
   // con una lista previa ya hay archivo antes de que la nueva abra: se espera a que anote la apertura
