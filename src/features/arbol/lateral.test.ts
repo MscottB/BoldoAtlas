@@ -54,6 +54,31 @@ const tapa = (e: Punto, cajas: Map<string, Caja>, w = 120, h = 20) =>
   );
 
 describe("trazado de las conexiones laterales", () => {
+  it("sin descripción, el punto va sobre la línea, fuera de las tarjetas y no en su inicio", () => {
+    const cajas = new Map(fila("a", 5, 0));
+    const t = validar(cajas, lat("a0", "a4"));
+    expect(t.etiqueta).not.toEqual(t.puntos[0]);
+    expect(tapa(t.etiqueta, cajas, 14, 20)).toBe(false);
+    expect(t.etiquetaTapa).toBe(false);
+    const sobreLaLinea = t.puntos.slice(1).some((q, k) => {
+      const p = t.puntos[k]!;
+      return (
+        t.etiqueta.x >= Math.min(p.x, q.x) - 8 &&
+        t.etiqueta.x <= Math.max(p.x, q.x) + 8 &&
+        t.etiqueta.y >= Math.min(p.y, q.y) - 8 &&
+        t.etiqueta.y <= Math.max(p.y, q.y) + 8
+      );
+    });
+    expect(sobreLaLinea).toBe(true);
+  });
+
+  it("los puntos de dos líneas por la misma franja no quedan uno sobre otro", () => {
+    const cajas = new Map(fila("a", 5, 0));
+    const t = trazarLaterales([lat("a0", "a4", null, "x"), lat("a0", "a4", null, "y")], cajas, "vertical");
+    const [p, q] = [t.get("x")!.etiqueta, t.get("y")!.etiqueta];
+    expect(Math.abs(p.x - q.x) >= 14 || Math.abs(p.y - q.y) >= 20).toBe(true);
+  });
+
   it("misma fila, con tarjetas de por medio: va por la franja libre bajo la fila", () => {
     const cajas = new Map(fila("a", 5, 0));
     const t = validar(cajas, lat("a0", "a4"));

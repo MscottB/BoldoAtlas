@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import * as U from "@/db/repos/unidades";
+import * as X from "@/db/repos/conexiones";
 import { useOrganizacion } from "./organizacion";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
 import { cambiarIdioma } from "@/i18n";
@@ -651,6 +652,101 @@ describe("organización, etiquetas y conexiones", () => {
     expect(s.conexiones).toHaveLength(1);
     await s.eliminarConexion(c.id);
     expect(s.conexiones).toHaveLength(0);
+  });
+});
+
+describe("conexiones: crear y editar", () => {
+  async function tres() {
+    const s = nuevo();
+    const a = await unidad(s, "Mantención");
+    const b = await unidad(s, "Compras");
+    const c = await unidad(s, "Finanzas");
+    const r = await s.crearConexion(a, b, "Repuestos");
+    if (!r.ok || !r.id) throw new Error("no se creó");
+    return { s, a, b, c, id: r.id };
+  }
+
+  it("crear rechaza consigo misma y el duplicado, también al revés, sin escribir", async () => {
+    const { s, a, b } = await tres();
+    const antes = revision();
+    expect(await s.crearConexion(a, a)).toEqual({
+      ok: false,
+      mensaje: "Una unidad no puede conectarse consigo misma.",
+    });
+    expect(await s.crearConexion(b, a)).toEqual({
+      ok: false,
+      mensaje: "Ya existe una conexión entre «Compras» y «Mantención».",
+    });
+    expect(revision()).toBe(antes);
+  });
+
+  it("edita la descripción: recorta, y en blanco queda sin descripción", async () => {
+    const { s, id } = await tres();
+    const antes = revision();
+    expect((await s.actualizarConexion(id, { etiqueta: "  Bodega " })).ok).toBe(true);
+    expect(s.conexiones[0].etiqueta).toBe("Bodega");
+    expect(revision()).toBe(antes + 1);
+    await s.actualizarConexion(id, { etiqueta: "   " });
+    expect(s.conexiones[0].etiqueta).toBeNull();
+  });
+
+  it("cambia un extremo con un solo escribir y conserva la descripción", async () => {
+    const { s, id, a, c } = await tres();
+    const antes = revision();
+    expect((await s.actualizarConexion(id, { destino_id: c })).ok).toBe(true);
+    expect(s.conexiones[0]).toMatchObject({ origen_id: a, destino_id: c, etiqueta: "Repuestos" });
+    expect(revision()).toBe(antes + 1);
+  });
+
+  it("sin cambios no escribe: updated_at decide en los .boldo", async () => {
+    const { s, id, b } = await tres();
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { etiqueta: " Repuestos ", destino_id: b })).toEqual({ ok: true });
+    expect(revision()).toBe(antes);
+  });
+
+  it("rechaza consigo misma y el duplicado, sin escribir ni lanzar", async () => {
+    const { s, id, a, b, c } = await tres();
+    const otra = await s.crearConexion(a, c);
+    if (!otra.ok) throw new Error("no se creó");
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { destino_id: a })).toEqual({
+      ok: false,
+      mensaje: "Una unidad no puede conectarse consigo misma.",
+    });
+    expect(await s.actualizarConexion(otra.id!, { destino_id: b })).toEqual({
+      ok: false,
+      mensaje: "Ya existe una conexión entre «Mantención» y «Compras».",
+    });
+    expect(revision()).toBe(antes);
+  });
+
+  it("con un duplicado heredado de un .boldo se puede editar su descripción", async () => {
+    const { s, id, a, b } = await tres();
+    h.bd!.aplicar(X.crearConexion(a, b, null).sentencias);
+    await s.cargar();
+    expect((await s.actualizarConexion(id, { etiqueta: "Bodega" })).ok).toBe(true);
+    expect(s.conexiones.find((c) => c.id === id)?.etiqueta).toBe("Bodega");
+  });
+
+  it("una conexión que ya no existe se avisa, sin escribir", async () => {
+    const { s, id } = await tres();
+    await s.eliminarConexion(id);
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { etiqueta: "x" })).toEqual({
+      ok: false,
+      mensaje: "La conexión ya no existe.",
+    });
+    expect(revision()).toBe(antes);
+  });
+
+  it("a una fecha es de solo lectura", async () => {
+    const { s, id, a, c } = await tres();
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    expect((await s.actualizarConexion(id, { etiqueta: "x" })).ok).toBe(false);
+    expect((await s.crearConexion(c, a)).ok).toBe(false);
+    expect(revision()).toBe(antes);
   });
 });
 

@@ -44,6 +44,7 @@ import {
 import { cambiosPorDia, type Cambio } from "@/features/arbol/cambios";
 import { duplicarRama as copiarRama } from "@/features/arbol/duplicar";
 import { planEliminar, soloCimas } from "@/features/arbol/multiple";
+import { excluidasParaConexion } from "@/features/unidades/panel";
 import { normalizarTexto } from "@/lib/texto";
 import { tiposARenombrar } from "@/features/configuracion/semillas";
 import { i18n, type Idioma } from "@/i18n";
@@ -490,8 +491,48 @@ export const useOrganizacion = defineStore("organizacion", () => {
     );
   }
 
-  const crearConexion = (origen: string, destino: string, etiqueta: string | null = null) =>
-    escribir(() => X.crearConexion(origen, destino, etiqueta));
+  /** Lo que el CHECK no alcanza a explicar y lo que la base no impide: consigo misma y dos conexiones entre las mismas unidades. */
+  function conexionRechazada(origen: string, destino: string, entre: Conexion[]) {
+    if (origen === destino) return t("errores.conexionConsigoMisma");
+    if (!excluidasParaConexion(entre, origen).has(destino)) return null;
+    const nombre = (id: string) => porId.value.get(id)?.nombre;
+    return t("store.conexionDuplicada", { origen: nombre(origen), destino: nombre(destino) });
+  }
+
+  async function crearConexion(
+    origen: string,
+    destino: string,
+    etiqueta: string | null = null,
+  ): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const motivo = conexionRechazada(origen, destino, conexiones.value);
+    return motivo ? rechazar(motivo) : escribir(() => X.crearConexion(origen, destino, etiqueta));
+  }
+
+  /** Sin cambios reales no escribe: un `updated_at` nuevo haría pasar la conexión por editada al comparar un `.boldo`. */
+  async function actualizarConexion(
+    id: string,
+    cambios: { origen_id?: string; destino_id?: string; etiqueta?: string | null },
+  ): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const c = conexiones.value.find((x) => x.id === id);
+    if (!c) return rechazar(t("store.conexionInexistente"));
+    const { origen_id = c.origen_id, destino_id = c.destino_id } = cambios;
+    const etiqueta = cambios.etiqueta === undefined ? c.etiqueta : cambios.etiqueta?.trim() || null;
+    const mismosExtremos = origen_id === c.origen_id && destino_id === c.destino_id;
+    if (mismosExtremos && etiqueta === c.etiqueta) return { ok: true };
+    // Solo al cambiar de extremos: un duplicado que trajo un .boldo sigue admitiendo que se edite su descripción.
+    const motivo = mismosExtremos
+      ? null
+      : conexionRechazada(
+          origen_id,
+          destino_id,
+          conexiones.value.filter((x) => x.id !== id),
+        );
+    return motivo
+      ? rechazar(motivo)
+      : escribir(() => X.actualizarConexion(id, { origen_id, destino_id, etiqueta }));
+  }
   const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));
 
   /** Copia la unidad con su rama (ver `duplicarRama`) y devuelve el id de la copia. */
@@ -886,6 +927,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     quitarDeZona,
     eliminarZona,
     crearConexion,
+    actualizarConexion,
     eliminarConexion,
     guardarSubarbol,
     renombrarSubarbol,

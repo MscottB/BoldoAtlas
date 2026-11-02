@@ -1,5 +1,22 @@
 [
   {
+    "id": "conexiones-editables",
+    "pagina": "arbol",
+    "imagen": "arbol-conexion",
+    "es": {
+      "titulo": "Conexiones que se editan ahí mismo",
+      "texto": "Haz clic en una línea punteada para cambiar su descripción o una de sus unidades, o para eliminarla, sin borrarla y hacerla de nuevo. La línea dice qué une al pasar el puntero, y una leyenda bajo el lienzo explica qué significa. Para crear una, pulsa Conectar con… en la tarjeta. En el panel, Conexiones queda a la vista y avisa si una línea no se ve porque la otra unidad está plegada.",
+      "ancla": "conexiones",
+      "alt": "La ventanita de una conexión sobre su línea punteada, con su descripción, Cambiar unidad y Eliminar conexión."
+    },
+    "en": {
+      "titulo": "Connections you edit right where they are",
+      "texto": "Click a dotted line to change its description or one of its units, or to delete it, without removing it and starting over. The line says what it links when you hover over it, and a legend below the canvas explains what it means. To create one, press Connect to… on the card. In the panel, Connections stays in view and tells you if a line is not visible because the other unit is collapsed.",
+      "ancla": "connections",
+      "alt": "A connection's window above its dotted line, with its description, Change unit and Delete connection."
+    }
+  },
+  {
     "id": "zonas",
     "pagina": "arbol",
     "es": {

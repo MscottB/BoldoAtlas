@@ -5,13 +5,14 @@ import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
 import { useVista } from "./useVista";
 
-/** Una fila de la leyenda: una marca (con código) o una entrada de leyenda de puestos (con descripción). */
+/** Una fila de la leyenda: una marca (con código), una entrada de leyenda de puestos (con descripción) o un tipo de línea (`trazo`). */
 export interface EntradaLeyenda {
   clave: string;
   color: string | null;
   codigo?: string | null;
   nombre: string;
   descripcion?: string | null;
+  trazo?: "punteado" | "continuo";
 }
 
 defineProps<{ titulo: string; entradas: EntradaLeyenda[] }>();
@@ -50,6 +51,13 @@ const { oscuro } = useTema();
         :title="e.descripcion ?? undefined"
       >
         <span
+          v-if="e.trazo"
+          class="w-6 border-t-2 border-marca"
+          :class="e.trazo === 'punteado' && 'border-dashed'"
+          aria-hidden="true"
+        />
+        <span
+          v-else
           class="grid h-4 min-w-6 place-items-center rounded border px-1 text-[10px] font-semibold"
           :class="[
             !e.color && 'bg-muted',

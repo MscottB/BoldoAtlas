@@ -217,8 +217,13 @@
     },
     "reordenarAyuda": "Vuelve a ordenar el diagrama y lo encuadra",
     "lateral": {
-      "conEtiqueta": "Relación lateral entre {origen} y {destino}: {etiqueta}",
-      "sinEtiqueta": "Relación lateral entre {origen} y {destino}"
+      "conEtiqueta": "Conexión entre {origen} y {destino}: {etiqueta}",
+      "sinEtiqueta": "Conexión entre {origen} y {destino}",
+      "clicEditar": "Clic para editar",
+      "clicVer": "Clic para ver",
+      "leyendaTitulo": "Líneas",
+      "leyendaPunteada": "Línea punteada: conexión entre unidades",
+      "leyendaContinua": "Línea de color: conexión entre unidades"
     },
     "acciones": {
       "titulo": "Acciones de {unidad}",
@@ -402,6 +407,8 @@
     "hayDatos": "Ya hay datos en esta base: para reemplazarlos usa «Nueva organización vacía» o «Explorar el ejemplo» desde el menú de la app.",
     "cicloRama": "No se puede mover una unidad dentro de su propia rama.",
     "unidadInexistente": "La unidad ya no existe.",
+    "conexionDuplicada": "Ya existe una conexión entre «{origen}» y «{destino}».",
+    "conexionInexistente": "La conexión ya no existe.",
     "raizConContenido": "No se puede eliminar la unidad raíz mientras tenga contenido.",
     "noSePuedeDeshacer": "Ya no se puede deshacer.",
     "valorExiste": "Ya existe «{nombre}» en la lista.",
@@ -551,11 +558,19 @@
     "colorEtiqueta": "Color de la etiqueta",
     "crearEtiqueta": "Crear y agregar",
     "quitarEtiqueta": "Quitar la etiqueta «{nombre}»",
-    "conexiones": "Conexiones laterales",
-    "sinConexiones": "Esta unidad no tiene conexiones laterales.",
+    "conexiones": "Conexiones",
+    "conexionesAyuda": "Une unidades que trabajan juntas sin depender una de otra. No cambia de quién dependen.",
+    "sinConexiones": "Esta unidad no tiene conexiones.",
     "descripcionConexion": "Descripción de la conexión (opcional)",
     "conectarCon": "Conectar con…",
+    "editarConexion": "Editar la conexión con «{nombre}»",
     "quitarConexion": "Quitar la conexión con «{nombre}»",
+    "ocultaPlegada": "No se ve en el diagrama: «{nombre}» está en una rama plegada.",
+    "ocultaFuera": "No se ve en el diagrama: «{nombre}» está fuera de esta vista.",
+    "relacionesApagadas": "No se ven en el diagrama: «Relaciones laterales» está apagado en Personalizar.",
+    "descripcionAyuda": "Un texto para explicar qué hace la unidad.",
+    "superiorAyuda": "De qué unidad depende. Cambiarla la mueve de lugar en el árbol.",
+    "marcaAyuda": "Color y código que se ven en las tarjetas al elegir «Colorear por» en Personalizar.",
     "eliminar": "Eliminar unidad",
     "eliminarTitulo": "¿Eliminar «{unidad}»?",
     "eliminarTexto": "Tiene {hijos} y {puestos}. Pasarán a «{superior}». Podrás deshacerlo durante 8 segundos.",
@@ -568,6 +583,15 @@
     "copiaDe": "{nombre} (copia)",
     "duplicada": "Rama «{nombre}» duplicada",
     "avanzado": "Avanzado"
+  },
+  "conexion": {
+    "ventana": "Conexión",
+    "titulo": "{origen} ↔ {destino}",
+    "conectarTitulo": "Conectar «{nombre}» con…",
+    "cambiarUnidad": "Cambiar unidad",
+    "cambiarUnidadDe": "Cambiar unidad: {nombre}",
+    "eliminar": "Eliminar conexión",
+    "sinDescripcion": "Sin descripción"
   },
   "personas": {
     "pestana": "Personas",

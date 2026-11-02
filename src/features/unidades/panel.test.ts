@@ -9,10 +9,27 @@ import {
   excluidasParaConexion,
   filasDePuestos,
   migas,
+  porQueNoSeVe,
   validarMarca,
 } from "./panel";
 
 const viva = unidades.filter((x) => !(x as { deleted_at?: string }).deleted_at);
+
+describe("porQueNoSeVe", () => {
+  it("nada la esconde: se ve", () => {
+    expect(porQueNoSeVe(viva, new Set(), "mecanica")).toBeNull();
+  });
+
+  it("un superior plegado la esconde; plegar la propia unidad no", () => {
+    expect(porQueNoSeVe(viva, new Set(["operaciones"]), "mecanica")).toBe("plegada");
+    expect(porQueNoSeVe(viva, new Set(["mecanica"]), "mecanica")).toBeNull();
+  });
+
+  it("fuera de lo que se muestra (otra rama enfocada, otra fecha)", () => {
+    const rama = viva.filter((u) => u.id !== "mecanica");
+    expect(porQueNoSeVe(rama, new Set(["mantencion"]), "mecanica")).toBe("fuera");
+  });
+});
 
 describe("migas", () => {
   it("da la ruta completa desde la raíz con el nombre del tipo de cada unidad", () => {

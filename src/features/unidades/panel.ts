@@ -32,6 +32,20 @@ export const excluidasParaConexion = (conexiones: Conexion[], id: string): Set<s
     ),
   ]);
 
+/**
+ * Por qué una unidad no se dibuja: un superior plegado o, si no está en `mostradas` (lo que el lienzo dibuja), fuera de la
+ * vista: otra rama enfocada u otra fecha. null: se dibuja, aunque esté más allá de lo que entra en la pantalla.
+ */
+export function porQueNoSeVe(
+  mostradas: Unidad[],
+  colapsados: ReadonlySet<string>,
+  id: string,
+): "plegada" | "fuera" | null {
+  const camino = ruta(mostradas, id);
+  if (!camino.length) return "fuera";
+  return camino.slice(0, -1).some((a) => colapsados.has(a.id)) ? "plegada" : null;
+}
+
 export interface OpcionUnidad {
   unidad: Unidad;
   /** Superiores de la unidad (texto); vacío en una raíz. */

@@ -217,8 +217,13 @@
     },
     "reordenarAyuda": "Lays out the diagram again and fits it to the view",
     "lateral": {
-      "conEtiqueta": "Lateral connection between {origen} and {destino}: {etiqueta}",
-      "sinEtiqueta": "Lateral connection between {origen} and {destino}"
+      "conEtiqueta": "Connection between {origen} and {destino}: {etiqueta}",
+      "sinEtiqueta": "Connection between {origen} and {destino}",
+      "clicEditar": "Click to edit",
+      "clicVer": "Click to view",
+      "leyendaTitulo": "Lines",
+      "leyendaPunteada": "Dotted line: connection between units",
+      "leyendaContinua": "Colored line: connection between units"
     },
     "acciones": {
       "titulo": "Actions for {unidad}",
@@ -402,6 +407,8 @@
     "hayDatos": "This database already has data: to replace it use “New empty organization” or “Explore the example” from the app menu.",
     "cicloRama": "A unit cannot be moved inside its own branch.",
     "unidadInexistente": "The unit no longer exists.",
+    "conexionDuplicada": "A connection between “{origen}” and “{destino}” already exists.",
+    "conexionInexistente": "The connection no longer exists.",
     "raizConContenido": "The root unit cannot be deleted while it has content.",
     "noSePuedeDeshacer": "This can no longer be undone.",
     "valorExiste": "“{nombre}” already exists in the list.",
@@ -551,11 +558,19 @@
     "colorEtiqueta": "Tag color",
     "crearEtiqueta": "Create and add",
     "quitarEtiqueta": "Remove the tag “{nombre}”",
-    "conexiones": "Lateral connections",
-    "sinConexiones": "This unit has no lateral connections.",
+    "conexiones": "Connections",
+    "conexionesAyuda": "Links units that work together without one depending on the other. It does not change who they report to.",
+    "sinConexiones": "This unit has no connections.",
     "descripcionConexion": "Connection description (optional)",
     "conectarCon": "Connect to…",
+    "editarConexion": "Edit the connection with “{nombre}”",
     "quitarConexion": "Remove the connection with “{nombre}”",
+    "ocultaPlegada": "Not visible in the diagram: “{nombre}” is in a collapsed branch.",
+    "ocultaFuera": "Not visible in the diagram: “{nombre}” is outside this view.",
+    "relacionesApagadas": "Not visible in the diagram: “Lateral connections” is off in Customize.",
+    "descripcionAyuda": "A text to explain what the unit does.",
+    "superiorAyuda": "Which unit it reports to. Changing it moves the unit in the tree.",
+    "marcaAyuda": "Color and code shown on the cards when you choose “Color by” in Customize.",
     "eliminar": "Delete unit",
     "eliminarTitulo": "Delete “{unidad}”?",
     "eliminarTexto": "It has {hijos} and {puestos}. They will move to “{superior}”. You can undo it for 8 seconds.",
@@ -568,6 +583,15 @@
     "copiaDe": "{nombre} (copy)",
     "duplicada": "Branch “{nombre}” duplicated",
     "avanzado": "Advanced"
+  },
+  "conexion": {
+    "ventana": "Connection",
+    "titulo": "{origen} ↔ {destino}",
+    "conectarTitulo": "Connect “{nombre}” to…",
+    "cambiarUnidad": "Change unit",
+    "cambiarUnidadDe": "Change unit: {nombre}",
+    "eliminar": "Delete connection",
+    "sinDescripcion": "No description"
   },
   "personas": {
     "pestana": "People",

@@ -8,7 +8,7 @@ export type Caja = Punto & { ancho: number; alto: number };
 export interface Trazado {
   /** La línea, en ángulos rectos: de un borde del origen a un borde del destino. */
   puntos: Punto[];
-  /** Centro de la etiqueta, sobre la línea. */
+  /** Centro de la etiqueta (o del punto, si no tiene descripción), sobre la línea. */
   etiqueta: Punto;
   /** No hubo lugar libre y la etiqueta asoma sobre una tarjeta: entonces no debe capturar sus clics. */
   etiquetaTapa: boolean;
@@ -413,18 +413,15 @@ export function trazarLaterales(
     const ancho = anchoEtiqueta(l.etiqueta ?? "") * escalaEtiqueta;
     const alto = ALTO_ETIQUETA * escalaEtiqueta;
     const medida: [number, number] = horizontal ? [alto, ancho] : [ancho, alto];
-    const { punto, tapa } = l.etiqueta
-      ? ubicarEtiqueta(puntos, medida, filas, ocupadas, horizontal ? "y" : "x")
-      : { punto: puntos[0]!, tapa: 0 };
-    if (l.etiqueta) {
-      const [w, h] = medida;
-      const caja = { x: punto.x - w / 2, y: punto.y - h / 2, ancho: w, alto: h };
-      celdas(caja, (k) => {
-        const lista = ocupadas.get(k);
-        if (lista) lista.push(caja);
-        else ocupadas.set(k, [caja]);
-      });
-    }
+    // Sin descripción se ubica igual: ahí va el punto de la línea (AristaLateral).
+    const { punto, tapa } = ubicarEtiqueta(puntos, medida, filas, ocupadas, horizontal ? "y" : "x");
+    const [w, h] = medida;
+    const caja = { x: punto.x - w / 2, y: punto.y - h / 2, ancho: w, alto: h };
+    celdas(caja, (k) => {
+      const lista = ocupadas.get(k);
+      if (lista) lista.push(caja);
+      else ocupadas.set(k, [caja]);
+    });
     res.set(l.id, {
       puntos: puntos.map(norm),
       etiqueta: norm(punto),

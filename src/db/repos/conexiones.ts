@@ -1,6 +1,6 @@
 import type { Sentencia } from "@/db/cliente";
 import { ahora, nuevoId } from "@/lib/ids";
-import { fijarBorrado } from "./comun";
+import { actualizar, fijarBorrado } from "./comun";
 
 // Solo conexiones entre unidades vivas: si se restaura una unidad, sus conexiones vuelven con ella.
 export const SQL_CONEXIONES = `SELECT id, origen_id, destino_id, etiqueta FROM conexiones
@@ -25,5 +25,10 @@ export function crearConexion(
     ],
   };
 }
+
+export const actualizarConexion = (
+  id: string,
+  cambios: { origen_id?: string; destino_id?: string; etiqueta?: string | null },
+): Sentencia[] => actualizar("conexiones", id, cambios, ["origen_id", "destino_id", "etiqueta"]);
 
 export const eliminarConexion = (id: string): Sentencia[] => [fijarBorrado("conexiones", id, true)];

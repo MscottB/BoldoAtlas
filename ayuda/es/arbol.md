@@ -21,7 +21,7 @@ Cada unidad es una tarjeta con:
 
 Los tipos de unidad son una lista propia de tu organización: al comienzo trae Gerencia, Área, Subárea y Otra, que se pueden renombrar, reordenar, desactivar o complementar con otros (por ejemplo, Superintendencia o Departamento). El orden de la lista no limita la estructura: cualquier tipo puede depender de cualquier otro.
 
-Las líneas continuas unen cada unidad con su superior. Las líneas punteadas son conexiones laterales entre unidades: van por el espacio libre entre las tarjetas, y su descripción se lee sobre la línea. Si es larga se abrevia: pasa el puntero por encima, o llega a ella con `Tab`, para verla completa. Al pasar por una tarjeta o enfocarla, sus conexiones se resaltan y las demás se atenúan. Para ocultarlas, apaga **Relaciones laterales** en **Personalizar**.
+Las líneas continuas unen cada unidad con su superior. Las líneas punteadas son conexiones entre unidades que trabajan juntas sin depender una de otra (ver «Conexiones»).
 
 ## Plegar y desplegar ramas
 
@@ -49,7 +49,7 @@ El árbol se dibuja ordenado: cada superior queda centrado sobre sus subunidades
 
 Clic derecho sobre una tarjeta o sobre el fondo del lienzo abre un menú con lo que se puede hacer ahí. Con el teclado se abre con `Mayús` + `F10` o con la tecla Menú, sobre la tarjeta enfocada o, si no hay, la seleccionada (si tampoco hay, el del fondo). Se recorre con las flechas, `Enter` elige y `Esc` lo cierra y devuelve el foco a la tarjeta.
 
-- **Unidad**: Abrir panel, Nueva subunidad, Renombrar, Ver personas (abre el panel en la pestaña Personas), Expandir rama, Contraer rama, Seleccionar rama (la unidad y lo que se ve de su rama), Duplicar rama, Abrir como árbol, Guardar en Árboles y Eliminar… (con la misma confirmación de siempre).
+- **Unidad**: Abrir panel, Nueva subunidad, Renombrar, Ver personas (abre el panel en la pestaña Personas), Conectar con… (ver «Conexiones»), Expandir rama, Contraer rama, Seleccionar rama (la unidad y lo que se ve de su rama), Duplicar rama, Abrir como árbol, Guardar en Árboles y Eliminar… (con la misma confirmación de siempre).
 - **Puesto** (con **Ver puestos** activo): Abrir puesto, Asignar titular, Registrar reemplazo, Copiar estilo, Pegar estilo y Quitar estilo.
 - **Fondo**: Nueva unidad raíz, Expandir todo, Contraer todo, Reordenar, Encuadrar y Personalizar….
 
@@ -58,7 +58,7 @@ Viendo el organigrama a una fecha, las acciones que cambian algo aparecen desact
 ## Seleccionar, crear y renombrar
 
 - **Clic** en una tarjeta la selecciona. Clic en el fondo quita la selección.
-- Al pasar el puntero por una tarjeta, enfocarla con `Tab` o seleccionarla, aparecen sobre ella sus acciones, sin mover nada de la tarjeta: **+**, el lápiz (**Renombrar**), **Plegar rama** o mostrar sus subunidades si tiene, y **Más acciones**, que abre el menú contextual. Con `Tab` se llega a ellas después de los botones de la tarjeta.
+- Al pasar el puntero por una tarjeta, enfocarla con `Tab` o seleccionarla, aparecen sobre ella sus acciones, sin mover nada de la tarjeta: **+**, el lápiz (**Renombrar**), **Conectar con…**, **Plegar rama** o mostrar sus subunidades si tiene, y **Más acciones**, que abre el menú contextual. Con `Tab` se llega a ellas después de los botones de la tarjeta.
 - **+** crea una subunidad con el tipo que sigue al de su superior en la lista de tipos (el último se repite) y la deja lista para escribir su nombre.
 - Al seleccionar una tarjeta se abre el **panel de la unidad**, a la derecha del lienzo (ver «Panel de unidad»): ahí están sus puestos y todos sus datos.
 - **Doble clic** sobre el nombre, o `F2` con la tarjeta enfocada o seleccionada, lo edita. `Enter` guarda y `Esc` cancela.
@@ -95,6 +95,34 @@ Con dos o más unidades seleccionadas no se abre el panel de la unidad: sobre el
 
 Viendo el organigrama a una fecha no hay selección múltiple.
 
+## Conexiones
+
+Una conexión une dos unidades que trabajan juntas sin depender una de otra: por ejemplo, Mantención y Compras. No cambia de quién dependen.
+
+En el lienzo es una línea punteada que va por el espacio libre entre las tarjetas, con su descripción encima o, si no tiene, con un punto. La franja **Líneas**, bajo el lienzo, recuerda qué significa. Al pasar el puntero, la línea se resalta y dice qué une. Una descripción larga se abrevia: pasa el puntero por encima, o llega a ella con `Tab`, para verla completa. Al pasar por una tarjeta o enfocarla, sus conexiones se resaltan y las demás se atenúan.
+
+**Crear una conexión:**
+
+1. Pulsa **Conectar con…** en las acciones de la tarjeta o en su menú contextual. También está en **Conexiones**, en el panel de la unidad.
+2. Elige la otra unidad.
+3. Si quieres, escribe una descripción. Puedes dejarla vacía.
+
+**Editar una conexión:** pulsa la línea, su descripción o su punto (o llega con `Tab` y pulsa `Enter`). Se abre una ventanita ahí mismo:
+
+![Ventanita de la conexión Mantención ↔ Compras, sobre su línea punteada.](../img/es/arbol-conexion.webp "La ventanita de una conexión: descripción, Cambiar unidad y Eliminar conexión."){width=320 height=298}
+
+- **Descripción**: se guarda al salir del campo, con `Enter` o al cerrar la ventanita.
+- **Cambiar unidad**: elige otra unidad para uno de los dos extremos.
+- **Eliminar conexión**: la borra de inmediato, sin **Deshacer**.
+
+`Esc` o un clic afuera cierran la ventanita, y `Esc` devuelve el foco a la línea. Mover o acercar el lienzo también la cierra. El lápiz de una fila, en **Conexiones** del panel de la unidad, abre la misma ventanita; ahí se cambia solo la otra unidad.
+
+Una unidad no se puede conectar consigo misma, y entre dos unidades hay una sola conexión.
+
+La línea se dibuja cuando las dos unidades están a la vista y **Relaciones laterales** está encendido en **Personalizar**. Si no se ve porque la otra unidad está en una rama plegada o fuera de la vista, su fila en el panel lo dice. Una conexión que apunta a una unidad que está más allá de lo que entra en la pantalla sí está dibujada: aleja o encuadra el lienzo para verla.
+
+Viendo el organigrama a una fecha, la ventanita es solo de lectura.
+
 ## Zonas
 
 Una zona agrupa unidades con un nombre y un color, también de ramas distintas: «Zona Norte», «Proyecto X». No cambia quién depende de quién.
@@ -114,7 +142,7 @@ Si eliminas una unidad, sale de sus zonas; **Deshacer** la devuelve. Una rama du
 
 ## Duplicar una rama
 
-El botón **Duplicar rama** (en **Avanzado**, en el Resumen del panel de la unidad, y en la tarjeta seleccionada) y `Ctrl` + `D` copian la unidad con todo lo que cuelga de ella:
+El botón **Duplicar rama** (al pie del Resumen del panel de la unidad, y en la tarjeta seleccionada) y `Ctrl` + `D` copian la unidad con todo lo que cuelga de ella:
 
 - La copia queda a continuación de la original, con el nombre «X (copia)» (solo la unidad de arriba; las de abajo conservan su nombre), y queda seleccionada. También se puede duplicar una raíz: la copia es otra raíz.
 - Se copian el tipo, la descripción, la marca, las etiquetas, las zonas y los puestos (cargo, descripción y leyenda). La jefatura de cada copia apunta al puesto copiado.
@@ -138,7 +166,7 @@ Si la persona tiene varios puestos vigentes, se elige cuál en un menú «Cargo 
 
 Arrastra el fondo para desplazarte y usa la rueda del mouse o los botones **−** y **+** de la esquina inferior derecha del lienzo para alejar o acercar (con el teclado, `Ctrl` + `-` y `Ctrl` + `=`; con `Tab` se llega a esos botones justo después de la barra). A su lado, **Encuadrar** (`Ctrl` + `0`) ajusta todo el árbol a la ventana. El **minimapa** muestra dónde estás: viene apagado y se enciende en **Más › Mostrar minimapa**; al encenderlo, el árbol se encuadra una vez. Aparece abajo a la derecha, sobre los botones de zoom, con los colores del tema, y al encuadrar el árbol se deja libre su espacio para que no tape tarjetas.
 
-Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Las conexiones laterales se ven como líneas continuas, sin su descripción, y no aparecen las acciones de la tarjeta ni el resaltado. Así el lienzo se mueve con fluidez. Arrastrar una tarjeta sigue mostrando dónde quedará. Al acercarte vuelve todo el detalle; con el teclado, cada tarjeta ligera se enfoca con `Tab` y se elige con `Enter` o la barra espaciadora. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. Con más de 300 tarjetas no hay minimapa, con cualquier zoom. La tarjeta seleccionada se ve rellena con el color de acento.
+Con muchas tarjetas a la vista (más de 300), al alejarte las tarjetas se simplifican: solo el nombre, sobre el color de su marca, y las líneas van en escalón. Las conexiones laterales se ven como líneas continuas, sin su descripción (siguen respondiendo al puntero y al clic), y no aparecen las acciones de la tarjeta ni el resaltado. Así el lienzo se mueve con fluidez. Arrastrar una tarjeta sigue mostrando dónde quedará. Al acercarte vuelve todo el detalle; con el teclado, cada tarjeta ligera se enfoca con `Tab` y se elige con `Enter` o la barra espaciadora. Cuando un cambio (expandir, ver puestos, aplicar una vista) pasa a mostrar muchas tarjetas, el lienzo se encuadra para mostrarlas todas. Con más de 300 tarjetas no hay minimapa, con cualquier zoom. La tarjeta seleccionada se ve rellena con el color de acento.
 
 ## Abrir una rama como árbol
 
@@ -195,7 +223,7 @@ Al seleccionar una tarjeta (con el mouse o con `Enter` en su nombre) se abre un 
 
 ![El árbol con la tarjeta Operaciones seleccionada y su panel de unidad abierto a la derecha.](../img/es/arbol-panel.webp "El panel de la unidad. 1: la tarjeta seleccionada. 2: las pestañas Resumen, Puestos y Personas. 3: el botón para cerrar el panel."){width=892 height=664}
 
-La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las cifras y las etiquetas. Lo demás está en **Avanzado**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes. **Eliminar unidad** va al pie, aparte. Reúne:
+La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las cifras, las etiquetas y las conexiones. **Descripción**, **Superior** y **Marca** están en **Avanzado**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes. **Guardar en Árboles**, **Duplicar rama** y **Eliminar unidad** van al pie, aparte. Reúne:
 
 - **Tipo** y **nombre**, a la vista, y **descripción**, en **Avanzado**. El nombre y la descripción se guardan al terminar de escribir (`Enter`, `Tab` o al salir del campo). El **tipo** se elige de la lista de tipos de unidad, igual que en las fichas: escribe para filtrar y, si no existe, **Agregar «texto» a la lista** lo crea y lo deja elegido, sin ir a los mantenedores.
 - **Superior** (en **Avanzado**): un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
@@ -203,8 +231,8 @@ La pestaña **Resumen** muestra a la vista el tipo, el nombre, la jefatura, las 
 - **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**). Con **Nuevo puesto…**, al final de la lista, se abre el puesto nuevo: eliges su cargo, pulsas **Crear puesto** y queda como jefatura de la unidad. Debajo se ve quién la ejerce: la persona titular o, si no la hay, **Reemplazo: nombre**.
 - La **dotación** directa (puestos con titular en la propia unidad), la total (con toda la rama) y las **vacantes** de la rama.
 - **Etiquetas**: quita una con la X, agrega una existente o elige **Nueva etiqueta…** para crearla con su color. Si el nombre ya existe, se usa esa etiqueta en vez de duplicarla.
-- **Conexiones laterales** (en **Avanzado**): escribe una descripción (opcional) y elige la unidad con la que conectar; la quitas con la X. Se ven en el lienzo como líneas punteadas cuando ambas unidades están visibles y **Relaciones laterales** está encendido en **Personalizar**.
-- **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol) y **Duplicar rama**, en **Avanzado**; **Eliminar unidad**, al pie.
+- **Conexiones**, con cuántas tiene: **Conectar con…** agrega otra; en cada fila, el lápiz la edita y la X la quita. Si la línea no se ve porque la otra unidad está plegada o fuera de la vista, la fila lo dice (ver «Conexiones»).
+- **Guardar en Árboles** (no aparece en las raíces, que ya son un árbol), **Duplicar rama** y **Eliminar unidad**, al pie.
 
 La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»).
 
