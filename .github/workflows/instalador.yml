@@ -1,0 +1,38 @@
+name: instalador
+
+# Ejecuta el instalador de Windows en el runner cuando cambia su plantilla: compila, instala y actualiza de verdad.
+on:
+  pull_request:
+    paths:
+      - "src-tauri/instalador/**"
+      - "scripts/probar-instalador.ps1"
+      - ".github/workflows/instalador.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: instalador-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # etiquetas para calcular la versión
+          persist-credentials: false
+      - uses: ./.github/actions/preparar-node
+      - uses: ./.github/actions/preparar-rust
+        with:
+          cache: boldo-prueba
+      - id: v
+        run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
+        shell: bash
+      - run: node scripts/release.mjs --perfil prueba
+        env:
+          BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
+      - run: ./scripts/probar-instalador.ps1 -Instalador (Resolve-Path release/*/BoldoAtlas_windows_x64_setup.exe)
+        shell: pwsh
