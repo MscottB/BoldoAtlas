@@ -4,8 +4,7 @@ import { test } from "node:test";
 
 // site/comparador.json: cada dato de otro producto sale de una fuente oficial o dice «No indicado». Sin precios.
 const leer = (ruta) => readFileSync(new URL(`../${ruta}`, import.meta.url), "utf8");
-const { revisado, productos, fuentes, grupos } = JSON.parse(leer("comparador.json"));
-const filas = grupos.flatMap((g) => g.filas);
+const { revisado, productos, fuentes, filas } = JSON.parse(leer("comparador.json"));
 const DOMINIOS = {
   boldo: ["mscottb.github.io", "github.com"],
   visio: ["www.microsoft.com"],
@@ -50,7 +49,7 @@ test("las fuentes son de los sitios oficiales de cada producto, y todas se usan"
 });
 
 test("en inglés, las fuentes de BoldoAtlas en español traen título y enlace propios", () => {
-  for (const id of ["boldo-inicio", "boldo-fecha", "boldo-fichas", "boldo-importar"]) {
+  for (const id of ["boldo-inicio", "boldo-fecha", "boldo-fichas"]) {
     const f = fuentes.find((x) => x.id === id);
     assert.ok(f.titulo_en && f.url_en, id);
   }
@@ -60,9 +59,7 @@ test("en inglés, las fuentes de BoldoAtlas en español traen título y enlace p
   assert.match(vue, /\(lang === "en" && f\.titulo_en\) \|\| f\.titulo/);
 });
 
-test("muestra lo que BoldoAtlas no tiene, sin precios", () => {
-  const falta = grupos.find((g) => g.id === "falta").filas.map((f) => f.id);
-  for (const id of ["colaboracion", "integracion", "firma", "soporte"]) assert.ok(falta.includes(id), id);
+test("sin precios", () => {
   for (const fila of filas)
     for (const c of Object.values(fila.celdas))
       assert.doesNotMatch(`${c.es ?? ""} ${c.en ?? ""}`, /[$€£]|\b(USD|CLP|UF)\b/, fila.id);
@@ -76,6 +73,9 @@ test("la página existe en los dos idiomas, sin logos ajenos, con aviso legal y 
   assert.match(vue, /issues\/new/);
   assert.match(vue, /marcas de sus respectivos dueños/);
   assert.match(vue, /trademarks of their respective owners/);
+  // sin todas las funciones de cada producto, la tabla engañaría por omisión si no lo dice
+  assert.match(vue, /Compara una selección de criterios; no es una lista completa de funciones\./);
+  assert.match(vue, /Compares a selection of criteria; it isn't a complete feature list\./);
   assert.match(leer(".vitepress/theme/Presentacion.vue"), /comparar: "\/comparar"/);
   assert.match(leer(".vitepress/theme/Presentacion.vue"), /comparar: "\/en\/comparar"/);
 });

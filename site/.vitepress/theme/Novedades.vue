@@ -46,8 +46,8 @@ const nuevas = computed(() =>
 
 <style scoped>
 .nuevo {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex; /* flex y no grid: la tarjeta que queda sola en su fila ocupa el ancho, sin dejar un hueco */
+  flex-wrap: wrap;
   gap: 20px;
   margin: 40px 0 0 !important; /* la portada le quita el margen a sus listas */
   padding: 0;
@@ -55,7 +55,9 @@ const nuevas = computed(() =>
 }
 .nuevo li {
   display: flex;
+  flex: 1 1 min(100%, 20rem);
   flex-direction: column;
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--vp-c-divider);
@@ -113,14 +115,11 @@ const nuevas = computed(() =>
   outline-offset: 3px;
   border-radius: 6px;
 }
+.nuevo .sin-imagen {
+  flex-basis: 100%;
+}
 @media (min-width: 768px) {
-  .nuevo {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   /* sin captura: una fila a todo el ancho, con el título a un lado y el texto al otro */
-  .nuevo .sin-imagen {
-    grid-column: 1 / -1;
-  }
   .nuevo .sin-imagen .cuerpo {
     display: grid;
     grid-template-columns: 5fr 7fr;

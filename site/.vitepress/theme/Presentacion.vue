@@ -19,6 +19,7 @@ const ICONOS: Record<string, string> = {
     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
   sinRastreo:
     '<path d="M10.73 5.08a10.74 10.74 0 0 1 11.2 6.57 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>',
+  candado: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   si: '<path d="M20 6 9 17l-5-5"/>',
   descargar:
     '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
@@ -50,7 +51,7 @@ const TEXTOS = {
         { valor: "2.000", texto: "unidades y 3.000 puestos" },
         { valor: "< 1 s", texto: "para abrir todo eso" },
       ],
-      nota: "Medido en Windows 11, desde abrir la app hasta ver los totales en Inicio, con una organización de prueba y retratos generados: de 0,6 a 0,7 s con fotos optimizadas y de 0,8 a 0,9 s con fotos de 300 KB. Con fotos de 1 MB sin optimizar tardó hasta 2,8 s, y la primera apertura de cada carpeta tarda más porque hace un respaldo.",
+      nota: "Medido en Windows 11, desde abrir la app hasta ver los totales en Inicio, con una organización de prueba y retratos generados: de 0,6 a 0,9 s con fotos optimizadas o de 300 KB. La primera apertura de cada carpeta tarda más porque hace un respaldo.",
       razones: [
         {
           titulo: "El organigrama sale de tus datos",
@@ -73,7 +74,7 @@ const TEXTOS = {
         {
           titulo: "Sabes quién ocupaba cada puesto en cualquier fecha",
           texto:
-            "Cada puesto guarda sus titulares y reemplazos con fechas. Eliges un día y ves quién estaba, qué vacantes había y qué cambió, en solo lectura. Mover o renombrar una unidad no queda registrado: la forma del árbol es la de hoy.",
+            "Cada puesto guarda sus titulares y reemplazos con fechas. Eliges un día y ves quién estaba, qué vacantes había y qué cambió, en solo lectura.",
           enlace: { texto: "Ver a una fecha", href: "/manual/arbol#ver-a-una-fecha" },
         },
         {
@@ -92,7 +93,7 @@ const TEXTOS = {
       comparar: {
         titulo: "¿Lo estás comparando con otro producto?",
         texto:
-          "Revisamos Visio, Lucidchart, draw.io, OrgChart, Buk y Talana en sus sitios oficiales: lo que BoldoAtlas ofrece y lo que no tiene, con las fuentes de cada dato.",
+          "Revisamos Visio, Lucidchart, draw.io, OrgChart, Buk y Talana en sus sitios oficiales: criterio por criterio, con la fuente de cada dato.",
         enlace: "Ver la comparación",
       },
     },
@@ -153,7 +154,7 @@ const TEXTOS = {
           etiqueta: "El organigrama a cualquier fecha",
           titulo: "Mira otro día sin tocar nada",
           texto:
-            "Elige o escribe una fecha y verás quién ocupaba cada puesto ese día, en solo lectura. La forma del árbol es la de hoy.",
+            "Elige o escribe una fecha y verás quién ocupaba cada puesto ese día, en solo lectura.",
           puntos: [
             "Los días con cambios aparecen marcados en el calendario.",
             "Salta al cambio anterior o al siguiente.",
@@ -252,8 +253,7 @@ const TEXTOS = {
     },
     confianza: {
       etiqueta: "Confianza",
-      titulo: "Sin letra chica",
-      comprobar: "Lo que puedes comprobar",
+      titulo: "Lo que puedes comprobar",
       items: [
         {
           icono: "codigo",
@@ -273,38 +273,14 @@ const TEXTOS = {
           titulo: "Sin rastreo en la app",
           texto: "La app no tiene analítica ni telemetría, y no envía tus datos a ninguna parte.",
         },
+        {
+          icono: "candado",
+          titulo: "Te ayuda a cumplir con los datos personales",
+          texto:
+            "Los datos quedan en tu computador y los archivos que compartes van cifrados: eso te ayuda a cumplir las reglas que te apliquen. Tratarlos conforme a la ley es responsabilidad de quien usa la app.",
+          enlace: { texto: "Política de seguridad", href: `${REPO}/blob/main/SECURITY.md#política-de-seguridad` },
+        },
       ],
-      limites: {
-        titulo: "Lo que debes saber antes de elegirla",
-        items: [
-          {
-            titulo: "No tiene usuarios ni permisos.",
-            texto:
-              "Quien abre la app ve y cambia todo, y no queda registro de quién cambió qué. Tampoco hay edición en línea entre varias personas: cada copia se trabaja aparte y se juntan con un archivo .boldo.",
-          },
-          {
-            titulo: "La base y los respaldos no van cifrados.",
-            texto:
-              "Solo van cifrados los archivos .boldo. Protege lo demás con el cifrado de tu disco (BitLocker, FileVault o LUKS) y cuida el pendrive.",
-          },
-          {
-            titulo: "El programa no tiene firma digital.",
-            texto: "No lleva certificado de Windows ni de Apple, así que el sistema avisa la primera vez que lo abres.",
-            enlace: { texto: "Cómo abrirlo", href: "/descargas#sin-firma" },
-          },
-          {
-            titulo: "No importa planillas ni exporta a PDF.",
-            texto:
-              "Las unidades, los puestos y las personas se crean en la app o llegan en un archivo .boldo.",
-          },
-          {
-            titulo: "Te ayuda a cumplir, no reemplaza tu trabajo legal.",
-            texto:
-              "Tener los datos personales en tu computador te ayuda a cumplir las reglas que te apliquen, pero tratarlos conforme a la ley es responsabilidad de quien usa la app.",
-            enlace: { texto: "Qué protege y qué no", href: `${REPO}/blob/main/SECURITY.md#política-de-seguridad` },
-          },
-        ],
-      },
     },
     preguntas: {
       etiqueta: "Preguntas frecuentes",
@@ -315,21 +291,17 @@ const TEXTOS = {
           r: "Nada. BoldoAtlas es software libre bajo la licencia AGPL-3.0: no hay planes ni suscripciones.",
         },
         {
-          p: "¿Puedo traer mis datos desde Excel u otra planilla?",
-          r: "No. BoldoAtlas no importa planillas: las unidades, los puestos y las personas se crean dentro de la app, o llegan en un archivo .boldo exportado desde otra copia.",
-        },
-        {
           p: "¿Dónde quedan mis datos?",
           r: "En una base SQLite en tu computador: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas. BoldoAtlas no necesita internet para funcionar y no envía tus datos a ninguna parte.",
         },
         {
-          p: "¿Podemos trabajar varias personas?",
-          r: "Cada copia se trabaja por separado, sin usuarios ni permisos. Para juntar el trabajo, una persona exporta un archivo .boldo y la otra lo importa con Revisar y decidir: compara los dos lados y elige qué se queda.",
+          p: "¿Cómo se junta el trabajo de dos copias?",
+          r: "Una persona exporta un archivo .boldo y la otra lo importa con Revisar y decidir: compara los dos lados y elige qué se queda.",
           enlace: { texto: "Revisar y decidir", href: "/manual/exportar-importar#revisar-y-decidir" },
         },
         {
           p: "¿En qué sistemas funciona?",
-          r: "Windows 10 y 11 (x64), Linux x64 y macOS 11 o más nuevo, en Intel y Apple Silicon. El programa no tiene firma digital, así que la primera vez tu sistema puede pedir que lo confirmes.",
+          r: "Windows 10 y 11 (x64), Linux x64 y macOS 11 o más nuevo, en Intel y Apple Silicon. La primera vez, tu sistema puede pedir que confirmes que quieres abrirlo.",
           enlace: { texto: "Cómo abrirlo", href: "/descargas#sin-firma" },
         },
         {
@@ -339,7 +311,7 @@ const TEXTOS = {
         },
         {
           p: "¿Sirve para organizaciones grandes?",
-          r: "Sí, está pensada para eso. Se probó con 2.000 unidades, 3.000 puestos y 10.000 personas: las ramas se pliegan, el directorio dibuja solo las filas a la vista y las fotos se cargan cuando aparecen. Con más de 300 tarjetas a la vista, el lienzo las simplifica al alejarte, y antes de desplegar más de 1.000 te avisa, porque se vuelve lento.",
+          r: "Sí, está pensada para eso. Se probó con 2.000 unidades, 3.000 puestos y 10.000 personas: las ramas se pliegan, el directorio dibuja solo las filas a la vista y las fotos se cargan cuando aparecen. Con más de 300 tarjetas a la vista, el lienzo las simplifica al alejarte para seguir moviéndose con fluidez.",
         },
         {
           p: "¿Es una versión final?",
@@ -378,7 +350,7 @@ const TEXTOS = {
         { valor: "2,000", texto: "units and 3,000 positions" },
         { valor: "< 1 s", texto: "to open all of that" },
       ],
-      nota: "Measured on Windows 11, from opening the app to seeing the totals on Home, with a test organization and generated portraits: 0.6 to 0.7 s with optimized photos and 0.8 to 0.9 s with 300 KB photos. With unoptimized 1 MB photos it took up to 2.8 s, and the first opening of each folder takes longer because it makes a backup.",
+      nota: "Measured on Windows 11, from opening the app to seeing the totals on Home, with a test organization and generated portraits: 0.6 to 0.9 s with optimized or 300 KB photos. The first opening of each folder takes longer because it makes a backup.",
       razones: [
         {
           titulo: "The org chart comes from your data",
@@ -401,7 +373,7 @@ const TEXTOS = {
         {
           titulo: "You know who held each position on any date",
           texto:
-            "Each position keeps its holders and covers with dates. Pick a day and see who was there, which vacancies existed and what changed, read-only. Moving or renaming a unit isn't recorded: the shape of the tree is today's.",
+            "Each position keeps its holders and covers with dates. Pick a day and see who was there, which vacancies existed and what changed, read-only.",
           enlace: { texto: "Viewing a past date", href: "/en/manual/arbol#viewing-a-past-date" },
         },
         {
@@ -420,7 +392,7 @@ const TEXTOS = {
       comparar: {
         titulo: "Comparing it with another product?",
         texto:
-          "We reviewed Visio, Lucidchart, draw.io, OrgChart, Buk and Talana on their official sites: what BoldoAtlas offers and what it lacks, with the source of every data point.",
+          "We reviewed Visio, Lucidchart, draw.io, OrgChart, Buk and Talana on their official sites: criterion by criterion, with the source of every data point.",
         enlace: "See the comparison",
       },
     },
@@ -479,7 +451,7 @@ const TEXTOS = {
           id: "fechas",
           etiqueta: "The org chart on any date",
           titulo: "Look at another day without changing anything",
-          texto: "Pick or type a date and see who held each position that day, read-only. The shape of the tree is today's.",
+          texto: "Pick or type a date and see who held each position that day, read-only.",
           puntos: [
             "Days with changes are marked on the calendar.",
             "Jump to the previous or next change.",
@@ -577,8 +549,7 @@ const TEXTOS = {
     },
     confianza: {
       etiqueta: "Trust",
-      titulo: "No fine print",
-      comprobar: "What you can check",
+      titulo: "What you can check",
       items: [
         {
           icono: "codigo",
@@ -598,37 +569,14 @@ const TEXTOS = {
           titulo: "No tracking in the app",
           texto: "The app has no analytics and no telemetry, and it sends your data nowhere.",
         },
+        {
+          icono: "candado",
+          titulo: "It helps you meet personal-data rules",
+          texto:
+            "The data stays on your computer and the files you share are encrypted: that helps you meet the rules that apply to you. Handling it lawfully is the responsibility of whoever uses the app.",
+          enlace: { texto: "Security policy", href: `${REPO}/blob/main/SECURITY.md` },
+        },
       ],
-      limites: {
-        titulo: "What you should know before choosing it",
-        items: [
-          {
-            titulo: "It has no users or permissions.",
-            texto:
-              "Whoever opens the app sees and changes everything, and nothing records who changed what. There is no online editing between people either: each copy is worked on separately and they are merged with a .boldo file.",
-          },
-          {
-            titulo: "The database and backups are not encrypted.",
-            texto:
-              "Only .boldo files are encrypted. Protect the rest with your disk's encryption (BitLocker, FileVault or LUKS) and look after the USB drive.",
-          },
-          {
-            titulo: "The program has no digital signature.",
-            texto: "It carries no Windows or Apple certificate, so the system warns you the first time you open it.",
-            enlace: { texto: "How to open it", href: "/en/descargas#sin-firma" },
-          },
-          {
-            titulo: "It doesn't import spreadsheets or export to PDF.",
-            texto: "Units, positions and people are created in the app or arrive in a .boldo file.",
-          },
-          {
-            titulo: "It helps you meet the rules; it doesn't replace your legal work.",
-            texto:
-              "Keeping personal data on your computer helps you meet the rules that apply to you, but handling it lawfully is the responsibility of whoever uses the app.",
-            enlace: { texto: "What it protects and what it doesn't", href: `${REPO}/blob/main/SECURITY.md` },
-          },
-        ],
-      },
     },
     preguntas: {
       etiqueta: "FAQ",
@@ -639,21 +587,17 @@ const TEXTOS = {
           r: "Nothing. BoldoAtlas is free software under the AGPL-3.0 license: no plans and no subscriptions.",
         },
         {
-          p: "Can I bring my data from Excel or another spreadsheet?",
-          r: "No. BoldoAtlas doesn't import spreadsheets: units, positions and people are created inside the app, or arrive in a .boldo file exported from another copy.",
-        },
-        {
           p: "Where does my data live?",
           r: "In a SQLite database on your computer: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it. BoldoAtlas doesn't need the internet to work and sends your data nowhere.",
         },
         {
-          p: "Can several people work on it?",
-          r: "Each copy is worked on separately, with no users or permissions. To merge the work, one person exports a .boldo file and the other imports it with Review and decide: it compares both sides and you choose what stays.",
+          p: "How do I merge the work of two copies?",
+          r: "One person exports a .boldo file and the other imports it with Review and decide: it compares both sides and you choose what stays.",
           enlace: { texto: "Review and decide", href: "/en/manual/exportar-importar#review-and-decide" },
         },
         {
           p: "Which systems does it run on?",
-          r: "Windows 10 and 11 (x64), Linux x64 and macOS 11 or newer, on Intel and Apple Silicon. The program has no digital signature, so the first time your system may ask you to confirm.",
+          r: "Windows 10 and 11 (x64), Linux x64 and macOS 11 or newer, on Intel and Apple Silicon. The first time, your system may ask you to confirm that you want to open it.",
           enlace: { texto: "How to open it", href: "/en/descargas#sin-firma" },
         },
         {
@@ -663,7 +607,7 @@ const TEXTOS = {
         },
         {
           p: "Does it work for large organizations?",
-          r: "Yes, it is built for them. It was tested with 2,000 units, 3,000 positions and 10,000 people: branches fold away, the directory draws only the rows in view and photos load when they appear. With more than 300 cards in view, the canvas simplifies them when you zoom out, and before expanding past 1,000 it warns you, because it gets slow.",
+          r: "Yes, it is built for them. It was tested with 2,000 units, 3,000 positions and 10,000 people: branches fold away, the directory draws only the rows in view and photos load when they appear. With more than 300 cards in view, the canvas simplifies them when you zoom out so it keeps moving smoothly.",
         },
         {
           p: "Is it a final version?",
@@ -821,31 +765,16 @@ const hayMas = novedades.length > PORTADA;
       <div class="contenedor">
         <p class="etiqueta">{{ t.confianza.etiqueta }}</p>
         <h2 id="confianza">{{ t.confianza.titulo }}</h2>
-        <div class="dos-columnas">
-          <div>
-            <h3 class="subtitulo">{{ t.confianza.comprobar }}</h3>
-            <ul class="confianza" role="list">
-              <li v-for="c in t.confianza.items" :key="c.icono">
-                <span class="icono"><svg viewBox="0 0 24 24" aria-hidden="true" v-html="ICONOS[c.icono]" /></span>
-                <div>
-                  <h4>{{ c.titulo }}</h4>
-                  <p>{{ c.texto }}</p>
-                  <a v-if="c.enlace" class="mas" :href="enlace(c.enlace.href)">{{ c.enlace.texto }} →</a>
-                </div>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h3 class="subtitulo">{{ t.confianza.limites.titulo }}</h3>
-            <ul class="limites" role="list">
-              <li v-for="l in t.confianza.limites.items" :key="l.titulo">
-                <strong>{{ l.titulo }}</strong>
-                {{ l.texto }}
-                <a v-if="l.enlace" :href="enlace(l.enlace.href)">{{ l.enlace.texto }}</a>
-              </li>
-            </ul>
-          </div>
-        </div>
+        <ul class="confianza" role="list">
+          <li v-for="c in t.confianza.items" :key="c.icono">
+            <span class="icono"><svg viewBox="0 0 24 24" aria-hidden="true" v-html="ICONOS[c.icono]" /></span>
+            <div>
+              <h3>{{ c.titulo }}</h3>
+              <p>{{ c.texto }}</p>
+              <a v-if="c.enlace" class="mas" :href="enlace(c.enlace.href)">{{ c.enlace.texto }} →</a>
+            </div>
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -1237,23 +1166,16 @@ h2.ancho {
   display: none;
 }
 
-/* confianza: lo que se puede comprobar y, al lado, lo que falta */
-.dos-columnas {
-  display: grid;
-  gap: 32px;
-  margin-top: 32px;
-}
-@media (min-width: 960px) {
-  .dos-columnas {
-    grid-template-columns: 1fr 1fr;
-    gap: 56px;
-  }
-}
-.subtitulo {
-  font-size: 1.125rem;
-}
+/* confianza */
 .confianza {
-  margin-top: 16px !important;
+  display: grid;
+  gap: 16px;
+  margin-top: 32px !important;
+}
+@media (min-width: 768px) {
+  .confianza {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .confianza li {
   display: flex;
@@ -1263,14 +1185,8 @@ h2.ancho {
   border-radius: var(--pr-radio);
   background: var(--vp-c-bg);
 }
-.confianza li + li {
-  margin-top: 12px;
-}
-.confianza h4 {
-  margin: 0;
-  color: var(--vp-c-text-1);
+.confianza h3 {
   font-size: 1.0625rem;
-  font-weight: 650;
 }
 .confianza p {
   margin-top: 4px;
@@ -1280,23 +1196,6 @@ h2.ancho {
 .confianza a.mas {
   margin-top: 8px;
   font-size: 0.9375rem;
-}
-.limites {
-  margin-top: 16px !important;
-}
-.limites li {
-  padding: 14px 0;
-  border-top: 1px solid var(--vp-c-divider);
-  color: var(--vp-c-text-2);
-  line-height: 1.6;
-}
-.limites strong {
-  color: var(--vp-c-text-1);
-  font-weight: 650;
-}
-.limites a {
-  color: var(--vp-c-brand-1);
-  font-weight: 600;
 }
 
 /* preguntas */

@@ -14,7 +14,7 @@ const TEXTOS = {
     etiqueta: "Comparación",
     titulo: "BoldoAtlas comparado con otros productos",
     bajada:
-      "Para quien lleva el organigrama de una organización: qué ofrece cada producto según su sitio oficial o su documentación, y qué no tiene BoldoAtlas.",
+      "Para quien lleva el organigrama de una organización: qué ofrece cada producto según su sitio oficial o su documentación.",
     revisado: "Revisado el",
     buenoTitulo: "Lo bueno de BoldoAtlas",
     bueno: [
@@ -23,14 +23,6 @@ const TEXTOS = {
       "Es gratis, sin planes, con el código abierto bajo AGPL-3.0.",
       "El organigrama, los puestos, las fichas y la vista a una fecha están en la misma base.",
       "Medido: 10.000 personas y 1.000 fotos abren en menos de 1 segundo.",
-    ],
-    faltaTitulo: "Lo que no tiene",
-    falta: [
-      "Colaboración en línea en tiempo real, usuarios y permisos.",
-      "Integración con nómina u otros sistemas de RR. HH.",
-      "Carga desde planillas.",
-      "Firma digital del programa: el sistema avisa la primera vez.",
-      "Soporte comercial: se atiende en GitHub, sin plazo garantizado.",
     ],
     tablaTitulo: "Producto por producto",
     leer: "“No indicado” significa que no lo encontramos en las páginas oficiales que revisamos, no que el producto no lo tenga. Muchos datos cambian según el plan y el país. Los números pequeños llevan a la fuente de cada dato.",
@@ -42,6 +34,7 @@ const TEXTOS = {
     legalTitulo: "Aviso",
     legal:
       "Visio y Microsoft, Lucidchart, draw.io, OrgChart, Buk y Talana son marcas de sus respectivos dueños, y BoldoAtlas no tiene relación con ellos. Esta comparación es informativa y puede quedar desactualizada. ¿Hay un dato equivocado?",
+    seleccion: "Compara una selección de criterios; no es una lista completa de funciones.",
     avisar: "Avísanos en GitHub",
     descargar: "Descargar BoldoAtlas",
     descargas: "/descargas#portable",
@@ -52,7 +45,7 @@ const TEXTOS = {
     etiqueta: "Comparison",
     titulo: "BoldoAtlas compared with other products",
     bajada:
-      "For whoever keeps an organization's org chart: what each product offers according to its official site or documentation, and what BoldoAtlas doesn't have.",
+      "For whoever keeps an organization's org chart: what each product offers according to its official site or documentation.",
     revisado: "Reviewed on",
     buenoTitulo: "What's good about BoldoAtlas",
     bueno: [
@@ -61,14 +54,6 @@ const TEXTOS = {
       "It's free, with no plans, and its code is open under AGPL-3.0.",
       "The org chart, positions, records and the past-date view are in the same database.",
       "Measured: 10,000 people and 1,000 photos open in under 1 second.",
-    ],
-    faltaTitulo: "What it doesn't have",
-    falta: [
-      "Real-time online collaboration, users and permissions.",
-      "Integration with payroll or other HR systems.",
-      "Loading from spreadsheets.",
-      "A digital signature on the program: the system warns you the first time.",
-      "Commercial support: help is on GitHub, with no guaranteed response time.",
     ],
     tablaTitulo: "Product by product",
     leer: "“Not stated” means we didn't find it on the official pages we reviewed, not that the product lacks it. Many details change by plan and country. The small numbers lead to the source of each data point.",
@@ -80,6 +65,7 @@ const TEXTOS = {
     legalTitulo: "Notice",
     legal:
       "Visio and Microsoft, Lucidchart, draw.io, OrgChart, Buk and Talana are trademarks of their respective owners, and BoldoAtlas has no relationship with them. This comparison is informational and may become out of date. Is a detail wrong?",
+    seleccion: "Compares a selection of criteria; it isn't a complete feature list.",
     avisar: "Tell us on GitHub",
     descargar: "Download BoldoAtlas",
     descargas: "/en/descargas#portable",
@@ -91,7 +77,7 @@ const TEXTOS = {
 const t = computed(() => TEXTOS[props.lang]);
 const numero = (id: string) => datos.fuentes.findIndex((f) => f.id === id) + 1;
 const nombre = (id: string) => datos.productos.find((p) => p.id === id)?.nombre;
-const celda = (fila: (typeof datos.grupos)[number]["filas"][number], producto: string) =>
+const celda = (fila: (typeof datos.filas)[number], producto: string) =>
   (fila.celdas as Record<string, { ni?: boolean; es?: string; en?: string; f?: string[] }>)[producto];
 </script>
 
@@ -111,12 +97,6 @@ const celda = (fila: (typeof datos.grupos)[number]["filas"][number], producto: s
           <li v-for="b in t.bueno" :key="b">{{ b }}</li>
         </ul>
       </section>
-      <section aria-labelledby="lo-que-falta">
-        <h2 id="lo-que-falta">{{ t.faltaTitulo }}</h2>
-        <ul>
-          <li v-for="f in t.falta" :key="f">{{ f }}</li>
-        </ul>
-      </section>
     </div>
 
     <section class="ancho" aria-labelledby="producto">
@@ -132,11 +112,8 @@ const celda = (fila: (typeof datos.grupos)[number]["filas"][number], producto: s
               </th>
             </tr>
           </thead>
-          <tbody v-for="g in datos.grupos" :key="g.id">
-            <tr class="grupo">
-              <th :colspan="datos.productos.length + 1" scope="rowgroup">{{ g[lang] }}</th>
-            </tr>
-            <tr v-for="fila in g.filas" :key="fila.id">
+          <tbody>
+            <tr v-for="fila in datos.filas" :key="fila.id">
               <th scope="row">{{ fila[lang] }}</th>
               <td
                 v-for="p in datos.productos"
@@ -185,6 +162,7 @@ const celda = (fila: (typeof datos.grupos)[number]["filas"][number], producto: s
         <a :href="`${REPO}/issues/new`" rel="noopener noreferrer" target="_blank">{{ t.avisar }}</a
         >.
       </p>
+      <p>{{ t.seleccion }}</p>
     </footer>
   </article>
 </template>
@@ -251,7 +229,6 @@ a:focus-visible {
   border-radius: 4px;
 }
 
-/* lo bueno y lo que falta, a la misma altura: ninguno se esconde */
 .resumen {
   display: grid;
   gap: 16px;
@@ -264,7 +241,7 @@ a:focus-visible {
   border-radius: 16px;
   background: var(--vp-c-bg-soft);
 }
-.resumen section:first-child {
+.resumen section {
   border-color: var(--vp-c-brand-3);
   background: var(--vp-c-brand-soft);
 }
@@ -281,9 +258,13 @@ a:focus-visible {
 .resumen li + li {
   margin-top: 6px;
 }
-@media (min-width: 768px) {
-  .resumen {
-    grid-template-columns: 1fr 1fr;
+@media (min-width: 960px) {
+  .resumen ul {
+    columns: 2;
+    column-gap: 48px;
+  }
+  .resumen li {
+    break-inside: avoid;
   }
 }
 
@@ -329,12 +310,6 @@ thead th {
 }
 tbody th {
   font-weight: 600;
-}
-.grupo th {
-  padding-top: 24px;
-  color: var(--vp-c-brand-1);
-  font-size: 0.875rem;
-  font-weight: 700;
 }
 .nuestra {
   background: var(--vp-c-brand-soft);
@@ -385,16 +360,11 @@ sup a {
     overflow: hidden;
     clip: rect(0 0 0 0);
   }
-  tbody tr:not(.grupo) {
+  tbody tr {
     margin-top: 12px;
     border: 1px solid var(--vp-c-divider);
     border-radius: 12px;
     overflow: hidden;
-  }
-  .grupo th {
-    border: 0;
-    padding: 24px 0 0;
-    font-size: 1rem;
   }
   tbody th[scope="row"] {
     background: var(--vp-c-bg-soft);
