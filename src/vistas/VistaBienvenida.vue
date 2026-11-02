@@ -18,6 +18,9 @@ import { Button } from "@/components/ui/button";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import BotonTema from "@/components/BotonTema.vue";
 import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
+import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
+import { versionVisible } from "@/app/version";
+import { useActualizaciones } from "@/stores/actualizaciones";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +48,7 @@ const router = useRouter();
 const route = useRoute();
 const org = useOrganizacion();
 const recientes = useRecientes();
+const actualizaciones = useActualizaciones();
 
 const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
@@ -134,13 +138,27 @@ onMounted(() => {
       <div class="flex items-start justify-between gap-4">
         <img :src="icono" alt="" class="size-12 dark:rounded-lg dark:bg-primary dark:p-1" />
         <div class="flex flex-wrap items-center justify-end gap-2">
-          <AvisoActualizacion />
+          <AvisoActualizacion destacado />
           <SelectorIdioma />
           <BotonTema />
         </div>
       </div>
       <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
       <p v-if="!hayDatos" class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
+      <p class="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+        <span>{{ versionVisible() }}</span>
+        <RouterLink to="/acerca" class="underline underline-offset-4 hover:text-foreground">{{
+          t("nav.acerca")
+        }}</RouterLink>
+        <button
+          type="button"
+          class="underline underline-offset-4 hover:text-foreground disabled:no-underline"
+          :disabled="actualizaciones.buscando"
+          @click="buscarActualizaciones"
+        >
+          {{ actualizaciones.buscando ? t("actualizar.buscando") : t("actualizar.buscar") }}
+        </button>
+      </p>
     </header>
 
     <template v-if="hayDatos">

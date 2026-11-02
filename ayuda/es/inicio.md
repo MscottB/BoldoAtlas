@@ -16,7 +16,7 @@ Al abrir una base sin unidades, BoldoAtlas muestra la bienvenida con tres camino
 - **Abrir un archivo .boldo:** te lleva a **Importar/Exportar** para elegir el archivo (ver [Exportar e importar](exportar-importar.md)).
 - **Explorar un ejemplo:** crea una organización de muestra, en el idioma de la interfaz, para recorrer la app.
 
-Arriba a la derecha están el selector de idioma **ES / EN** y el botón de tema claro u oscuro: puedes elegirlos desde el primer momento, sin entrar antes a ningún camino.
+Arriba a la derecha están el selector de idioma **ES / EN** y el botón de tema claro u oscuro: puedes elegirlos desde el primer momento, sin entrar antes a ningún camino. Bajo el título, con datos o sin ellos, ves la versión, **Acerca de** y **Buscar actualizaciones**.
 
 ![Pantalla de bienvenida de BoldoAtlas con tres tarjetas (Crear una organización vacía, Abrir un archivo .boldo y Explorar un ejemplo) y el botón de tema arriba a la derecha.](../img/es/inicio-bienvenida.webp "La bienvenida. 1: crear una organización vacía. 2: abrir un archivo .boldo. 3: explorar una organización de ejemplo. 4: cambiar entre tema claro y oscuro."){width=784 height=384}
 

@@ -8,7 +8,7 @@ BoldoAtlas looks for new versions on its own and tells you; it never downloads o
 
 ## How it checks
 
-It checks **every time you open the app** and, by default, **every day** while it stays open, the same in the portable and the installed version. When there is a new version a discreet notice appears on Home and in the top bar, **Version X available**; one click opens the update window.
+It checks **every time you open the app** and, by default, **every day** while it stays open, the same in the portable and the installed version. When there is a new version the **Update to X** button appears on Home and in the top bar, also while you work on a tree; one click opens the update window. You don't need to look for it yourself, but if you want to, **Check for updates** is on Home, next to the version.
 
 You can also check whenever you want:
 

@@ -971,7 +971,7 @@
     "buscar": "Check for updates",
     "buscando": "Checking…",
     "alDia": "You have the latest version.",
-    "disponible": "Version {version} available",
+    "disponible": "Update to {version}",
     "titulo": "Update available",
     "versiones": "You have version {actual}; the new one is {nueva}.",
     "queTrae": "What the new version brings",
@@ -1031,6 +1031,7 @@
   },
   "bandeja": {
     "abrir": "Open BoldoAtlas",
+    "versionNueva": "Version {version} available",
     "actualizarA": "Update to v{version}",
     "buscarPersona": "Find a person",
     "sinPersonas": "No people yet: create an organization first.",

@@ -971,7 +971,7 @@
     "buscar": "Buscar actualizaciones",
     "buscando": "Buscando…",
     "alDia": "Ya tienes la última versión.",
-    "disponible": "Versión {version} disponible",
+    "disponible": "Actualizar a {version}",
     "titulo": "Actualización disponible",
     "versiones": "Tienes la versión {actual}; la nueva es la {nueva}.",
     "queTrae": "Qué trae la versión nueva",
@@ -1031,6 +1031,7 @@
   },
   "bandeja": {
     "abrir": "Abrir BoldoAtlas",
+    "versionNueva": "Versión {version} disponible",
     "actualizarA": "Actualizar a v{version}",
     "buscarPersona": "Buscar persona",
     "sinPersonas": "Aún no hay personas: primero crea una organización.",
