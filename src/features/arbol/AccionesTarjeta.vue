@@ -2,10 +2,10 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useVueFlow } from "@vue-flow/core";
-import { ChevronsDownUp, ChevronsUpDown, Ellipsis, Pencil, Plus } from "@lucide/vue";
+import { ChevronsDownUp, ChevronsUpDown, Ellipsis, Pencil, Plus, Waypoints } from "@lucide/vue";
 import type { Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
-import { abrirMenuContextual, useLienzo } from "./useLienzo";
+import { abrirMenuContextual, conectarDesde, useLienzo } from "./useLienzo";
 
 // Acciones de la tarjeta activa o seleccionada. Flotan sobre su borde: no mueven nada de lo que hay bajo el puntero. Las
 // mismas del menú contextual, y «Más» abre ese menú. Se montan solo en una tarjeta a la vez.
@@ -54,6 +54,17 @@ const clase =
         @click="renombrar(id)"
       >
         <Pencil class="size-3.5" aria-hidden="true" />
+      </button>
+      <button
+        v-if="!soloLectura"
+        type="button"
+        :class="clase"
+        :aria-label="t('unidad.conectarCon')"
+        :title="t('unidad.conectarCon')"
+        aria-haspopup="dialog"
+        @click="conectarDesde(id)"
+      >
+        <Waypoints class="size-3.5" aria-hidden="true" />
       </button>
       <button
         v-if="hijos"

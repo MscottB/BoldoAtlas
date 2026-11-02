@@ -50,7 +50,7 @@ getrandom = "0.4"
 
 # inicio con el sistema (src/inicio.rs); misma versión que ya trae hyper-util
 [target.'cfg(windows)'.dependencies]
-windows-registry = "0.6"
+windows-registry = "0.100"
 
 # Linux: probar si está libayatana-appindicator3 antes de crear la bandeja (actualizar::bandeja_disponible)
 [target.'cfg(target_os = "linux")'.dependencies]

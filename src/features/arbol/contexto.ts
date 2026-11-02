@@ -26,6 +26,8 @@ export interface ContextoLienzo {
   tarjetaEnfocada: ComputedRef<string | null>;
   /** Conexiones de la tarjeta activa: se resaltan y las demás se atenúan. null = ninguna en particular. */
   relacionesActivas: ComputedRef<ReadonlySet<string> | null>;
+  /** Las unidades que el lienzo dibuja: la rama enfocada, o todas, a la fecha que se ve. */
+  mostradas: ComputedRef<Unidad[]>;
   /** Encuadra todo el árbol; con el minimapa a la vista deja libre su franja, para que no tape tarjetas. */
   encuadrar: () => Promise<boolean>;
 }

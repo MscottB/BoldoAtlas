@@ -32,6 +32,48 @@ export const excluidasParaConexion = (conexiones: Conexion[], id: string): Set<s
     ),
   ]);
 
+/**
+ * Por qué una unidad no se dibuja: un superior plegado o, si no está en `mostradas` (lo que el lienzo dibuja), fuera de la
+ * vista: otra rama enfocada u otra fecha. null: se dibuja, aunque esté más allá de lo que entra en la pantalla.
+ */
+export function porQueNoSeVe(
+  mostradas: Unidad[],
+  colapsados: ReadonlySet<string>,
+  id: string,
+): "plegada" | "fuera" | null {
+  const camino = ruta(mostradas, id);
+  if (!camino.length) return "fuera";
+  return camino.slice(0, -1).some((a) => colapsados.has(a.id)) ? "plegada" : null;
+}
+
+/** Por qué no se ve una conexión, entre sus dos unidades. «fuera» manda: si una está fuera, abrir la rama de la otra no la mostraría. */
+export function conexionOculta(mostradas: Unidad[], colapsados: ReadonlySet<string>, ids: string[]) {
+  const motivos = ids.flatMap((id) => {
+    const motivo = porQueNoSeVe(mostradas, colapsados, id);
+    return motivo ? [{ id, motivo }] : [];
+  });
+  return motivos.find((m) => m.motivo === "fuera") ?? motivos[0] ?? null;
+}
+
+/** Recuerda el último valor enviado a guardar: el mismo cambio puede avisarse dos veces antes de que termine de guardarse. */
+export function ultimoEnviado<T>(inicial: T) {
+  let ultimo = inicial;
+  let previo = inicial;
+  return {
+    /** Si `valor` hay que enviarlo; si sí, queda como el último. */
+    cambia(valor: T) {
+      if (valor === ultimo) return false;
+      previo = ultimo;
+      ultimo = valor;
+      return true;
+    },
+    /** El último envío no se guardó: ese valor se puede volver a enviar. */
+    fallo() {
+      ultimo = previo;
+    },
+  };
+}
+
 export interface OpcionUnidad {
   unidad: Unidad;
   /** Superiores de la unidad (texto); vacío en una raíz. */

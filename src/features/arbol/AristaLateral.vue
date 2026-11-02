@@ -1,25 +1,79 @@
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref, watchEffect } from "vue";
+import { useI18n } from "vue-i18n";
 import { EdgeLabelRenderer, useVueFlow } from "@vue-flow/core";
+import { useOrganizacion } from "@/stores/organizacion";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { caminoSvg, escalaMaxEtiqueta } from "./lateral";
+import { caminoSvg, escalaMaxEtiqueta, type Punto } from "./lateral";
+import { ventanaConexion } from "./useLienzo";
 import { useVista } from "./useVista";
 
-// Conexión lateral: la línea va por donde dijo trazarLaterales, no de una tarjeta a otra. La etiqueta es HTML sobre la capa
-// de tarjetas: con fondo, abreviada si es larga y completa al pasar o enfocarla. En ligero: la línea continua y sin etiqueta.
+// Conexión lateral: la línea va por donde dijo trazarLaterales, no de una tarjeta a otra. Sobre la línea hay un botón (su
+// descripción o, si no tiene, un punto) que es HTML sobre la capa de tarjetas: abreviado si es largo y completo al pasar o
+// enfocarlo. En ligero: la línea continua y solo el punto. Clic en la línea o en el botón: la ventanita de la conexión.
 const props = defineProps<{ id: string; etiqueta?: string; descripcion?: string }>();
+const { t } = useI18n();
+const org = useOrganizacion();
 const { trazados, relacionesActivas, ligera } = inject(CONTEXTO_LIENZO)!;
-const { viewport } = useVueFlow();
+const { viewport, screenToFlowCoordinate, panBy } = useVueFlow();
 const { config } = useVista();
 
 const trazado = computed(() => trazados.value.get(props.id));
 const d = computed(() => trazado.value && caminoSvg(trazado.value.puntos));
-const resaltada = computed(() => !!relacionesActivas.value?.has(props.id));
+const boton = ref<HTMLElement | null>(null);
+// La zona de clic mide 16 px en pantalla con cualquier zoom. Directo en la línea y no con :style ni con una variable CSS: esto
+// no vuelve a pintar el componente, y una variable en un ancestro común recalcula el estilo de todas las tarjetas en cada tick
+// (27 ms con 973 tarjetas, contra 0,2 ms así).
+const zona = ref<SVGPathElement | null>(null);
+watchEffect(() => zona.value?.style.setProperty("stroke-width", `${16 / viewport.value.zoom}px`));
+const sobreBoton = ref(false);
+const enfocada = ref(false);
+// Dónde está el puntero sobre la línea, en coordenadas del lienzo: ahí aparece la pista.
+const puntero = ref<Punto | null>(null);
+const activa = computed(() => sobreBoton.value || enfocada.value || !!puntero.value);
+const resaltada = computed(() => activa.value || !!relacionesActivas.value?.has(props.id));
 const atenuada = computed(() => !!relacionesActivas.value && !resaltada.value);
 // Al encuadrar un árbol mediano el zoom baja de 1: la etiqueta se agranda para seguir leyéndose, hasta lo que el trazado reservó.
 const escala = computed(() =>
   Math.min(escalaMaxEtiqueta(config.value.densidad), Math.max(1, 0.75 / viewport.value.zoom)),
 );
+const texto = computed(() => (ligera.value ? undefined : props.etiqueta));
+const accion = computed(() => t(org.fechaVista ? "arbol.lateral.clicVer" : "arbol.lateral.clicEditar"));
+// La pista conserva su tamaño con cualquier zoom.
+const lugarPista = computed(() => {
+  const p = puntero.value ?? trazado.value?.etiqueta;
+  const z = viewport.value.zoom;
+  return p && `translate(${p.x}px, ${p.y - 14 / z}px) translate(-50%, -100%) scale(${1 / z})`;
+});
+
+const abrir = (ancla: DOMRect) => (ventanaConexion.value = { id: props.id, ancla, foco: boton.value });
+// `detail` 0: pulsado con el teclado, que no tiene punto donde abrir. Se fija el lugar: el botón puede rehacerse mientras tanto.
+function alPulsar(e: MouseEvent) {
+  abrir(e.detail ? new DOMRect(e.clientX, e.clientY, 0, 0) : boton.value!.getBoundingClientRect());
+}
+// Vue Flow marca sus aristas `nopan`. Alejado, las franjas de clic cubrirían buena parte del lienzo y no se podría arrastrar desde
+// ahí: arrastrar desde la línea mueve el lienzo aquí mismo. Un clic es presionar y soltar casi en el mismo lugar.
+let presion: Punto | null = null;
+let arrastrando = false;
+function alPresionar(e: PointerEvent) {
+  if (e.button) return;
+  presion = { x: e.clientX, y: e.clientY };
+  arrastrando = false;
+  (e.currentTarget as Element).setPointerCapture(e.pointerId);
+}
+function alMover(e: PointerEvent) {
+  if (!presion) return void (puntero.value = screenToFlowCoordinate({ x: e.clientX, y: e.clientY }));
+  const delta = { x: e.clientX - presion.x, y: e.clientY - presion.y };
+  if (!arrastrando && Math.hypot(delta.x, delta.y) < 5) return;
+  arrastrando = true;
+  puntero.value = null;
+  panBy(delta);
+  presion = { x: e.clientX, y: e.clientY };
+}
+function alSoltar(e: PointerEvent) {
+  if (presion && !arrastrando) abrir(new DOMRect(e.clientX, e.clientY, 0, 0));
+  presion = null;
+}
 </script>
 
 <template>
@@ -34,23 +88,61 @@ const escala = computed(() =>
       strokeDasharray: ligera ? undefined : '6 4',
     }"
   />
-  <EdgeLabelRenderer v-if="trazado && etiqueta && !ligera">
-    <span
-      tabindex="0"
-      role="note"
-      class="nodrag nopan absolute top-0 left-0 max-w-48 cursor-default truncate rounded border bg-background px-1.5 text-xs leading-[18px] text-foreground hover:z-10 hover:max-w-none focus-visible:z-10 focus-visible:max-w-none focus-visible:outline-2 focus-visible:outline-ring"
+  <!-- La zona de clic: un trazo invisible, más ancho que la línea. También responde en ligero. -->
+  <path
+    v-if="d"
+    ref="zona"
+    :d="d"
+    class="nodrag nopan cursor-pointer"
+    fill="none"
+    stroke="transparent"
+    data-zona-conexion
+    @pointermove="alMover"
+    @pointerleave="puntero = null"
+    @pointerdown="alPresionar"
+    @pointerup="alSoltar"
+    @pointercancel="presion = null"
+  />
+  <EdgeLabelRenderer v-if="trazado">
+    <button
+      ref="boton"
+      type="button"
+      :data-conexion="id"
+      class="nodrag nopan absolute top-0 left-0 cursor-pointer text-xs leading-[18px] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring"
       :class="[
-        resaltada ? 'border-marca font-medium' : 'border-border',
+        texto
+          ? 'max-w-48 truncate rounded border bg-background px-1.5 text-foreground hover:z-10 hover:max-w-none focus-visible:max-w-none'
+          : 'grid size-5 place-items-center rounded-full',
+        texto && (resaltada ? 'border-marca font-medium' : 'border-border'),
         atenuada && 'opacity-30',
         trazado.etiquetaTapa ? 'pointer-events-none' : 'pointer-events-auto',
       ]"
       :style="{
         transform: `translate(${trazado.etiqueta.x}px, ${trazado.etiqueta.y}px) translate(-50%, -50%) scale(${escala})`,
       }"
-      :title="etiqueta"
-      :aria-label="descripcion"
+      :aria-label="`${descripcion}. ${accion}`"
+      aria-haspopup="dialog"
+      @pointerenter="sobreBoton = true"
+      @pointerleave="sobreBoton = false"
+      @focus="enfocada = true"
+      @blur="enfocada = false"
+      @click.stop="alPulsar"
     >
-      {{ etiqueta }}
+      <template v-if="texto">{{ texto }}</template>
+      <span
+        v-else
+        class="block rounded-full bg-marca ring-2 ring-background"
+        :class="resaltada ? 'size-3' : 'size-2.5'"
+        aria-hidden="true"
+      />
+    </button>
+    <span
+      v-if="activa && lugarPista && !ventanaConexion"
+      class="pointer-events-none absolute top-0 left-0 z-20 w-max max-w-80 origin-bottom rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
+      :style="{ transform: lugarPista }"
+      aria-hidden="true"
+    >
+      {{ descripcion }}. {{ accion }}
     </span>
   </EdgeLabelRenderer>
 </template>

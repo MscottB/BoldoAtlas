@@ -44,6 +44,7 @@ import {
 import { cambiosPorDia, type Cambio } from "@/features/arbol/cambios";
 import { duplicarRama as copiarRama } from "@/features/arbol/duplicar";
 import { planEliminar, soloCimas } from "@/features/arbol/multiple";
+import { excluidasParaConexion } from "@/features/unidades/panel";
 import { normalizarTexto } from "@/lib/texto";
 import { tiposARenombrar } from "@/features/configuracion/semillas";
 import { i18n, type Idioma } from "@/i18n";
@@ -58,8 +59,10 @@ export type ResultadoEliminar =
 type Contenido = { hijos: string[]; puestos: string[] };
 
 export interface Borrado {
-  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista" | "zona";
+  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista" | "zona" | "conexion";
   id: string;
+  /** `conexion`: entre quiénes era: al restaurarla no debe duplicar otra creada mientras tanto. */
+  extremos?: [string, string];
   contenido?: Contenido;
   /** `unidades`: lo que contenía cada una de las eliminadas en el mismo lote. */
   lote?: { id: string; contenido: Contenido }[];
@@ -384,14 +387,22 @@ export const useOrganizacion = defineStore("organizacion", () => {
     puesto: (b: Borrado) => P.restaurarPuesto(b.id),
     vista: (b: Borrado) => V.restaurarVista(b.id),
     zona: (b: Borrado) => Z.restaurarZona(b.id),
+    conexion: (b: Borrado) => X.restaurarConexion(b.id),
   };
 
-  async function deshacer(): Promise<Resultado> {
+  /** `id`: la baja a la que se refiere el aviso; si después hubo otra, ese aviso ya no restaura nada. */
+  async function deshacer(id?: string): Promise<Resultado> {
     const b = ultimoBorrado.value;
+    if (b && id && b.id !== id) return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     if (!b || Date.now() >= b.vence) {
       ultimoBorrado.value = null;
       return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     }
+    // Personas y vistas no dependen de la fecha que se ve: también se eliminan viéndola, y su Deshacer debe valer.
+    if (fechaVista.value && b.tipo !== "trabajador" && b.tipo !== "vista")
+      return rechazar(t("store.soloLectura"));
+    const motivo = b.extremos && conexionRechazada(b.extremos[0], b.extremos[1], conexiones.value);
+    if (motivo) return rechazar(motivo);
     return escribir(
       () => RESTAURAR[b.tipo](b),
       () => (ultimoBorrado.value = null),
@@ -490,9 +501,72 @@ export const useOrganizacion = defineStore("organizacion", () => {
     );
   }
 
-  const crearConexion = (origen: string, destino: string, etiqueta: string | null = null) =>
-    escribir(() => X.crearConexion(origen, destino, etiqueta));
-  const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));
+  /** Lo que la base no impide o no explica: consigo misma, una unidad eliminada y dos conexiones entre las mismas unidades. */
+  function conexionRechazada(origen: string, destino: string, entre: Conexion[]) {
+    if (origen === destino) return t("errores.conexionConsigoMisma");
+    if (!porId.value.has(origen) || !porId.value.has(destino)) return t("store.unidadInexistente");
+    if (!excluidasParaConexion(entre, origen).has(destino)) return null;
+    const nombre = (id: string) => porId.value.get(id)?.nombre;
+    return t("store.conexionDuplicada", { origen: nombre(origen), destino: nombre(destino) });
+  }
+
+  async function crearConexion(
+    origen: string,
+    destino: string,
+    etiqueta: string | null = null,
+  ): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const motivo = conexionRechazada(origen, destino, conexiones.value);
+    return motivo ? rechazar(motivo) : escribir(() => X.crearConexion(origen, destino, etiqueta));
+  }
+
+  /** Sin cambios reales no escribe: un `updated_at` nuevo haría pasar la conexión por editada al comparar un `.boldo`. */
+  async function actualizarConexion(
+    id: string,
+    cambios: { origen_id?: string; destino_id?: string; etiqueta?: string | null },
+  ): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const c = conexiones.value.find((x) => x.id === id);
+    if (!c) return rechazar(t("store.conexionInexistente"));
+    const { origen_id = c.origen_id, destino_id = c.destino_id } = cambios;
+    const etiqueta = cambios.etiqueta === undefined ? c.etiqueta : cambios.etiqueta?.trim() || null;
+    const mismosExtremos = origen_id === c.origen_id && destino_id === c.destino_id;
+    if (mismosExtremos && etiqueta === c.etiqueta) return { ok: true };
+    // Solo al cambiar de extremos: un duplicado que trajo un .boldo sigue admitiendo que se edite su descripción.
+    const motivo = mismosExtremos
+      ? null
+      : conexionRechazada(
+          origen_id,
+          destino_id,
+          conexiones.value.filter((x) => x.id !== id),
+        );
+    if (motivo) return rechazar(motivo);
+    // Solo lo que cambió: dos cambios solapados no se pisan con lo que cada uno leyó antes.
+    return escribir(() =>
+      X.actualizarConexion(id, {
+        origen_id: origen_id === c.origen_id ? undefined : origen_id,
+        destino_id: destino_id === c.destino_id ? undefined : destino_id,
+        etiqueta: etiqueta === c.etiqueta ? undefined : etiqueta,
+      }),
+    );
+  }
+
+  /** Con Deshacer, como las demás bajas. */
+  async function eliminarConexion(id: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const c = conexiones.value.find((x) => x.id === id);
+    if (!c) return rechazar(t("store.conexionInexistente"));
+    return escribir(
+      () => X.eliminarConexion(id),
+      () =>
+        (ultimoBorrado.value = {
+          tipo: "conexion",
+          id,
+          extremos: [c.origen_id, c.destino_id],
+          vence: Date.now() + VIGENCIA_DESHACER_MS,
+        }),
+    );
+  }
 
   /** Copia la unidad con su rama (ver `duplicarRama`) y devuelve el id de la copia. */
   async function duplicarRama(id: string): Promise<Resultado> {
@@ -886,6 +960,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     quitarDeZona,
     eliminarZona,
     crearConexion,
+    actualizarConexion,
     eliminarConexion,
     guardarSubarbol,
     renombrarSubarbol,

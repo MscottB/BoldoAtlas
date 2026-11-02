@@ -45,10 +45,13 @@ export default defineConfig({
         "Organigramas gigantes, fichas de personas y vacantes. App de escritorio local y portable para Windows, Linux y macOS.",
       themeConfig: {
         nav: [
-          { text: "Descargas", link: "/descargas" },
-          { text: "Manual", link: "/manual/inicio", activeMatch: "/manual/" },
+          { text: "Inicio", link: "/" },
+          // ancla de la portada: «Inicio» ya marca la portada, así que esta entrada no se marca nunca
+          { text: "Por qué", link: "/#por-que", ariaLabel: "Por qué BoldoAtlas", activeMatch: "^$" },
           { text: "Novedades", link: "/novedades" },
           { text: "Comparar", link: "/comparar" },
+          { text: "Descargas", link: "/descargas" },
+          { text: "Manual", link: "/manual/inicio", activeMatch: "/manual/" },
           { text: "Acerca de", link: "/acerca" },
         ],
         sidebar: { "/manual/": barraManual("es", "", "Manual de usuario") },
@@ -72,10 +75,12 @@ export default defineConfig({
         "Giant org charts, people records and vacancies. A local, portable desktop app for Windows, Linux and macOS.",
       themeConfig: {
         nav: [
-          { text: "Downloads", link: "/en/descargas" },
-          { text: "Manual", link: "/en/manual/inicio", activeMatch: "/en/manual/" },
+          { text: "Home", link: "/en/" },
+          { text: "Why", link: "/en/#por-que", ariaLabel: "Why BoldoAtlas", activeMatch: "^$" },
           { text: "What's new", link: "/en/novedades" },
           { text: "Compare", link: "/en/comparar" },
+          { text: "Downloads", link: "/en/descargas" },
+          { text: "Manual", link: "/en/manual/inicio", activeMatch: "/en/manual/" },
           { text: "About", link: "/en/acerca" },
         ],
         sidebar: { "/en/manual/": barraManual("en", "/en", "User manual") },

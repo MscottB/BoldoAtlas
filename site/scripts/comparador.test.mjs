@@ -59,6 +59,54 @@ test("en inglés, las fuentes de BoldoAtlas en español traen título y enlace p
   assert.match(vue, /\(lang === "en" && f\.titulo_en\) \|\| f\.titulo/);
 });
 
+const celdas = filas.flatMap((fila) => Object.entries(fila.celdas).map(([producto, c]) => ({ fila, producto, c })));
+
+test("todo «nivel» es válido: si, parcial, no, ni, o null si la celda solo describe", () => {
+  for (const { fila, producto, c } of celdas) {
+    assert.ok("nivel" in c, `${fila.id}/${producto}: falta el nivel`);
+    assert.ok(["si", "parcial", "no", "ni", null].includes(c.nivel), `${fila.id}/${producto}: nivel «${c.nivel}»`);
+  }
+});
+
+test("«No indicado» / «Not stated» es siempre «ni», nunca «no»", () => {
+  for (const { fila, producto, c } of celdas) {
+    const dice = c.ni || /^(No indicado|Not stated)\.?$/.test(c.es ?? "") || /^(No indicado|Not stated)\.?$/.test(c.en ?? "");
+    if (dice) assert.equal(c.nivel, "ni", `${fila.id}/${producto}`);
+    else assert.notEqual(c.nivel, undefined, `${fila.id}/${producto}`);
+  }
+});
+
+test("«No aplica» / «Not applicable» es «no»", () => {
+  for (const { fila, producto, c } of celdas)
+    if (/^(No aplica|Not applicable)\b/.test(c.es ?? "")) assert.equal(c.nivel, "no", `${fila.id}/${producto}`);
+});
+
+test("una fila o es descriptiva (sin marcas, salvo «No indicado») o lleva marca en todas sus celdas", () => {
+  for (const fila of filas) {
+    const propias = Object.values(fila.celdas).filter((c) => !c.ni);
+    const sinMarca = propias.filter((c) => c.nivel === null).length;
+    assert.ok(sinMarca === 0 || sinMarca === propias.length, `${fila.id}: mezcla celdas con y sin marca`);
+  }
+});
+
+test("español e inglés coinciden: mismas filas, mismos textos con fuente y mismas claves en la página", () => {
+  for (const fila of filas) {
+    assert.ok(fila.es && fila.en, fila.id);
+    for (const [producto, c] of Object.entries(fila.celdas)) {
+      assert.equal(Boolean(c.es), Boolean(c.en), `${fila.id}/${producto}: texto en un solo idioma`);
+      // las cifras no cambian de un idioma al otro (10.000 / 10,000 cuentan igual)
+      const cifras = (t) => t?.match(/\d+(?:[.,]\d+)*/g)?.map((n) => n.replace(/[.,]/g, ""));
+      assert.deepEqual(cifras(c.es), cifras(c.en), `${fila.id}/${producto}: cifras distintas`);
+    }
+  }
+  const vue = leer(".vitepress/theme/Comparador.vue");
+  const claves = (bloque) => [...bloque.matchAll(/^ {4}(\w+):/gm)].map((m) => m[1]);
+  const [es, en] = vue.split(/\n {2}en: \{/).map((parte, i) => (i === 0 ? parte.split(/\n {2}es: \{/)[1] : parte));
+  assert.deepEqual(claves(es), claves(en.split("\n};")[0]));
+  assert.match(vue, /Lo ofrece/);
+  assert.match(vue, /Offers it/);
+});
+
 test("sin precios", () => {
   for (const fila of filas)
     for (const c of Object.values(fila.celdas))

@@ -310,16 +310,29 @@ async function eliminar() {
             <h3 :id="`${uid}-etiquetas`" class="text-sm font-medium">{{ t("unidad.etiquetas") }}</h3>
             <EditorEtiquetas :unidad-id="unidad.id" />
           </section>
+          <EditorConexiones :unidad-id="unidad.id" />
           <BloquePlegable clave="unidad.avanzado" :titulo="t('unidad.avanzado')" class="text-sm">
             <div class="grid gap-4 pt-2">
               <div class="grid gap-1.5">
                 <Label :for="`${uid}-descripcion`">{{ t("puesto.descripcion") }}</Label>
-                <Textarea :id="`${uid}-descripcion`" v-model="descripcion" @change="guardarDescripcion" />
+                <p :id="`${uid}-descripcion-ayuda`" class="text-xs text-muted-foreground">
+                  {{ t("unidad.descripcionAyuda") }}
+                </p>
+                <Textarea
+                  :id="`${uid}-descripcion`"
+                  v-model="descripcion"
+                  :aria-describedby="`${uid}-descripcion-ayuda`"
+                  @change="guardarDescripcion"
+                />
               </div>
               <div class="grid gap-1.5">
                 <Label :for="`${uid}-superior`">{{ t("unidad.superior") }}</Label>
+                <p :id="`${uid}-superior-ayuda`" class="text-xs text-muted-foreground">
+                  {{ t("unidad.superiorAyuda") }}
+                </p>
                 <SelectorUnidad
                   :id="`${uid}-superior`"
+                  :aria-describedby="`${uid}-superior-ayuda`"
                   :excluidas="excluidas"
                   :texto="textoSuperior"
                   :ninguna="t('unidad.sinSuperior')"
@@ -327,8 +340,11 @@ async function eliminar() {
                 />
               </div>
 
-              <fieldset class="grid gap-1.5">
+              <fieldset class="grid gap-1.5" :aria-describedby="`${uid}-marca-ayuda`">
                 <legend class="mb-1.5 text-sm font-medium">{{ t("unidad.marca") }}</legend>
+                <p :id="`${uid}-marca-ayuda`" class="text-xs text-muted-foreground">
+                  {{ t("unidad.marcaAyuda") }}
+                </p>
                 <div class="flex flex-wrap items-center gap-2">
                   <input
                     type="color"
@@ -354,33 +370,25 @@ async function eliminar() {
                   {{ t("unidad.sinColor") }}
                 </p>
               </fieldset>
-
-              <section class="grid gap-1.5" :aria-labelledby="`${uid}-conexiones`">
-                <h3 :id="`${uid}-conexiones`" class="text-sm font-medium">{{ t("unidad.conexiones") }}</h3>
-                <EditorConexiones :unidad-id="unidad.id" />
-              </section>
-
-              <div class="flex flex-wrap items-center gap-2">
-                <Button
-                  v-if="guardable"
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  :disabled="guardada"
-                  @click="async () => avisar(await org.guardarSubarbol(unidad.id))"
-                >
-                  <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
-                  {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
-                </Button>
-                <Button type="button" variant="outline" size="sm" @click="duplicar(unidad.id)">
-                  <Copy aria-hidden="true" />
-                  {{ t("unidad.duplicar") }}
-                </Button>
-              </div>
             </div>
           </BloquePlegable>
 
           <div class="flex flex-wrap items-center gap-2 border-t pt-3">
+            <Button
+              v-if="guardable"
+              type="button"
+              variant="outline"
+              size="sm"
+              :disabled="guardada"
+              @click="async () => avisar(await org.guardarSubarbol(unidad.id))"
+            >
+              <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
+              {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
+            </Button>
+            <Button type="button" variant="outline" size="sm" @click="duplicar(unidad.id)">
+              <Copy aria-hidden="true" />
+              {{ t("unidad.duplicar") }}
+            </Button>
             <Button
               type="button"
               variant="destructive"

@@ -21,7 +21,7 @@ Each unit is a card with:
 
 Unit types are your organization's own list: it starts with Gerencia, Área, Subárea and Otra, which you can rename, reorder, deactivate or add to (for example, Superintendency or Department). The order of the list doesn't restrict the structure: any type can report to any other.
 
-Solid lines join each unit to its parent. Dotted lines are lateral connections between units: they run through the free space between cards, and their description reads on the line. A long one is shortened: hover over it, or reach it with `Tab`, to see it in full. When you hover over a card or focus it, its connections stand out and the others fade. To hide them, turn off **Lateral connections** in **Customize**.
+Solid lines join each unit to its parent. Dotted lines are connections between units that work together without one depending on the other (see “Connections”).
 
 ## Collapsing and expanding branches
 
@@ -49,7 +49,7 @@ The tree is drawn tidy: each parent sits centered over its sub-units, sibling un
 
 Right-click a card or the canvas background to open a menu with what you can do there. With the keyboard, open it with `Shift` + `F10` or the Menu key, on the focused card or, if there is none, the selected one (if there is none either, the background menu). Move with the arrow keys, `Enter` picks and `Esc` closes it and returns focus to the card.
 
-- **Unit**: Open panel, New sub-unit, Rename, View people (opens the panel on the People tab), Expand branch, Collapse branch, Select branch (the unit and what is visible of its branch), Duplicate branch, Open as tree, Save in Trees and Delete… (with the usual confirmation).
+- **Unit**: Open panel, New sub-unit, Rename, View people (opens the panel on the People tab), Connect to… (see “Connections”), Expand branch, Collapse branch, Select branch (the unit and what is visible of its branch), Duplicate branch, Open as tree, Save in Trees and Delete… (with the usual confirmation).
 - **Position** (with **Show positions** on): Open position, Assign holder, Register replacement, Copy style, Paste style and Remove style.
 - **Background**: New root unit, Expand all, Collapse all, Rearrange, Fit view and Customize….
 
@@ -58,7 +58,7 @@ While viewing the chart at a past date, actions that change something are disabl
 ## Selecting, creating and renaming
 
 - **Click** a card to select it. Click the background to clear the selection.
-- When you hover over a card, focus it with `Tab` or select it, its actions appear above it, without moving anything on the card: **+**, the pencil (**Rename**), **Collapse branch** or show its sub-units if it has any, and **More actions**, which opens the context menu. `Tab` reaches them after the card's own buttons.
+- When you hover over a card, focus it with `Tab` or select it, its actions appear above it, without moving anything on the card: **+**, the pencil (**Rename**), **Connect to…**, **Collapse branch** or show its sub-units if it has any, and **More actions**, which opens the context menu. `Tab` reaches them after the card's own buttons.
 - **+** creates a sub-unit with the type that follows its parent's in the list of types (the last one repeats) ready for you to type its name.
 - Selecting a card opens the **unit panel**, to the right of the canvas (see "Unit panel"): its positions and all its data are there.
 - **Double-click** the name, or press `F2` with the card focused or selected, to edit it. `Enter` saves and `Esc` cancels.
@@ -95,6 +95,40 @@ With two or more units selected the unit panel does not open: a bar appears over
 
 While viewing the chart at a past date there is no multiple selection.
 
+## Connections
+
+A connection links two units that work together without one depending on the other: for example, Maintenance and Purchasing. It does not change who they report to.
+
+On the canvas it is a dotted line that runs through the free space between cards, with its description on top or, if it has none, a dot. The **Lines** strip below the canvas reminds you what it means. When you hover over the line, it stands out and says what it links. A long description is shortened: hover over it, or reach it with `Tab`, to see it in full. When you hover over a card or focus it, its connections stand out and the others fade.
+
+**To create a connection:**
+
+1. Press **Connect to…** in the card's actions or in its context menu. It is also under **Connections**, in the unit panel.
+2. Choose the other unit. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
+3. If you want, type a description. You can leave it empty.
+
+**To edit a connection:** press the line, its description or its dot (or reach it with `Tab` and press `Enter`). A small window opens right there:
+
+![The window of the Maintenance ↔ Purchasing connection, above its dotted line.](../img/en/arbol-conexion.webp "A connection's window: description, Change unit and Delete connection."){width=320 height=298}
+
+- **Description**: saved when you leave the field, with `Enter` or when the window closes.
+- **Change unit**: choose another unit for either end. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
+- **Delete connection**: asks first. After deleting, a notice offers **Undo** for 8 seconds.
+
+`Esc` or a click outside closes the window, and `Esc` returns the focus to the line. Moving or zooming the canvas also closes it. The pencil on a row, under **Connections** in the unit panel, opens the same window; there you only change the other unit. The X on the row deletes the connection, also asking first and with **Undo**.
+
+A unit cannot be connected to itself, and if two units are already connected you cannot create a second connection between them.
+
+The line is drawn when both units are in view and **Lateral connections** is on in **Customize**. If it is not visible, the panel row and the window say why:
+
+- **Collapsed branch**: the **Show in the diagram** button opens the branch and moves the canvas to show the line. Collapsing a branch does not draw a line towards it.
+- **Outside the view**: the other unit is not in the branch you opened as a tree, or did not exist on the date you are viewing. Go back to the full tree or to today to see it.
+- **Lateral connections off**: turn it on in **Customize**.
+
+A connection to a unit beyond what fits on the screen is drawn: zoom out or fit the canvas to see it.
+
+While viewing the chart at a past date, the window is read only.
+
 ## Zones
 
 A zone groups units under a name and a color, also from different branches: “North Zone”, “Project X”. It does not change who reports to whom.
@@ -114,7 +148,7 @@ If you delete a unit, it leaves its zones; **Undo** puts it back. A duplicated b
 
 ## Duplicating a branch
 
-The **Duplicate branch** button (under **Advanced** in the unit panel's Summary, and on the selected card) and `Ctrl` + `D` copy the unit with everything under it:
+The **Duplicate branch** button (at the bottom of the unit panel's Summary, and on the selected card) and `Ctrl` + `D` copy the unit with everything under it:
 
 - The copy goes right after the original, named "X (copy)" (only the top unit; the ones below keep their names), and ends up selected. A root can be duplicated too: the copy is another root.
 - The type, description, mark, tags, zones and positions (job title, description and legend) are copied. Each copy's head points to the copied position.
@@ -138,7 +172,7 @@ If the person holds several current positions, you choose one in a «Job title �
 
 Drag the background to pan and use the mouse wheel or the **−** and **+** buttons in the bottom-right corner of the canvas to zoom out or in (with the keyboard, `Ctrl` + `-` and `Ctrl` + `=`; `Tab` reaches those buttons right after the toolbar). Next to them, **Fit view** (`Ctrl` + `0`) fits the whole tree in the window. The **minimap** shows where you are: it starts off and is turned on in **More › Show minimap**; turning it on fits the tree once. It sits at the bottom right, above the zoom buttons, in the theme colors, and fitting the tree leaves its space free so it doesn't cover cards.
 
-With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the color of its mark, and the lines become steps. Lateral connections show as solid lines, without their description, and the card actions and the highlighting don't appear. This keeps the canvas smooth. Dragging a card still shows where it will go. Zoom back in and all the detail returns; with the keyboard, each simplified card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent color.
+With many cards in view (more than 300), zooming out simplifies the cards: just the name, on the color of its mark, and the lines become steps. Lateral connections show as solid lines, without their description (they still respond to the pointer and to clicks), and the card actions and the highlighting don't appear. This keeps the canvas smooth. Dragging a card still shows where it will go. Zoom back in and all the detail returns; with the keyboard, each simplified card takes focus with `Tab` and is chosen with `Enter` or the space bar. When a change (expanding, showing positions, applying a view) goes to many cards, the canvas fits them all in the window. With more than 300 cards there is no minimap, at any zoom. The selected card is filled with the accent color.
 
 ## Opening a branch as a tree
 
@@ -195,7 +229,7 @@ Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on 
 
 ![The tree with the Operations card selected and its unit panel open on the right.](../img/en/arbol-panel.webp "The unit panel. 1: the selected card. 2: the Summary, Positions and People tabs. 3: the button to close the panel."){width=892 height=664}
 
-The **Summary** tab shows the type, name, head, figures and tags in plain view. The rest is under **Advanced**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it. **Delete unit** sits apart at the bottom. It holds:
+The **Summary** tab shows the type, name, head, figures, tags and connections in plain view. **Description**, **Parent unit** and **Mark** are under **Advanced**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it. **Save in Trees**, **Duplicate branch** and **Delete unit** sit apart at the bottom. It holds:
 
 - **Type** and **name**, in plain view, and **description**, under **Advanced**. The name and description are saved when you finish typing (`Enter`, `Tab` or leaving the field). The **type** is chosen from the unit-type list, as in the person records: type to filter and, if it does not exist, **Add “text” to the list** creates it and selects it, without going to the lists screen.
 - **Parent unit** (under **Advanced**): a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
@@ -203,8 +237,8 @@ The **Summary** tab shows the type, name, head, figures and tags in plain view. 
 - **Head**: choose which of the unit's positions is the head (or **No head**). With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see who holds it: the holder or, if there is none, **Replacement: name**.
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
-- **Lateral connections** (under **Advanced**): type a description (optional) and choose the unit to connect to; remove one with its X. They show on the canvas as dashed lines when both units are visible and **Lateral connections** is on in **Customize**.
-- **Save in Trees** (not shown on roots, which already are a tree) and **Duplicate branch**, under **Advanced**; **Delete unit**, at the bottom.
+- **Connections**, with how many it has: **Connect to…** adds another; on each row, the pencil edits it and the X removes it. If the line is not visible because the other unit is collapsed or outside the view, the row says so (see “Connections”).
+- **Save in Trees** (not shown on roots, which already are a tree), **Duplicate branch** and **Delete unit**, at the bottom.
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements").
 
