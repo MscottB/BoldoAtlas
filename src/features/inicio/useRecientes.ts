@@ -7,7 +7,7 @@ import { agregarReciente, esVistaReciente, leerRecientes, type Reciente } from "
 
 /**
  * «Abierto recientemente» en Inicio: lo último que se abrió en esta organización (spec §7). Se registra al navegar y se
- * recuerda por PC y por proyecto, con la misma clave por base que las pestañas. Nombra personas: se puede borrar.
+ * recuerda por PC y por proyecto, con clave por base. Nombra personas: se puede borrar.
  */
 export const useRecientes = defineStore("recientes", () => {
   const lista = ref<Reciente[]>([]);

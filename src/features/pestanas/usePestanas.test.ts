@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import type { Unidad } from "@/db/tipos";
+import { i18n } from "@/i18n";
+import { fijarBase } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MAX_PESTANAS } from "./pestanas";
 import { usePestanas } from "./usePestanas";
@@ -24,9 +26,11 @@ const nuevoRouter = (lenta = false) => {
   });
 };
 
+const CLAVE = "boldo:pestanas:C:/datos";
+const ANTIGUA = "boldo:pestanas:C:/datos/boldo.db";
 let datos: Map<string, string>;
 let router: Router;
-const guardadas = () => JSON.parse(datos.get("boldo:pestanas:C:/datos/boldo.db") ?? "null");
+const guardadas = () => JSON.parse(datos.get(CLAVE) ?? "null");
 const rutas = () => usePestanas().lista.map((p) => p.ruta);
 
 beforeEach(async () => {
@@ -36,6 +40,7 @@ beforeEach(async () => {
     setItem: (k: string, v: string) => datos.set(k, v),
   });
   vi.stubGlobal("document", { activeElement: null, body: {}, getElementById: () => null });
+  fijarBase("A");
   setActivePinia(createPinia());
   useOrganizacion().unidades = [{ id: "u1", nombre: "Finanzas", parent_id: null } as Unidad];
   router = nuevoRouter();
@@ -43,9 +48,9 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 async function arrancar(guardado?: unknown) {
-  if (guardado) datos.set("boldo:pestanas:C:/datos/boldo.db", JSON.stringify(guardado));
+  if (guardado) datos.set(CLAVE, JSON.stringify(guardado));
   const p = usePestanas();
-  p.conectar(router, "C:/datos/boldo.db");
+  p.conectar(router, "C:/datos", "C:/datos/boldo.db");
   await router.replace(p.entrar());
   return p;
 }
@@ -100,9 +105,9 @@ describe("usePestanas", () => {
       ],
       activa: "b",
     };
-    datos.set("boldo:pestanas:C:/datos/boldo.db", JSON.stringify(guardado));
+    datos.set(CLAVE, JSON.stringify(guardado));
     const p = usePestanas();
-    p.conectar(router, "C:/datos/boldo.db");
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
     await router.replace("/bienvenida"); // al abrir en Inicio aún no se leyeron las pestañas
     await p.volverAlProyecto();
     expect(rutaActual()).toBe("/directorio");
@@ -112,7 +117,7 @@ describe("usePestanas", () => {
 
   it("«Volver» con dos pestañas en la misma ruta se queda en la activa", async () => {
     datos.set(
-      "boldo:pestanas:C:/datos/boldo.db",
+      CLAVE,
       JSON.stringify({
         lista: [
           { id: "a", ruta: "/" },
@@ -122,7 +127,7 @@ describe("usePestanas", () => {
       }),
     );
     const p = usePestanas();
-    p.conectar(router, "C:/datos/boldo.db");
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
     await router.replace("/bienvenida");
     await p.volverAlProyecto();
     expect(p.activa).toBe("b");
@@ -130,12 +135,9 @@ describe("usePestanas", () => {
   });
 
   it("Configuración abierta desde la Bienvenida no le quita su ruta a la pestaña: «Cerrar» vuelve a ella", async () => {
-    datos.set(
-      "boldo:pestanas:C:/datos/boldo.db",
-      JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }),
-    );
+    datos.set(CLAVE, JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }));
     const p = usePestanas();
-    p.conectar(router, "C:/datos/boldo.db");
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
     await router.replace("/bienvenida");
     await router.push("/configuracion");
     await p.cerrarVista();
@@ -144,12 +146,9 @@ describe("usePestanas", () => {
   });
 
   it("Acerca de abierto desde Inicio: «Cerrar» vuelve a Inicio, solo esa vez", async () => {
-    datos.set(
-      "boldo:pestanas:C:/datos/boldo.db",
-      JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }),
-    );
+    datos.set(CLAVE, JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }));
     const p = usePestanas();
-    p.conectar(router, "C:/datos/boldo.db");
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
     await router.replace("/bienvenida");
     await router.push("/acerca");
     await p.cerrarVista();
@@ -285,5 +284,121 @@ describe("usePestanas", () => {
     expect(p.activa).toBe("c");
     expect(rutaActual()).toBe("/revision");
     expect(rutas()).toEqual(["/", "/directorio", "/revision"]);
+  });
+});
+
+describe("usePestanas con varias organizaciones", () => {
+  it("una pestaña guardada sin `org` queda de la organización actual", async () => {
+    const p = await arrancar({ lista: [{ id: "a", ruta: "/" }], activa: "a" });
+    expect(p.lista[0]!.org).toBe("A");
+    expect(guardadas().lista[0].org).toBe("A");
+  });
+
+  it("las pestañas de otra organización no se descartan por unidades que aquí no existen", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "B", ruta: "/?raiz=x" },
+        { id: "c", org: "A", ruta: "/?raiz=x" },
+        { id: "d", org: "B", ruta: "/bienvenida" }, // la vista sí se mira
+      ],
+      activa: "a",
+    });
+    expect(p.lista.map((x) => x.id)).toEqual(["a", "b"]);
+    expect(p.valida("/?raiz=x")).toBe(false);
+    expect(p.valida("/?raiz=x", "B")).toBe(true);
+    expect(p.valida("/?raiz=u1")).toBe(true);
+  });
+
+  it("lee la clave antigua si no hay nueva, le pone `org` y no borra la antigua", async () => {
+    const antigua = JSON.stringify({
+      lista: [
+        { id: "a", ruta: "/" },
+        { id: "b", ruta: "/directorio" },
+      ],
+      activa: "b",
+    });
+    datos.set(ANTIGUA, antigua);
+    const p = await arrancar();
+    expect(p.activa).toBe("b");
+    expect(rutas()).toEqual(["/", "/directorio"]);
+    expect(guardadas().lista.map((x: { org: string }) => x.org)).toEqual(["A", "A"]);
+    await router.push("/revision");
+    expect(guardadas().lista[1].ruta).toBe("/revision");
+    expect(datos.get(ANTIGUA)).toBe(antigua);
+  });
+
+  it("con la clave nueva, la antigua no se mira", async () => {
+    datos.set(ANTIGUA, JSON.stringify({ lista: [{ id: "x", ruta: "/revision" }], activa: "x" }));
+    const p = await arrancar({ lista: [{ id: "a", org: "A", ruta: "/directorio" }], activa: "a" });
+    expect(p.lista.map((x) => x.id)).toEqual(["a"]);
+    expect(rutas()).toEqual(["/directorio"]);
+  });
+
+  it("si la activa guardada es de otra organización, `entrar` pasa a una de la abierta", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "a", org: "B", ruta: "/directorio" },
+        { id: "b", org: "A", ruta: "/revision" },
+      ],
+      activa: "a",
+    });
+    expect(p.activa).toBe("b");
+    expect(rutaActual()).toBe("/revision");
+    expect(p.lista).toHaveLength(2);
+  });
+
+  it("si la activa guardada es de otra organización y no hay de la abierta, `entrar` abre una en `/`", async () => {
+    const p = await arrancar({ lista: [{ id: "a", org: "B", ruta: "/directorio" }], activa: "a" });
+    expect(p.activa).not.toBe("a");
+    expect(p.lista.find((x) => x.id === p.activa)).toMatchObject({ org: "A", ruta: "/" });
+    expect(p.lista.find((x) => x.id === "a")).toMatchObject({ org: "B", ruta: "/directorio" });
+    expect(rutaActual()).toBe("/");
+  });
+
+  it("con el tope lleno de otra organización, `entrar` igual abre una de la abierta sin perder ninguna", async () => {
+    const lista = Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `p${i}`, org: "B", ruta: "/" }));
+    const p = await arrancar({ lista, activa: "p0" });
+    expect(p.lista).toHaveLength(MAX_PESTANAS + 1);
+    expect(p.lista.find((x) => x.id === p.activa)!.org).toBe("A");
+    expect(p.lista.filter((x) => x.org === "B")).toHaveLength(MAX_PESTANAS);
+  });
+
+  it("al volver de la Bienvenida no activa una pestaña de otra organización con la misma ruta", async () => {
+    datos.set(
+      CLAVE,
+      JSON.stringify({
+        lista: [
+          { id: "a", org: "B", ruta: "/" },
+          { id: "b", org: "A", ruta: "/directorio" },
+        ],
+        activa: "b",
+      }),
+    );
+    const p = usePestanas();
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
+    await router.replace("/bienvenida");
+    await router.replace("/");
+    expect(p.activa).toBe("b");
+    expect(p.lista.find((x) => x.id === "a")).toMatchObject({ org: "B", ruta: "/" });
+    expect(p.lista.find((x) => x.id === "b")).toMatchObject({ org: "A", ruta: "/" });
+  });
+
+  it("el título de una pestaña de otra organización no muestra datos de la abierta", async () => {
+    const p = await arrancar();
+    const t = i18n.global.t;
+    expect(p.titulo({ ruta: "/?raiz=u1", org: "B" })).toBe(t("nav.arbol"));
+    expect(p.titulo({ ruta: "/?ver=u1", org: "B" })).toBe(t("nav.arbol"));
+    expect(p.titulo({ ruta: "/directorio?unidad=u1", org: "B" })).toBe(t("nav.directorio"));
+    expect(p.titulo({ ruta: "/?raiz=u1", org: "A" })).toBe("Finanzas");
+    expect(p.titulo({ ruta: "/?raiz=u1" })).toBe("Finanzas");
+  });
+
+  it("abrir en pestaña nueva la deja de la organización abierta", async () => {
+    const p = await arrancar();
+    fijarBase("B");
+    p.abrirNueva("/revision");
+    await esperar();
+    expect(p.lista.map((x) => x.org)).toEqual(["A", "B"]);
   });
 });

@@ -48,7 +48,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 function conectar() {
   const pestanas = usePestanas();
-  pestanas.conectar(router, PROYECTO);
+  pestanas.conectar(router, "C:/datos", PROYECTO);
   const r = useRecientes();
   r.conectar(router, PROYECTO, pestanas.valida);
   return { pestanas, r };
