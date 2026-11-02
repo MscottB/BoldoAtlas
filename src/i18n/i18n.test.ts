@@ -129,7 +129,7 @@ describe("mensajes de arranque de la parte nativa", () => {
       archivo: "db.rs",
       marca: "modo solo lectura",
       datos: {},
-      conserva: ["boldo.db"],
+      conserva: [],
     },
   ];
 
@@ -150,6 +150,13 @@ describe("mensajes de arranque de la parte nativa", () => {
       }
     },
   );
+
+  it("el aviso de solo lectura no nombra un archivo: puede ser otro que boldo.db", () => {
+    for (const idioma of ["es", "en"] as const) {
+      cambiarIdioma(idioma);
+      expect(traducirError("está en modo solo lectura")).not.toContain("boldo.db");
+    }
+  });
 
   it("lo que no se reconoce llega tal cual", () => {
     cambiarIdioma("en");

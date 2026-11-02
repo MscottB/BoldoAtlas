@@ -24,7 +24,7 @@ pub const SIN_ESPACIO: &str = "sin_espacio";
 fn texto(e: rusqlite::Error) -> String {
     match e.sqlite_error_code() {
         Some(ErrorCode::DiskFull) => SIN_ESPACIO.into(),
-        Some(ErrorCode::ReadOnly) => "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura.".into(),
+        Some(ErrorCode::ReadOnly) => "La base de datos está en modo solo lectura: revisa que el archivo y su carpeta tengan permiso de escritura.".into(),
         _ => e.to_string(),
     }
 }
@@ -522,6 +522,8 @@ mod tests {
         permisos.set_readonly(false);
         std::fs::set_permissions(&ruta, permisos).unwrap();
         assert!(err.contains("solo lectura"), "{err}");
+        // puede ser otro archivo que `boldo.db`
+        assert!(!err.contains("boldo.db"), "{err}");
     }
 
     #[test]

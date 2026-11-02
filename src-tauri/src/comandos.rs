@@ -370,7 +370,7 @@ pub async fn restaurar_respaldo(
     let app2 = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         app2.state::<Estado>().con_ranura(&base_id, |conexion, b| {
-            respaldos::restaurar(conexion, &b.bd, &b.respaldos, &nombre, db::MIGRACIONES)
+            respaldos::restaurar(conexion, b, &nombre, db::MIGRACIONES)
         })
     })
     .await
@@ -415,8 +415,8 @@ pub fn abrir_carpeta_respaldos(
 /// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust.
 #[tauri::command]
 pub fn info_proyecto(estado: State<Estado>, base_id: String) -> Result<InfoProyecto, Fallo> {
-    estado.base(&base_id)?;
-    Ok(rutas::info_proyecto(estado.rutas()?)?)
+    let base = estado.base(&base_id)?;
+    Ok(rutas::info_proyecto(estado.rutas()?, &base)?)
 }
 
 /// Abre la carpeta de datos conocida por Rust; la interfaz nunca envía una ruta.
@@ -640,7 +640,7 @@ pub async fn importar_reemplazar(
         let (estado, sesiones) = (app2.state::<Estado>(), app2.state::<Sesiones>());
         let i = sesiones.tomar_importacion(&trabajo)?;
         let hecho = estado.con_ranura(&base_id, |conexion, b| {
-            intercambio::reemplazar(conexion, &b.bd, &b.respaldos, &i, db::MIGRACIONES)
+            intercambio::reemplazar(conexion, b, &i, db::MIGRACIONES)
         });
         if hecho.is_err() {
             let _ = sesiones.guardar_importacion(&trabajo, i);

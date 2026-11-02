@@ -8,6 +8,7 @@ pub mod revision;
 pub mod validar;
 
 use crate::db;
+use crate::organizaciones::Base;
 use crate::respaldos::{self, Fallo};
 use fusion::Informe;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
@@ -404,11 +405,11 @@ pub fn agregar(
     Ok(informe)
 }
 
-/// «Reemplazar todo»: solo con archivos completos. De `meta` queda solo lo conocido, porque la copia pasa a ser la base local.
+/// «Reemplazar todo»: solo con archivos completos. De `meta` queda solo lo conocido, porque la copia pasa a ser la base local,
+/// y su `db_id` lo pone `respaldos::cambiar_base`: el de la base.
 pub fn reemplazar(
     conexion: &mut Option<Connection>,
-    bd: &Path,
-    dir_respaldos: &Path,
+    base: &Base,
     i: &Importacion,
     migraciones: &[&str],
 ) -> Result<(), Fallo> {
@@ -422,13 +423,7 @@ pub fn reemplazar(
         rusqlite::params_from_iter(META_CONOCIDAS),
     )?;
     c.close().map_err(|(_, e)| e)?;
-    respaldos::reemplazar_antes_respaldando(
-        conexion,
-        bd,
-        dir_respaldos,
-        i.temporal.ruta(),
-        migraciones,
-    )
+    respaldos::reemplazar_antes_respaldando(conexion, base, i.temporal.ruta(), migraciones)
 }
 
 #[cfg(test)]
@@ -548,6 +543,29 @@ mod tests {
         (dir, bd, respaldos, c)
     }
 
+    fn id_de(c: &Connection) -> String {
+        c.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {
+            f.get(0)
+        })
+        .unwrap()
+    }
+
+    /// `reemplazar` sobre la base que `destino` dejó abierta en `slot`.
+    fn reemplazar_con(
+        slot: &mut Option<Connection>,
+        bd: &Path,
+        respaldos: &Path,
+        i: &Importacion,
+        migraciones: &[&str],
+    ) -> Result<(), Fallo> {
+        let base = Base {
+            id: id_de(slot.as_ref().unwrap()),
+            bd: bd.to_path_buf(),
+            respaldos: respaldos.to_path_buf(),
+        };
+        reemplazar(slot, &base, i, migraciones)
+    }
+
     fn exportar(origen: &Connection, dir: &Path, raices: Option<&[String]>) -> (PathBuf, String) {
         let copia = alcance::copiar(origen, dir).unwrap();
         let (t, _) = alcance::preparar(copia, dir, raices).unwrap();
@@ -588,7 +606,7 @@ mod tests {
         let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
         assert!(!i.meta.parcial);
         let mut slot = Some(conn);
-        reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
         drop(i);
         assert!(
             slot.is_none(),
@@ -683,7 +701,7 @@ mod tests {
         let (dd, bd, respaldos, conn) = destino();
         let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
         let mut slot = Some(conn);
-        let e = reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap_err();
+        let e = reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap_err();
         assert_eq!(e.codigo, "solo_completo");
         assert!(slot.is_some());
         assert!(respaldos::listar(&respaldos).unwrap().is_empty());
@@ -809,7 +827,7 @@ mod tests {
         fs::write(&journal, "x").unwrap();
         std::mem::forget(t); // lo que deja un cierre de golpe
         fs::write(dd.path().join("otro.tmp"), "x").unwrap();
-        respaldos::limpiar_parciales(dd.path());
+        respaldos::limpiar_parciales(dd.path(), None);
         assert_eq!(temporales(dd.path()), ["otro.tmp"]);
         assert!(dd.path().join("boldo.db").exists());
     }
@@ -943,7 +961,7 @@ mod tests {
         assert!(r.ramas.is_some(), "las ramas se saben igual");
         assert_eq!(r.motivo_revision, Some("contenido_invalido"));
         let mut slot = Some(conn);
-        reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
     }
 
     #[test]
@@ -953,7 +971,7 @@ mod tests {
         let (dd, bd, respaldos, conn) = destino();
         let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
         let mut slot = Some(conn);
-        reemplazar(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
         let c = db::abrir(&bd).unwrap();
         let claves: Vec<String> = c
             .prepare("SELECT clave FROM meta")
@@ -967,6 +985,46 @@ mod tests {
             "{claves:?}"
         );
         assert!(claves.iter().any(|k| k == "org_nombre"));
+    }
+
+    #[test]
+    fn reemplazar_conserva_el_db_id_local() {
+        let (d, origen) = base_con_datos();
+        let (archivo, codigo) = exportar(&origen, d.path(), None);
+        let (dd, bd, respaldos, conn) = destino();
+        let local = id_de(&conn);
+        assert_ne!(local, id_de(&origen));
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        // el archivo trae la marca de su origen
+        let marca: String = i
+            .solo_lectura()
+            .unwrap()
+            .query_row(
+                "SELECT valor FROM meta WHERE clave = 'origen_db_id'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(marca, id_de(&origen));
+        let mut slot = Some(conn);
+
+        // un fallo a medio camino deja la base y su id, y se puede reintentar: la importación sigue abierta
+        let rota = [MIGRACIONES, &["ESTO NO ES SQL;"]].concat();
+        let e = reemplazar_con(&mut slot, &bd, &respaldos, &i, &rota).unwrap_err();
+        assert_eq!(e.codigo, "fallo");
+        assert_eq!(id_de(slot.as_ref().unwrap()), local);
+
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        let c = db::abrir(&bd).unwrap();
+        assert_eq!(id_de(&c), local);
+        let marcas: i64 = c
+            .query_row(
+                "SELECT count(*) FROM meta WHERE clave = 'origen_db_id'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(marcas, 0);
     }
 
     #[test]
