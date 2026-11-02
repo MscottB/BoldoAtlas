@@ -46,6 +46,15 @@ export function porQueNoSeVe(
   return camino.slice(0, -1).some((a) => colapsados.has(a.id)) ? "plegada" : null;
 }
 
+/** Por qué no se ve una conexión, entre sus dos unidades. «fuera» manda: si una está fuera, abrir la rama de la otra no la mostraría. */
+export function conexionOculta(mostradas: Unidad[], colapsados: ReadonlySet<string>, ids: string[]) {
+  const motivos = ids.flatMap((id) => {
+    const motivo = porQueNoSeVe(mostradas, colapsados, id);
+    return motivo ? [{ id, motivo }] : [];
+  });
+  return motivos.find((m) => m.motivo === "fuera") ?? motivos[0] ?? null;
+}
+
 /** Recuerda el último valor enviado a guardar: el mismo cambio puede avisarse dos veces antes de que termine de guardarse. */
 export function ultimoEnviado<T>(inicial: T) {
   let ultimo = inicial;

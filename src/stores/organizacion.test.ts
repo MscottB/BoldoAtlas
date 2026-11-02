@@ -655,6 +655,42 @@ describe("organización, etiquetas y conexiones", () => {
   });
 });
 
+describe("deshacer viendo una fecha", () => {
+  it("una persona eliminada a una fecha vuelve con Deshacer", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    await s.verAFecha("2020-01-01");
+    expect((await s.eliminarTrabajador(ana)).ok).toBe(true);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.trabajadores.some((w) => w.id === ana)).toBe(true);
+    expect(s.ultimoBorrado).toBeNull();
+  });
+
+  it("una vista eliminada a una fecha vuelve con Deshacer", async () => {
+    const s = nuevo();
+    const r = await s.guardarVista(null, "Compacta", { densidad: "compacta" });
+    if (!r.ok || !r.id) throw new Error("no se creó");
+    await s.verAFecha("2020-01-01");
+    expect((await s.eliminarVista(r.id)).ok).toBe(true);
+    expect(s.vistas).toHaveLength(0);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.vistas.map((v) => v.id)).toEqual([r.id]);
+  });
+
+  it("una unidad o una conexión no se restauran a una fecha, y siguen disponibles al volver a hoy", async () => {
+    const s = nuevo();
+    const a = await unidad(s, "A");
+    await s.eliminarUnidad(a);
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    expect((await s.deshacer()).ok).toBe(false);
+    expect(revision()).toBe(antes);
+    await s.verAFecha(null);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.porId.has(a)).toBe(true);
+  });
+});
+
 describe("conexiones: crear y editar", () => {
   async function tres() {
     const s = nuevo();
@@ -806,6 +842,20 @@ describe("conexiones: crear y editar", () => {
     expect(revision()).toBe(antes);
     await s.verAFecha(null);
     expect((await s.deshacer()).ok).toBe(true);
+  });
+
+  it("deshacer con id solo restaura esa baja: el aviso de una anterior no devuelve otra", async () => {
+    const { s, id, a, c } = await tres();
+    const otra = await s.crearConexion(a, c);
+    if (!otra.ok) throw new Error("no se creó");
+    await s.eliminarConexion(id);
+    await s.eliminarConexion(otra.id!);
+    const antes = revision();
+    expect(await s.deshacer(id)).toEqual({ ok: false, mensaje: "Ya no se puede deshacer." });
+    expect(s.conexiones).toHaveLength(0);
+    expect(revision()).toBe(antes);
+    expect((await s.deshacer(otra.id)).ok).toBe(true);
+    expect(s.conexiones.map((x) => x.id)).toEqual([otra.id]);
   });
 
   it("eliminar una conexión que ya no existe se avisa", async () => {

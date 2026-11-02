@@ -4,6 +4,7 @@ import { a, asignaciones, p, puestos, tipos, unidades } from "@/features/arbol/f
 import { creaCiclo, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import {
   buscarUnidades,
+  conexionOculta,
   decisionEliminar,
   excluidasComoSuperior,
   excluidasParaConexion,
@@ -31,6 +32,27 @@ describe("ultimoEnviado", () => {
     e.fallo();
     expect(e.cambia("b")).toBe(true);
     expect(e.cambia("b")).toBe(false);
+  });
+});
+
+describe("conexionOculta", () => {
+  it("se ve: null", () => {
+    expect(conexionOculta(viva, new Set(), ["mecanica", "gg"])).toBeNull();
+  });
+
+  it("dice la unidad plegada, cualquiera sea el extremo", () => {
+    expect(conexionOculta(viva, new Set(["operaciones"]), ["gg", "mecanica"])).toEqual({
+      id: "mecanica",
+      motivo: "plegada",
+    });
+  });
+
+  it("«fuera» manda sobre «plegada»: abrir la rama no la dejaría a la vista", () => {
+    const rama = viva.filter((u) => u.id !== "gg");
+    expect(conexionOculta(rama, new Set(["operaciones"]), ["mecanica", "gg"])).toEqual({
+      id: "gg",
+      motivo: "fuera",
+    });
   });
 });
 

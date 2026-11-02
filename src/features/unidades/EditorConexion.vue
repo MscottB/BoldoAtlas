@@ -10,7 +10,7 @@ import { CONTEXTO_LIENZO } from "@/features/arbol/contexto";
 import { useLienzo, verConexion } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
 import { useOrganizacion } from "@/stores/organizacion";
-import { excluidasParaConexion, porQueNoSeVe, ultimoEnviado } from "./panel";
+import { conexionOculta, excluidasParaConexion, ultimoEnviado } from "./panel";
 import EliminarConexion from "./EliminarConexion.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 
@@ -59,17 +59,13 @@ const oculta = computed(() => {
   const c = conexion.value;
   if (!c) return null;
   if (!config.value.relacionesLaterales) return { texto: t("unidad.relacionesApagadas"), plegada: false };
-  for (const id of [c.origen_id, c.destino_id]) {
-    const motivo = porQueNoSeVe(mostradas.value, colapsados.value, id);
-    if (motivo)
-      return {
-        texto: t(motivo === "plegada" ? "unidad.ocultaPlegada" : "unidad.ocultaFuera", {
-          nombre: nombre(id),
-        }),
-        plegada: motivo === "plegada",
-      };
-  }
-  return null;
+  const m = conexionOculta(mostradas.value, colapsados.value, [c.origen_id, c.destino_id]);
+  if (!m) return null;
+  const plegada = m.motivo === "plegada";
+  return {
+    texto: t(plegada ? "unidad.ocultaPlegada" : "unidad.ocultaFuera", { nombre: nombre(m.id) }),
+    plegada,
+  };
 });
 const ver = () => (verConexion.value = props.id);
 
@@ -111,7 +107,7 @@ const quitando = ref<string | null>(null);
           v-model="descripcion"
           autocomplete="off"
           @change="guardar"
-          @keydown.enter="emit('cerrar')"
+          @keydown.enter.prevent="emit('cerrar')"
         />
       </div>
       <div class="grid gap-1.5" role="group" :aria-labelledby="`${uid}-cambiar`">

@@ -40,7 +40,8 @@ const nombres = computed(() => ({ origen: objetivo.value?.origen, destino: objet
 
 let eliminando: Promise<boolean> | null = null;
 async function eliminar() {
-  const r = await org.eliminarConexion(objetivo.value!.id);
+  const { id } = objetivo.value!;
+  const r = await org.eliminarConexion(id);
   if (!r.ok) {
     toast.error(r.mensaje);
     return false;
@@ -50,7 +51,7 @@ async function eliminar() {
     action: {
       label: t("unidad.deshacer"),
       onClick: async () => {
-        const d = await org.deshacer();
+        const d = await org.deshacer(id);
         if (!d.ok) toast.error(d.mensaje);
       },
     },

@@ -390,13 +390,17 @@ export const useOrganizacion = defineStore("organizacion", () => {
     conexion: (b: Borrado) => X.restaurarConexion(b.id),
   };
 
-  async function deshacer(): Promise<Resultado> {
+  /** `id`: la baja a la que se refiere el aviso; si después hubo otra, ese aviso ya no restaura nada. */
+  async function deshacer(id?: string): Promise<Resultado> {
     const b = ultimoBorrado.value;
+    if (b && id && b.id !== id) return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     if (!b || Date.now() >= b.vence) {
       ultimoBorrado.value = null;
       return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     }
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    // Personas y vistas no dependen de la fecha que se ve: también se eliminan viéndola, y su Deshacer debe valer.
+    if (fechaVista.value && b.tipo !== "trabajador" && b.tipo !== "vista")
+      return rechazar(t("store.soloLectura"));
     const motivo = b.extremos && conexionRechazada(b.extremos[0], b.extremos[1], conexiones.value);
     if (motivo) return rechazar(motivo);
     return escribir(
