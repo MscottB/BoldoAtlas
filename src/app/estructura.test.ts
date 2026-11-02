@@ -37,6 +37,7 @@ describe("infoSiFalloCarga", () => {
   it("devuelve los datos de la pantalla de error con el mensaje si la carga falló", () => {
     expect(infoSiFalloCarga({ ok: false, mensaje: "No se pudo leer la base" })).toMatchObject({
       error: "No se pudo leer la base",
+      baseId: "",
       versionEsquema: 0,
     });
   });

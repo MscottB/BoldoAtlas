@@ -7,7 +7,7 @@ describe("version de la app", () => {
 
   it("infoParaCopiar incluye versión completa, esquema, base y modo", () => {
     const t = infoParaCopiar(
-      { dirDatos: "C:/x", rutaBd: "C:/x/boldo.db", portable: true, versionEsquema: 1, error: null },
+      { baseId: "", dirDatos: "C:/x", rutaBd: "C:/x/boldo.db", portable: true, versionEsquema: 1, error: null },
       { db_id: "abc", data_revision: "7", db_creada: "2026-10-28T10:00:00.000Z" },
     );
     expect(t).toContain(__APP_VERSION__);

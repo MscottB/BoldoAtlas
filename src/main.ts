@@ -5,6 +5,7 @@ import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
 import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
+import { fijarBase } from "./lib/baseActiva";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
@@ -24,6 +25,7 @@ useTema().aplicar();
 infoApp()
   .then(async (info) => {
     if (info.error) return createApp(PantallaError, { info }).use(i18n).mount("#app");
+    fijarBase(info.baseId);
     const pinia = createPinia();
     const org = useOrganizacion(pinia);
     // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, se muestra el motivo en vez de una app vacía.
@@ -47,6 +49,6 @@ infoApp()
     void conectarCierre();
   })
   .catch((e: unknown) => {
-    const info = { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
+    const info = { baseId: "", dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
     createApp(PantallaError, { info }).use(i18n).mount("#app");
   });

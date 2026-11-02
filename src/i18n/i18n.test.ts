@@ -69,6 +69,13 @@ describe("mensajes de arranque de la parte nativa", () => {
       conserva: ["9", "3"],
     },
     {
+      nombre: "abiertaEnOtraCopia",
+      archivo: "comandos.rs",
+      marca: "Otra copia de BoldoAtlas tiene abierta esta base",
+      datos: { "{}": "C:\\Datos\\boldo.db" },
+      conserva: ["C:\\Datos\\boldo.db"],
+    },
+    {
       nombre: "sinPermiso",
       archivo: "rutas.rs",
       marca: "No se puede escribir en",

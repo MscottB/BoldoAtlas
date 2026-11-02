@@ -50,6 +50,10 @@ describe("traducirError", () => {
     expect(traducirError(texto)).toBe(esperado);
   });
 
+  it("sin_espacio se traduce", () => {
+    expect(traducirError("sin_espacio")).toBe("No queda espacio en el disco. Libera espacio e inténtalo de nuevo.");
+  });
+
   it("acepta un Error con el texto de SQLite", () => {
     expect(traducirError(new Error("UNIQUE constraint failed: index 'ux_sedes_nombre'"))).toBe(
       "Ese valor ya existe en la lista.",
@@ -122,6 +126,12 @@ describe("traducirError", () => {
     expect(leyendaDuplicada).toBe("Ese valor ya existe en la lista.");
     const colorMalo = capturar(() => bd.aplicar(crearLeyenda({ nombre: "Otro", color: "rojo" }).sentencias));
     expect(colorMalo).toBe("El color debe tener el formato #rrggbb (por ejemplo, #be123c).");
+  });
+
+  it("traduce el aviso de otra copia con la base abierta y conserva la ruta", () => {
+    expect(traducirError("Otra copia de BoldoAtlas tiene abierta esta base: C:/x")).toBe(
+      "Otra copia de BoldoAtlas tiene abierta esta base (C:/x). Ciérrala y vuelve a abrir BoldoAtlas.",
+    );
   });
 
   it("no confunde el CHECK de nombre de un catálogo con el de la persona", () => {

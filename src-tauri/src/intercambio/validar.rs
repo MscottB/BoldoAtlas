@@ -1,5 +1,5 @@
 //! La base descifrada no es confiable, aunque el código sea correcto: quien la envía puede ser cualquiera.
-use crate::respaldos::{Donde, Fallo};
+use crate::respaldos::{Donde, Fallo, con_sufijo};
 use rusqlite::config::DbConfig;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,61 @@ pub fn solo_lectura(ruta: &Path) -> Result<Connection, Fallo> {
     abrir_no_confiable(ruta, OpenFlags::SQLITE_OPEN_READ_ONLY)
 }
 
+/// `file:` con la ruta codificada: `#`, `%` y `?` tienen significado en una URI de SQLite.
+fn uri_inmutable(ruta: &Path) -> std::io::Result<String> {
+    let absoluta = std::path::absolute(ruta)?;
+    let bytes = absoluta.as_os_str().as_encoded_bytes();
+    let mut uri = String::from("file://");
+    // `C:\x` va como `/C:/x`; `\\servidor\x`, como `//servidor/x`
+    if !bytes
+        .first()
+        .is_some_and(|b| std::path::is_separator(*b as char))
+    {
+        uri.push('/');
+    }
+    for &b in bytes {
+        match b {
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' | b':' => {
+                uri.push(b as char)
+            }
+            b'\\' if cfg!(windows) => uri.push('/'),
+            _ => uri.push_str(&format!("%{b:02X}")),
+        }
+    }
+    uri.push_str("?immutable=1");
+    Ok(uri)
+}
+
+/// Para leer un archivo sin dejarle nada al lado: abrir en WAL con `solo_lectura` crea `-wal` y `-shm`. Si ya hay un `-wal`, el
+/// archivo está en uso o quedó sin volcar: `immutable` no vería esas filas.
+pub fn solo_lectura_cerrada(ruta: &Path) -> Result<Connection, Fallo> {
+    if con_sufijo(ruta, "-wal").exists() {
+        return solo_lectura(ruta);
+    }
+    abrir_no_confiable(
+        Path::new(&uri_inmutable(ruta)?),
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
+    )
+}
+
+/// La versión de esquema, si esta app puede con ella.
+pub fn version_leida(c: &Connection, migraciones: &[&str]) -> Result<usize, Fallo> {
+    let version: i64 = c
+        .pragma_query_value(None, "user_version", |f| f.get(0))
+        .map_err(|e| Fallo::de("danado", e))?;
+    if version > migraciones.len() as i64 {
+        return Err(Fallo::de("esquema_nuevo", version));
+    }
+    Ok(version.max(0) as usize)
+}
+
+/// Lo mínimo para abrir un archivo sin confiar en él: una versión conocida y exactamente el esquema de esa versión.
+pub fn version_y_esquema(ruta: &Path, migraciones: &[&str]) -> Result<usize, Fallo> {
+    let version = version_leida(&solo_lectura_cerrada(ruta)?, migraciones)?;
+    revisar_solo_esquema(ruta, version, migraciones)?;
+    Ok(version)
+}
+
 type Objeto = (String, String, String, Option<String>);
 
 /// `sql` guarda los fines de línea de la migración que creó la tabla: los de Windows y los de los demás sistemas valen igual.
@@ -62,13 +117,9 @@ fn revisar_esquema(c: &Connection, migraciones: &[&str]) -> Result<(), Fallo> {
     Ok(())
 }
 
-/// Para `respaldos::restaurar`: un respaldo también debe tener exactamente el esquema de su versión.
-pub fn revisar_solo_esquema(
-    ruta: &Path,
-    version: usize,
-    migraciones: &[&str],
-) -> Result<(), Fallo> {
-    revisar_esquema(&solo_lectura(ruta)?, &migraciones[..version])
+/// Un respaldo también debe tener exactamente el esquema de su versión.
+fn revisar_solo_esquema(ruta: &Path, version: usize, migraciones: &[&str]) -> Result<(), Fallo> {
+    revisar_esquema(&solo_lectura_cerrada(ruta)?, &migraciones[..version])
 }
 
 /// Tope de cada campo, en bytes. Lo vivo se carga entero en la interfaz, salvo fotos y notas de las personas, que se piden al
@@ -420,6 +471,64 @@ mod tests {
 
     fn codigo(ruta: &Path) -> &'static str {
         revisar(ruta, MIGRACIONES).unwrap_err().codigo
+    }
+
+    /// Una base como las de la app, en WAL, con su conexión abierta.
+    fn base_wal(ruta: &Path) -> Connection {
+        let mut c = db::abrir(ruta).unwrap();
+        db::migrar(&mut c, ruta.parent().unwrap()).unwrap();
+        db::asegurar_meta(&c).unwrap();
+        c
+    }
+
+    fn sin_wal_ni_shm(ruta: &Path) {
+        assert!(!con_sufijo(ruta, "-wal").exists());
+        assert!(!con_sufijo(ruta, "-shm").exists());
+    }
+
+    #[test]
+    fn solo_lectura_cerrada_no_deja_archivos() {
+        let dir = tempfile::tempdir().unwrap();
+        let carpeta = dir.path().join("Año 100% #1 ñandú");
+        std::fs::create_dir(&carpeta).unwrap();
+        // `%41` no debe leerse como `A`
+        let ruta = carpeta.join("mi base #2 %41.db");
+        base_wal(&ruta).close().unwrap();
+        sin_wal_ni_shm(&ruta);
+        // `canonicalize`, en Windows, da la forma `\\?\C:\…`
+        for camino in [ruta.clone(), std::fs::canonicalize(&ruta).unwrap()] {
+            let c = solo_lectura_cerrada(&camino).unwrap();
+            let n: i64 = c
+                .query_row("SELECT count(*) FROM meta", [], |f| f.get(0))
+                .unwrap();
+            assert!(n > 0);
+            sin_wal_ni_shm(&ruta);
+            c.close().unwrap();
+            sin_wal_ni_shm(&ruta);
+        }
+    }
+
+    #[test]
+    fn solo_lectura_cerrada_lee_lo_que_sigue_en_el_wal() {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("boldo.db");
+        let escritora = base_wal(&ruta);
+        escritora
+            .execute(
+                "INSERT INTO meta (clave, valor) VALUES ('sin_volcar', 'x')",
+                [],
+            )
+            .unwrap();
+        assert!(con_sufijo(&ruta, "-wal").exists());
+        let c = solo_lectura_cerrada(&ruta).unwrap();
+        let v: String = c
+            .query_row(
+                "SELECT valor FROM meta WHERE clave = 'sin_volcar'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(v, "x");
     }
 
     #[test]

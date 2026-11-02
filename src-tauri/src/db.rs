@@ -2,6 +2,7 @@ use rusqlite::types::{Value as Sql, ValueRef};
 use rusqlite::{Connection, ErrorCode, TransactionBehavior, params_from_iter};
 use serde::Deserialize;
 use serde_json::{Map, Value};
+use std::fmt::Display;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -17,8 +18,12 @@ pub struct Sentencia {
     pub params: Vec<Value>,
 }
 
+/// Disco lleno, como texto: `errores.ts` lo traduce y `Fallo` lo convierte en su código.
+pub const SIN_ESPACIO: &str = "sin_espacio";
+
 fn texto(e: rusqlite::Error) -> String {
     match e.sqlite_error_code() {
+        Some(ErrorCode::DiskFull) => SIN_ESPACIO.into(),
         Some(ErrorCode::ReadOnly) => "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura.".into(),
         _ => e.to_string(),
     }
@@ -70,6 +75,13 @@ pub fn abrir(ruta: &Path) -> Result<Connection, String> {
     }
 }
 
+pub fn texto_esquema_nuevo(actual: impl Display, conocida: impl Display) -> String {
+    format!(
+        "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla."
+    )
+}
+
+#[cfg(test)]
 pub fn migrar(conn: &mut Connection, dir_respaldos: &Path) -> Result<i64, String> {
     migrar_con(conn, MIGRACIONES, dir_respaldos)
 }
@@ -90,9 +102,7 @@ pub fn migrar_con(
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .map_err(texto)?;
         if actual > conocida {
-            return Err(format!(
-                "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla."
-            ));
+            return Err(texto_esquema_nuevo(actual, conocida));
         }
         if actual == conocida {
             return Ok(actual);
@@ -229,6 +239,12 @@ pub fn marcar_cambio(conn: &Connection, version_app: &str) -> Result<(), String>
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn un_disco_lleno_da_el_texto_que_la_interfaz_traduce() {
+        let lleno = rusqlite::Error::SqliteFailure(rusqlite::ffi::Error::new(13), None);
+        assert_eq!(texto(lleno), "sin_espacio");
+    }
     use std::path::PathBuf;
 
     const ESQUEMA: i64 = MIGRACIONES.len() as i64;

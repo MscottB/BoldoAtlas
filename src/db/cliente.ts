@@ -1,7 +1,9 @@
 // Único punto de acceso a SQLite desde el frontend (puente Rust en src-tauri/src/comandos.rs).
 import { invoke } from "@tauri-apps/api/core";
+import { BaseCambiada, baseActual, enCambio } from "@/lib/baseActiva";
 
 export interface InfoApp {
+  baseId: string;
   dirDatos: string;
   rutaBd: string;
   portable: boolean;
@@ -17,14 +19,43 @@ export interface Sentencia {
 const alReemplazar = new Set<() => void>();
 /** Lo que la app guarda atado a los datos de ahora (p. ej. «Abierto recientemente») se suelta aquí cuando la base se reemplaza. */
 export const alReemplazarBase = (f: () => void): void => void alReemplazar.add(f);
-const soltarDatos = () => alReemplazar.forEach((f) => f());
+const vaciarRecientes = () => alReemplazar.forEach((f) => f());
+
+const alOtra = new Set<() => void>();
+/** Rust rechazó una llamada por venir con otra base, sin que hubiera un cambio: es un error de la app. */
+export const alOtraBase = (f: () => void): void => void alOtra.add(f);
+
+const esOtraBase = (e: unknown) =>
+  e === "otra_base" || (typeof e === "object" && e !== null && (e as FalloRespaldo).codigo === "otra_base");
+
+/** Una respuesta, o un error, de una base que ya no es la activa no llega a quien la pidió. `otra_base` no se reintenta. */
+function vigilar<T>(base: string, hecho: Promise<T>): Promise<T> {
+  return hecho.then(
+    (r) => {
+      if (baseActual() !== base) throw new BaseCambiada();
+      return r;
+    },
+    (e: unknown) => {
+      if (baseActual() !== base || (esOtraBase(e) && enCambio())) throw new BaseCambiada();
+      if (esOtraBase(e)) alOtra.forEach((f) => f());
+      throw e;
+    },
+  );
+}
+
+/** El único que agrega `baseId`. La base es la de ahora, aunque el comando salga después de `antes`. */
+function conBase<T>(comando: string, args: Record<string, unknown> = {}, antes?: Promise<unknown>): Promise<T> {
+  const base = baseActual();
+  const salir = () => invoke<T>(comando, { ...args, baseId: base });
+  return vigilar(base, antes ? antes.then(salir) : salir());
+}
 
 export function infoApp(): Promise<InfoApp> {
   return invoke<InfoApp>("info_app");
 }
 
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-  return invoke<T[]>("db_consultar", { sql, params });
+  return conBase<T[]>("db_consultar", { sql, params });
 }
 
 // Rust atiende los comandos fuera del hilo principal y en paralelo: las escrituras van en cola, de a una y en orden. No
@@ -33,15 +64,26 @@ let colaLotes: Promise<unknown> = Promise.resolve();
 
 /** Ejecuta todo en una transacción: o se aplican todas las sentencias o ninguna. */
 export function lote(sentencias: Sentencia[]): Promise<void> {
-  const hecho = colaLotes.then(() =>
-    invoke<void>("db_lote", {
+  const hecho = conBase<void>(
+    "db_lote",
+    {
       sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
       versionApp: __APP_VERSION__,
-    }),
+    },
+    colaLotes,
   );
   // un lote que falla no detiene a los siguientes; quien lo pidió ya recibe su error en `hecho`
   colaLotes = hecho.catch(() => undefined);
   return hecho;
+}
+
+/** Espera a que salgan todos los lotes, también los que entren mientras tanto. Nunca falla. */
+export async function colaVacia(): Promise<void> {
+  let vista;
+  do {
+    vista = colaLotes;
+    await vista;
+  } while (vista !== colaLotes);
 }
 
 export async function leerMeta(): Promise<Record<string, string>> {
@@ -72,31 +114,31 @@ export interface FalloRespaldo {
 }
 
 export function listarRespaldos(): Promise<Respaldo[]> {
-  return invoke<Respaldo[]>("listar_respaldos");
+  return conBase<Respaldo[]>("listar_respaldos");
 }
 
 export function respaldarAhora(): Promise<string> {
-  return invoke<string>("respaldar_ahora");
+  return conBase<string>("respaldar_ahora");
 }
 
 /** Respaldo previo a reemplazar los datos: no entra en la poda de los últimos 10. */
 export function respaldarAntesDeReemplazar(): Promise<string> {
-  return invoke<string>("respaldar_antes_de_reemplazar");
+  return conBase<string>("respaldar_antes_de_reemplazar");
 }
 
 /** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
 export function respaldarAntesDeOptimizar(): Promise<string> {
-  return invoke<string>("respaldar_antes_de_optimizar");
+  return conBase<string>("respaldar_antes_de_optimizar");
 }
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function restaurarRespaldo(nombre: string): Promise<void> {
-  soltarDatos();
-  return invoke("restaurar_respaldo", { nombre });
+  vaciarRecientes();
+  return conBase("restaurar_respaldo", { nombre });
 }
 
 export function abrirCarpetaRespaldos(): Promise<void> {
-  return invoke("abrir_carpeta_respaldos");
+  return conBase("abrir_carpeta_respaldos");
 }
 
 // Datos del proyecto abierto: Rust conoce la ruta; la interfaz solo la muestra.
@@ -110,7 +152,7 @@ export interface InfoProyecto {
 }
 
 export function infoProyecto(): Promise<InfoProyecto> {
-  return invoke<InfoProyecto>("info_proyecto");
+  return conBase<InfoProyecto>("info_proyecto");
 }
 
 export function abrirCarpetaDatos(): Promise<void> {
@@ -162,7 +204,7 @@ export interface ResumenImportacion {
 
 /** `raices` null: toda la base. */
 export function exportarPreparar(trabajo: string, raices: string[] | null): Promise<ResumenExportacion> {
-  return invoke("exportar_preparar", { trabajo, raices });
+  return conBase("exportar_preparar", { trabajo, raices });
 }
 
 /** Abre «Guardar como». false si no se eligió un lugar. */
@@ -180,7 +222,7 @@ export function importarElegir(trabajo: string): Promise<{ nombre: string; bytes
 }
 
 export function importarAbrir(trabajo: string, codigo: string): Promise<ResumenImportacion> {
-  return invoke("importar_abrir", { trabajo, codigo });
+  return conBase("importar_abrir", { trabajo, codigo });
 }
 
 /** `lugares`: id de cada rama → unidad donde colocarla (null: árbol independiente). */
@@ -188,13 +230,13 @@ export function importarAgregar(
   trabajo: string,
   lugares: Record<string, string | null>,
 ): Promise<InformeImportacion> {
-  return invoke("importar_agregar", { trabajo, lugares, versionApp: __APP_VERSION__ });
+  return conBase("importar_agregar", { trabajo, lugares, versionApp: __APP_VERSION__ });
 }
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function importarReemplazar(trabajo: string): Promise<void> {
-  soltarDatos();
-  return invoke("importar_reemplazar", { trabajo });
+  vaciarRecientes();
+  return conBase("importar_reemplazar", { trabajo });
 }
 
 export type TipoCaso =
@@ -338,7 +380,7 @@ export function importarComparar(
   trabajo: string,
   lugares: Record<string, string | null>,
 ): Promise<ResumenRevision> {
-  return invoke("importar_comparar", { trabajo, lugares });
+  return conBase("importar_comparar", { trabajo, lugares });
 }
 
 export function importarVolver(trabajo: string): Promise<void> {
@@ -353,11 +395,11 @@ export function revisionPagina(
   trabajo: string,
   filtro: FiltroRevision,
 ): Promise<{ filas: FilaCaso[]; total: number }> {
-  return invoke("revision_pagina", { trabajo, filtro });
+  return conBase("revision_pagina", { trabajo, filtro });
 }
 
 export function revisionDetalle(trabajo: string, tabla: string, id: string): Promise<DetalleCaso> {
-  return invoke("revision_detalle", { trabajo, tabla, id });
+  return conBase("revision_detalle", { trabajo, tabla, id });
 }
 
 export function revisionDecidir(
@@ -379,7 +421,7 @@ export function revisionMasivo(
 
 /** La misma pasada que al aplicar, deshecha al final. */
 export function revisionVerificar(trabajo: string): Promise<ResumenRevision> {
-  return invoke("revision_verificar", { trabajo });
+  return conBase("revision_verificar", { trabajo });
 }
 
 export function revisionBloqueos(
@@ -387,7 +429,7 @@ export function revisionBloqueos(
   desde: number,
   cuantos: number,
 ): Promise<{ filas: FilaBloqueo[]; total: number }> {
-  return invoke("revision_bloqueos", { trabajo, desde, cuantos });
+  return conBase("revision_bloqueos", { trabajo, desde, cuantos });
 }
 
 export function revisionOpciones(
@@ -395,7 +437,7 @@ export function revisionOpciones(
   destino: string,
   texto: string,
 ): Promise<{ id: string; nombre: string }[]> {
-  return invoke("revision_opciones", { trabajo, destino, texto });
+  return conBase("revision_opciones", { trabajo, destino, texto });
 }
 
 /**
@@ -407,9 +449,27 @@ export function revisionAplicar(
   version: number,
   confirmado: boolean,
 ): Promise<InformeRevision> {
-  return invoke("revision_aplicar", { trabajo, version, confirmado, versionApp: __APP_VERSION__ });
+  return conBase("revision_aplicar", { trabajo, version, confirmado, versionApp: __APP_VERSION__ });
 }
 
 export function intercambioCancelar(trabajo: string): Promise<void> {
   return invoke("intercambio_cancelar", { trabajo });
+}
+
+// Fotos, en binario: no pasan por JSON.
+export function fotoBytes(id: string): Promise<ArrayBuffer> {
+  return conBase<ArrayBuffer>("foto_bytes", { id });
+}
+
+/** El comando recibe solo bytes: `armar` escribe en el cuerpo la base con que se pidió. */
+export function fotosGuardar(armar: (baseId: string) => Promise<Uint8Array>): Promise<number> {
+  const base = baseActual();
+  return vigilar(
+    base,
+    armar(base).then((cuerpo) => invoke<number>("fotos_guardar", cuerpo)),
+  );
+}
+
+export function fotosCompactar(): Promise<void> {
+  return conBase("fotos_compactar");
 }

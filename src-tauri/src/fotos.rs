@@ -1,10 +1,11 @@
 //! Las fotos de las personas, sin pasar por JSON: el protocolo `foto` las sirve para `<img src>` y dos comandos binarios
 //! las leen y las guardan al optimizarlas. La columna guarda solo el base64 (`foto_png` admite PNG, JPEG y WebP).
-//! Forma de la URL, que arma `convertFileSrc` en el cliente: `http://foto.localhost/<id>` en Windows y
-//! `foto://localhost/<id>` en Linux y macOS.
+//! Forma de la URL, que arma `convertFileSrc` en el cliente: `http://foto.localhost/<baseId>/<id>` en Windows y
+//! `foto://localhost/<baseId>/<id>` en Linux y macOS.
 
 use crate::comandos::Estado;
 use crate::db;
+use crate::organizaciones::{OTRA_BASE, es_id_valido};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
@@ -100,6 +101,29 @@ pub fn servir(c: &Connection, metodo: &Method, ruta: &str) -> Response<Vec<u8>> 
     }
 }
 
+/// La ruta es `/<baseId>/<id>`. Solo responde con los datos de la base abierta: la foto de otra base es un 404 (sin
+/// `Cache-Control`, para que nada de ella quede guardado) y sin base abierta, un 503.
+pub fn respuesta_de(estado: &Estado, metodo: &Method, ruta: &str) -> Response<Vec<u8>> {
+    if metodo != Method::GET {
+        return sin_cuerpo(StatusCode::METHOD_NOT_ALLOWED);
+    }
+    let Some((base_id, id)) = ruta.strip_prefix('/').and_then(|r| r.split_once('/')) else {
+        return sin_cuerpo(StatusCode::BAD_REQUEST);
+    };
+    if !es_id_valido(base_id) {
+        return sin_cuerpo(StatusCode::BAD_REQUEST);
+    }
+    // `servir` quiere `/<id>` y revisa que sea solo un id
+    let r = estado.con_conexion(base_id, |c| {
+        Ok::<_, String>(servir(c, metodo, &format!("/{id}")))
+    });
+    match r {
+        Ok(r) => r,
+        Err(e) if e == OTRA_BASE => sin_cuerpo(StatusCode::NOT_FOUND),
+        Err(_) => sin_cuerpo(StatusCode::SERVICE_UNAVAILABLE),
+    }
+}
+
 /// Lo que atiende el protocolo: fuera del hilo principal, como `db_consultar`.
 pub fn atender(
     app: AppHandle,
@@ -107,18 +131,20 @@ pub fn atender(
     responder: tauri::UriSchemeResponder,
 ) {
     tauri::async_runtime::spawn_blocking(move || {
-        let r = app
-            .state::<Estado>()
-            .con_conexion(|c| Ok::<_, String>(servir(c, pedido.method(), pedido.uri().path())));
-        responder.respond(r.unwrap_or_else(|_| sin_cuerpo(StatusCode::SERVICE_UNAVAILABLE)));
+        let estado = app.state::<Estado>();
+        responder.respond(respuesta_de(&estado, pedido.method(), pedido.uri().path()));
     });
 }
 
 /// Los bytes de una foto, para optimizarla en la ventana: respuesta binaria, sin JSON.
 #[tauri::command]
-pub async fn foto_bytes(app: AppHandle, id: String) -> Result<tauri::ipc::Response, String> {
+pub async fn foto_bytes(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+) -> Result<tauri::ipc::Response, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>().con_conexion(|c| {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
             leer(c, &id)
                 .map(|(bytes, _)| tauri::ipc::Response::new(bytes))
                 .ok_or_else(|| "foto_no_disponible".to_string())
@@ -139,6 +165,7 @@ struct FilaLote {
 
 #[derive(Debug, Deserialize)]
 struct Lote {
+    base_id: String,
     filas: Vec<FilaLote>,
     version_app: String,
 }
@@ -167,8 +194,7 @@ fn desarmar(cuerpo: &[u8]) -> Result<(Lote, &[u8]), String> {
 /// Un lote, en una transacción. No toca `updated_at`: es la misma foto con menos peso, no un cambio de datos. Si lo tocara,
 /// al fusionar con otra copia todas estas personas contarían como lo más reciente y le ganarían a una edición real hecha allá.
 /// Devuelve cuántas se escribieron.
-fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
-    let (lote, mut imagenes) = desarmar(cuerpo)?;
+fn escribir_lote(c: &mut Connection, lote: &Lote, mut imagenes: &[u8]) -> Result<usize, String> {
     let tx = c
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|e| e.to_string())?;
@@ -194,17 +220,21 @@ fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
     Ok(escritas)
 }
 
+/// La base va en el cuerpo porque el comando recibe bytes, no argumentos.
+fn guardar_lote(estado: &Estado, cuerpo: &[u8]) -> Result<usize, String> {
+    let (lote, imagenes) = desarmar(cuerpo)?;
+    estado.con_conexion(&lote.base_id, |c| escribir_lote(c, &lote, imagenes))
+}
+
 #[tauri::command]
 pub async fn fotos_guardar(app: AppHandle, request: Request<'_>) -> Result<usize, String> {
     let InvokeBody::Raw(cuerpo) = request.body() else {
         return Err("lote_invalido".into());
     };
     let cuerpo = cuerpo.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>().con_conexion(|c| guardar(c, &cuerpo))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || guardar_lote(&app.state::<Estado>(), &cuerpo))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Sin esto, lo que ocupaban las fotos queda como páginas libres y el archivo de la base no baja de tamaño. Con WAL, el
@@ -215,10 +245,10 @@ fn compactar(c: &Connection) -> rusqlite::Result<()> {
 }
 
 #[tauri::command]
-pub async fn fotos_compactar(app: AppHandle) -> Result<(), String> {
+pub async fn fotos_compactar(app: AppHandle, base_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
-            .con_conexion(|c| compactar(c).map_err(|e| e.to_string()))
+            .con_conexion(&base_id, |c| compactar(c).map_err(|e| e.to_string()))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -227,8 +257,15 @@ pub async fn fotos_compactar(app: AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::organizaciones::Base;
 
     const JPEG: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
+
+    /// Lo mismo que `guardar_lote`, sin pasar por el seguro: estas pruebas miran solo la escritura.
+    fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
+        let (lote, imagenes) = desarmar(cuerpo)?;
+        escribir_lote(c, &lote, imagenes)
+    }
 
     fn base() -> Connection {
         let c = Connection::open_in_memory().unwrap();
@@ -251,6 +288,7 @@ mod tests {
 
     fn lote(filas: &[(&str, &str, i64, &[u8])]) -> Vec<u8> {
         let meta = serde_json::json!({
+            "base_id": "A",
             "version_app": "1.0",
             "filas": filas.iter().map(|(id, v, p, img)| serde_json::json!(
                 { "id": id, "version": v, "previos": p, "largo": img.len() }
@@ -263,6 +301,31 @@ mod tests {
             cuerpo.extend_from_slice(img);
         }
         cuerpo
+    }
+
+    #[test]
+    fn un_lote_con_otra_base_no_escribe() {
+        let dir = tempfile::tempdir().unwrap();
+        let c = base();
+        con_foto(&c, "ana", "xxxxxxxxxx");
+        let abierta = Base {
+            id: "B".into(),
+            bd: dir.path().join("b.db"),
+            respaldos: dir.path().to_path_buf(),
+        };
+        let e = Estado::de_prueba(Some(c), Some(abierta), None);
+        // el lote dice «A» y está abierta «B»
+        let cuerpo = lote(&[("ana", "v1", 10, JPEG)]);
+        assert_eq!(guardar_lote(&e, &cuerpo).unwrap_err(), "otra_base");
+        let foto: String = e
+            .con_conexion("B", |c| {
+                c.query_row("SELECT foto_png FROM trabajadores", [], |f| f.get(0))
+                    .map_err(|x| x.to_string())
+            })
+            .unwrap();
+        assert_eq!(foto, "xxxxxxxxxx");
+        // un cuerpo mal armado sigue siendo eso
+        assert_eq!(guardar_lote(&e, &[1, 0]).unwrap_err(), "lote_invalido");
     }
 
     #[test]
@@ -339,6 +402,79 @@ mod tests {
             assert!(r.body().is_empty());
             assert!(r.headers().is_empty());
         }
+    }
+
+    const BASE_A: &str = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
+    const BASE_B: &str = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c";
+
+    /// Una base abierta con id `BASE_A` y la foto de `ana`; con `abierta` en falso, sin base abierta.
+    fn estado_con_foto(abierta: bool) -> Estado {
+        let c = base();
+        con_foto(&c, "ana", &STANDARD.encode(JPEG));
+        let base = abierta.then(|| Base {
+            id: BASE_A.into(),
+            bd: Default::default(),
+            respaldos: Default::default(),
+        });
+        Estado::de_prueba(abierta.then_some(c), base, None)
+    }
+
+    #[test]
+    fn foto_con_su_base_se_sirve() {
+        let e = estado_con_foto(true);
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana"));
+        assert_eq!(r.status(), StatusCode::OK);
+        assert_eq!(r.body().as_slice(), JPEG);
+        assert!(
+            r.headers()[header::CACHE_CONTROL]
+                .to_str()
+                .unwrap()
+                .contains("immutable")
+        );
+    }
+
+    #[test]
+    fn foto_de_a_con_b_abierta_da_404() {
+        let e = estado_con_foto(true);
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_B}/ana"));
+        assert_eq!(r.status(), StatusCode::NOT_FOUND);
+        assert!(r.body().is_empty());
+        assert!(r.headers().get(header::CACHE_CONTROL).is_none());
+    }
+
+    #[test]
+    fn ruta_sin_base_da_400() {
+        let e = estado_con_foto(true);
+        for ruta in [
+            "/ana",
+            "/",
+            "",
+            "/../x/ana",
+            "/a/b/c",
+            &format!("/{BASE_A}"),
+        ] {
+            let r = respuesta_de(&e, &Method::GET, ruta);
+            assert_eq!(r.status(), StatusCode::BAD_REQUEST, "{ruta}");
+            assert!(r.body().is_empty());
+        }
+        // la base va bien, el resto no es un id
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana/otro"));
+        assert_eq!(r.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn con_la_base_cerrada_da_503() {
+        let e = estado_con_foto(false);
+        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana"));
+        assert_eq!(r.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert!(r.body().is_empty());
+    }
+
+    #[test]
+    fn la_ruta_con_base_tambien_es_solo_get() {
+        let e = estado_con_foto(true);
+        let r = respuesta_de(&e, &Method::POST, &format!("/{BASE_A}/ana"));
+        assert_eq!(r.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
     #[test]
@@ -472,7 +608,8 @@ mod tests {
                 .iter()
                 .map(|l| serde_json::json!({ "id": "a", "version": "v1", "previos": 10, "largo": l }))
                 .collect();
-            let meta = serde_json::json!({ "version_app": "1", "filas": filas }).to_string();
+            let meta = serde_json::json!({ "base_id": "A", "version_app": "1", "filas": filas })
+                .to_string();
             let mut cuerpo = (meta.len() as u32).to_le_bytes().to_vec();
             cuerpo.extend_from_slice(meta.as_bytes());
             cuerpo.extend_from_slice(imagenes);

@@ -69,3 +69,9 @@ jobs:
           path: release/*/*
           retention-days: 14
           if-no-files-found: error
+      # Tras subirla: si falla, la portable queda para revisarla. En main no: ahí solo se calienta la caché.
+      - if: matrix.sistema == 'windows' && github.event_name != 'push'
+        name: Prueba de humo de la portable
+        shell: bash # con pipefail: falla si falla la prueba, y si no dijo que terminó
+        run: node scripts/probar-app-ci.mjs | tee humo.log && grep -q "^App comprobada\.$" humo.log
+        timeout-minutes: 5

@@ -4,6 +4,7 @@ import { i18n } from "@/i18n";
 const esCheck = (t: string) => t.includes("CHECK constraint failed");
 
 const reglas: [(texto: string) => boolean, string][] = [
+  [(t) => t === "sin_espacio", "errores.sinEspacio"],
   [(t) => t.includes("ux_trabajadores_correo"), "errores.correoDuplicado"],
   [(t) => t.includes("ux_etiquetas_nombre"), "errores.etiquetaDuplicada"],
   [(t) => t.includes("ux_zonas_nombre"), "errores.zonaDuplicada"],
@@ -30,6 +31,7 @@ const reglas: [(texto: string) => boolean, string][] = [
 const nativos: [RegExp, string][] = [
   [/dentro de un \.zip \((?<ruta>.+?)\)\./s, "errores.desdeZip"],
   [/esquema (?<actual>\d+); esta app conoce hasta el (?<conocida>\d+)/, "errores.esquemaNuevo"],
+  [/^Otra copia de BoldoAtlas tiene abierta esta base: (?<ruta>.+)$/s, "errores.abiertaEnOtraCopia"],
   [/^No se puede escribir en (?<ruta>.+?)\. Mueve .*Detalle: (?<detalle>.*)$/s, "errores.sinPermiso"],
   [/copia temporal de solo lectura \((?<ruta>.+?)\)\./s, "errores.translocado"],
   [/^No se encontró la carpeta de datos del usuario/, "errores.sinAppdata"],

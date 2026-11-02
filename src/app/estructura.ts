@@ -17,7 +17,7 @@ export const barraColapsada = (ancho: number, manual: boolean | null): boolean =
 
 /** Si la carga inicial falló, los datos para la pantalla de error (misma forma que la de `infoApp` con error); si no, null. */
 export const infoSiFalloCarga = (r: Resultado): InfoApp | null =>
-  r.ok ? null : { dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: r.mensaje };
+  r.ok ? null : { baseId: "", dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: r.mensaje };
 
 /** Vistas que se cierran con su botón Cerrar, con Esc o con un segundo clic en su entrada del menú (nombres de ruta). */
 const VISTAS_CERRABLES = ["configuracion", "ayuda", "acerca"];
