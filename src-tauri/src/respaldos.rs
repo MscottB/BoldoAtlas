@@ -1,8 +1,10 @@
-use crate::db;
+use crate::db::{self, SIN_ESPACIO};
 use crate::intercambio::validar;
-use rusqlite::{Connection, OpenFlags};
+use crate::organizaciones::OTRA_BASE;
+use rusqlite::{Connection, ErrorCode, OpenFlags};
 use serde::Serialize;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 const PREFIJO: &str = "boldo-";
@@ -55,17 +57,27 @@ impl From<&'static str> for Fallo {
 }
 impl From<String> for Fallo {
     fn from(e: String) -> Self {
-        Fallo::de("fallo", e)
+        match e.as_str() {
+            OTRA_BASE => Fallo::de(OTRA_BASE, e),
+            SIN_ESPACIO => Fallo::de(SIN_ESPACIO, e),
+            _ => Fallo::de("fallo", e),
+        }
     }
 }
 impl From<rusqlite::Error> for Fallo {
     fn from(e: rusqlite::Error) -> Self {
-        Fallo::de("fallo", e)
+        match e.sqlite_error_code() {
+            Some(ErrorCode::DiskFull) => Fallo::de(SIN_ESPACIO, SIN_ESPACIO),
+            _ => Fallo::de("fallo", e),
+        }
     }
 }
 impl From<std::io::Error> for Fallo {
     fn from(e: std::io::Error) -> Self {
-        Fallo::de("fallo", e)
+        match e.kind() {
+            ErrorKind::StorageFull => Fallo::de(SIN_ESPACIO, SIN_ESPACIO),
+            _ => Fallo::de("fallo", e),
+        }
     }
 }
 

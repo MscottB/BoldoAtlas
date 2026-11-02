@@ -4,6 +4,7 @@ import { i18n } from "@/i18n";
 const esCheck = (t: string) => t.includes("CHECK constraint failed");
 
 const reglas: [(texto: string) => boolean, string][] = [
+  [(t) => t === "sin_espacio", "errores.sinEspacio"],
   [(t) => t.includes("ux_trabajadores_correo"), "errores.correoDuplicado"],
   [(t) => t.includes("ux_etiquetas_nombre"), "errores.etiquetaDuplicada"],
   [(t) => t.includes("ux_zonas_nombre"), "errores.zonaDuplicada"],

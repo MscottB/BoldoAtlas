@@ -50,6 +50,10 @@ describe("traducirError", () => {
     expect(traducirError(texto)).toBe(esperado);
   });
 
+  it("sin_espacio se traduce", () => {
+    expect(traducirError("sin_espacio")).toBe("No queda espacio en el disco. Libera espacio e inténtalo de nuevo.");
+  });
+
   it("acepta un Error con el texto de SQLite", () => {
     expect(traducirError(new Error("UNIQUE constraint failed: index 'ux_sedes_nombre'"))).toBe(
       "Ese valor ya existe en la lista.",

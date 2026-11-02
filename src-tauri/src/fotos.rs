@@ -107,18 +107,25 @@ pub fn atender(
     responder: tauri::UriSchemeResponder,
 ) {
     tauri::async_runtime::spawn_blocking(move || {
-        let r = app
-            .state::<Estado>()
-            .con_conexion(|c| Ok::<_, String>(servir(c, pedido.method(), pedido.uri().path())));
+        let estado = app.state::<Estado>();
+        // shortcut: responde con la base abierta aunque la foto sea de otra, hasta que la URL lleve su base (Task 3)
+        let id = estado.base_abierta().map(|b| b.id).unwrap_or_default();
+        let r = estado.con_conexion(&id, |c| {
+            Ok::<_, String>(servir(c, pedido.method(), pedido.uri().path()))
+        });
         responder.respond(r.unwrap_or_else(|_| sin_cuerpo(StatusCode::SERVICE_UNAVAILABLE)));
     });
 }
 
 /// Los bytes de una foto, para optimizarla en la ventana: respuesta binaria, sin JSON.
 #[tauri::command]
-pub async fn foto_bytes(app: AppHandle, id: String) -> Result<tauri::ipc::Response, String> {
+pub async fn foto_bytes(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+) -> Result<tauri::ipc::Response, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>().con_conexion(|c| {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
             leer(c, &id)
                 .map(|(bytes, _)| tauri::ipc::Response::new(bytes))
                 .ok_or_else(|| "foto_no_disponible".to_string())
@@ -139,6 +146,7 @@ struct FilaLote {
 
 #[derive(Debug, Deserialize)]
 struct Lote {
+    base_id: String,
     filas: Vec<FilaLote>,
     version_app: String,
 }
@@ -167,8 +175,7 @@ fn desarmar(cuerpo: &[u8]) -> Result<(Lote, &[u8]), String> {
 /// Un lote, en una transacción. No toca `updated_at`: es la misma foto con menos peso, no un cambio de datos. Si lo tocara,
 /// al fusionar con otra copia todas estas personas contarían como lo más reciente y le ganarían a una edición real hecha allá.
 /// Devuelve cuántas se escribieron.
-fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
-    let (lote, mut imagenes) = desarmar(cuerpo)?;
+fn escribir_lote(c: &mut Connection, lote: &Lote, mut imagenes: &[u8]) -> Result<usize, String> {
     let tx = c
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|e| e.to_string())?;
@@ -194,17 +201,21 @@ fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
     Ok(escritas)
 }
 
+/// La base va en el cuerpo porque el comando recibe bytes, no argumentos.
+fn guardar_lote(estado: &Estado, cuerpo: &[u8]) -> Result<usize, String> {
+    let (lote, imagenes) = desarmar(cuerpo)?;
+    estado.con_conexion(&lote.base_id, |c| escribir_lote(c, &lote, imagenes))
+}
+
 #[tauri::command]
 pub async fn fotos_guardar(app: AppHandle, request: Request<'_>) -> Result<usize, String> {
     let InvokeBody::Raw(cuerpo) = request.body() else {
         return Err("lote_invalido".into());
     };
     let cuerpo = cuerpo.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>().con_conexion(|c| guardar(c, &cuerpo))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || guardar_lote(&app.state::<Estado>(), &cuerpo))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Sin esto, lo que ocupaban las fotos queda como páginas libres y el archivo de la base no baja de tamaño. Con WAL, el
@@ -215,10 +226,10 @@ fn compactar(c: &Connection) -> rusqlite::Result<()> {
 }
 
 #[tauri::command]
-pub async fn fotos_compactar(app: AppHandle) -> Result<(), String> {
+pub async fn fotos_compactar(app: AppHandle, base_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
-            .con_conexion(|c| compactar(c).map_err(|e| e.to_string()))
+            .con_conexion(&base_id, |c| compactar(c).map_err(|e| e.to_string()))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -227,8 +238,15 @@ pub async fn fotos_compactar(app: AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::organizaciones::Base;
 
     const JPEG: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
+
+    /// Lo mismo que `guardar_lote`, sin pasar por el seguro: estas pruebas miran solo la escritura.
+    fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
+        let (lote, imagenes) = desarmar(cuerpo)?;
+        escribir_lote(c, &lote, imagenes)
+    }
 
     fn base() -> Connection {
         let c = Connection::open_in_memory().unwrap();
@@ -251,6 +269,7 @@ mod tests {
 
     fn lote(filas: &[(&str, &str, i64, &[u8])]) -> Vec<u8> {
         let meta = serde_json::json!({
+            "base_id": "A",
             "version_app": "1.0",
             "filas": filas.iter().map(|(id, v, p, img)| serde_json::json!(
                 { "id": id, "version": v, "previos": p, "largo": img.len() }
@@ -263,6 +282,31 @@ mod tests {
             cuerpo.extend_from_slice(img);
         }
         cuerpo
+    }
+
+    #[test]
+    fn un_lote_con_otra_base_no_escribe() {
+        let dir = tempfile::tempdir().unwrap();
+        let c = base();
+        con_foto(&c, "ana", "xxxxxxxxxx");
+        let abierta = Base {
+            id: "B".into(),
+            bd: dir.path().join("b.db"),
+            respaldos: dir.path().to_path_buf(),
+        };
+        let e = Estado::de_prueba(Some(c), Some(abierta), None);
+        // el lote dice «A» y está abierta «B»
+        let cuerpo = lote(&[("ana", "v1", 10, JPEG)]);
+        assert_eq!(guardar_lote(&e, &cuerpo).unwrap_err(), "otra_base");
+        let foto: String = e
+            .con_conexion("B", |c| {
+                c.query_row("SELECT foto_png FROM trabajadores", [], |f| f.get(0))
+                    .map_err(|x| x.to_string())
+            })
+            .unwrap();
+        assert_eq!(foto, "xxxxxxxxxx");
+        // un cuerpo mal armado sigue siendo eso
+        assert_eq!(guardar_lote(&e, &[1, 0]).unwrap_err(), "lote_invalido");
     }
 
     #[test]
@@ -472,7 +516,8 @@ mod tests {
                 .iter()
                 .map(|l| serde_json::json!({ "id": "a", "version": "v1", "previos": 10, "largo": l }))
                 .collect();
-            let meta = serde_json::json!({ "version_app": "1", "filas": filas }).to_string();
+            let meta = serde_json::json!({ "base_id": "A", "version_app": "1", "filas": filas })
+                .to_string();
             let mut cuerpo = (meta.len() as u32).to_le_bytes().to_vec();
             cuerpo.extend_from_slice(meta.as_bytes());
             cuerpo.extend_from_slice(imagenes);

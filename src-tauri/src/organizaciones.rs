@@ -8,6 +8,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+/// Quien pide datos cree tener abierta otra base: no se ejecuta nada.
+pub const OTRA_BASE: &str = "otra_base";
+
 /// Al arrancar se espera a que suelte el archivo la copia que se está cerrando (un reinicio, una actualización).
 pub const ESPERA_ARRANQUE: Duration = Duration::from_secs(8);
 /// Al cambiar de organización, quien tiene el archivo es otra copia en uso: esperar solo demoraría el aviso.
@@ -95,6 +98,15 @@ pub fn bloquear(bd: &Path, espera: Duration) -> Result<File, Fallo> {
     }
 }
 
+/// Un disco lleno se arregla liberando espacio: no es una migración fallida.
+fn fallo_al_migrar(e: String) -> Fallo {
+    if e == db::SIN_ESPACIO {
+        e.into()
+    } else {
+        Fallo::de("migracion", e)
+    }
+}
+
 /// Bloquea, revisa sin tocar el archivo y solo entonces lo abre para escribir: uno de esquema más nuevo o que no es SQLite
 /// queda como estaba. `id_nuevo` es para un archivo recién creado; si no, el id es el que el archivo ya tiene.
 pub fn abrir_base(
@@ -110,8 +122,7 @@ pub fn abrir_base(
         version_leida(&solo_lectura_cerrada(bd)?, migraciones)?;
     }
     let mut conn = db::abrir(bd)?;
-    let version =
-        db::migrar_con(&mut conn, migraciones, respaldos).map_err(|e| Fallo::de("migracion", e))?;
+    let version = db::migrar_con(&mut conn, migraciones, respaldos).map_err(fallo_al_migrar)?;
     if let Some(id) = id_nuevo {
         conn.execute("INSERT INTO meta (clave, valor) VALUES ('db_id', ?1)", [id])?;
     }
@@ -129,6 +140,15 @@ pub fn abrir_base(
 mod tests {
     use super::*;
     use crate::db::MIGRACIONES;
+
+    #[test]
+    fn un_disco_lleno_al_migrar_no_cuenta_como_migracion_fallida() {
+        assert_eq!(
+            fallo_al_migrar(db::SIN_ESPACIO.into()).codigo,
+            "sin_espacio"
+        );
+        assert_eq!(fallo_al_migrar("otra cosa".into()).codigo, "migracion");
+    }
 
     fn id_de(conn: &Connection) -> String {
         conn.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {

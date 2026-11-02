@@ -168,10 +168,12 @@ describe("armarLote", () => {
         { candidata: candidata(2, 20), foto: new Blob([new Uint8Array([3])]) },
       ],
       "1.0",
+      "base-a",
     );
     const largo = new DataView(c.buffer).getUint32(0, true);
     const meta = JSON.parse(new TextDecoder().decode(c.slice(4, 4 + largo)));
     expect(meta).toEqual({
+      base_id: "base-a",
       version_app: "1.0",
       filas: [
         { id: "p1", version: "v1", previos: 10, largo: 2 },

@@ -4,15 +4,182 @@ const invoke = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.stubGlobal("__APP_VERSION__", "prueba");
 
-const { consultar, lote } = await import("./cliente");
+const c = await import("./cliente");
+const { consultar, lote, alOtraBase, colaVacia, fotosGuardar } = c;
+const { BaseCambiada, fijarBase, marcarCambio } = await import("@/lib/baseActiva");
 
 const orden = (l: unknown[][]) => l.map((c) => (c[1] as { sentencias: { sql: string }[] }).sentencias[0]!.sql);
 
-describe("lote", () => {
-  beforeEach(() => {
-    invoke.mockReset();
+const CASOS: [string, () => Promise<unknown>][] = [
+  ["consultar", () => c.consultar("SELECT 1")],
+  ["lote", () => c.lote([{ sql: "a" }])],
+  ["leerMeta", () => c.leerMeta()],
+  ["listarRespaldos", () => c.listarRespaldos()],
+  ["respaldarAhora", () => c.respaldarAhora()],
+  ["respaldarAntesDeReemplazar", () => c.respaldarAntesDeReemplazar()],
+  ["respaldarAntesDeOptimizar", () => c.respaldarAntesDeOptimizar()],
+  ["restaurarRespaldo", () => c.restaurarRespaldo("n")],
+  ["abrirCarpetaRespaldos", () => c.abrirCarpetaRespaldos()],
+  ["infoProyecto", () => c.infoProyecto()],
+  ["exportarPreparar", () => c.exportarPreparar("t", null)],
+  ["importarAbrir", () => c.importarAbrir("t", "codigo")],
+  ["importarAgregar", () => c.importarAgregar("t", {})],
+  ["importarReemplazar", () => c.importarReemplazar("t")],
+  ["importarComparar", () => c.importarComparar("t", {})],
+  ["revisionPagina", () => c.revisionPagina("t", { tipo: null, tabla: null, soloDudosas: false, desde: 0, cuantos: 1 })],
+  ["revisionDetalle", () => c.revisionDetalle("t", "tabla", "id")],
+  ["revisionVerificar", () => c.revisionVerificar("t")],
+  ["revisionBloqueos", () => c.revisionBloqueos("t", 0, 1)],
+  ["revisionOpciones", () => c.revisionOpciones("t", "destino", "texto")],
+  ["revisionAplicar", () => c.revisionAplicar("t", 1, false)],
+  ["fotoBytes", () => c.fotoBytes("id")],
+  ["fotosCompactar", () => c.fotosCompactar()],
+];
+
+beforeEach(() => {
+  invoke.mockReset();
+  invoke.mockResolvedValue([]);
+  fijarBase("A");
+  marcarCambio(false);
+});
+
+describe("baseId", () => {
+  it.each(CASOS)("%s lleva baseId", async (_, llamar) => {
+    await llamar();
+    expect(invoke.mock.lastCall?.[1]).toMatchObject({ baseId: "A" });
   });
 
+  it("lo que no toca la conexión no lo lleva", async () => {
+    await c.infoApp();
+    expect(invoke.mock.lastCall?.[1]).toBeUndefined();
+    await c.revisionResumen("t");
+    expect(invoke.mock.lastCall?.[1]).toEqual({ trabajo: "t" });
+  });
+
+  it("fotosGuardar arma el cuerpo con la base con que se pidió y lo manda tal cual", async () => {
+    const cuerpo = new Uint8Array([1, 2]);
+    let soltar: (c: Uint8Array) => void = () => {};
+    const armar = vi.fn<(baseId: string) => Promise<Uint8Array>>(() => new Promise((r) => (soltar = r)));
+    invoke.mockResolvedValue(3);
+    const p = fotosGuardar(armar);
+    expect(armar).toHaveBeenCalledWith("A");
+    soltar(cuerpo);
+    await expect(p).resolves.toBe(3);
+    expect(invoke).toHaveBeenCalledWith("fotos_guardar", cuerpo);
+  });
+});
+
+describe("el seguro", () => {
+  it("una respuesta que llega con otra base activa se descarta", async () => {
+    let resolver: (r: unknown) => void = () => {};
+    invoke.mockImplementation(() => new Promise((r) => (resolver = r)));
+    const p = consultar("SELECT 1");
+    fijarBase("B");
+    resolver([{ n: 1 }]);
+    await expect(p).rejects.toBeInstanceOf(BaseCambiada);
+  });
+
+  it("un error que llega con otra base activa también se descarta", async () => {
+    let rechazar: (e: unknown) => void = () => {};
+    invoke.mockImplementation(() => new Promise((_, r) => (rechazar = r)));
+    const p = consultar("SELECT 1");
+    fijarBase("B");
+    rechazar("malo");
+    await expect(p).rejects.toBeInstanceOf(BaseCambiada);
+  });
+
+  it("un lote en cola sale con la base con que se pidió", async () => {
+    let soltar = () => {};
+    invoke.mockImplementationOnce(() => new Promise<void>((r) => (soltar = r)));
+    const primero = lote([{ sql: "a" }]);
+    const segundo = lote([{ sql: "b" }]);
+    fijarBase("B");
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    soltar();
+    // ninguno queda colgado: quien los pidió llega a su `finally`
+    await expect(primero).rejects.toBeInstanceOf(BaseCambiada);
+    await expect(segundo).rejects.toBeInstanceOf(BaseCambiada);
+    expect(invoke.mock.calls.map((l) => (l[1] as { baseId: string }).baseId)).toEqual(["A", "A"]);
+  });
+
+  it("fotosGuardar descarta la respuesta con otra base activa", async () => {
+    let resolver: (r: unknown) => void = () => {};
+    invoke.mockImplementation(() => new Promise((r) => (resolver = r)));
+    const p = fotosGuardar(async () => new Uint8Array());
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalled());
+    fijarBase("B");
+    resolver(1);
+    await expect(p).rejects.toBeInstanceOf(BaseCambiada);
+  });
+});
+
+describe("otra_base", () => {
+  const manejador = vi.fn();
+  alOtraBase(manejador);
+  beforeEach(() => manejador.mockClear());
+
+  it.each([
+    ["texto", "otra_base"],
+    ["Fallo.codigo", { codigo: "otra_base", detalle: "" }],
+  ])("con la misma base avisa una vez y no reintenta (%s)", async (_, error) => {
+    invoke.mockRejectedValue(error);
+    await expect(consultar("SELECT 1")).rejects.toBe(error);
+    expect(manejador).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("también lo reconoce en un lote y en fotosGuardar", async () => {
+    invoke.mockRejectedValue("otra_base");
+    await expect(lote([{ sql: "a" }])).rejects.toBe("otra_base");
+    await expect(fotosGuardar(async () => new Uint8Array())).rejects.toBe("otra_base");
+    expect(manejador).toHaveBeenCalledTimes(2);
+  });
+
+  it("con la base ya cambiada no avisa", async () => {
+    let rechazar: (e: unknown) => void = () => {};
+    invoke.mockImplementation(() => new Promise((_, r) => (rechazar = r)));
+    const p = consultar("SELECT 1");
+    fijarBase("B");
+    rechazar("otra_base");
+    await expect(p).rejects.toBeInstanceOf(BaseCambiada);
+    expect(manejador).not.toHaveBeenCalled();
+  });
+
+  it("durante un cambio no avisa y rechaza con BaseCambiada", async () => {
+    marcarCambio(true);
+    invoke.mockRejectedValue({ codigo: "otra_base", detalle: "" });
+    await expect(consultar("SELECT 1")).rejects.toBeInstanceOf(BaseCambiada);
+    expect(manejador).not.toHaveBeenCalled();
+  });
+
+  it("otro error no avisa y llega como está", async () => {
+    invoke.mockRejectedValue("malo");
+    await expect(consultar("SELECT 1")).rejects.toBe("malo");
+    expect(manejador).not.toHaveBeenCalled();
+  });
+});
+
+describe("colaVacia", () => {
+  it("espera también lo que entró a la cola mientras esperaba, y no falla si un lote falló", async () => {
+    const pendientes: ((e?: unknown) => void)[] = [];
+    invoke.mockImplementation(() => new Promise<void>((r, x) => pendientes.push((e) => (e ? x(e) : r()))));
+    const a = lote([{ sql: "a" }]);
+    let vacia = false;
+    const p = colaVacia().then(() => (vacia = true));
+    const b = lote([{ sql: "b" }]);
+    await vi.waitFor(() => expect(pendientes).toHaveLength(1));
+    pendientes.shift()!("malo");
+    await expect(a).rejects.toBe("malo");
+    await vi.waitFor(() => expect(pendientes).toHaveLength(1));
+    expect(vacia).toBe(false);
+    pendientes.shift()!();
+    await b;
+    await p;
+    expect(vacia).toBe(true);
+  });
+});
+
+describe("lote", () => {
   it("envía las escrituras una a una, en el orden pedido", async () => {
     const pendientes: (() => void)[] = [];
     invoke.mockImplementation(() => new Promise<void>((r) => pendientes.push(r)));

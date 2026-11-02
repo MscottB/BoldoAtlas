@@ -3,6 +3,7 @@ import { computed, ref, watch, type Component } from "vue";
 import { useRoute } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
+import { toast } from "vue-sonner";
 import {
   ArrowLeftRight,
   ChartColumn,
@@ -31,6 +32,7 @@ import DatosProyecto from "@/features/proyecto/DatosProyecto.vue";
 import DialogoActualizacion from "@/features/actualizaciones/DialogoActualizacion.vue";
 import DialogoNovedades from "@/features/actualizaciones/DialogoNovedades.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
+import { alOtraBase } from "@/db/cliente";
 import { useOrganizacion } from "@/stores/organizacion";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
 import { useBarraFlotante } from "@/app/barraLateral";
@@ -71,6 +73,15 @@ const utilidades: Entrada[] = [
 ];
 
 const { t } = useI18n();
+// No se reintenta: es un error de la app. Con `id`, varias llamadas rechazadas dan un solo aviso.
+alOtraBase(() => {
+  console.error("otra_base: la interfaz y Rust tienen bases distintas");
+  toast.error(t("respaldos.error.otra_base"), {
+    id: "otra-base",
+    duration: Infinity,
+    action: { label: t("comun.recargar"), onClick: () => location.reload() },
+  });
+});
 // Con avisos pendientes, el nombre accesible de la entrada incluye cuántos son.
 const nombre = (item: Entrada) => {
   const n = item.contador?.() ?? 0;

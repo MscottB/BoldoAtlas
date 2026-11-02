@@ -18,8 +18,12 @@ pub struct Sentencia {
     pub params: Vec<Value>,
 }
 
+/// Disco lleno, como texto: `errores.ts` lo traduce y `Fallo` lo convierte en su código.
+pub const SIN_ESPACIO: &str = "sin_espacio";
+
 fn texto(e: rusqlite::Error) -> String {
     match e.sqlite_error_code() {
+        Some(ErrorCode::DiskFull) => SIN_ESPACIO.into(),
         Some(ErrorCode::ReadOnly) => "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura.".into(),
         _ => e.to_string(),
     }
@@ -235,6 +239,12 @@ pub fn marcar_cambio(conn: &Connection, version_app: &str) -> Result<(), String>
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn un_disco_lleno_da_el_texto_que_la_interfaz_traduce() {
+        let lleno = rusqlite::Error::SqliteFailure(rusqlite::ffi::Error::new(13), None);
+        assert_eq!(texto(lleno), "sin_espacio");
+    }
     use std::path::PathBuf;
 
     const ESQUEMA: i64 = MIGRACIONES.len() as i64;

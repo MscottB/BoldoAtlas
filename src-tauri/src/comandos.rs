@@ -1,6 +1,8 @@
 use crate::db::{self, Sentencia};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
-use crate::organizaciones::{Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, abrir_base, bloquear};
+use crate::organizaciones::{
+    Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, OTRA_BASE, abrir_base, bloquear,
+};
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
@@ -124,22 +126,54 @@ impl Estado {
         *self.bloqueo.lock().unwrap_or_else(|p| p.into_inner()) = None;
     }
 
+    fn motivo_sin_base(&self) -> String {
+        self.error
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone()
+            .unwrap_or_else(|| "La base de datos no está abierta.".into())
+    }
+
+    /// La base abierta, solo si es la que cree tener quien pregunta.
+    fn comprobar(&self, base_id: &str) -> Result<Base, String> {
+        match self.base_abierta() {
+            Some(b) if b.id == base_id => Ok(b),
+            Some(_) => Err(OTRA_BASE.into()),
+            None => Err(self.motivo_sin_base()),
+        }
+    }
+
+    pub(crate) fn base(&self, base_id: &str) -> Result<Base, Fallo> {
+        Ok(self.comprobar(base_id)?)
+    }
+
+    /// El seguro contra mezclas: compara con `conn` tomado, que es con lo que se cambia de base.
     pub(crate) fn con_conexion<T, E: From<String>>(
         &self,
+        base_id: &str,
         f: impl FnOnce(&mut Connection) -> Result<T, E>,
     ) -> Result<T, E> {
         let mut guardia = self
             .conn
             .lock()
             .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
-        let conn = guardia.as_mut().ok_or_else(|| {
-            self.error
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .clone()
-                .unwrap_or_else(|| "La base de datos no está abierta.".into())
-        })?;
+        self.comprobar(base_id)?;
+        let conn = guardia.as_mut().ok_or_else(|| self.motivo_sin_base())?;
         f(conn)
+    }
+
+    /// Como `con_conexion`, para lo que cierra y reemplaza la conexión: restaurar y reemplazar.
+    pub(crate) fn con_ranura<T>(
+        &self,
+        base_id: &str,
+        f: impl FnOnce(&mut Option<Connection>, &Base) -> Result<T, Fallo>,
+    ) -> Result<T, Fallo> {
+        let mut guardia = self
+            .conn
+            .lock()
+            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
+        let base = self.base(base_id)?;
+        f(&mut guardia, &base)
     }
 
     /// Cierra la conexión al salir: SQLite vuelca el WAL y borra -wal/-shm. Si un respaldo tiene la
@@ -212,6 +246,7 @@ impl Estado {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InfoApp {
+    base_id: String,
     dir_datos: String,
     ruta_bd: String,
     portable: bool,
@@ -223,6 +258,7 @@ pub struct InfoApp {
 pub fn info_app(estado: State<Estado>) -> InfoApp {
     let r = estado.rutas.as_ref();
     InfoApp {
+        base_id: estado.base_abierta().map(|b| b.id).unwrap_or_default(),
         dir_datos: r.map(|r| r.datos.display().to_string()).unwrap_or_default(),
         ruta_bd: r.map(|r| r.bd.display().to_string()).unwrap_or_default(),
         portable: r.is_some_and(|r| r.portable),
@@ -240,12 +276,13 @@ pub fn info_app(estado: State<Estado>) -> InfoApp {
 #[tauri::command]
 pub async fn db_consultar(
     app: AppHandle,
+    base_id: String,
     sql: String,
     params: Vec<Value>,
 ) -> Result<Vec<Map<String, Value>>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
-            .con_conexion(|c| db::consultar(c, &sql, &params))
+            .con_conexion(&base_id, |c| db::consultar(c, &sql, &params))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -254,21 +291,22 @@ pub async fn db_consultar(
 #[tauri::command]
 pub async fn db_lote(
     app: AppHandle,
+    base_id: String,
     sentencias: Vec<Sentencia>,
     version_app: String,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
-            .con_conexion(|c| db::lote(c, &sentencias, &version_app))
+            .con_conexion(&base_id, |c| db::lote(c, &sentencias, &version_app))
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub async fn listar_respaldos(app: AppHandle) -> Result<Vec<Respaldo>, Fallo> {
+pub async fn listar_respaldos(app: AppHandle, base_id: String) -> Result<Vec<Respaldo>, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
-        respaldos::listar(&app.state::<Estado>().rutas()?.respaldos)
+        respaldos::listar(&app.state::<Estado>().base(&base_id)?.respaldos)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -276,12 +314,15 @@ pub async fn listar_respaldos(app: AppHandle) -> Result<Vec<Respaldo>, Fallo> {
 
 /// Como `respaldar_ahora`, pero con un nombre propio que la poda nunca borra: lo usa «reemplazar los datos».
 #[tauri::command]
-pub async fn respaldar_antes_de_reemplazar(app: AppHandle) -> Result<String, Fallo> {
+pub async fn respaldar_antes_de_reemplazar(
+    app: AppHandle,
+    base_id: String,
+) -> Result<String, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
-        let dir = &estado.rutas()?.respaldos;
-        estado.con_conexion(|c| {
-            respaldos::respaldar_antes_de_reemplazar(c, dir, &respaldos::sello_local(c)?)
+        let dir = estado.base(&base_id)?.respaldos;
+        estado.con_conexion(&base_id, |c| {
+            respaldos::respaldar_antes_de_reemplazar(c, &dir, &respaldos::sello_local(c)?)
         })
     })
     .await
@@ -290,12 +331,15 @@ pub async fn respaldar_antes_de_reemplazar(app: AppHandle) -> Result<String, Fal
 
 /// Antes de optimizar las fotos: conserva las originales, y de estos quedan los últimos 3.
 #[tauri::command]
-pub async fn respaldar_antes_de_optimizar(app: AppHandle) -> Result<String, Fallo> {
+pub async fn respaldar_antes_de_optimizar(
+    app: AppHandle,
+    base_id: String,
+) -> Result<String, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
-        let dir = &estado.rutas()?.respaldos;
-        estado.con_conexion(|c| {
-            respaldos::respaldar_antes_de_optimizar(c, dir, &respaldos::sello_local(c)?)
+        let dir = estado.base(&base_id)?.respaldos;
+        estado.con_conexion(&base_id, |c| {
+            respaldos::respaldar_antes_de_optimizar(c, &dir, &respaldos::sello_local(c)?)
         })
     })
     .await
@@ -304,11 +348,13 @@ pub async fn respaldar_antes_de_optimizar(app: AppHandle) -> Result<String, Fall
 
 /// En un hilo aparte: el VACUUM INTO no congela la ventana.
 #[tauri::command]
-pub async fn respaldar_ahora(app: AppHandle) -> Result<String, Fallo> {
+pub async fn respaldar_ahora(app: AppHandle, base_id: String) -> Result<String, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
-        let dir = &estado.rutas()?.respaldos;
-        estado.con_conexion(|c| respaldos::respaldar(c, dir, &respaldos::sello_local(c)?))
+        let dir = estado.base(&base_id)?.respaldos;
+        estado.con_conexion(&base_id, |c| {
+            respaldos::respaldar(c, &dir, &respaldos::sello_local(c)?)
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -316,16 +362,16 @@ pub async fn respaldar_ahora(app: AppHandle) -> Result<String, Fallo> {
 
 /// Si sale bien, reinicia la app: todo el estado (Rust y frontend) se vuelve a cargar desde la base restaurada.
 #[tauri::command]
-pub async fn restaurar_respaldo(app: AppHandle, nombre: String) -> Result<(), Fallo> {
+pub async fn restaurar_respaldo(
+    app: AppHandle,
+    base_id: String,
+    nombre: String,
+) -> Result<(), Fallo> {
     let app2 = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let estado = app2.state::<Estado>();
-        let r = estado.rutas()?;
-        let mut conexion = estado
-            .conn
-            .lock()
-            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
-        respaldos::restaurar(&mut conexion, &r.bd, &r.respaldos, &nombre, db::MIGRACIONES)
+        app2.state::<Estado>().con_ranura(&base_id, |conexion, b| {
+            respaldos::restaurar(conexion, &b.bd, &b.respaldos, &nombre, db::MIGRACIONES)
+        })
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -357,14 +403,19 @@ fn abrir_carpeta(app: &AppHandle, r: &Rutas, carpeta: &std::path::Path) -> Resul
 
 /// Abre la carpeta conocida por Rust; la interfaz nunca envía una ruta.
 #[tauri::command]
-pub fn abrir_carpeta_respaldos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
-    let r = estado.rutas()?;
-    abrir_carpeta(&app, r, &r.respaldos)
+pub fn abrir_carpeta_respaldos(
+    app: AppHandle,
+    estado: State<Estado>,
+    base_id: String,
+) -> Result<(), Fallo> {
+    let base = estado.base(&base_id)?;
+    abrir_carpeta(&app, estado.rutas()?, &base.respaldos)
 }
 
 /// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust.
 #[tauri::command]
-pub fn info_proyecto(estado: State<Estado>) -> Result<InfoProyecto, Fallo> {
+pub fn info_proyecto(estado: State<Estado>, base_id: String) -> Result<InfoProyecto, Fallo> {
+    estado.base(&base_id)?;
     Ok(rutas::info_proyecto(estado.rutas()?)?)
 }
 
@@ -427,6 +478,7 @@ fn nombre_archivo(ruta: &std::path::Path) -> String {
 #[tauri::command]
 pub async fn exportar_preparar(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     raices: Option<Vec<String>>,
 ) -> Result<alcance::ResumenExportacion, Fallo> {
@@ -435,7 +487,7 @@ pub async fn exportar_preparar(
         let datos = &estado.rutas()?.datos;
         sesiones.empezar(&trabajo)?;
         avisar(&app, &trabajo, "copiando", 0, 0);
-        let copia = estado.con_conexion(|c| alcance::copiar(c, datos))?;
+        let copia = estado.con_conexion(&base_id, |c| alcance::copiar(c, datos))?;
         let (temporal, resumen) = alcance::preparar(copia, datos, raices.as_deref())?;
         // si se canceló mientras tanto, el temporal se borra al soltarlo
         sesiones.guardar_exportacion(&trabajo, temporal)?;
@@ -528,6 +580,7 @@ pub async fn importar_elegir(
 #[tauri::command]
 pub async fn importar_abrir(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     codigo: String,
 ) -> Result<intercambio::ResumenImportacion, Fallo> {
@@ -542,7 +595,7 @@ pub async fn importar_abrir(
             seguimiento(&app, &trabajo, "descifrando"),
         )?;
         avisar(&app, &trabajo, "revisando", 0, 0);
-        let resumen = estado.con_conexion(|c| intercambio::revisar(c, &i))?;
+        let resumen = estado.con_conexion(&base_id, |c| intercambio::revisar(c, &i))?;
         sesiones.guardar_importacion(&trabajo, i)?;
         Ok(resumen)
     })
@@ -554,16 +607,18 @@ pub async fn importar_abrir(
 #[tauri::command]
 pub async fn importar_agregar(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     lugares: HashMap<String, Option<String>>,
     version_app: String,
 ) -> Result<fusion::Informe, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
-        let dir = &estado.rutas()?.respaldos;
+        let dir = estado.base(&base_id)?.respaldos;
         let i = sesiones.tomar_importacion(&trabajo)?;
-        let hecho =
-            estado.con_conexion(|c| intercambio::agregar(c, dir, &i, &lugares, &version_app));
+        let hecho = estado.con_conexion(&base_id, |c| {
+            intercambio::agregar(c, &dir, &i, &lugares, &version_app)
+        });
         if hecho.is_err() {
             let _ = sesiones.guardar_importacion(&trabajo, i);
         }
@@ -575,18 +630,18 @@ pub async fn importar_agregar(
 
 /// «Reemplazar todo». Si sale bien, reinicia la app, como al restaurar un respaldo.
 #[tauri::command]
-pub async fn importar_reemplazar(app: AppHandle, trabajo: String) -> Result<(), Fallo> {
+pub async fn importar_reemplazar(
+    app: AppHandle,
+    base_id: String,
+    trabajo: String,
+) -> Result<(), Fallo> {
     let app2 = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let (estado, sesiones) = (app2.state::<Estado>(), app2.state::<Sesiones>());
-        let r = estado.rutas()?;
         let i = sesiones.tomar_importacion(&trabajo)?;
-        let mut conexion = estado
-            .conn
-            .lock()
-            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
-        let hecho =
-            intercambio::reemplazar(&mut conexion, &r.bd, &r.respaldos, &i, db::MIGRACIONES);
+        let hecho = estado.con_ranura(&base_id, |conexion, b| {
+            intercambio::reemplazar(conexion, &b.bd, &b.respaldos, &i, db::MIGRACIONES)
+        });
         if hecho.is_err() {
             let _ = sesiones.guardar_importacion(&trabajo, i);
         }
@@ -602,6 +657,7 @@ pub async fn importar_reemplazar(app: AppHandle, trabajo: String) -> Result<(), 
 #[tauri::command]
 pub async fn importar_comparar(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     lugares: HashMap<String, Option<String>>,
 ) -> Result<revision::ResumenRevision, Fallo> {
@@ -610,7 +666,7 @@ pub async fn importar_comparar(
         let i = sesiones.importacion(&trabajo)?;
         let anterior = sesiones.revision(&trabajo).ok();
         let guardia = anterior.as_ref().map(|a| leer(a));
-        let r = estado.con_conexion(|c| {
+        let r = estado.con_conexion(&base_id, |c| {
             revision::abrir(
                 c,
                 &i,
@@ -645,6 +701,7 @@ fn escribir(r: &RwLock<revision::Revision>) -> std::sync::RwLockWriteGuard<'_, r
 /// Lo que necesita mirar la revisión, ya abierta: la base y el archivo, solo para leer.
 fn con_revision<T: Send + 'static>(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     f: impl FnOnce(&Connection, &Connection, &revision::Revision) -> Result<T, Fallo> + Send + 'static,
 ) -> tauri::async_runtime::JoinHandle<Result<T, Fallo>> {
@@ -656,7 +713,7 @@ fn con_revision<T: Send + 'static>(
         );
         let imp = i.solo_lectura()?;
         let guardia = leer(&r);
-        estado.con_conexion(|c| f(c, &imp, &guardia))
+        estado.con_conexion(&base_id, |c| f(c, &imp, &guardia))
     })
 }
 
@@ -677,22 +734,26 @@ pub async fn revision_resumen(
 #[tauri::command]
 pub async fn revision_pagina(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     filtro: revision::Filtro,
 ) -> Result<revision::Pagina, Fallo> {
-    con_revision(app, trabajo, move |c, imp, r| r.pagina(c, imp, &filtro))
-        .await
-        .map_err(|e| e.to_string())?
+    con_revision(app, base_id, trabajo, move |c, imp, r| {
+        r.pagina(c, imp, &filtro)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
 pub async fn revision_detalle(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     tabla: String,
     id: String,
 ) -> Result<revision::DetalleCaso, Fallo> {
-    con_revision(app, trabajo, move |c, imp, r| {
+    con_revision(app, base_id, trabajo, move |c, imp, r| {
         r.detalle(c, imp, &tabla, &id)
     })
     .await
@@ -738,6 +799,7 @@ pub async fn revision_masivo(
 #[tauri::command]
 pub async fn revision_verificar(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
 ) -> Result<revision::ResumenRevision, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -750,7 +812,9 @@ pub async fn revision_verificar(
             let g = leer(&r);
             let sesiones = &sesiones;
             let trabajo = &trabajo;
-            estado.con_conexion(|c| revision::verificar(c, &i, &g, || sesiones.sigue(trabajo)))?
+            estado.con_conexion(&base_id, |c| {
+                revision::verificar(c, &i, &g, || sesiones.sigue(trabajo))
+            })?
         };
         let mut g = escribir(&r);
         g.anotar_verificacion(v);
@@ -763,11 +827,12 @@ pub async fn revision_verificar(
 #[tauri::command]
 pub async fn revision_bloqueos(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     desde: usize,
     cuantos: usize,
 ) -> Result<revision::PaginaBloqueos, Fallo> {
-    con_revision(app, trabajo, move |c, imp, r| {
+    con_revision(app, base_id, trabajo, move |c, imp, r| {
         r.pagina_bloqueos(c, imp, desde, cuantos)
     })
     .await
@@ -778,11 +843,12 @@ pub async fn revision_bloqueos(
 #[tauri::command]
 pub async fn revision_opciones(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     destino: String,
     texto: String,
 ) -> Result<Vec<revision::Opcion>, Fallo> {
-    con_revision(app, trabajo, move |c, _, _| {
+    con_revision(app, base_id, trabajo, move |c, _, _| {
         revision::opciones(c, &destino, &texto)
     })
     .await
@@ -794,6 +860,7 @@ pub async fn revision_opciones(
 #[tauri::command]
 pub async fn revision_aplicar(
     app: AppHandle,
+    base_id: String,
     trabajo: String,
     version: u64,
     confirmado: bool,
@@ -801,13 +868,13 @@ pub async fn revision_aplicar(
 ) -> Result<revision::InformeRevision, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
-        let dir = &estado.rutas()?.respaldos;
+        let dir = estado.base(&base_id)?.respaldos;
         let r = sesiones.revision(&trabajo)?;
         let i = sesiones.importacion(&trabajo)?;
         let hecho = {
             let g = leer(&r);
-            estado.con_conexion(|c| {
-                revision::aplicar(c, dir, &i, &g, version, confirmado, &version_app)
+            estado.con_conexion(&base_id, |c| {
+                revision::aplicar(c, &dir, &i, &g, version, confirmado, &version_app)
             })
         };
         // ya aplicado no se puede aplicar dos veces
@@ -886,7 +953,7 @@ mod tests {
 
         e.reabrir().unwrap();
         let id: String = e
-            .con_conexion(|c| {
+            .con_conexion(&a.id, |c| {
                 c.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {
                     f.get(0)
                 })
@@ -918,7 +985,7 @@ mod tests {
         assert!(e.conn.lock().unwrap().is_none());
         assert_eq!(e.base_abierta(), None);
         // el motivo también llega a quien pida datos
-        let datos = e.con_conexion(|_| Ok::<_, String>(())).unwrap_err();
+        let datos = e.con_conexion("A", |_| Ok::<_, String>(())).unwrap_err();
         assert_eq!(datos, error);
         // no hay nada que reabrir: si falló una actualización, sigue la pantalla de error
         e.reabrir().unwrap();
@@ -931,6 +998,117 @@ mod tests {
             motivo_de_apertura(Fallo::de("abierta_en_otra_copia", "C:/x")),
             "Otra copia de BoldoAtlas tiene abierta esta base: C:/x"
         );
+        // un motivo vacío dejaría pasar el arranque sin pantalla de error
+        assert_eq!(
+            motivo_de_apertura(db::SIN_ESPACIO.to_string().into()),
+            db::SIN_ESPACIO
+        );
+    }
+
+    /// Una base «A» en una carpeta temporal, ya migrada.
+    fn con_base_a() -> (tempfile::TempDir, Estado) {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join("a.db");
+        let mut conn = db::abrir(&bd).unwrap();
+        db::migrar(&mut conn, dir.path()).unwrap();
+        db::asegurar_meta(&conn).unwrap();
+        let base = Base {
+            id: "A".into(),
+            bd,
+            respaldos: dir.path().join("respaldos"),
+        };
+        (dir, Estado::de_prueba(Some(conn), Some(base), None))
+    }
+
+    #[test]
+    fn con_conexion_con_otra_base_no_ejecuta_nada() {
+        let (_dir, e) = con_base_a();
+        let mut corrio = false;
+        let r: Result<(), String> = e.con_conexion("B", |_| {
+            corrio = true;
+            Ok(())
+        });
+        assert_eq!(r.unwrap_err(), "otra_base");
+        assert!(!corrio);
+        // y con la base que está abierta, sí
+        e.con_conexion("A", |_| Ok::<_, String>(())).unwrap();
+    }
+
+    #[test]
+    fn lote_con_base_antigua_no_escribe() {
+        let (_dir, e) = con_base_a();
+        let revision = || -> String {
+            e.con_conexion("A", |c| {
+                c.query_row(
+                    "SELECT valor FROM meta WHERE clave = 'data_revision'",
+                    [],
+                    |f| f.get(0),
+                )
+                .map_err(|x| x.to_string())
+            })
+            .unwrap()
+        };
+        let antes = revision();
+        let antigua = e.con_conexion("antigua", |c| db::lote(c, &[], "t"));
+        assert_eq!(antigua.unwrap_err(), "otra_base");
+        assert_eq!(revision(), antes);
+        e.con_conexion("A", |c| db::lote(c, &[], "t")).unwrap();
+        assert_ne!(revision(), antes);
+    }
+
+    #[test]
+    fn con_ranura_y_base_rechazan_otra_base() {
+        let (_dir, e) = con_base_a();
+        let mut corrio = false;
+        let r = e.con_ranura("B", |_, _| {
+            corrio = true;
+            Ok(())
+        });
+        assert_eq!(r.unwrap_err().codigo, "otra_base");
+        assert!(!corrio);
+        assert_eq!(e.base("B").unwrap_err().codigo, "otra_base");
+
+        assert_eq!(e.base("A").unwrap().id, "A");
+        let id = e.con_ranura("A", |ranura, base| {
+            assert!(ranura.is_some());
+            Ok(base.id.clone())
+        });
+        assert_eq!(id.unwrap(), "A");
+    }
+
+    #[test]
+    fn sin_base_abierta_se_responde_el_motivo_y_no_otra_base() {
+        let e = Estado::de_prueba(None, None, None);
+        *e.error.lock().unwrap() = Some("motivo".into());
+        assert_eq!(e.base("A").unwrap_err().detalle, "motivo");
+        assert_eq!(
+            e.con_ranura("A", |_, _| Ok(())).unwrap_err().detalle,
+            "motivo"
+        );
+    }
+
+    #[test]
+    fn fallo_desde_texto_reconoce_otra_base_y_sin_espacio() {
+        let de = |t: &str| Fallo::from(t.to_string());
+        assert_eq!(de("otra_base").codigo, "otra_base");
+        assert_eq!(de("sin_espacio").codigo, "sin_espacio");
+        let otro = de("algo más");
+        assert_eq!((otro.codigo, otro.detalle.as_str()), ("fallo", "algo más"));
+    }
+
+    #[test]
+    fn un_disco_lleno_da_sin_espacio() {
+        let io = std::io::Error::from(std::io::ErrorKind::StorageFull);
+        assert_eq!(Fallo::from(io).codigo, "sin_espacio");
+        let lleno = rusqlite::Error::SqliteFailure(rusqlite::ffi::Error::new(13), None);
+        assert_eq!(
+            lleno.sqlite_error_code(),
+            Some(rusqlite::ErrorCode::DiskFull)
+        );
+        assert_eq!(Fallo::from(lleno).codigo, "sin_espacio");
+        // los demás errores siguen como estaban
+        let otro = std::io::Error::from(std::io::ErrorKind::NotFound);
+        assert_eq!(Fallo::from(otro).codigo, "fallo");
     }
 
     #[test]
@@ -972,7 +1150,7 @@ mod tests {
         assert!(e.conn.lock().unwrap().is_none());
         e.reabrir().unwrap();
         let n: i64 = e
-            .con_conexion(|c| {
+            .con_conexion("", |c| {
                 c.query_row("SELECT count(*) FROM meta", [], |f| f.get(0))
                     .map_err(|x| x.to_string())
             })
