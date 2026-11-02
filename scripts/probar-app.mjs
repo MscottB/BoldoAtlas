@@ -4,8 +4,7 @@
 // Solo en CI: abre una ventana maximizada, y en el equipo de alguien aparecería en su pantalla.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, globSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join, win32 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, win32 } from "node:path";
 import { TAR, artefactos } from "./release.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -19,10 +18,21 @@ const FOTO =
 const PUERTO = 9222;
 // Lo que wry pasa a WebView2 cuando la app no fija sus argumentos (wry/src/webview2/mod.rs).
 const ARGUMENTOS_WRY = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+const ARGUMENTOS_HUMO = `--remote-debugging-port=${PUERTO} --remote-allow-origins=*`;
 const ESPERA_ARRANQUE_MS = 8000; // ESPERA_ARRANQUE de organizaciones.rs: una segunda instancia no debe llegar a esperarla
+// Antes de los 5 min del paso de CI: al vencer aquí se imprime el informe; si vence el paso, no queda nada.
+const PLAZO_MS = 240_000;
 
-/** @param {NodeJS.ProcessEnv} e */
-export const enCI = (e) => e.CI === "true" && e.GITHUB_ACTIONS === "true" && Boolean(e.RUNNER_TEMP);
+/**
+ * Solo un runner de GitHub: uno propio puede ser el equipo de alguien, y ahí la ventana aparecería en su pantalla.
+ * @param {NodeJS.ProcessEnv} e
+ */
+export const enCI = (e) =>
+  e.CI === "true" &&
+  e.GITHUB_ACTIONS === "true" &&
+  Boolean(e.RUNNER_TEMP) &&
+  Boolean(e.GITHUB_RUN_ID) &&
+  e.RUNNER_ENVIRONMENT === "github-hosted";
 
 /** @param {string} ruta @param {string} carpeta */
 export function dentroDe(ruta, carpeta) {
@@ -31,15 +41,30 @@ export function dentroDe(ruta, carpeta) {
 }
 
 /**
+ * La app abre la base en `setup`, antes de que haya ventana a la que preguntarle `rutaBd`. Sin `portable.flag` abriría los
+ * datos de una instalada: se comprueba antes de lanzarla.
+ * @param {string} exe @param {string | undefined} temporal
+ */
+export function exigirPortable(exe, temporal) {
+  if (!temporal || !dentroDe(exe, temporal))
+    throw new Error(`${exe} no está en la carpeta temporal ${temporal}`);
+  for (const falta of ["portable.flag", "datos"]) {
+    if (!existsSync(join(dirname(exe), falta))) throw new Error(`Falta ${falta} junto a ${exe}: no se lanza`);
+  }
+}
+
+/**
  * El exe con el puerto de depuración abierto en vez de los argumentos de wry, del mismo largo: un `&str` guarda su largo
  * aparte. WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS no sirve: wry siempre fija argumentos, y mandan sobre la variable y sobre
  * la política de WebView2 (probado en el runner: el navegador corre sin el puerto). Así se prueba el binario publicado y
  * no otro compilado aparte. Solo la copia temporal: la que se sube a Actions queda igual.
  * shortcut: depende de ese texto de wry. Si cambia, falla aquí mismo; entonces, compilar con `additionalBrowserArgs`.
- * @param {Buffer} exe
+ * @param {Buffer} exe @param {string} [argumentos]
  */
-export function conPuertoAbierto(exe) {
+export function conPuertoAbierto(exe, argumentos = ARGUMENTOS_HUMO) {
   const buscado = Buffer.from(ARGUMENTOS_WRY);
+  const nuevo = Buffer.from(argumentos.padEnd(buscado.length, " "));
+  if (nuevo.length > buscado.length) throw new Error(`«${argumentos}» no cabe en «${ARGUMENTOS_WRY}»`);
   const primero = exe.indexOf(buscado);
   if (primero < 0 || exe.indexOf(buscado, primero + 1) >= 0) {
     throw new Error(
@@ -47,11 +72,31 @@ export function conPuertoAbierto(exe) {
     );
   }
   const parchado = Buffer.from(exe);
-  parchado.write(
-    `--remote-debugging-port=${PUERTO} --remote-allow-origins=*`.padEnd(buscado.length, " "),
-    primero,
-  );
+  nuevo.copy(parchado, primero);
   return parchado;
+}
+
+/** Todo proceso lanzado, para detenerlo pase lo que pase. @type {import("node:child_process").ChildProcess[]} */
+const lanzados = [];
+/** Lo que sirve para leer la página de la última app abierta. @type {((expresion: string) => Promise<any>) | undefined} */
+let evaluarPagina;
+
+/** @param {string} exe @param {import("node:child_process").StdioOptions} stdio */
+function lanzar(exe, stdio) {
+  exigirPortable(exe, process.env.RUNNER_TEMP);
+  const p = spawn(exe, [], { stdio });
+  lanzados.push(p);
+  return p;
+}
+
+/** Solo este proceso y sus hijos; si ya salió no se hace nada: su PID puede ser ya de otro. @param {import("node:child_process").ChildProcess} p */
+function detener(p) {
+  if (!p.pid || p.exitCode !== null || p.signalCode !== null) return;
+  try {
+    execFileSync("taskkill", ["/PID", String(p.pid), "/T", "/F"], { stdio: "ignore", timeout: 15_000 });
+  } catch {
+    /* ya no estaba */
+  }
 }
 
 /** @type {string[]} */
@@ -92,7 +137,7 @@ function procesosDeWebview() {
     "Puertos: " + ((Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $p.ProcessId -contains $_.OwningProcess } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort)/$($_.OwningProcess)" }) -join " ")
   `;
   try {
-    return execFileSync("pwsh", ["-NoProfile", "-Command", comando], { encoding: "utf8" });
+    return execFileSync("pwsh", ["-NoProfile", "-Command", comando], { encoding: "utf8", timeout: 30_000 });
   } catch (e) {
     return `(sin datos de procesos: ${String(e)})`;
   }
@@ -134,6 +179,8 @@ async function conectarCdp(url) {
   /** @param {string} method @param {object} [params] @returns {Promise<any>} */
   const enviar = (method, params = {}) =>
     new Promise((ok, mal) => {
+      // con el socket cerrado `send` no avisa: se esperarían los 30 s
+      if (ws.readyState !== WebSocket.OPEN) return mal(new Error("CDP está desconectado"));
       const id = ++ultimo;
       pendientes.set(id, { ok, mal });
       ws.send(JSON.stringify({ id, method, params }));
@@ -147,9 +194,9 @@ async function conectarCdp(url) {
 
 /** La app abierta y lo que se le puede pedir por su página. @param {string} exe */
 async function abrirApp(exe) {
-  const proceso = spawn(exe, [], { stdio: ["ignore", "pipe", "pipe"] });
+  const proceso = lanzar(exe, ["ignore", "pipe", "pipe"]);
   for (const salida of [proceso.stdout, proceso.stderr]) {
-    salida.on("data", (b) => anotar(`[proceso] ${String(b).trimEnd()}`));
+    salida?.on("data", (b) => anotar(`[proceso] ${String(b).trimEnd()}`));
   }
   let salio = false;
   /** @type {Promise<number | null>} */
@@ -161,16 +208,6 @@ async function abrirApp(exe) {
     });
   });
   void termino.catch(() => undefined);
-
-  const matar = () => {
-    if (salio) return;
-    try {
-      // solo este PID y sus hijos
-      execFileSync("taskkill", ["/PID", String(proceso.pid), "/T", "/F"], { stdio: "ignore" });
-    } catch {
-      /* ya no estaba */
-    }
-  };
 
   /** @type {string} */
   const url = await esperar(
@@ -189,7 +226,6 @@ async function abrirApp(exe) {
     anotar(
       `[diagnóstico] la app ${salio ? `salió con ${proceso.exitCode}` : "sigue viva"}\n${procesosDeWebview()}`,
     );
-    matar();
     throw e;
   });
   const { enviar } = await conectarCdp(url);
@@ -201,13 +237,13 @@ async function abrirApp(exe) {
       throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
     return r.result.value;
   };
+  evaluarPagina = evaluar;
   // la página aparece en CDP antes de tener los scripts de Tauri
   await esperar(
     () => evaluar(`Boolean(window.__TAURI_INTERNALS__)`),
     "que la página tenga el puente de Tauri",
   );
   return {
-    pid: proceso.pid,
     evaluar,
     vivo: () => !salio,
     /** Por el puente real, como `invoke`: `{ ok, valor }` o `{ ok: false, error }`. @param {string} comando @param {object} [args] */
@@ -235,7 +271,6 @@ async function abrirApp(exe) {
       );
       return codigo;
     },
-    matar,
   };
 }
 
@@ -251,20 +286,24 @@ async function versionDe(bd) {
   };
 }
 
-/** @param {string} exe */
+/** @param {string} exe @returns {Promise<{ codigo: number | string | null, ms: number }>} */
 function segundaInstancia(exe) {
   const inicio = Date.now();
-  const p = spawn(exe, [], { stdio: "ignore" });
-  return Promise.race([
-    new Promise((ok, mal) => {
-      p.once("error", mal);
-      p.once("exit", (codigo) => ok({ codigo, ms: Date.now() - inicio }));
-    }),
-    pausa(30_000).then(() => {
-      execFileSync("taskkill", ["/PID", String(p.pid), "/T", "/F"], { stdio: "ignore" });
-      return { codigo: "no salió en 30 s", ms: Date.now() - inicio };
-    }),
-  ]);
+  const p = lanzar(exe, "ignore");
+  return new Promise((ok, mal) => {
+    const plazo = setTimeout(() => {
+      detener(p);
+      ok({ codigo: "no salió en 30 s", ms: Date.now() - inicio });
+    }, 30_000);
+    p.once("error", (e) => {
+      clearTimeout(plazo);
+      mal(e);
+    });
+    p.once("exit", (codigo) => {
+      clearTimeout(plazo);
+      ok({ codigo, ms: Date.now() - inicio });
+    });
+  });
 }
 
 /** @param {{ llamar: (c: string, a?: object) => Promise<any> }} app @param {string} baseId @param {string} clave */
@@ -302,13 +341,16 @@ async function revisarBase(app, carpeta) {
 const verTexto = (app, texto) =>
   app.hasta(`document.body.innerText.includes(${JSON.stringify(texto)})`, `ver «${texto}» en la página`);
 
-/** @param {string} exe @param {string} carpeta @param {(a: Awaited<ReturnType<typeof abrirApp>>) => void} usar */
-async function primeraApertura(exe, carpeta, usar) {
+/** @param {string} exe @param {string} carpeta */
+async function primeraApertura(exe, carpeta) {
   const bd = join(carpeta, "datos", "boldo.db");
   const app = await abrirApp(exe);
-  usar(app);
   const info = await revisarBase(app, carpeta);
-  comprobar("info_app: baseId UUID y rutaBd en la carpeta temporal", true);
+  comprobar(
+    "info_app: baseId UUID y rutaBd en la carpeta temporal",
+    UUID.test(info.baseId) && dentroDe(info.rutaBd, carpeta),
+    info,
+  );
 
   // la organización se crea desde la interfaz: pasa por el store, cliente.ts y su baseId
   await app.hasta(`document.getElementById("bienvenida-camino-vacia")`, "la pantalla de bienvenida");
@@ -327,8 +369,10 @@ async function primeraApertura(exe, carpeta, usar) {
   await app.evaluar(`document.getElementById("bienvenida-org").form.requestSubmit()`);
   await app.hasta(`location.hash === "#/"`, "que la app entre al árbol tras crear la organización");
   await app.evaluar(`location.hash = "#/bienvenida"`);
-  await verTexto(app, ORGANIZACION);
-  comprobar("la organización creada desde la interfaz muestra su nombre", true);
+  comprobar(
+    "la organización creada desde la interfaz muestra su nombre",
+    (await verTexto(app, ORGANIZACION)) === true,
+  );
   const nombre = await metaDe(app, info.baseId, "org_nombre");
   comprobar("db_consultar con el baseId correcto responde", nombre === ORGANIZACION, nombre);
 
@@ -405,18 +449,16 @@ async function primeraApertura(exe, carpeta, usar) {
   return info;
 }
 
-/** @param {string} exe @param {string} carpeta @param {{ baseId: string }} primera @param {(a: Awaited<ReturnType<typeof abrirApp>>) => void} usar */
-async function reapertura(exe, carpeta, primera, usar) {
+/** @param {string} exe @param {string} carpeta @param {{ baseId: string }} primera */
+async function reapertura(exe, carpeta, primera) {
   const app = await abrirApp(exe);
-  usar(app);
   const info = await revisarBase(app, carpeta);
   comprobar(
     "reabrir con el bloqueo en disco funciona y conserva el baseId",
     info.baseId === primera.baseId,
     info,
   );
-  await verTexto(app, ORGANIZACION);
-  comprobar("reabrir conserva la organización", true);
+  comprobar("reabrir conserva la organización", (await verTexto(app, ORGANIZACION)) === true);
   const marca = await metaDe(app, info.baseId, "humo");
   comprobar("reabrir conserva lo escrito con db_lote", marca === "guardado", marca);
 
@@ -435,7 +477,8 @@ async function reapertura(exe, carpeta, primera, usar) {
     `document.querySelector(${JSON.stringify(selector)})?.naturalWidth > 0 && document.querySelector(${JSON.stringify(selector)}).src`,
     "que la ficha muestre la foto (naturalWidth > 0)",
   );
-  comprobar("la foto de urlFoto carga en la ficha", true);
+  const ancho = await app.evaluar(`document.querySelector(${JSON.stringify(selector)}).naturalWidth`);
+  comprobar("la foto de urlFoto carga en la ficha", ancho > 0, ancho);
   comprobar("urlFoto lleva el baseId", url.includes(`/${info.baseId}/${PERSONA.id}?`), url);
   const misma = await app.evaluar(cargarImagen(url));
   comprobar("la misma URL carga en un <img> nuevo", misma?.ancho > 0, misma);
@@ -446,44 +489,53 @@ async function reapertura(exe, carpeta, primera, usar) {
   comprobar("la app reabierta cierra sola y con código 0", codigo === 0, codigo);
 }
 
-async function principal() {
-  /** @type {Awaited<ReturnType<typeof abrirApp>> | undefined} */
-  let abierta;
-  const usar = (/** @type {Awaited<ReturnType<typeof abrirApp>>} */ app) => void (abierta = app);
+async function correr() {
+  const a = artefactos("windows", "");
+  const [zip, ...otros] = globSync(`release/*/${a.zip}`);
+  if (!zip || otros.length) throw new Error(`Se esperaba un solo ${a.zip} en release/*/: ${[zip, ...otros]}`);
+  const carpeta = mkdtempSync(join(process.env.RUNNER_TEMP ?? "", "boldo-humo-"));
+  execFileSync(TAR, ["-x", "-f", zip, "-C", carpeta], { timeout: 120_000 });
+  const exe = join(carpeta, a.programa.nombre);
+  writeFileSync(exe, conPuertoAbierto(readFileSync(exe)));
+  const info = await primeraApertura(exe, carpeta);
+  await reapertura(exe, carpeta, info);
+  const { identifier } = JSON.parse(readFileSync(join("src-tauri", "tauri.conf.json"), "utf8"));
+  const instalada = join(process.env.APPDATA ?? "", identifier);
+  comprobar(
+    "los datos de una instalada no se tocaron",
+    Boolean(process.env.APPDATA) && !existsSync(instalada),
+    instalada,
+  );
+  if (fallos.length) throw new Error(`${fallos.length} comprobaciones fallaron: ${fallos.join("; ")}`);
+}
+
+/** La prueba completa: la entrada es `probar-app-ci.mjs`. Falla sin lanzar nada si no está en un runner de GitHub. */
+export async function principal() {
+  /** @type {NodeJS.Timeout | undefined} */
+  let plazo;
   try {
-    const a = artefactos("windows", "");
-    const [zip, ...otros] = globSync(`release/*/${a.zip}`);
-    if (!zip || otros.length)
-      throw new Error(`Se esperaba un solo ${a.zip} en release/*/: ${[zip, ...otros]}`);
-    const carpeta = mkdtempSync(join(process.env.RUNNER_TEMP ?? "", "boldo-humo-"));
-    execFileSync(TAR, ["-x", "-f", zip, "-C", carpeta]);
-    const exe = join(carpeta, a.programa.nombre);
-    writeFileSync(exe, conPuertoAbierto(readFileSync(exe)));
-    const info = await primeraApertura(exe, carpeta, usar);
-    await reapertura(exe, carpeta, info, usar);
-    if (fallos.length) throw new Error(`${fallos.length} comprobaciones fallaron: ${fallos.join("; ")}`);
+    if (!enCI(process.env) || process.platform !== "win32") {
+      throw new Error("Solo en CI de Windows: abre BoldoAtlas en una ventana maximizada.");
+    }
+    const trabajo = correr();
+    // si vence el plazo y después falla, ya no hay quien lo atienda
+    void trabajo.catch(() => undefined);
+    await Promise.race([
+      trabajo,
+      new Promise((_, mal) => {
+        plazo = setTimeout(() => mal(new Error(`La prueba pasó de ${PLAZO_MS / 1000} s`)), PLAZO_MS);
+      }),
+    ]);
+    // el paso de CI exige esta línea: sin ella no hay verde
     console.log("App comprobada.");
   } catch (e) {
-    const pagina = await abierta
-      ?.evaluar(`document.body.innerText.slice(0, 800)`)
-      .catch(() => "(sin página)");
+    const pagina = await evaluarPagina?.(`document.body.innerText.slice(0, 800)`).catch(() => "(sin página)");
     console.error(`\nFALLÓ la prueba de humo: ${e instanceof Error ? e.message : String(e)}`);
     console.error(`\nTexto en la página:\n${pagina ?? "(sin página)"}`);
     console.error(`\nÚltimas líneas del registro:\n${registro.slice(-40).join("\n") || "(vacío)"}`);
     throw e;
   } finally {
-    abierta?.matar();
+    clearTimeout(plazo);
+    lanzados.forEach(detener);
   }
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (!enCI(process.env) || process.platform !== "win32") {
-    console.error("Solo en CI de Windows: abre BoldoAtlas en una ventana maximizada.");
-    process.exit(1);
-  }
-  // process.exit: los hijos de WebView2 pueden seguir teniendo abiertas las tuberías un momento
-  principal().then(
-    () => process.exit(0),
-    () => process.exit(1),
-  );
 }

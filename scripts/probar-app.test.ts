@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { conPuertoAbierto, dentroDe, enCI } from "./probar-app.mjs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { conPuertoAbierto, dentroDe, enCI, exigirPortable } from "./probar-app.mjs";
 
 describe("conPuertoAbierto", () => {
   const WRY = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
@@ -15,15 +18,67 @@ describe("conPuertoAbierto", () => {
     expect(() => conPuertoAbierto(Buffer.from("otra cosa"))).toThrow(/una sola vez/);
     expect(() => conPuertoAbierto(Buffer.from(WRY + WRY))).toThrow(/una sola vez/);
   });
+
+  it("falla si lo nuevo no cabe, en vez de pisar lo que sigue en el exe", () => {
+    const exe = Buffer.from(`antes${WRY}despues`);
+    expect(() => conPuertoAbierto(exe, "x".repeat(WRY.length + 1))).toThrow(/no cabe/);
+    expect(conPuertoAbierto(exe, "x".repeat(WRY.length)).toString()).toBe(
+      `antes${"x".repeat(WRY.length)}despues`,
+    );
+  });
 });
 
 describe("enCI", () => {
-  it("solo con las tres variables del runner", () => {
-    expect(enCI({ CI: "true", GITHUB_ACTIONS: "true", RUNNER_TEMP: "D:\\a\\_temp" })).toBe(true);
+  const RUNNER = {
+    CI: "true",
+    GITHUB_ACTIONS: "true",
+    RUNNER_TEMP: "D:\\a\\_temp",
+    GITHUB_RUN_ID: "1",
+    RUNNER_ENVIRONMENT: "github-hosted",
+  };
+
+  it("solo con todas las variables de un runner de GitHub", () => {
+    expect(enCI(RUNNER)).toBe(true);
     expect(enCI({})).toBe(false);
-    expect(enCI({ CI: "true" })).toBe(false);
-    expect(enCI({ CI: "true", GITHUB_ACTIONS: "true" })).toBe(false);
-    expect(enCI({ CI: "1", GITHUB_ACTIONS: "true", RUNNER_TEMP: "x" })).toBe(false);
+    expect(enCI({ ...RUNNER, CI: "1" })).toBe(false);
+    for (const falta of Object.keys(RUNNER)) expect(enCI({ ...RUNNER, [falta]: undefined })).toBe(false);
+  });
+
+  it("no en un runner propio, que puede ser el equipo de alguien", () => {
+    expect(enCI({ ...RUNNER, RUNNER_ENVIRONMENT: "self-hosted" })).toBe(false);
+  });
+});
+
+describe("exigirPortable", () => {
+  /** Una carpeta como la extraída del zip, dentro de una temporal. */
+  function armar(...entradas: ("portable.flag" | "datos")[]) {
+    const temp = mkdtempSync(join(tmpdir(), "boldo-portable-"));
+    const carpeta = join(temp, "copia");
+    mkdirSync(carpeta);
+    if (entradas.includes("portable.flag")) writeFileSync(join(carpeta, "portable.flag"), "");
+    if (entradas.includes("datos")) mkdirSync(join(carpeta, "datos"));
+    return { temp, exe: join(carpeta, "BoldoAtlas.exe") };
+  }
+
+  it("deja pasar una portable completa dentro de la carpeta temporal", () => {
+    const { temp, exe } = armar("portable.flag", "datos");
+    expect(() => exigirPortable(exe, temp)).not.toThrow();
+  });
+
+  it("sin portable.flag la app abriría los datos reales: no se lanza", () => {
+    const { temp, exe } = armar("datos");
+    expect(() => exigirPortable(exe, temp)).toThrow(/portable\.flag/);
+  });
+
+  it("sin la carpeta datos tampoco", () => {
+    const { temp, exe } = armar("portable.flag");
+    expect(() => exigirPortable(exe, temp)).toThrow(/datos/);
+  });
+
+  it("fuera de la carpeta temporal tampoco", () => {
+    const { exe } = armar("portable.flag", "datos");
+    expect(() => exigirPortable(exe, join(tmpdir(), "otra-carpeta"))).toThrow(/carpeta temporal/);
+    expect(() => exigirPortable(exe, undefined)).toThrow(/carpeta temporal/);
   });
 });
 
