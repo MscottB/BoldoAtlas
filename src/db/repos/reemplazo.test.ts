@@ -3,6 +3,7 @@ import { abrirBasePrueba } from "@/db/prueba/sqlite";
 import { TIPO_AREA } from "@/db/tipos";
 import * as U from "./unidades";
 import * as C from "./catalogos";
+import * as Z from "./zonas";
 import { TABLAS_ORGANIZACION, TIPOS_SEMILLA, vaciarOrganizacion } from "./reemplazo";
 
 const semillas = (bd: ReturnType<typeof abrirBasePrueba>) =>
@@ -44,15 +45,27 @@ describe("vaciarOrganizacion", () => {
     const bd = abrirBasePrueba();
     const raiz = U.crearUnidad({ tipo_id: TIPO_AREA, nombre: "Vieja" });
     const cargo = C.crearValor("cargos", "Cargo");
+    const zona = Z.crearZona("Norte", "#0f766e");
     bd.aplicar([
       ...raiz.sentencias,
       ...cargo.sentencias,
+      ...zona.sentencias,
+      ...Z.agregarAZona(zona.id, raiz.id),
       ...C.crearValor("tipos_unidad", "Extra").sentencias,
       ...C.renombrarValor("tipos_unidad", TIPO_AREA, "Otro nombre"),
     ]);
     bd.db.exec("UPDATE unidades SET deleted_at = '2026-01-01'"); // lo borrado en forma lógica también se va
     bd.aplicar(vaciarOrganizacion());
-    for (const t of ["unidades", "cargos", "puestos", "asignaciones", "vistas", "subarboles_guardados"])
+    for (const t of [
+      "unidades",
+      "cargos",
+      "puestos",
+      "asignaciones",
+      "vistas",
+      "subarboles_guardados",
+      "zonas",
+      "zona_unidades",
+    ])
       expect(bd.consultar(`SELECT 1 FROM ${t}`), t).toHaveLength(0);
     expect(semillas(bd).map(({ id, nombre, orden }) => ({ id, nombre, orden }))).toEqual(TIPOS_SEMILLA);
     expect(semillas(bd).every((t) => t.deleted_at === null)).toBe(true);

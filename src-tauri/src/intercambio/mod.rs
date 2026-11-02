@@ -494,6 +494,10 @@ pub mod prueba {
               ('et-a', 'Etiqueta A', '#000000', {x}), ('et-b', 'EtiquetaFuera', '#000000', {x});
             INSERT INTO unidad_etiquetas (id, unidad_id, etiqueta_id, created_at, updated_at) VALUES
               ('ue-a', 'rama', 'et-a', {x}), ('ue-b', 'otra', 'et-b', {x});
+            INSERT INTO zonas (id, nombre, color, created_at, updated_at) VALUES
+              ('zo-a', 'Zona A', '#0f766e', {x}), ('zo-b', 'ZonaFuera', '#be123c', {x});
+            INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES
+              ('zu-a', 'zo-a', 'rama', {x}), ('zu-b', 'zo-b', 'otra', {x});
             INSERT INTO procesos (id, unidad_id, nombre, created_at, updated_at) VALUES
               ('pr-a', 'rama', 'Proceso A', {x}), ('pr-b', 'otra', 'ProcesoFuera', {x});
             INSERT INTO actividades (id, proceso_id, nombre, created_at, updated_at) VALUES
@@ -756,14 +760,43 @@ mod tests {
     fn un_archivo_de_esquema_anterior_entra_migrado() {
         let (d, origen) = base_con_datos();
         let (archivo, codigo) = exportar(&origen, d.path(), None);
-        let dos = [MIGRACIONES[0], "CREATE TABLE extra (x INTEGER);"];
+        let dos = [MIGRACIONES, &["CREATE TABLE extra (x INTEGER);"]].concat();
         let (dd, ..) = destino();
         let i = abrir(&archivo, dd.path(), &codigo, &dos, SIGUE).unwrap();
         let v: i64 = validar::solo_lectura(i.temporal.ruta())
             .unwrap()
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .unwrap();
+        assert_eq!(v, MIGRACIONES.len() as i64 + 1);
+    }
+
+    #[test]
+    fn un_archivo_del_esquema_1_entra_con_las_tablas_de_zonas_vacias() {
+        let (d, origen) = base_con_datos();
+        let (archivo, codigo) = exportar(&origen, d.path(), None);
+        // el archivo de una versión anterior: se reescribe descifrado, sin lo que agregó la migración 2
+        let (dd, ..) = destino();
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        let antigua = dd.path().join("antigua.db");
+        fs::copy(i.temporal.ruta(), &antigua).unwrap();
+        drop(i);
+        let c = Connection::open(&antigua).unwrap();
+        c.execute_batch("DROP TABLE zona_unidades; DROP TABLE zonas; PRAGMA user_version = 1;")
+            .unwrap();
+        c.close().unwrap();
+        let archivo = d.path().join("antigua.boldo");
+        let codigo = guardar(&antigua, &archivo, SIGUE).unwrap();
+
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        let c = validar::solo_lectura(i.temporal.ruta()).unwrap();
+        let v: i64 = c
+            .pragma_query_value(None, "user_version", |f| f.get(0))
+            .unwrap();
         assert_eq!(v, 2);
+        let n = |sql: &str| -> i64 { c.query_row(sql, [], |f| f.get(0)).unwrap() };
+        assert_eq!(n("SELECT count(*) FROM zonas"), 0);
+        assert_eq!(n("SELECT count(*) FROM zona_unidades"), 0);
+        assert!(n("SELECT count(*) FROM unidades") > 0);
     }
 
     #[test]
@@ -1051,12 +1084,18 @@ mod revision_22a {
         let (d, o) = base_con_datos();
         let t = completa(d.path(), &o);
         println!("este build tiene CRLF: {}", MIGRACIONES[0].contains("\r\n"));
-        let otro = if MIGRACIONES[0].contains("\r\n") {
-            MIGRACIONES[0].replace("\r\n", "\n")
-        } else {
-            MIGRACIONES[0].replace('\n', "\r\n")
-        };
-        let r = validar::revisar(t.ruta(), &[otro.as_str()]);
+        let otras: Vec<String> = MIGRACIONES
+            .iter()
+            .map(|m| {
+                if m.contains("\r\n") {
+                    m.replace("\r\n", "\n")
+                } else {
+                    m.replace('\n', "\r\n")
+                }
+            })
+            .collect();
+        let otras: Vec<&str> = otras.iter().map(String::as_str).collect();
+        let r = validar::revisar(t.ruta(), &otras);
         println!("revisar con el otro fin de linea: {r:?}");
         assert!(r.is_ok(), "{:?}", r.err());
     }

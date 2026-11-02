@@ -1,5 +1,19 @@
 [
   {
+    "id": "zonas",
+    "pagina": "arbol",
+    "es": {
+      "titulo": "Zonas: agrupa unidades de cualquier rama",
+      "texto": "Selecciona varias unidades y ponlas en una zona con nombre y color: «Zona Norte», «Proyecto X». Se ven en un recuadro si no cubre a otras unidades y, si lo haría, con una franja de color; una leyenda bajo el lienzo las nombra. Viajan con tus archivos y se ocultan con un interruptor.",
+      "ancla": "zonas"
+    },
+    "en": {
+      "titulo": "Zones: group units from any branch",
+      "texto": "Select several units and put them in a zone with a name and a color: “North Zone”, “Project X”. They show as a box if it does not cover other units and, if it would, as a color strip; a legend below the canvas names them. They travel with your files and hide with a switch.",
+      "ancla": "zones"
+    }
+  },
+  {
     "id": "version-a-la-vista",
     "pagina": "actualizaciones",
     "es": {

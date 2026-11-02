@@ -20,6 +20,11 @@ describe("traducirError", () => {
       "UNIQUE constraint failed: unidad_etiquetas.unidad_id, unidad_etiquetas.etiqueta_id",
       "La unidad ya tiene esa etiqueta.",
     ],
+    ["UNIQUE constraint failed: index 'ux_zonas_nombre'", "Ya existe una zona con ese nombre."],
+    [
+      "UNIQUE constraint failed: zona_unidades.zona_id, zona_unidades.unidad_id",
+      "La unidad ya está en esa zona.",
+    ],
     ["UNIQUE constraint failed: index 'ux_cargos_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_tipos_contrato_nombre'", "Ese valor ya existe en la lista."],
     ["UNIQUE constraint failed: index 'ux_sedes_nombre'", "Ese valor ya existe en la lista."],

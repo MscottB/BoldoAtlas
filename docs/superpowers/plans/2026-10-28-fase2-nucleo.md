@@ -662,11 +662,13 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 - Agrega `exceljs`, cargado solo al exportar. Armar las filas en funciones puras con pruebas: respeta alcance, fecha y filtros, deja fuera los eliminados y escribe el texto como texto, también si empieza con `=`, `+`, `-` o `@`.
 - Antes de generar, el diálogo de aceptación obligatoria de spec §11 (sin cifrar, responsabilidad de quien genera), en cada exportación. Prueba: sin aceptar no se escribe ningún archivo.
 - Probar con la organización grande de prueba que no bloquee la ventana.
+- Incluir zonas y `zona_unidades`.
 - Las hojas de procesos, actividades e indicadores se suman cuando exista la Fase 3.
 
 ### Task 23b: Capturas y PDF para organigramas grandes (spec §11 "Capturas" y "PDF")
 - Es la base de la Fase 4: `treeSvg.ts`, SVG, PNG y PDF con `pdfmake`, con tamaño de hoja, orientación y reparto en varias páginas con marcas de continuación. Probarlo con la organización grande.
 - PPTX después, en su propia entrega.
+- Incluir zonas y `zona_unidades` en el SVG, el PNG y el PDF.
 
 ### Task 23c: Manual de organización y funciones (spec §11 "PDF")
 - Plantilla del PDF de la 23b con los puestos, su descripción, titular y vacantes. Se puede entregar sin procesos y sumarlos cuando exista la Fase 3.

@@ -217,6 +217,15 @@ fn revisar_tipos(c: &Connection) -> rusqlite::Result<bool> {
     Ok(true)
 }
 
+/// El color de una zona llega a los estilos del lienzo. En una conexión de solo lectura `integrity_check` no revisa los CHECK.
+fn hay_color_de_zona_invalido(c: &Connection) -> rusqlite::Result<bool> {
+    c.query_row(
+        "SELECT EXISTS (SELECT 1 FROM zonas WHERE color NOT GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]')",
+        [],
+        |f| f.get(0),
+    )
+}
+
 /// Si la jerarquía de unidades (también las eliminadas) forma un círculo.
 pub fn hay_ciclo(c: &Connection) -> rusqlite::Result<bool> {
     Ok(!en_ciclo(c)?.is_empty())
@@ -343,6 +352,9 @@ pub fn revisar(ruta: &Path, migraciones: &[&str]) -> Result<usize, Fallo> {
     if hay_rotas || hay_ciclo(&c).map_err(invalido)? || !revisar_tipos(&c).map_err(invalido)? {
         return Err(invalido("datos"));
     }
+    if version >= 2 && hay_color_de_zona_invalido(&c).map_err(invalido)? {
+        return Err(invalido("datos"));
+    }
     revisar_topes(&c, MAX_FILAS_VIVAS, MAX_BYTES_VIVOS)?;
     leer_meta(&c)?;
     Ok(version)
@@ -383,6 +395,22 @@ mod tests {
         (dir, ruta)
     }
 
+    /// Una copia hecha por una versión anterior de la app, con una unidad.
+    fn copia_del_esquema_1() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("copia.db");
+        let mut c = Connection::open(&ruta).unwrap();
+        db::migrar_con(&mut c, &MIGRACIONES[..1], dir.path()).unwrap();
+        db::asegurar_meta(&c).unwrap();
+        c.execute_batch(
+            "INSERT INTO meta (clave, valor) VALUES ('alcance', 'completo'), ('raices', '[]');
+             INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at)
+               VALUES ('a', '00000000-0000-7000-8000-000000000001', 'A', 'x', 'x');",
+        )
+        .unwrap();
+        (dir, ruta)
+    }
+
     /// Lo que puede armar quien envía el archivo: sin claves foráneas que lo frenen.
     fn alterar(ruta: &Path, sql: &str) {
         let c = Connection::open(ruta).unwrap();
@@ -397,7 +425,7 @@ mod tests {
     #[test]
     fn una_copia_legitima_pasa() {
         let (_d, ruta) = copia();
-        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), 1);
+        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), MIGRACIONES.len());
     }
 
     #[test]
@@ -635,12 +663,40 @@ mod tests {
 
     #[test]
     fn un_archivo_de_esquema_anterior_se_migra_sobre_la_copia() {
-        let (_d, ruta) = copia();
-        let dos = [MIGRACIONES[0], "CREATE TABLE extra (x INTEGER);"];
-        assert_eq!(revisar(&ruta, &dos).unwrap(), 1);
-        migrar_copia(&ruta, 1, &dos).unwrap();
-        assert_eq!(revisar(&ruta, &dos).unwrap(), 2);
+        let (_d, ruta) = copia_del_esquema_1();
+        assert_eq!(revisar(&ruta, &MIGRACIONES[..1]).unwrap(), 1);
+        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), 1);
+        migrar_copia(&ruta, 1, MIGRACIONES).unwrap();
+        // comparar sqlite_master acepta lo migrado: es lo mismo que una base creada con las dos migraciones
+        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), 2);
+        let c = solo_lectura(&ruta).unwrap();
+        let unidades: i64 = c
+            .query_row("SELECT count(*) FROM unidades", [], |f| f.get(0))
+            .unwrap();
+        assert_eq!(unidades, 1);
+        let zonas: i64 = c
+            .query_row("SELECT count(*) FROM zonas", [], |f| f.get(0))
+            .unwrap();
+        assert_eq!(zonas, 0);
         // con el esquema de la app no hace nada
-        migrar_copia(&ruta, 2, &dos).unwrap();
+        migrar_copia(&ruta, 2, MIGRACIONES).unwrap();
+    }
+
+    #[test]
+    fn un_archivo_del_esquema_1_con_las_tablas_de_zonas_no_coincide() {
+        let (_d, ruta) = copia_del_esquema_1();
+        alterar(&ruta, MIGRACIONES[1]);
+        assert_eq!(codigo(&ruta), "contenido_invalido");
+    }
+
+    #[test]
+    fn una_zona_con_un_color_que_no_es_color_no_pasa_la_revision() {
+        let (_d, ruta) = copia();
+        alterar(
+            &ruta,
+            "PRAGMA ignore_check_constraints = ON;
+             INSERT INTO zonas (id, nombre, color, created_at, updated_at) VALUES ('z', 'Z', 'url(x)', 'x', 'x');",
+        );
+        assert_eq!(codigo(&ruta), "contenido_invalido");
     }
 }

@@ -4,6 +4,7 @@ import * as X from "@/db/repos/conexiones";
 import * as E from "@/db/repos/etiquetas";
 import * as P from "@/db/repos/puestos";
 import * as U from "@/db/repos/unidades";
+import * as Z from "@/db/repos/zonas";
 import { indiceHijos } from "./jerarquia";
 
 type ConBorrado<T> = T & { deleted_at?: string | null };
@@ -14,10 +15,11 @@ export interface EstadoRama {
   puestos: ConBorrado<Puesto>[];
   unidadEtiquetas: ConBorrado<{ unidad_id: string; etiqueta_id: string }>[];
   conexiones: ConBorrado<Conexion>[];
+  zonaUnidades: ConBorrado<{ zona_id: string; unidad_id: string }>[];
 }
 
 /**
- * Sentencias que copian la unidad y todos sus descendientes vivos: ids nuevos, marca, tipo, descripción, etiquetas,
+ * Sentencias que copian la unidad y todos sus descendientes vivos: ids nuevos, marca, tipo, descripción, etiquetas, zonas,
  * puestos (sin asignaciones: nacen vacantes), jefatura hacia el puesto copiado y conexiones laterales con ambos
  * extremos dentro de la rama. La copia queda justo después de la original, con `nombreCopia` solo en su raíz.
  */
@@ -81,6 +83,9 @@ export function duplicarRama(
   for (const x of estado.unidadEtiquetas)
     if (!x.deleted_at && copiaDe.has(x.unidad_id))
       sentencias.push(...E.etiquetarUnidad(copiaDe.get(x.unidad_id)!, x.etiqueta_id));
+  for (const x of estado.zonaUnidades)
+    if (!x.deleted_at && copiaDe.has(x.unidad_id))
+      sentencias.push(...Z.agregarAZona(x.zona_id, copiaDe.get(x.unidad_id)!));
   for (const c of estado.conexiones) {
     const origen = copiaDe.get(c.origen_id);
     const destino = copiaDe.get(c.destino_id);
