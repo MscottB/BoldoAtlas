@@ -441,6 +441,8 @@
       "fotoTipo": "La foto debe ser PNG, JPG o WebP.",
       "fotoPeso": "La foto no puede pesar más de 30 MB.",
       "fotoPesada": "No se pudo dejar la foto por debajo de 1 MB.",
+      "fotoDemorada": "La foto tardó demasiado en prepararse. Vuelve a elegirla o prueba con otra.",
+      "fotoGuardado": "No se pudo guardar la foto.",
       "fotoEnorme": "La imagen tiene demasiados píxeles (más de 120 megapíxeles). Elige una más pequeña.",
       "notasLectura": "No se pudieron leer las notas. Cierra la ficha y ábrela de nuevo.",
       "fotoLectura": "No se pudo leer la foto."

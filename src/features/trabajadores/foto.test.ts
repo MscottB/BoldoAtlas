@@ -1,11 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   convieneConvertir,
   FOTO_LADO_MAX,
+  FOTO_TOPE_MS,
   FotoEnorme,
   medidasReducidas,
   prepararFoto,
+  procesarFoto,
   puedeTraerDatos,
+  type FotoPreparada,
   tipoImagen,
   urlFoto,
 } from "./foto";
@@ -169,6 +172,128 @@ describe("prepararFoto: la foto de una persona no termina en otra", () => {
     expect(await prepararFoto(a, sigue, pasos(() => Promise.reject(new FotoEnorme())))).toEqual({ error: "fotoEnorme" });
     const pesada = new Blob([new Uint8Array(FOTO_MAX_BYTES + 1)]);
     expect(await prepararFoto(a, sigue, pasos(async () => pesada))).toEqual({ error: "fotoPesada" });
+  });
+});
+
+describe("prepararFoto: tope de tiempo", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  const colgada = () => new Promise<never>(() => {});
+
+  it("un paso que no responde termina con error al llegar al tope, y no antes", async () => {
+    const hecho = vi.fn();
+    const r = prepararFoto(new Blob(["x"]), () => true, { optimizar: colgada, aBase64: async () => "x" }).then((v) => {
+      hecho(v);
+      return v;
+    });
+    await vi.advanceTimersByTimeAsync(FOTO_TOPE_MS - 1);
+    expect(hecho).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await r).toEqual({ error: "fotoDemorada" });
+  });
+
+  it("también vale para la lectura final", async () => {
+    const r = prepararFoto(new Blob(["x"]), () => true, { optimizar: async (a) => a, aBase64: colgada });
+    await vi.advanceTimersByTimeAsync(FOTO_TOPE_MS);
+    expect(await r).toEqual({ error: "fotoDemorada" });
+  });
+
+  it("lo que termina después del tope no se escribe", async () => {
+    let soltar!: (b: Blob) => void;
+    const optimizar = () => new Promise<Blob>((ok) => (soltar = ok));
+    const guardar = vi.fn(async () => {});
+    const avisar = vi.fn();
+    const tarea = procesarFoto({
+      preparar: () => prepararFoto(new Blob(["x"]), () => true, { optimizar, aBase64: async () => "QUJD" }),
+      vigente: () => true,
+      guardar,
+      avisar,
+      terminar: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(FOTO_TOPE_MS);
+    await tarea;
+    expect(avisar).toHaveBeenCalledWith("fotoDemorada");
+    soltar(new Blob(["x"]));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(guardar).not.toHaveBeenCalled();
+  });
+
+  it("si la ficha cambió antes del tope, tampoco avisa", async () => {
+    let abierta = true;
+    const r = prepararFoto(new Blob(["x"]), () => abierta, { optimizar: colgada, aBase64: async () => "x" });
+    abierta = false;
+    await vi.advanceTimersByTimeAsync(FOTO_TOPE_MS);
+    expect(await r).toBeNull();
+  });
+
+  it("al terminar a tiempo no deja el reloj corriendo", async () => {
+    await prepararFoto(new Blob(["x"]), () => true, { optimizar: async (a) => a, aBase64: async () => "x" });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("procesarFoto: la cola de la ficha", () => {
+  const tarea = (cambios: Partial<Parameters<typeof procesarFoto>[0]> = {}) => ({
+    preparar: async () => ({ base64: "QUJD" }),
+    vigente: () => true,
+    guardar: vi.fn(async () => {}),
+    avisar: vi.fn(),
+    terminar: vi.fn(),
+    ...cambios,
+  });
+
+  it("si guardar lanza, no rechaza, avisa y termina", async () => {
+    const t = tarea({ guardar: () => Promise.reject(new Error("base ocupada")) });
+    await expect(procesarFoto(t)).resolves.toBeUndefined();
+    expect(t.avisar).toHaveBeenLastCalledWith("fotoGuardado");
+    expect(t.terminar).toHaveBeenCalledOnce();
+  });
+
+  it("si preparar lanza, tampoco rechaza y termina", async () => {
+    const t = tarea({ preparar: () => Promise.reject(new Error("x")) });
+    await expect(procesarFoto(t)).resolves.toBeUndefined();
+    expect(t.terminar).toHaveBeenCalledOnce();
+  });
+
+  it("termina también cuando no hay nada que entregar", async () => {
+    const t = tarea({ preparar: async () => null });
+    await procesarFoto(t);
+    expect(t.guardar).not.toHaveBeenCalled();
+    expect(t.avisar).not.toHaveBeenCalled();
+    expect(t.terminar).toHaveBeenCalledOnce();
+  });
+
+  it("dos fotos seguidas: la primera falla, la segunda sale bien y no queda error", async () => {
+    // Como en la ficha: el error es del último aviso, y solo avisa la última foto elegida.
+    let error: string | null = "";
+    let ultima = 0;
+    const eleccion = (preparar: () => Promise<FotoPreparada | null>) => {
+      const esta = ++ultima;
+      return () =>
+        procesarFoto(
+          tarea({ preparar, vigente: () => esta === ultima, avisar: (e) => (error = e), guardar: async () => {} }),
+        );
+    };
+    const primera = eleccion(async () => ({ error: "fotoLectura" }));
+    const segunda = eleccion(async () => ({ base64: "QUJD" }));
+    await primera();
+    expect(error).toBe("");
+    await segunda();
+    expect(error).toBeNull();
+  });
+
+  it("si falla la última, sí queda el error", async () => {
+    const t = tarea({ preparar: async () => ({ error: "fotoLectura" }) });
+    await procesarFoto(t);
+    expect(t.avisar).toHaveBeenLastCalledWith("fotoLectura");
+    expect(t.guardar).not.toHaveBeenCalled();
+  });
+
+  it("la que ya no es la última guarda, pero no toca el mensaje de la siguiente", async () => {
+    const t = tarea({ vigente: () => false });
+    await procesarFoto(t);
+    expect(t.guardar).toHaveBeenCalledWith("QUJD");
+    expect(t.avisar).not.toHaveBeenCalled();
   });
 });
 

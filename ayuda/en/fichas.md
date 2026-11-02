@@ -42,7 +42,7 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 
 ## Photos
 
-When you choose a photo, BoldoAtlas reduces it before saving it: its longest side becomes 256 pixels and it is saved as JPEG. It looks the same at every size where it appears and weighs much less, also in backups and in `.boldo` files. A small photo is not enlarged. Transparent areas turn white. An image over 120 megapixels is not accepted. If you close the record while the photo is being prepared, it waits until the photo is saved.
+When you choose a photo, BoldoAtlas reduces it before saving it: its longest side becomes 256 pixels and it is saved as JPEG. It looks the same at every size where it appears and weighs much less, also in backups and in `.boldo` files. A small photo is not enlarged. Transparent areas turn white. An image over 120 megapixels is not accepted. If you close the record while the photo is being prepared, it waits until the photo is saved; if that is not possible, it lets you know before closing.
 
 The converted photo does not keep the data the file carried, such as where it was taken or the camera. If converting it would make it heavier, it is saved as it is, **with whatever data it carries**. The same goes for a JPEG or WebP without that data that would barely get lighter: it is saved as it is.
 

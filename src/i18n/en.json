@@ -441,6 +441,8 @@
       "fotoTipo": "The photo must be PNG, JPG or WebP.",
       "fotoPeso": "The photo cannot be larger than 30 MB.",
       "fotoPesada": "The photo could not be brought below 1 MB.",
+      "fotoDemorada": "The photo took too long to prepare. Choose it again or try another one.",
+      "fotoGuardado": "The photo could not be saved.",
       "fotoEnorme": "The image has too many pixels (more than 120 megapixels). Choose a smaller one.",
       "notasLectura": "The notes could not be read. Close the record and open it again.",
       "fotoLectura": "The photo could not be read."

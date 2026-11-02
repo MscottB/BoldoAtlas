@@ -102,11 +102,17 @@ export async function optimizarFoto(archivo: Blob): Promise<Blob> {
   return convieneConvertir(archivo.size, nueva.size, reducida, puedeTraerDatos(inicio)) ? nueva : archivo;
 }
 
-export type FotoPreparada = { base64: string } | { error: "fotoPesada" | "fotoLectura" | "fotoEnorme" };
+export type ErrorFoto = "fotoPesada" | "fotoLectura" | "fotoEnorme" | "fotoDemorada" | "fotoGuardado";
+export type FotoPreparada = { base64: string } | { error: ErrorFoto };
+
+/** Cerrar la ficha espera a la foto: un `decode()` o `toBlob` que no responde no puede dejarla sin poder cerrarse. */
+export const FOTO_TOPE_MS = 30_000;
+class FotoDemorada extends Error {}
 
 /**
  * Lo que la ficha guarda de un archivo elegido. Procesarlo toma tiempo: si mientras tanto se abrió otra ficha (`sigueAbierta`
- * da false), devuelve null y no entrega nada, para que la foto de una persona nunca termine en otra.
+ * da false), devuelve null y no entrega nada, para que la foto de una persona nunca termine en otra. Lo que termine después
+ * del tope se pierde: quien llama ya recibió el error.
  */
 export async function prepararFoto(
   archivo: Blob,
@@ -116,16 +122,54 @@ export async function prepararFoto(
     aBase64: async (f) => base64De(await leerComoUrl(f)),
   },
 ): Promise<FotoPreparada | null> {
-  try {
-    if (!sigueAbierta()) return null;
+  if (!sigueAbierta()) return null;
+  const trabajo = async (): Promise<FotoPreparada | null> => {
     const foto = await pasos.optimizar(archivo);
     if (!sigueAbierta()) return null;
     if (foto.size > FOTO_MAX_BYTES) return { error: "fotoPesada" };
     const base64 = await pasos.aBase64(foto);
     return sigueAbierta() ? { base64 } : null;
+  };
+  let reloj: ReturnType<typeof setTimeout> | undefined;
+  const tope = new Promise<never>((_, mal) => {
+    reloj = setTimeout(() => mal(new FotoDemorada()), FOTO_TOPE_MS);
+  });
+  try {
+    return await Promise.race([trabajo(), tope]);
   } catch (e) {
     if (!sigueAbierta()) return null;
+    if (e instanceof FotoDemorada) return { error: "fotoDemorada" };
     return { error: e instanceof FotoEnorme ? "fotoEnorme" : "fotoLectura" };
+  } finally {
+    clearTimeout(reloj);
+  }
+}
+
+/**
+ * Una tarea de la cola de guardado de la ficha: nunca rechaza, porque una cola rechazada dejaría de guardar y de cerrar, y
+ * siempre llama a `terminar`. El mensaje es de la última foto elegida (`vigente`): si la primera falla y la segunda sale bien,
+ * el error desaparece.
+ */
+export async function procesarFoto(tarea: {
+  preparar: () => Promise<FotoPreparada | null>;
+  vigente: () => boolean;
+  guardar: (base64: string) => Promise<void>;
+  avisar: (error: ErrorFoto | null) => void;
+  terminar: () => void;
+}): Promise<void> {
+  try {
+    const r = await tarea.preparar();
+    if (!r) return;
+    if ("error" in r) {
+      if (tarea.vigente()) tarea.avisar(r.error);
+      return;
+    }
+    if (tarea.vigente()) tarea.avisar(null);
+    await tarea.guardar(r.base64);
+  } catch {
+    if (tarea.vigente()) tarea.avisar("fotoGuardado");
+  } finally {
+    tarea.terminar();
   }
 }
 

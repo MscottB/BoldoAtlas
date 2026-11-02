@@ -37,7 +37,7 @@ import { useRetornoFoco } from "@/lib/foco";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
-import { prepararFoto, urlFoto } from "./foto";
+import { prepararFoto, procesarFoto, urlFoto } from "./foto";
 import { useFicha } from "./useFicha";
 import {
   camposGuardables,
@@ -261,28 +261,32 @@ function cambiar<K extends CampoCatalogo | "foto_png">(campo: K, valor: DatosFic
 }
 
 const inputFoto = ref<HTMLInputElement | null>(null);
+let ultimaFoto = 0; // el mensaje es de la última foto elegida
 async function elegirFoto(e: Event) {
   const input = e.target as HTMLInputElement;
   const archivo = input.files?.[0];
   input.value = ""; // permite volver a elegir el mismo archivo
   if (!archivo) return;
+  const esta = ++ultimaFoto;
   errorFoto.value = validarFoto(archivo) ?? "";
   if (errorFoto.value) return;
   // En la cola: cerrar la ficha o pasar a otra espera a que la foto quede guardada, como con cualquier otro campo.
   // Se compara la apertura y no el id: una ficha nueva cambia de id al crearse y sigue siendo la misma.
   const apertura = ficha.abierta.value;
+  const sigueAbierta = () => ficha.abierta.value === apertura;
   procesandoFoto.value++;
-  cola = cola.then(async () => {
-    const r = await prepararFoto(archivo, () => ficha.abierta.value === apertura);
-    procesandoFoto.value--;
-    if (!r) return;
-    if ("error" in r) {
-      errorFoto.value = t(`ficha.error.${r.error}`);
-      return;
-    }
-    form.foto_png = r.base64; // solo el base64
-    await guardarAhora();
-  });
+  cola = cola.then(() =>
+    procesarFoto({
+      preparar: () => prepararFoto(archivo, sigueAbierta),
+      vigente: () => esta === ultimaFoto && sigueAbierta(),
+      guardar: async (base64) => {
+        form.foto_png = base64; // solo el base64
+        await guardarAhora();
+      },
+      avisar: (error) => (errorFoto.value = error ? t(`ficha.error.${error}`) : ""),
+      terminar: () => procesandoFoto.value--,
+    }),
+  );
 }
 
 // Recién elegida: la del formulario. Si no: la que sirve Rust, salvo que se acabe de quitar.

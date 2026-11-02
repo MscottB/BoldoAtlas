@@ -42,7 +42,7 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 
 ## Fotos
 
-Al elegir una foto, BoldoAtlas la reduce antes de guardarla: su lado mayor queda en 256 píxeles y se guarda como JPEG. Se ve igual en todos los tamaños en que aparece y pesa mucho menos, también en los respaldos y en los archivos `.boldo`. Una foto pequeña no se agranda. Lo transparente queda blanco. Una imagen de más de 120 megapíxeles no se acepta. Si cierras la ficha mientras la foto se prepara, se espera a que quede guardada.
+Al elegir una foto, BoldoAtlas la reduce antes de guardarla: su lado mayor queda en 256 píxeles y se guarda como JPEG. Se ve igual en todos los tamaños en que aparece y pesa mucho menos, también en los respaldos y en los archivos `.boldo`. Una foto pequeña no se agranda. Lo transparente queda blanco. Una imagen de más de 120 megapíxeles no se acepta. Si cierras la ficha mientras la foto se prepara, se espera a que quede guardada; si no se puede, te avisa antes de cerrar.
 
 La foto convertida no guarda los datos que traía el archivo, como el lugar donde se tomó o la cámara. Si convertirla la dejara más pesada, se guarda tal cual, **con los datos que traiga**. Lo mismo vale para un JPEG o WebP sin esos datos que casi no bajaría de peso: se guarda tal cual.
 
