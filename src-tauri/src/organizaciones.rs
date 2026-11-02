@@ -54,8 +54,19 @@ pub fn identidad(conn: &Connection) -> Result<String, String> {
     Ok(id)
 }
 
+/// `ErrorKind` no clasifica los códigos habituales de un controlador o una carpeta de red sin bloqueos. Con su valor numérico,
+/// para no sumar `libc` por dos constantes.
 fn bloqueo_sin_soporte(e: &io::Error) -> bool {
-    e.kind() == io::ErrorKind::Unsupported
+    let codigos: &[i32] = if cfg!(windows) {
+        &[1, 50] // ERROR_INVALID_FUNCTION, ERROR_NOT_SUPPORTED
+    } else if cfg!(target_os = "linux") {
+        &[37, 95] // ENOLCK (NFS sin lockd), ENOTSUP
+    } else if cfg!(target_os = "macos") {
+        &[77, 45] // ENOLCK, ENOTSUP
+    } else {
+        &[]
+    };
+    e.kind() == io::ErrorKind::Unsupported || e.raw_os_error().is_some_and(|c| codigos.contains(&c))
 }
 
 /// Toma `<bd>.bloqueo`, reintentando hasta `espera`. El sistema lo suelta al cerrar el archivo o si la app se cae.
@@ -201,13 +212,24 @@ mod tests {
     }
 
     #[test]
-    fn bloqueo_sin_soporte_solo_con_unsupported() {
+    fn bloqueo_sin_soporte_reconoce_lo_que_da_cada_sistema() {
         assert!(bloqueo_sin_soporte(&io::Error::from(
             io::ErrorKind::Unsupported
         )));
         assert!(!bloqueo_sin_soporte(&io::Error::from(
             io::ErrorKind::PermissionDenied
         )));
+        // (código, si es falta de soporte); el permiso denegado y los demás siguen siendo un error
+        #[cfg(windows)]
+        let casos = [(1, true), (50, true), (120, true), (5, false), (33, false)];
+        #[cfg(target_os = "linux")]
+        let casos = [(37, true), (95, true), (13, false), (11, false)];
+        #[cfg(target_os = "macos")]
+        let casos = [(77, true), (45, true), (13, false), (35, false)];
+        for (codigo, esperado) in casos {
+            let e = io::Error::from_raw_os_error(codigo);
+            assert_eq!(bloqueo_sin_soporte(&e), esperado, "{codigo}: {e}");
+        }
     }
 
     #[test]
