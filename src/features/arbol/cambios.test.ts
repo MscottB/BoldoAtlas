@@ -16,8 +16,8 @@ const t = (id: string, nombre: string): Trabajador => ({
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  foto_png: null,
-  notas: null,
+  tiene_foto: 0,
+  updated_at: "",
 });
 const cargos = [{ id: "cargo", nombre: "Gerente" }];
 const tipos = (cs: Cambio[] | undefined) => (cs ?? []).map((c) => c.tipo);

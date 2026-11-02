@@ -61,6 +61,8 @@ export interface Respaldo {
   reemplazo: boolean;
   /** Hecho antes de agregar o fusionar un archivo importado. */
   importacion: boolean;
+  /** Hecho antes de optimizar las fotos. */
+  optimizacion: boolean;
 }
 
 /** Error de los comandos de respaldos: `codigo` se traduce con `respaldos.error.<codigo>`. */
@@ -80,6 +82,11 @@ export function respaldarAhora(): Promise<string> {
 /** Respaldo previo a reemplazar los datos: no entra en la poda de los últimos 10. */
 export function respaldarAntesDeReemplazar(): Promise<string> {
   return invoke<string>("respaldar_antes_de_reemplazar");
+}
+
+/** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
+export function respaldarAntesDeOptimizar(): Promise<string> {
+  return invoke<string>("respaldar_antes_de_optimizar");
 }
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */

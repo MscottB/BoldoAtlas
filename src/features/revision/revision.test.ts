@@ -31,8 +31,8 @@ const trab = (id: string, nombre: string, extra: Partial<Trabajador> = {}): Trab
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  foto_png: null,
-  notas: null,
+  tiene_foto: 0,
+  updated_at: "",
   ...extra,
 });
 const ley = (id: string, deleted_at: string | null = null): Leyenda => ({

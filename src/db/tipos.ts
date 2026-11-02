@@ -14,7 +14,10 @@ export interface Unidad {
   orden: number;
 }
 
-/** La persona; su unidad y cargo salen de sus asignaciones vigentes. */
+/**
+ * La persona; su unidad y cargo salen de sus asignaciones vigentes. Foto y notas no vienen en la lista: la foto se pide
+ * como imagen a Rust (`urlFoto`) y las notas, al abrir la ficha.
+ */
 export interface Trabajador {
   id: string;
   nombre: string;
@@ -23,8 +26,10 @@ export interface Trabajador {
   tipo_contrato_id: string | null;
   sede_id: string | null;
   jornada_id: string | null;
-  foto_png: string | null;
-  notas: string | null;
+  /** 1 si tiene foto; 0 si no (SQLite no tiene booleanos). */
+  tiene_foto: number;
+  /** ISO. Es la versión de la URL de su foto. */
+  updated_at: string;
 }
 
 /** Un cargo en una unidad. */

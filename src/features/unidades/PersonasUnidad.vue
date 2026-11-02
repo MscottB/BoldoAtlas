@@ -14,7 +14,8 @@ import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { useRetornoFoco } from "@/lib/foco";
-import { iniciales } from "@/lib/texto";
+import { urlFoto } from "@/features/trabajadores/foto";
+import FotoPersona from "@/features/trabajadores/FotoPersona.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   correosUnicos,
@@ -286,19 +287,7 @@ watch(persona, (w) => previa.value && !w && void volver());
               class="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
               @click="abrirPrevia(f)"
             >
-              <img
-                v-if="f.foto"
-                :src="`data:image/png;base64,${f.foto}`"
-                alt=""
-                class="size-8 shrink-0 rounded-full object-cover"
-              />
-              <span
-                v-else
-                class="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs"
-                aria-hidden="true"
-              >
-                {{ iniciales(f.nombre) }}
-              </span>
+              <FotoPersona :src="f.foto" :nombre="f.nombre" class="size-8 shrink-0 text-xs" />
               <span class="grid min-w-0 flex-1">
                 <span class="truncate font-medium">{{ f.nombre }}</span>
                 <span class="truncate text-xs text-muted-foreground">
@@ -322,19 +311,11 @@ watch(persona, (w) => previa.value && !w && void volver());
         {{ t(vista === "arbol" ? "personas.volverArbol" : "personas.volver") }}
       </Button>
       <div class="flex items-center gap-3">
-        <img
-          v-if="persona?.foto_png"
-          :src="`data:image/png;base64,${persona.foto_png}`"
-          alt=""
-          class="size-14 shrink-0 rounded-full object-cover"
+        <FotoPersona
+          :src="persona?.tiene_foto ? urlFoto(persona) : null"
+          :nombre="previa.nombre"
+          class="size-14 shrink-0 text-lg"
         />
-        <span
-          v-else
-          class="grid size-14 shrink-0 place-items-center rounded-full bg-muted text-lg"
-          aria-hidden="true"
-        >
-          {{ iniciales(previa.nombre) }}
-        </span>
         <h3
           :id="`${uid}-previa`"
           ref="titulo"

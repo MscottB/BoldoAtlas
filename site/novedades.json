@@ -1,5 +1,19 @@
 [
   {
+    "id": "fotos-livianas",
+    "pagina": "fichas",
+    "es": {
+      "titulo": "Fotos livianas y una base que abre rápido",
+      "texto": "Las fotos se reducen al elegirlas, se ven igual y pesan mucho menos. En Configuración puedes optimizar las que ya tienes, con un respaldo antes. Abrir una organización grande con fotos ya no carga todas de una vez: cada una se pide cuando se ve.",
+      "ancla": "fotos"
+    },
+    "en": {
+      "titulo": "Light photos and a database that opens fast",
+      "texto": "Photos are reduced when you choose them, look the same and weigh much less. In Settings you can optimize the ones you already have, with a backup first. Opening a large organization with photos no longer loads them all at once: each one is requested when it is seen.",
+      "ancla": "photos"
+    }
+  },
+  {
     "id": "lineas-e-interaccion",
     "pagina": "arbol",
     "imagen": "arbol-panel",

@@ -8,10 +8,21 @@ export function normalizarCorreo(c: string | null): string | null {
   return c?.trim() || null;
 }
 
+// octet_length no lee el contenido: la lista no toca las fotos, ni siquiera en disco.
 export const SQL_TRABAJADORES = `SELECT id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id,
-  foto_png, notas FROM trabajadores WHERE deleted_at IS NULL ORDER BY nombre`;
+  COALESCE(octet_length(foto_png) > 0, 0) AS tiene_foto, updated_at
+  FROM trabajadores WHERE deleted_at IS NULL ORDER BY nombre`;
 
-type DatosTrabajador = Pick<Trabajador, "nombre"> & Partial<Omit<Trabajador, "id" | "nombre">>;
+/** Las notas de una persona: se piden al abrir su ficha. */
+export const SQL_NOTAS = "SELECT notas FROM trabajadores WHERE id = ?";
+
+/** Lo que la ficha escribe. Foto y notas no vienen en la lista: `undefined` significa «no se toca». */
+export type CamposTrabajador = Pick<
+  Trabajador,
+  "nombre" | "correo" | "telefono" | "tipo_contrato_id" | "sede_id" | "jornada_id"
+> & { foto_png?: string | null; notas?: string | null };
+
+type DatosTrabajador = Pick<Trabajador, "nombre"> & Partial<Omit<CamposTrabajador, "nombre">>;
 
 export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencias: Sentencia[] } {
   const id = nuevoId();
@@ -52,7 +63,7 @@ const EDITABLES = [
   "notas",
 ];
 
-export function editarTrabajador(id: string, cambios: Partial<Omit<Trabajador, "id">>): Sentencia[] {
+export function editarTrabajador(id: string, cambios: Partial<CamposTrabajador>): Sentencia[] {
   const c = cambios.correo === undefined ? cambios : { ...cambios, correo: normalizarCorreo(cambios.correo) };
   return actualizar("trabajadores", id, c, EDITABLES);
 }

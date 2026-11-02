@@ -421,6 +421,7 @@
     "foto": "Photo",
     "elegirFoto": "Choose photo",
     "quitarFoto": "Remove photo",
+    "procesandoFoto": "Preparing the photo…",
     "encabeza": "Units they head",
     "ninguna": "None",
     "eliminar": "Delete",
@@ -438,7 +439,12 @@
       "nombre": "Enter the name.",
       "correo": "The email is not valid.",
       "fotoTipo": "The photo must be PNG, JPG or WebP.",
-      "fotoPeso": "The photo cannot be larger than 1 MB.",
+      "fotoPeso": "The photo cannot be larger than 30 MB.",
+      "fotoPesada": "The photo could not be brought below 1 MB.",
+      "fotoDemorada": "The photo took too long to prepare. Choose it again or try another one.",
+      "fotoGuardado": "The photo could not be saved.",
+      "fotoEnorme": "The image has too many pixels (more than 120 megapixels). Choose a smaller one.",
+      "notasLectura": "The notes could not be read. Close the record and open it again.",
       "fotoLectura": "The photo could not be read."
     },
     "cerrar": "Close",
@@ -731,6 +737,27 @@
       "titulo": "Organization",
       "nombre": "Organization name"
     },
+    "fotos": {
+      "titulo": "Photos",
+      "ayuda": "New photos are reduced when you choose them. The ones already saved can be reduced here: they look the same and weigh much less.",
+      "optimizar": "Optimize existing photos",
+      "estimando": "Working out how much would be saved…",
+      "nadaQueHacer": "Your photos are already optimized.",
+      "confirmarTitulo": "Optimize the photos?",
+      "confirmarTexto": "{n} photo takes up {total} and would go down to about {quedarian}. A backup with the originals is made first, and it will take up about {respaldo} on disk. | {n} photos take up {total} and would go down to about {quedarian}. A backup with the originals is made first, and it will take up about {respaldo} on disk.",
+      "confirmar": "Optimize",
+      "volver": "Go back",
+      "respaldo": "Making the backup…",
+      "compactando": "Freeing the space in the database…",
+      "avance": "{n} of {total} photos",
+      "avanceEtiqueta": "Optimization progress",
+      "cancelar": "Cancel",
+      "resultado": "Done. Photos optimized: {n}. Space freed: {ahorro}.",
+      "resultadoCancelado": "Canceled. Photos optimized: {n}. Space freed: {ahorro}. The others stay as they were.",
+      "sinCompactar": "The photos were optimized, but the database file could not be made smaller. That space will be reused over time.",
+      "sinGanancia": "{n} photo would not get lighter and was left as it was. | {n} photos would not get lighter and were left as they were.",
+      "fallidas": "{n} photo could not be optimized and stays as it was: | {n} photos could not be optimized and stay as they were:"
+    },
     "logo": {
       "titulo": "Logo",
       "ayuda": "PNG, JPG or WebP up to 1 MB.",
@@ -867,7 +894,8 @@
     },
     "ultimo": "Last backup: {fecha}",
     "verLista": "View and restore backups",
-    "antesDeImportar": "Before importing"
+    "antesDeImportar": "Before importing",
+    "antesDeOptimizar": "Before optimizing photos"
   },
   "vista": {
     "cerrar": "Close"
@@ -1001,7 +1029,8 @@
     "importarReemplazar": "Replacing the data with the file's",
     "importarComparar": "Compare the file with your data",
     "importarAplicarRevision": "Apply what you decided in the review",
-    "revisionAbierta": "Import review with unapplied decisions"
+    "revisionAbierta": "Import review with unapplied decisions",
+    "optimizarFotos": "Optimize photos"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",

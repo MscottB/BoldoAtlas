@@ -27,7 +27,7 @@ import {
 import { tamano } from "@/lib/formato";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { FRECUENCIA_POR_DEFECTO, FRECUENCIAS } from "./programa";
-import { conTrabajo } from "@/lib/trabajos";
+import { conTrabajo, ultimoFin } from "@/lib/trabajos";
 import { mensajeFallo, PREFERENCIA, respaldar as hacerRespaldo } from "./respaldos";
 import { claseSelect } from "@/lib/utils";
 
@@ -47,6 +47,8 @@ async function cargar() {
   }
 }
 onMounted(cargar);
+// Un trabajo que termina pudo dejar un respaldo nuevo (optimizar las fotos, sin salir de esta vista).
+watch(ultimoFin, cargar);
 
 async function respaldar() {
   ocupado.value = true;
@@ -154,9 +156,11 @@ const fecha = (r: Respaldo) =>
                     t(
                       r.importacion
                         ? "respaldos.antesDeImportar"
-                        : r.reemplazo
-                          ? "respaldos.antesDeReemplazar"
-                          : "respaldos.seguridad",
+                        : r.optimizacion
+                          ? "respaldos.antesDeOptimizar"
+                          : r.reemplazo
+                            ? "respaldos.antesDeReemplazar"
+                            : "respaldos.seguridad",
                     )
                   }}</Badge>
                 </td>

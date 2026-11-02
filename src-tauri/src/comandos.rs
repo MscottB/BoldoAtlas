@@ -66,7 +66,7 @@ impl Estado {
         }
     }
 
-    fn con_conexion<T, E: From<String>>(
+    pub(crate) fn con_conexion<T, E: From<String>>(
         &self,
         f: impl FnOnce(&mut Connection) -> Result<T, E>,
     ) -> Result<T, E> {
@@ -211,6 +211,20 @@ pub async fn respaldar_antes_de_reemplazar(app: AppHandle) -> Result<String, Fal
         let dir = &estado.rutas()?.respaldos;
         estado.con_conexion(|c| {
             respaldos::respaldar_antes_de_reemplazar(c, dir, &respaldos::sello_local(c)?)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Antes de optimizar las fotos: conserva las originales, y de estos quedan los últimos 3.
+#[tauri::command]
+pub async fn respaldar_antes_de_optimizar(app: AppHandle) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let dir = &estado.rutas()?.respaldos;
+        estado.con_conexion(|c| {
+            respaldos::respaldar_antes_de_optimizar(c, dir, &respaldos::sello_local(c)?)
         })
     })
     .await
