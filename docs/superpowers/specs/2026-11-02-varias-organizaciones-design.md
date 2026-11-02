@@ -141,11 +141,15 @@ Pruebas obligatorias: lote y consulta con `baseId` antiguo rechazados; respuesta
 
 ## Lo que cambia en pantalla
 
-- **Inicio, «Abierto recientemente»:** organizaciones con logo o inicial, nombre, color y fecha de apertura, hasta 8. Reemplaza la lista de módulos: `useRecientes.ts` se quita y `recientes:*` deja de escribirse. Un clic abre la organización. Menú de cada entrada: **Quitar de la lista**, que no borra el archivo, y **Eliminar organización** en las de la carpeta de la app. Si el archivo no está, lo dice y ofrece **Buscar archivo** o **Quitar de la lista**.
+- **Inicio, «Abierto recientemente»:** organizaciones con logo o inicial, nombre, color y fecha de apertura, hasta 8. Reemplaza la lista de módulos: `useRecientes.ts` se quita y `recientes:*` deja de escribirse. Un clic abre la organización. Menú de cada entrada: **Quitar de la lista**, que no borra el archivo, y **Eliminar organización**, que sí. Si el archivo no está, lo dice y ofrece **Buscar archivo** o **Quitar de la lista**.
 - **Inicio, abrir:** botones **Crear organización**, **Abrir archivo…** y **Explorar el ejemplo**, siempre visibles. Sin datos, los caminos de hoy.
 - **Crear:** crea un archivo nuevo y lo abre. Ya no vacía la base: se retira `reemplazarCon`, su diálogo de confirmación y `respaldarAntesDeReemplazar` en este camino. `boldo-antes-de-reemplazar-` sigue para importar.
 - **Explorar el ejemplo:** igual que Crear, con nombre «Ejemplo». Si ya hay uno en la lista, lo abre en vez de crear otro.
-- **Eliminar organización:** pide escribir el nombre. Guarda antes un respaldo en `organizaciones-eliminadas/` y borra su carpeta. Si tiene pestañas abiertas, pide cerrarlas antes. `boldo.db` y los archivos externos no se eliminan desde la app: solo se quitan de la lista, y se dice así.
+- **Eliminar organización:** borra de verdad del disco, para que no se acumulen bases: el archivo con su `-wal` y `-shm`, y sus respaldos. Pide escribir el nombre y muestra cuánto espacio libera. La casilla **Guardar una copia antes**, marcada por defecto, deja una copia en `organizaciones-eliminadas/`; desmarcada, no se puede recuperar, y el diálogo lo dice. Si tiene pestañas abiertas, pide cerrarlas antes; si es la abierta, primero vuelve a Inicio.
+  - **Nueva:** borra su carpeta `organizaciones/<id>/`.
+  - **`boldo.db`:** borra el archivo y `respaldos/`. Al abrir la app sin ese archivo se crea uno vacío, que no se lista, y la próxima organización lo usa («Primera organización»).
+  - **Externa:** por defecto solo sale de la lista, y sus respaldos se borran. Borrar además el archivo es una casilla aparte, con su ruta a la vista: la app no lo creó.
+- **Configuración › Organizaciones:** todas las organizaciones con el espacio que ocupan (base y respaldos), **Quitar de la lista** y **Eliminar**. Las copias de `organizaciones-eliminadas/` se ven allí, con su tamaño, y se pueden borrar o restaurar como organización nueva.
 - **Importar `.boldo`:** se suma el modo **Como organización nueva**, que es el primero y el recomendado. Los otros tres siguen e indican a qué organización afectan.
 - **Barra superior:** deja la insignia «Principal» y muestra color y nombre. **Datos del proyecto** muestra la ruta de la organización abierta.
 - **Menú de la app y paleta:** **Abrir otra organización…**, con las recientes.
@@ -198,7 +202,7 @@ Serán organizaciones derivadas (`escenario_origen_id`), en la misma lista y agr
 
 ## Pruebas
 
-- **Rust:** `abrir_organizacion` (éxito, archivo ausente, esquema más nuevo, migración que falla, bloqueo de otra copia, trabajo en curso); `otra_base` en cada comando; respaldos y poda separados por organización; `limpiar_parciales`; `organizaciones.json` (dañado, ausente, rutas relativas); validación de `<id>`; `.boldo` como organización nueva; archivo ajeno rechazado.
+- **Rust:** `abrir_organizacion` (éxito, archivo ausente, esquema más nuevo, migración que falla, bloqueo de otra copia, trabajo en curso); `otra_base` en cada comando; respaldos y poda separados por organización; `limpiar_parciales`; `organizaciones.json` (dañado, ausente, rutas relativas); validación de `<id>`; `.boldo` como organización nueva; archivo ajeno rechazado; eliminar cada tipo de organización, con y sin copia, sin tocar nada de otra, y arrancar sin `boldo.db`.
 - **TS:** cambio de pestaña con cola pendiente, formulario abierto y trabajo en curso; respuesta tardía descartada; preferencias por `db_id` y su migración; pestaña con organización que no abre.
 - **Migración desde una instalación real:** arnés con una copia de prueba de `boldo.db` de esquema anterior, con pestañas y preferencias: todo se conserva y el archivo no se mueve.
 - **Instalador en CI:** actualizar desde la versión publicada anterior conserva la organización.
