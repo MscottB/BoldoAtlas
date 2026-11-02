@@ -111,7 +111,8 @@ La meta es abrir en menos de 1 segundo con la organización grande de referencia
 Cada llamada que toca datos lleva la identidad de la organización que la app cree tener abierta:
 
 - `db_consultar`, `db_lote`, respaldos, intercambio y fotos reciben `baseId`.
-- Rust compara con la base abierta dentro de `con_conexion`, con el mutex tomado. Si no coincide, responde el error `otra_base` y no ejecuta nada. No hay camino a la conexión que no pase por esta comprobación.
+- Rust compara con la base abierta dentro de `con_conexion`, con el mutex tomado. Si no coincide, responde el error `otra_base` y no ejecuta nada. Toda consulta o escritura que pide la interfaz sobre la organización abierta pasa por esta comprobación.
+- Las únicas operaciones sobre la conexión sin esta comprobación son internas de Rust y no reciben consultas de la interfaz: abrir, cambiar, cerrar y eliminar. La excepción es `crear_organizacion`, que escribe en la conexión abierta solo si es un `boldo.db` vacío, comprobado con el mutex tomado.
 - `cliente.ts` agrega `baseId` en un solo lugar. Una respuesta que llega cuando ya hay otro `baseId` activo se descarta: una carga lenta de la organización A no puede llenar la vista de B.
 - Las fotos usan `foto://<baseId>/<id>`, y su caché `immutable` queda separado por organización.
 
@@ -145,9 +146,9 @@ Pruebas obligatorias: lote y consulta con `baseId` antiguo rechazados; respuesta
 - **Inicio, abrir:** botones **Crear organización**, **Abrir archivo…** y **Explorar el ejemplo**, siempre visibles. Sin datos, los caminos de hoy.
 - **Crear:** crea un archivo nuevo y lo abre. Ya no vacía la base: se retira `reemplazarCon`, su diálogo de confirmación y `respaldarAntesDeReemplazar` en este camino. `boldo-antes-de-reemplazar-` sigue para importar.
 - **Explorar el ejemplo:** igual que Crear, con el nombre de hoy, «Compañía Demo». Si ya hay uno en la lista, lo abre en vez de crear otro.
-- **Eliminar organización:** borra de verdad del disco, para que no se acumulen bases: el archivo con su `-wal` y `-shm`, y sus respaldos. Pide escribir el nombre y muestra cuánto espacio libera. La casilla **Guardar una copia antes**, marcada por defecto, deja una copia en `organizaciones-eliminadas/`; desmarcada, no se puede recuperar, y el diálogo lo dice. Si tiene pestañas abiertas, pide cerrarlas antes; si es la abierta, primero vuelve a Inicio.
+- **Eliminar organización:** borra de verdad del disco, para que no se acumulen bases: el archivo con su `-wal` y `-shm`, y sus respaldos. Pide escribir el nombre y muestra cuánto espacio libera. La casilla **Guardar una copia antes**, marcada por defecto, deja una copia en `organizaciones-eliminadas/`; desmarcada, no se puede recuperar, y el diálogo lo dice. Si tiene pestañas abiertas, el diálogo dice cuántas y, al confirmar, se cierran solas; si es la abierta, primero pasa a otra organización y vuelve a Inicio.
   - **Nueva:** borra su carpeta `organizaciones/<id>/`.
-  - **`boldo.db`:** borra el archivo y `respaldos/`. Al abrir la app sin ese archivo se crea uno vacío, que no se lista, y la próxima organización lo usa («Primera organización»).
+  - **`boldo.db`:** borra el archivo y sus respaldos de `respaldos/`; lo que no sea un respaldo se queda. Al abrir la app sin ese archivo se crea uno vacío, que no se lista, y la próxima organización lo usa («Primera organización»).
   - **Externa:** por defecto solo sale de la lista, y sus respaldos se borran. Borrar además el archivo es una casilla aparte, con su ruta a la vista: la app no lo creó.
 - **Configuración › Organizaciones:** todas las organizaciones con el espacio que ocupan (base y respaldos), **Quitar de la lista** y **Eliminar**. Las copias de `organizaciones-eliminadas/` se ven allí, con su tamaño, y se pueden borrar o restaurar como organización nueva.
 - **Importar `.boldo`:** se suma el modo **Como organización nueva**, que es el primero y el recomendado. Los otros tres siguen e indican a qué organización afectan.
@@ -155,7 +156,7 @@ Pruebas obligatorias: lote y consulta con `baseId` antiguo rechazados; respuesta
 - **Menú de la app y paleta:** **Abrir otra organización…**, con las recientes.
 - **Título de la ventana:** el nombre de la organización activa, como hoy.
 - **Bandeja:** los trabajos y avisos nombran la organización.
-- **Respaldo automático:** corre para la organización abierta. Una que no se abre no cambió, así que no necesita uno nuevo.
+- **Respaldo automático:** corre para la organización abierta. Una que no se abre no cambió, así que no necesita uno nuevo. Con la frecuencia «al abrir», cuenta solo la primera vez que se abre cada organización en la sesión: volver a su pestaña no respalda de nuevo.
 
 Sitio, ayuda y novedades se actualizan en la entrega, en español e inglés.
 
@@ -168,11 +169,12 @@ Sitio, ayuda y novedades se actualizan en la entrega, en español e inglés.
 | Migración que falla | Se deshace; sigue abierta la anterior; el mensaje lleva el detalle para copiar |
 | Abierta en otra copia | Lo dice y no abre |
 | Archivo dañado o que no es de BoldoAtlas | No se abre (ver abajo) |
+| Archivo externo de más de 512 MiB | Pregunta antes de abrir, y dice que puede tardar y ocupar más memoria |
 | `organizaciones.json` dañado | Se reconstruye (ver arriba) |
 | Ruta de red | Avisa y ofrece copiar a la carpeta de la app |
 | Sin espacio al crear o migrar | Error claro; la base actual sigue abierta |
 
-**Archivo ajeno:** abrir un `.db` de otra persona trae los mismos riesgos que un `.boldo`. Antes de abrirlo se aplica la misma validación de `validar.rs`: solo lectura, `trusted_schema=OFF`, integridad y esquema exacto de una versión conocida. Solo después se abre para escribir.
+**Archivo ajeno:** abrir un `.db` de otra persona trae los mismos riesgos que un `.boldo`. Antes de abrirlo se aplica la misma validación de `validar.rs`: solo lectura, `trusted_schema=OFF`, integridad y esquema exacto de una versión conocida. Solo después se abre para escribir. Hay una diferencia: un archivo externo no se rechaza por superar el total de 512 MiB, porque puede ser una organización propia con fotos sin optimizar. Se pregunta al usuario. Los demás topes siguen, y un `.boldo` sobre ese total se sigue rechazando.
 
 ## Entrega 2: Comparar
 
@@ -202,8 +204,8 @@ Serán organizaciones derivadas (`escenario_origen_id`), en la misma lista y agr
 
 ## Pruebas
 
-- **Rust:** `abrir_organizacion` (éxito, archivo ausente, esquema más nuevo, migración que falla, bloqueo de otra copia, trabajo en curso); `otra_base` en cada comando; respaldos y poda separados por organización; `limpiar_parciales`; `organizaciones.json` (dañado, ausente, rutas relativas); validación de `<id>`; `.boldo` como organización nueva; archivo ajeno rechazado; eliminar cada tipo de organización, con y sin copia, sin tocar nada de otra, y arrancar sin `boldo.db`.
-- **TS:** cambio de pestaña con cola pendiente, formulario abierto y trabajo en curso; respuesta tardía descartada; preferencias por `db_id` y su migración; pestaña con organización que no abre.
+- **Rust:** `abrir_organizacion` (éxito, archivo ausente, esquema más nuevo, migración que falla, bloqueo de otra copia, trabajo en curso); `otra_base` en cada comando; respaldos y poda separados por organización; `limpiar_parciales`; `organizaciones.json` (dañado, ausente, rutas relativas); validación de `<id>`; `.boldo` como organización nueva; archivo ajeno rechazado; archivo externo sobre 512 MiB que pregunta antes de abrir, y `.boldo` sobre ese total rechazado; eliminar cada tipo de organización, con y sin copia, sin tocar nada de otra, y arrancar sin `boldo.db`.
+- **TS:** cambio de pestaña con cola pendiente, formulario abierto y trabajo en curso; respuesta tardía descartada; preferencias por `db_id` y su migración; pestaña con organización que no abre; eliminar una organización cierra sus pestañas; «al abrir» respalda una vez por organización y sesión.
 - **Migración desde una instalación real:** arnés con una copia de prueba de `boldo.db` de esquema anterior, con pestañas y preferencias: todo se conserva y el archivo no se mueve.
 - **Instalador en CI:** actualizar desde la versión publicada anterior conserva la organización.
 - **Medición:** tiempo de cambio con la organización grande.
