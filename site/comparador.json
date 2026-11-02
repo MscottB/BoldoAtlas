@@ -1,0 +1,271 @@
+{
+  "revisado": { "es": "2 de noviembre de 2026", "en": "November 2, 2026" },
+  "productos": [
+    { "id": "boldo", "nombre": "BoldoAtlas" },
+    { "id": "visio", "nombre": "Microsoft Visio" },
+    { "id": "lucid", "nombre": "Lucidchart" },
+    { "id": "drawio", "nombre": "draw.io" },
+    { "id": "orgchart", "nombre": "OrgChart" },
+    { "id": "buk", "nombre": "Buk" },
+    { "id": "talana", "nombre": "Talana" }
+  ],
+  "fuentes": [
+    { "id": "boldo-inicio", "producto": "boldo", "titulo": "Manual: Inicio", "url": "https://mscottb.github.io/BoldoAtlas/manual/inicio" },
+    { "id": "boldo-seguridad", "producto": "boldo", "titulo": "SECURITY.md", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md" },
+    { "id": "boldo-licencia", "producto": "boldo", "titulo": "LICENSE (AGPL-3.0)", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/LICENSE" },
+    { "id": "boldo-medicion", "producto": "boldo", "titulo": "Nota de medición: fotos optimizadas y carga bajo demanda", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/docs/superpowers/notas/2026-11-01-fotos-optimizadas.md" },
+    { "id": "boldo-fecha", "producto": "boldo", "titulo": "Manual: Ver a una fecha", "url": "https://mscottb.github.io/BoldoAtlas/manual/arbol#ver-a-una-fecha" },
+    { "id": "boldo-fichas", "producto": "boldo", "titulo": "Manual: Fichas de personas", "url": "https://mscottb.github.io/BoldoAtlas/manual/fichas" },
+    { "id": "boldo-importar", "producto": "boldo", "titulo": "Manual: Exportar e importar", "url": "https://mscottb.github.io/BoldoAtlas/manual/exportar-importar" },
+    { "id": "visio-planes", "producto": "visio", "titulo": "Visio plans and pricing", "url": "https://www.microsoft.com/en-us/microsoft-365/visio/visio-plans-and-pricing" },
+    { "id": "lucid-planes", "producto": "lucid", "titulo": "Lucid Plans", "url": "https://help.lucid.co/hc/en-us/articles/360056903132-Lucid-Plans" },
+    { "id": "lucid-importar", "producto": "lucid", "titulo": "Import an org chart from a CSV, Excel file, or Google Sheet", "url": "https://help.lucid.co/hc/en-us/articles/44818725952276" },
+    { "id": "lucid-bamboo", "producto": "lucid", "titulo": "Import an org chart from BambooHR", "url": "https://help.lucid.co/hc/en-us/articles/44818777944724" },
+    { "id": "lucid-offline", "producto": "lucid", "titulo": "Edit offline in Lucid", "url": "https://help.lucid.co/hc/en-us/articles/14756313957268-Edit-offline-in-Lucid" },
+    { "id": "drawio-inicio", "producto": "drawio", "titulo": "draw.io", "url": "https://www.drawio.com/" },
+    { "id": "drawio-offline", "producto": "drawio", "titulo": "Offline vs online diagramming with draw.io", "url": "https://www.drawio.com/docs/security/diagrams-offline/" },
+    { "id": "drawio-repo", "producto": "drawio", "titulo": "drawio-desktop en GitHub", "url": "https://github.com/jgraph/drawio-desktop" },
+    { "id": "drawio-firma", "producto": "drawio", "titulo": "drawio-desktop: RELEASE_PROCESS", "url": "https://github.com/jgraph/drawio-desktop/blob/dev/doc/RELEASE_PROCESS.md" },
+    { "id": "drawio-colaborar", "producto": "drawio", "titulo": "Collaborate in real time using draw.io", "url": "https://www.drawio.com/docs/manual/collaboration/concurrent-editing/" },
+    { "id": "drawio-csv", "producto": "drawio", "titulo": "Insert a diagram from specially formatted CSV data", "url": "https://www.drawio.com/docs/manual/insert/insert-from-csv/" },
+    { "id": "drawio-organigramas", "producto": "drawio", "titulo": "Org charts and tree diagram in draw.io", "url": "https://www.drawio.com/docs/diagram-types/org-charts/" },
+    { "id": "orgchart-inicio", "producto": "orgchart", "titulo": "OrgChart", "url": "https://theorgchart.com/" },
+    { "id": "orgchart-automatico", "producto": "orgchart", "titulo": "Automated Org Chart Software", "url": "https://theorgchart.com/automated-charts/" },
+    { "id": "orgchart-planes", "producto": "orgchart", "titulo": "Plans & Pricing", "url": "https://theorgchart.com/pricing/" },
+    { "id": "orgchart-historia", "producto": "orgchart", "titulo": "Historical Org Charts", "url": "https://theorgchart.com/solutions/historical-org-charts/" },
+    { "id": "orgchart-seguridad", "producto": "orgchart", "titulo": "Security & Compliance", "url": "https://theorgchart.com/security/" },
+    { "id": "buk-plataforma", "producto": "buk", "titulo": "Plataforma de RR. HH.", "url": "https://www.buk.cl/productos/plataforma-de-rrhh" },
+    { "id": "buk-organigrama", "producto": "buk", "titulo": "¿Cómo puedo ver el organigrama dentro de Buk?", "url": "https://supportcenter.buk.cl/hc/es-419/articles/37607162325787--C%C3%B3mo-puedo-ver-el-organigrama-dentro-de-Buk" },
+    { "id": "talana-resumen", "producto": "talana", "titulo": "Descripción de Talana (llms.txt)", "url": "https://web.talana.com/llms.txt" },
+    { "id": "talana-remuneraciones", "producto": "talana", "titulo": "Software de remuneraciones", "url": "https://web.talana.com/software-remuneraciones" },
+    { "id": "talana-organigrama", "producto": "talana", "titulo": "Centro de ayuda: Organigrama", "url": "https://ayuda.talana.com/hc/es-419/articles/7537760389011-Organigrama" },
+    { "id": "talana-ficha", "producto": "talana", "titulo": "Centro de ayuda: Estructura de la ficha del empleado", "url": "https://ayuda.talana.com/hc/es-419/articles/22728046788883-Estructura-de-la-ficha-del-empleado" },
+    { "id": "talana-carga", "producto": "talana", "titulo": "Centro de ayuda: Actualización de campos de la ficha", "url": "https://ayuda.talana.com/hc/es-419/articles/22726919499155-Actualizaci%C3%B3n-de-campos-Ficha-del-trabajador" }
+  ],
+  "grupos": [
+    {
+      "id": "uso",
+      "es": "Qué es y cómo se usa",
+      "en": "What it is and how it's used",
+      "filas": [
+        {
+          "id": "tipo",
+          "es": "Qué es",
+          "en": "What it is",
+          "celdas": {
+            "boldo": { "es": "App de escritorio para organigramas y fichas", "en": "Desktop app for org charts and records", "f": ["boldo-inicio"] },
+            "visio": { "es": "Diagramas, en web y escritorio", "en": "Diagrams, on the web and desktop", "f": ["visio-planes"] },
+            "lucid": { "es": "Diagramas, en el navegador", "en": "Diagrams, in the browser", "f": ["lucid-planes", "lucid-offline"] },
+            "drawio": { "es": "Diagramas, en web y escritorio", "en": "Diagrams, on the web and desktop", "f": ["drawio-inicio"] },
+            "orgchart": { "es": "Organigramas y planificación de dotación", "en": "Org charts and workforce planning", "f": ["orgchart-inicio"] },
+            "buk": { "es": "Plataforma de RR. HH. con organigrama", "en": "HR platform with an org chart", "f": ["buk-plataforma", "buk-organigrama"] },
+            "talana": { "es": "Plataforma de RR. HH. con organigrama", "en": "HR platform with an org chart", "f": ["talana-resumen", "talana-organigrama"] }
+          }
+        },
+        {
+          "id": "datos",
+          "es": "Dónde quedan los datos",
+          "en": "Where the data lives",
+          "celdas": {
+            "boldo": { "es": "En tu computador, en una base SQLite", "en": "On your computer, in a SQLite database", "f": ["boldo-inicio"] },
+            "visio": { "es": "OneDrive de trabajo o escuela; el Plan 2 también usa archivos locales", "en": "OneDrive for work or school; Plan 2 also uses local files", "f": ["visio-planes"] },
+            "lucid": { "es": "En Lucid; sin conexión, en el navegador hasta reconectar", "en": "In Lucid; offline, in the browser until you reconnect", "f": ["lucid-offline"] },
+            "drawio": { "es": "App de escritorio: solo en tu dispositivo", "en": "Desktop app: on your device only", "f": ["drawio-offline"] },
+            "orgchart": { "es": "En AWS, que aloja el servicio", "en": "On AWS, which hosts the service", "f": ["orgchart-seguridad"] },
+            "buk": { "es": "Plataforma con acceso por internet; lugar de alojamiento no indicado", "en": "Platform reached over the internet; hosting location not stated", "f": ["buk-plataforma"] },
+            "talana": { "es": "En la nube (SaaS)", "en": "In the cloud (SaaS)", "f": ["talana-resumen"] }
+          }
+        },
+        {
+          "id": "internet",
+          "es": "Sin internet",
+          "en": "Without internet",
+          "celdas": {
+            "boldo": { "es": "Funciona completa", "en": "Works fully", "f": ["boldo-inicio"] },
+            "visio": { "es": "Plan 2: la app de escritorio funciona sin conexión", "en": "Plan 2: the desktop app works offline", "f": ["visio-planes"] },
+            "lucid": { "es": "Edita el documento abierto; no abre ni crea otros", "en": "Edits the open document; can't open or create others", "f": ["lucid-offline"] },
+            "drawio": { "es": "La app de escritorio funciona sin conexión", "en": "The desktop app works offline", "f": ["drawio-offline"] },
+            "orgchart": { "ni": true },
+            "buk": { "es": "Se presenta con acceso por internet", "en": "Presented as reached over the internet", "f": ["buk-plataforma"] },
+            "talana": { "es": "Opera en la nube; uso sin conexión no indicado", "en": "Runs in the cloud; offline use not stated", "f": ["talana-resumen"] }
+          }
+        },
+        {
+          "id": "cuenta",
+          "es": "Necesita cuenta",
+          "en": "Needs an account",
+          "celdas": {
+            "boldo": { "es": "No", "en": "No", "f": ["boldo-seguridad"] },
+            "visio": { "es": "Sí: Microsoft 365 de trabajo o escuela", "en": "Yes: Microsoft 365 work or school", "f": ["visio-planes"] },
+            "lucid": { "es": "Sí: correo y contraseña, o Google o Microsoft", "en": "Yes: email and password, or Google or Microsoft", "f": ["lucid-planes"] },
+            "drawio": { "es": "No", "en": "No", "f": ["drawio-inicio"] },
+            "orgchart": { "es": "Sí: con SSO y MFA", "en": "Yes: with SSO and MFA", "f": ["orgchart-planes"] },
+            "buk": { "es": "Sí: cuentas de usuario con perfiles de acceso", "en": "Yes: user accounts with access profiles", "f": ["buk-plataforma"] },
+            "talana": { "es": "Sí: el acceso depende de las restricciones de la cuenta", "en": "Yes: access depends on the account's restrictions", "f": ["talana-organigrama"] }
+          }
+        },
+        {
+          "id": "portable",
+          "es": "Portable, sin instalar",
+          "en": "Portable, no install",
+          "celdas": {
+            "boldo": { "es": "Sí: un zip que guarda los datos en su carpeta", "en": "Yes: a zip that keeps the data in its folder", "f": ["boldo-inicio"] },
+            "visio": { "ni": true },
+            "lucid": { "es": "No aplica: se usa en el navegador", "en": "Not applicable: used in the browser", "f": ["lucid-offline"] },
+            "drawio": { "es": "Sí en Windows: un zip sin instalar", "en": "Yes on Windows: a zip with no install", "f": ["drawio-repo"] },
+            "orgchart": { "es": "No aplica: servicio alojado", "en": "Not applicable: hosted service", "f": ["orgchart-seguridad"] },
+            "buk": { "es": "No aplica: web y app móvil", "en": "Not applicable: web and mobile app", "f": ["buk-plataforma"] },
+            "talana": { "es": "No aplica: SaaS", "en": "Not applicable: SaaS", "f": ["talana-resumen"] }
+          }
+        },
+        {
+          "id": "pago",
+          "es": "Forma de pago",
+          "en": "How you pay",
+          "celdas": {
+            "boldo": { "es": "Gratis, sin planes", "en": "Free, no plans", "f": ["boldo-licencia"] },
+            "visio": { "es": "Suscripción anual, o compra única de Visio 2024; lo básico viene con Microsoft 365 comercial", "en": "Annual subscription, or one-time purchase of Visio 2024; the basics come with commercial Microsoft 365", "f": ["visio-planes"] },
+            "lucid": { "es": "Plan gratis limitado y planes de pago", "en": "Limited free plan and paid plans", "f": ["lucid-planes"] },
+            "drawio": { "es": "Gratis", "en": "Free", "f": ["drawio-inicio"] },
+            "orgchart": { "es": "Facturación anual, según la cantidad de empleados", "en": "Billed annually, by number of employees", "f": ["orgchart-planes"] },
+            "buk": { "es": "Según el plan (Esencial o Pro); Buk Starter gratis para remuneraciones de pymes", "en": "Depends on the plan (Esencial or Pro); free Buk Starter for small-business payroll", "f": ["buk-plataforma"] },
+            "talana": { "es": "Por cotización", "en": "By quote", "f": ["talana-resumen"] }
+          }
+        },
+        {
+          "id": "codigo",
+          "es": "Código abierto",
+          "en": "Open source",
+          "celdas": {
+            "boldo": { "es": "Sí: AGPL-3.0", "en": "Yes: AGPL-3.0", "f": ["boldo-licencia"] },
+            "visio": { "ni": true },
+            "lucid": { "ni": true },
+            "drawio": { "es": "Sí: GPL v3, cerrado a contribuciones externas", "en": "Yes: GPL v3, closed to outside contributions", "f": ["drawio-repo"] },
+            "orgchart": { "ni": true },
+            "buk": { "ni": true },
+            "talana": { "ni": true }
+          }
+        },
+        {
+          "id": "tamano",
+          "es": "Tamaño que indica",
+          "en": "Size it states",
+          "celdas": {
+            "boldo": { "es": "Medido: 10.000 personas, 2.000 unidades y 1.000 fotos abren en menos de 1 s", "en": "Measured: 10,000 people, 2,000 units and 1,000 photos open in under 1 s", "f": ["boldo-medicion"] },
+            "visio": { "ni": true },
+            "lucid": { "es": "Plan gratis con tope de objetos por documento; máximo de personas no indicado", "en": "Free plan caps objects per document; maximum people not stated", "f": ["lucid-planes"] },
+            "drawio": { "ni": true },
+            "orgchart": { "es": "Pensado para más de 100 empleados; máximo no indicado", "en": "Designed for 100+ employees; maximum not stated", "f": ["orgchart-automatico"] },
+            "buk": { "ni": true },
+            "talana": { "es": "Para empresas medianas y grandes, desde 50 trabajadores; máximo no indicado", "en": "For mid-size and large companies, from 50 workers; maximum not stated", "f": ["talana-resumen"] }
+          }
+        },
+        {
+          "id": "fecha",
+          "es": "Organigrama en una fecha pasada",
+          "en": "Org chart on a past date",
+          "celdas": {
+            "boldo": { "es": "Sí: titulares y vacantes de ese día; la forma del árbol es la de hoy", "en": "Yes: that day's holders and vacancies; the shape of the tree is today's", "f": ["boldo-fecha"] },
+            "visio": { "ni": true },
+            "lucid": { "ni": true },
+            "drawio": { "ni": true },
+            "orgchart": { "es": "Sí, en los planes Plus y Pro", "en": "Yes, on the Plus and Pro plans", "f": ["orgchart-planes", "orgchart-historia"] },
+            "buk": { "es": "Plan Pro: historial de cambios; vista a una fecha no indicada", "en": "Pro plan: change history; view on a date not stated", "f": ["buk-plataforma"] },
+            "talana": { "ni": true }
+          }
+        },
+        {
+          "id": "ficha",
+          "es": "Ficha de cada persona",
+          "en": "A record for each person",
+          "celdas": {
+            "boldo": { "es": "Sí, con puestos e historial de puestos", "en": "Yes, with positions and position history", "f": ["boldo-fichas"] },
+            "visio": { "es": "Campos y fotos en el organigrama (Plan 1 o 2)", "en": "Fields and photos in the org chart (Plan 1 or 2)", "f": ["visio-planes"] },
+            "lucid": { "es": "Campos en la forma de cada persona", "en": "Fields on each person's shape", "f": ["lucid-importar"] },
+            "drawio": { "ni": true },
+            "orgchart": { "es": "Muestra vacantes; ficha no indicada", "en": "Shows vacancies; record not stated", "f": ["orgchart-automatico"] },
+            "buk": { "es": "Ficha de colaboradores", "en": "Employee record", "f": ["buk-plataforma"] },
+            "talana": { "es": "Ficha del trabajador", "en": "Employee record", "f": ["talana-ficha"] }
+          }
+        }
+      ]
+    },
+    {
+      "id": "falta",
+      "es": "Lo que BoldoAtlas no tiene",
+      "en": "What BoldoAtlas doesn't have",
+      "filas": [
+        {
+          "id": "colaboracion",
+          "es": "Colaboración en línea en tiempo real",
+          "en": "Real-time online collaboration",
+          "celdas": {
+            "boldo": { "es": "No: las copias se juntan con un archivo .boldo", "en": "No: copies are merged with a .boldo file", "f": ["boldo-importar"] },
+            "visio": { "es": "Sí", "en": "Yes", "f": ["visio-planes"] },
+            "lucid": { "es": "Sí, con conexión", "en": "Yes, when connected", "f": ["lucid-offline"] },
+            "drawio": { "es": "En el editor web, con archivos en Google Drive u OneDrive", "en": "In the web editor, with files on Google Drive or OneDrive", "f": ["drawio-colaborar"] },
+            "orgchart": { "ni": true },
+            "buk": { "ni": true },
+            "talana": { "ni": true }
+          }
+        },
+        {
+          "id": "integracion",
+          "es": "Integración con nómina o sistemas de RR. HH.",
+          "en": "Integration with payroll or HR systems",
+          "celdas": {
+            "boldo": { "es": "No", "en": "No", "f": ["boldo-seguridad"] },
+            "visio": { "es": "Excel, Exchange y Entra ID; nómina no indicada", "en": "Excel, Exchange and Entra ID; payroll not stated", "f": ["visio-planes"] },
+            "lucid": { "es": "BambooHR", "en": "BambooHR", "f": ["lucid-bamboo"] },
+            "drawio": { "es": "No indicada; documenta exportar a CSV desde el sistema de personal", "en": "Not stated; documents exporting to CSV from the staff system", "f": ["drawio-organigramas"] },
+            "orgchart": { "es": "Más de 50 sistemas, como Workday, ADP y UKG", "en": "Over 50 systems, such as Workday, ADP and UKG", "f": ["orgchart-automatico"] },
+            "buk": { "es": "Remuneraciones propias; API y más de 30 socios", "en": "Its own payroll; API and over 30 partners", "f": ["buk-plataforma"] },
+            "talana": { "es": "Remuneraciones propias; archivos para Previred, SII y DT", "en": "Its own payroll; files for Previred, SII and DT", "f": ["talana-remuneraciones"] }
+          }
+        },
+        {
+          "id": "planilla",
+          "es": "Crear o cargar desde una planilla",
+          "en": "Create or load from a spreadsheet",
+          "celdas": {
+            "boldo": { "es": "No", "en": "No", "f": ["boldo-importar"] },
+            "visio": { "es": "Excel", "en": "Excel", "f": ["visio-planes"] },
+            "lucid": { "es": "CSV, Excel y Google Sheets", "en": "CSV, Excel and Google Sheets", "f": ["lucid-importar"] },
+            "drawio": { "es": "CSV", "en": "CSV", "f": ["drawio-csv"] },
+            "orgchart": { "es": "CSV u otras planillas", "en": "CSV or other spreadsheets", "f": ["orgchart-planes"] },
+            "buk": { "es": "Plan Pro: plantillas Excel", "en": "Pro plan: Excel templates", "f": ["buk-plataforma"] },
+            "talana": { "es": "Cargador de empleados; formato no indicado", "en": "Employee loader; format not stated", "f": ["talana-carga"] }
+          }
+        },
+        {
+          "id": "firma",
+          "es": "Firma digital del programa",
+          "en": "Digital signature of the program",
+          "celdas": {
+            "boldo": { "es": "No: el sistema avisa la primera vez", "en": "No: the system warns you the first time", "f": ["boldo-seguridad"] },
+            "visio": { "ni": true },
+            "lucid": { "es": "No aplica: se usa en el navegador", "en": "Not applicable: used in the browser", "f": ["lucid-offline"] },
+            "drawio": { "es": "Sí, en Windows y macOS", "en": "Yes, on Windows and macOS", "f": ["drawio-firma"] },
+            "orgchart": { "es": "No aplica: servicio alojado", "en": "Not applicable: hosted service", "f": ["orgchart-seguridad"] },
+            "buk": { "es": "No aplica: servicio web", "en": "Not applicable: web service", "f": ["buk-plataforma"] },
+            "talana": { "es": "No aplica: SaaS", "en": "Not applicable: SaaS", "f": ["talana-resumen"] }
+          }
+        },
+        {
+          "id": "soporte",
+          "es": "Soporte comercial",
+          "en": "Commercial support",
+          "celdas": {
+            "boldo": { "es": "No: GitHub, sin plazo de respuesta garantizado", "en": "No: GitHub, with no guaranteed response time", "f": ["boldo-seguridad"] },
+            "visio": { "es": "Socios de Visio y contacto de Microsoft; condiciones no indicadas", "en": "Visio partners and Microsoft contact; terms not stated", "f": ["visio-planes"] },
+            "lucid": { "es": "Según el plan: tickets desde Individual", "en": "Depends on the plan: tickets from Individual up", "f": ["lucid-planes"] },
+            "drawio": { "es": "Sin compromiso contractual", "en": "No contractual commitment", "f": ["drawio-repo"] },
+            "orgchart": { "es": "Estándar o premium, según el plan", "en": "Standard or premium, depending on the plan", "f": ["orgchart-planes"] },
+            "buk": { "es": "Servicio al cliente por teléfono y correo", "en": "Customer service by phone and email", "f": ["buk-plataforma"] },
+            "talana": { "es": "Servicio personalizado y ejecutivo de cuenta", "en": "Personalized service and an account manager", "f": ["talana-resumen"] }
+          }
+        }
+      ]
+    }
+  ]
+}

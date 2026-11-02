@@ -9,14 +9,22 @@ const sitio = new URL("..", import.meta.url);
 const repo = new URL("../..", import.meta.url);
 const leer = (ruta, base = sitio) => readFileSync(new URL(ruta, base), "utf8");
 const novedades = JSON.parse(leer("novedades.json"));
+const comparador = JSON.parse(leer("comparador.json"));
 
-// Lo que la portada no puede decir: versiones, fechas de versión, «Próximamente», fases ni «cumple».
+// Lo que la portada no puede decir: versiones, fechas de versión, «Próximamente», «por ahora», fases, «cumple» ni varias organizaciones.
 const PROHIBIDO =
-  /\b(alpha|alfa|beta)\b|\bv\d+\.\d+|\bversi[oó]n\s+\d|\bversion\s+\d|\d{4}-\d{2}-\d{2}|pr[oó]ximamente|coming soon|\bfase\s+\d|\bphase\s+\d|cumpl[ea]|compl(y|ies)\b/i;
+  /\b(alpha|alfa|beta)\b|\bv\d+\.\d+|\bversi[oó]n\s+\d|\bversion\s+\d|\d{4}-\d{2}-\d{2}|pr[oó]ximamente|coming soon|por ahora|\bfor now\b|\bfase\s+\d|\bphase\s+\d|cumpl[ea]|compl(y|ies)\b|varias organizaciones|(several|multiple) organizations/i;
 
 test("la prueba de palabras prohibidas detecta cada una", () => {
-  for (const p of ["alpha", "beta", "v0.1", "versión 0", "Próximamente", "Coming soon", "Fase 3", "cumple", "comply"])
+  for (const p of ["alpha", "beta", "v0.1", "versión 0", "Próximamente", "Coming soon", "Por ahora", "for now", "Fase 3", "cumple", "comply", "varias organizaciones"])
     assert.match(p, PROHIBIDO, p);
+  assert.doesNotMatch("te ayuda a cumplir", PROHIBIDO);
+});
+
+test("ninguna novedad se quita: novedades.json acumula", () => {
+  const ids = novedades.map((n) => n.id);
+  for (const id of ["fotos-livianas", "lineas-e-interaccion", "revisar-y-decidir", "inicio-con-resumen", "exportar-importar", "bandeja", "actualizaciones", "ayuda-visual"])
+    assert.ok(ids.includes(id), `falta ${id}`);
 });
 
 const textos = (nodo) => (typeof nodo === "string" ? [nodo] : Object.values(nodo ?? {}).flatMap(textos));
@@ -84,6 +92,13 @@ test("ningún texto de la portada tiene versiones, «Próximamente», fases ni �
     "en/index.md": [leer("en/index.md")],
     "novedades.md": [leer("novedades.md")],
     "en/novedades.md": [leer("en/novedades.md")],
+    "descargas.md": [leer("descargas.md")],
+    "en/descargas.md": [leer("en/descargas.md")],
+    "acerca.md": [leer("acerca.md")],
+    "en/acerca.md": [leer("en/acerca.md")],
+    // sin las URL de las fuentes: una puede traer una fecha en su nombre
+    "comparador.json": textos({ ...comparador, fuentes: comparador.fuentes.map((f) => f.titulo) }),
+    "Comparador.vue": [leer(".vitepress/theme/Comparador.vue")],
   };
   for (const [archivo, lista] of Object.entries(fuentes)) {
     for (const t of lista) assert.doesNotMatch(t, PROHIBIDO, `${archivo}: «${t.match(PROHIBIDO)?.[0]}»`);
