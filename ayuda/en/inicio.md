@@ -41,7 +41,7 @@ The **Recently opened** list names units and people. It is kept only on this com
 
 ## When opening and quitting
 
-BoldoAtlas opens on **Home**, even with data loaded. To go back to your last view, turn on **Settings › When opening and quitting › Continue where I left off**.
+BoldoAtlas opens on **Home**, even with data loaded, with the window maximized on the main screen. To go back to your last view, turn on **Settings › When opening and quitting › Continue where I left off**.
 
 When you close the window (the **X** or `Alt+F4`), it asks what to do. What you already applied is saved. Quitting the app loses an unfinished form; in the tray it stays there.
 
