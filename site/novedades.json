@@ -92,5 +92,29 @@
       "texto": "When you close the window you choose: cancel, keep BoldoAtlas in the tray or quit it for good. Automatic backups keep running while it is in the tray.",
       "ancla": "when-opening-and-quitting"
     }
+  },
+  {
+    "id": "actualizaciones",
+    "pagina": "actualizaciones",
+    "es": {
+      "titulo": "Te avisa cuando hay una versión nueva",
+      "texto": "BoldoAtlas busca versiones nuevas y te avisa en Inicio y en la barra superior. Nunca descarga ni instala nada sin que lo confirmes, y ves las novedades de todo lo que te saltaste."
+    },
+    "en": {
+      "titulo": "It tells you when a new version is out",
+      "texto": "BoldoAtlas checks for new versions and lets you know on Home and in the top bar. It never downloads or installs anything without your confirmation, and you see what is new in everything you skipped."
+    }
+  },
+  {
+    "id": "ayuda-visual",
+    "pagina": "inicio",
+    "es": {
+      "titulo": "Una ayuda que se ve",
+      "texto": "El manual trae capturas con números, un resumen al comienzo de cada tema, pasos y consejos, con índice y buscador. Es el mismo dentro de la app y en este sitio."
+    },
+    "en": {
+      "titulo": "Help you can see",
+      "texto": "The manual has numbered screenshots, a summary at the start of each topic, steps and tips, with an index and search. It is the same inside the app and on this site."
+    }
   }
 ]
