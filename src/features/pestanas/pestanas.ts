@@ -11,6 +11,8 @@ export interface EstadoVista {
 }
 export interface Pestana {
   id: string;
+  /** El id de la base de la organización a la que pertenece. */
+  org: string;
   /** Ruta completa (path + query + hash): identifica la vista. */
   ruta: string;
   estado?: EstadoVista;
@@ -24,25 +26,32 @@ export interface Pestanas {
 
 const indice = (m: Pestanas, id: string) => m.lista.findIndex((p) => p.id === id);
 
-export const unaPestana = (id: string, ruta = RUTA_INICIO): Pestanas => ({
-  lista: [{ id, ruta }],
+export const unaPestana = (id: string, org: string, ruta = RUTA_INICIO): Pestanas => ({
+  lista: [{ id, org, ruta }],
   activa: id,
 });
 
 /** Abre `ruta` en una pestaña nueva, a la derecha de la activa, y la deja activa; null si ya hay el máximo. */
-export function abrir(m: Pestanas, id: string, ruta: string): Pestanas | null {
+export function abrir(m: Pestanas, id: string, ruta: string, org: string): Pestanas | null {
   if (m.lista.length >= MAX_PESTANAS) return null;
   const lista = [...m.lista];
-  lista.splice(indice(m, m.activa) + 1, 0, { id, ruta });
+  lista.splice(indice(m, m.activa) + 1, 0, { id, org, ruta });
   return { lista, activa: id };
 }
 
-/** Cierra la pestaña; si era la activa, se activa la de su derecha (o la de su izquierda). La última no se cierra. */
+/**
+ * Cierra la pestaña; si era la activa, se activa la más cercana de su organización (primero a la derecha) y, si no hay,
+ * la de su derecha (o la de su izquierda). La última no se cierra.
+ */
 export function cerrar(m: Pestanas, id: string): Pestanas {
   const i = indice(m, id);
   if (i < 0 || m.lista.length <= 1) return m;
   const lista = m.lista.filter((p) => p.id !== id);
-  return { lista, activa: m.activa === id ? (lista[i] ?? lista[i - 1]!).id : m.activa };
+  if (m.activa !== id) return { lista, activa: m.activa };
+  const deSuOrg = (p: Pestana) => p.org === m.lista[i]!.org;
+  const nueva =
+    lista.slice(i).find(deSuOrg) ?? lista.slice(0, i).reverse().find(deSuOrg) ?? lista[i] ?? lista[i - 1]!;
+  return { lista, activa: nueva.id };
 }
 
 /** La pestaña a `paso` de la activa, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab). */
@@ -78,35 +87,39 @@ export const estadoDe = (m: Pestanas, id: string, ruta: string): unknown =>
 /**
  * Lee las pestañas guardadas (JSON ya parseado, de cualquier forma): descarta lo mal formado, los ids repetidos y las
  * rutas que `valida` rechaza (una vista que ya no existe, una unidad o persona eliminada). Siempre deja al menos una.
+ * Una pestaña sin `org` (guardada antes de que hubiera varias organizaciones) queda de `orgActual`. Admite una más que
+ * el máximo: la que se abre para la organización abierta cuando las otras ya lo llenan.
  */
 export function leerPestanas(
   crudo: unknown,
-  valida: (ruta: string) => boolean,
+  valida: (ruta: string, org: string) => boolean,
   nuevoId: () => string,
+  orgActual: string,
 ): Pestanas {
   const c = (typeof crudo === "object" && crudo !== null ? crudo : {}) as Record<string, unknown>;
   const vistos = new Set<string>();
   const lista: Pestana[] = [];
   for (const x of Array.isArray(c.lista) ? c.lista : []) {
-    if (lista.length >= MAX_PESTANAS) break;
+    if (lista.length > MAX_PESTANAS) break;
     const p = (typeof x === "object" && x !== null ? x : {}) as Record<string, unknown>;
+    const org = typeof p.org === "string" && p.org ? p.org : orgActual;
     if (
       typeof p.id !== "string" ||
       !p.id ||
       vistos.has(p.id) ||
       typeof p.ruta !== "string" ||
-      !valida(p.ruta)
+      !valida(p.ruta, org)
     )
       continue;
     vistos.add(p.id);
     const e = p.estado as Record<string, unknown> | undefined;
-    const pestana: Pestana = { id: p.id, ruta: p.ruta };
+    const pestana: Pestana = { id: p.id, org, ruta: p.ruta };
     if (typeof e === "object" && e !== null && typeof e.ruta === "string")
       pestana.estado = { ruta: e.ruta, datos: e.datos };
-    if (typeof p.volver === "string" && valida(p.volver)) pestana.volver = p.volver;
+    if (typeof p.volver === "string" && valida(p.volver, org)) pestana.volver = p.volver;
     lista.push(pestana);
   }
-  if (!lista.length) return unaPestana(nuevoId());
+  if (!lista.length) return unaPestana(nuevoId(), orgActual);
   return { lista, activa: lista.some((p) => p.id === c.activa) ? (c.activa as string) : lista[0]!.id };
 }
 

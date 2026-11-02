@@ -402,7 +402,7 @@
     "sinAppdata": "No se encontró la carpeta de datos del usuario.",
     "sinCarpeta": "No se encontró la carpeta de datos de BoldoAtlas.",
     "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas.",
-    "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo boldo.db y su carpeta tengan permiso de escritura."
+    "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo y su carpeta tengan permiso de escritura."
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",

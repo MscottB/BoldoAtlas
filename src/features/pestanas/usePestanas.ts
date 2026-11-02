@@ -11,6 +11,7 @@ import { useEventListener } from "@vueuse/core";
 import { toast } from "vue-sonner";
 import { RUTA_BIENVENIDA, esVistaCerrable } from "@/app/estructura";
 import { i18n } from "@/i18n";
+import { baseActual } from "@/lib/baseActiva";
 import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
@@ -24,11 +25,11 @@ export const idPestana = (id: string) => `pestana-${id}`;
  * Pestañas de trabajo del proyecto abierto (spec §7). La ruta de la pestaña activa es la del router: navegar dentro de
  * ella la actualiza; cambiar de pestaña navega a la ruta de la otra (con replace: la historia sigue siendo de la vista).
  * Solo la activa está montada (App.vue usa su id como key de la vista); cada vista guarda su estado al desmontarse
- * (`useEstadoPestana`). Se recuerdan por PC y por proyecto.
+ * (`useEstadoPestana`). Se recuerdan por copia de la app: cada una sabe de qué organización es.
  */
 export const usePestanas = defineStore("pestanas", () => {
   const t = i18n.global.t;
-  const modelo = ref<P.Pestanas>(P.unaPestana(nuevoId()));
+  const modelo = ref<P.Pestanas>(P.unaPestana(nuevoId(), baseActual()));
   let router: Router | null = null;
   let clave: string | null = null;
   /** false mientras se ve la Bienvenida (fuera del proyecto): al volver se recargan y validan sus pestañas. */
@@ -43,29 +44,59 @@ export const usePestanas = defineStore("pestanas", () => {
   // sync: el estado que una vista guarda al cerrar la ventana alcanza a escribirse.
   watch(modelo, (m) => clave && guardarPreferencia(clave, m), { flush: "sync" });
 
-  function valida(ruta: string): boolean {
+  /** Para otra organización solo mira la vista: sus unidades y personas no están cargadas. */
+  function valida(ruta: string, org = baseActual()): boolean {
     if (!router) return false;
-    const org = useOrganizacion();
+    const datos = useOrganizacion();
     const r = router.resolve(ruta);
     return P.rutaValida(
-      { nombre: r.name, query: r.query },
-      { unidad: (id) => org.porId.has(id), persona: (id) => org.trabajadores.some((x) => x.id === id) },
+      { nombre: r.name, query: org === baseActual() ? r.query : {} },
+      { unidad: (id) => datos.porId.has(id), persona: (id) => datos.trabajadores.some((x) => x.id === id) },
+    );
+  }
+
+  /** Siempre activa una de la organización abierta; sin ninguna, abre una en el inicio. */
+  function aLaAbierta(m: P.Pestanas): P.Pestanas {
+    const org = baseActual();
+    const de = (x: P.Pestana) => x.org === org;
+    if (de(m.lista.find((x) => x.id === m.activa)!)) return m;
+    const suya = m.lista.find(de);
+    if (suya) return { ...m, activa: suya.id };
+    const id = nuevoId();
+    // Con el tope lleno de otras se pasa por una, que `leerPestanas` admite. shortcut: con esa de más y una tercera
+    // organización sin pestañas habría 14 y al releer se recorta la última; ver al abrir pestañas de otra organización.
+    return (
+      P.abrir(m, id, P.RUTA_INICIO, org) ?? {
+        lista: [...m.lista, { id, org, ruta: P.RUTA_INICIO }],
+        activa: id,
+      }
     );
   }
 
   /** Carga las pestañas guardadas del proyecto (validadas) y devuelve la ruta de la activa. */
   function entrar(): string {
-    modelo.value = P.leerPestanas(clave ? leerPreferencia<unknown>(clave, null) : null, valida, nuevoId);
+    const guardadas = clave ? leerPreferencia<unknown>(clave, null) : null;
+    modelo.value = aLaAbierta(P.leerPestanas(guardadas, valida, nuevoId, baseActual()));
     enProyecto = true;
     const p = modelo.value.lista.find((x) => x.id === modelo.value.activa)!;
     // Configuración, Ayuda y Acerca de son de paso: al entrar se llega a la vista de trabajo de la pestaña.
     return esVistaCerrable(router?.resolve(p.ruta).name) ? (p.volver ?? P.RUTA_INICIO) : p.ruta;
   }
 
-  /** Una sola vez, al arrancar: `proyecto` identifica el proyecto abierto (la ruta de su base). */
-  function conectar(r: Router, proyecto: string) {
+  /** Una sola vez, al arrancar y con la base fijada: `dirDatos` identifica esta copia; `rutaBd`, su clave antigua. */
+  function conectar(r: Router, dirDatos: string, rutaBd: string) {
     router = r;
-    clave = `pestanas:${proyecto}`;
+    clave = `pestanas:${dirDatos}`;
+    // Aquí y no en `entrar`: al arrancar solo existe `boldo.db`, y después se podría entrar con otra abierta.
+    // Sin validar, para no descartar nada; la clave antigua no se borra.
+    if (leerPreferencia<unknown>(clave, null) === null) {
+      const antigua = leerPreferencia<unknown>(`pestanas:${rutaBd}`, null);
+      if (antigua !== null)
+        guardarPreferencia(
+          clave,
+          P.leerPestanas(antigua, () => true, nuevoId, baseActual()),
+        );
+    }
     r.afterEach((to, from, fallo) => {
       if (fallo) {
         // Cancelada por otra navegación más nueva (p. ej. un segundo Ctrl+Tab antes de cargar la vista): el cambio de
@@ -82,10 +113,11 @@ export const usePestanas = defineStore("pestanas", () => {
         // vista cerrable (Configuración desde la bandeja) no le quita su lugar: «Cerrar» vuelve a él.
         const anterior = entrar();
         const { lista, activa } = modelo.value;
+        const org = baseActual();
         // con dos pestañas en la misma ruta manda la activa
         const ya =
-          lista.find((p) => p.id === activa && p.ruta === to.fullPath) ??
-          lista.find((p) => p.ruta === to.fullPath);
+          lista.find((p) => p.org === org && p.id === activa && p.ruta === to.fullPath) ??
+          lista.find((p) => p.org === org && p.ruta === to.fullPath);
         if (ya) modelo.value = { ...modelo.value, activa: ya.id };
         else if (esVistaCerrable(to.name) && !esVistaCerrable(r.resolve(anterior).name))
           cambios.volver = anterior;
@@ -134,7 +166,7 @@ export const usePestanas = defineStore("pestanas", () => {
     const r = router.resolve(destino);
     if (!r.matched.length || r.meta.sinMarco) return { ok: false, mensaje: t("pestanas.noAbre") };
     const id = nuevoId();
-    const m = P.abrir(modelo.value, id, r.fullPath);
+    const m = P.abrir(modelo.value, id, r.fullPath, baseActual());
     if (!m) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
     modelo.value = { ...m, activa: modelo.value.activa }; // se activa al llegar (ver `destino`)
     void ir(id);
@@ -185,11 +217,15 @@ export const usePestanas = defineStore("pestanas", () => {
       modelo.value = P.cambiar(modelo.value, id, { estado: { ruta, datos } });
     },
     estadoDe: (id: string, ruta: string) => P.estadoDe(modelo.value, id, ruta),
-    /** Título automático: el nombre del subárbol o la persona, o el de la vista. Sigue a los cambios de nombre. */
-    titulo(p: Pick<P.Pestana, "ruta">): string {
+    /**
+     * Título automático: el nombre del subárbol o la persona, o el de la vista. Sigue a los cambios de nombre.
+     * De otra organización, solo el de la vista: sus ids no significan nada en los datos de la abierta.
+     */
+    titulo(p: { ruta: string; org?: string }): string {
       const org = useOrganizacion();
       const r = router?.resolve(p.ruta);
-      const q = (k: string) => (typeof r?.query[k] === "string" ? (r.query[k] as string) : "");
+      const deLaAbierta = p.org === undefined || p.org === baseActual();
+      const q = (k: string) => (deLaAbierta && typeof r?.query[k] === "string" ? (r.query[k] as string) : "");
       switch (r?.name) {
         case "arbol": {
           const raiz = q("raiz");

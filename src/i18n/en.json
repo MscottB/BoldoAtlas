@@ -402,7 +402,7 @@
     "sinAppdata": "Your user data folder was not found.",
     "sinCarpeta": "BoldoAtlas' data folder was not found.",
     "baseNoDisponible": "The database is not available. Close BoldoAtlas and open it again.",
-    "baseSoloLectura": "The database is read-only: check that the boldo.db file and its folder are writable."
+    "baseSoloLectura": "The database is read-only: check that the file and its folder are writable."
   },
   "store": {
     "nombreVacio": "Enter a name.",

@@ -1,6 +1,6 @@
 use crate::db::{self, SIN_ESPACIO};
 use crate::intercambio::validar;
-use crate::organizaciones::OTRA_BASE;
+use crate::organizaciones::{Base, OTRA_BASE};
 use rusqlite::{Connection, ErrorCode, OpenFlags};
 use serde::Serialize;
 use std::fs;
@@ -197,13 +197,19 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
     hecho.map(|_| nombre)
 }
 
+/// Dónde `cambiar_base` prepara la copia, al lado de la base.
+fn copia_de(bd: &Path) -> PathBuf {
+    bd.with_extension("restaurando")
+}
+
 /// Borra los temporales que dejó un respaldo, un `.boldo` o una restauración interrumpidos. Se llama en `setup`, ya pasado
 /// el plugin de instancia única: una segunda instancia sale antes y no le borra nada a la que está trabajando.
-pub fn limpiar_parciales(dir: &Path) {
+/// `bd` es la base que vive en `dir`, si hay una.
+pub fn limpiar_parciales(dir: &Path, bd: Option<&Path>) {
     let temporal = format!(".db{SUFIJO_TEMPORAL}");
     // la copia de `cambiar_base` nunca es lo único que hay: la base se reemplaza con un renombre atómico, así que si la
     // copia sigue ahí no se llegó a usar. Sin la base al lado no se toca, por si acaso.
-    let hay_base = dir.join("boldo.db").is_file();
+    let copia = bd.filter(|b| b.is_file()).map(copia_de);
     for e in fs::read_dir(dir).into_iter().flatten().flatten() {
         let nombre = e.file_name().to_string_lossy().into_owned();
         // solo los temporales propios (`boldo-….db.tmp`, con su diario de SQLite), nunca otro .tmp de la carpeta
@@ -212,7 +218,7 @@ pub fn limpiar_parciales(dir: &Path) {
             .find_map(|s| nombre.strip_suffix(s))
             .unwrap_or(&nombre);
         if (nombre.starts_with(PREFIJO) && base.ends_with(&temporal))
-            || (hay_base && base == "boldo.restaurando")
+            || copia.as_deref() == Some(dir.join(base).as_path())
         {
             let _ = fs::remove_file(e.path());
         }
@@ -350,16 +356,18 @@ pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
 /// Reemplaza la base por el respaldo `nombre` (uno de `listar`). Si algo falla, la base actual queda como estaba.
 pub fn restaurar(
     conexion: &mut Option<Connection>,
-    bd: &Path,
-    dir: &Path,
+    base: &Base,
     nombre: &str,
     migraciones: &[&str],
 ) -> Result<(), Fallo> {
     // solo nombres de la lista: nunca una ruta que venga de la interfaz
-    if !entradas(dir)?.iter().any(|e| e.nombre == nombre) {
+    if !entradas(&base.respaldos)?
+        .iter()
+        .any(|e| e.nombre == nombre)
+    {
         return Err(Fallo::de("desconocido", nombre));
     }
-    let origen = dir.join(nombre);
+    let origen = base.respaldos.join(nombre);
     let danado = |e: rusqlite::Error| Fallo::de("danado", e);
     {
         // lo primero: triggers, vistas o tablas extra quedarían activos en la base local. Un respaldo legítimo tiene el de
@@ -384,37 +392,51 @@ pub fn restaurar(
         )
         .map_err(danado)?;
     }
-    cambiar_base(conexion, bd, dir, &origen, migraciones, PREFIJO_SEGURIDAD)
+    cambiar_base(conexion, base, &origen, migraciones, PREFIJO_SEGURIDAD)
 }
 
 /// Reemplaza la base por `origen`, ya revisado, con el respaldo previo a reemplazar: lo usa «Reemplazar todo» al importar.
 pub fn reemplazar_antes_respaldando(
     conexion: &mut Option<Connection>,
-    bd: &Path,
-    dir: &Path,
+    base: &Base,
     origen: &Path,
     migraciones: &[&str],
 ) -> Result<(), Fallo> {
-    cambiar_base(conexion, bd, dir, origen, migraciones, PREFIJO_REEMPLAZO)
+    cambiar_base(conexion, base, origen, migraciones, PREFIJO_REEMPLAZO)
+}
+
+/// Lo escrito en la copia vive en su WAL hasta cerrarla. Si SQLite no pudo volcarlo, cierra sin avisar, y al renombrar se
+/// perdería: la base quedaría sin migrar y con el `db_id` del archivo que llegó.
+fn cerrar_copia(c: Connection, copia: &Path) -> Result<(), Fallo> {
+    c.close().map_err(|(_, e)| e)?;
+    if con_sufijo(copia, "-wal").exists() {
+        return Err(Fallo::de("fallo", copia.display()));
+    }
+    Ok(())
 }
 
 fn cambiar_base(
     conexion: &mut Option<Connection>,
-    bd: &Path,
-    dir: &Path,
+    base: &Base,
     origen: &Path,
     migraciones: &[&str],
     prefijo_seguridad: &str,
 ) -> Result<(), Fallo> {
+    let (bd, dir) = (&base.bd, &base.respaldos);
     // Se prepara (y migra) una copia aparte: la base actual no se toca hasta el reemplazo final.
-    let copia = bd.with_extension("restaurando");
+    let copia = copia_de(bd);
     let mut reemplazar = || -> Result<(), Fallo> {
         borrar_bd(&copia)?;
         fs::copy(origen, &copia)?;
         let mut c = db::abrir(&copia)?;
         db::migrar_con(&mut c, migraciones, dir)?;
         db::asegurar_meta(&c)?;
-        c.close().map_err(|(_, e)| e)?;
+        // la identidad es de la base, no de lo que llega: de ella cuelgan sus pestañas y preferencias
+        c.execute(
+            "UPDATE meta SET valor = ?1 WHERE clave = 'db_id'",
+            [&base.id],
+        )?;
+        cerrar_copia(c, &copia)?;
 
         let actual = conexion
             .take()
@@ -457,16 +479,33 @@ fn cambiar_base(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::organizaciones::identidad;
     use db::MIGRACIONES;
 
-    fn base(dir: &Path) -> (PathBuf, PathBuf, Connection) {
+    fn base(dir: &Path) -> (Base, PathBuf, Connection) {
+        base_en(dir, "boldo.db")
+    }
+
+    fn base_en(dir: &Path, archivo: &str) -> (Base, PathBuf, Connection) {
         let respaldos = dir.join("respaldos");
         fs::create_dir_all(&respaldos).unwrap();
-        let bd = dir.join("boldo.db");
+        let bd = dir.join(archivo);
         let mut conn = db::abrir(&bd).unwrap();
         db::migrar(&mut conn, &respaldos).unwrap();
         db::asegurar_meta(&conn).unwrap();
-        (bd, respaldos, conn)
+        let b = Base {
+            id: identidad(&conn).unwrap(),
+            bd,
+            respaldos: respaldos.clone(),
+        };
+        (b, respaldos, conn)
+    }
+
+    fn id_de(conn: &Connection) -> String {
+        conn.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {
+            f.get(0)
+        })
+        .unwrap()
     }
 
     fn revision(conn: &Connection) -> i64 {
@@ -533,7 +572,7 @@ mod tests {
         fs::write(respaldos.join("ajeno.tmp"), "x").unwrap();
         fs::write(respaldos.join("boldo-notas.tmp"), "x").unwrap();
         assert!(listar(&respaldos).unwrap().is_empty());
-        limpiar_parciales(&respaldos);
+        limpiar_parciales(&respaldos, None);
         assert_eq!(
             archivos(&respaldos),
             ["ajeno.tmp", "boldo-notas.tmp", "notas.txt"]
@@ -672,7 +711,7 @@ mod tests {
     #[test]
     fn restaurar_rechaza_nombres_fuera_de_la_lista() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, conn) = base(dir.path());
+        let (b, respaldos, conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         fs::write(respaldos.join("notas.txt"), "x").unwrap();
         let absoluta = respaldos.join(&nombre).display().to_string();
@@ -686,7 +725,7 @@ mod tests {
             "notas.txt",
             "",
         ] {
-            let err = restaurar(&mut slot, &bd, &respaldos, malo, MIGRACIONES).unwrap_err();
+            let err = restaurar(&mut slot, &b, malo, MIGRACIONES).unwrap_err();
             assert_eq!(err.codigo, "desconocido", "{malo}");
         }
         assert_eq!(revision(slot.as_ref().unwrap()), 0);
@@ -695,7 +734,7 @@ mod tests {
     #[test]
     fn restaurar_vuelve_al_respaldo_sin_reaplicar_el_wal_viejo() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, mut conn) = base(dir.path());
+        let (b, respaldos, mut conn) = base(dir.path());
         escribir(&mut conn, 1);
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         escribir(&mut conn, 3);
@@ -703,10 +742,10 @@ mod tests {
         let wal = dir.path().join("boldo.db-wal");
         assert!(fs::metadata(&wal).unwrap().len() > 0);
         let mut slot = Some(conn);
-        restaurar(&mut slot, &bd, &respaldos, &nombre, MIGRACIONES).unwrap();
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
         // tras el éxito la conexión queda cerrada: nada escribe en la base restaurada antes del reinicio
         assert!(slot.is_none());
-        assert_eq!(revision(&db::abrir(&bd).unwrap()), 1);
+        assert_eq!(revision(&db::abrir(&b.bd).unwrap()), 1);
         // la base de antes quedó respaldada (revisión 4) y se puede volver a ella
         let lista = listar(&respaldos).unwrap();
         let seguridad: Vec<_> = lista.iter().filter(|r| r.seguridad).collect();
@@ -725,13 +764,13 @@ mod tests {
     #[test]
     fn restaurar_migra_un_respaldo_de_esquema_anterior() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, conn) = base(dir.path());
+        let (b, respaldos, conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         let otra = [MIGRACIONES, &["CREATE TABLE extra (x INTEGER);"]].concat();
         let mut slot = Some(conn);
-        restaurar(&mut slot, &bd, &respaldos, &nombre, &otra).unwrap();
+        restaurar(&mut slot, &b, &nombre, &otra).unwrap();
         assert!(slot.is_none());
-        let c = db::abrir(&bd).unwrap();
+        let c = db::abrir(&b.bd).unwrap();
         let v: i64 = c
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .unwrap();
@@ -742,12 +781,12 @@ mod tests {
     #[test]
     fn restaurar_que_falla_al_migrar_deja_la_base_intacta() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, mut conn) = base(dir.path());
+        let (b, respaldos, mut conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         escribir(&mut conn, 2);
         let rota = [MIGRACIONES, &["ESTO NO ES SQL;"]].concat();
         let mut slot = Some(conn);
-        let err = restaurar(&mut slot, &bd, &respaldos, &nombre, &rota).unwrap_err();
+        let err = restaurar(&mut slot, &b, &nombre, &rota).unwrap_err();
         assert_eq!(err.codigo, "fallo");
         assert_eq!(revision(slot.as_ref().unwrap()), 2);
         assert!(
@@ -760,7 +799,7 @@ mod tests {
     #[test]
     fn restaurar_rechaza_respaldo_de_esquema_mas_nuevo() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, mut conn) = base(dir.path());
+        let (b, respaldos, mut conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         Connection::open(respaldos.join(&nombre))
             .unwrap()
@@ -768,7 +807,7 @@ mod tests {
             .unwrap();
         escribir(&mut conn, 2);
         let mut slot = Some(conn);
-        let err = restaurar(&mut slot, &bd, &respaldos, &nombre, MIGRACIONES).unwrap_err();
+        let err = restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap_err();
         assert_eq!(err.codigo, "esquema_nuevo");
         assert_eq!(revision(slot.as_ref().unwrap()), 2);
         assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));
@@ -777,19 +816,100 @@ mod tests {
     #[test]
     fn limpiar_parciales_borra_una_restauracion_interrumpida_si_esta_la_base() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, _respaldos, conn) = base(dir.path());
+        let (b, _respaldos, conn) = base(dir.path());
         drop(conn);
-        let copia = bd.with_extension("restaurando");
+        let copia = b.bd.with_extension("restaurando");
         fs::write(&copia, "a medias").unwrap();
         fs::write(con_sufijo(&copia, "-wal"), "x").unwrap();
-        limpiar_parciales(dir.path());
+        limpiar_parciales(dir.path(), Some(&b.bd));
         assert!(!copia.exists() && !con_sufijo(&copia, "-wal").exists());
-        assert!(bd.exists());
+        assert!(b.bd.exists());
+        // sin la base al lado no se toca
+        fs::write(&copia, "lo único").unwrap();
+        fs::remove_file(&b.bd).unwrap();
+        limpiar_parciales(dir.path(), Some(&b.bd));
+        assert!(copia.exists());
+    }
+
+    #[test]
+    fn limpiar_parciales_usa_el_nombre_de_la_base() {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join("organizacion.db");
+        fs::write(&bd, "base").unwrap();
+        let copia = dir.path().join("organizacion.restaurando");
+        fs::write(&copia, "a medias").unwrap();
+        fs::write(con_sufijo(&copia, "-wal"), "x").unwrap();
+        // la de otro nombre no se toca, y sin base (`None`) tampoco esta
+        let ajena = dir.path().join("boldo.restaurando");
+        fs::write(&ajena, "de otra").unwrap();
+        limpiar_parciales(dir.path(), None);
+        assert!(copia.exists());
+        limpiar_parciales(dir.path(), Some(&bd));
+        assert!(!copia.exists() && !con_sufijo(&copia, "-wal").exists());
+        assert!(bd.exists() && ajena.exists());
         // sin la base al lado no se toca
         fs::write(&copia, "lo único").unwrap();
         fs::remove_file(&bd).unwrap();
-        limpiar_parciales(dir.path());
+        limpiar_parciales(dir.path(), Some(&bd));
         assert!(copia.exists());
+    }
+
+    #[test]
+    fn restaurar_funciona_con_otro_nombre_y_carpeta() {
+        let dir = tempfile::tempdir().unwrap();
+        let carpeta = dir.path().join("organizaciones").join("x");
+        fs::create_dir_all(&carpeta).unwrap();
+        let (b, respaldos, mut conn) = base_en(&carpeta, "organizacion.db");
+        escribir(&mut conn, 1);
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        escribir(&mut conn, 3);
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        assert_eq!(revision(&db::abrir(&b.bd).unwrap()), 1);
+        assert!(listar(&respaldos).unwrap().iter().any(|r| r.seguridad));
+        assert!(
+            archivos(&carpeta)
+                .iter()
+                .all(|n| !n.contains("restaurando")),
+            "{:?}",
+            archivos(&carpeta)
+        );
+        assert!(!dir.path().join("boldo.db").exists());
+    }
+
+    #[test]
+    fn restaurar_conserva_el_db_id_de_la_base() {
+        // el respaldo trae otro id, uno que no es válido o ninguno
+        for sql in [
+            "UPDATE meta SET valor = '01900000-0000-7000-8000-000000000000' WHERE clave = 'db_id'",
+            "UPDATE meta SET valor = '../x' WHERE clave = 'db_id'",
+            "DELETE FROM meta WHERE clave = 'db_id'",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let (b, respaldos, conn) = base(dir.path());
+            let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+            Connection::open(respaldos.join(&nombre))
+                .unwrap()
+                .execute(sql, [])
+                .unwrap();
+            let mut slot = Some(conn);
+            restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+            assert_eq!(id_de(&db::abrir(&b.bd).unwrap()), b.id, "{sql}");
+        }
+    }
+
+    #[test]
+    fn si_la_copia_no_vuelca_su_wal_no_se_usa() {
+        let dir = tempfile::tempdir().unwrap();
+        let copia = dir.path().join("a.restaurando");
+        let c = db::abrir(&copia).unwrap();
+        c.execute_batch("CREATE TABLE t (x);").unwrap();
+        // con otra conexión abierta, cerrar no vuelca el WAL ni avisa: lo escrito no está en el archivo
+        let otra = db::abrir(&copia).unwrap();
+        assert!(cerrar_copia(c, &copia).is_err());
+        otra.close().unwrap();
+        let c = db::abrir(&copia).unwrap();
+        cerrar_copia(c, &copia).unwrap();
     }
 
     #[test]
@@ -800,7 +920,7 @@ mod tests {
             "CREATE TABLE extra (x);",
         ] {
             let dir = tempfile::tempdir().unwrap();
-            let (bd, respaldos, mut conn) = base(dir.path());
+            let (b, respaldos, mut conn) = base(dir.path());
             let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
             Connection::open(respaldos.join(&nombre))
                 .unwrap()
@@ -808,7 +928,7 @@ mod tests {
                 .unwrap();
             escribir(&mut conn, 2);
             let mut slot = Some(conn);
-            let err = restaurar(&mut slot, &bd, &respaldos, &nombre, MIGRACIONES).unwrap_err();
+            let err = restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap_err();
             assert_eq!(err.codigo, "danado", "{sql}");
             assert_eq!(revision(slot.as_ref().unwrap()), 2);
         }
@@ -817,7 +937,7 @@ mod tests {
     #[test]
     fn restaurar_acepta_un_respaldo_con_otros_fines_de_linea() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, conn) = base(dir.path());
+        let (b, respaldos, conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         // el mismo respaldo visto por una app compilada con los fines de línea del otro sistema
         let otras: Vec<String> = MIGRACIONES
@@ -832,35 +952,21 @@ mod tests {
             .collect();
         let otras: Vec<&str> = otras.iter().map(String::as_str).collect();
         let mut slot = Some(conn);
-        restaurar(&mut slot, &bd, &respaldos, &nombre, &otras).unwrap();
+        restaurar(&mut slot, &b, &nombre, &otras).unwrap();
     }
 
     #[test]
     fn restaurar_rechaza_respaldo_danado() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, mut conn) = base(dir.path());
+        let (b, respaldos, mut conn) = base(dir.path());
         escribir(&mut conn, 2);
         fs::write(respaldos.join("boldo-20250101-0000.db"), "no soy sqlite").unwrap();
         let mut slot = Some(conn);
-        let err = restaurar(
-            &mut slot,
-            &bd,
-            &respaldos,
-            "boldo-20250101-0000.db",
-            MIGRACIONES,
-        )
-        .unwrap_err();
+        let err = restaurar(&mut slot, &b, "boldo-20250101-0000.db", MIGRACIONES).unwrap_err();
         assert_eq!(err.codigo, "danado");
         // un archivo vacío pasa quick_check (SQLite lo ve como base vacía) pero no es un respaldo
         fs::write(respaldos.join("boldo-20240101-0000.db"), "").unwrap();
-        let err = restaurar(
-            &mut slot,
-            &bd,
-            &respaldos,
-            "boldo-20240101-0000.db",
-            MIGRACIONES,
-        )
-        .unwrap_err();
+        let err = restaurar(&mut slot, &b, "boldo-20240101-0000.db", MIGRACIONES).unwrap_err();
         assert_eq!(err.codigo, "danado");
         assert_eq!(revision(slot.as_ref().unwrap()), 2);
     }
@@ -868,15 +974,23 @@ mod tests {
     #[test]
     fn restaurar_con_otra_instancia_abierta_no_toca_la_base() {
         let dir = tempfile::tempdir().unwrap();
-        let (bd, respaldos, mut conn) = base(dir.path());
+        let (b, respaldos, mut conn) = base(dir.path());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        Connection::open(respaldos.join(&nombre))
+            .unwrap()
+            .execute(
+                "UPDATE meta SET valor = '01900000-0000-7000-8000-000000000000' WHERE clave = 'db_id'",
+                [],
+            )
+            .unwrap();
         escribir(&mut conn, 3);
-        let otra = db::abrir(&bd).unwrap();
+        let otra = db::abrir(&b.bd).unwrap();
         assert_eq!(revision(&otra), 3);
         let mut slot = Some(conn);
-        let err = restaurar(&mut slot, &bd, &respaldos, &nombre, MIGRACIONES).unwrap_err();
+        let err = restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap_err();
         assert_eq!(err.codigo, "en_uso");
         assert_eq!(revision(slot.as_ref().unwrap()), 3);
+        assert_eq!(id_de(slot.as_ref().unwrap()), b.id);
         assert_eq!(revision(&otra), 3);
         // un intento fallido no deja una copia «antes de restaurar» suelta
         assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));

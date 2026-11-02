@@ -17,8 +17,7 @@ pub fn run() {
     // antes del Builder: la portable ajusta el entorno del proceso y aún no hay otros hilos
     let estado = comandos::Estado::iniciar();
     let webview = estado.dir_webview();
-    let datos = estado.rutas_app().map(|r| r.datos.clone());
-    let respaldos_dir = estado.rutas_app().map(|r| r.respaldos.clone());
+    let rutas_app = estado.rutas_app().cloned();
     let mut contexto = tauri::generate_context!();
     if let Some(r) = estado.rutas_app().filter(|r| r.portable) {
         let id = rutas::identificador_portable(&contexto.config().identifier, &r.datos);
@@ -72,12 +71,11 @@ pub fn run() {
             app.state::<comandos::Estado>().abrir_inicial();
             // en setup y no al iniciar: una segunda instancia sale en el plugin de arriba, antes de llegar aquí, y no le
             // borra a la primera las copias con que está trabajando
-            for dir in datos.iter().chain(respaldos_dir.iter()) {
-                respaldos::limpiar_parciales(dir);
-            }
-            // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
-            if let Some(datos) = datos {
-                actualizar::limpiar_al_iniciar(datos);
+            if let Some(r) = rutas_app {
+                respaldos::limpiar_parciales(&r.datos, Some(&r.bd));
+                respaldos::limpiar_parciales(&r.respaldos, None);
+                // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
+                actualizar::limpiar_al_iniciar(r.datos);
             }
             // la ventana se crea aquí y no desde tauri.conf.json ("create": false) para que la portable
             // guarde el perfil del WebView en datos/ y no en %LOCALAPPDATA%

@@ -20,7 +20,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
-import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -43,9 +43,9 @@ const org = useOrganizacion();
 const ficha = useFicha();
 const puesto = usePuesto();
 
-// Los filtros y el orden se recuerdan por PC; cada pestaña, además, recuerda los suyos (validados al leer).
+// Los filtros y el orden se recuerdan por organización; cada pestaña, además, recuerda los suyos (validados al leer).
 const dePestana = useEstadoPestana(() => ({ filtros: { ...filtros.value }, orden: { ...orden.value } }));
-const guardado = leerEstadoDirectorio(dePestana ?? leerPreferencia<unknown>("directorio", null));
+const guardado = leerEstadoDirectorio(dePestana ?? leerPreferenciaOrg<unknown>("directorio", null));
 const filtros = ref<Filtros>(guardado.filtros);
 const orden = ref<Orden>(guardado.orden);
 // «Ver en el directorio» del panel de una unidad: solo esa unidad y su rama, sin los demás filtros. Una persona abierta en
@@ -55,7 +55,7 @@ if (!dePestana && typeof pedida === "string") filtros.value = { ...SIN_FILTROS, 
 else if (!dePestana && typeof persona === "string") filtros.value = { ...SIN_FILTROS, persona };
 // La persona es de su pestaña: no queda como filtro por defecto del directorio.
 const preferencia = () => ({ filtros: { ...filtros.value, persona: null }, orden: orden.value });
-watch([filtros, orden], () => guardarPreferencia("directorio", preferencia()), { deep: true });
+watch([filtros, orden], () => guardarPreferenciaOrg("directorio", preferencia()), { deep: true });
 const nombrePersona = computed(
   () => org.trabajadores.find((x) => x.id === filtros.value.persona)?.nombre ?? t("directorio.persona"),
 );
@@ -107,9 +107,9 @@ const quitarPlegados = () => {
   for (const k of FILTROS_PLEGADOS) filtros.value[k] = null;
 };
 
-// «Columnas»: lo elegido se recuerda por PC (las pestañas no lo guardan: es cómo se ve, no qué se busca).
-const columnas = ref(leerColumnas(leerPreferencia<unknown>("directorio:columnas", null)));
-watch(columnas, (c) => guardarPreferencia("directorio:columnas", c), { deep: true });
+// «Columnas»: lo elegido se recuerda por organización (las pestañas no lo guardan: es cómo se ve, no qué se busca).
+const columnas = ref(leerColumnas(leerPreferenciaOrg<unknown>("directorio:columnas", null)));
+watch(columnas, (c) => guardarPreferenciaOrg("directorio:columnas", c), { deep: true });
 const ver = (clave: string) => columnaVisible(columnas.value, clave, tipos.value);
 const tiposVisibles = computed(() => tipos.value.filter((x) => ver(`tipo:${x.id}`)));
 const opcionales = computed(() => [

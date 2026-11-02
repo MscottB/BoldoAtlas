@@ -16,9 +16,9 @@ import {
 
 const tres = (activa = "b"): Pestanas => ({
   lista: [
-    { id: "a", ruta: "/" },
-    { id: "b", ruta: "/directorio" },
-    { id: "c", ruta: "/?raiz=u1" },
+    { id: "a", org: "A", ruta: "/" },
+    { id: "b", org: "A", ruta: "/directorio" },
+    { id: "c", org: "A", ruta: "/?raiz=u1" },
   ],
   activa,
 });
@@ -26,17 +26,17 @@ const ids = (m: Pestanas) => m.lista.map((p) => p.id).join("");
 
 describe("abrir", () => {
   it("inserta a la derecha de la activa y la activa", () => {
-    const m = abrir(tres("a"), "n", "/revision")!;
+    const m = abrir(tres("a"), "n", "/revision", "B")!;
     expect(ids(m)).toBe("anbc");
     expect(m.activa).toBe("n");
-    expect(m.lista[1]!.ruta).toBe("/revision");
+    expect(m.lista[1]).toEqual({ id: "n", org: "B", ruta: "/revision" });
   });
 
   it("con el máximo no abre", () => {
-    let m: Pestanas = unaPestana("0");
-    for (let i = 1; i < MAX_PESTANAS; i++) m = abrir(m, String(i), "/")!;
+    let m: Pestanas = unaPestana("0", "A");
+    for (let i = 1; i < MAX_PESTANAS; i++) m = abrir(m, String(i), "/", "A")!;
     expect(m.lista).toHaveLength(MAX_PESTANAS);
-    expect(abrir(m, "x", "/")).toBeNull();
+    expect(abrir(m, "x", "/", "A")).toBeNull();
   });
 });
 
@@ -54,10 +54,38 @@ describe("cerrar", () => {
   });
 
   it("la única pestaña no se cierra, y un id desconocido no cambia nada", () => {
-    const una = unaPestana("a");
+    const una = unaPestana("a", "A");
     expect(cerrar(una, "a")).toBe(una);
     const m = tres();
     expect(cerrar(m, "zz")).toBe(m);
+  });
+
+  it("al cerrar la activa se pasa a una vecina de su organización, aunque la de al lado sea de otra", () => {
+    const m: Pestanas = {
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "B", ruta: "/" },
+        { id: "c", org: "A", ruta: "/" },
+        { id: "d", org: "B", ruta: "/" },
+      ],
+      activa: "a",
+    };
+    expect(cerrar(m, "a").activa).toBe("c"); // a la derecha, saltando la de B
+    expect(cerrar({ ...m, activa: "c" }, "c").activa).toBe("a"); // sin más a la derecha, a la izquierda
+    expect(cerrar({ ...m, activa: "b" }, "b").activa).toBe("d");
+  });
+
+  it("sin otra de su organización, la de siempre", () => {
+    const m: Pestanas = {
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "B", ruta: "/" },
+        { id: "c", org: "C", ruta: "/" },
+      ],
+      activa: "b",
+    };
+    expect(cerrar(m, "b").activa).toBe("c");
+    expect(cerrar({ ...m, activa: "c" }, "c").activa).toBe("b");
   });
 });
 
@@ -66,7 +94,7 @@ describe("vecina", () => {
     expect(vecina(tres("b"), 1)).toBe("c");
     expect(vecina(tres("c"), 1)).toBe("a");
     expect(vecina(tres("a"), -1)).toBe("c");
-    expect(vecina(unaPestana("a"), 1)).toBe("a");
+    expect(vecina(unaPestana("a", "A"), 1)).toBe("a");
   });
 });
 
@@ -97,9 +125,10 @@ describe("leerPestanas", () => {
 
   it("JSON roto o vacío deja una pestaña en el inicio", () => {
     for (const crudo of [null, "x", 3, {}, { lista: "no" }, { lista: [] }]) {
-      const m = leerPestanas(crudo, todas, nuevoId);
+      const m = leerPestanas(crudo, todas, nuevoId, "A");
       expect(m.lista).toHaveLength(1);
       expect(m.lista[0]!.ruta).toBe("/");
+      expect(m.lista[0]!.org).toBe("A");
       expect(m.activa).toBe(m.lista[0]!.id);
     }
   });
@@ -121,6 +150,7 @@ describe("leerPestanas", () => {
       },
       (r) => !r.includes("borrada"),
       nuevoId,
+      "A",
     );
     expect(ids(m)).toBe("adef");
     expect(m.activa).toBe("a"); // la activa guardada ya no existe
@@ -130,17 +160,51 @@ describe("leerPestanas", () => {
     expect(m.lista[3]!.volver).toBe("/directorio");
   });
 
-  it("conserva la activa válida y no pasa del máximo", () => {
+  it("conserva la activa válida y no pasa del máximo más la de la organización abierta", () => {
     const lista = Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, ruta: "/" }));
-    const m = leerPestanas({ lista, activa: "p3" }, todas, nuevoId);
-    expect(m.lista).toHaveLength(MAX_PESTANAS);
+    const m = leerPestanas({ lista, activa: "p3" }, todas, nuevoId, "A");
+    expect(m.lista).toHaveLength(MAX_PESTANAS + 1);
     expect(m.activa).toBe("p3");
   });
 
   it("si todas son inválidas queda una en el inicio", () => {
-    const m = leerPestanas({ lista: [{ id: "a", ruta: "/x" }], activa: "a" }, () => false, nuevoId);
+    const m = leerPestanas({ lista: [{ id: "a", ruta: "/x" }], activa: "a" }, () => false, nuevoId, "A");
     expect(m.lista).toHaveLength(1);
     expect(m.lista[0]!.ruta).toBe("/");
+  });
+
+  it("una pestaña guardada sin `org` queda de la organización actual; la que lo trae lo conserva", () => {
+    const m = leerPestanas(
+      {
+        lista: [
+          { id: "a", ruta: "/" },
+          { id: "b", org: "B", ruta: "/" },
+          { id: "c", org: 3, ruta: "/" },
+        ],
+      },
+      todas,
+      nuevoId,
+      "A",
+    );
+    expect(m.lista.map((p) => p.org)).toEqual(["A", "B", "A"]);
+  });
+
+  it("valida la ruta y la vuelta con la organización de la pestaña", () => {
+    const m = leerPestanas(
+      {
+        lista: [
+          { id: "a", org: "A", ruta: "/?raiz=x" },
+          { id: "b", org: "B", ruta: "/?raiz=x", volver: "/?raiz=x" },
+          { id: "c", ruta: "/", volver: "/?raiz=x" },
+        ],
+      },
+      (r, org) => org === "B" || !r.includes("raiz"),
+      nuevoId,
+      "A",
+    );
+    expect(ids(m)).toBe("bc");
+    expect(m.lista[0]!.volver).toBe("/?raiz=x");
+    expect(m.lista[1]!.volver).toBeUndefined();
   });
 });
 

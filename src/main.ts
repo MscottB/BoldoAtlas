@@ -5,7 +5,8 @@ import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
 import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
-import { fijarBase } from "./lib/baseActiva";
+import { fijarBase, soltarDatos } from "./lib/baseActiva";
+import { migrarPreferencias } from "./lib/preferencias";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
@@ -26,16 +27,19 @@ infoApp()
   .then(async (info) => {
     if (info.error) return createApp(PantallaError, { info }).use(i18n).mount("#app");
     fijarBase(info.baseId);
+    // router.ts importa VistaArbol sin carga diferida: useVista ya se evaluó con la base vacía y se relee aquí.
+    migrarPreferencias(info.baseId, info.dirDatos);
+    soltarDatos();
     const pinia = createPinia();
     const org = useOrganizacion(pinia);
     // Se carga antes de montar para decidir la ruta inicial sin parpadeo; si falla, se muestra el motivo en vez de una app vacía.
     const falloCarga = infoSiFalloCarga(await org.cargar());
     if (falloCarga) return createApp(PantallaError, { info: falloCarga }).use(i18n).mount("#app");
-    // Las pestañas de trabajo de este proyecto (se recuerdan por PC y por base de datos). Se abre en Inicio o, con
-    // «Continuar donde estaba», en la que estaba activa.
+    // Las pestañas de trabajo (se recuerdan por copia de la app). Se abre en Inicio o, con «Continuar donde estaba», en
+    // la que estaba activa.
     const pestanas = usePestanas(pinia);
-    pestanas.conectar(router, info.rutaBd);
-    // Lo último que se abrió, para Inicio: con la misma clave por base que las pestañas.
+    pestanas.conectar(router, info.dirDatos, info.rutaBd);
+    // Lo último que se abrió, para Inicio: con clave por base.
     useRecientes(pinia).conectar(router, info.rutaBd, pestanas.valida);
     const destino = destinoInicial(org.cargado, org.vacia, continuarDondeEstaba.value) ?? pestanas.entrar();
     const app = createApp(App).use(pinia).use(router).use(i18n);

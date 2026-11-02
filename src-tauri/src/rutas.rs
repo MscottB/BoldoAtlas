@@ -1,3 +1,4 @@
+use crate::organizaciones::Base;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -132,11 +133,11 @@ pub struct InfoProyecto {
     pub modificado: Option<i64>,
 }
 
-pub fn info_proyecto(r: &Rutas) -> Result<InfoProyecto, String> {
-    let mut wal = r.bd.as_os_str().to_owned();
+pub fn info_proyecto(r: &Rutas, base: &Base) -> Result<InfoProyecto, String> {
+    let mut wal = base.bd.as_os_str().to_owned();
     wal.push("-wal");
-    let metadatos =
-        std::fs::metadata(&r.bd).map_err(|e| format!("No se pudo leer {}: {e}", r.bd.display()))?;
+    let metadatos = std::fs::metadata(&base.bd)
+        .map_err(|e| format!("No se pudo leer {}: {e}", base.bd.display()))?;
     let mut bytes = metadatos.len();
     let mut modificado = metadatos.modified().ok();
     if let Ok(m) = std::fs::metadata(wal) {
@@ -146,7 +147,7 @@ pub fn info_proyecto(r: &Rutas) -> Result<InfoProyecto, String> {
     Ok(InfoProyecto {
         portable: r.portable,
         dir_datos: r.datos.display().to_string(),
-        ruta_bd: r.bd.display().to_string(),
+        ruta_bd: base.bd.display().to_string(),
         bytes,
         modificado: modificado
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
@@ -166,6 +167,15 @@ fn abierto_desde_zip(exe_dir: &Path) -> bool {
 mod tests {
     use super::*;
     use std::fs;
+
+    /// La base de siempre, como la deja `Estado::abrir_inicial`.
+    fn base_de(r: &Rutas) -> Base {
+        Base {
+            id: "x".into(),
+            bd: r.bd.clone(),
+            respaldos: r.respaldos.clone(),
+        }
+    }
 
     #[cfg(unix)]
     #[test]
@@ -334,7 +344,7 @@ mod tests {
         let r = dir_datos(exe.path(), None).unwrap();
         fs::write(&r.bd, b"12345").unwrap();
         fs::write(r.datos.join("boldo.db-wal"), b"abc").unwrap();
-        let i = info_proyecto(&r).unwrap();
+        let i = info_proyecto(&r, &base_de(&r)).unwrap();
         assert!(i.portable);
         assert_eq!(i.bytes, 8);
         assert_eq!(i.ruta_bd, r.bd.display().to_string());
@@ -347,12 +357,32 @@ mod tests {
         let exe = tempfile::tempdir().unwrap();
         let appdata = tempfile::tempdir().unwrap();
         let r = dir_datos(exe.path(), Some(appdata.path())).unwrap();
-        let err = info_proyecto(&r).unwrap_err();
+        let err = info_proyecto(&r, &base_de(&r)).unwrap_err();
         assert!(err.contains("boldo.db"), "{err}");
         fs::write(&r.bd, b"1234").unwrap();
-        let i = info_proyecto(&r).unwrap();
+        let i = info_proyecto(&r, &base_de(&r)).unwrap();
         assert!(!i.portable);
         assert_eq!(i.bytes, 4);
+    }
+
+    #[test]
+    fn info_proyecto_muestra_la_base_abierta() {
+        let exe = tempfile::tempdir().unwrap();
+        fs::write(exe.path().join("portable.flag"), "").unwrap();
+        let r = dir_datos(exe.path(), None).unwrap();
+        fs::write(&r.bd, b"12345").unwrap();
+        let carpeta = r.datos.join("organizaciones").join("x");
+        fs::create_dir_all(&carpeta).unwrap();
+        let base = Base {
+            id: "x".into(),
+            bd: carpeta.join("organizacion.db"),
+            respaldos: carpeta.join("respaldos"),
+        };
+        fs::write(&base.bd, b"123").unwrap();
+        let i = info_proyecto(&r, &base).unwrap();
+        assert_eq!(i.ruta_bd, base.bd.display().to_string());
+        assert_eq!(i.dir_datos, r.datos.display().to_string());
+        assert_eq!(i.bytes, 3);
     }
 
     #[test]
