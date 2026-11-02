@@ -21,3 +21,5 @@ Para enviar código, revisa la [guía para colaborar](https://github.com/MscottB
 ## Privacidad
 
 Todo se guarda en tu computador. BoldoAtlas no necesita internet para funcionar y no tiene cuentas. Lo único que hace por su cuenta es buscar versiones nuevas (cada día; se cambia o se apaga en Configuración › Actualizaciones): lee la lista pública de versiones en GitHub, no envía datos y nunca instala sin preguntar. Este sitio tampoco usa cookies ni análisis; la página de [Descargas](/descargas) consulta a GitHub el número de la última versión.
+
+La base y los respaldos no van cifrados, y la app no tiene usuarios ni permisos: [SECURITY.md](https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md#política-de-seguridad) explica qué protege, qué no y cómo reportar un problema. BoldoAtlas te ayuda a cumplir las reglas sobre datos personales que te apliquen, pero tratarlos conforme a la ley es responsabilidad de quien la usa.

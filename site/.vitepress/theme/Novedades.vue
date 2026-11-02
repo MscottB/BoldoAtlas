@@ -2,18 +2,15 @@
 import { computed } from "vue";
 import { withBase } from "vitepress";
 import novedades from "../../novedades.json";
+import { imgAyuda } from "./imagenesAyuda";
 import { portada } from "./portadaNovedades";
 
-// Las tarjetas de novedades, con la captura de la ayuda si la hay. La portada (`ultimas`) muestra solo las últimas;
-// la página «Todas las novedades» muestra la lista completa.
+// Las novedades, con la captura de la ayuda si la hay. La portada (`ultimas`) muestra solo las últimas;
+// la página «Todas las novedades» muestra la lista completa. Las que no tienen captura van a todo el ancho.
 const props = defineProps<{ lang: "es" | "en"; ultimas?: boolean }>();
 
 const MAS = { es: "Leer más en el manual", en: "Read more in the manual" };
-
-const urls = import.meta.glob("../../img/es/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
-const urlsEn = import.meta.glob("../../en/img/en/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
-const imgAyuda = (nombre: string) =>
-  props.lang === "es" ? urls[`../../img/es/${nombre}.webp`] : urlsEn[`../../en/img/en/${nombre}.webp`];
+const RECIENTE = { es: "Lo más reciente", en: "Latest" };
 
 const nuevas = computed(() =>
   (props.ultimas ? portada(novedades) : novedades).map((n) => {
@@ -21,7 +18,7 @@ const nuevas = computed(() =>
     return {
       id: n.id,
       ...x,
-      imagen: "imagen" in n ? imgAyuda(n.imagen as string) : undefined,
+      imagen: "imagen" in n ? imgAyuda(props.lang, n.imagen as string) : undefined,
       href: `${props.lang === "es" ? "" : "/en"}/manual/${n.pagina}${x.ancla ? "#" + x.ancla : ""}`,
     };
   }),
@@ -30,12 +27,18 @@ const nuevas = computed(() =>
 
 <template>
   <ul class="nuevo" role="list">
-    <li v-for="n in nuevas" :key="n.id">
+    <li v-for="(n, i) in nuevas" :key="n.id" :class="n.imagen ? 'con-imagen' : 'sin-imagen'">
       <img v-if="n.imagen" :src="n.imagen" :alt="n.alt" width="640" height="400" loading="lazy" decoding="async" />
       <div class="cuerpo">
-        <h3>{{ n.titulo }}</h3>
-        <p>{{ n.texto }}</p>
-        <a class="mas" :href="withBase(n.href)">{{ MAS[lang] }} →</a>
+        <div class="encabezado">
+          <p v-if="i === 0" class="reciente">{{ RECIENTE[lang] }}</p>
+          <!-- en la portada cuelga de un h2; en su página, del h1 -->
+          <component :is="ultimas ? 'h3' : 'h2'" class="titulo">{{ n.titulo }}</component>
+        </div>
+        <div class="detalle">
+          <p class="texto">{{ n.texto }}</p>
+          <a class="mas" :href="withBase(n.href)" :aria-label="`${MAS[lang]}: ${n.titulo}`">{{ MAS[lang] }} →</a>
+        </div>
       </div>
     </li>
   </ul>
@@ -43,11 +46,10 @@ const nuevas = computed(() =>
 
 <style scoped>
 .nuevo {
-  --pr-radio: 16px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
-  margin: 40px 0 0;
+  margin: 40px 0 0 !important; /* la portada le quita el margen a sus listas */
   padding: 0;
   list-style: none;
 }
@@ -57,12 +59,13 @@ const nuevas = computed(() =>
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--vp-c-divider);
-  border-radius: var(--pr-radio);
+  border-radius: 16px;
   background: var(--vp-c-bg);
 }
 .nuevo img {
   display: block;
   width: 100%;
+  height: auto;
   aspect-ratio: 8 / 5;
   object-fit: cover;
   object-position: top left;
@@ -73,31 +76,59 @@ const nuevas = computed(() =>
 .nuevo .cuerpo {
   padding: 24px;
 }
-.nuevo h3 {
+.nuevo .titulo {
   margin: 0;
-  font-size: 1.125rem;
-  line-height: 1.35;
+  padding: 0;
+  border: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   font-weight: 650;
   color: var(--vp-c-text-1);
 }
-.nuevo p {
+.nuevo .reciente {
+  margin: 0 0 8px;
+  color: var(--vp-c-brand-1);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.nuevo .texto {
   margin: 8px 0 0;
   color: var(--vp-c-text-2);
   line-height: 1.6;
 }
-a.mas {
+.nuevo a.mas {
   display: inline-block;
   margin-top: 16px;
   color: var(--vp-c-brand-1);
   font-weight: 600;
   text-decoration: none;
 }
-a.mas:hover {
+.nuevo a.mas:hover {
   text-decoration: underline;
 }
-a:focus-visible {
+.nuevo a:focus-visible {
   outline: 2px solid var(--vp-c-brand-1);
   outline-offset: 3px;
   border-radius: 6px;
+}
+@media (min-width: 768px) {
+  .nuevo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* sin captura: una fila a todo el ancho, con el título a un lado y el texto al otro */
+  .nuevo .sin-imagen {
+    grid-column: 1 / -1;
+  }
+  .nuevo .sin-imagen .cuerpo {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 32px;
+    align-items: start;
+  }
+  .nuevo .sin-imagen .texto {
+    margin-top: 0;
+  }
 }
 </style>
