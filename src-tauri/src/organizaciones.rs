@@ -6,9 +6,11 @@ use crate::respaldos::{Fallo, con_sufijo, limpiar_parciales};
 use crate::rutas::Rutas;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{self, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
 /// Quien pide datos cree tener abierta otra base: no se ejecuta nada.
@@ -145,6 +147,11 @@ const VERSION_LISTA: u32 = 1;
 const PRINCIPAL: &str = "boldo.db";
 const CARPETA: &str = "organizaciones";
 const ARCHIVO: &str = "organizacion.db";
+/// Cuántas veces se intenta leer la lista si el error no es que falte, y la pausa entre intentos.
+const LECTURAS_LISTA: u32 = 3;
+const PAUSA_LECTURA: Duration = Duration::from_millis(100);
+/// Cuánto se espera a que una unidad externa diga si el archivo está.
+const LIMITE_UNIDAD: Duration = Duration::from_secs(3);
 
 pub const PALETA: [&str; 8] = [
     "#3b6fb5", "#2f855a", "#b7791f", "#c05621", "#9b2c2c", "#805ad5", "#2c7a7b", "#b83280",
@@ -181,23 +188,30 @@ impl Entrada {
         !self.externa && self.ruta == PRINCIPAL
     }
 
-    /// `Normal` en cada parte deja fuera `..`, y también lo que haría que `join` ignore la carpeta de datos (`C:x`, `\x`).
+    /// Una interna solo puede estar en uno de sus dos lugares: el texto exacto deja fuera `..`, `C:x`, `BOLDO.DB` y la carpeta
+    /// de otra organización.
     fn es_valida(&self) -> bool {
-        let ruta = Path::new(&self.ruta);
         es_id_valido(&self.id)
             && if self.externa {
-                ruta.is_absolute()
+                Path::new(&self.ruta).is_absolute()
             } else {
-                !self.ruta.is_empty()
-                    && ruta.components().all(|c| matches!(c, Component::Normal(_)))
+                self.ruta == PRINCIPAL || self.ruta == ruta_interna(&self.id)
             }
     }
+}
+
+fn ruta_interna(id: &str) -> String {
+    format!("{CARPETA}/{id}/{ARCHIVO}")
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Lista {
     pub version: u32,
     pub organizaciones: Vec<Entrada>,
+    /// El archivo tiene algo que esta copia no puede reemplazar: no se pudo leer, o es de una versión más nueva. Se abre lo
+    /// que se pueda y `escribir_lista` lo rechaza.
+    #[serde(skip)]
+    pub no_escribir: bool,
 }
 
 /// Lo que Inicio muestra de cada organización.
@@ -245,12 +259,17 @@ fn leer_meta(conn: &Connection, clave: &str) -> Option<String> {
     .ok()
 }
 
-/// Sin unidades ni trabajadores, ni siquiera eliminados, y sin nombre: lo que deja una instalación nueva.
+/// Nada que perder ni que heredar: sin filas, ni siquiera eliminadas, en las tablas que no traen datos sembrados, y sin nombre
+/// ni logo. Es lo que deja una instalación nueva.
 pub fn esta_vacia(conn: &Connection) -> rusqlite::Result<bool> {
     conn.query_row(
         "SELECT NOT EXISTS (SELECT 1 FROM unidades)
             AND NOT EXISTS (SELECT 1 FROM trabajadores)
-            AND COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''",
+            AND NOT EXISTS (SELECT 1 FROM cargos)
+            AND NOT EXISTS (SELECT 1 FROM sedes)
+            AND NOT EXISTS (SELECT 1 FROM procesos)
+            AND COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''
+            AND COALESCE((SELECT valor FROM meta WHERE clave = 'logo_png'), '') = ''",
         [],
         |f| f.get(0),
     )
@@ -305,7 +324,7 @@ fn reconstruir(r: &Rutas) -> Lista {
         if let Some(id) = nombre.to_str().filter(|n| es_id_valido(n)) {
             encontradas.push(entrada_de(
                 &carpeta.path().join(ARCHIVO),
-                format!("{CARPETA}/{id}/{ARCHIVO}"),
+                ruta_interna(id),
                 Some(id),
             ));
         }
@@ -313,6 +332,7 @@ fn reconstruir(r: &Rutas) -> Lista {
     let mut l = Lista {
         version: VERSION_LISTA,
         organizaciones: Vec::new(),
+        no_escribir: false,
     };
     for mut e in encontradas.into_iter().flatten() {
         e.color = color_libre(&l).into();
@@ -321,22 +341,76 @@ fn reconstruir(r: &Rutas) -> Lista {
     l
 }
 
-/// La lista, o la reconstruida si falta o está dañada. Una entrada que apunta afuera de donde debe se descarta.
-pub fn cargar_lista(r: &Rutas) -> Lista {
-    let leida = fs::read(r.datos.join(LISTA))
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Lista>(&b).ok());
-    match leida {
-        Some(mut l) => {
-            l.organizaciones.retain(Entrada::es_valida);
-            l
+/// Reintenta lo que no sea que falte: un antivirus o una copia de seguridad pueden tenerlo tomado un momento.
+fn leer_con_reintento(ruta: &Path) -> io::Result<Vec<u8>> {
+    let mut intento = 1;
+    loop {
+        match fs::read(ruta) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound && intento < LECTURAS_LISTA => {
+                intento += 1;
+                std::thread::sleep(PAUSA_LECTURA);
+            }
+            hecho => return hecho,
         }
-        None => reconstruir(r),
+    }
+}
+
+/// `None` si no se entiende. La versión se mira antes que el formato: una más nueva puede tener otro, y eso no es un daño.
+fn interpretar(bytes: &[u8]) -> Option<Lista> {
+    let valor: Value = serde_json::from_slice(bytes).ok()?;
+    let version = u32::try_from(valor.get("version")?.as_u64()?).ok()?;
+    if version <= VERSION_LISTA {
+        return serde_json::from_value(valor).ok();
+    }
+    let organizaciones = valor
+        .get("organizaciones")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| Entrada::deserialize(e).ok())
+        .collect();
+    Some(Lista {
+        version,
+        organizaciones,
+        no_escribir: true,
+    })
+}
+
+/// La lista. Si falta, se reconstruye. Si está dañada también, tras guardar una copia en `.danado`, porque tenía las externas.
+/// Si no se pudo leer o es de una versión más nueva, sale marcada para no reemplazar el archivo. Una entrada que apunta afuera
+/// de donde debe se descarta.
+pub fn cargar_lista(r: &Rutas) -> Lista {
+    let ruta = r.datos.join(LISTA);
+    let bytes = match leer_con_reintento(&ruta) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return reconstruir(r),
+        Err(_) => {
+            return Lista {
+                no_escribir: true,
+                ..reconstruir(r)
+            };
+        }
+    };
+    if let Some(mut l) = interpretar(&bytes) {
+        l.organizaciones.retain(Entrada::es_valida);
+        return l;
+    }
+    // sin la copia no se reemplaza
+    let copiada = fs::write(con_sufijo(&ruta, ".danado"), &bytes).is_ok();
+    Lista {
+        no_escribir: !copiada,
+        ..reconstruir(r)
     }
 }
 
 /// A un temporal, que se renombra: un corte no la deja a medias.
 pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
+    if l.no_escribir {
+        return Err(Fallo::de(
+            "fallo",
+            "organizaciones.json no se pudo leer o es de una versión más nueva: no se reemplaza",
+        ));
+    }
     let destino = r.datos.join(LISTA);
     let temporal = con_sufijo(&destino, ".tmp");
     let escribir = || -> Result<(), Fallo> {
@@ -355,8 +429,17 @@ pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
     hecho
 }
 
-/// Abre lo que dice la entrada, si sigue siendo eso. Un archivo externo pudo cambiar desde que se agregó: se revisa antes de
-/// abrirlo para escribir.
+/// `false` si no responde a tiempo. Un hilo colgado no daña nada: solo mira, y se va con el proceso.
+fn con_limite(limite: Duration, f: impl FnOnce() -> bool + Send + 'static) -> bool {
+    let (envio, recibo) = mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = envio.send(f());
+    });
+    recibo.recv_timeout(limite).unwrap_or(false)
+}
+
+/// Abre lo que dice la entrada, si sigue siendo eso. Lo que se pueda saber sin escribir se revisa antes: un archivo externo pudo
+/// cambiar desde que se agregó, y uno con otro id no es de esta entrada, así que no se migra ni se le deja nada al lado.
 pub fn abrir_entrada(
     r: &Rutas,
     e: &Entrada,
@@ -364,13 +447,28 @@ pub fn abrir_entrada(
     migraciones: &[&str],
 ) -> Result<Abierta, Fallo> {
     let base = base_de(r, e);
-    if !base.bd.is_file() {
+    // una unidad que no responde cuelga hasta esto, y el arranque ocurre antes de crear la ventana
+    let existe = if e.externa {
+        let bd = base.bd.clone();
+        con_limite(LIMITE_UNIDAD, move || bd.is_file())
+    } else {
+        base.bd.is_file()
+    };
+    if !existe {
         return Err(Fallo::de("no_encontrado", base.bd.display()));
     }
     if e.externa {
+        // shortcut: si la unidad se cuelga justo después, aquí no hay límite y el arranque espera; cambiarlo si llega a pasar
         version_y_esquema(&base.bd, migraciones)?;
     }
+    let id_leido = solo_lectura_cerrada(&base.bd)
+        .ok()
+        .and_then(|c| leer_meta(&c, "db_id"));
+    if id_leido.is_some_and(|id| es_id_valido(&id) && id != e.id) {
+        return Err(Fallo::de("otro_id", base.bd.display()));
+    }
     let a = abrir_base(&base.bd, &base.respaldos, None, espera, migraciones)?;
+    // sin un id válido, el archivo recibió uno nuevo al abrir
     if a.id != e.id {
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
@@ -378,8 +476,14 @@ pub fn abrir_entrada(
 }
 
 /// Deja en la lista lo que se acaba de abrir, con su nombre y su hora. Un `boldo.db` vacío no se lista: lo usa la primera
-/// organización que se cree.
-pub fn anotar_abierta(l: &mut Lista, e: &Entrada, conn: &Connection) -> rusqlite::Result<()> {
+/// organización que se cree. `es_la_ultima` es `false` si se abrió porque otra no pudo: no toma su lugar, y el próximo arranque
+/// la reintenta. Sin hora previa queda en blanco, la más antigua.
+pub fn anotar_abierta(
+    l: &mut Lista,
+    e: &Entrada,
+    conn: &Connection,
+    es_la_ultima: bool,
+) -> rusqlite::Result<()> {
     // el mismo archivo con otro id (se reemplazó por fuera): la entrada anterior ya no apunta a nada
     l.organizaciones
         .retain(|o| o.id == e.id || o.ruta != e.ruta || o.externa != e.externa);
@@ -392,15 +496,21 @@ pub fn anotar_abierta(l: &mut Lista, e: &Entrada, conn: &Connection) -> rusqlite
         conn.query_row("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')", [], |f| {
             f.get(0)
         })?;
-    if let Some(o) = l.organizaciones.iter_mut().find(|o| o.id == e.id) {
+    let misma = l
+        .organizaciones
+        .iter_mut()
+        .find(|o| o.id == e.id && o.ruta == e.ruta);
+    if let Some(o) = misma {
         o.nombre = nombre;
-        o.abierta = abierta;
+        if es_la_ultima {
+            o.abierta = abierta;
+        }
     } else {
         let color = color_libre(l).into();
         l.organizaciones.push(Entrada {
             nombre,
             color,
-            abierta,
+            abierta: if es_la_ultima { abierta } else { String::new() },
             ..e.clone()
         });
     }
@@ -706,6 +816,7 @@ pub(crate) mod prueba {
             &Lista {
                 version: VERSION_LISTA,
                 organizaciones,
+                no_escribir: false,
             },
         )
         .unwrap();
@@ -798,6 +909,11 @@ mod tests_lista {
             let mut esperado = vec![id.as_str(), e.id.as_str()];
             esperado.sort();
             assert_eq!(hay, esperado, "{danado}");
+            // lo que tenía se conserva: puede traer externas que ya no se pueden saber
+            assert_eq!(
+                fs::read_to_string(r.datos.join("organizaciones.json.danado")).unwrap(),
+                danado
+            );
         }
         assert_eq!(antes, archivos.map(|p| fs::read(p).unwrap()));
     }
@@ -930,6 +1046,7 @@ mod tests_lista {
         let mut l = Lista {
             version: 1,
             organizaciones: vec![],
+            no_escribir: false,
         };
         assert_eq!(color_libre(&l), PALETA[0]);
         l.organizaciones
@@ -949,6 +1066,7 @@ mod tests_lista {
         let l = Lista {
             version: 1,
             organizaciones: vec![entrada(&nuevo_id(), bd.to_str().unwrap(), true, "x")],
+            no_escribir: false,
         };
         let v = &vistas(&r, &l, None)[0];
         assert!(!v.existe && !v.activa);
@@ -957,6 +1075,113 @@ mod tests_lista {
         assert_eq!(v.ruta, bd.display().to_string());
         // mirarla no crea nada
         assert!(!bd.exists());
+    }
+
+    #[test]
+    fn una_lista_marcada_no_se_escribe() {
+        let (_exe, r) = rutas();
+        let json = r.datos.join("organizaciones.json");
+        fs::write(&json, "lo que había").unwrap();
+        let l = Lista {
+            version: 1,
+            organizaciones: vec![],
+            no_escribir: true,
+        };
+        assert_eq!(escribir_lista(&r, &l).unwrap_err().codigo, "fallo");
+        assert_eq!(fs::read_to_string(&json).unwrap(), "lo que había");
+        assert!(!con_sufijo(&json, ".tmp").exists());
+        // la marca no llega al archivo
+        escribir(&r, vec![]);
+        assert!(!fs::read_to_string(&json).unwrap().contains("no_escribir"));
+    }
+
+    #[test]
+    fn solo_lo_que_no_se_puede_reemplazar_sale_marcado() {
+        let (_exe, r) = rutas();
+        let json = r.datos.join("organizaciones.json");
+        assert!(!cargar_lista(&r).no_escribir);
+        fs::write(&json, "{ dañado").unwrap();
+        assert!(!cargar_lista(&r).no_escribir);
+        fs::write(&json, r#"{"version":2}"#).unwrap();
+        assert!(cargar_lista(&r).no_escribir);
+        fs::remove_file(&json).unwrap();
+        fs::create_dir(&json).unwrap();
+        assert!(cargar_lista(&r).no_escribir);
+    }
+
+    #[test]
+    fn con_limite_se_rinde_si_no_responde() {
+        assert!(con_limite(Duration::from_secs(5), || true));
+        assert!(!con_limite(Duration::from_secs(5), || false));
+        let t = Instant::now();
+        assert!(!con_limite(Duration::from_millis(10), || {
+            std::thread::sleep(Duration::from_secs(2));
+            true
+        }));
+        assert!(t.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn una_ruta_interna_solo_vale_en_su_lugar() {
+        let (_exe, r) = rutas();
+        let (id, otro) = (nuevo_id(), nuevo_id());
+        let buena = format!("organizaciones/{id}/organizacion.db");
+        escribir(
+            &r,
+            vec![
+                entrada(&nuevo_id(), "BOLDO.DB", false, "x"),
+                entrada(&nuevo_id(), "Boldo.db", false, "x"),
+                entrada(&nuevo_id(), "respaldos/boldo-20200101-0000.db", false, "x"),
+                entrada(
+                    &id,
+                    &format!("organizaciones/{otro}/organizacion.db"),
+                    false,
+                    "x",
+                ),
+                entrada(
+                    &id,
+                    &format!("organizaciones\\{id}\\organizacion.db"),
+                    false,
+                    "x",
+                ),
+                entrada(&id, &buena, false, "x"),
+            ],
+        );
+        let l = cargar_lista(&r);
+        assert_eq!(l.organizaciones.len(), 1);
+        assert_eq!(l.organizaciones[0].ruta, buena);
+        assert!(!l.organizaciones[0].es_principal());
+    }
+
+    #[test]
+    fn esta_vacia_cuenta_catalogos_y_logo() {
+        let (_exe, r) = rutas();
+        for sql in [
+            "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
+            "INSERT INTO sedes (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
+            "INSERT INTO procesos (id, unidad_id, nombre, created_at, updated_at)
+             VALUES ('c', 'u', 'C', 'x', 'x')",
+            "INSERT INTO meta (clave, valor) VALUES ('logo_png', 'QUJD')",
+        ] {
+            let _ = respaldos::borrar_bd(&r.bd);
+            crear(&r.bd, "", MIGRACIONES);
+            let c = db::abrir(&r.bd).unwrap();
+            c.pragma_update(None, "foreign_keys", "OFF").unwrap();
+            assert!(esta_vacia(&c).unwrap());
+            c.execute(sql, []).unwrap();
+            assert!(!esta_vacia(&c).unwrap(), "{sql}");
+            c.close().unwrap();
+        }
+        // un logo que se quitó queda como texto vacío, y una base de esquema anterior también se puede revisar
+        let _ = respaldos::borrar_bd(&r.bd);
+        crear(&r.bd, "", &MIGRACIONES[..1]);
+        let c = db::abrir(&r.bd).unwrap();
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('logo_png', '')",
+            [],
+        )
+        .unwrap();
+        assert!(esta_vacia(&c).unwrap());
     }
 
     #[test]

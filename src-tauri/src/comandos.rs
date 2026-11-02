@@ -134,6 +134,7 @@ impl Estado {
             .cloned();
         let mut aviso = None;
         let mut abierta = None;
+        let mut es_la_ultima = true;
         if let Some(e) = ultima {
             match abrir_entrada(r, &e, espera, migraciones) {
                 Ok(a) => abierta = Some((a, e)),
@@ -142,6 +143,8 @@ impl Estado {
                     return guardar_error(f);
                 }
                 Err(f) => {
+                    // la otra sigue siendo la última: el próximo arranque la reintenta, por si vuelve el pendrive
+                    es_la_ultima = e.es_principal();
                     aviso = Some(AvisoInicio {
                         codigo: f.codigo,
                         nombre: e.nombre,
@@ -159,8 +162,8 @@ impl Estado {
                 Err(f) => return guardar_error(f),
             },
         };
-        // la lista no es imprescindible: sin poder escribirla se abre igual, y se reintenta la próxima vez
-        if anotar_abierta(&mut lista, &e, &a.conn).is_ok() {
+        // la lista no es imprescindible: sin poder escribirla (o si salió marcada) se abre igual, y se reintenta la próxima vez
+        if anotar_abierta(&mut lista, &e, &a.conn, es_la_ultima).is_ok() {
             let _ = escribir_lista(r, &lista);
         }
         *conn = Some(a.conn);
@@ -317,9 +320,12 @@ pub struct InfoApp {
     aviso_inicio: Option<AvisoInicio>,
 }
 
+/// En un hilo aparte: mira cada archivo, y una unidad externa lenta no debe congelar la ventana.
 #[tauri::command]
-pub fn listar_organizaciones(estado: State<Estado>) -> Result<Vec<OrganizacionVista>, Fallo> {
-    estado.listar_organizaciones()
+pub async fn listar_organizaciones(app: AppHandle) -> Result<Vec<OrganizacionVista>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<Estado>().listar_organizaciones())
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -1445,6 +1451,210 @@ mod arranque_organizaciones {
         let l = lista_del_json(&r);
         assert_eq!(l.organizaciones.len(), 2);
         assert!(l.organizaciones.contains(&ausente));
+        // `boldo.db` no pasa a ser la última: su hora sigue igual
+        let principal = l.organizaciones.iter().find(|o| o.id == id).unwrap();
+        assert_eq!(principal.abierta, "2020");
+    }
+
+    #[test]
+    fn al_volver_el_pendrive_se_reabre_la_ultima() {
+        let (_exe, r) = rutas();
+        let afuera = tempfile::tempdir().unwrap();
+        let pendrive = afuera.path().join("externa.db");
+        let guardada = afuera.path().join("guardada.db");
+        let id_externa = crear(&pendrive, "Del pendrive", db::MIGRACIONES);
+        fs::rename(&pendrive, &guardada).unwrap();
+        let o = entrada(&id_externa, pendrive.to_str().unwrap(), true, "2026");
+        con_principal(&r, o);
+
+        // el aviso se repite mientras no abra
+        for _ in 0..2 {
+            let e = arrancar(&r);
+            abrio_boldo_db(&e, &r);
+            assert_eq!(aviso(&e).0, "no_encontrado");
+            assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        }
+
+        fs::rename(&guardada, &pendrive).unwrap();
+        let e = arrancar(&r);
+        assert_eq!(e.base_abierta().unwrap().id, id_externa);
+        assert_eq!(*e.aviso_inicio.lock().unwrap(), None);
+    }
+
+    #[test]
+    fn un_boldo_db_sin_entrada_se_lista_sin_pasar_a_ser_la_ultima() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        let afuera = tempfile::tempdir().unwrap();
+        let ausente = entrada(
+            &uuid::Uuid::now_v7().to_string(),
+            afuera.path().join("retirado.db").to_str().unwrap(),
+            true,
+            "2026",
+        );
+        escribir(&r, vec![ausente.clone()]);
+
+        let e = arrancar(&r);
+        abrio_boldo_db(&e, &r);
+        assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        let l = lista_del_json(&r);
+        assert_eq!(l.organizaciones.len(), 2);
+        assert!(l.organizaciones.iter().any(|o| o.id == id));
+        assert!(l.organizaciones.contains(&ausente));
+
+        // sigue intentando la ausente
+        assert_eq!(aviso(&arrancar(&r)).0, "no_encontrado");
+    }
+
+    #[test]
+    fn boldo_db_con_el_id_de_otra_no_pisa_su_entrada() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        let otra = entrada(
+            &id,
+            &format!("organizaciones/{id}/organizacion.db"),
+            false,
+            "2026",
+        );
+        escribir(&r, vec![otra.clone()]);
+        let e = arrancar(&r);
+        abrio_boldo_db(&e, &r);
+        let l = lista_del_json(&r);
+        assert_eq!(l.organizaciones.len(), 2);
+        assert!(l.organizaciones.contains(&otra));
+        assert!(l.organizaciones.iter().any(|o| o.es_principal()));
+    }
+
+    #[test]
+    fn otro_id_no_escribe_en_el_archivo_ajeno() {
+        let (_exe, r) = rutas();
+        let o = interna(&r, "2026");
+        let bd = ruta_de(&r, &o);
+        // un archivo de esquema anterior, con otro id, en el lugar de la entrada: abrirlo lo migraría
+        fs::remove_file(&bd).unwrap();
+        crear(&bd, "Ajena", &db::MIGRACIONES[..1]);
+        let antes = fs::read(&bd).unwrap();
+        let id = con_principal(&r, o.clone());
+
+        let e = arrancar(&r);
+        assert_eq!(abrio_boldo_db(&e, &r).id, id);
+        assert_eq!(aviso(&e).0, "otro_id");
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros(&bd);
+        assert!(!respaldos::con_sufijo(&bd, ".bloqueo").exists());
+        assert!(!base_de(&r, &o).respaldos.exists());
+    }
+
+    #[test]
+    fn un_db_id_invalido_tambien_da_otro_id() {
+        let (_exe, r) = rutas();
+        let o = interna(&r, "2026");
+        fija_meta(&ruta_de(&r, &o), "db_id", "../../x");
+        con_principal(&r, o);
+        assert_eq!(aviso(&arrancar(&r)).0, "otro_id");
+    }
+
+    /// Lo que escribiría una versión más nueva: otro formato de entrada al lado de una que aún se entiende.
+    fn json_de_version_mayor(o: &Entrada) -> Vec<u8> {
+        serde_json::to_vec(&serde_json::json!({
+            "version": 2,
+            "organizaciones": [{ "formato": "nuevo" }, o],
+            "ajustes": { "tema": "oscuro" },
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn version_mayor_no_se_reescribe_y_abre_lo_que_entiende() {
+        let (_exe, r) = rutas();
+        crear(&r.bd, "La mía", db::MIGRACIONES);
+        let o = interna(&r, "2026");
+        let json = r.datos.join("organizaciones.json");
+        let antes = json_de_version_mayor(&o);
+        fs::write(&json, &antes).unwrap();
+
+        let e = arrancar(&r);
+        assert_eq!(e.base_abierta().unwrap().id, o.id);
+        assert_eq!(fs::read(&json).unwrap(), antes);
+        assert!(!r.datos.join("organizaciones.json.danado").exists());
+    }
+
+    #[test]
+    fn version_mayor_sin_nada_que_entender_abre_boldo_db() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        let json = r.datos.join("organizaciones.json");
+        let antes = br#"{"version":2,"lista":{"otra":"forma"}}"#;
+        fs::write(&json, antes).unwrap();
+
+        let e = arrancar(&r);
+        assert_eq!(abrio_boldo_db(&e, &r).id, id);
+        assert_eq!(fs::read(&json).unwrap(), antes);
+    }
+
+    /// Tomado como lo toma un antivirus: no deja leerlo, y sí reemplazarlo.
+    #[cfg(windows)]
+    fn tomar(ruta: &std::path::Path) -> fs::File {
+        use std::os::windows::fs::OpenOptionsExt;
+        const SOLO_BORRAR: u32 = 4; // FILE_SHARE_DELETE
+        fs::OpenOptions::new()
+            .read(true)
+            .share_mode(SOLO_BORRAR)
+            .open(ruta)
+            .unwrap()
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn archivo_tomado_deja_la_lista_intacta() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        let afuera = tempfile::tempdir().unwrap();
+        let externa = entrada(
+            &uuid::Uuid::now_v7().to_string(),
+            afuera.path().join("externa.db").to_str().unwrap(),
+            true,
+            "2020",
+        );
+        escribir(&r, vec![externa.clone()]);
+        let json = r.datos.join("organizaciones.json");
+        let antes = fs::read(&json).unwrap();
+
+        let tomado = tomar(&json);
+        let e = arrancar(&r);
+        assert_eq!(abrio_boldo_db(&e, &r).id, id);
+        drop(tomado);
+
+        assert_eq!(fs::read(&json).unwrap(), antes);
+        assert!(!r.datos.join("organizaciones.json.danado").exists());
+        assert_eq!(cargar_lista(&r).organizaciones, vec![externa]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn un_error_pasajero_al_leer_se_reintenta() {
+        let (_exe, r) = rutas();
+        let o = entrada(&uuid::Uuid::now_v7().to_string(), "boldo.db", false, "x");
+        escribir(&r, vec![o.clone()]);
+        let tomado = tomar(&r.datos.join("organizaciones.json"));
+        let hilo = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            drop(tomado);
+        });
+        assert_eq!(cargar_lista(&r).organizaciones, vec![o]);
+        hilo.join().unwrap();
+    }
+
+    #[test]
+    fn sin_poder_guardar_la_copia_del_danado_no_se_reemplaza() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        let json = r.datos.join("organizaciones.json");
+        fs::write(&json, "{ dañado").unwrap();
+        fs::create_dir(r.datos.join("organizaciones.json.danado")).unwrap();
+        let e = arrancar(&r);
+        assert_eq!(abrio_boldo_db(&e, &r).id, id);
+        assert_eq!(fs::read_to_string(&json).unwrap(), "{ dañado");
     }
 
     #[test]
@@ -1553,6 +1763,7 @@ mod arranque_organizaciones {
         assert_eq!(abrio_boldo_db(&e, &r).id, id);
         assert!(json.is_dir());
         assert!(!r.datos.join("organizaciones.json.tmp").exists());
+        assert!(!r.datos.join("organizaciones.json.danado").exists());
     }
 
     #[test]
@@ -1563,6 +1774,10 @@ mod arranque_organizaciones {
         let e = arrancar(&r);
         assert_eq!(abrio_boldo_db(&e, &r).id, id);
         assert_eq!(lista_del_json(&r).organizaciones[0].id, id);
+        assert_eq!(
+            fs::read_to_string(r.datos.join("organizaciones.json.danado")).unwrap(),
+            "{ dañado"
+        );
     }
 
     #[test]
