@@ -5,7 +5,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, globSync, mkdtempSync, readdirSync } from "node:fs";
 import { createServer } from "node:net";
-import { join, win32 } from "node:path";
+import { basename, join, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TAR, artefactos } from "./release.mjs";
 
@@ -17,6 +17,7 @@ const PERSONA = { id: "humo-foto", nombre: "Persona de humo" };
 // PNG de 1×1
 const FOTO =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==";
+const POLITICA = "HKCU\\Software\\Policies\\Microsoft\\Edge\\WebView2\\AdditionalBrowserArguments";
 const ESPERA_ARRANQUE_MS = 8000; // ESPERA_ARRANQUE de organizaciones.rs: una segunda instancia no debe llegar a esperarla
 
 /** @param {NodeJS.ProcessEnv} e */
@@ -132,13 +133,13 @@ async function conectarCdp(url) {
 /** La app abierta y lo que se le puede pedir por su página. @param {string} exe */
 async function abrirApp(exe) {
   const puerto = await puertoLibre();
-  const proceso = spawn(exe, [], {
-    env: {
-      ...process.env,
-      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${puerto} --remote-allow-origins=*`,
-    },
-    stdio: ["ignore", "pipe", "pipe"],
+  // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS no llega: wry pasa sus propios argumentos, y mandan sobre la variable. La política
+  // de WebView2 del usuario del runner, sí. Por eso esto va solo en CI: es un ajuste del usuario que corre la prueba.
+  const argumentos = `--remote-debugging-port=${puerto} --remote-allow-origins=*`;
+  execFileSync("reg", ["add", POLITICA, "/v", basename(exe), "/t", "REG_SZ", "/d", argumentos, "/f"], {
+    stdio: "ignore",
   });
+  const proceso = spawn(exe, [], { stdio: ["ignore", "pipe", "pipe"] });
   for (const salida of [proceso.stdout, proceso.stderr]) {
     salida.on("data", (b) => anotar(`[proceso] ${String(b).trimEnd()}`));
   }
