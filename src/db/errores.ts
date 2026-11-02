@@ -30,6 +30,7 @@ const reglas: [(texto: string) => boolean, string][] = [
 const nativos: [RegExp, string][] = [
   [/dentro de un \.zip \((?<ruta>.+?)\)\./s, "errores.desdeZip"],
   [/esquema (?<actual>\d+); esta app conoce hasta el (?<conocida>\d+)/, "errores.esquemaNuevo"],
+  [/^Otra copia de BoldoAtlas tiene abierta esta base: (?<ruta>.+)$/s, "errores.abiertaEnOtraCopia"],
   [/^No se puede escribir en (?<ruta>.+?)\. Mueve .*Detalle: (?<detalle>.*)$/s, "errores.sinPermiso"],
   [/copia temporal de solo lectura \((?<ruta>.+?)\)\./s, "errores.translocado"],
   [/^No se encontró la carpeta de datos del usuario/, "errores.sinAppdata"],

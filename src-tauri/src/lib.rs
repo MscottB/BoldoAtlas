@@ -4,6 +4,7 @@ mod db;
 mod fotos;
 mod inicio;
 mod intercambio;
+mod organizaciones;
 mod respaldos;
 mod rutas;
 mod salida;
@@ -67,6 +68,8 @@ pub fn run() {
             }
         })
         .setup(move |app| {
+            // la base también abre aquí: una segunda instancia no espera el bloqueo ni migra antes de traer al frente la ventana
+            app.state::<comandos::Estado>().abrir_inicial();
             // en setup y no al iniciar: una segunda instancia sale en el plugin de arriba, antes de llegar aquí, y no le
             // borra a la primera las copias con que está trabajando
             for dir in datos.iter().chain(respaldos_dir.iter()) {

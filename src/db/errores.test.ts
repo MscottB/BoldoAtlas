@@ -124,6 +124,12 @@ describe("traducirError", () => {
     expect(colorMalo).toBe("El color debe tener el formato #rrggbb (por ejemplo, #be123c).");
   });
 
+  it("traduce el aviso de otra copia con la base abierta y conserva la ruta", () => {
+    expect(traducirError("Otra copia de BoldoAtlas tiene abierta esta base: C:/x")).toBe(
+      "Otra copia de BoldoAtlas tiene abierta esta base (C:/x). Ciérrala y vuelve a abrir BoldoAtlas.",
+    );
+  });
+
   it("no confunde el CHECK de nombre de un catálogo con el de la persona", () => {
     const texto = "CHECK constraint failed: length(trim(nombre)) > 0";
     expect(traducirError(texto)).toBe(texto);

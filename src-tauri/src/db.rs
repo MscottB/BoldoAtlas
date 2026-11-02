@@ -2,6 +2,7 @@ use rusqlite::types::{Value as Sql, ValueRef};
 use rusqlite::{Connection, ErrorCode, TransactionBehavior, params_from_iter};
 use serde::Deserialize;
 use serde_json::{Map, Value};
+use std::fmt::Display;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -70,6 +71,13 @@ pub fn abrir(ruta: &Path) -> Result<Connection, String> {
     }
 }
 
+pub fn texto_esquema_nuevo(actual: impl Display, conocida: impl Display) -> String {
+    format!(
+        "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla."
+    )
+}
+
+#[cfg(test)]
 pub fn migrar(conn: &mut Connection, dir_respaldos: &Path) -> Result<i64, String> {
     migrar_con(conn, MIGRACIONES, dir_respaldos)
 }
@@ -90,9 +98,7 @@ pub fn migrar_con(
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .map_err(texto)?;
         if actual > conocida {
-            return Err(format!(
-                "Esta base fue creada con una versión más nueva de BoldoAtlas (esquema {actual}; esta app conoce hasta el {conocida}). Actualiza BoldoAtlas para abrirla."
-            ));
+            return Err(texto_esquema_nuevo(actual, conocida));
         }
         if actual == conocida {
             return Ok(actual);

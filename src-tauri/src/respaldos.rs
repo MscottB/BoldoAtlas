@@ -313,7 +313,7 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
         .collect())
 }
 
-fn con_sufijo(ruta: &Path, sufijo: &str) -> PathBuf {
+pub(crate) fn con_sufijo(ruta: &Path, sufijo: &str) -> PathBuf {
     let mut s = ruta.as_os_str().to_owned();
     s.push(sufijo);
     s.into()
@@ -350,18 +350,14 @@ pub fn restaurar(
     let origen = dir.join(nombre);
     let danado = |e: rusqlite::Error| Fallo::de("danado", e);
     {
-        let c = Connection::open_with_flags(&origen, OpenFlags::SQLITE_OPEN_READ_ONLY)
-            .map_err(danado)?;
-        let version: i64 = c
-            .pragma_query_value(None, "user_version", |f| f.get(0))
-            .map_err(danado)?;
-        if version > migraciones.len() as i64 {
-            return Err(Fallo::de("esquema_nuevo", version));
-        }
         // lo primero: triggers, vistas o tablas extra quedarían activos en la base local. Un respaldo legítimo tiene el de
         // su versión.
-        validar::revisar_solo_esquema(&origen, version.max(0) as usize, migraciones)
-            .map_err(|e| Fallo::de("danado", e.detalle))?;
+        validar::version_y_esquema(&origen, migraciones).map_err(|e| match e.codigo {
+            "contenido_invalido" => Fallo::de("danado", e.detalle),
+            _ => e,
+        })?;
+        let c = Connection::open_with_flags(&origen, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(danado)?;
         let estado: String = c
             .query_row("PRAGMA quick_check", [], |f| f.get(0))
             .map_err(danado)?;

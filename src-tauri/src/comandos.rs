@@ -1,31 +1,48 @@
 use crate::db::{self, Sentencia};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
+use crate::organizaciones::{Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, abrir_base, bloquear};
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
+use std::fs::File;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Mutex, RwLock, TryLockError};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::{DialogExt, FileDialogBuilder};
 use tauri_plugin_opener::OpenerExt;
 
+/// El texto que `errores.ts` reconoce para volver a decirlo en el idioma activo.
+fn motivo_de_apertura(f: Fallo) -> String {
+    match f.codigo {
+        "esquema_nuevo" => db::texto_esquema_nuevo(f.detalle, db::MIGRACIONES.len()),
+        "abierta_en_otra_copia" => format!(
+            "Otra copia de BoldoAtlas tiene abierta esta base: {}",
+            f.detalle
+        ),
+        _ => f.detalle,
+    }
+}
+
 /// Si iniciar falla, la app no se cierra: guarda el error y el frontend lo muestra.
 pub struct Estado {
     conn: Mutex<Option<Connection>>,
+    /// Se escribe solo con `conn` tomado. Sigue ahí tras `cerrar_ordenado`: es lo que abre `reabrir`.
+    base: Mutex<Option<Base>>,
+    bloqueo: Mutex<Option<File>>,
     rutas: Option<Rutas>,
-    version_esquema: i64,
-    error: Option<String>,
+    version_esquema: AtomicI64,
+    error: Mutex<Option<String>>,
 }
 
 impl Estado {
     /// Se llama al comienzo de `run()`, antes de que existan otros hilos: la portable ajusta aquí
-    /// variables de entorno del proceso.
+    /// variables de entorno del proceso. La base abre después, en `abrir_inicial`.
     pub fn iniciar() -> Self {
-        let mut rutas_ok = None;
         let resultado = (|| {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
             let linux = |v| {
@@ -44,26 +61,67 @@ impl Estado {
                     unsafe { std::env::set_var(nombre, ruta) };
                 }
             }
-            rutas_ok = Some(r.clone());
-            let mut conn = db::abrir(&r.bd)?;
-            let version = db::migrar(&mut conn, &r.respaldos)?;
-            db::asegurar_meta(&conn)?;
-            Ok::<_, String>((conn, version))
+            Ok::<_, String>(r)
         })();
-        match resultado {
-            Ok((conn, version)) => Estado {
-                conn: Mutex::new(Some(conn)),
-                rutas: rutas_ok,
-                version_esquema: version,
-                error: None,
-            },
-            Err(e) => Estado {
-                conn: Mutex::new(None),
-                rutas: rutas_ok,
-                version_esquema: 0,
-                error: Some(e),
-            },
+        let (rutas, error) = match resultado {
+            Ok(r) => (Some(r), None),
+            Err(e) => (None, Some(e)),
+        };
+        Estado {
+            conn: Mutex::new(None),
+            base: Mutex::new(None),
+            bloqueo: Mutex::new(None),
+            rutas,
+            version_esquema: AtomicI64::new(0),
+            error: Mutex::new(error),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn de_prueba(
+        conn: Option<Connection>,
+        base: Option<Base>,
+        rutas: Option<Rutas>,
+    ) -> Estado {
+        Estado {
+            conn: Mutex::new(conn),
+            base: Mutex::new(base),
+            bloqueo: Mutex::new(None),
+            rutas,
+            version_esquema: AtomicI64::new(0),
+            error: Mutex::new(None),
+        }
+    }
+
+    /// Abre la base de siempre, en `setup`. Si falla, guarda el motivo para la pantalla de error.
+    pub fn abrir_inicial(&self) {
+        let Some(r) = self.rutas.as_ref() else {
+            return;
+        };
+        let mut conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
+        match abrir_base(&r.bd, &r.respaldos, None, ESPERA_ARRANQUE, db::MIGRACIONES) {
+            Ok(a) => {
+                *conn = Some(a.conn);
+                *self.bloqueo.lock().unwrap_or_else(|p| p.into_inner()) = Some(a.bloqueo);
+                *self.base.lock().unwrap_or_else(|p| p.into_inner()) = Some(Base {
+                    id: a.id,
+                    bd: r.bd.clone(),
+                    respaldos: r.respaldos.clone(),
+                });
+                self.version_esquema.store(a.version, Ordering::Relaxed);
+            }
+            Err(f) => {
+                *self.error.lock().unwrap_or_else(|p| p.into_inner()) = Some(motivo_de_apertura(f));
+            }
+        }
+    }
+
+    pub fn base_abierta(&self) -> Option<Base> {
+        self.base.lock().unwrap_or_else(|p| p.into_inner()).clone()
+    }
+
+    fn soltar_bloqueo(&self) {
+        *self.bloqueo.lock().unwrap_or_else(|p| p.into_inner()) = None;
     }
 
     pub(crate) fn con_conexion<T, E: From<String>>(
@@ -76,6 +134,8 @@ impl Estado {
             .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
         let conn = guardia.as_mut().ok_or_else(|| {
             self.error
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
                 .clone()
                 .unwrap_or_else(|| "La base de datos no está abierta.".into())
         })?;
@@ -92,10 +152,12 @@ impl Estado {
                     if let Some(c) = g.take() {
                         let _ = c.close();
                     }
+                    self.soltar_bloqueo();
                     return true;
                 }
                 Err(TryLockError::Poisoned(p)) => {
                     drop(p.into_inner().take());
+                    self.soltar_bloqueo();
                     return true;
                 }
                 Err(TryLockError::WouldBlock) if Instant::now() < limite => {
@@ -121,11 +183,16 @@ impl Estado {
     pub fn reabrir(&self) -> Result<(), String> {
         let mut conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         if conn.is_none() {
-            let r = self
-                .rutas
-                .as_ref()
-                .ok_or("No se ubicó la carpeta de datos.")?;
-            *conn = Some(db::abrir(&r.bd)?);
+            let Some(base) = self.base_abierta() else {
+                self.rutas
+                    .as_ref()
+                    .ok_or("No se ubicó la carpeta de datos.")?;
+                // `abrir_inicial` falló: no hay base que reabrir y su motivo sigue en pantalla
+                return Ok(());
+            };
+            let bloqueo = bloquear(&base.bd, ESPERA_CAMBIO).map_err(motivo_de_apertura)?;
+            *conn = Some(db::abrir(&base.bd)?);
+            *self.bloqueo.lock().unwrap_or_else(|p| p.into_inner()) = Some(bloqueo);
         }
         Ok(())
     }
@@ -159,8 +226,12 @@ pub fn info_app(estado: State<Estado>) -> InfoApp {
         dir_datos: r.map(|r| r.datos.display().to_string()).unwrap_or_default(),
         ruta_bd: r.map(|r| r.bd.display().to_string()).unwrap_or_default(),
         portable: r.is_some_and(|r| r.portable),
-        version_esquema: estado.version_esquema,
-        error: estado.error.clone(),
+        version_esquema: estado.version_esquema.load(Ordering::Relaxed),
+        error: estado
+            .error
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone(),
     }
 }
 
@@ -761,12 +832,105 @@ mod tests {
     use super::*;
 
     fn estado(conn: Connection) -> Estado {
-        Estado {
-            conn: Mutex::new(Some(conn)),
-            rutas: None,
-            version_esquema: 0,
-            error: None,
-        }
+        Estado::de_prueba(Some(conn), None, None)
+    }
+
+    /// La carpeta de una portable, temporal: las pruebas nunca tocan los datos reales.
+    fn rutas_de_prueba() -> (tempfile::TempDir, Rutas) {
+        let exe = tempfile::tempdir().unwrap();
+        std::fs::write(exe.path().join("portable.flag"), "").unwrap();
+        let r = rutas::dir_datos(exe.path(), None).unwrap();
+        (exe, r)
+    }
+
+    #[test]
+    fn cerrar_ordenado_suelta_el_bloqueo() {
+        let (_exe, r) = rutas_de_prueba();
+        let bd = r.bd.clone();
+        let e = Estado::de_prueba(None, None, Some(r));
+        e.abrir_inicial();
+        let base = e.base_abierta().unwrap();
+        assert_eq!(base.bd, bd);
+        assert_eq!(
+            e.version_esquema.load(Ordering::Relaxed),
+            db::MIGRACIONES.len() as i64
+        );
+        assert_eq!(
+            bloquear(&bd, ESPERA_CAMBIO).unwrap_err().codigo,
+            "abierta_en_otra_copia"
+        );
+        assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        bloquear(&bd, ESPERA_CAMBIO).unwrap();
+        // la base sigue anotada: es a la que vuelve `reabrir`
+        assert_eq!(e.base_abierta(), Some(base));
+    }
+
+    #[test]
+    fn reabrir_vuelve_a_la_base_abierta_con_su_bloqueo() {
+        let (_exe, r) = rutas_de_prueba();
+        let bd = r.datos.join("otra.db");
+        let respaldos = r.datos.join("otra-respaldos");
+        let a = abrir_base(&bd, &respaldos, None, ESPERA_CAMBIO, db::MIGRACIONES)
+            .ok()
+            .unwrap();
+        let base = Base {
+            id: a.id.clone(),
+            bd: bd.clone(),
+            respaldos,
+        };
+        let principal = r.bd.clone();
+        let e = Estado::de_prueba(Some(a.conn), Some(base), Some(r));
+        *e.bloqueo.lock().unwrap() = Some(a.bloqueo);
+        assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        drop(bloquear(&bd, ESPERA_CAMBIO).unwrap());
+
+        e.reabrir().unwrap();
+        let id: String = e
+            .con_conexion(|c| {
+                c.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {
+                    f.get(0)
+                })
+                .map_err(|x| x.to_string())
+            })
+            .unwrap();
+        assert_eq!(id, a.id);
+        assert!(!principal.exists());
+        assert_eq!(
+            bloquear(&bd, ESPERA_CAMBIO).unwrap_err().codigo,
+            "abierta_en_otra_copia"
+        );
+    }
+
+    #[test]
+    fn abrir_inicial_con_esquema_nuevo_guarda_el_texto_de_hoy() {
+        let (_exe, r) = rutas_de_prueba();
+        let c = db::abrir(&r.bd).unwrap();
+        c.pragma_update(None, "user_version", 99).unwrap();
+        c.close().unwrap();
+        let e = Estado::de_prueba(None, None, Some(r));
+        e.abrir_inicial();
+        let error = e.error.lock().unwrap().clone().unwrap();
+        let esperado = format!(
+            "esquema 99; esta app conoce hasta el {}",
+            db::MIGRACIONES.len()
+        );
+        assert!(error.contains(&esperado), "{error}");
+        assert!(e.conn.lock().unwrap().is_none());
+        assert_eq!(e.base_abierta(), None);
+        // el motivo también llega a quien pida datos
+        let datos = e.con_conexion(|_| Ok::<_, String>(())).unwrap_err();
+        assert_eq!(datos, error);
+        // no hay nada que reabrir: si falló una actualización, sigue la pantalla de error
+        e.reabrir().unwrap();
+        assert!(e.conn.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn el_motivo_de_otra_copia_es_el_que_traduce_la_interfaz() {
+        assert_eq!(
+            motivo_de_apertura(Fallo::de("abierta_en_otra_copia", "C:/x")),
+            "Otra copia de BoldoAtlas tiene abierta esta base: C:/x"
+        );
     }
 
     #[test]
@@ -796,12 +960,12 @@ mod tests {
         let mut conn = db::abrir(&r.bd).unwrap();
         db::migrar(&mut conn, &r.respaldos).unwrap();
         db::asegurar_meta(&conn).unwrap();
-        let e = Estado {
-            conn: Mutex::new(Some(conn)),
-            rutas: Some(r),
-            version_esquema: 0,
-            error: None,
+        let base = Base {
+            id: String::new(),
+            bd: r.bd.clone(),
+            respaldos: r.respaldos.clone(),
         };
+        let e = Estado::de_prueba(Some(conn), Some(base), Some(r));
         // abierta: no hace nada
         e.reabrir().unwrap();
         assert!(e.cerrar_ordenado(Duration::from_secs(1)));
@@ -818,12 +982,7 @@ mod tests {
 
     #[test]
     fn reabrir_sin_rutas_falla_sin_entrar_en_panico() {
-        let e = Estado {
-            conn: Mutex::new(None),
-            rutas: None,
-            version_esquema: 0,
-            error: None,
-        };
+        let e = Estado::de_prueba(None, None, None);
         assert!(e.reabrir().is_err());
     }
 
