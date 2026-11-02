@@ -1,9 +1,14 @@
 // Solo para tests: SQLite en memoria con el esquema real; imita db_lote de Rust (una transacción, data_revision +1).
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import type { Sentencia } from "@/db/cliente";
 
-const ESQUEMA = readFileSync(new URL("../../../src-tauri/migrations/0001_inicial.sql", import.meta.url), "utf8");
+const CARPETA = new URL("../../../src-tauri/migrations/", import.meta.url);
+/** Todas las migraciones en orden, como MIGRACIONES de src-tauri/src/db.rs. */
+export const ESQUEMA = readdirSync(CARPETA)
+  .sort()
+  .map((f) => readFileSync(new URL(f, CARPETA), "utf8"))
+  .join("\n");
 
 export interface BasePrueba {
   db: DatabaseSync;

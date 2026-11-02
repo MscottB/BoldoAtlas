@@ -120,6 +120,10 @@ Cada organización nombra sus propios niveles; no hay tipos fijos en el código.
 - `etiquetas`: `nombre` NOT NULL (único), `color` TEXT NOT NULL (hex).
 - `unidad_etiquetas`: `unidad_id` NOT NULL → `unidades.id`, `etiqueta_id` NOT NULL → `etiquetas.id`; único (`unidad_id`, `etiqueta_id`).
 
+### `zonas` y `zona_unidades`
+- `zonas`: `nombre` NOT NULL (único entre las vivas), `color` TEXT NOT NULL (`#rrggbb` en minúsculas). Migración `0002_zonas.sql`.
+- `zona_unidades`: `zona_id` NOT NULL → `zonas.id`, `unidad_id` NOT NULL → `unidades.id`; único (`zona_id`, `unidad_id`) entre las vivas.
+
 ### `procesos`
 | columna | reglas |
 |---|---|
@@ -302,7 +306,7 @@ Aristas jerárquicas sólidas; conexiones laterales punteadas con etiqueta.
 
 **Interacción directa (pedido del autor, 2026-11-01):** al pasar por una tarjeta o enfocarla con el teclado aparecen sus acciones a la vista (agregar, editar, expandir o retraer, más). Niveles rápidos de expansión: 1, 2, 3 y todo. Al arrastrar una tarjeta se ve antes de soltar dónde quedará y si el movimiento es válido.
 
-**Zonas (pedido del autor, 2026-11-01):** un recuadro de color con nombre que agrupa unidades, también de ramas distintas, como en un diagrama de arquitectura: "Zona Norte", "Proyecto X". No cambia la jerarquía. El recuadro se calcula a partir de las unidades elegidas, se guarda en la base (tablas `zonas` y `zona_unidades`), viaja en los `.boldo` y se puede mostrar u ocultar. Si las unidades están lejos en el árbol, el recuadro no debe cubrir a otras: se decide con el organigrama real del autor entre acercarlas o marcarlas con color y leyenda.
+**Zonas (pedido del autor, 2026-11-01):** un recuadro de color con nombre que agrupa unidades, también de ramas distintas, como en un diagrama de arquitectura: "Zona Norte", "Proyecto X". No cambia la jerarquía. El recuadro se calcula a partir de las unidades elegidas, se guarda en la base (tablas `zonas` y `zona_unidades`), viaja en los `.boldo` y se puede mostrar u ocultar. Hoy se usa el recuadro si no cubre a ninguna otra unidad; si las cubriría (unidades lejanas en el árbol), una marca de color en sus tarjetas. Una leyenda bajo el lienzo nombra todas las zonas a la vista. Esta forma queda por confirmar con el organigrama real del autor. Se crean y editan desde la selección múltiple. Eliminar una unidad la saca de sus zonas en el mismo lote, y Deshacer la devuelve; duplicar una rama entra en las mismas zonas; a una fecha se ven las zonas de hoy.
 
 **Posición libre (a evaluar, pedido del autor):** el orden automático es lo que mantiene legible un organigrama grande. Si tras las zonas aún hace falta, se ofrece como opción de una vista guardada, con "Reordenar" para volver al orden automático.
 **Filtro por etiqueta o por texto:** las unidades que coinciden se resaltan y el resto se atenúa (no se ocultan, para no perder contexto). Además se puede resaltar por **vacantes**, **sede**, **tipo de contrato**, **jornada** o **cargo** (pedido del autor).
@@ -366,7 +370,7 @@ Vista Indicadores: tarjetas con totales de la organización, tabla por unidad or
 
 **Alcance de la exportación.** Al exportar se elige qué llevar: **toda la base**, o **uno o más árboles o ramas** (lista de unidades con casillas; marcar una unidad incluye toda su rama; una base puede tener varios árboles independientes, uno por raíz).
 - **Historial (decisión del autor, 2026-11-01):** el historial de los puestos de la rama viaja siempre con el archivo, sin casilla. Quienes ya no están en la rama viajan solo con nombre y correo, sin teléfono, notas, foto ni mantenedores: la fusión (modo B) no debe tomar esos campos vacíos como diferencia. Una persona sin asignación vigente en un archivo parcial es de este tipo.
-- Una exportación parcial lleva: las unidades elegidas con sus descendientes, las personas y vacantes de esas unidades, los valores de mantenedor que esas personas usan, las etiquetas de esas unidades, las conexiones laterales con **ambos** extremos incluidos y (Fase 3) los procesos, actividades y roles RACI de esas unidades.
+- Una exportación parcial lleva: las unidades elegidas con sus descendientes, las personas y vacantes de esas unidades, los valores de mantenedor que esas personas usan, las etiquetas de esas unidades, sus zonas vivas (solo con esas unidades), las conexiones laterales con **ambos** extremos incluidos y (Fase 3) los procesos, actividades y roles RACI de esas unidades.
 - Lo que quedaría apuntando fuera de la selección se corta en la copia y se resume antes de guardar ("2 conexiones y 1 jefatura no se incluyen"): conexiones con un extremo fuera, `jefe_id` de una persona que no va (la jefatura queda vacía en la copia) y roles RACI de personas que no van.
 - Se arma en Rust: `VACUUM INTO` a un temporal, se borran de ese temporal las filas fuera del alcance en una transacción, se cifra y se borra el temporal. `meta` de la copia agrega `alcance` (`completo` | `parcial`), los ids de las raíces exportadas y el `db_id` de origen.
 

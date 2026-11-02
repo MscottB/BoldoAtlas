@@ -20,10 +20,11 @@ import { excluidasComoSuperior } from "@/features/unidades/panel";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { planEliminar } from "./multiple";
+import SeleccionZonas from "./SeleccionZonas.vue";
 import { useLienzo } from "./useLienzo";
 import { claseSelect } from "@/lib/utils";
 
-// Barra de 2 o más unidades seleccionadas: mover, plegar, etiquetar y eliminar todas de una vez.
+// Barra de 2 o más unidades seleccionadas: mover, plegar, etiquetar, poner en zonas y eliminar todas de una vez.
 const { t } = useI18n();
 const org = useOrganizacion();
 const { seleccion, seleccionadas, expandir, plegarSeleccion, pedidoEliminar } = useLienzo();
@@ -156,6 +157,7 @@ async function eliminar() {
         </form>
       </PopoverContent>
     </Popover>
+    <SeleccionZonas :ids="ids" />
     <Button
       type="button"
       variant="destructive"

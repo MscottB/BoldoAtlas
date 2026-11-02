@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { ESQUEMA } from "@/db/prueba/sqlite";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
 
-const SQL = readFileSync(new URL("../../src-tauri/migrations/0001_inicial.sql", import.meta.url), "utf8");
 const AHORA = "2026-10-28T12:00:00.000Z";
 
 let db: DatabaseSync;
@@ -30,11 +29,11 @@ function actividadConPersonas() {
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
-  db.exec(SQL);
+  db.exec(ESQUEMA);
   u = ins("unidades", { tipo_id: TIPO_GERENCIA, nombre: "Operaciones" });
 });
 
-describe("esquema 0001", () => {
+describe("esquema", () => {
   it("rechaza persona sin nombre", () =>
     expect(() => ins("trabajadores", { correo: "ana@x.cl" })).toThrow(
       /NOT NULL constraint failed: trabajadores.nombre/,
@@ -249,6 +248,41 @@ describe("esquema 0001", () => {
       ).not.toThrow();
       db.exec("BEGIN");
       ins("unidades", { tipo_id: TIPO_AREA, nombre: "B", jefe_puesto_id: randomUUID() });
+      expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
+      db.exec("ROLLBACK");
+    });
+  });
+
+  describe("zonas", () => {
+    const zona = (fila: Record<string, string | number | null> = {}) =>
+      ins("zonas", { nombre: "Norte", color: "#0f766e", ...fila });
+
+    it("rechaza un nombre repetido sin importar mayúsculas ni espacios, salvo el de una eliminada", () => {
+      zona();
+      expect(() => zona({ nombre: " NORTE " })).toThrow(/UNIQUE/);
+      zona({ nombre: "Antigua", deleted_at: AHORA });
+      expect(() => zona({ nombre: " antigua " })).not.toThrow();
+    });
+
+    it("el color debe ser #rrggbb en minúsculas", () => {
+      for (const malo of ["rojo", "#0F766E", "#0f766"])
+        expect(() => zona({ nombre: malo, color: malo })).toThrow(/CHECK constraint failed/);
+    });
+
+    it("una unidad no está dos veces en la misma zona; sí en otra, y puede volver tras salir", () => {
+      const z = zona();
+      const primera = ins("zona_unidades", { zona_id: z, unidad_id: u });
+      expect(() => ins("zona_unidades", { zona_id: z, unidad_id: u })).toThrow(/UNIQUE/);
+      expect(() =>
+        ins("zona_unidades", { zona_id: zona({ nombre: "Sur" }), unidad_id: u }),
+      ).not.toThrow();
+      db.prepare("UPDATE zona_unidades SET deleted_at = ? WHERE id = ?").run(AHORA, primera);
+      expect(() => ins("zona_unidades", { zona_id: z, unidad_id: u })).not.toThrow();
+    });
+
+    it("la zona y la unidad deben existir al confirmar", () => {
+      db.exec("BEGIN");
+      ins("zona_unidades", { zona_id: randomUUID(), unidad_id: u });
       expect(() => db.exec("COMMIT")).toThrow(/FOREIGN KEY/);
       db.exec("ROLLBACK");
     });

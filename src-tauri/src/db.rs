@@ -5,7 +5,10 @@ use serde_json::{Map, Value};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-pub const MIGRACIONES: &[&str] = &[include_str!("../migrations/0001_inicial.sql")];
+pub const MIGRACIONES: &[&str] = &[
+    include_str!("../migrations/0001_inicial.sql"),
+    include_str!("../migrations/0002_zonas.sql"),
+];
 
 #[derive(Debug, Deserialize)]
 pub struct Sentencia {
@@ -228,6 +231,8 @@ mod tests {
     use serde_json::json;
     use std::path::PathBuf;
 
+    const ESQUEMA: i64 = MIGRACIONES.len() as i64;
+
     fn base_nueva() -> (tempfile::TempDir, PathBuf, Connection) {
         let dir = tempfile::tempdir().unwrap();
         let ruta = dir.path().join("boldo.db");
@@ -277,7 +282,7 @@ mod tests {
         for h in hilos {
             h.join().unwrap().unwrap();
         }
-        assert_eq!(version(&abrir(&ruta).unwrap()), 1);
+        assert_eq!(version(&abrir(&ruta).unwrap()), ESQUEMA);
     }
 
     #[test]
@@ -349,11 +354,47 @@ mod tests {
     }
 
     #[test]
-    fn migrar_base_nueva_deja_version_1() {
+    fn migrar_base_nueva_deja_la_ultima_version() {
         let (dir, _, mut conn) = base_nueva();
-        assert_eq!(version(&conn), 1);
-        assert_eq!(migrar(&mut conn, dir.path()).unwrap(), 1);
-        assert_eq!(version(&conn), 1);
+        assert_eq!(version(&conn), ESQUEMA);
+        assert_eq!(migrar(&mut conn, dir.path()).unwrap(), ESQUEMA);
+        assert_eq!(version(&conn), ESQUEMA);
+    }
+
+    #[test]
+    fn una_base_del_esquema_1_pasa_al_2_con_sus_datos_y_un_respaldo() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut conn = abrir(&dir.path().join("boldo.db")).unwrap();
+        assert_eq!(
+            migrar_con(&mut conn, &MIGRACIONES[..1], dir.path()).unwrap(),
+            1
+        );
+        asegurar_meta(&conn).unwrap();
+        lote(&mut conn, &[insertar_unidad("Sigue aquí")], "1").unwrap();
+        let respaldos = dir.path().join("respaldos");
+        std::fs::create_dir(&respaldos).unwrap();
+
+        assert_eq!(migrar(&mut conn, &respaldos).unwrap(), 2);
+
+        let n = |sql: &str| -> i64 { conn.query_row(sql, [], |f| f.get(0)).unwrap() };
+        assert_eq!(
+            n("SELECT count(*) FROM unidades WHERE nombre = 'Sigue aquí'"),
+            1
+        );
+        assert_eq!(n("SELECT count(*) FROM zonas"), 0);
+        assert_eq!(n("SELECT count(*) FROM zona_unidades"), 0);
+        assert_eq!(std::fs::read_dir(&respaldos).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn la_app_anterior_no_abre_una_base_ya_migrada_y_no_la_toca() {
+        let (dir, _, mut conn) = base_nueva();
+        let err = migrar_con(&mut conn, &MIGRACIONES[..1], dir.path()).unwrap_err();
+        assert!(
+            err.contains("esquema 2; esta app conoce hasta el 1"),
+            "{err}"
+        );
+        assert_eq!(version(&conn), 2);
     }
 
     #[test]
@@ -370,8 +411,11 @@ mod tests {
         let (dir, _, mut conn) = base_nueva();
         let respaldos = dir.path().join("respaldos");
         std::fs::create_dir(&respaldos).unwrap();
-        let dos = [MIGRACIONES[0], "CREATE TABLE extra (x INTEGER);"];
-        assert_eq!(migrar_con(&mut conn, &dos, &respaldos).unwrap(), 2);
+        let otra = [MIGRACIONES, &["CREATE TABLE extra (x INTEGER);"]].concat();
+        assert_eq!(
+            migrar_con(&mut conn, &otra, &respaldos).unwrap(),
+            ESQUEMA + 1
+        );
         let archivos: Vec<_> = std::fs::read_dir(&respaldos).unwrap().collect();
         assert_eq!(archivos.len(), 1);
         let nombre = archivos[0]
@@ -381,7 +425,7 @@ mod tests {
             .into_string()
             .unwrap();
         assert!(
-            nombre.starts_with("antes-migracion-1-") && nombre.ends_with(".db"),
+            nombre.starts_with(&format!("antes-migracion-{ESQUEMA}-")) && nombre.ends_with(".db"),
             "{nombre}"
         );
     }
@@ -445,7 +489,7 @@ mod tests {
         let carpeta = dir.path().join("José Pérez").join("datos con espacio");
         std::fs::create_dir_all(&carpeta).unwrap();
         let mut conn = abrir(&carpeta.join("boldo.db")).unwrap();
-        assert_eq!(migrar(&mut conn, &carpeta).unwrap(), 1);
+        assert_eq!(migrar(&mut conn, &carpeta).unwrap(), ESQUEMA);
     }
 
     #[test]

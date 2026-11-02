@@ -2,6 +2,7 @@ import type { Sentencia } from "@/db/cliente";
 import { ahora, nuevoId } from "@/lib/ids";
 import type { Unidad } from "@/db/tipos";
 import { actualizar, fijarBorrado } from "./comun";
+import { bajaConUnidad, vuelveConUnidad } from "./zonas";
 
 export const SQL_UNIDADES = `SELECT id, tipo_id, nombre, descripcion, parent_id, jefe_puesto_id, marca_color, marca_codigo, orden FROM unidades
   WHERE deleted_at IS NULL ORDER BY orden, nombre`;
@@ -81,11 +82,11 @@ function reubicar(destino: string | null, { hijos, puestos }: Contenido): Senten
   return s;
 }
 
-/** El contenido pasa a `destino` (por omisión, el superior de la unidad). */
+/** El contenido pasa a `destino` (por omisión, el superior de la unidad). Sale de sus zonas en el mismo lote. */
 export function eliminarUnidad(u: Unidad, contenido: Contenido, destino = u.parent_id): Sentencia[] {
-  return [...reubicar(destino, contenido), fijarBorrado("unidades", u.id, true)];
+  return [...reubicar(destino, contenido), fijarBorrado("unidades", u.id, true), bajaConUnidad(u.id)];
 }
 
 export function restaurarUnidad(id: string, contenido: Contenido): Sentencia[] {
-  return [fijarBorrado("unidades", id, false), ...reubicar(id, contenido)];
+  return [vuelveConUnidad(id), fijarBorrado("unidades", id, false), ...reubicar(id, contenido)];
 }

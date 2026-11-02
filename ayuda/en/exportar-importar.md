@@ -15,7 +15,7 @@ Both actions are in **Import/Export**, in the sidebar, and in the app menu. To o
 
 ![Export with the One or more trees or branches option and the list of units with one branch checked.](../img/en/exportar-alcance.webp "Export: checking a unit includes its whole branch."){width=768 height=414}
 
-A branch carries its units, its positions, the people who hold them today, the full history of those positions, the list values they use, its tags, its saved branches and views, and its processes. People who are no longer there travel with their name and email only, without phone, notes or photo, so the history makes sense. What was deleted does not go. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going and the roles of people who are not going.
+A branch carries its units, its positions, the people who hold them today, the full history of those positions, the list values they use, its tags, its zones (with the branch's units only), its saved branches and views, and its processes. People who are no longer there travel with their name and email only, without phone, notes or photo, so the history makes sense. What was deleted does not go. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going and the roles of people who are not going.
 
 ::: warning Important
 The code is shown only once and is not saved anywhere. If it is lost, the file cannot be opened: you have to export again, which gives another file and another code. The file carries personal data: send the file and the code **through different channels**, for example the file by email and the code by phone.
@@ -69,6 +69,8 @@ For two copies that kept working separately: you compare the file with your data
 | **Clashes with another** | For example, two holders in a position or two Approvers in an activity | Nothing: it stops **Apply** | Keep yours or the file's. If you keep an assignment from the file, yours is closed |
 | **Reference to something that will not be there** | Something points to what you chose not to bring or to what will end up deleted | Nothing: it stops **Apply** | Reassign, leave empty if allowed, or discard the record. **Resolve all references** does it at once |
 | **Would end up inside itself** | With what you chose, a unit ends up hanging from itself | Nothing: it stops **Apply** | Change its parent unit or leave it without one |
+
+When you revert the deletion of a zone, its former members do not come back on their own: each one shows as its own case, and they are restored row by row.
 
 What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. For people who are no longer there, a branch carries only name and email: what comes empty does not erase their data in your database. A photo or a view's settings are compared without being shown, and it says how much they weigh.
 

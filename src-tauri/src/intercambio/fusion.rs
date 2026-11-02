@@ -17,6 +17,7 @@ pub const CATALOGOS: &[&str] = &[
     "jornadas",
     "leyendas",
     "etiquetas",
+    "zonas",
 ];
 
 /// Toda tabla de negocio, cada una después de las que usa. La excepción es `unidades.jefe_puesto_id`, que se resuelve al
@@ -28,6 +29,7 @@ pub const NEGOCIO: &[&str] = &[
     "asignaciones",
     "conexiones",
     "unidad_etiquetas",
+    "zona_unidades",
     "procesos",
     "actividades",
     "actividad_roles",
@@ -97,7 +99,8 @@ impl Informe {
 
 pub type Lugares = HashMap<String, Option<String>>;
 
-/// Quién usa cada valor de mantenedor. Uno desactivado solo entra si una fila viva lo usa: la ficha conserva su id.
+/// Quién usa cada valor de mantenedor. Uno desactivado solo entra si una fila viva lo usa: la ficha conserva su id. Las zonas
+/// no están: una eliminada no se muestra nunca, y entraría invisible.
 const USOS: &[(&str, &str, &str)] = &[
     ("tipos_unidad", "unidades", "tipo_id"),
     ("cargos", "puestos", "cargo_id"),
@@ -194,6 +197,7 @@ fn etiqueta(
             "SELECT nombre FROM trabajadores WHERE id = ?1",
             de("trabajador_id"),
         ),
+        "zona_unidades" => buscar("SELECT nombre FROM unidades WHERE id = ?1", de("unidad_id")),
         _ => Ok(de("nombre").unwrap_or_default()),
     }
 }
@@ -478,7 +482,8 @@ pub fn fusionar(
                 };
                 let rota = fuera.contains(&(destino, valor.clone()))
                     || (es_viva
-                        && !CATALOGOS.contains(&destino)
+                        // una zona eliminada no se muestra nunca: su pertenencia entraría invisible
+                        && (!CATALOGOS.contains(&destino) || destino == "zonas")
                         && matches!(estado_fila(dst, destino, &valor)?, Some(Some(_))));
                 if !rota {
                     if tabla == "unidades" && destino == "puestos" {
@@ -650,6 +655,85 @@ mod tests {
             );
             assert_eq!(a, b, "{t}");
         }
+    }
+
+    #[test]
+    fn la_misma_zona_de_otra_base_se_une_por_nombre_y_no_repite_a_sus_unidades() {
+        let (d, origen) = base_con_datos();
+        let (_d2, mut dst) = destino("");
+        fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        // otra base con la misma zona por nombre, con otro id: la pertenencia nueva va a la zona de aquí
+        origen
+            .execute_batch(
+                "UPDATE zonas SET deleted_at = 'y' WHERE id = 'zo-a';
+                 UPDATE zona_unidades SET deleted_at = 'y' WHERE id = 'zu-a';
+                 INSERT INTO zonas (id, nombre, color, created_at, updated_at) VALUES ('zo-otra', ' zona a ', '#be123c', 'x', 'x');
+                 INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES
+                   ('zu-hija', 'zo-otra', 'hija', 'x', 'x');",
+            )
+            .unwrap();
+        let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        assert_eq!(tabla(&inf, "zonas").unidas, 1);
+        let zona: String = dst
+            .query_row(
+                "SELECT zona_id FROM zona_unidades WHERE id = 'zu-hija'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(zona, "zo-a");
+    }
+
+    #[test]
+    fn la_pertenencia_a_una_zona_eliminada_no_entra_ni_trae_la_zona() {
+        let (d, origen) = base_con_datos();
+        origen
+            .execute_batch(
+                "INSERT INTO zonas (id, nombre, color, created_at, updated_at, deleted_at) VALUES
+                   ('zo-muerta', 'ZonaMuerta', '#000000', 'x', 'x', 'y');
+                 INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES
+                   ('zu-muerta', 'zo-muerta', 'rama', 'x', 'x');",
+            )
+            .unwrap();
+        let (_d2, mut dst) = destino("");
+        let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        assert_eq!(tabla(&inf, "zona_unidades").omitidas, 1);
+        for (t, id) in [("zonas", "zo-muerta"), ("zona_unidades", "zu-muerta")] {
+            assert_eq!(estado_fila(&dst, t, id).unwrap(), None, "{t}");
+        }
+    }
+
+    #[test]
+    fn una_unidad_nueva_en_una_zona_eliminada_aqui_no_entra_y_se_informa() {
+        let (d, origen) = base_con_datos();
+        let (_d2, mut dst) = destino("");
+        fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        dst.execute_batch(
+            "UPDATE zonas SET deleted_at = 'y' WHERE id = 'zo-a';
+             UPDATE zona_unidades SET deleted_at = 'y' WHERE zona_id = 'zo-a';",
+        )
+        .unwrap();
+        origen
+            .execute_batch(
+                "INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES
+                   ('zu-nueva', 'zo-a', 'hija', 'x', 'x');",
+            )
+            .unwrap();
+        let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        assert_eq!(
+            estado_fila(&dst, "zona_unidades", "zu-nueva").unwrap(),
+            None
+        );
+        let t = tabla(&inf, "zona_unidades");
+        assert_eq!((t.trae, t.nuevas, t.omitidas), (3, 0, 1));
+        assert_eq!(t.trae, t.nuevas + t.existentes + t.unidas + t.omitidas);
+        let nombre = uno(&dst, "SELECT nombre FROM unidades WHERE id = 'hija'").unwrap();
+        assert!(inf.detalle.contains(&Detalle {
+            tabla: "zona_unidades",
+            nombre,
+            motivo: "referencia"
+        }));
+        assert!(!viva(&dst, "zonas", "zo-a").unwrap());
     }
 
     #[test]

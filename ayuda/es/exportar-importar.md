@@ -15,7 +15,7 @@ Ambas acciones están en **Importar/Exportar**, en la barra lateral, y en el men
 
 ![Exportar con la opción Uno o más árboles o ramas y la lista de unidades con una rama marcada.](../img/es/exportar-alcance.webp "Exportar: marcar una unidad incluye toda su rama."){width=768 height=414}
 
-Una rama lleva sus unidades, sus puestos, las personas que hoy los ocupan, todo el historial de esos puestos, los valores de mantenedor que usan, sus etiquetas, sus ramas y vistas guardadas, y sus procesos. Quienes ya no están viajan solo con su nombre y correo, sin teléfono, notas ni foto, para que el historial se entienda. Lo eliminado no va. Lo que apunta fuera de la rama se corta y se te avisa antes de guardar: las conexiones con una unidad que no va, una jefatura cuyo puesto no va y los roles de personas que no van.
+Una rama lleva sus unidades, sus puestos, las personas que hoy los ocupan, todo el historial de esos puestos, los valores de mantenedor que usan, sus etiquetas, sus zonas (solo con las unidades de la rama), sus ramas y vistas guardadas, y sus procesos. Quienes ya no están viajan solo con su nombre y correo, sin teléfono, notas ni foto, para que el historial se entienda. Lo eliminado no va. Lo que apunta fuera de la rama se corta y se te avisa antes de guardar: las conexiones con una unidad que no va, una jefatura cuyo puesto no va y los roles de personas que no van.
 
 ::: warning Importante
 El código se muestra una sola vez y no se guarda en ninguna parte. Si se pierde, el archivo no se puede abrir: hay que exportar de nuevo, y eso da otro archivo y otro código. El archivo lleva datos personales: envía el archivo y el código **por canales distintos**, por ejemplo el archivo por correo y el código por teléfono.
@@ -69,6 +69,8 @@ Para dos copias que siguieron trabajando por separado: comparas el archivo con t
 | **Choca con otro** | Por ejemplo, dos titulares en un puesto o dos Aprobadores en una actividad | Nada: detiene **Aplicar** | Conservar lo tuyo o lo del archivo. Si conservas una asignación del archivo, la tuya se cierra |
 | **Referencia a algo que no estará** | Algo apunta a lo que decidiste no traer o a lo que quedará eliminado | Nada: detiene **Aplicar** | Reasignar, dejar vacío si se puede o descartar el registro. **Resolver todas las referencias** lo hace de una vez |
 | **Quedaría dentro de sí misma** | Con lo elegido, una unidad termina colgando de sí misma | Nada: detiene **Aplicar** | Cambiar su unidad superior o dejarla sin superior |
+
+Al revertir el borrado de una zona, sus miembros anteriores no vuelven solos: cada uno aparece como su propio caso, y se restauran fila a fila.
 
 Lo que solo está en tu base se queda: nada se borra por no venir en el archivo. Eso es lo que permite traer una sola rama sin tocar el resto. De quien ya no está, una rama trae solo nombre y correo: lo que viene vacío no borra sus datos en tu base. Una foto o la configuración de una vista se comparan sin mostrarse, y dice cuánto pesan.
 
