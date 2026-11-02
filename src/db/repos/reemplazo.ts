@@ -21,6 +21,8 @@ export const TABLAS_ORGANIZACION = [
   "subarboles_guardados",
   "unidad_etiquetas",
   "etiquetas",
+  "zona_unidades",
+  "zonas",
   "conexiones",
   "asignaciones",
   "puestos",

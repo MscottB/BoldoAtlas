@@ -60,6 +60,7 @@ import {
   jefeEnTarjeta,
   leerVista,
   leyendasEnUso,
+  separaciones,
   tamPuesto,
   tamUnidad,
   tipoArista,
@@ -68,7 +69,9 @@ import {
 } from "./vista";
 import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
+import { zonasDibujadas } from "./zonas";
 import AristaLateral from "./AristaLateral.vue";
+import ZonasLienzo from "./ZonasLienzo.vue";
 import NivelesLienzo from "./NivelesLienzo.vue";
 import PreviaMover, { type Previa } from "./PreviaMover.vue";
 import BarraLienzo from "./BarraLienzo.vue";
@@ -507,6 +510,21 @@ const trazados = computed(() =>
       )
     : new Map<string, Trazado>(),
 );
+// Como `trazados`: solo cambia con un layout o con las zonas. El margen es la mitad del espacio entre hermanas.
+const zonas = computed(() =>
+  vista.value && config.value.zonas && org.zonas.length
+    ? zonasDibujadas(
+        org.zonas,
+        org.zonaUnidades,
+        vista.value.cajas,
+        vista.value.g.puestos,
+        Math.floor(separaciones({ densidad: vista.value.densidad }).hermanos / 2),
+      )
+    : null,
+);
+const leyendaZonas = computed<EntradaLeyenda[]>(() =>
+  (zonas.value?.marcadas ?? []).map((z) => ({ clave: z.id, color: z.color, nombre: z.nombre })),
+);
 // La tarjeta activa: bajo el puntero o, si no, con el foco del teclado (un clic con el mouse no cuenta como foco).
 const bajoPuntero = ref<string | null>(null);
 const conFoco = ref<string | null>(null);
@@ -552,6 +570,7 @@ provide(CONTEXTO_LIENZO, {
   marcas,
   rutas,
   leyendas: computed(() => (porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null)),
+  zonas: computed(() => zonas.value?.marcas ?? null),
   ligera,
   trazados,
   tarjetaActiva,
@@ -857,6 +876,9 @@ function verCompleto() {
             <template #edge-lateral="p">
               <AristaLateral :id="p.id" :etiqueta="p.label as string" :descripcion="p.data.descripcion" />
             </template>
+            <template #zoom-pane>
+              <ZonasLienzo v-if="zonas" :recuadros="zonas.recuadros" :ligera="ligera" />
+            </template>
             <MiniMap v-if="conMapa" pannable zoomable :width="MINIMAPA.ancho" :height="MINIMAPA.alto" />
           </VueFlow>
         </MenuLienzo>
@@ -890,8 +912,11 @@ function verCompleto() {
       <div v-if="unidadSeleccionada" class="row-span-2 flex min-h-0">
         <PanelUnidad :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
       </div>
-      <!-- La leyenda va en una franja fija bajo el lienzo (no bajo el panel): así no tapa tarjetas. -->
-      <LeyendaLienzo v-if="leyenda.length" class="col-start-1" :titulo="tituloLeyenda" :entradas="leyenda" />
+      <!-- Las leyendas van en franjas fijas bajo el lienzo (no bajo el panel): así no tapan tarjetas. -->
+      <div v-if="leyenda.length || leyendaZonas.length" class="col-start-1 grid">
+        <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
+        <LeyendaLienzo v-if="leyendaZonas.length" :titulo="t('zonas.titulo')" :entradas="leyendaZonas" />
+      </div>
     </div>
     <AlertDialog v-model:open="confirmando">
       <AlertDialogContent>

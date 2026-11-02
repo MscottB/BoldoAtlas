@@ -6,8 +6,10 @@ const esCheck = (t: string) => t.includes("CHECK constraint failed");
 const reglas: [(texto: string) => boolean, string][] = [
   [(t) => t.includes("ux_trabajadores_correo"), "errores.correoDuplicado"],
   [(t) => t.includes("ux_etiquetas_nombre"), "errores.etiquetaDuplicada"],
+  [(t) => t.includes("ux_zonas_nombre"), "errores.zonaDuplicada"],
   // Índice sobre columnas simples: SQLite informa las columnas, no el nombre del índice.
   [(t) => t.includes("UNIQUE constraint failed: unidad_etiquetas."), "errores.unidadYaEtiquetada"],
+  [(t) => t.includes("UNIQUE constraint failed: zona_unidades."), "errores.unidadYaEnZona"],
   [(t) => t.includes("UNIQUE constraint failed: subarboles_guardados."), "errores.ramaYaGuardada"],
   [(t) => t.includes("ux_vistas_nombre"), "errores.vistaDuplicada"],
   [

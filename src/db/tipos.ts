@@ -97,6 +97,14 @@ export interface Etiqueta {
   color: string;
 }
 
+/** Recuadro de color con nombre que agrupa unidades, también de ramas distintas. No cambia la jerarquía. */
+export interface Zona {
+  id: string;
+  nombre: string;
+  /** Hex `#rrggbb` en minúsculas. */
+  color: string;
+}
+
 export interface SubarbolGuardado {
   id: string;
   unidad_id: string;

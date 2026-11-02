@@ -435,6 +435,10 @@ fn expresion_nombre(tabla: &str) -> &'static str {
             "COALESCE((SELECT nombre FROM unidades x WHERE x.id = t.unidad_id), '')
              || ' · ' || COALESCE((SELECT nombre FROM etiquetas x WHERE x.id = t.etiqueta_id), '')"
         }
+        "zona_unidades" => {
+            "COALESCE((SELECT nombre FROM unidades x WHERE x.id = t.unidad_id), '')
+             || ' · ' || COALESCE((SELECT nombre FROM zonas x WHERE x.id = t.zona_id), '')"
+        }
         "actividad_roles" => {
             "COALESCE((SELECT nombre FROM trabajadores x WHERE x.id = t.trabajador_id), '') || ' · ' || t.rol"
         }
@@ -1341,6 +1345,10 @@ fn rival(
             "SELECT id FROM unidad_etiquetas WHERE deleted_at IS NULL AND id <> ?1 AND unidad_id = ?2 AND etiqueta_id = ?3",
             vec![v("unidad_id")?, v("etiqueta_id")?],
         ),
+        "zona_unidades" => (
+            "SELECT id FROM zona_unidades WHERE deleted_at IS NULL AND id <> ?1 AND zona_id = ?2 AND unidad_id = ?3",
+            vec![v("zona_id")?, v("unidad_id")?],
+        ),
         "actividad_roles" => (
             "SELECT id FROM actividad_roles WHERE deleted_at IS NULL AND id <> ?1 AND actividad_id = ?2
              AND (trabajador_id = ?3 OR (rol = 'A' AND ?4 = 'A'))",
@@ -1481,9 +1489,11 @@ impl Pasada<'_> {
         );
         let refs: Vec<&Value> = fila.iter().collect();
         if !self.ejecutar(&sql, &refs)? {
-            // la misma etiqueta en la misma unidad, o la misma rama guardada, es lo mismo con otro id
-            if matches!(c.tabla, "unidad_etiquetas" | "subarboles_guardados")
-                && let Some(r) = rival(self.dst, c.tabla, d, &fila, &c.id)?
+            // la misma etiqueta o zona en la misma unidad, o la misma rama guardada, es lo mismo con otro id
+            if matches!(
+                c.tabla,
+                "unidad_etiquetas" | "zona_unidades" | "subarboles_guardados"
+            ) && let Some(r) = rival(self.dst, c.tabla, d, &fila, &c.id)?
             {
                 self.unidos.insert((c.tabla, c.id.clone()), r);
                 self.cuenta(c.tabla).unidas += 1;
@@ -3503,11 +3513,28 @@ mod tests {
     }
 
     #[test]
+    fn la_misma_zona_en_la_misma_unidad_con_otro_id_no_molesta() {
+        let mut b = banco();
+        b.archivo(&format!(
+            "UPDATE zona_unidades SET deleted_at = '{F0}' WHERE id = 'zu-a';
+             INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES ('zu-otra', 'zo-a', 'rama', '{F1}', '{F1}');"
+        ));
+        let mut r = b.abrir();
+        // se mantiene la de aquí, y la otra es la misma
+        r.decidir("zona_unidades", "zu-a", Eleccion::Mantener)
+            .unwrap();
+        b.verificar(&mut r);
+        assert_eq!(r.resumen().bloqueos.total, 0, "{:?}", r.bloqueos);
+        b.aplicar(&mut r);
+        assert!(!b.hay("zona_unidades", "zu-otra"));
+    }
+
+    #[test]
     fn una_rama_nueva_de_una_parcial_va_al_lugar_elegido() {
         let raices = vec!["rama".to_string()];
         let mut b = banco_con(Some(&raices));
         b.mia("DELETE FROM vistas; DELETE FROM subarboles_guardados; DELETE FROM actividad_roles; DELETE FROM actividades;
-             DELETE FROM procesos; DELETE FROM unidad_etiquetas; DELETE FROM conexiones; DELETE FROM asignaciones;
+             DELETE FROM procesos; DELETE FROM unidad_etiquetas; DELETE FROM zona_unidades; DELETE FROM conexiones; DELETE FROM asignaciones;
              UPDATE unidades SET jefe_puesto_id = NULL; DELETE FROM puestos;
              UPDATE unidades SET parent_id = NULL WHERE id = 'otra';
              DELETE FROM unidades WHERE id IN ('rama', 'hija', 'borrada', 'raiz');

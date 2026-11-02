@@ -89,8 +89,8 @@ describe("unidades", () => {
     expect(bd.consultar("SELECT id FROM puestos WHERE unidad_id = ?", [u.id])).toHaveLength(3);
   });
 
-  it("eliminar una unidad sin contenido emite solo el borrado", () => {
+  it("eliminar una unidad sin contenido emite solo su baja y la de sus zonas", () => {
     const { u } = arbolConContenido();
-    expect(eliminarUnidad(unidad(u.id), { hijos: [], puestos: [] })).toHaveLength(1);
+    expect(eliminarUnidad(unidad(u.id), { hijos: [], puestos: [] })).toHaveLength(2);
   });
 });

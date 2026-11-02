@@ -89,17 +89,33 @@ With two or more units selected the unit panel does not open: a bar appears over
 - **Move to…**: choose the new parent (or **No parent (root)**). The selected units and everything below them are not offered. If a selected unit is below another selected one, only the upper one moves and takes its branch with it. Everything changes in a single step.
 - **Collapse**: collapses the branches of all of them.
 - **Tag…**: adds an existing or a new tag to all of them (if the name already exists, that tag is used). Units that already have the tag are not repeated.
+- **Zone…**: adds the selected units to a zone, removes them or creates a new one (see “Zones”).
 - **Delete…**: asks how many units will be deleted; the content of each (subunits and positions) moves to its parent. A root unit with content is not deleted: the notice afterwards says how many were skipped. The notice has a single **Undo** (8 seconds) that puts everything back. `Del` does the same as the button.
 - The **X** clears the selection.
 
 While viewing the chart at a past date there is no multiple selection.
+
+## Zones
+
+A zone groups units under a name and a color, also from different branches: “North Zone”, “Project X”. It does not change who reports to whom.
+
+Select two or more units and press **Zone…**. There you see each zone with how many of the selected units it has: **Add** brings in the missing ones and **Remove** takes out those in it. **New zone** creates another with the selected units; if the name already exists, that zone is used. The pencil changes the name and color, or deletes the zone (you have 8 seconds to undo it).
+
+On the canvas, a zone shows in one of two ways:
+
+- **A box** in its color, with the name on top, if it wraps its units without covering any other.
+- **A color strip** on top of each of its cards, with the name in the **Zones** strip below the canvas, if the box would cover other units. Hover over the strip on a card to see the name.
+
+Only units in view count: when you collapse or open a branch, the zone is drawn again. To hide zones without deleting them, turn off **Zones** in **Customize**.
+
+If you delete a unit, it leaves its zones; **Undo** puts it back. A duplicated branch joins the same zones. When viewing the org chart on a date, today's zones are shown.
 
 ## Duplicating a branch
 
 The **Duplicate branch** button (under **Advanced** in the unit panel's Summary, and on the selected card) and `Ctrl` + `D` copy the unit with everything under it:
 
 - The copy goes right after the original, named "X (copy)" (only the top unit; the ones below keep their names), and ends up selected. A root can be duplicated too: the copy is another root.
-- The type, description, mark, tags and positions (job title, description and legend) are copied. Each copy's head points to the copied position.
+- The type, description, mark, tags, zones and positions (job title, description and legend) are copied. Each copy's head points to the copied position.
 - Lateral connections whose two ends are both inside the branch are copied.
 - Copied positions are born **vacant**: holders, replacements and history are not copied.
 - It is a single change, with no **Undo** notice: if you don't want the copy, delete it.
@@ -135,6 +151,7 @@ The **Customize** button, in the canvas bar, opens the options for how the tree 
 - **Show positions** (off at first): under each visible unit there is one card per position, with the job title, the holder or **Vacant**, and **Replacement: name** when a replacement is current. Press a position card, or focus it and press `Enter`, to open its record. In **Advanced** you can hide the job title or the person. With many units expanded, positions add cards: collapse the branches you don't need.
 - **Show on cards the parent unit of type** (in **Advanced**): tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
 - **Lateral connections** (on at first, if there are any): draws the lateral connections. Off, they are hidden without being deleted. It is saved with the view.
+- **Zones** (on at first, if there are any): draws the zones. Off, they are hidden without being deleted. It is saved with the view.
 - **Color by**: **None**, the **mark** of a type, or **Position legend**. With the mark of a type, each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. With **Position legend**, position cards take the color of their legend (turn on **Show positions**; see "Legends and position colors"). Only one criterion applies at a time.
 
 With a color criterion active, a **legend** appears in a strip below the canvas with the color, code and name of the unit that defines each mark you can see. If it doesn't fit, the row scrolls sideways. It can be folded and opened again from its header. A very dark (or very light) mark that barely stands out from the card gets a gray outline on its stripe and code.

@@ -4,7 +4,7 @@
 //   node scripts/sembrar-grande.mjs <carpeta del exe portable>/datos/boldo.db
 // La base no debe existir: así nunca se escribe sobre datos reales.
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { v7 } from "uuid";
 
@@ -38,8 +38,10 @@ const fecha = (desdeAño, hastaAño) =>
     .slice(0, 10);
 
 const db = new DatabaseSync(ruta);
-db.exec(readFileSync(new URL("../src-tauri/migrations/0001_inicial.sql", import.meta.url), "utf8"));
-db.exec("PRAGMA user_version = 1; PRAGMA foreign_keys = ON; BEGIN");
+const carpeta = new URL("../src-tauri/migrations/", import.meta.url);
+const migraciones = readdirSync(carpeta).sort();
+for (const m of migraciones) db.exec(readFileSync(new URL(m, carpeta), "utf8"));
+db.exec(`PRAGMA user_version = ${migraciones.length}; PRAGMA foreign_keys = ON; BEGIN`);
 const ahora = new Date().toISOString();
 const insertar = (tabla, fila) => {
   const f = { ...fila, created_at: ahora, updated_at: ahora };
