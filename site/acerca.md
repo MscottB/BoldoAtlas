@@ -16,6 +16,8 @@ BoldoAtlas es una app de escritorio local y portable para armar organigramas gra
 
 ¿Encontraste un error o tienes una idea? Abre un [issue](https://github.com/MscottB/BoldoAtlas/issues) en GitHub. En **Acerca de**, dentro de la app, el botón **Copiar información** deja listos la versión y los datos técnicos para pegarlos en el reporte.
 
+Para enviar código, revisa la [guía para colaborar](https://github.com/MscottB/BoldoAtlas/blob/main/CONTRIBUTING.es.md), que incluye el acuerdo de licencia (CLA).
+
 ## Privacidad
 
 Todo se guarda en tu computador. BoldoAtlas no necesita internet para funcionar y no tiene cuentas. Lo único que hace por su cuenta es buscar versiones nuevas (cada día; se cambia o se apaga en Configuración › Actualizaciones): lee la lista pública de versiones en GitHub, no envía datos y nunca instala sin preguntar. Este sitio tampoco usa cookies ni análisis; la página de [Descargas](/descargas) consulta a GitHub el número de la última versión.

@@ -109,4 +109,4 @@ Documento de diseño: [docs/superpowers/specs](docs/superpowers/specs/2026-10-28
 
 ## Licencia
 
-[AGPL-3.0](LICENSE) · Creado por **Michael Jim Scott Bravo**.
+[AGPL-3.0](LICENSE) · Creado por **Michael Jim Scott Bravo**. Para colaborar, revisa [CONTRIBUTING](CONTRIBUTING.es.md).

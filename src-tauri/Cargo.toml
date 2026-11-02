@@ -3,6 +3,7 @@ name = "boldo-atlas"
 version = "0.1.0"
 description = "Organigrama, procesos y fichas de trabajadores, local y portable"
 authors = ["Michael Jim Scott Bravo"]
+license = "AGPL-3.0-only"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
