@@ -1,9 +1,11 @@
 // Prueba de actualización: instala la última versión publicada, le deja datos, instala la nueva encima y comprueba que la
-// organización de siempre sigue siendo `boldo.db`, ahora en `organizaciones.json`. La versión publicada no conoce ese archivo.
+// organización de siempre sigue siendo `boldo.db`, en `organizaciones.json`. Si la versión publicada ya escribe ese archivo,
+// debe conservarlo con lo que no se puede recrear (el color); si no, la nueva lo crea.
 // Solo en CI: instala BoldoAtlas, abre la app (ventana) y usa los datos reales del usuario que corre.
 // Es .mjs y no .ps1 como decía el encargo: la guarda `enCI` y la lectura de SQLite ya existen en Node.
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enCI } from "./probar-app.mjs";
@@ -13,12 +15,15 @@ const UNIDAD = "Unidad de prueba CI";
 const TIPO_GERENCIA = "00000000-0000-7000-8000-000000000001";
 const RESPALDO = "boldo-20200101-0000.db";
 const ESPERA_MS = 60_000;
+// de la paleta de la app y distinto del primero: la app no lo elige sola para esta organización
+const COLOR_PRUEBA = "#b83280";
+const ABIERTA_PRUEBA = "2000-01-01T00:00:00.000Z";
 
 /**
  * Lo que no se cumple tras actualizar; vacío si todo está bien.
- * @param {{ lista: any, dbId: string | null | undefined, nombre: string | null, unidades: string[], respaldo: boolean, dbIdAntes: string | null }} v
+ * @param {{ lista: any, dbId: string | null | undefined, nombre: string | null, unidades: string[], respaldo: boolean, dbIdAntes: string | null, colorAntes?: string | null }} v
  */
-export function problemas({ lista, dbId, nombre, unidades, respaldo, dbIdAntes }) {
+export function problemas({ lista, dbId, nombre, unidades, respaldo, dbIdAntes, colorAntes = null }) {
   /** @type {string[]} */
   const mal = [];
   const orgs = Array.isArray(lista?.organizaciones) ? lista.organizaciones : [];
@@ -28,6 +33,8 @@ export function problemas({ lista, dbId, nombre, unidades, respaldo, dbIdAntes }
   if (e?.nombre !== NOMBRE) mal.push(`la entrada se llama «${e?.nombre}» y debía llamarse «${NOMBRE}»`);
   if (!dbId || e?.id !== dbId)
     mal.push(`el id de la entrada (${e?.id}) no es el db_id de boldo.db (${dbId})`);
+  if (colorAntes && e?.color !== colorAntes)
+    mal.push(`la entrada perdió su color: era ${colorAntes} y es ${e?.color}`);
   if (dbIdAntes && dbIdAntes !== dbId) mal.push(`el db_id cambió al actualizar: ${dbIdAntes} -> ${dbId}`);
   if (nombre !== NOMBRE) mal.push(`boldo.db perdió su nombre: «${nombre}»`);
   if (!unidades.includes(UNIDAD))
@@ -42,13 +49,17 @@ const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
 /** @template T @param {() => Promise<T | false | null | undefined> | T | false | null | undefined} f @param {string} que @returns {Promise<T>} */
 async function esperar(f, que) {
   const limite = Date.now() + ESPERA_MS;
+  let ultimo = "";
   for (;;) {
     // la app puede tener la base a medio crear o la lista a medio escribir: un error es «todavía no»
     const r = await Promise.resolve()
       .then(f)
-      .catch(() => null);
+      .catch((/** @type {Error} */ e) => {
+        ultimo = ` (último error: ${e.message})`;
+        return null;
+      });
     if (r) return /** @type {T} */ (r);
-    if (Date.now() > limite) throw new Error(`Pasaron ${ESPERA_MS / 1000} s esperando: ${que}`);
+    if (Date.now() > limite) throw new Error(`Pasaron ${ESPERA_MS / 1000} s esperando: ${que}${ultimo}`);
     await pausa(250);
   }
 }
@@ -66,6 +77,9 @@ function cerrarTodo() {
   // solo en un runner de GitHub (enCI): no hay otra BoldoAtlas que cuidar
   spawnSync("taskkill", ["/IM", "boldo-atlas.exe", "/T", "/F"], { stdio: "ignore", timeout: 30_000 });
 }
+
+/** @param {string} ruta */
+const sha256 = (ruta) => createHash("sha256").update(readFileSync(ruta)).digest("hex");
 
 /** @param {string} bd @param {(c: import("node:sqlite").DatabaseSync) => any} f */
 async function enBase(bd, f) {
@@ -88,7 +102,12 @@ const meta = (c, clave) =>
 async function abrirHasta(exe, listo, que) {
   const p = spawn(exe, [], { stdio: "ignore" });
   try {
-    return await esperar(listo, que);
+    return await Promise.race([
+      esperar(listo, que),
+      new Promise((_, mal) =>
+        p.once("error", (e) => mal(new Error(`No se pudo abrir ${exe}: ${e.message}`))),
+      ),
+    ]);
   } finally {
     if (p.pid) {
       try {
@@ -101,8 +120,8 @@ async function abrirHasta(exe, listo, que) {
   }
 }
 
-/** @param {string} anterior @param {string} nuevo */
-async function correr(anterior, nuevo) {
+/** @param {string} anterior @param {string} nuevo @param {string} compilado el boldo-atlas.exe compilado para `nuevo` */
+async function correr(anterior, nuevo, compilado) {
   const { identifier } = JSON.parse(readFileSync(join("src-tauri", "tauri.conf.json"), "utf8"));
   const datos = join(process.env.APPDATA ?? "", identifier);
   const programa = join(process.env.LOCALAPPDATA ?? "", "BoldoAtlas", "boldo-atlas.exe");
@@ -113,53 +132,98 @@ async function correr(anterior, nuevo) {
   for (const previo of [datos, programa]) {
     if (existsSync(previo)) throw new Error(`${previo} ya existe: el runner no está limpio`);
   }
-  for (const setup of [anterior, nuevo]) {
-    if (!existsSync(setup)) throw new Error(`No existe el instalador ${setup}`);
+  for (const setup of [anterior, nuevo, compilado]) {
+    if (!existsSync(setup)) throw new Error(`No existe ${setup}`);
   }
 
   console.log("1. instalar la versión publicada");
   instalar(anterior, ["/P"]);
+  const exeCompilado = sha256(compilado);
+  if (!existsSync(programa)) throw new Error(`El instalador publicado no dejó ${programa}`);
+  const exeAntes = sha256(programa);
+  console.log(`   exe instalado: sha256 ${exeAntes}`);
+  if (exeAntes === exeCompilado)
+    throw new Error("La versión publicada es idéntica a la compilada: no se probaría ninguna actualización");
 
   console.log("2. abrirla, dejar que cree su base");
-  const { dbId: dbIdAntes } = await abrirHasta(programa, () => esquemaListo(bd), `${bd} con su esquema`);
+  const { dbId: dbIdAntes, version: versionAntes } = await abrirHasta(
+    programa,
+    () => esquemaListo(bd),
+    `${bd} con su esquema`,
+  );
 
   console.log("3. dejarle datos y un respaldo");
   await enBase(bd, (c) => {
-    c.prepare("INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?)").run(NOMBRE);
-    const ahora = new Date().toISOString();
-    c.prepare(
-      "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at) VALUES ('11111111-1111-7111-8111-111111111111', ?, ?, ?, ?)",
-    ).run(TIPO_GERENCIA, UNIDAD, ahora, ahora);
+    try {
+      c.prepare("INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?)").run(NOMBRE);
+      const ahora = new Date().toISOString();
+      c.prepare(
+        "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at) VALUES ('11111111-1111-7111-8111-111111111111', ?, ?, ?, ?)",
+      ).run(TIPO_GERENCIA, UNIDAD, ahora, ahora);
+    } catch (e) {
+      throw new Error(
+        `No se pudo sembrar la versión publicada (¿cambió el esquema de meta o unidades? ajusta este script): ${e instanceof Error ? e.message : e}`,
+      );
+    }
   });
   mkdirSync(join(datos, "respaldos"), { recursive: true });
   copyFileSync(bd, join(datos, "respaldos", RESPALDO));
-  // la versión publicada no escribe la lista; si algún día lo hace, se borra para que la nueva deba crearla
-  if (existsSync(lista)) {
-    console.log("   (la versión anterior ya escribe organizaciones.json: se borra para probar la creación)");
-    rmSync(lista);
+  // Si la versión publicada ya escribe la lista, la actualización debe conservarla: se le deja lo que un usuario habría
+  // cambiado (nombre y color) y se exige después. Si no la escribe, la nueva debe crearla.
+  /** @type {string | null} */
+  let colorAntes = null;
+  const listaAntes = existsSync(lista);
+  if (listaAntes) {
+    const previa = JSON.parse(readFileSync(lista, "utf8"));
+    if (previa.organizaciones?.length !== 1)
+      throw new Error(`La lista de la versión publicada no tiene 1 entrada: ${JSON.stringify(previa)}`);
+    Object.assign(previa.organizaciones[0], { nombre: NOMBRE, color: COLOR_PRUEBA, abierta: ABIERTA_PRUEBA });
+    writeFileSync(lista, JSON.stringify(previa));
+    colorAntes = COLOR_PRUEBA;
+    console.log("   la versión publicada ya escribe organizaciones.json: debe conservarlo");
+  } else {
+    console.log("   la versión publicada no escribe organizaciones.json: la nueva debe crearlo");
   }
 
-  console.log("4. instalar la nueva encima, como lo hace la app");
+  // como el actualizador de la app (que pasa también /R); aquí la app se abre a mano en el paso siguiente
+  console.log("4. instalar la nueva encima");
   instalar(nuevo, ["/P", "/UPDATE"]);
+  const exeDespues = sha256(programa);
+  console.log(`   exe instalado: sha256 ${exeDespues}; el compilado en este trabajo: ${exeCompilado}`);
+  if (exeDespues === exeAntes) throw new Error("/UPDATE terminó sin reemplazar boldo-atlas.exe");
+  if (exeDespues !== exeCompilado)
+    throw new Error("El boldo-atlas.exe instalado no es el compilado en este trabajo");
 
   console.log("5. abrirla, esperar la lista");
-  const json = await abrirHasta(programa, () => JSON.parse(readFileSync(lista, "utf8")), lista);
+  // con una lista previa ya hay archivo antes de que la nueva abra: se espera a que anote la apertura
+  const json = await abrirHasta(
+    programa,
+    () => {
+      const j = JSON.parse(readFileSync(lista, "utf8"));
+      return !listaAntes || j.organizaciones?.[0]?.abierta !== ABIERTA_PRUEBA ? j : null;
+    },
+    lista,
+  );
 
   console.log("6. comprobar");
   const despues = await enBase(bd, (c) => ({
     dbId: meta(c, "db_id"),
     nombre: meta(c, "org_nombre"),
+    version: Number(c.prepare("PRAGMA user_version").get()?.user_version),
     unidades: c
       .prepare("SELECT nombre FROM unidades WHERE deleted_at IS NULL")
       .all()
       .map((f) => String(f.nombre)),
   }));
+  const { version: versionDespues, ...base } = despues;
   const mal = problemas({
     lista: json,
-    ...despues,
+    ...base,
     respaldo: existsSync(join(datos, "respaldos", RESPALDO)),
     dbIdAntes,
+    colorAntes,
   });
+  console.log(`   user_version: ${versionAntes} -> ${versionDespues}`);
   console.log(
     `   db_id antes: ${dbIdAntes ?? "(la versión publicada no lo tenía)"}; lista: ${JSON.stringify(json)}`,
   );
@@ -168,26 +232,30 @@ async function correr(anterior, nuevo) {
 
 /** La base ya migrada (con versión de esquema) y su db_id, si la app ya lo escribe. Falla o da null mientras no. @param {string} bd */
 const esquemaListo = (bd) =>
-  enBase(bd, (c) =>
-    Number(c.prepare("PRAGMA user_version").get()?.user_version) ? { dbId: meta(c, "db_id") } : null,
-  );
+  enBase(bd, (c) => {
+    const version = Number(c.prepare("PRAGMA user_version").get()?.user_version);
+    return version ? { dbId: meta(c, "db_id"), version } : null;
+  });
 
-/** @param {string[]} argv */
+/** El código de salida. @param {string[]} argv */
 export async function principal(argv) {
   try {
     if (!enCI(process.env) || process.platform !== "win32") {
       throw new Error("Solo en CI de Windows: instala BoldoAtlas y lo abre en una ventana.");
     }
-    const [anterior, nuevo] = argv;
-    if (!anterior || !nuevo)
-      throw new Error("Uso: node scripts/probar-actualizacion.mjs <setup anterior> <setup nuevo>");
-    await correr(anterior, nuevo);
+    const [anterior, nuevo, compilado] = argv;
+    if (!anterior || !nuevo || !compilado)
+      throw new Error(
+        "Uso: node scripts/probar-actualizacion.mjs <setup anterior> <setup nuevo> <boldo-atlas.exe compilado>",
+      );
+    await correr(anterior, nuevo, compilado);
     console.log("Actualización comprobada.");
   } catch (e) {
     console.error(`\nFALLÓ la prueba de actualización: ${e instanceof Error ? e.message : String(e)}`);
     cerrarTodoSiCI();
-    process.exitCode = 1;
+    return 1;
   }
+  return 0;
 }
 
 function cerrarTodoSiCI() {
@@ -195,6 +263,5 @@ function cerrarTodoSiCI() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  await principal(process.argv.slice(2));
-  process.exit(process.exitCode ?? 0);
+  process.exit(await principal(process.argv.slice(2)));
 }
