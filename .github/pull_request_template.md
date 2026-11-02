@@ -13,3 +13,9 @@ Para salir de la alpha usa un label: version:parche, version:menor o version:may
 ## Cómo probarlo
 
 <!-- La portable de prueba está en los artefactos del workflow build-prueba. -->
+
+## Aportes externos
+
+<!-- Solo si no eres el autor del proyecto. / Only if you are not the project's author. -->
+
+- [ ] Leí y acepto el [CLA](https://github.com/MscottB/BoldoAtlas/blob/main/CONTRIBUTING.es.md). / I have read and accept the [CLA](https://github.com/MscottB/BoldoAtlas/blob/main/CONTRIBUTING.md).
