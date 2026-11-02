@@ -28,6 +28,15 @@ const TEXTOS = {
     leer: "“No indicado” significa que no lo encontramos en las páginas oficiales que revisamos, no que el producto no lo tenga. Muchos datos cambian según el plan y el país. Los números pequeños llevan a la fuente de cada dato.",
     criterio: "Qué comparar",
     noIndicado: "No indicado",
+    leyendaTitulo: "Qué significa cada marca",
+    niveles: {
+      si: { nombre: "Lo ofrece", nota: "" },
+      parcial: { nombre: "Con condiciones", nota: "según el plan, solo en la web o en parte" },
+      no: { nombre: "No lo ofrece", nota: "o no aplica" },
+      ni: { nombre: "No indicado", nota: "no lo encontramos en las fuentes" },
+    },
+    sinSuma:
+      "Las marcas no se suman: cada punto pesa distinto para cada persona. Las filas sin marca solo describen.",
     fuente: "Fuente",
     fuentesTitulo: "Fuentes",
     fuentesTexto: "Sitios oficiales y documentación de cada producto, revisados en la fecha indicada arriba.",
@@ -59,6 +68,15 @@ const TEXTOS = {
     leer: "“Not stated” means we didn't find it on the official pages we reviewed, not that the product lacks it. Many details change by plan and country. The small numbers lead to the source of each data point.",
     criterio: "What to compare",
     noIndicado: "Not stated",
+    leyendaTitulo: "What each mark means",
+    niveles: {
+      si: { nombre: "Offers it", nota: "" },
+      parcial: { nombre: "With conditions", nota: "depends on the plan, web only or in part" },
+      no: { nombre: "Doesn't offer it", nota: "or not applicable" },
+      ni: { nombre: "Not stated", nota: "we didn't find it in the sources" },
+    },
+    sinSuma:
+      "Marks aren't added up: each point weighs differently for each person. Rows without a mark only describe.",
     fuente: "Source",
     fuentesTitulo: "Sources",
     fuentesTexto: "Official sites and documentation of each product, reviewed on the date shown above.",
@@ -77,8 +95,32 @@ const TEXTOS = {
 const t = computed(() => TEXTOS[props.lang]);
 const numero = (id: string) => datos.fuentes.findIndex((f) => f.id === id) + 1;
 const nombre = (id: string) => datos.productos.find((p) => p.id === id)?.nombre;
-const celda = (fila: (typeof datos.filas)[number], producto: string) =>
-  (fila.celdas as Record<string, { ni?: boolean; es?: string; en?: string; f?: string[] }>)[producto];
+type Nivel = "si" | "parcial" | "no" | "ni";
+type Fila = (typeof datos.filas)[number];
+const NIVELES: Nivel[] = ["si", "parcial", "no", "ni"];
+// Cada marca es favorable para quien usa el producto; la forma cambia además del color.
+const ICONOS: Record<Nivel, string> = {
+  si: '<circle cx="8" cy="8" r="6.5"/><path d="M5 8.3l2.2 2.2L11 6"/>',
+  parcial: '<circle cx="8" cy="8" r="6.5"/><path d="M8 1.5a6.5 6.5 0 0 0 0 13z" fill="currentColor" stroke="none"/>',
+  no: '<circle cx="8" cy="8" r="6.5"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4"/>',
+  ni: '<circle cx="8" cy="8" r="6.5" stroke-dasharray="2.2 2"/><path d="M5.5 8h5"/>',
+};
+const RANGO: Record<Nivel, number> = { si: 3, parcial: 2, no: 1, ni: 0 };
+const celda = (fila: Fila, producto: string) =>
+  (fila.celdas as Record<string, { ni?: boolean; es?: string; en?: string; f?: string[]; nivel: Nivel | null }>)[
+    producto
+  ];
+// Se resalta la celda de BoldoAtlas solo si su marca supera a la de cada uno de los demás en esa fila (sin empates).
+const boldoGana = (fila: Fila) => {
+  const b = celda(fila, "boldo").nivel;
+  return (
+    !!b &&
+    datos.productos.every((p) => {
+      const n = celda(fila, p.id).nivel;
+      return p.id === "boldo" || (n !== null && RANGO[n] < RANGO[b]);
+    })
+  );
+};
 </script>
 
 <template>
@@ -102,6 +144,18 @@ const celda = (fila: (typeof datos.filas)[number], producto: string) =>
     <section class="ancho" aria-labelledby="producto">
       <h2 id="producto">{{ t.tablaTitulo }}</h2>
       <p class="leer">{{ t.leer }}</p>
+      <ul class="leyenda" :aria-label="t.leyendaTitulo">
+        <li v-for="n in NIVELES" :key="n">
+          <span class="sello" :class="`n-${n}`"
+            ><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" v-html="ICONOS[n]"
+          /></span>
+          <span
+            ><strong>{{ t.niveles[n].nombre }}</strong
+            ><template v-if="t.niveles[n].nota">: {{ t.niveles[n].nota }}</template></span
+          >
+        </li>
+      </ul>
+      <p class="leer">{{ t.sinSuma }}</p>
       <div class="marco">
         <table>
           <thead>
@@ -119,16 +173,33 @@ const celda = (fila: (typeof datos.filas)[number], producto: string) =>
                 v-for="p in datos.productos"
                 :key="p.id"
                 :data-col="p.nombre"
-                :class="{ nuestra: p.id === 'boldo', sin: celda(fila, p.id).ni }"
+                :class="{
+                  nuestra: p.id === 'boldo',
+                  sin: celda(fila, p.id).ni,
+                  mejor: p.id === 'boldo' && boldoGana(fila),
+                }"
               >
-                <span>
-                  <template v-if="celda(fila, p.id).ni">{{ t.noIndicado }}</template>
-                  <template v-else>
-                    {{ celda(fila, p.id)[lang]
-                    }}<sup v-for="f in celda(fila, p.id).f" :key="f"
-                      ><a :href="`#fuente-${f}`" :aria-label="`${t.fuente} ${numero(f)}`">{{ numero(f) }}</a></sup
-                    >
-                  </template>
+                <span class="dato">
+                  <span v-if="celda(fila, p.id).nivel" class="sello" :class="`n-${celda(fila, p.id).nivel}`">
+                    <svg
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
+                      focusable="false"
+                      v-html="ICONOS[celda(fila, p.id).nivel as Nivel]"
+                    />
+                    <span v-if="!celda(fila, p.id).ni" class="solo-lector"
+                      >{{ t.niveles[celda(fila, p.id).nivel as Nivel].nombre }}.
+                    </span>
+                  </span>
+                  <span class="texto">
+                    <template v-if="celda(fila, p.id).ni">{{ t.noIndicado }}</template>
+                    <template v-else>
+                      {{ celda(fila, p.id)[lang]
+                      }}<sup v-for="f in celda(fila, p.id).f" :key="f"
+                        ><a :href="`#fuente-${f}`" :aria-label="`${t.fuente} ${numero(f)}`">{{ numero(f) }}</a></sup
+                      >
+                    </template>
+                  </span>
                 </span>
               </td>
             </tr>
@@ -323,6 +394,92 @@ thead .nuestra {
 .sin {
   color: var(--vp-c-text-2);
   font-style: italic;
+}
+/* marcas: la forma (visto, mitad, equis, raya) dice lo mismo que el color; contraste ≥ 4.2:1 sobre el fondo y sobre el tinte de BoldoAtlas */
+.comparador {
+  --m-si: #1a7f37;
+  --m-parcial: #8a5a00;
+  --m-no: #b42318;
+  --m-ni: #5f6672;
+}
+:global(.dark) .comparador {
+  --m-si: #3fb950;
+  --m-parcial: #d4a72c;
+  --m-no: #ff8a80;
+  --m-ni: #a1a8b3;
+}
+.sello {
+  display: inline-flex;
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.1em;
+}
+.sello svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.n-si {
+  color: var(--m-si);
+}
+.n-parcial {
+  color: var(--m-parcial);
+}
+.n-no {
+  color: var(--m-no);
+}
+.n-ni {
+  color: var(--m-ni);
+}
+.dato {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.texto {
+  min-width: 0;
+}
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+/* la celda de BoldoAtlas donde su marca supera a todas las demás */
+td.mejor {
+  background: var(--vp-c-brand-soft);
+  box-shadow: inset 0 0 0 2px var(--vp-c-brand-1);
+}
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  list-style: none;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--vp-c-text-1);
+}
+.leyenda li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+.leyenda + .leer {
+  margin-top: 12px;
 }
 sup {
   margin-left: 2px;
