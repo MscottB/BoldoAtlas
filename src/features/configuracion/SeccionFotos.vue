@@ -1,15 +1,15 @@
 <script lang="ts">
 import { ref, shallowRef } from "vue";
-import type { Candidata, Resultado } from "./optimizarFotos";
+import type { Candidata, ResultadoFinal } from "./optimizarFotos";
 
 // A nivel de módulo: el trabajo sigue si se sale de Configuración, y al volver se ve cómo va.
 type Etapa = "reposo" | "estimando" | "confirmar" | "respaldo" | "optimizando" | "compactando";
 const etapa = ref<Etapa>("reposo");
 const candidatas = shallowRef<Candidata[]>([]);
-const estimacion = shallowRef<{ fotos: number; total: number; quedarian: number } | null>(null);
+const estimacion = shallowRef<{ fotos: number; total: number; quedarian: number; respaldo: number } | null>(null);
 const hechas = ref(0);
 const cancelando = ref(false);
-const resultado = shallowRef<(Resultado & { ahorro: number }) | null>(null);
+const resultado = shallowRef<ResultadoFinal | null>(null);
 const sinNada = ref(false);
 </script>
 
@@ -29,11 +29,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { respaldarAntesDeReemplazar } from "@/db/cliente";
+import { infoProyecto, respaldarAntesDeOptimizar } from "@/db/cliente";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { tamano } from "@/lib/formato";
 import { conTrabajo } from "@/lib/trabajos";
-import { bytesEnFotos, compactar, estimar, leerCandidatas, optimizarTodas, PASOS } from "./optimizarFotos";
+import { bytesEnFotos, estimar, leerCandidatas, optimizarTodas, PASOS, terminar } from "./optimizarFotos";
 
 const { t, locale } = useI18n();
 
@@ -56,7 +56,9 @@ async function preparar() {
       etapa.value = "reposo";
       return;
     }
-    estimacion.value = await estimar(candidatas.value, PASOS);
+    // El respaldo copia la base, con las fotos originales: ocupa casi lo mismo que el archivo de hoy.
+    const [e, proyecto] = await Promise.all([estimar(candidatas.value, PASOS), infoProyecto()]);
+    estimacion.value = { ...e, respaldo: proyecto.bytes };
     etapa.value = "confirmar";
   } catch (e) {
     etapa.value = "reposo";
@@ -70,7 +72,7 @@ async function optimizar() {
   etapa.value = "respaldo";
   try {
     await conTrabajo(t("trabajos.optimizarFotos"), async () => {
-      await respaldarAntesDeReemplazar(); // sin respaldo no se toca ninguna foto
+      await respaldarAntesDeOptimizar(); // sin respaldo no se toca ninguna foto
       etapa.value = "optimizando";
       const antes = await bytesEnFotos();
       const r = await optimizarTodas(candidatas.value, PASOS, {
@@ -78,8 +80,7 @@ async function optimizar() {
         alAvanzar: (n) => (hechas.value = n),
       });
       etapa.value = "compactando";
-      if (r.optimizadas) await compactar();
-      resultado.value = { ...r, ahorro: Math.max(0, antes - (await bytesEnFotos())) };
+      resultado.value = await terminar(r, antes);
     });
   } catch (e) {
     toast.error(mensajeFallo(e));
@@ -141,6 +142,7 @@ const tam = (bytes: number) => tamano(bytes, locale.value);
           })
         }}
       </p>
+      <p v-if="!resultado.compactada">{{ t("config.fotos.sinCompactar") }}</p>
       <p v-if="resultado.sinGanancia" class="text-muted-foreground">
         {{ t("config.fotos.sinGanancia", { n: resultado.sinGanancia }, resultado.sinGanancia) }}
       </p>
@@ -164,6 +166,7 @@ const tam = (bytes: number) => tamano(bytes, locale.value);
                   n: estimacion.fotos,
                   total: tam(estimacion.total),
                   quedarian: tam(estimacion.quedarian),
+                  respaldo: tam(estimacion.respaldo),
                 },
                 estimacion.fotos,
               )

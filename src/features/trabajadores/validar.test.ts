@@ -3,6 +3,7 @@ import {
   FOTO_ENTRADA_MAX_BYTES,
   camposGuardables,
   cambiosFicha,
+  guardadoDeFicha,
   hayCambiosSinGuardar,
   hayCoincidenciaExacta,
   normalizarFicha,
@@ -106,6 +107,19 @@ describe("guardar sin pisar lo que no se cargó", () => {
     const base = { ...guardada, notas: "una nota", foto_png: undefined };
     expect(cambiosFicha({ ...base, notas: "  " }, base)).toEqual({ notas: null });
     expect(cambiosFicha({ ...base, notas: " otra " }, base)).toEqual({ notas: "otra" });
+  });
+  it("sin foto guardada, quitar una recién elegida no es un cambio: una ficha nueva no avisa en falso", () => {
+    const nueva = { id: "", nombre: "", correo: null, telefono: null, tipo_contrato_id: null, sede_id: null, jornada_id: null, tiene_foto: 0, updated_at: "" };
+    const base = guardadoDeFicha(nueva, null);
+    expect(hayCambiosSinGuardar({ ...base, notas: "", foto_png: null }, base)).toBe(false);
+    expect(hayCambiosSinGuardar({ ...base, notas: "", foto_png: undefined }, base)).toBe(false);
+    expect(hayCambiosSinGuardar({ ...base, foto_png: "AAAA" }, base)).toBe(true);
+  });
+  it("con foto guardada, quitarla sí es un cambio y no tocarla no", () => {
+    const conFoto = { id: "a", nombre: "Ana", correo: null, telefono: null, tipo_contrato_id: null, sede_id: null, jornada_id: null, tiene_foto: 1, updated_at: "u" };
+    const base = guardadoDeFicha(conFoto, null);
+    expect(cambiosFicha({ ...base, foto_png: null }, base)).toEqual({ foto_png: null });
+    expect(cambiosFicha({ ...base, foto_png: undefined }, base)).toEqual({});
   });
   it("ignora lo que no edita la ficha, aunque venga en el objeto", () => {
     const conExtras = { ...sinCargar, id: "x", tiene_foto: 1, updated_at: "ayer" };

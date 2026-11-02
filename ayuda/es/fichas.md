@@ -42,12 +42,14 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 
 ## Fotos
 
-Al elegir una foto, BoldoAtlas la reduce antes de guardarla: su lado mayor queda en 256 píxeles y se guarda como JPEG. Se ve igual en todos los tamaños en que aparece y pesa mucho menos, también en los respaldos y en los archivos `.boldo`. Una foto pequeña no se agranda, y si convertirla no la dejara más liviana, se guarda tal cual. Lo transparente queda blanco, y se quitan los datos que traía el archivo, como el lugar donde se tomó.
+Al elegir una foto, BoldoAtlas la reduce antes de guardarla: su lado mayor queda en 256 píxeles y se guarda como JPEG. Se ve igual en todos los tamaños en que aparece y pesa mucho menos, también en los respaldos y en los archivos `.boldo`. Una foto pequeña no se agranda. Lo transparente queda blanco. Una imagen de más de 120 megapíxeles no se acepta. Si cierras la ficha mientras la foto se prepara, se espera a que quede guardada.
 
-Las fotos que ya tenías se reducen en **Configuración › Fotos › Optimizar fotos existentes**, solo si lo pides:
+La foto convertida no guarda los datos que traía el archivo, como el lugar donde se tomó o la cámara. Si convertirla la dejara más pesada, se guarda tal cual, **con los datos que traiga**. Lo mismo vale para un JPEG o WebP sin esos datos que casi no bajaría de peso: se guarda tal cual.
 
-1. Primero ves cuánto ocupan y en cuánto quedarían.
-2. Se hace un respaldo, que conserva las fotos originales.
+Las fotos que ya tenías se reducen en **Configuración › Fotos › Optimizar fotos existentes**, solo si lo pides. Se revisan las que pesan más de unos 36 KB; las más livianas no se tocan y conservan los datos que traigan.
+
+1. Primero ves cuánto ocupan, en cuánto quedarían y cuánto ocupará el respaldo.
+2. Se hace un respaldo, marcado **Antes de optimizar fotos**, que conserva las originales. Quedan los últimos 3.
 3. Las fotos se convierten por partes, con una barra de avance. Puedes seguir trabajando, y **Cancelar** deja lo ya optimizado.
 4. Al final ves cuántas se optimizaron y cuánto espacio se liberó. Una foto que no se pudo optimizar se nombra y sigue como estaba.
 

@@ -1,4 +1,5 @@
 import type { CamposTrabajador } from "@/db/repos/trabajadores";
+import type { Trabajador } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { normalizarTexto } from "@/lib/texto";
 
@@ -58,6 +59,21 @@ export const normalizarFicha = (f: DatosFicha): DatosFicha => ({
   telefono: f.telefono?.trim() || null,
   // Unas notas sin cargar no son unas notas vacías: convertirlas en null las borraría al guardar.
   ...(f.notas === undefined ? {} : { notas: f.notas?.trim() || null }),
+});
+
+/**
+ * Lo guardado de una ficha, tal como se compara con el formulario. Sin foto es null, y quitar una foto recién elegida no es
+ * un cambio; con foto es undefined, porque su contenido no se carga, y quitarla sí lo es.
+ */
+export const guardadoDeFicha = (w: Trabajador, notas: string | null | undefined): DatosFicha => ({
+  nombre: w.nombre,
+  correo: w.correo,
+  telefono: w.telefono,
+  tipo_contrato_id: w.tipo_contrato_id,
+  sede_id: w.sede_id,
+  jornada_id: w.jornada_id,
+  foto_png: w.tiene_foto ? undefined : null,
+  notas,
 });
 
 /** Campos del formulario que difieren de lo guardado (o de la ficha vacía si es nueva), ya normalizados. */

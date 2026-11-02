@@ -42,12 +42,14 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 
 ## Photos
 
-When you choose a photo, BoldoAtlas reduces it before saving it: its longest side becomes 256 pixels and it is saved as JPEG. It looks the same at every size where it appears and weighs much less, also in backups and in `.boldo` files. A small photo is not enlarged, and if converting it would not make it lighter, it is saved as it is. Transparent areas turn white, and the data the file carried, such as where it was taken, is removed.
+When you choose a photo, BoldoAtlas reduces it before saving it: its longest side becomes 256 pixels and it is saved as JPEG. It looks the same at every size where it appears and weighs much less, also in backups and in `.boldo` files. A small photo is not enlarged. Transparent areas turn white. An image over 120 megapixels is not accepted. If you close the record while the photo is being prepared, it waits until the photo is saved.
 
-Photos you already have are reduced in **Settings › Photos › Optimize existing photos**, only if you ask:
+The converted photo does not keep the data the file carried, such as where it was taken or the camera. If converting it would make it heavier, it is saved as it is, **with whatever data it carries**. The same goes for a JPEG or WebP without that data that would barely get lighter: it is saved as it is.
 
-1. First you see how much they take up and how much they would take up afterwards.
-2. A backup is made, which keeps the original photos.
+Photos you already have are reduced in **Settings › Photos › Optimize existing photos**, only if you ask. Those over about 36 KB are checked; lighter ones are not touched and keep whatever data they carry.
+
+1. First you see how much they take up, how much they would take up afterwards and how much the backup will take up.
+2. A backup is made, marked **Before optimizing photos**, which keeps the originals. The last 3 are kept.
 3. The photos are converted in parts, with a progress bar. You can keep working, and **Cancel** keeps what was already optimized.
 4. At the end you see how many were optimized and how much space was freed. A photo that could not be optimized is named and stays as it was.
 

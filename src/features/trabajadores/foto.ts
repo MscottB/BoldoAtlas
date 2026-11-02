@@ -1,10 +1,12 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Trabajador } from "@/db/tipos";
-import { leerComoUrl } from "@/features/configuracion/logo";
+import { base64De, leerComoUrl } from "@/features/configuracion/logo";
+import { FOTO_MAX_BYTES } from "./validar";
 
 // La foto más grande en pantalla es de 56 px (vista previa de Personas); en el lienzo, 32 px con zoom 2 son 64 px. Con
-// pantallas de 2x y 3x hacen falta hasta 168 px. Probado con retratos sintéticos de 2000x2667: desde 256 px y calidad 0,85
-// no se ve diferencia (128 px se ve borroso) y pesa unos 6 KB; 320 px pesa un 50 % más sin verse mejor. Medidas en
+// pantallas de 2x y 3x hacen falta hasta 168 px. Probado solo con imágenes sintéticas: con detalle de foto (ruido fractal y
+// grano, 12 MP), 256 px y calidad 0,85 pesa de 11 a 24 KB y no se distingue del original, mientras que 128 px se ve borroso;
+// 320 px pesa un 50 % más y solo mejora un poco en pantallas de 3x. Falta confirmarlo con fotos reales. Medidas en
 // docs/superpowers/notas/2026-11-01-fotos-optimizadas.md.
 export const FOTO_LADO_MAX = 256;
 export const FOTO_CALIDAD = 0.85;
@@ -24,19 +26,67 @@ export function medidasReducidas(ancho: number, alto: number, lado = FOTO_LADO_M
   };
 }
 
-/** ¿Vale la pena quedarse con la convertida? */
-export const convieneConvertir = (original: number, convertida: number, reducida: boolean): boolean =>
-  convertida < original && (reducida || convertida <= original * GANANCIA_MINIMA);
+/**
+ * ¿Vale la pena quedarse con la convertida? `limpiar`: la original puede traer datos ocultos (ver `puedeTraerDatos`), y
+ * entonces basta con que no pese más.
+ */
+export const convieneConvertir = (
+  original: number,
+  convertida: number,
+  reducida: boolean,
+  limpiar = false,
+): boolean => {
+  if (convertida > original) return false;
+  return limpiar || (convertida < original && (reducida || convertida <= original * GANANCIA_MINIMA));
+};
+
+const esJpeg = (b: Uint8Array) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+const texto = (b: Uint8Array, desde: number, hasta: number) => String.fromCharCode(...b.subarray(desde, hasta));
+const esWebp = (b: Uint8Array) => texto(b, 0, 4) === "RIFF" && texto(b, 8, 12) === "WEBP";
+
+/** El tipo según los bytes, nunca según lo que diga el dato guardado. */
+export const tipoImagen = (b: Uint8Array): string =>
+  esJpeg(b) ? "image/jpeg" : esWebp(b) ? "image/webp" : b[0] === 0x89 ? "image/png" : "application/octet-stream";
+
+/**
+ * ¿Puede traer datos además de la imagen (GPS, cámara, autor)? JPEG: EXIF o XMP (APP1), IPTC (APP13) o comentario. WebP: la
+ * marca de EXIF o XMP de su cabecera. PNG u otro: no se revisa y se da por sí. Ante una cabecera que no se entiende, también.
+ */
+export function puedeTraerDatos(b: Uint8Array): boolean {
+  if (esWebp(b)) return texto(b, 12, 16) === "VP8X" && (b[20]! & 0x0c) !== 0;
+  if (!esJpeg(b)) return true;
+  for (let i = 2; i + 4 <= b.length; i += 2 + ((b[i + 2]! << 8) | b[i + 3]!)) {
+    const marca = b[i + 1]!;
+    if (b[i] !== 0xff || marca === 0xe1 || marca === 0xed || marca === 0xfe) return true;
+    if (marca === 0xda) return false; // empieza la imagen: ya no hay más cabeceras
+  }
+  return true;
+}
+
+/** Sobre esto no se decodifica: ocuparía casi 500 MB de memoria. Los teléfonos sacan entre 12 y 108 megapíxeles. */
+export const FOTO_MAX_PIXELES = 120_000_000;
+export class FotoEnorme extends Error {}
+
+/** `onload` ya da las medidas y aún no decodifica: así una imagen enorme se rechaza sin ocupar su memoria. */
+const leerMedidas = (url: string) =>
+  new Promise<HTMLImageElement>((ok, mal) => {
+    const i = new Image();
+    i.onload = () => ok(i);
+    i.onerror = () => mal(new Error("foto"));
+    i.src = url;
+  });
 
 /**
  * La foto lista para guardar: reducida y en JPEG, o la misma `archivo` si convertirla no conviene. Se dibuja desde un
- * <img>, que aplica la orientación EXIF (probado en WebView2); al reescribirla se van los metadatos, como el GPS.
- * Lo transparente queda blanco.
+ * <img>, que aplica la orientación EXIF (probado en WebView2). Lo transparente queda blanco.
+ * Datos ocultos: la convertida no trae ninguno. Si convertirla pesaría más que la original, se queda la original, con los que
+ * traiga. También se queda una JPEG o WebP sin datos que no baje un 10 %.
  */
 export async function optimizarFoto(archivo: Blob): Promise<Blob> {
-  const img = new Image();
-  img.src = await leerComoUrl(archivo);
+  const img = await leerMedidas(await leerComoUrl(archivo));
+  if (img.naturalWidth * img.naturalHeight > FOTO_MAX_PIXELES) throw new FotoEnorme();
   await img.decode();
+  const inicio = new Uint8Array(await archivo.slice(0, 256 * 1024).arrayBuffer());
   const { ancho, alto, reducida } = medidasReducidas(img.naturalWidth, img.naturalHeight);
   const lienzo = document.createElement("canvas");
   lienzo.width = ancho;
@@ -49,7 +99,34 @@ export async function optimizarFoto(archivo: Blob): Promise<Blob> {
   const nueva = await new Promise<Blob>((ok, mal) =>
     lienzo.toBlob((b) => (b ? ok(b) : mal(new Error("foto"))), TIPO_SALIDA, FOTO_CALIDAD),
   );
-  return convieneConvertir(archivo.size, nueva.size, reducida) ? nueva : archivo;
+  return convieneConvertir(archivo.size, nueva.size, reducida, puedeTraerDatos(inicio)) ? nueva : archivo;
+}
+
+export type FotoPreparada = { base64: string } | { error: "fotoPesada" | "fotoLectura" | "fotoEnorme" };
+
+/**
+ * Lo que la ficha guarda de un archivo elegido. Procesarlo toma tiempo: si mientras tanto se abrió otra ficha (`sigueAbierta`
+ * da false), devuelve null y no entrega nada, para que la foto de una persona nunca termine en otra.
+ */
+export async function prepararFoto(
+  archivo: Blob,
+  sigueAbierta: () => boolean,
+  pasos: { optimizar: (a: Blob) => Promise<Blob>; aBase64: (f: Blob) => Promise<string> } = {
+    optimizar: optimizarFoto,
+    aBase64: async (f) => base64De(await leerComoUrl(f)),
+  },
+): Promise<FotoPreparada | null> {
+  try {
+    if (!sigueAbierta()) return null;
+    const foto = await pasos.optimizar(archivo);
+    if (!sigueAbierta()) return null;
+    if (foto.size > FOTO_MAX_BYTES) return { error: "fotoPesada" };
+    const base64 = await pasos.aBase64(foto);
+    return sigueAbierta() ? { base64 } : null;
+  } catch (e) {
+    if (!sigueAbierta()) return null;
+    return { error: e instanceof FotoEnorme ? "fotoEnorme" : "fotoLectura" };
+  }
 }
 
 /**

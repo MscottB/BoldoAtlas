@@ -4,6 +4,7 @@ import {
   estimar,
   muestra,
   optimizarTodas,
+  terminar,
   type Candidata,
   type FotoLista,
   type Pasos,
@@ -106,6 +107,31 @@ describe("optimizarTodas", () => {
   it("cuenta solo lo que la base escribió: quien cambió entre medio no suma", async () => {
     const r = await optimizarTodas(lista(3), pasos({ guardar: async () => 2 }), opciones());
     expect(r.optimizadas).toBe(2);
+  });
+});
+
+describe("terminar", () => {
+  const hecho = { optimizadas: 5, sinGanancia: 0, fallidas: ["Ana"], cancelado: false };
+  it("si compactar falla, el resultado de optimizar se conserva", async () => {
+    const r = await terminar(hecho, 1000, {
+      compactar: () => Promise.reject(new Error("ocupada")),
+      total: async () => 100,
+    });
+    expect(r).toEqual({ ...hecho, ahorro: 900, compactada: false });
+  });
+  it("si nada se optimizó, no compacta", async () => {
+    const compactar = vi.fn(async () => {});
+    const r = await terminar({ ...hecho, optimizadas: 0 }, 1000, { compactar, total: async () => 1000 });
+    expect(compactar).not.toHaveBeenCalled();
+    expect(r.compactada).toBe(true);
+    expect(r.ahorro).toBe(0);
+  });
+  it("si no se puede medir el total, tampoco se pierde el resultado", async () => {
+    const r = await terminar(hecho, 1000, {
+      compactar: async () => {},
+      total: () => Promise.reject(new Error("x")),
+    });
+    expect(r).toMatchObject({ optimizadas: 5, ahorro: 0, compactada: true });
   });
 });
 

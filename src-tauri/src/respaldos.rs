@@ -12,10 +12,14 @@ const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
 const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
 /// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: de estas quedan las últimas `CONSERVAR_IMPORTAR`.
 const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
+/// Copia que se hace antes de optimizar las fotos, con las originales: de estas quedan las últimas `CONSERVAR_OPTIMIZAR`.
+const PREFIJO_OPTIMIZAR: &str = "boldo-antes-de-optimizar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
 pub const CONSERVAR: usize = 10;
 /// Cuántos `boldo-antes-de-importar-` quedan al crear uno nuevo.
 pub const CONSERVAR_IMPORTAR: usize = 20;
+/// Pocos: cada uno guarda las fotos sin reducir, y puede pesar cientos de MB.
+pub const CONSERVAR_OPTIMIZAR: usize = 3;
 
 /// Error con un código estable que el frontend traduce (`respaldos.error.<codigo>`); `detalle` es técnico.
 #[derive(Debug, Serialize)]
@@ -79,6 +83,8 @@ pub struct Respaldo {
     pub reemplazo: bool,
     /// Seguridad hecha antes de agregar o fusionar un archivo importado.
     pub importacion: bool,
+    /// Seguridad hecha antes de optimizar las fotos.
+    pub optimizacion: bool,
 }
 
 /// `AAAAMMDD-HHMM` en hora local.
@@ -97,14 +103,17 @@ struct Entrada {
     seguridad: bool,
     reemplazo: bool,
     importacion: bool,
+    optimizacion: bool,
 }
 
-/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-|antes-de-importar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
+/// `boldo-[antes-de-restaurar-|antes-de-reemplazar-|antes-de-importar-|antes-de-optimizar-]AAAAMMDD-HHMM[-N].db`; cualquier otro nombre no es un respaldo.
 fn entrada(nombre: &str) -> Option<Entrada> {
     let reemplazo = nombre.strip_prefix(PREFIJO_REEMPLAZO);
     let importacion = nombre.strip_prefix(PREFIJO_IMPORTAR);
+    let optimizacion = nombre.strip_prefix(PREFIJO_OPTIMIZAR);
     let especial = reemplazo
         .or(importacion)
+        .or(optimizacion)
         .or_else(|| nombre.strip_prefix(PREFIJO_SEGURIDAD));
     let (seguridad, resto) = match especial {
         Some(r) => (true, r),
@@ -135,6 +144,7 @@ fn entrada(nombre: &str) -> Option<Entrada> {
         seguridad,
         reemplazo: reemplazo.is_some(),
         importacion: importacion.is_some(),
+        optimizacion: optimizacion.is_some(),
     })
 }
 
@@ -242,6 +252,25 @@ pub fn respaldar_antes_de_importar(
     Ok(nombre)
 }
 
+/// Respaldo previo a optimizar las fotos: va aparte de los automáticos, y de estos quedan los últimos `CONSERVAR_OPTIMIZAR`.
+pub fn respaldar_antes_de_optimizar(
+    conn: &Connection,
+    dir: &Path,
+    sello: &str,
+) -> Result<String, Fallo> {
+    let nombre = volcar(conn, dir, PREFIJO_OPTIMIZAR, sello)?;
+    // el respaldo ya está hecho: si la poda falla, se reintenta la próxima vez
+    for viejo in entradas(dir)
+        .unwrap_or_default()
+        .iter()
+        .filter(|e| e.optimizacion && e.nombre != nombre)
+        .skip(CONSERVAR_OPTIMIZAR - 1)
+    {
+        let _ = fs::remove_file(dir.join(&viejo.nombre));
+    }
+    Ok(nombre)
+}
+
 fn revision(ruta: &Path) -> Option<i64> {
     let c = Connection::open_with_flags(ruta, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
     c.query_row(
@@ -277,6 +306,7 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
                 seguridad: e.seguridad,
                 reemplazo: e.reemplazo,
                 importacion: e.importacion,
+                optimizacion: e.optimizacion,
                 nombre: e.nombre,
             })
         })
@@ -836,6 +866,60 @@ mod tests {
         assert_eq!(revision(&otra), 3);
         // un intento fallido no deja una copia «antes de restaurar» suelta
         assert!(listar(&respaldos).unwrap().iter().all(|r| !r.seguridad));
+    }
+
+    #[test]
+    fn de_los_respaldos_de_optimizar_quedan_los_ultimos_3_y_los_demas_no_se_tocan() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("boldo.db")).unwrap();
+        conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
+            .unwrap();
+        let carpeta = dir.path().join("respaldos");
+        fs::create_dir(&carpeta).unwrap();
+        let reemplazo = respaldar_antes_de_reemplazar(&conn, &carpeta, "20200101-0000").unwrap();
+        let importar = respaldar_antes_de_importar(&conn, &carpeta, "20200101-0000").unwrap();
+        let comun = respaldar(&conn, &carpeta, "20200101-0000").unwrap();
+        let hechos: Vec<_> = (0..CONSERVAR_OPTIMIZAR + 2)
+            .map(|n| {
+                respaldar_antes_de_optimizar(&conn, &carpeta, &format!("20250101-{n:04}")).unwrap()
+            })
+            .collect();
+        assert!(hechos[0].starts_with("boldo-antes-de-optimizar-"));
+        assert!(!carpeta.join(&hechos[0]).exists());
+        assert!(!carpeta.join(&hechos[1]).exists());
+        for quedan in &hechos[2..] {
+            assert!(carpeta.join(quedan).exists());
+        }
+        for otro in [&reemplazo, &importar, &comun] {
+            assert!(carpeta.join(otro).exists(), "{otro}");
+        }
+        let lista = listar(&carpeta).unwrap();
+        let r = lista.iter().find(|r| r.nombre == hechos[4]).unwrap();
+        assert!(r.optimizacion && r.seguridad && !r.reemplazo && !r.importacion);
+    }
+
+    #[test]
+    fn la_poda_de_optimizar_nunca_se_lleva_el_respaldo_recien_hecho() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("boldo.db")).unwrap();
+        conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
+            .unwrap();
+        let carpeta = dir.path().join("respaldos");
+        fs::create_dir(&carpeta).unwrap();
+        for n in 0..CONSERVAR_OPTIMIZAR {
+            respaldar_antes_de_optimizar(&conn, &carpeta, &format!("20300101-{n:04}")).unwrap();
+        }
+        // el reloj volvió atrás
+        let nuevo = respaldar_antes_de_optimizar(&conn, &carpeta, "20200101-0000").unwrap();
+        assert!(carpeta.join(&nuevo).exists());
+        assert_eq!(
+            entradas(&carpeta)
+                .unwrap()
+                .iter()
+                .filter(|e| e.optimizacion)
+                .count(),
+            CONSERVAR_OPTIMIZAR
+        );
     }
 
     #[test]

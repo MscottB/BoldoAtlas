@@ -19,9 +19,31 @@ Aspecto, mirando un muestrario a tamaño real y ampliado 4 veces: 128 px se ve b
 
 **Decisión: lado de 256 px, JPEG 0,85.** La foto mayor en pantalla es de 56 px, y en el lienzo, 32 px con zoom 2; con pantallas de 3x hacen falta 168 px. WebP pesa un tercio menos, pero Safari y WebKitGTK no lo escriben desde un canvas (entregan PNG), y aquí la diferencia son 2 KB.
 
-Límite de la prueba: un retrato sintético tiene menos textura que una foto real, que debería pesar más (se espera entre 15 y 30 KB). La proporción entre opciones sí sirve; el peso absoluto no. El umbral para volver a optimizar (48 KB en base64) deja margen para eso.
+Esos retratos tienen poca textura, así que se repitió con 3 imágenes de 12 MP con más detalle fotográfico (ruido fractal por capas, gradientes y grano por píxel):
+
+| Imagen (JPEG 92 de 3000x4000) | 128 JPEG 0,80 | 192 JPEG 0,85 | **256 JPEG 0,85** | 320 JPEG 0,85 |
+|---|---|---|---|---|
+| Retrato (4,3 MB) | 3,2 KB · 0,932 · 0,872 | 7,0 KB · 0,980 · 0,953 | **10,8 KB · 0,988 · 0,979** | 15,9 KB · 0,982 · 0,986 |
+| Follaje (5,3 MB) | 5,8 KB · 0,890 · 0,795 | 14,0 KB · 0,973 · 0,936 | **23,8 KB · 0,984 · 0,974** | 34,1 KB · 0,951 · 0,986 |
+| Paisaje (4,3 MB) | 3,7 KB · 0,893 · 0,794 | 8,5 KB · 0,968 · 0,926 | **13,6 KB · 0,982 · 0,968** | 20,2 KB · 0,971 · 0,981 |
+
+Cada celda: peso, SSIM a 56 px en 2x y SSIM a 56 px en 3x. La decisión se mantiene: 128 px pierde detalle a simple vista y 256 px no se distingue. 320 px mejora un poco en 3x y pesa un 50 % más.
+
+**Límite de la prueba:** ninguna es una foto real. Una foto de cara real puede pesar otra cosa y comprimirse distinto, así que lado y calidad quedan por confirmar cuando el autor pruebe con sus fotos. El umbral para volver a optimizar (48 KB en base64, unos 36 KB de imagen) deja margen para los pesos medidos.
 
 Orientación EXIF: un JPEG con orientación 6 dibujado desde un `<img>` en canvas sale girado bien (probado en WebView2), así que no hace falta corregirla. Falta comprobarlo en WebKit.
+
+Datos ocultos (GPS, cámara, autor) según el caso:
+
+| Caso | Qué se guarda | ¿Quedan los datos? |
+|---|---|---|
+| Se reduce y no pesa más | JPEG nuevo | No |
+| No se reduce, trae datos o es PNG, y no pesa más | JPEG nuevo | No |
+| Convertirla pesaría más | La original | **Sí** |
+| JPEG o WebP sin datos que no baja un 10 % | La original | No traía |
+| «Optimizar» con una foto de menos de 48 KB en base64 | No se revisa | **Sí**, si los traía |
+
+Dimensiones: sobre 120 megapíxeles se rechaza antes de decodificar (ocuparía casi 500 MB). Los teléfonos sacan entre 12 y 108 MP.
 
 ## Abrir la base (27b)
 

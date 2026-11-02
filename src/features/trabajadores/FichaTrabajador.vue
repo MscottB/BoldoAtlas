@@ -32,18 +32,17 @@ import type { TablaCatalogo, Trabajador } from "@/db/tipos";
 import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { asignacionesDePersona, formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { usePuesto } from "@/features/puestos/usePuesto";
-import { base64De, leerComoUrl } from "@/features/configuracion/logo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
-import { optimizarFoto, urlFoto } from "./foto";
+import { prepararFoto, urlFoto } from "./foto";
 import { useFicha } from "./useFicha";
 import {
-  FOTO_MAX_BYTES,
   camposGuardables,
   cambiosFicha,
+  guardadoDeFicha,
   hayCambiosSinGuardar,
   normalizarFicha,
   validarFicha,
@@ -94,20 +93,24 @@ const verErrores = ref(false);
 const fallidos = ref<Record<string, string>>({});
 const confirmando = ref(false);
 const errorFoto = ref("");
+const procesandoFoto = ref(0);
 // Las notas de esta ficha en la base. undefined: aún no llegan, y mientras tanto no se editan ni se escriben.
 const notasGuardadas = ref<string | null | undefined>(null);
 const errorNotas = ref(false);
+// Solo vale la lectura más reciente: una anterior de la misma persona no debe pisar lo que ya se editó.
+let pedidoNotas = 0;
 
 async function cargarNotas(persona: string) {
+  const este = ++pedidoNotas;
   notasGuardadas.value = undefined;
   errorNotas.value = false;
   try {
     const [fila] = await consultar<{ notas: string | null }>(SQL_NOTAS, [persona]);
-    if (form.id !== persona) return; // ya se abrió otra ficha
+    if (este !== pedidoNotas) return;
     notasGuardadas.value = fila?.notas ?? null;
     form.notas = fila?.notas ?? "";
   } catch {
-    if (form.id === persona) errorNotas.value = true;
+    if (este === pedidoNotas) errorNotas.value = true;
   }
 }
 
@@ -134,21 +137,13 @@ watch(
     errorFoto.value = "";
     errorNotas.value = false;
     notasGuardadas.value = null;
+    pedidoNotas++; // lo que venga en camino es de la ficha anterior
     if (w.id) void cargarNotas(w.id);
   },
   { immediate: true },
 );
 
-// Lo guardado de esta ficha, tal como se compara con el formulario.
-const guardadoDe = (w: Trabajador): DatosFicha => ({
-  nombre: w.nombre,
-  correo: w.correo,
-  telefono: w.telefono,
-  tipo_contrato_id: w.tipo_contrato_id,
-  sede_id: w.sede_id,
-  jornada_id: w.jornada_id,
-  notas: notasGuardadas.value,
-});
+const guardadoDe = (w: Trabajador) => guardadoDeFicha(w, notasGuardadas.value);
 
 watch(
   () => ({ ...form }),
@@ -210,7 +205,9 @@ async function guardarAhora() {
 }
 
 async function hayCambios() {
+  const conFoto = procesandoFoto.value > 0;
   await cola; // que termine lo que se está guardando antes de decidir
+  if (conFoto && errorFoto.value) return true; // la foto que se esperaba no quedó: que no se cierre sin verlo
   const base = id.value ? org.trabajadores.find((x) => x.id === id.value) : vacio();
   return !!base && hayCambiosSinGuardar(form, guardadoDe(base));
 }
@@ -271,13 +268,21 @@ async function elegirFoto(e: Event) {
   if (!archivo) return;
   errorFoto.value = validarFoto(archivo) ?? "";
   if (errorFoto.value) return;
-  try {
-    const foto = await optimizarFoto(archivo);
-    if (foto.size > FOTO_MAX_BYTES) errorFoto.value = t("ficha.error.fotoPesada");
-    else cambiar("foto_png", base64De(await leerComoUrl(foto))); // solo el base64
-  } catch {
-    errorFoto.value = t("ficha.error.fotoLectura");
-  }
+  // En la cola: cerrar la ficha o pasar a otra espera a que la foto quede guardada, como con cualquier otro campo.
+  // Se compara la apertura y no el id: una ficha nueva cambia de id al crearse y sigue siendo la misma.
+  const apertura = ficha.abierta.value;
+  procesandoFoto.value++;
+  cola = cola.then(async () => {
+    const r = await prepararFoto(archivo, () => ficha.abierta.value === apertura);
+    procesandoFoto.value--;
+    if (!r) return;
+    if ("error" in r) {
+      errorFoto.value = t(`ficha.error.${r.error}`);
+      return;
+    }
+    form.foto_png = r.base64; // solo el base64
+    await guardarAhora();
+  });
 }
 
 // Recién elegida: la del formulario. Si no: la que sirve Rust, salvo que se acabe de quitar.
@@ -500,12 +505,16 @@ const alAbrir = (e: Event) => {
                   type="button"
                   size="sm"
                   variant="outline"
+                  :disabled="procesandoFoto > 0"
                   @click="cambiar('foto_png', null)"
                 >
                   <X aria-hidden="true" />
                   {{ t("ficha.quitarFoto") }}
                 </Button>
               </div>
+              <p v-if="procesandoFoto" role="status" class="text-xs text-muted-foreground">
+                {{ t("ficha.procesandoFoto") }}
+              </p>
               <p v-if="errorFoto" role="alert" class="text-xs text-destructive">{{ errorFoto }}</p>
             </div>
           </div>

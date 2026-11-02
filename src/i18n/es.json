@@ -421,6 +421,7 @@
     "foto": "Foto",
     "elegirFoto": "Elegir foto",
     "quitarFoto": "Quitar foto",
+    "procesandoFoto": "Preparando la foto…",
     "encabeza": "Unidades que encabeza",
     "ninguna": "Ninguna",
     "eliminar": "Eliminar",
@@ -440,6 +441,7 @@
       "fotoTipo": "La foto debe ser PNG, JPG o WebP.",
       "fotoPeso": "La foto no puede pesar más de 30 MB.",
       "fotoPesada": "No se pudo dejar la foto por debajo de 1 MB.",
+      "fotoEnorme": "La imagen tiene demasiados píxeles (más de 120 megapíxeles). Elige una más pequeña.",
       "notasLectura": "No se pudieron leer las notas. Cierra la ficha y ábrela de nuevo.",
       "fotoLectura": "No se pudo leer la foto."
     },
@@ -740,7 +742,7 @@
       "estimando": "Calculando cuánto se ahorraría…",
       "nadaQueHacer": "Tus fotos ya están optimizadas.",
       "confirmarTitulo": "¿Optimizar las fotos?",
-      "confirmarTexto": "{n} foto ocupa {total} y quedaría en unos {quedarian}. Antes se hace un respaldo con las originales. | {n} fotos ocupan {total} y quedarían en unos {quedarian}. Antes se hace un respaldo con las originales.",
+      "confirmarTexto": "{n} foto ocupa {total} y quedaría en unos {quedarian}. Antes se hace un respaldo con las originales, que ocupará unos {respaldo} en disco. | {n} fotos ocupan {total} y quedarían en unos {quedarian}. Antes se hace un respaldo con las originales, que ocupará unos {respaldo} en disco.",
       "confirmar": "Optimizar",
       "volver": "Volver",
       "respaldo": "Haciendo el respaldo…",
@@ -750,6 +752,7 @@
       "cancelar": "Cancelar",
       "resultado": "Listo. Fotos optimizadas: {n}. Espacio liberado: {ahorro}.",
       "resultadoCancelado": "Cancelado. Fotos optimizadas: {n}. Espacio liberado: {ahorro}. Las demás siguen como estaban.",
+      "sinCompactar": "Las fotos quedaron optimizadas, pero el archivo de la base no se pudo achicar. Ese espacio se irá reutilizando.",
       "sinGanancia": "{n} foto no bajaba de peso y se dejó igual. | {n} fotos no bajaban de peso y se dejaron igual.",
       "fallidas": "{n} foto no se pudo optimizar y sigue como estaba: | {n} fotos no se pudieron optimizar y siguen como estaban:"
     },
@@ -889,7 +892,8 @@
     },
     "ultimo": "Último respaldo: {fecha}",
     "verLista": "Ver respaldos y restaurar",
-    "antesDeImportar": "Antes de importar"
+    "antesDeImportar": "Antes de importar",
+    "antesDeOptimizar": "Antes de optimizar fotos"
   },
   "vista": {
     "cerrar": "Cerrar"

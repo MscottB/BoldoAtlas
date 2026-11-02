@@ -70,8 +70,9 @@ fn sin_cuerpo(estado: StatusCode) -> Response<Vec<u8>> {
     r
 }
 
-/// Sin datos personales en ningún error: ni el id ni el motivo. La URL lleva `?v=<updated_at>`: si la foto cambia, cambia
-/// la URL, así que se puede guardar sin caducidad. WebView2 la guarda solo en memoria: medido, no queda copia en su carpeta.
+/// Sin datos personales en ningún error: ni el id ni el motivo. La URL lleva `?v=<updated_at>`: al editar una foto cambia la
+/// URL, así que se puede guardar sin caducidad. Optimizar no toca `updated_at`: hasta reiniciar puede verse la copia anterior
+/// en memoria, que es la misma imagen. En WebView2 no quedó copia en su carpeta (60 fotos); en WebKit no está comprobado.
 pub fn servir(c: &Connection, metodo: &Method, ruta: &str) -> Response<Vec<u8>> {
     if metodo != Method::GET {
         return sin_cuerpo(StatusCode::METHOD_NOT_ALLOWED);
@@ -152,7 +153,12 @@ fn desarmar(cuerpo: &[u8]) -> Result<(Lote, &[u8]), String> {
     }
     let (meta, imagenes) = resto.split_at(largo);
     let lote: Lote = serde_json::from_slice(meta).map_err(|_| invalido())?;
-    if lote.filas.iter().map(|f| f.largo).sum::<usize>() != imagenes.len() {
+    // sin desbordar: con panic = "abort", un largo enorme cerraría la app
+    let suma = lote
+        .filas
+        .iter()
+        .try_fold(0usize, |s, f| s.checked_add(f.largo));
+    if suma != Some(imagenes.len()) {
         return Err(invalido());
     }
     Ok((lote, imagenes))
@@ -168,7 +174,7 @@ fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
         .map_err(|e| e.to_string())?;
     let mut escritas = 0;
     for f in &lote.filas {
-        let (imagen, resto) = imagenes.split_at(f.largo);
+        let (imagen, resto) = imagenes.split_at_checked(f.largo).ok_or("lote_invalido")?;
         imagenes = resto;
         if tipo_de(imagen).is_none() {
             return Err("lote_invalido".into());
@@ -455,6 +461,28 @@ mod tests {
             .unwrap();
         compactar(&c).unwrap();
         assert!(std::fs::metadata(&ruta).unwrap().len() < antes / 10);
+    }
+
+    #[test]
+    fn largos_que_desbordan_o_no_caben_no_cierran_la_app() {
+        let mut c = base();
+        con_foto(&c, "a", "xxxxxxxxxx");
+        let armar = |largos: &[usize], imagenes: &[u8]| {
+            let filas: Vec<_> = largos
+                .iter()
+                .map(|l| serde_json::json!({ "id": "a", "version": "v1", "previos": 10, "largo": l }))
+                .collect();
+            let meta = serde_json::json!({ "version_app": "1", "filas": filas }).to_string();
+            let mut cuerpo = (meta.len() as u32).to_le_bytes().to_vec();
+            cuerpo.extend_from_slice(meta.as_bytes());
+            cuerpo.extend_from_slice(imagenes);
+            cuerpo
+        };
+        // la suma da la vuelta y coincide con lo que hay: sin `checked_add` pasaría y `split_at` entraría en pánico
+        let cuerpo = armar(&[usize::MAX, 8], JPEG);
+        assert_eq!(guardar(&mut c, &cuerpo).unwrap_err(), "lote_invalido");
+        let cuerpo = armar(&[usize::MAX], JPEG);
+        assert_eq!(guardar(&mut c, &cuerpo).unwrap_err(), "lote_invalido");
     }
 
     #[test]

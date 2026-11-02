@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { consultar } from "@/db/cliente";
-import { optimizarFoto } from "@/features/trabajadores/foto";
+import { optimizarFoto, tipoImagen } from "@/features/trabajadores/foto";
 
 export interface Candidata {
   id: string;
@@ -140,10 +140,31 @@ export async function armarLote(lote: FotoLista[], versionApp: string): Promise<
 
 /** Los pasos reales: leer y guardar, en binario y sin pasar las fotos por JSON. */
 export const PASOS: Pasos = {
-  leer: async (id) => new Blob([await invoke<ArrayBuffer>("foto_bytes", { id })]),
+  leer: async (id) => {
+    const bytes = await invoke<ArrayBuffer>("foto_bytes", { id });
+    return new Blob([bytes], { type: tipoImagen(new Uint8Array(bytes)) });
+  },
   convertir: optimizarFoto,
   guardar: async (lote) => invoke<number>("fotos_guardar", await armarLote(lote, __APP_VERSION__)),
 };
 
 /** El archivo de la base solo baja de tamaño al compactarla. */
 export const compactar = () => invoke<void>("fotos_compactar");
+
+export interface ResultadoFinal extends Resultado {
+  ahorro: number;
+  /** false: las fotos quedaron optimizadas, pero el archivo de la base no bajó de tamaño. */
+  compactada: boolean;
+}
+
+/** Lo ya optimizado está guardado: un fallo de estos últimos pasos no debe ocultar ese resultado. */
+export async function terminar(
+  r: Resultado,
+  antes: number,
+  pasos: { compactar: () => Promise<void>; total: () => Promise<number> } = { compactar, total: bytesEnFotos },
+): Promise<ResultadoFinal> {
+  let compactada = true;
+  if (r.optimizadas) await pasos.compactar().catch(() => (compactada = false));
+  const despues = await pasos.total().catch(() => antes);
+  return { ...r, ahorro: Math.max(0, antes - despues), compactada };
+}
