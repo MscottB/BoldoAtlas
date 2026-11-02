@@ -8,7 +8,7 @@ BoldoAtlas busca versiones nuevas por su cuenta y te avisa; nunca descarga ni in
 
 ## Cómo se busca
 
-Busca **cada vez que abres la app** y, por defecto, **cada día** mientras sigue abierta, igual en la versión portable y en la instalada. Cuando hay una versión nueva aparece un aviso discreto en Inicio y en la barra superior, **Versión X disponible**; un clic abre la ventana de actualización.
+Busca **cada vez que abres la app** y, por defecto, **cada día** mientras sigue abierta, igual en la versión portable y en la instalada. Cuando hay una versión nueva aparece el botón **Actualizar a X** en Inicio y en la barra superior, también mientras trabajas en un árbol; un clic abre la ventana de actualización. No necesitas buscarla tú, pero si quieres hacerlo, **Buscar actualizaciones** está en Inicio, junto a la versión.
 
 También puedes buscar cuando quieras:
 
