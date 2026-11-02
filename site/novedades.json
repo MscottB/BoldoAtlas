@@ -1,5 +1,19 @@
 [
   {
+    "id": "fotos-livianas",
+    "pagina": "fichas",
+    "es": {
+      "titulo": "Fotos livianas y una base que abre rápido",
+      "texto": "Las fotos se reducen al elegirlas, se ven igual y pesan mucho menos. En Configuración puedes optimizar las que ya tienes, con un respaldo antes. Abrir una organización grande con fotos ya no carga todas de una vez: cada una se pide cuando se ve.",
+      "ancla": "fotos"
+    },
+    "en": {
+      "titulo": "Light photos and a database that opens fast",
+      "texto": "Photos are reduced when you choose them, look the same and weigh much less. In Settings you can optimize the ones you already have, with a backup first. Opening a large organization with photos no longer loads them all at once: each one is requested when it is seen.",
+      "ancla": "photos"
+    }
+  },
+  {
     "id": "lineas-e-interaccion",
     "pagina": "arbol",
     "imagen": "arbol-panel",
@@ -77,18 +91,6 @@
       "titulo": "Keep it in the tray and come back instantly",
       "texto": "When you close the window you choose: cancel, keep BoldoAtlas in the tray or quit it for good. Automatic backups keep running while it is in the tray.",
       "ancla": "when-opening-and-quitting"
-    }
-  },
-  {
-    "id": "actualizaciones",
-    "pagina": "actualizaciones",
-    "es": {
-      "titulo": "Te avisa cuando hay una versión nueva",
-      "texto": "BoldoAtlas busca versiones nuevas y te avisa en Inicio y en la barra superior. Nunca descarga ni instala nada sin que lo confirmes, y ves las novedades de todo lo que te saltaste."
-    },
-    "en": {
-      "titulo": "It tells you when a new version is out",
-      "texto": "BoldoAtlas checks for new versions and lets you know on Home and in the top bar. It never downloads or installs anything without your confirmation, and you see what is new in everything you skipped."
     }
   }
 ]

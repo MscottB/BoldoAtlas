@@ -38,7 +38,20 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 :::
 
 - El **correo** debe tener forma de dirección (por ejemplo, ana@empresa.cl) y no puede repetirse entre personas.
-- La **foto** es opcional: PNG, JPG o WebP de hasta 1 MB.
+- La **foto** es opcional: PNG, JPG o WebP de hasta 30 MB.
+
+## Fotos
+
+Al elegir una foto, BoldoAtlas la reduce antes de guardarla: su lado mayor queda en 256 píxeles y se guarda como JPEG. Se ve igual en todos los tamaños en que aparece y pesa mucho menos, también en los respaldos y en los archivos `.boldo`. Una foto pequeña no se agranda, y si convertirla no la dejara más liviana, se guarda tal cual. Lo transparente queda blanco, y se quitan los datos que traía el archivo, como el lugar donde se tomó.
+
+Las fotos que ya tenías se reducen en **Configuración › Fotos › Optimizar fotos existentes**, solo si lo pides:
+
+1. Primero ves cuánto ocupan y en cuánto quedarían.
+2. Se hace un respaldo, que conserva las fotos originales.
+3. Las fotos se convierten por partes, con una barra de avance. Puedes seguir trabajando, y **Cancelar** deja lo ya optimizado.
+4. Al final ves cuántas se optimizaron y cuánto espacio se liberó. Una foto que no se pudo optimizar se nombra y sigue como estaba.
+
+Optimizar no cambia la fecha de modificación de la persona: es la misma foto con menos peso. Si fusionas con otra copia que aún tiene la foto original, esa foto aparece como una diferencia con la misma fecha, y eliges cuál se queda.
 
 ## Jefatura
 
