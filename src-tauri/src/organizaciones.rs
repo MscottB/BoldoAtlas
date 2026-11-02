@@ -4,9 +4,10 @@ use crate::db;
 use crate::intercambio::validar::{solo_lectura_cerrada, version_leida, version_y_esquema};
 use crate::respaldos::{Fallo, con_sufijo, limpiar_parciales};
 use crate::rutas::Rutas;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -49,9 +50,14 @@ pub fn identidad(conn: &Connection) -> Result<String, String> {
             f.get(0)
         })
         .ok();
-    if let Some(id) = actual.filter(|id| es_id_valido(id)) {
-        return Ok(id);
+    match actual.filter(|id| es_id_valido(id)) {
+        Some(id) => Ok(id),
+        None => identidad_nueva(conn),
     }
+}
+
+/// Le da al archivo un `db_id` nuevo: también para uno cuyo id ya usa otra entrada, porque se cruzarían pestañas y preferencias.
+pub fn identidad_nueva(conn: &Connection) -> Result<String, String> {
     let id = uuid::Uuid::now_v7().to_string();
     conn.execute(
         "INSERT INTO meta (clave, valor) VALUES ('db_id', ?1)
@@ -152,6 +158,8 @@ const LECTURAS_LISTA: u32 = 3;
 const PAUSA_LECTURA: Duration = Duration::from_millis(100);
 /// Cuánto se espera a que una unidad externa diga si el archivo está.
 const LIMITE_UNIDAD: Duration = Duration::from_secs(3);
+/// Cuántas copias de una lista dañada se guardan. Al llegar aquí no se pisa ninguna, ni se reemplaza la lista.
+const COPIAS_DANADO: u32 = 20;
 
 pub const PALETA: [&str; 8] = [
     "#3b6fb5", "#2f855a", "#b7791f", "#c05621", "#9b2c2c", "#805ad5", "#2c7a7b", "#b83280",
@@ -259,15 +267,33 @@ fn leer_meta(conn: &Connection, clave: &str) -> Option<String> {
     .ok()
 }
 
-/// Nada que perder ni que heredar: sin filas, ni siquiera eliminadas, en las tablas que no traen datos sembrados, y sin nombre
-/// ni logo. Es lo que deja una instalación nueva.
+/// Nada que perder ni que heredar: es lo que deja una instalación nueva. Sin filas, ni siquiera eliminadas, en ninguna tabla
+/// (también las que sumen migraciones futuras, y sin fallar por las que aún no tenga una base antigua), salvo `meta` y las
+/// semillas intactas de `tipos_unidad`, y sin nombre ni logo.
 pub fn esta_vacia(conn: &Connection) -> rusqlite::Result<bool> {
+    let tablas = conn
+        .prepare(
+            r"SELECT name FROM sqlite_master WHERE type = 'table'
+              AND name NOT IN ('meta', 'tipos_unidad') AND name NOT LIKE 'sqlite\_%' ESCAPE '\'",
+        )?
+        .query_map([], |f| f.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    for tabla in tablas {
+        let tabla = tabla.replace('"', "\"\"");
+        let sql = format!("SELECT EXISTS (SELECT 1 FROM \"{tabla}\")");
+        if conn.query_row(&sql, [], |f| f.get::<_, bool>(0))? {
+            return Ok(false);
+        }
+    }
     conn.query_row(
-        "SELECT NOT EXISTS (SELECT 1 FROM unidades)
-            AND NOT EXISTS (SELECT 1 FROM trabajadores)
-            AND NOT EXISTS (SELECT 1 FROM cargos)
-            AND NOT EXISTS (SELECT 1 FROM sedes)
-            AND NOT EXISTS (SELECT 1 FROM procesos)
+        "SELECT NOT EXISTS (
+                SELECT 1 FROM tipos_unidad
+                WHERE id NOT IN ('00000000-0000-7000-8000-000000000001',
+                                 '00000000-0000-7000-8000-000000000002',
+                                 '00000000-0000-7000-8000-000000000003',
+                                 '00000000-0000-7000-8000-000000000004')
+                   OR deleted_at IS NOT NULL
+                   OR updated_at <> created_at)
             AND COALESCE((SELECT valor FROM meta WHERE clave = 'org_nombre'), '') = ''
             AND COALESCE((SELECT valor FROM meta WHERE clave = 'logo_png'), '') = ''",
         [],
@@ -288,7 +314,7 @@ fn entrada_de(bd: &Path, ruta: String, carpeta: Option<&str>) -> Option<Entrada>
     let conn = solo_lectura_cerrada(bd).ok()?;
     let id = leer_meta(&conn, "db_id")
         .filter(|id| es_id_valido(id) && carpeta.is_none_or(|c| c == id))?;
-    // si no se puede revisar (un esquema más nuevo) se lista igual: al abrirla se dice el motivo
+    // si no se puede revisar se lista igual, que es el error seguro: al abrirla se dice el motivo
     if esta_vacia(&conn).unwrap_or(false) {
         return None;
     }
@@ -338,7 +364,14 @@ fn reconstruir(r: &Rutas) -> Lista {
         e.color = color_libre(&l).into();
         l.organizaciones.push(e);
     }
+    sin_repetidos(&mut l);
     l
+}
+
+/// Una sola entrada por id, la primera: con dos se cruzarían pestañas y preferencias, y se verían dos activas.
+fn sin_repetidos(l: &mut Lista) {
+    let mut vistos = HashSet::new();
+    l.organizaciones.retain(|e| vistos.insert(e.id.clone()));
 }
 
 /// Reintenta lo que no sea que falte: un antivirus o una copia de seguridad pueden tenerlo tomado un momento.
@@ -376,9 +409,36 @@ fn interpretar(bytes: &[u8]) -> Option<Lista> {
     })
 }
 
+/// Guarda la lista dañada con un nombre libre: una copia anterior también puede tener las externas. La misma lista no gasta
+/// otra copia. `false` si no quedó guardada.
+fn copiar_danada(ruta: &Path, bytes: &[u8]) -> bool {
+    for n in 0..COPIAS_DANADO {
+        let copia = match n {
+            0 => con_sufijo(ruta, ".danado"),
+            n => con_sufijo(ruta, &format!(".danado-{n}")),
+        };
+        match OpenOptions::new().write(true).create_new(true).open(&copia) {
+            Ok(mut archivo) => {
+                let hecho = archivo.write_all(bytes).is_ok();
+                if !hecho {
+                    let _ = fs::remove_file(&copia);
+                }
+                return hecho;
+            }
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                if fs::read(&copia).is_ok_and(|b| b == bytes) {
+                    return true;
+                }
+            }
+            Err(_) => return false,
+        }
+    }
+    false
+}
+
 /// La lista. Si falta, se reconstruye. Si está dañada también, tras guardar una copia en `.danado`, porque tenía las externas.
 /// Si no se pudo leer o es de una versión más nueva, sale marcada para no reemplazar el archivo. Una entrada que apunta afuera
-/// de donde debe se descarta.
+/// de donde debe se descarta, y queda una sola por id.
 pub fn cargar_lista(r: &Rutas) -> Lista {
     let ruta = r.datos.join(LISTA);
     let bytes = match leer_con_reintento(&ruta) {
@@ -393,12 +453,12 @@ pub fn cargar_lista(r: &Rutas) -> Lista {
     };
     if let Some(mut l) = interpretar(&bytes) {
         l.organizaciones.retain(Entrada::es_valida);
+        sin_repetidos(&mut l);
         return l;
     }
     // sin la copia no se reemplaza
-    let copiada = fs::write(con_sufijo(&ruta, ".danado"), &bytes).is_ok();
     Lista {
-        no_escribir: !copiada,
+        no_escribir: !copiar_danada(&ruta, &bytes),
         ..reconstruir(r)
     }
 }
@@ -427,6 +487,16 @@ pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
         let _ = fs::remove_file(&temporal);
     }
     hecho
+}
+
+/// El `db_id` que tiene el archivo. A diferencia de `leer_meta`, separa que no lo tenga (sin fila, nulo o que no es texto:
+/// `Ok(None)`) de que la consulta falle (`Err`).
+fn id_del_archivo(conn: &Connection) -> rusqlite::Result<Option<String>> {
+    conn.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {
+        Ok(f.get::<_, String>(0).ok())
+    })
+    .optional()
+    .map(Option::flatten)
 }
 
 /// `false` si no responde a tiempo. Un hilo colgado no daña nada: solo mira, y se va con el proceso.
@@ -461,14 +531,14 @@ pub fn abrir_entrada(
         // shortcut: si la unidad se cuelga justo después, aquí no hay límite y el arranque espera; cambiarlo si llega a pasar
         version_y_esquema(&base.bd, migraciones)?;
     }
-    let id_leido = solo_lectura_cerrada(&base.bd)
-        .ok()
-        .and_then(|c| leer_meta(&c, "db_id"));
-    if id_leido.is_some_and(|id| es_id_valido(&id) && id != e.id) {
+    // si la consulta falla no se sabe de quién es: lo decide `abrir_base`, para no tomar un error pasajero por `otro_id`
+    if let Ok(c) = solo_lectura_cerrada(&base.bd)
+        && let Ok(id) = id_del_archivo(&c)
+        && id.as_deref() != Some(e.id.as_str())
+    {
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
     let a = abrir_base(&base.bd, &base.respaldos, None, espera, migraciones)?;
-    // sin un id válido, el archivo recibió uno nuevo al abrir
     if a.id != e.id {
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
@@ -487,7 +557,8 @@ pub fn anotar_abierta(
     // el mismo archivo con otro id (se reemplazó por fuera): la entrada anterior ya no apunta a nada
     l.organizaciones
         .retain(|o| o.id == e.id || o.ruta != e.ruta || o.externa != e.externa);
-    if e.es_principal() && esta_vacia(conn)? {
+    // si no se puede revisar se lista, que es el error seguro
+    if e.es_principal() && esta_vacia(conn).unwrap_or(false) {
         l.organizaciones.retain(|o| !o.es_principal());
         return Ok(());
     }
@@ -909,13 +980,82 @@ mod tests_lista {
             let mut esperado = vec![id.as_str(), e.id.as_str()];
             esperado.sort();
             assert_eq!(hay, esperado, "{danado}");
-            // lo que tenía se conserva: puede traer externas que ya no se pueden saber
-            assert_eq!(
-                fs::read_to_string(r.datos.join("organizaciones.json.danado")).unwrap(),
-                danado
-            );
         }
         assert_eq!(antes, archivos.map(|p| fs::read(p).unwrap()));
+        // lo que tenía se conserva: puede traer externas que ya no se pueden saber
+        for (sufijo, danado) in [
+            ("danado", "{ esto no es json"),
+            ("danado-1", r#"{"version":1}"#),
+            ("danado-2", ""),
+        ] {
+            let copia = r.datos.join(format!("organizaciones.json.{sufijo}"));
+            assert_eq!(fs::read_to_string(copia).unwrap(), danado);
+        }
+    }
+
+    #[test]
+    fn el_mismo_danado_no_gasta_copias() {
+        let (_exe, r) = rutas();
+        fs::write(r.datos.join("organizaciones.json"), "{ dañado").unwrap();
+        for _ in 0..3 {
+            assert!(!cargar_lista(&r).no_escribir);
+        }
+        assert!(r.datos.join("organizaciones.json.danado").exists());
+        assert!(!r.datos.join("organizaciones.json.danado-1").exists());
+    }
+
+    #[test]
+    fn al_llegar_al_tope_de_copias_no_se_pisa_ni_se_reemplaza() {
+        let (_exe, r) = rutas();
+        let json = r.datos.join("organizaciones.json");
+        let copias: Vec<_> = (0..COPIAS_DANADO)
+            .map(|n| match n {
+                0 => con_sufijo(&json, ".danado"),
+                n => con_sufijo(&json, &format!(".danado-{n}")),
+            })
+            .collect();
+        for (n, copia) in copias.iter().enumerate() {
+            fs::write(copia, format!("copia {n}")).unwrap();
+        }
+        fs::write(&json, "{ dañado").unwrap();
+        let l = cargar_lista(&r);
+        assert!(l.no_escribir);
+        assert!(escribir_lista(&r, &l).is_err());
+        assert_eq!(fs::read_to_string(&json).unwrap(), "{ dañado");
+        for (n, copia) in copias.iter().enumerate() {
+            assert_eq!(fs::read_to_string(copia).unwrap(), format!("copia {n}"));
+        }
+        assert!(!con_sufijo(&json, &format!(".danado-{COPIAS_DANADO}")).exists());
+    }
+
+    #[test]
+    fn cargar_conserva_una_entrada_por_id() {
+        let (_exe, r) = rutas();
+        let id = nuevo_id();
+        let interna_de_id = format!("organizaciones/{id}/organizacion.db");
+        escribir(
+            &r,
+            vec![
+                entrada(&id, "boldo.db", false, "1"),
+                entrada(&id, &interna_de_id, false, "2"),
+                entrada(&nuevo_id(), "boldo.db", false, "3"),
+            ],
+        );
+        let l = cargar_lista(&r);
+        assert_eq!(l.organizaciones.len(), 2);
+        assert_eq!(l.organizaciones[0].abierta, "1");
+        assert_eq!(l.organizaciones[1].abierta, "3");
+    }
+
+    #[test]
+    fn reconstruir_conserva_una_entrada_por_id() {
+        let (_exe, r) = rutas();
+        let e = interna(&r, "x");
+        // `boldo.db` es una copia de esa organización: tiene su id
+        fs::copy(ruta_de(&r, &e), &r.bd).unwrap();
+        let l = cargar_lista(&r);
+        assert_eq!(ids(&l), [e.id.as_str()]);
+        assert!(l.organizaciones[0].es_principal());
     }
 
     #[test]
@@ -1159,8 +1299,25 @@ mod tests_lista {
         for sql in [
             "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
             "INSERT INTO sedes (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
+            "INSERT INTO tipos_contrato (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
+            "INSERT INTO jornadas (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
+            "INSERT INTO etiquetas (id, nombre, color, created_at, updated_at)
+             VALUES ('c', 'C', '#000000', 'x', 'x')",
+            "INSERT INTO leyendas (id, nombre, color, created_at, updated_at)
+             VALUES ('c', 'C', '#000000', 'x', 'x')",
+            "INSERT INTO zonas (id, nombre, color, created_at, updated_at)
+             VALUES ('c', 'C', '#000000', 'x', 'x')",
+            "INSERT INTO vistas (id, nombre, config, created_at, updated_at)
+             VALUES ('c', 'C', '{}', 'x', 'x')",
             "INSERT INTO procesos (id, unidad_id, nombre, created_at, updated_at)
              VALUES ('c', 'u', 'C', 'x', 'x')",
+            // una tabla que aún no existe, con un nombre que hay que escapar
+            r#"CREATE TABLE "fu""tura" (x); INSERT INTO "fu""tura" VALUES (1);"#,
+            // los tipos de unidad: uno nuevo, una semilla renombrada, una desactivada
+            "INSERT INTO tipos_unidad (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')",
+            "UPDATE tipos_unidad SET nombre = 'Dirección', updated_at = 'despues'
+             WHERE id = '00000000-0000-7000-8000-000000000001'",
+            "UPDATE tipos_unidad SET deleted_at = 'x' WHERE id = '00000000-0000-7000-8000-000000000004'",
             "INSERT INTO meta (clave, valor) VALUES ('logo_png', 'QUJD')",
         ] {
             let _ = respaldos::borrar_bd(&r.bd);
@@ -1168,10 +1325,18 @@ mod tests_lista {
             let c = db::abrir(&r.bd).unwrap();
             c.pragma_update(None, "foreign_keys", "OFF").unwrap();
             assert!(esta_vacia(&c).unwrap());
-            c.execute(sql, []).unwrap();
+            c.execute_batch(sql).unwrap();
             assert!(!esta_vacia(&c).unwrap(), "{sql}");
             c.close().unwrap();
         }
+        // una tabla futura sin filas no cuenta
+        let _ = respaldos::borrar_bd(&r.bd);
+        crear(&r.bd, "", MIGRACIONES);
+        let c = db::abrir(&r.bd).unwrap();
+        c.execute_batch("CREATE TABLE futura (x);").unwrap();
+        assert!(esta_vacia(&c).unwrap());
+        c.close().unwrap();
+
         // un logo que se quitó queda como texto vacío, y una base de esquema anterior también se puede revisar
         let _ = respaldos::borrar_bd(&r.bd);
         crear(&r.bd, "", &MIGRACIONES[..1]);

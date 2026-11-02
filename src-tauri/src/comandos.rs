@@ -2,7 +2,8 @@ use crate::db::{self, Sentencia};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::organizaciones::{
     Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, Entrada, OTRA_BASE, OrganizacionVista, abrir_base,
-    abrir_entrada, anotar_abierta, base_de, bloquear, cargar_lista, escribir_lista, vistas,
+    abrir_entrada, anotar_abierta, base_de, bloquear, cargar_lista, escribir_lista,
+    identidad_nueva, vistas,
 };
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
@@ -135,6 +136,7 @@ impl Estado {
         let mut aviso = None;
         let mut abierta = None;
         let mut es_la_ultima = true;
+        let mut anotar = true;
         if let Some(e) = ultima {
             match abrir_entrada(r, &e, espera, migraciones) {
                 Ok(a) => abierta = Some((a, e)),
@@ -155,7 +157,18 @@ impl Estado {
         let (a, e) = match abierta {
             Some(x) => x,
             None => match abrir_base(&r.bd, &r.respaldos, None, espera, migraciones) {
-                Ok(a) => {
+                Ok(mut a) => {
+                    // no se acepta un id repetido. Si no se puede cambiar, se abre igual, sin que quede en la lista
+                    if lista
+                        .organizaciones
+                        .iter()
+                        .any(|o| o.id == a.id && !o.es_principal())
+                    {
+                        match identidad_nueva(&a.conn) {
+                            Ok(id) => a.id = id,
+                            Err(_) => anotar = false,
+                        }
+                    }
                     let e = Entrada::principal(&a.id);
                     (a, e)
                 }
@@ -163,7 +176,7 @@ impl Estado {
             },
         };
         // la lista no es imprescindible: sin poder escribirla (o si salió marcada) se abre igual, y se reintenta la próxima vez
-        if anotar_abierta(&mut lista, &e, &a.conn, es_la_ultima).is_ok() {
+        if anotar && anotar_abierta(&mut lista, &e, &a.conn, es_la_ultima).is_ok() {
             let _ = escribir_lista(r, &lista);
         }
         *conn = Some(a.conn);
@@ -1518,11 +1531,19 @@ mod arranque_organizaciones {
         );
         escribir(&r, vec![otra.clone()]);
         let e = arrancar(&r);
-        abrio_boldo_db(&e, &r);
+        let base = abrio_boldo_db(&e, &r);
+        assert_ne!(base.id, id);
         let l = lista_del_json(&r);
         assert_eq!(l.organizaciones.len(), 2);
         assert!(l.organizaciones.contains(&otra));
-        assert!(l.organizaciones.iter().any(|o| o.es_principal()));
+        let principal = l.organizaciones.iter().find(|o| o.es_principal()).unwrap();
+        assert_eq!(principal.id, base.id);
+        // el id nuevo queda en el archivo, y solo una se ve activa
+        let activas = e.listar_organizaciones().unwrap();
+        assert_eq!(activas.iter().filter(|v| v.activa).count(), 1);
+        assert!(e.cerrar_ordenado(Duration::from_secs(1)));
+        let e = arrancar(&r);
+        assert_eq!(abrio_boldo_db(&e, &r).id, base.id);
     }
 
     #[test]
@@ -1549,9 +1570,86 @@ mod arranque_organizaciones {
     fn un_db_id_invalido_tambien_da_otro_id() {
         let (_exe, r) = rutas();
         let o = interna(&r, "2026");
-        fija_meta(&ruta_de(&r, &o), "db_id", "../../x");
-        con_principal(&r, o);
+        let bd = ruta_de(&r, &o);
+        fija_meta(&bd, "db_id", "../../x");
+        let antes = fs::read(&bd).unwrap();
+        con_principal(&r, o.clone());
         assert_eq!(aviso(&arrancar(&r)).0, "otro_id");
+        // el archivo no se abrió para escribir
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros(&bd);
+        assert!(!respaldos::con_sufijo(&bd, ".bloqueo").exists());
+        assert!(!base_de(&r, &o).respaldos.exists());
+    }
+
+    #[test]
+    fn un_archivo_sin_db_id_da_otro_id_sin_tocarlo() {
+        for sql in [
+            "DELETE FROM meta WHERE clave = 'db_id'",
+            "UPDATE meta SET valor = NULL WHERE clave = 'db_id'",
+            "UPDATE meta SET valor = 7 WHERE clave = 'db_id'",
+        ] {
+            let (_exe, r) = rutas();
+            let o = interna(&r, "2026");
+            let bd = ruta_de(&r, &o);
+            let c = db::abrir(&bd).unwrap();
+            c.execute(sql, []).unwrap();
+            c.close().unwrap();
+            let antes = fs::read(&bd).unwrap();
+            con_principal(&r, o);
+            assert_eq!(aviso(&arrancar(&r)).0, "otro_id", "{sql}");
+            assert_eq!(fs::read(&bd).unwrap(), antes, "{sql}");
+            assert!(!respaldos::con_sufijo(&bd, ".bloqueo").exists(), "{sql}");
+        }
+    }
+
+    #[test]
+    fn si_la_consulta_del_id_falla_decide_abrir_base() {
+        let (_exe, r) = rutas();
+        let o = interna(&r, "2026");
+        let bd = ruta_de(&r, &o);
+        fs::write(&bd, "no soy sqlite").unwrap();
+        con_principal(&r, o);
+        // no es que tenga otro id: dice lo que le pasa
+        assert_eq!(aviso(&arrancar(&r)).0, "danado");
+        assert_eq!(fs::read(&bd).unwrap(), b"no soy sqlite");
+    }
+
+    #[test]
+    fn si_no_se_puede_revisar_si_esta_vacia_se_lista() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "", db::MIGRACIONES);
+        let c = db::abrir(&r.bd).unwrap();
+        c.pragma_update(None, "foreign_keys", "OFF").unwrap();
+        c.execute_batch("DROP TABLE unidades; DROP TABLE tipos_unidad;")
+            .unwrap();
+        c.close().unwrap();
+        escribir(&r, vec![]);
+        abrio_boldo_db(&arrancar(&r), &r);
+        assert_eq!(lista_del_json(&r).organizaciones[0].id, id);
+    }
+
+    #[test]
+    fn sin_poder_cambiar_el_id_abre_boldo_db_sin_anotarlo() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        let c = db::abrir(&r.bd).unwrap();
+        c.execute_batch(
+            "CREATE TRIGGER sin_cambios BEFORE UPDATE ON meta BEGIN SELECT RAISE(ABORT, 'no'); END;",
+        )
+        .unwrap();
+        c.close().unwrap();
+        let otra = entrada(
+            &id,
+            &format!("organizaciones/{id}/organizacion.db"),
+            false,
+            "2026",
+        );
+        escribir(&r, vec![otra.clone()]);
+        let e = arrancar(&r);
+        assert_eq!(abrio_boldo_db(&e, &r).id, id);
+        assert_eq!(aviso(&e).0, "no_encontrado");
+        assert_eq!(lista_del_json(&r).organizaciones, vec![otra]);
     }
 
     /// Lo que escribiría una versión más nueva: otro formato de entrada al lado de una que aún se entiende.
@@ -1646,15 +1744,21 @@ mod arranque_organizaciones {
     }
 
     #[test]
-    fn sin_poder_guardar_la_copia_del_danado_no_se_reemplaza() {
+    fn un_danado_anterior_no_se_pisa() {
         let (_exe, r) = rutas();
         let id = crear(&r.bd, "La mía", db::MIGRACIONES);
         let json = r.datos.join("organizaciones.json");
+        let anterior = r.datos.join("organizaciones.json.danado");
         fs::write(&json, "{ dañado").unwrap();
-        fs::create_dir(r.datos.join("organizaciones.json.danado")).unwrap();
+        fs::write(&anterior, "con las externas").unwrap();
         let e = arrancar(&r);
         assert_eq!(abrio_boldo_db(&e, &r).id, id);
-        assert_eq!(fs::read_to_string(&json).unwrap(), "{ dañado");
+        assert_eq!(fs::read_to_string(&anterior).unwrap(), "con las externas");
+        assert_eq!(
+            fs::read_to_string(r.datos.join("organizaciones.json.danado-1")).unwrap(),
+            "{ dañado"
+        );
+        assert_eq!(lista_del_json(&r).organizaciones[0].id, id);
     }
 
     #[test]
