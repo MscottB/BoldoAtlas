@@ -17,11 +17,11 @@ Cada sistema tiene una versión **portable**, la recomendada, y un **instalador*
 
 En modo portable, **extrae el zip antes de ejecutar**: abrir el programa desde dentro del zip impide guardar los datos. En macOS, el sistema guarda las preferencias de la ventana (tema, escala, pestañas) y sus cachés web en tu carpeta `~/Library`; los datos y los respaldos sí quedan en `datos/`.
 
-Con el instalador, los datos quedan en la carpeta de tu usuario: `%APPDATA%\io.github.mscottb.boldoatlas` en Windows, `~/.local/share/io.github.mscottb.boldoatlas` en Linux y `~/Library/Application Support/io.github.mscottb.boldoatlas` en macOS.
+Con el instalador, los datos quedan en la carpeta de tu usuario: `%APPDATA%\io.github.mscottb.boldoatlas` en Windows, `~/.local/share/io.github.mscottb.boldoatlas` en Linux y `~/Library/Application Support/io.github.mscottb.boldoatlas` en macOS. En Windows, abre el instalador desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación: abierto desde una aplicación empaquetada, la instalación queda incompleta.
 
 ## Abrir un programa sin firma digital {#sin-firma}
 
-BoldoAtlas aún no está firmado digitalmente, así que la primera vez el sistema avisa:
+BoldoAtlas no está firmado digitalmente, así que la primera vez el sistema avisa:
 
 - **Windows (SmartScreen):** si aparece «Windows protegió su PC», haz clic en **Más información → Ejecutar de todas formas**.
 - **macOS (Gatekeeper):** clic derecho sobre `BoldoAtlas.app` → **Abrir** → **Abrir**. Si dice que la app «está dañada» o no ofrece abrirla (macOS 15 o más nuevo), ejecuta en Terminal `xattr -dr com.apple.quarantine <carpeta>` sobre la carpeta extraída de la portable o sobre `/Applications/BoldoAtlas.app`, o usa **Configuración del Sistema › Privacidad y seguridad › Abrir igualmente**. En la portable, quita la cuarentena antes de abrirla: si no, macOS la ejecuta desde una copia de solo lectura y BoldoAtlas avisa que no puede guardar.
@@ -44,13 +44,13 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 shasum -a 256 BoldoAtlas_macos_universal_portable.zip
 ```
 
-En Windows y macOS, compara el resultado con la línea del mismo archivo en `SHA256SUMS.txt`.
+En Windows y macOS, compara el resultado con la línea del mismo archivo en `SHA256SUMS.txt`. Cada versión trae además la lista de sus componentes (SBOM, en formato CycloneDX).
 
 ## Cómo actualizar
 
-BoldoAtlas busca versiones nuevas una vez al día (puedes desactivarlo en Configuración) y te avisa con sus novedades antes de actualizar. Si prefieres hacerlo a mano, descarga la versión nueva desde esta página:
+BoldoAtlas busca versiones nuevas al abrirse y cada día (la frecuencia se cambia o se apaga en **Configuración › Actualizaciones**) y te avisa con sus novedades. Nunca instala nada sin que lo confirmes, y rechaza un paquete si su firma no coincide. Si prefieres hacerlo a mano, descarga la versión nueva desde esta página:
 
-- **Portable:** cierra BoldoAtlas y reemplaza el programa (`BoldoAtlas.exe`, `.AppImage` o `.app`) por el nuevo. La carpeta `datos/`, con tu base y tus respaldos, se queda donde está. Si extraes el zip nuevo en otra carpeta, copia `datos/` ahí.
+- **Portable:** cierra BoldoAtlas con **Salir** (en la bandeja sigue abierto) y reemplaza el programa (`BoldoAtlas.exe`, `.AppImage` o `.app`) por el nuevo. La carpeta `datos/`, con tu base y tus respaldos, se queda donde está. Si extraes el zip nuevo en otra carpeta, copia `datos/` ahí.
 - **Instalador:** ejecuta el instalador nuevo. Tus datos están en la carpeta de tu usuario y no cambian.
 
 Si una versión nueva necesita migrar la base, BoldoAtlas hace un respaldo automático antes.
