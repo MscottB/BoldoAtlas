@@ -522,9 +522,15 @@ const zonas = computed(() =>
       )
     : null,
 );
-const leyendaZonas = computed<EntradaLeyenda[]>(() =>
-  (zonas.value?.marcadas ?? []).map((z) => ({ clave: z.id, color: z.color, nombre: z.nombre })),
-);
+// Todas las zonas a la vista, también las de recuadro: su nombre puede no leerse sobre el lienzo (alejado, o tras otra tarjeta).
+const leyendaZonas = computed<EntradaLeyenda[]>(() => {
+  const z = zonas.value;
+  if (!z) return [];
+  const aLaVista = new Set([...z.marcadas.map((x) => x.id), ...z.recuadros.map((x) => x.zona.id)]);
+  return org.zonas
+    .filter((x) => aLaVista.has(x.id))
+    .map((x) => ({ clave: x.id, color: x.color, nombre: x.nombre }));
+});
 // La tarjeta activa: bajo el puntero o, si no, con el foco del teclado (un clic con el mouse no cuenta como foco).
 const bajoPuntero = ref<string | null>(null);
 const conFoco = ref<string | null>(null);
@@ -913,7 +919,7 @@ function verCompleto() {
         <PanelUnidad :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
       </div>
       <!-- Las leyendas van en franjas fijas bajo el lienzo (no bajo el panel): así no tapan tarjetas. -->
-      <div v-if="leyenda.length || leyendaZonas.length" class="col-start-1 grid">
+      <div v-if="leyenda.length || leyendaZonas.length" class="col-start-1 grid grid-cols-1">
         <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
         <LeyendaLienzo v-if="leyendaZonas.length" :titulo="t('zonas.titulo')" :entradas="leyendaZonas" />
       </div>

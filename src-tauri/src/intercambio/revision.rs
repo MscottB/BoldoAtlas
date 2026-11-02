@@ -1279,7 +1279,8 @@ fn rotas(c: &Connection, esquema: &HashMap<&'static str, Tabla>) -> Result<Vec<R
         for (i, destino, requerida) in &d.referencias {
             let destino = comparar::estatica(destino).ok_or("tabla")?;
             let columna = &d.columnas[*i];
-            let eliminada = if CATALOGOS.contains(&destino) {
+            // un valor de mantenedor desactivado se puede seguir usando; una zona eliminada no se muestra nunca
+            let eliminada = if CATALOGOS.contains(&destino) && destino != "zonas" {
                 ""
             } else {
                 " OR d.deleted_at IS NOT NULL"
@@ -3527,6 +3528,182 @@ mod tests {
         assert_eq!(r.resumen().bloqueos.total, 0, "{:?}", r.bloqueos);
         b.aplicar(&mut r);
         assert!(!b.hay("zona_unidades", "zu-otra"));
+    }
+
+    fn cuenta_de(hecho: &InformeRevision, tabla: &str) -> (u64, u64, u64, u64) {
+        hecho
+            .tablas
+            .iter()
+            .find(|t| t.tabla == tabla)
+            .map_or((0, 0, 0, 0), |t| {
+                (t.agregadas, t.omitidas, t.borradas, t.locales_borradas)
+            })
+    }
+
+    /// Zona eliminada aquí, con su pertenencia, y en el archivo una unidad nueva en ella.
+    fn zona_eliminada_aqui(b: &mut Banco) {
+        b.mia(&format!(
+            "UPDATE zonas SET deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'zo-a';
+             UPDATE zona_unidades SET deleted_at = '{F1}', updated_at = '{F1}' WHERE zona_id = 'zo-a';"
+        ));
+        b.archivo(&format!(
+            "INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES ('zu-nueva', 'zo-a', 'hija', '{F0}', '{F0}');"
+        ));
+    }
+
+    #[test]
+    fn una_unidad_nueva_en_una_zona_eliminada_aqui_bloquea_y_tiene_salida() {
+        let mut b = banco();
+        zona_eliminada_aqui(&mut b);
+        let mut r = b.abrir();
+        let bloqueo = r
+            .bloqueos
+            .iter()
+            .find(|x| x.id == "zu-nueva")
+            .expect("bloqueo de la pertenencia");
+        assert_eq!(bloqueo.tipo, TipoBloqueo::Referencia);
+        assert_eq!(bloqueo.destino, Some("zonas"));
+        assert!(!bloqueo.vaciable, "sin zona no hay pertenencia");
+        assert_eq!(b.intentar(&mut r).unwrap_err().codigo, "bloqueada");
+
+        // descartarla: no deja rastro, y se cuenta como omitida
+        let columna = || "zona_id".to_string();
+        r.decidir(
+            "zona_unidades",
+            "zu-nueva",
+            Eleccion::Descartar { columna: columna() },
+        )
+        .unwrap();
+        let hecho = b.aplicar(&mut r);
+        assert!(!b.hay("zona_unidades", "zu-nueva"));
+        assert!(!b.viva("zonas", "zo-a"));
+        assert_eq!(cuenta_de(&hecho, "zona_unidades"), (0, 1, 0, 0));
+
+        // llevarla a otra zona: entra, y se cuenta como agregada
+        let mut b = banco();
+        zona_eliminada_aqui(&mut b);
+        let mut r = b.abrir();
+        r.decidir(
+            "zona_unidades",
+            "zu-nueva",
+            Eleccion::Reasignar {
+                columna: columna(),
+                a: "zo-b".into(),
+            },
+        )
+        .unwrap();
+        let hecho = b.aplicar(&mut r);
+        assert_eq!(
+            b.uno("SELECT zona_id FROM zona_unidades WHERE id = 'zu-nueva' AND deleted_at IS NULL")
+                .unwrap(),
+            "zo-b"
+        );
+        assert_eq!(cuenta_de(&hecho, "zona_unidades"), (1, 0, 0, 0));
+    }
+
+    #[test]
+    fn restaurar_una_zona_deja_entrar_a_lo_nuevo_y_sus_miembros_se_deciden_fila_a_fila() {
+        let mut b = banco();
+        zona_eliminada_aqui(&mut b);
+        let mut r = b.abrir();
+        r.decidir("zonas", "zo-a", Eleccion::Mantener).unwrap();
+        b.verificar(&mut r);
+        assert_eq!(r.resumen().bloqueos.total, 0, "{:?}", r.bloqueos);
+        let hecho = b.aplicar(&mut r);
+        assert!(b.viva("zonas", "zo-a"));
+        assert!(b.viva("zona_unidades", "zu-nueva"));
+        assert!(
+            !b.viva("zona_unidades", "zu-a"),
+            "su miembro anterior es otra fila"
+        );
+        assert_eq!(cuenta_de(&hecho, "zona_unidades").0, 1);
+
+        // el miembro anterior vuelve con su propia decisión
+        let mut b = banco();
+        zona_eliminada_aqui(&mut b);
+        let mut r = b.abrir();
+        r.decidir("zonas", "zo-a", Eleccion::Mantener).unwrap();
+        r.decidir("zona_unidades", "zu-a", Eleccion::Mantener)
+            .unwrap();
+        b.aplicar(&mut r);
+        assert!(b.viva("zona_unidades", "zu-a"));
+    }
+
+    /// Zona eliminada en el archivo, con la pertenencia que conocía, y aquí una unidad agregada que el archivo no trae.
+    fn zona_eliminada_en_el_archivo(b: &mut Banco) {
+        b.mia(&format!(
+            "INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES ('zu-local', 'zo-a', 'hija', '{F0}', '{F0}');"
+        ));
+        b.archivo(&format!(
+            "UPDATE zonas SET deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'zo-a';
+             UPDATE zona_unidades SET deleted_at = '{F1}', updated_at = '{F1}' WHERE zona_id = 'zo-a';
+             UPDATE conexiones SET etiqueta = 'del archivo', updated_at = '{F2}' WHERE id = 'x-dentro';"
+        ));
+    }
+
+    #[test]
+    fn un_miembro_agregado_aqui_a_una_zona_eliminada_en_el_archivo_tiene_salida_y_no_frena_el_resto()
+     {
+        let mut b = banco();
+        zona_eliminada_en_el_archivo(&mut b);
+        let mut r = b.abrir();
+        let bloqueo = r
+            .bloqueos
+            .iter()
+            .find(|x| x.id == "zu-local")
+            .expect("bloqueo del miembro de aquí");
+        assert_eq!(bloqueo.tipo, TipoBloqueo::Referencia);
+        assert!(!bloqueo.vaciable);
+        assert_eq!(b.intentar(&mut r).unwrap_err().codigo, "bloqueada");
+        // lo que se aplica mientras tanto: nada
+        assert!(b.viva("zonas", "zo-a"));
+
+        // no aplicar ese borrado: la zona sigue con el miembro de aquí, y el resto del archivo entra
+        r.decidir("zonas", "zo-a", Eleccion::Mantener).unwrap();
+        let hecho = b.aplicar(&mut r);
+        assert!(b.viva("zonas", "zo-a"));
+        assert!(b.viva("zona_unidades", "zu-local"));
+        assert!(!b.viva("zona_unidades", "zu-a"));
+        assert_eq!(cuenta_de(&hecho, "zona_unidades"), (0, 0, 1, 0));
+        assert_eq!(
+            b.uno("SELECT etiqueta FROM conexiones WHERE id = 'x-dentro'")
+                .unwrap(),
+            "del archivo"
+        );
+
+        // o sacar al miembro: la zona se elimina, y se cuenta como eliminada aquí
+        let mut b = banco();
+        zona_eliminada_en_el_archivo(&mut b);
+        let mut r = b.abrir();
+        r.decidir(
+            "zona_unidades",
+            "zu-local",
+            Eleccion::Descartar {
+                columna: "zona_id".into(),
+            },
+        )
+        .unwrap();
+        let hecho = b.aplicar(&mut r);
+        assert!(!b.viva("zonas", "zo-a"));
+        assert!(!b.viva("zona_unidades", "zu-local"));
+        // zu-a por el archivo y zu-local por esta decisión: `borradas` incluye a las que solo estaban aquí
+        assert_eq!(cuenta_de(&hecho, "zona_unidades"), (0, 0, 2, 1));
+        assert_eq!(
+            b.uno("SELECT etiqueta FROM conexiones WHERE id = 'x-dentro'")
+                .unwrap(),
+            "del archivo"
+        );
+
+        // «Resolver todas» también lo saca
+        let mut b = banco();
+        zona_eliminada_en_el_archivo(&mut b);
+        let mut r = b.abrir();
+        r.masivo(Masivo {
+            accion: AccionMasiva::ResolverRotas,
+            tipo: None,
+        });
+        b.aplicar(&mut r);
+        assert!(!b.viva("zona_unidades", "zu-local"));
     }
 
     #[test]

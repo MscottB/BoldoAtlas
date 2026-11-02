@@ -197,6 +197,7 @@ fn etiqueta(
             "SELECT nombre FROM trabajadores WHERE id = ?1",
             de("trabajador_id"),
         ),
+        "zona_unidades" => buscar("SELECT nombre FROM unidades WHERE id = ?1", de("unidad_id")),
         _ => Ok(de("nombre").unwrap_or_default()),
     }
 }
@@ -481,7 +482,8 @@ pub fn fusionar(
                 };
                 let rota = fuera.contains(&(destino, valor.clone()))
                     || (es_viva
-                        && !CATALOGOS.contains(&destino)
+                        // una zona eliminada no se muestra nunca: su pertenencia entraría invisible
+                        && (!CATALOGOS.contains(&destino) || destino == "zonas")
                         && matches!(estado_fila(dst, destino, &valor)?, Some(Some(_))));
                 if !rota {
                     if tabla == "unidades" && destino == "puestos" {
@@ -699,6 +701,39 @@ mod tests {
         for (t, id) in [("zonas", "zo-muerta"), ("zona_unidades", "zu-muerta")] {
             assert_eq!(estado_fila(&dst, t, id).unwrap(), None, "{t}");
         }
+    }
+
+    #[test]
+    fn una_unidad_nueva_en_una_zona_eliminada_aqui_no_entra_y_se_informa() {
+        let (d, origen) = base_con_datos();
+        let (_d2, mut dst) = destino("");
+        fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        dst.execute_batch(
+            "UPDATE zonas SET deleted_at = 'y' WHERE id = 'zo-a';
+             UPDATE zona_unidades SET deleted_at = 'y' WHERE zona_id = 'zo-a';",
+        )
+        .unwrap();
+        origen
+            .execute_batch(
+                "INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at) VALUES
+                   ('zu-nueva', 'zo-a', 'hija', 'x', 'x');",
+            )
+            .unwrap();
+        let inf = fusion(&mut dst, &origen, d.path(), None, &Lugares::new()).unwrap();
+        assert_eq!(
+            estado_fila(&dst, "zona_unidades", "zu-nueva").unwrap(),
+            None
+        );
+        let t = tabla(&inf, "zona_unidades");
+        assert_eq!((t.trae, t.nuevas, t.omitidas), (3, 0, 1));
+        assert_eq!(t.trae, t.nuevas + t.existentes + t.unidas + t.omitidas);
+        let nombre = uno(&dst, "SELECT nombre FROM unidades WHERE id = 'hija'").unwrap();
+        assert!(inf.detalle.contains(&Detalle {
+            tabla: "zona_unidades",
+            nombre,
+            motivo: "referencia"
+        }));
+        assert!(!viva(&dst, "zonas", "zo-a").unwrap());
     }
 
     #[test]

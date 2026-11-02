@@ -70,6 +70,8 @@ For two copies that kept working separately: you compare the file with your data
 | **Reference to something that will not be there** | Something points to what you chose not to bring or to what will end up deleted | Nothing: it stops **Apply** | Reassign, leave empty if allowed, or discard the record. **Resolve all references** does it at once |
 | **Would end up inside itself** | With what you chose, a unit ends up hanging from itself | Nothing: it stops **Apply** | Change its parent unit or leave it without one |
 
+When you revert the deletion of a zone, its former members do not come back on their own: each one shows as its own case, and they are restored row by row.
+
 What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. For people who are no longer there, a branch carries only name and email: what comes empty does not erase their data in your database. A photo or a view's settings are compared without being shown, and it says how much they weigh.
 
 ![Show fields of a different record: each field with its value in your data and in the file, to choose one by one.](../img/en/importar-decidir-campos.webp "Field by field: you choose which value stays."){width=768 height=736}

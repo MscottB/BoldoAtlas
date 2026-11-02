@@ -104,7 +104,9 @@ Selecciona dos o más unidades y pulsa **Zona…**. Ahí ves cada zona con cuán
 En el lienzo, una zona se ve de una de dos formas:
 
 - **Un recuadro** de su color, con el nombre arriba, si envuelve a sus unidades sin cubrir a ninguna otra.
-- **Una franja de color** arriba de cada una de sus tarjetas, con el nombre en la franja **Zonas** bajo el lienzo, si el recuadro cubriría a otras unidades. Pasa el puntero por la franja de la tarjeta para ver el nombre.
+- **Una franja de color** arriba de cada una de sus tarjetas, si el recuadro cubriría a otras unidades. Pasa el puntero por la franja de la tarjeta para ver el nombre.
+
+La franja **Zonas** bajo el lienzo nombra todas las zonas a la vista, para que el nombre siempre se pueda leer.
 
 Solo cuentan las unidades a la vista: al plegar o abrir una rama, la zona se vuelve a dibujar. Para ocultar las zonas sin borrarlas, apaga **Zonas** en **Personalizar**.
 

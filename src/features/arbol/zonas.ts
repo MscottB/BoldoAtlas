@@ -9,7 +9,7 @@ export interface Recuadro {
 export interface ZonasDibujadas {
   /** Las zonas cuyo recuadro no cubre a ninguna otra tarjeta. */
   recuadros: Recuadro[];
-  /** Las demás, para la leyenda: se ven como una marca de color en sus unidades. */
+  /** Las demás: se ven como una marca de color en sus unidades. */
   marcadas: Zona[];
   /** Unidad → sus zonas marcadas. */
   marcas: Map<string, Zona[]>;

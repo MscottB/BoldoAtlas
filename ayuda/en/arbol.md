@@ -104,7 +104,9 @@ Select two or more units and press **Zone…**. There you see each zone with how
 On the canvas, a zone shows in one of two ways:
 
 - **A box** in its color, with the name on top, if it wraps its units without covering any other.
-- **A color strip** on top of each of its cards, with the name in the **Zones** strip below the canvas, if the box would cover other units. Hover over the strip on a card to see the name.
+- **A color strip** on top of each of its cards, if the box would cover other units. Hover over the strip on a card to see the name.
+
+The **Zones** strip below the canvas names all the zones in view, so the name can always be read.
 
 Only units in view count: when you collapse or open a branch, the zone is drawn again. To hide zones without deleting them, turn off **Zones** in **Customize**.
 

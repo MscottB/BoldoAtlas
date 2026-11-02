@@ -70,6 +70,8 @@ Para dos copias que siguieron trabajando por separado: comparas el archivo con t
 | **Referencia a algo que no estará** | Algo apunta a lo que decidiste no traer o a lo que quedará eliminado | Nada: detiene **Aplicar** | Reasignar, dejar vacío si se puede o descartar el registro. **Resolver todas las referencias** lo hace de una vez |
 | **Quedaría dentro de sí misma** | Con lo elegido, una unidad termina colgando de sí misma | Nada: detiene **Aplicar** | Cambiar su unidad superior o dejarla sin superior |
 
+Al revertir el borrado de una zona, sus miembros anteriores no vuelven solos: cada uno aparece como su propio caso, y se restauran fila a fila.
+
 Lo que solo está en tu base se queda: nada se borra por no venir en el archivo. Eso es lo que permite traer una sola rama sin tocar el resto. De quien ya no está, una rama trae solo nombre y correo: lo que viene vacío no borra sus datos en tu base. Una foto o la configuración de una vista se comparan sin mostrarse, y dice cuánto pesan.
 
 ![Ver campos de un registro distinto: cada campo con su valor en tus datos y en el archivo, para elegir uno por uno.](../img/es/importar-decidir-campos.webp "Campo a campo: eliges qué valor se queda."){width=768 height=736}
