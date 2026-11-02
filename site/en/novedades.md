@@ -8,3 +8,5 @@ description: Everything added to BoldoAtlas, newest first.
 Everything added to BoldoAtlas, newest first. Each item leads to the manual topic that explains it.
 
 <Novedades lang="en" />
+
+Want to try them? [Download the latest version](/en/descargas).

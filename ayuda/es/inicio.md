@@ -41,7 +41,7 @@ La lista de **Abierto recientemente** nombra unidades y personas. Se guarda solo
 
 ## Al abrir y al salir
 
-BoldoAtlas abre en **Inicio**, también con datos cargados. Para volver a la última vista, activa **Configuración › Al abrir y al salir › Continuar donde estaba**.
+BoldoAtlas abre en **Inicio**, también con datos cargados, con la ventana maximizada en la pantalla principal. Para volver a la última vista, activa **Configuración › Al abrir y al salir › Continuar donde estaba**.
 
 Al cerrar la ventana (la **X** o `Alt+F4`), pregunta qué hacer. Lo que ya aplicaste está guardado. Al cerrar la app, un formulario sin terminar se pierde; en la bandeja sigue ahí.
 

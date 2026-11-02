@@ -767,3 +767,16 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 
 ### Task 26b: Comparar y lado a lado (spec §8 "Escenarios")
 - Comparación en solo lectura con `comparar::comparar` de la 22b (Rust, dos conexiones), diferencia de indicadores (24c) y de costo (23e), exportable a Excel (23a), y lado a lado con encuadre sincronizado.
+
+## Anexo 9 (decisión del autor, 2026-11-02): varias organizaciones y lista interna de lo que falta
+
+**Varias organizaciones:** spec `docs/superpowers/specs/2026-11-02-varias-organizaciones-design.md`, con su propio plan.
+
+**Lo que falta y no se muestra en la web** (el autor: «eso es interno»). Sin orden decidido, salvo lo que ya tiene tarea:
+- Crear o cargar desde una planilla: Task 25a. Archivos de Buk y Talana: Task 23f.
+- Exportar a PDF, PNG y SVG: Task 23b. Excel: Task 23a.
+- Cifrado y permisos locales: Tasks 19b a 19f, según su alcance.
+- Colaboración en línea, usuarios y permisos compartidos: fuera de alcance en la spec (§1); la Pro con Vorsync es el lugar previsto. Sin tarea.
+- Integración directa con nómina y otros sistemas de RR. HH.: sin tarea.
+- Firma digital del programa (Windows y Apple): requiere comprar certificados, decisión del autor. Sin tarea.
+- Soporte comercial: sin tarea.
