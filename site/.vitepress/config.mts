@@ -47,6 +47,7 @@ export default defineConfig({
         nav: [
           { text: "Descargas", link: "/descargas" },
           { text: "Manual", link: "/manual/inicio", activeMatch: "/manual/" },
+          { text: "Novedades", link: "/novedades" },
           { text: "Acerca de", link: "/acerca" },
         ],
         sidebar: { "/manual/": barraManual("es", "", "Manual de usuario") },
@@ -72,6 +73,7 @@ export default defineConfig({
         nav: [
           { text: "Downloads", link: "/en/descargas" },
           { text: "Manual", link: "/en/manual/inicio", activeMatch: "/en/manual/" },
+          { text: "What's new", link: "/en/novedades" },
           { text: "About", link: "/en/acerca" },
         ],
         sidebar: { "/en/manual/": barraManual("en", "/en", "User manual") },

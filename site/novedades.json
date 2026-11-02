@@ -90,5 +90,17 @@
       "titulo": "It tells you when a new version is out",
       "texto": "BoldoAtlas checks for new versions and lets you know on Home and in the top bar. It never downloads or installs anything without your confirmation, and you see what is new in everything you skipped."
     }
+  },
+  {
+    "id": "ayuda-visual",
+    "pagina": "inicio",
+    "es": {
+      "titulo": "Una ayuda que se ve",
+      "texto": "El manual trae capturas con números, un resumen al comienzo de cada tema, pasos y consejos, con índice y buscador. Es el mismo dentro de la app y en este sitio."
+    },
+    "en": {
+      "titulo": "Help you can see",
+      "texto": "The manual has numbered screenshots, a summary at the start of each topic, steps and tips, with an index and search. It is the same inside the app and on this site."
+    }
   }
 ]

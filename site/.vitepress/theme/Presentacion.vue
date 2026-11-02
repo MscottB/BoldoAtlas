@@ -2,6 +2,8 @@
 import { computed } from "vue";
 import { withBase } from "vitepress";
 import novedades from "../../novedades.json";
+import Novedades from "./Novedades.vue";
+import { PORTADA } from "./portadaNovedades";
 
 // Portada bajo el hero: beneficios, funciones con su captura, comparación, confianza, preguntas y llamada a descargar.
 // Todo lo que dice debe ser cierto hoy. «Lo nuevo» sale de novedades.json (sin números de versión).
@@ -86,7 +88,7 @@ const TEXTOS = {
       etiqueta: "Lo nuevo",
       titulo: "Mejoras para tu día a día",
       bajada: "Lo último que se suma a BoldoAtlas, lo más nuevo primero.",
-      mas: "Leer más en el manual",
+      todas: "Ver todas las novedades",
     },
     funciones: {
       etiqueta: "Funciones",
@@ -337,7 +339,7 @@ const TEXTOS = {
       para: "ver las descargas",
       nota: "Gratis · AGPL-3.0 · Sin cuentas",
     },
-    rutas: { descargas: "/descargas", manual: "/manual/inicio", prefijo: "" },
+    rutas: { descargas: "/descargas", manual: "/manual/inicio", prefijo: "", novedades: "/novedades" },
   },
   en: {
     chips: ["Free and open source", "No accounts", "No internet needed", "Windows · Linux · macOS"],
@@ -376,7 +378,7 @@ const TEXTOS = {
       etiqueta: "What's new",
       titulo: "Improvements for your day to day",
       bajada: "The latest additions to BoldoAtlas, newest first.",
-      mas: "Read more in the manual",
+      todas: "See everything that's new",
     },
     funciones: {
       etiqueta: "Features",
@@ -624,7 +626,7 @@ const TEXTOS = {
       para: "see the downloads",
       nota: "Free · AGPL-3.0 · No accounts",
     },
-    rutas: { descargas: "/en/descargas", manual: "/en/manual/inicio", prefijo: "/en" },
+    rutas: { descargas: "/en/descargas", manual: "/en/manual/inicio", prefijo: "/en", novedades: "/en/novedades" },
   },
 };
 
@@ -635,21 +637,7 @@ const fuente = (f: Funcion, tema: "claro" | "oscuro") =>
   f.imagen.temas ? img(`${f.imagen.nombre}-${props.lang}-${tema}`) : img(f.imagen.nombre);
 const SISTEMAS = ["Windows", "Linux", "macOS"];
 
-const urls = import.meta.glob("../../img/es/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
-const urlsEn = import.meta.glob("../../en/img/en/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
-const imgAyuda = (nombre: string) =>
-  props.lang === "es" ? urls[`../../img/es/${nombre}.webp`] : urlsEn[`../../en/img/en/${nombre}.webp`];
-const nuevas = computed(() =>
-  novedades.map((n) => {
-    const x = (n as Record<string, any>)[props.lang];
-    return {
-      id: n.id,
-      ...x,
-      imagen: "imagen" in n ? imgAyuda(n.imagen as string) : undefined,
-      href: `${props.lang === "es" ? "" : "/en"}/manual/${n.pagina}${x.ancla ? "#" + x.ancla : ""}`,
-    };
-  }),
-);
+const hayMas = novedades.length > PORTADA;
 </script>
 
 <template>
@@ -680,24 +668,8 @@ const nuevas = computed(() =>
         <p class="etiqueta">{{ t.nuevo.etiqueta }}</p>
         <h2 id="lo-nuevo">{{ t.nuevo.titulo }}</h2>
         <p class="bajada">{{ t.nuevo.bajada }}</p>
-        <ul class="nuevo" role="list">
-          <li v-for="n in nuevas" :key="n.id">
-            <img
-              v-if="n.imagen"
-              :src="n.imagen"
-              :alt="n.alt"
-              width="640"
-              height="400"
-              loading="lazy"
-              decoding="async"
-            />
-            <div class="cuerpo">
-              <h3>{{ n.titulo }}</h3>
-              <p>{{ n.texto }}</p>
-              <a class="mas" :href="enlace(n.href)">{{ t.nuevo.mas }} →</a>
-            </div>
-          </li>
-        </ul>
+        <Novedades :lang="lang" ultimas />
+        <a v-if="hayMas" class="mas todas" :href="enlace(t.rutas.novedades)">{{ t.nuevo.todas }} →</a>
       </div>
     </section>
 
@@ -938,6 +910,9 @@ a.mas {
 a.mas:hover {
   text-decoration: underline;
 }
+a.mas.todas {
+  margin-top: 28px;
+}
 a:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--vp-c-brand-1);
@@ -1020,42 +995,6 @@ ul[role="list"] {
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
   font-size: 22px;
-}
-
-/* lo nuevo: tarjetas con la captura de la ayuda, si la hay */
-.nuevo {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: 20px;
-  margin-top: 40px !important;
-}
-.nuevo li {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: var(--pr-radio);
-  background: var(--vp-c-bg);
-}
-.nuevo img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 8 / 5;
-  object-fit: cover;
-  object-position: top left;
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-.nuevo .cuerpo {
-  padding: 24px;
-}
-.nuevo h3 {
-  font-size: 1.125rem;
-  line-height: 1.35;
-}
-.nuevo p {
-  margin-top: 8px;
-  color: var(--vp-c-text-2);
-  line-height: 1.6;
 }
 
 /* funciones: texto y captura alternados */

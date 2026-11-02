@@ -708,7 +708,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 
 Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la función exista, y actualiza la ayuda en es y en. La prueba de `src/i18n/ayuda.test.ts` deja de prohibir `Excel` en la 23a.
 
-**Regla de trabajo (2026-11-01):** cada PR con una función visible actualiza `site/novedades.json` (título y texto en es y en, sin número de versión) y, si cambia lo que se ofrece, la presentación (`site/.vitepress/theme/Presentacion.vue`); `pages.yml` publica al fusionar. `npm test` en `site/` revisa que no haya versiones, «Próximamente», fases ni «cumple».
+**Regla de trabajo (2026-11-01):** cada PR con una función visible actualiza `site/novedades.json` (título y texto en es y en, sin número de versión) y, si cambia lo que se ofrece, la presentación (`site/.vitepress/theme/Presentacion.vue`); `pages.yml` publica al fusionar. `npm test` en `site/` revisa que no haya versiones, «Próximamente», fases ni «cumple». `site/novedades.json` acumula, de la más nueva a la más antigua, y nada se quita; la portada muestra las 6 últimas y enlaza a la página «Todas las novedades» (`site/novedades.md` y `site/en/novedades.md`), que las muestra todas.
 
 ### Task 20e: Opciones al cerrar la ventana (spec §7 "Al cerrar la ventana")
 - Diálogo con Cancelar, Dejar en la bandeja, Cerrar la app y No volver a preguntar; preferencia en Configuración. Un registro de trabajos en curso que usan respaldos y las tareas 22a, 22b, 23a y 25a, para avisar antes de interrumpir. Se apoya en `src-tauri/src/salida.rs` y `src/app/ventana.ts`: cerrar nunca queda bloqueado.
