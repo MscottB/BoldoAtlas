@@ -101,6 +101,29 @@ export function abrirMenuContextual(el: Element) {
   );
 }
 
+/**
+ * Qué muestra la ventanita de conexiones (ConexionLienzo), junto a qué y a quién vuelve el foco al cerrarse. Con `id` edita una
+ * conexión (`fija`: la unidad del panel desde el que se abrió, que no se cambia); con `origen` es «Conectar con…»: primero se
+ * elige con qué unidad.
+ */
+export type VentanaConexion = { ancla: DOMRect; foco: HTMLElement | null } & (
+  | { id: string; fija?: string }
+  | { origen: string }
+);
+export const ventanaConexion = shallowRef<VentanaConexion | null>(null);
+/** Conexión que debe mostrarse si está en una rama plegada: ConexionLienzo abre la rama, mueve el lienzo y lo deja en null. */
+export const verConexion = ref<string | null>(null);
+
+/** «Conectar con…» de la tarjeta y de su menú contextual. */
+export function conectarDesde(origen: string) {
+  const tarjeta = document.querySelector(`.vue-flow__node[data-id="${CSS.escape(origen)}"]`) ?? document.body;
+  ventanaConexion.value = {
+    origen,
+    ancla: tarjeta.getBoundingClientRect(),
+    foco: document.activeElement as HTMLElement | null,
+  };
+}
+
 // Estado compartido por el lienzo y el panel de unidad: hay un solo lienzo en la app.
 const colapsados = ref(new Set<string>());
 const seleccion = ref<string | null>(null);
@@ -311,6 +334,7 @@ export function useLienzo() {
       plegar(unidades, contraerRama(colapsados.value, unidades, id)),
     nuevaUnidad,
     nuevaHija,
+    abrirRuta,
     revelar,
     revelarPuesto,
     enfocar,

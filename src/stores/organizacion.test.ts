@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import * as U from "@/db/repos/unidades";
+import * as X from "@/db/repos/conexiones";
 import { useOrganizacion } from "./organizacion";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
 import { cambiarIdioma } from "@/i18n";
@@ -651,6 +652,218 @@ describe("organización, etiquetas y conexiones", () => {
     expect(s.conexiones).toHaveLength(1);
     await s.eliminarConexion(c.id);
     expect(s.conexiones).toHaveLength(0);
+  });
+});
+
+describe("deshacer viendo una fecha", () => {
+  it("una persona eliminada a una fecha vuelve con Deshacer", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    await s.verAFecha("2020-01-01");
+    expect((await s.eliminarTrabajador(ana)).ok).toBe(true);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.trabajadores.some((w) => w.id === ana)).toBe(true);
+    expect(s.ultimoBorrado).toBeNull();
+  });
+
+  it("una vista eliminada a una fecha vuelve con Deshacer", async () => {
+    const s = nuevo();
+    const r = await s.guardarVista(null, "Compacta", { densidad: "compacta" });
+    if (!r.ok || !r.id) throw new Error("no se creó");
+    await s.verAFecha("2020-01-01");
+    expect((await s.eliminarVista(r.id)).ok).toBe(true);
+    expect(s.vistas).toHaveLength(0);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.vistas.map((v) => v.id)).toEqual([r.id]);
+  });
+
+  it("una unidad o una conexión no se restauran a una fecha, y siguen disponibles al volver a hoy", async () => {
+    const s = nuevo();
+    const a = await unidad(s, "A");
+    await s.eliminarUnidad(a);
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    expect((await s.deshacer()).ok).toBe(false);
+    expect(revision()).toBe(antes);
+    await s.verAFecha(null);
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.porId.has(a)).toBe(true);
+  });
+});
+
+describe("conexiones: crear y editar", () => {
+  async function tres() {
+    const s = nuevo();
+    const a = await unidad(s, "Mantención");
+    const b = await unidad(s, "Compras");
+    const c = await unidad(s, "Finanzas");
+    const r = await s.crearConexion(a, b, "Repuestos");
+    if (!r.ok || !r.id) throw new Error("no se creó");
+    return { s, a, b, c, id: r.id };
+  }
+
+  it("crear rechaza consigo misma y el duplicado, también al revés, sin escribir", async () => {
+    const { s, a, b } = await tres();
+    const antes = revision();
+    expect(await s.crearConexion(a, a)).toEqual({
+      ok: false,
+      mensaje: "Una unidad no puede conectarse consigo misma.",
+    });
+    expect(await s.crearConexion(b, a)).toEqual({
+      ok: false,
+      mensaje: "Ya existe una conexión entre «Compras» y «Mantención».",
+    });
+    expect(revision()).toBe(antes);
+  });
+
+  it("edita la descripción: recorta, y en blanco queda sin descripción", async () => {
+    const { s, id } = await tres();
+    const antes = revision();
+    expect((await s.actualizarConexion(id, { etiqueta: "  Bodega " })).ok).toBe(true);
+    expect(s.conexiones[0].etiqueta).toBe("Bodega");
+    expect(revision()).toBe(antes + 1);
+    await s.actualizarConexion(id, { etiqueta: "   " });
+    expect(s.conexiones[0].etiqueta).toBeNull();
+  });
+
+  it("cambia un extremo con un solo escribir y conserva la descripción", async () => {
+    const { s, id, a, c } = await tres();
+    const antes = revision();
+    expect((await s.actualizarConexion(id, { destino_id: c })).ok).toBe(true);
+    expect(s.conexiones[0]).toMatchObject({ origen_id: a, destino_id: c, etiqueta: "Repuestos" });
+    expect(revision()).toBe(antes + 1);
+  });
+
+  it("sin cambios no escribe: updated_at decide en los .boldo", async () => {
+    const { s, id, b } = await tres();
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { etiqueta: " Repuestos ", destino_id: b })).toEqual({ ok: true });
+    expect(revision()).toBe(antes);
+  });
+
+  it("rechaza consigo misma y el duplicado, sin escribir ni lanzar", async () => {
+    const { s, id, a, b, c } = await tres();
+    const otra = await s.crearConexion(a, c);
+    if (!otra.ok) throw new Error("no se creó");
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { destino_id: a })).toEqual({
+      ok: false,
+      mensaje: "Una unidad no puede conectarse consigo misma.",
+    });
+    expect(await s.actualizarConexion(otra.id!, { destino_id: b })).toEqual({
+      ok: false,
+      mensaje: "Ya existe una conexión entre «Mantención» y «Compras».",
+    });
+    expect(revision()).toBe(antes);
+  });
+
+  it("con un duplicado heredado de un .boldo se puede editar su descripción", async () => {
+    const { s, id, a, b } = await tres();
+    h.bd!.aplicar(X.crearConexion(a, b, null).sentencias);
+    await s.cargar();
+    expect((await s.actualizarConexion(id, { etiqueta: "Bodega" })).ok).toBe(true);
+    expect(s.conexiones.find((c) => c.id === id)?.etiqueta).toBe("Bodega");
+  });
+
+  it("una conexión que ya no existe se avisa, sin escribir", async () => {
+    const { s, id } = await tres();
+    await s.eliminarConexion(id);
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { etiqueta: "x" })).toEqual({
+      ok: false,
+      mensaje: "La conexión ya no existe.",
+    });
+    expect(revision()).toBe(antes);
+  });
+
+  it("a una fecha es de solo lectura", async () => {
+    const { s, id, a, c } = await tres();
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    expect((await s.actualizarConexion(id, { etiqueta: "x" })).ok).toBe(false);
+    expect((await s.crearConexion(c, a)).ok).toBe(false);
+    expect((await s.eliminarConexion(id)).ok).toBe(false);
+    expect(revision()).toBe(antes);
+  });
+
+  it("rechaza un extremo que ya no existe, también al crear", async () => {
+    const { s, id, a, c } = await tres();
+    await s.eliminarUnidad(c);
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { destino_id: c })).toEqual({
+      ok: false,
+      mensaje: "La unidad ya no existe.",
+    });
+    expect(await s.crearConexion(a, c)).toEqual({ ok: false, mensaje: "La unidad ya no existe." });
+    expect(revision()).toBe(antes);
+  });
+
+  it("dos cambios solapados no se pisan: cada uno escribe solo su columna", async () => {
+    const { s, id, c } = await tres();
+    await Promise.all([
+      s.actualizarConexion(id, { etiqueta: "Bodega" }),
+      s.actualizarConexion(id, { destino_id: c }),
+    ]);
+    expect(s.conexiones[0]).toMatchObject({ destino_id: c, etiqueta: "Bodega" });
+  });
+
+  it("deshacer devuelve la conexión eliminada, con su descripción", async () => {
+    const { s, id } = await tres();
+    expect((await s.eliminarConexion(id)).ok).toBe(true);
+    expect(s.conexiones).toHaveLength(0);
+    expect(s.ultimoBorrado).toMatchObject({ tipo: "conexion", id });
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(s.conexiones[0]).toMatchObject({ id, etiqueta: "Repuestos" });
+    expect(s.ultimoBorrado).toBeNull();
+  });
+
+  it("deshacer no deja dos conexiones si mientras tanto se creó otra igual", async () => {
+    const { s, id, a, b } = await tres();
+    await s.eliminarConexion(id);
+    await s.crearConexion(b, a);
+    const antes = revision();
+    expect(await s.deshacer()).toEqual({
+      ok: false,
+      mensaje: "Ya existe una conexión entre «Mantención» y «Compras».",
+    });
+    expect(s.conexiones).toHaveLength(1);
+    expect(revision()).toBe(antes);
+  });
+
+  it("deshacer no escribe a una fecha, y sigue disponible al volver a hoy", async () => {
+    const { s, id } = await tres();
+    await s.eliminarConexion(id);
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    expect(await s.deshacer()).toEqual({
+      ok: false,
+      mensaje: "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo.",
+    });
+    expect(revision()).toBe(antes);
+    await s.verAFecha(null);
+    expect((await s.deshacer()).ok).toBe(true);
+  });
+
+  it("deshacer con id solo restaura esa baja: el aviso de una anterior no devuelve otra", async () => {
+    const { s, id, a, c } = await tres();
+    const otra = await s.crearConexion(a, c);
+    if (!otra.ok) throw new Error("no se creó");
+    await s.eliminarConexion(id);
+    await s.eliminarConexion(otra.id!);
+    const antes = revision();
+    expect(await s.deshacer(id)).toEqual({ ok: false, mensaje: "Ya no se puede deshacer." });
+    expect(s.conexiones).toHaveLength(0);
+    expect(revision()).toBe(antes);
+    expect((await s.deshacer(otra.id)).ok).toBe(true);
+    expect(s.conexiones.map((x) => x.id)).toEqual([otra.id]);
+  });
+
+  it("eliminar una conexión que ya no existe se avisa", async () => {
+    const { s, id } = await tres();
+    await s.eliminarConexion(id);
+    const antes = revision();
+    expect(await s.eliminarConexion(id)).toEqual({ ok: false, mensaje: "La conexión ya no existe." });
+    expect(revision()).toBe(antes);
   });
 });
 

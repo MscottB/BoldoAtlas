@@ -50,7 +50,7 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo } from "./useLienzo";
+import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo, ventanaConexion } from "./useLienzo";
 import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
 import { recordarPorArbol, useVista } from "./useVista";
@@ -71,6 +71,7 @@ import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
 import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
 import { zonasDibujadas } from "./zonas";
 import AristaLateral from "./AristaLateral.vue";
+import ConexionLienzo from "./ConexionLienzo.vue";
 import ZonasLienzo from "./ZonasLienzo.vue";
 import NivelesLienzo from "./NivelesLienzo.vue";
 import PreviaMover, { type Previa } from "./PreviaMover.vue";
@@ -582,6 +583,7 @@ provide(CONTEXTO_LIENZO, {
   tarjetaActiva,
   tarjetaEnfocada,
   relacionesActivas,
+  mostradas,
   encuadrar: encuadrarTodo,
 });
 
@@ -607,6 +609,19 @@ const tituloLeyenda = computed(() =>
   porLeyenda.value
     ? t("arbol.vista.leyendaPuesto")
     : t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
+);
+// `trazados` ya viene vacío con «Relaciones laterales» apagado. En ligero la línea es continua (ver AristaLateral).
+const leyendaLineas = computed<EntradaLeyenda[]>(() =>
+  trazados.value.size
+    ? [
+        {
+          clave: "lateral",
+          color: null,
+          trazo: ligera.value ? "continuo" : "punteado",
+          nombre: t(ligera.value ? "arbol.lateral.leyendaContinua" : "arbol.lateral.leyendaPunteada"),
+        },
+      ]
+    : [],
 );
 
 // Solo entre tarjetas que están en `nodos` (una recién eliminada se omite hasta el próximo layout).
@@ -771,8 +786,10 @@ async function cerrarPanel(destino?: string | null) {
       : null;
   tarjeta?.focus();
 }
-// Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta).
+// Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta) o haya una ventanita de conexión: ese
+// Esc es de ella.
 function escEnLienzo(e: KeyboardEvent) {
+  if (ventanaConexion.value) return;
   if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) void cerrarPanel();
 }
 
@@ -919,11 +936,20 @@ function verCompleto() {
         <PanelUnidad :unidad="unidadSeleccionada" @cerrar="cerrarPanel" />
       </div>
       <!-- Las leyendas van en franjas fijas bajo el lienzo (no bajo el panel): así no tapan tarjetas. -->
-      <div v-if="leyenda.length || leyendaZonas.length" class="col-start-1 grid grid-cols-1">
+      <div
+        v-if="leyenda.length || leyendaZonas.length || leyendaLineas.length"
+        class="col-start-1 grid grid-cols-1"
+      >
         <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
         <LeyendaLienzo v-if="leyendaZonas.length" :titulo="t('zonas.titulo')" :entradas="leyendaZonas" />
+        <LeyendaLienzo
+          v-if="leyendaLineas.length"
+          :titulo="t('arbol.lateral.leyendaTitulo')"
+          :entradas="leyendaLineas"
+        />
       </div>
     </div>
+    <ConexionLienzo />
     <AlertDialog v-model:open="confirmando">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -970,6 +996,13 @@ function verCompleto() {
 /* Líneas y minimapa con los colores del tema (las laterales traen su color). */
 .lienzo :deep(.vue-flow__edge-path) {
   stroke: var(--arista);
+}
+/* La zona de clic de las laterales responde también en ligero; con Mayús, el recuadro puede empezar sobre ella. */
+.lienzo :deep([data-zona-conexion]) {
+  pointer-events: stroke;
+}
+.lienzo :deep(.vue-flow__pane.selection [data-zona-conexion]) {
+  pointer-events: none;
 }
 /* Las etiquetas de las laterales van sobre las tarjetas; la tarjeta con sus acciones, sobre las etiquetas y las vecinas. */
 .lienzo :deep(.vue-flow__edge-labels) {
