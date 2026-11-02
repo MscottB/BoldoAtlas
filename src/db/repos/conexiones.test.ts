@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { crearUnidad } from "./unidades";
-import { actualizarConexion, crearConexion, eliminarConexion } from "./conexiones";
+import { actualizarConexion, crearConexion, eliminarConexion, restaurarConexion } from "./conexiones";
 import { TIPO_GERENCIA } from "@/db/tipos";
 
 let bd: BasePrueba;
@@ -29,6 +29,10 @@ describe("conexiones", () => {
     ]);
     bd.aplicar(eliminarConexion(c.id));
     expect(bd.consultar("SELECT id FROM conexiones WHERE deleted_at IS NULL")).toHaveLength(0);
+    bd.aplicar(restaurarConexion(c.id));
+    expect(bd.consultar("SELECT etiqueta FROM conexiones WHERE deleted_at IS NULL")).toEqual([
+      { etiqueta: "colabora con" },
+    ]);
   });
 
   it("una unidad consigo misma falla por CHECK", () => {

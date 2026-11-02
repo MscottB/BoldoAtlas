@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { caminoSvg, trazarLaterales, type Caja, type Lateral, type Punto } from "./lateral";
+import { caminoSvg, encuadreDeLinea, trazarLaterales, type Caja, type Lateral, type Punto } from "./lateral";
 
 const caja = (x: number, y: number, ancho = 220, alto = 112): Caja => ({ x, y, ancho, alto });
 const lat = (origen_id: string, destino_id: string, etiqueta: string | null = null, id = "l"): Lateral => ({
@@ -53,6 +53,33 @@ const tapa = (e: Punto, cajas: Map<string, Caja>, w = 120, h = 20) =>
       e.x - w / 2 < c.x + c.ancho && e.x + w / 2 > c.x && e.y - h / 2 < c.y + c.alto && e.y + h / 2 > c.y,
   );
 
+describe("encuadreDeLinea", () => {
+  const panta = { width: 1000, height: 600 };
+  const vp = (x: number, y: number, zoom: number) => ({ x, y, zoom });
+  const linea = [
+    { x: 100, y: 100 },
+    { x: 300, y: 100 },
+  ];
+
+  it("si la línea ya se ve entera, no mueve nada", () => {
+    expect(encuadreDeLinea(linea, vp(0, 0, 1), panta)).toBeNull();
+  });
+
+  it("si queda fuera, la centra y conserva el zoom: no acerca de más", () => {
+    expect(encuadreDeLinea(linea, vp(-2000, 0, 1), panta)).toEqual({ x: 200, y: 100, zoom: 1 });
+    expect(encuadreDeLinea(linea, vp(-2000, 0, 0.5), panta)).toEqual({ x: 200, y: 100, zoom: 0.5 });
+  });
+
+  it("si es más larga que la pantalla, aleja lo justo para que quepa con margen", () => {
+    const larga = [
+      { x: 0, y: 0 },
+      { x: 2000, y: 0 },
+      { x: 2000, y: 1000 },
+    ];
+    expect(encuadreDeLinea(larga, vp(0, 0, 1), panta)).toEqual({ x: 1000, y: 500, zoom: 0.4 });
+  });
+});
+
 describe("trazado de las conexiones laterales", () => {
   it("sin descripción, el punto va sobre la línea, fuera de las tarjetas y no en su inicio", () => {
     const cajas = new Map(fila("a", 5, 0));
@@ -70,6 +97,42 @@ describe("trazado de las conexiones laterales", () => {
       );
     });
     expect(sobreLaLinea).toBe(true);
+  });
+
+  it("las descripciones se ubican antes que los puntos, aunque vengan después en la lista", () => {
+    // Tres puntos en carriles vecinos: si se ubicaran antes, el texto tendría que correrse del centro de su tramo.
+    const cajas = new Map(fila("a", 5, 0));
+    const puntos = ["p", "q", "r"].map((id) => lat("a0", "a4", null, id));
+    const t = trazarLaterales([...puntos, lat("a0", "a4", "Descripción", "x")], cajas, "vertical").get("x")!;
+    const tramos = t.puntos.slice(1).map((q, k) => [t.puntos[k]!, q] as const);
+    const [p, q] = tramos.sort(([a, b], [c, d]) => Math.abs(d.x - c.x) - Math.abs(b.x - a.x))[0]!;
+    expect(t.etiqueta).toEqual({ x: (p.x + q.x) / 2, y: p.y });
+  });
+
+  it("solo pierde el puntero si tapa una tarjeta, no si pisa otra etiqueta u otro punto", () => {
+    // Dos tarjetas lado a lado y tres líneas sin más lugar que el mismo hueco: se pisan entre ellas, no a las tarjetas.
+    const cajas = new Map([
+      ["a", caja(0, 0)],
+      ["b", caja(248, 0)],
+    ]);
+    const ls = ["x", "y", "z", "w"].map((id) => lat("a", "b", null, id));
+    const t = trazarLaterales(ls, cajas, "vertical");
+    for (const id of ["x", "y", "z", "w"]) {
+      const e = t.get(id)!;
+      expect(e.etiquetaTapa).toBe(tapa(e.etiqueta, cajas, 14, 20));
+    }
+  });
+
+  it("una etiqueta sobre una tarjeta sí pierde el puntero", () => {
+    // Hueco de 2 px entre vecinas: el texto, por corto que sea, asoma sobre ellas.
+    const cajas = new Map([
+      ["a", caja(0, 0)],
+      ["b", caja(222, 0)],
+    ]);
+    const t = trazarLaterales([lat("a", "b", "Una descripción bien larga", "x")], cajas, "vertical").get(
+      "x",
+    )!;
+    expect(t.etiquetaTapa).toBe(tapa(t.etiqueta, cajas, 26 * 6.5 + 14, 20));
   });
 
   it("los puntos de dos líneas por la misma franja no quedan uno sobre otro", () => {

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, inject, useId, useTemplateRef } from "vue";
+import { computed, inject, ref, useId, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Pencil, X } from "@lucide/vue";
 import { CONTEXTO_LIENZO } from "@/features/arbol/contexto";
-import { useLienzo, ventanaConexion } from "@/features/arbol/useLienzo";
+import { useLienzo, ventanaConexion, verConexion } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { excluidasParaConexion, porQueNoSeVe } from "./panel";
+import EliminarConexion from "./EliminarConexion.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 
 // Conexiones de la unidad con otras unidades (no cambian la jerarquía). Primero se elige la unidad; la descripción, opcional,
@@ -42,25 +43,38 @@ const raiz = useTemplateRef<HTMLElement>("raiz");
 
 const editar = (id: string, e: Event) => {
   const boton = e.currentTarget as HTMLElement;
-  ventanaConexion.value = { id, fija: props.unidadId, ancla: boton, foco: boton };
+  ventanaConexion.value = {
+    id,
+    fija: props.unidadId,
+    ancla: boton.getBoundingClientRect(),
+    foco: boton,
+  };
 };
 
 const cuadro = () => new Promise(requestAnimationFrame);
+let creando = false;
 async function conectar(destino: string | null) {
-  if (!destino) return;
+  if (!destino || creando) return; // un doble clic en la lista no crea dos
+  creando = true;
   const r = await org.crearConexion(props.unidadId, destino);
+  creando = false;
   if (!r.ok) return void toast.error(r.mensaje);
   // El buscador que se cierra devuelve el foco a su botón: se espera (con tope) para no sacárselo después a la ventanita.
   for (let i = 0; i < 60 && document.querySelector('[role="dialog"]'); i++) await cuadro();
-  const boton = raiz.value?.querySelector<HTMLElement>("[data-conectar]") ?? null;
-  if (boton) ventanaConexion.value = { id: r.id!, fija: props.unidadId, ancla: boton, foco: boton };
+  const boton = raiz.value?.querySelector<HTMLElement>("[data-conectar]");
+  if (boton)
+    ventanaConexion.value = {
+      id: r.id!,
+      fija: props.unidadId,
+      ancla: boton.getBoundingClientRect(),
+      foco: boton,
+    };
+  verConexion.value = r.id!; // si quedó hacia una rama plegada, la abre y muestra la línea
 }
-async function quitar(id: string) {
-  const r = await org.eliminarConexion(id);
-  if (!r.ok) return void toast.error(r.mensaje);
-  // Su fila ya no está: el foco no se pierde.
-  raiz.value?.closest<HTMLElement>("[data-panel-unidad]")?.focus();
-}
+
+const quitando = ref<string | null>(null);
+// Su fila ya no está: el foco no se pierde.
+const alEliminar = () => raiz.value?.closest<HTMLElement>("[data-panel-unidad]")?.focus();
 </script>
 
 <template>
@@ -82,6 +96,17 @@ async function quitar(id: string) {
               nombre: f.otro.nombre,
             })
           }}</span>
+          <!-- Solo si abrir la rama la deja a la vista: apagado el interruptor o fuera de la rama enfocada, no serviría. Abrir
+               ramas no cambia datos, pero a una fecha el fieldset del panel deshabilita todo: ahí no se ofrece. -->
+          <button
+            v-if="f.oculta === 'plegada' && config.relacionesLaterales && !org.fechaVista"
+            type="button"
+            class="justify-self-start rounded text-xs font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-ring"
+            :aria-label="t('unidad.verConexion', { nombre: f.otro.nombre })"
+            @click="verConexion = f.id"
+          >
+            {{ t("conexion.verEnDiagrama") }}
+          </button>
         </span>
         <button
           type="button"
@@ -98,7 +123,8 @@ async function quitar(id: string) {
           class="grid size-6 shrink-0 place-items-center rounded hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
           :aria-label="t('unidad.quitarConexion', { nombre: f.otro.nombre })"
           :title="t('unidad.quitarConexion', { nombre: f.otro.nombre })"
-          @click="quitar(f.id)"
+          aria-haspopup="dialog"
+          @click="quitando = f.id"
         >
           <X class="size-4" aria-hidden="true" />
         </button>
@@ -114,5 +140,6 @@ async function quitar(id: string) {
       :texto="t('unidad.conectarCon')"
       @elegir="conectar"
     />
+    <EliminarConexion :id="quitando" @cerrar="quitando = null" @eliminada="alEliminar" />
   </section>
 </template>

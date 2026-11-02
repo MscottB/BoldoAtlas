@@ -104,7 +104,7 @@ On the canvas it is a dotted line that runs through the free space between cards
 **To create a connection:**
 
 1. Press **Connect to…** in the card's actions or in its context menu. It is also under **Connections**, in the unit panel.
-2. Choose the other unit.
+2. Choose the other unit. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
 3. If you want, type a description. You can leave it empty.
 
 **To edit a connection:** press the line, its description or its dot (or reach it with `Tab` and press `Enter`). A small window opens right there:
@@ -112,14 +112,20 @@ On the canvas it is a dotted line that runs through the free space between cards
 ![The window of the Maintenance ↔ Purchasing connection, above its dotted line.](../img/en/arbol-conexion.webp "A connection's window: description, Change unit and Delete connection."){width=320 height=298}
 
 - **Description**: saved when you leave the field, with `Enter` or when the window closes.
-- **Change unit**: choose another unit for either end.
-- **Delete connection**: deletes it at once, with no **Undo**.
+- **Change unit**: choose another unit for either end. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
+- **Delete connection**: asks first. After deleting, a notice offers **Undo** for 8 seconds.
 
-`Esc` or a click outside closes the window, and `Esc` returns the focus to the line. Moving or zooming the canvas also closes it. The pencil on a row, under **Connections** in the unit panel, opens the same window; there you only change the other unit.
+`Esc` or a click outside closes the window, and `Esc` returns the focus to the line. Moving or zooming the canvas also closes it. The pencil on a row, under **Connections** in the unit panel, opens the same window; there you only change the other unit. The X on the row deletes the connection, also asking first and with **Undo**.
 
-A unit cannot be connected to itself, and two units have a single connection between them.
+A unit cannot be connected to itself, and if two units are already connected you cannot create a second connection between them.
 
-The line is drawn when both units are in view and **Lateral connections** is on in **Customize**. If it is not visible because the other unit is in a collapsed branch or outside the view, its row in the panel says so. A connection to a unit beyond what fits on the screen is drawn: zoom out or fit the canvas to see it.
+The line is drawn when both units are in view and **Lateral connections** is on in **Customize**. If it is not visible, the panel row and the window say why:
+
+- **Collapsed branch**: the **Show in the diagram** button opens the branch and moves the canvas to show the line. Collapsing a branch does not draw a line towards it.
+- **Outside the view**: the other unit is not in the branch you opened as a tree, or did not exist on the date you are viewing. Go back to the full tree or to today to see it.
+- **Lateral connections off**: turn it on in **Customize**.
+
+A connection to a unit beyond what fits on the screen is drawn: zoom out or fit the canvas to see it.
 
 While viewing the chart at a past date, the window is read only.
 

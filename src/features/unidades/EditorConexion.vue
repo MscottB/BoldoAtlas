@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CONTEXTO_LIENZO } from "@/features/arbol/contexto";
-import { useLienzo } from "@/features/arbol/useLienzo";
+import { useLienzo, verConexion } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
 import { useOrganizacion } from "@/stores/organizacion";
-import { excluidasParaConexion, porQueNoSeVe } from "./panel";
+import { excluidasParaConexion, porQueNoSeVe, ultimoEnviado } from "./panel";
+import EliminarConexion from "./EliminarConexion.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 
 // La ventanita de una conexión: descripción, cambiar una de sus unidades (`fija`: la que no se ofrece cambiar) y eliminar.
@@ -48,46 +49,51 @@ const extremos = computed(() => {
 async function cambiar(campo: "origen_id" | "destino_id", unidad: string | null) {
   if (!unidad) return;
   const r = await org.actualizarConexion(props.id, { [campo]: unidad });
-  if (!r.ok) toast.error(r.mensaje);
+  if (r.ok)
+    verConexion.value = props.id; // si quedó hacia una rama plegada, la abre y muestra la línea
+  else toast.error(r.mensaje);
 }
 
-const aviso = computed(() => {
+// Por qué no se ve. Rama plegada: se puede abrir (Ver en el diagrama). Lo demás no se resuelve desde aquí: solo se dice.
+const oculta = computed(() => {
   const c = conexion.value;
   if (!c) return null;
-  if (!config.value.relacionesLaterales) return t("unidad.relacionesApagadas");
+  if (!config.value.relacionesLaterales) return { texto: t("unidad.relacionesApagadas"), plegada: false };
   for (const id of [c.origen_id, c.destino_id]) {
     const motivo = porQueNoSeVe(mostradas.value, colapsados.value, id);
     if (motivo)
-      return t(motivo === "plegada" ? "unidad.ocultaPlegada" : "unidad.ocultaFuera", { nombre: nombre(id) });
+      return {
+        texto: t(motivo === "plegada" ? "unidad.ocultaPlegada" : "unidad.ocultaFuera", {
+          nombre: nombre(id),
+        }),
+        plegada: motivo === "plegada",
+      };
   }
   return null;
 });
+const ver = () => (verConexion.value = props.id);
 
 // La descripción se guarda al terminar de escribir o al cerrarse la ventanita, cualquiera sea la forma (Esc, clic afuera).
 const descripcion = ref(conexion.value?.etiqueta ?? "");
-const campo = useTemplateRef<HTMLElement>("campo");
-let eliminada = false;
+const raiz = useTemplateRef<HTMLElement>("raiz");
+const enviado = ultimoEnviado(conexion.value?.etiqueta ?? null);
 async function guardar() {
-  if (eliminada || soloLectura.value || !conexion.value) return;
-  if ((descripcion.value.trim() || null) === conexion.value.etiqueta) return;
+  if (soloLectura.value || !conexion.value) return;
+  if (!enviado.cambia(descripcion.value.trim() || null)) return;
   const r = await org.actualizarConexion(props.id, { etiqueta: descripcion.value });
-  if (!r.ok) toast.error(r.mensaje);
-}
-onBeforeUnmount(guardar);
-// Tras «Conectar con…» la ventanita ya estaba abierta: el foco no entra solo a este contenido.
-onMounted(() => campo.value?.querySelector("input")?.focus());
-
-async function eliminar() {
-  eliminada = true;
-  const r = await org.eliminarConexion(props.id);
-  if (r.ok) return emit("cerrar");
-  eliminada = false;
+  if (r.ok) return;
+  enviado.fallo();
   toast.error(r.mensaje);
 }
+onBeforeUnmount(guardar);
+// El foco entra aquí: tras «Conectar con…» la ventanita ya estaba abierta, y en solo lectura no hay un campo que lo reciba.
+onMounted(() => (raiz.value?.querySelector("input") ?? raiz.value)?.focus());
+
+const quitando = ref<string | null>(null);
 </script>
 
 <template>
-  <div v-if="conexion" class="grid gap-3">
+  <div v-if="conexion" ref="raiz" tabindex="-1" class="grid gap-3 outline-hidden">
     <h2 class="text-sm font-semibold break-words">{{ titulo }}</h2>
 
     <template v-if="soloLectura">
@@ -98,7 +104,7 @@ async function eliminar() {
     </template>
 
     <template v-else>
-      <div ref="campo" class="grid gap-1.5">
+      <div class="grid gap-1.5">
         <Label :for="`${uid}-descripcion`">{{ t("unidad.descripcionConexion") }}</Label>
         <Input
           :id="`${uid}-descripcion`"
@@ -119,12 +125,25 @@ async function eliminar() {
           @elegir="cambiar(e.campo, $event)"
         />
       </div>
-      <Button type="button" variant="destructive" size="sm" class="justify-self-start" @click="eliminar">
+      <Button type="button" variant="destructive" size="sm" class="justify-self-start" @click="quitando = id">
         <Trash2 aria-hidden="true" />
         {{ t("conexion.eliminar") }}
       </Button>
     </template>
 
-    <p v-if="aviso" class="text-xs text-muted-foreground">{{ aviso }}</p>
+    <template v-if="oculta">
+      <p class="text-xs text-muted-foreground">{{ oculta.texto }}</p>
+      <Button
+        v-if="oculta.plegada"
+        type="button"
+        variant="outline"
+        size="sm"
+        class="justify-self-start"
+        @click="ver"
+      >
+        {{ t("conexion.verEnDiagrama") }}
+      </Button>
+    </template>
   </div>
+  <EliminarConexion :id="quitando" @cerrar="quitando = null" @eliminada="emit('cerrar')" />
 </template>

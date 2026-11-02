@@ -59,8 +59,10 @@ export type ResultadoEliminar =
 type Contenido = { hijos: string[]; puestos: string[] };
 
 export interface Borrado {
-  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista" | "zona";
+  tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista" | "zona" | "conexion";
   id: string;
+  /** `conexion`: entre quiénes era: al restaurarla no debe duplicar otra creada mientras tanto. */
+  extremos?: [string, string];
   contenido?: Contenido;
   /** `unidades`: lo que contenía cada una de las eliminadas en el mismo lote. */
   lote?: { id: string; contenido: Contenido }[];
@@ -385,6 +387,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     puesto: (b: Borrado) => P.restaurarPuesto(b.id),
     vista: (b: Borrado) => V.restaurarVista(b.id),
     zona: (b: Borrado) => Z.restaurarZona(b.id),
+    conexion: (b: Borrado) => X.restaurarConexion(b.id),
   };
 
   async function deshacer(): Promise<Resultado> {
@@ -393,6 +396,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
       ultimoBorrado.value = null;
       return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     }
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const motivo = b.extremos && conexionRechazada(b.extremos[0], b.extremos[1], conexiones.value);
+    if (motivo) return rechazar(motivo);
     return escribir(
       () => RESTAURAR[b.tipo](b),
       () => (ultimoBorrado.value = null),
@@ -491,9 +497,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     );
   }
 
-  /** Lo que el CHECK no alcanza a explicar y lo que la base no impide: consigo misma y dos conexiones entre las mismas unidades. */
+  /** Lo que la base no impide o no explica: consigo misma, una unidad eliminada y dos conexiones entre las mismas unidades. */
   function conexionRechazada(origen: string, destino: string, entre: Conexion[]) {
     if (origen === destino) return t("errores.conexionConsigoMisma");
+    if (!porId.value.has(origen) || !porId.value.has(destino)) return t("store.unidadInexistente");
     if (!excluidasParaConexion(entre, origen).has(destino)) return null;
     const nombre = (id: string) => porId.value.get(id)?.nombre;
     return t("store.conexionDuplicada", { origen: nombre(origen), destino: nombre(destino) });
@@ -529,11 +536,33 @@ export const useOrganizacion = defineStore("organizacion", () => {
           destino_id,
           conexiones.value.filter((x) => x.id !== id),
         );
-    return motivo
-      ? rechazar(motivo)
-      : escribir(() => X.actualizarConexion(id, { origen_id, destino_id, etiqueta }));
+    if (motivo) return rechazar(motivo);
+    // Solo lo que cambió: dos cambios solapados no se pisan con lo que cada uno leyó antes.
+    return escribir(() =>
+      X.actualizarConexion(id, {
+        origen_id: origen_id === c.origen_id ? undefined : origen_id,
+        destino_id: destino_id === c.destino_id ? undefined : destino_id,
+        etiqueta: etiqueta === c.etiqueta ? undefined : etiqueta,
+      }),
+    );
   }
-  const eliminarConexion = (id: string) => escribir(() => X.eliminarConexion(id));
+
+  /** Con Deshacer, como las demás bajas. */
+  async function eliminarConexion(id: string): Promise<Resultado> {
+    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    const c = conexiones.value.find((x) => x.id === id);
+    if (!c) return rechazar(t("store.conexionInexistente"));
+    return escribir(
+      () => X.eliminarConexion(id),
+      () =>
+        (ultimoBorrado.value = {
+          tipo: "conexion",
+          id,
+          extremos: [c.origen_id, c.destino_id],
+          vence: Date.now() + VIGENCIA_DESHACER_MS,
+        }),
+    );
+  }
 
   /** Copia la unidad con su rama (ver `duplicarRama`) y devuelve el id de la copia. */
   async function duplicarRama(id: string): Promise<Resultado> {

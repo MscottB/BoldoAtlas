@@ -334,7 +334,7 @@ function ubicarEtiqueta(
   filas: Fila[],
   ocupadas: Rejilla,
   pantallaX: "x" | "y",
-): { punto: Punto; tapa: number } {
+): { punto: Punto; tapaTarjeta: boolean } {
   const largo = (p: Punto, q: Punto) => Math.abs(p.x - q.x) + Math.abs(p.y - q.y);
   const tramos = puntos
     .slice(1)
@@ -343,16 +343,21 @@ function ubicarEtiqueta(
       const [am, an] = [m[0][pantallaX] !== m[1][pantallaX], n[0][pantallaX] !== n[1][pantallaX]];
       return am === an ? largo(n[0], n[1]) - largo(m[0], m[1]) : am ? -1 : 1;
     });
-  const tapa = (p: Punto) => {
+  const sobreTarjetas = (p: Punto) => {
     let total = 0;
+    cajasEn(filas, p.x - w / 2, p.x + w / 2, p.y - h / 2, p.y + h / 2, (c) => (total += solape(p, w, h, c)));
+    return total;
+  };
+  const tapa = (p: Punto) => {
+    let total = sobreTarjetas(p);
     const sumar = (c: Caja) => (total += solape(p, w, h, c));
-    cajasEn(filas, p.x - w / 2, p.x + w / 2, p.y - h / 2, p.y + h / 2, sumar);
     celdas({ x: p.x - w / 2, y: p.y - h / 2, ancho: w, alto: h }, (k) => ocupadas.get(k)?.forEach(sumar));
     return total;
   };
   let mejor = puntos[0]!;
   let menos = Infinity;
   let sondas = 0;
+  const elegido = () => ({ punto: mejor, tapaTarjeta: sobreTarjetas(mejor) > 0 });
   for (const [p, q] of tramos) {
     const paso = Math.max(8, largo(p, q) / 48) / Math.max(1, largo(p, q));
     const aLoAncho = p.y === q.y;
@@ -368,12 +373,12 @@ function ubicarEtiqueta(
             menos = n;
             mejor = c;
           }
-          if (!n || ++sondas >= MAX_SONDAS) return { punto: mejor, tapa: menos };
+          if (!n || ++sondas >= MAX_SONDAS) return elegido();
         }
       }
     }
   }
-  return { punto: mejor, tapa: menos };
+  return elegido();
 }
 
 /** Ancho que ocupará la etiqueta en el lienzo (sin medir el DOM): el texto largo se abrevia. */
@@ -402,19 +407,26 @@ export function trazarLaterales(
     usos.set(id, n + 1);
     return n;
   };
-  laterales.forEach((l, i) => {
+  const caminos = laterales.flatMap((l, i) => {
     const [ca, cb] = [cajas.get(l.origen_id), cajas.get(l.destino_id)];
-    if (!ca || !cb || ca === cb) return;
+    if (!ca || !cb || ca === cb) return [];
     const [a, b] = [normCaja(ca), normCaja(cb)];
     const puntos = camino(filas, a, b, i, [usar(l.origen_id), usar(l.destino_id)], !!l.etiqueta) ?? [
       { x: a.x + a.ancho / 2, y: a.y + a.alto / 2 },
       { x: b.x + b.ancho / 2, y: b.y + b.alto / 2 },
     ];
+    return [{ l, puntos }];
+  });
+  // Primero las que tienen descripción: un texto necesita más lugar que un punto y no debe cedérselo.
+  for (const { l, puntos } of [
+    ...caminos.filter((c) => c.l.etiqueta),
+    ...caminos.filter((c) => !c.l.etiqueta),
+  ]) {
     const ancho = anchoEtiqueta(l.etiqueta ?? "") * escalaEtiqueta;
     const alto = ALTO_ETIQUETA * escalaEtiqueta;
     const medida: [number, number] = horizontal ? [alto, ancho] : [ancho, alto];
     // Sin descripción se ubica igual: ahí va el punto de la línea (AristaLateral).
-    const { punto, tapa } = ubicarEtiqueta(puntos, medida, filas, ocupadas, horizontal ? "y" : "x");
+    const { punto, tapaTarjeta } = ubicarEtiqueta(puntos, medida, filas, ocupadas, horizontal ? "y" : "x");
     const [w, h] = medida;
     const caja = { x: punto.x - w / 2, y: punto.y - h / 2, ancho: w, alto: h };
     celdas(caja, (k) => {
@@ -425,11 +437,37 @@ export function trazarLaterales(
     res.set(l.id, {
       puntos: puntos.map(norm),
       etiqueta: norm(punto),
-      etiquetaTapa: tapa > 0,
+      etiquetaTapa: tapaTarjeta,
       cruces: puntos.slice(1).reduce((n, q, k) => n + crucesDelTramo(filas, puntos[k]!, q), 0),
     });
-  });
+  }
   return res;
+}
+
+/**
+ * Dónde centrar el lienzo para que la línea se vea entera, o null si ya se ve. Conserva el zoom (nunca acerca) salvo que la
+ * línea no quepa: entonces aleja lo justo para que ocupe el 80 % de la pantalla.
+ */
+export function encuadreDeLinea(
+  puntos: Punto[],
+  vista: Punto & { zoom: number },
+  pantalla: { width: number; height: number },
+): (Punto & { zoom: number }) | null {
+  const xs = puntos.map((p) => p.x);
+  const ys = puntos.map((p) => p.y);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const dentro =
+    x0 * vista.zoom + vista.x >= 0 &&
+    x1 * vista.zoom + vista.x <= pantalla.width &&
+    y0 * vista.zoom + vista.y >= 0 &&
+    y1 * vista.zoom + vista.y <= pantalla.height;
+  if (dentro) return null;
+  const zoom = Math.min(
+    vista.zoom,
+    x1 > x0 ? (pantalla.width * 0.8) / (x1 - x0) : Infinity,
+    y1 > y0 ? (pantalla.height * 0.8) / (y1 - y0) : Infinity,
+  );
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, zoom };
 }
 
 /** El `d` de un <path>: la línea con las esquinas redondeadas (sin pasarse de la mitad de cada tramo). */

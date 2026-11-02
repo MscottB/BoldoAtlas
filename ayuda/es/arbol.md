@@ -104,7 +104,7 @@ En el lienzo es una línea punteada que va por el espacio libre entre las tarjet
 **Crear una conexión:**
 
 1. Pulsa **Conectar con…** en las acciones de la tarjeta o en su menú contextual. También está en **Conexiones**, en el panel de la unidad.
-2. Elige la otra unidad.
+2. Elige la otra unidad. Si está en una rama plegada, la rama se abre sola y el lienzo se mueve para mostrar la línea.
 3. Si quieres, escribe una descripción. Puedes dejarla vacía.
 
 **Editar una conexión:** pulsa la línea, su descripción o su punto (o llega con `Tab` y pulsa `Enter`). Se abre una ventanita ahí mismo:
@@ -112,14 +112,20 @@ En el lienzo es una línea punteada que va por el espacio libre entre las tarjet
 ![Ventanita de la conexión Mantención ↔ Compras, sobre su línea punteada.](../img/es/arbol-conexion.webp "La ventanita de una conexión: descripción, Cambiar unidad y Eliminar conexión."){width=320 height=298}
 
 - **Descripción**: se guarda al salir del campo, con `Enter` o al cerrar la ventanita.
-- **Cambiar unidad**: elige otra unidad para uno de los dos extremos.
-- **Eliminar conexión**: la borra de inmediato, sin **Deshacer**.
+- **Cambiar unidad**: elige otra unidad para uno de los dos extremos. Si está en una rama plegada, la rama se abre sola y el lienzo se mueve para mostrar la línea.
+- **Eliminar conexión**: pregunta antes. Tras eliminarla aparece un aviso con **Deshacer** durante 8 segundos.
 
-`Esc` o un clic afuera cierran la ventanita, y `Esc` devuelve el foco a la línea. Mover o acercar el lienzo también la cierra. El lápiz de una fila, en **Conexiones** del panel de la unidad, abre la misma ventanita; ahí se cambia solo la otra unidad.
+`Esc` o un clic afuera cierran la ventanita, y `Esc` devuelve el foco a la línea. Mover o acercar el lienzo también la cierra. El lápiz de una fila, en **Conexiones** del panel de la unidad, abre la misma ventanita; ahí se cambia solo la otra unidad. La X de la fila elimina la conexión, también preguntando antes y con **Deshacer**.
 
-Una unidad no se puede conectar consigo misma, y entre dos unidades hay una sola conexión.
+Una unidad no se puede conectar consigo misma, y si dos unidades ya están conectadas no se puede crear una segunda conexión entre ellas.
 
-La línea se dibuja cuando las dos unidades están a la vista y **Relaciones laterales** está encendido en **Personalizar**. Si no se ve porque la otra unidad está en una rama plegada o fuera de la vista, su fila en el panel lo dice. Una conexión que apunta a una unidad que está más allá de lo que entra en la pantalla sí está dibujada: aleja o encuadra el lienzo para verla.
+La línea se dibuja cuando las dos unidades están a la vista y **Relaciones laterales** está encendido en **Personalizar**. Si no se ve, la fila del panel y la ventanita dicen por qué:
+
+- **Rama plegada**: el botón **Ver en el diagrama** abre la rama y mueve el lienzo para mostrar la línea. Al plegar una rama no se dibuja una línea hacia ella.
+- **Fuera de la vista**: la otra unidad no está en la rama que abriste como árbol o no existía a la fecha que ves. Vuelve al árbol completo o a hoy para verla.
+- **Relaciones laterales apagado**: enciéndelo en **Personalizar**.
+
+Una conexión que apunta a una unidad que está más allá de lo que entra en la pantalla sí está dibujada: aleja o encuadra el lienzo para verla.
 
 Viendo el organigrama a una fecha, la ventanita es solo de lectura.
 

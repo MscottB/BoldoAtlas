@@ -50,7 +50,7 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo } from "./useLienzo";
+import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo, ventanaConexion } from "./useLienzo";
 import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
 import { recordarPorArbol, useVista } from "./useVista";
@@ -786,8 +786,10 @@ async function cerrarPanel(destino?: string | null) {
       : null;
   tarjeta?.focus();
 }
-// Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta).
+// Esc en el lienzo cierra el panel, salvo que se esté escribiendo (renombrar una tarjeta) o haya una ventanita de conexión: ese
+// Esc es de ella.
 function escEnLienzo(e: KeyboardEvent) {
+  if (ventanaConexion.value) return;
   if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) void cerrarPanel();
 }
 

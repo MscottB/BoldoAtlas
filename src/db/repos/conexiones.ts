@@ -32,3 +32,4 @@ export const actualizarConexion = (
 ): Sentencia[] => actualizar("conexiones", id, cambios, ["origen_id", "destino_id", "etiqueta"]);
 
 export const eliminarConexion = (id: string): Sentencia[] => [fijarBorrado("conexiones", id, true)];
+export const restaurarConexion = (id: string): Sentencia[] => [fijarBorrado("conexiones", id, false)];

@@ -564,6 +564,7 @@
     "descripcionConexion": "Connection description (optional)",
     "conectarCon": "Connect to…",
     "editarConexion": "Edit the connection with “{nombre}”",
+    "verConexion": "Show the connection with “{nombre}” in the diagram",
     "quitarConexion": "Remove the connection with “{nombre}”",
     "ocultaPlegada": "Not visible in the diagram: “{nombre}” is in a collapsed branch.",
     "ocultaFuera": "Not visible in the diagram: “{nombre}” is outside this view.",
@@ -591,6 +592,11 @@
     "cambiarUnidad": "Change unit",
     "cambiarUnidadDe": "Change unit: {nombre}",
     "eliminar": "Delete connection",
+    "eliminarTitulo": "Delete the connection between {origen} and {destino}?",
+    "eliminarTexto": "You can undo it for 8 seconds.",
+    "eliminarBoton": "Delete",
+    "eliminada": "Connection between {origen} and {destino} deleted",
+    "verEnDiagrama": "Show in the diagram",
     "sinDescripcion": "No description"
   },
   "personas": {

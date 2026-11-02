@@ -10,10 +10,29 @@ import {
   filasDePuestos,
   migas,
   porQueNoSeVe,
+  ultimoEnviado,
   validarMarca,
 } from "./panel";
 
 const viva = unidades.filter((x) => !(x as { deleted_at?: string }).deleted_at);
+
+describe("ultimoEnviado", () => {
+  it("solo deja pasar un valor distinto del último, aunque el anterior siga en camino", () => {
+    const e = ultimoEnviado<string | null>("a");
+    expect(e.cambia("a")).toBe(false);
+    expect(e.cambia("b")).toBe(true);
+    expect(e.cambia("b")).toBe(false);
+    expect(e.cambia(null)).toBe(true);
+  });
+
+  it("si el envío falló, ese valor se puede volver a enviar", () => {
+    const e = ultimoEnviado("a");
+    e.cambia("b");
+    e.fallo();
+    expect(e.cambia("b")).toBe(true);
+    expect(e.cambia("b")).toBe(false);
+  });
+});
 
 describe("porQueNoSeVe", () => {
   it("nada la esconde: se ve", () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from "vue";
+import { computed, inject, ref, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { EdgeLabelRenderer, useVueFlow } from "@vue-flow/core";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -15,12 +15,17 @@ const props = defineProps<{ id: string; etiqueta?: string; descripcion?: string 
 const { t } = useI18n();
 const org = useOrganizacion();
 const { trazados, relacionesActivas, ligera } = inject(CONTEXTO_LIENZO)!;
-const { viewport, screenToFlowCoordinate } = useVueFlow();
+const { viewport, screenToFlowCoordinate, panBy } = useVueFlow();
 const { config } = useVista();
 
 const trazado = computed(() => trazados.value.get(props.id));
 const d = computed(() => trazado.value && caminoSvg(trazado.value.puntos));
 const boton = ref<HTMLElement | null>(null);
+// La zona de clic mide 16 px en pantalla con cualquier zoom. Directo en la línea y no con :style ni con una variable CSS: esto
+// no vuelve a pintar el componente, y una variable en un ancestro común recalcula el estilo de todas las tarjetas en cada tick
+// (27 ms con 973 tarjetas, contra 0,2 ms así).
+const zona = ref<SVGPathElement | null>(null);
+watchEffect(() => zona.value?.style.setProperty("stroke-width", `${16 / viewport.value.zoom}px`));
 const sobreBoton = ref(false);
 const enfocada = ref(false);
 // Dónde está el puntero sobre la línea, en coordenadas del lienzo: ahí aparece la pista.
@@ -41,13 +46,33 @@ const lugarPista = computed(() => {
   return p && `translate(${p.x}px, ${p.y - 14 / z}px) translate(-50%, -100%) scale(${1 / z})`;
 });
 
-function seguirPuntero(e: PointerEvent) {
-  puntero.value = screenToFlowCoordinate({ x: e.clientX, y: e.clientY });
+const abrir = (ancla: DOMRect) => (ventanaConexion.value = { id: props.id, ancla, foco: boton.value });
+// `detail` 0: pulsado con el teclado, que no tiene punto donde abrir. Se fija el lugar: el botón puede rehacerse mientras tanto.
+function alPulsar(e: MouseEvent) {
+  abrir(e.detail ? new DOMRect(e.clientX, e.clientY, 0, 0) : boton.value!.getBoundingClientRect());
 }
-// `detail` 0: pulsado con el teclado, que no tiene punto donde abrir.
-function abrir(e: MouseEvent) {
-  const ancla = e.detail ? { x: e.clientX, y: e.clientY } : boton.value;
-  if (ancla) ventanaConexion.value = { id: props.id, ancla, foco: boton.value };
+// Vue Flow marca sus aristas `nopan`. Alejado, las franjas de clic cubrirían buena parte del lienzo y no se podría arrastrar desde
+// ahí: arrastrar desde la línea mueve el lienzo aquí mismo. Un clic es presionar y soltar casi en el mismo lugar.
+let presion: Punto | null = null;
+let arrastrando = false;
+function alPresionar(e: PointerEvent) {
+  if (e.button) return;
+  presion = { x: e.clientX, y: e.clientY };
+  arrastrando = false;
+  (e.currentTarget as Element).setPointerCapture(e.pointerId);
+}
+function alMover(e: PointerEvent) {
+  if (!presion) return void (puntero.value = screenToFlowCoordinate({ x: e.clientX, y: e.clientY }));
+  const delta = { x: e.clientX - presion.x, y: e.clientY - presion.y };
+  if (!arrastrando && Math.hypot(delta.x, delta.y) < 5) return;
+  arrastrando = true;
+  puntero.value = null;
+  panBy(delta);
+  presion = { x: e.clientX, y: e.clientY };
+}
+function alSoltar(e: PointerEvent) {
+  if (presion && !arrastrando) abrir(new DOMRect(e.clientX, e.clientY, 0, 0));
+  presion = null;
 }
 </script>
 
@@ -63,19 +88,20 @@ function abrir(e: MouseEvent) {
       strokeDasharray: ligera ? undefined : '6 4',
     }"
   />
-  <!-- La zona de clic: un trazo invisible de 16 px en pantalla, con cualquier zoom. También responde en ligero. -->
+  <!-- La zona de clic: un trazo invisible, más ancho que la línea. También responde en ligero. -->
   <path
     v-if="d"
+    ref="zona"
     :d="d"
     class="nodrag nopan cursor-pointer"
     fill="none"
     stroke="transparent"
-    stroke-width="16"
-    vector-effect="non-scaling-stroke"
     data-zona-conexion
-    @pointermove="seguirPuntero"
+    @pointermove="alMover"
     @pointerleave="puntero = null"
-    @click.stop="abrir"
+    @pointerdown="alPresionar"
+    @pointerup="alSoltar"
+    @pointercancel="presion = null"
   />
   <EdgeLabelRenderer v-if="trazado">
     <button
@@ -100,7 +126,7 @@ function abrir(e: MouseEvent) {
       @pointerleave="sobreBoton = false"
       @focus="enfocada = true"
       @blur="enfocada = false"
-      @click.stop="abrir"
+      @click.stop="alPulsar"
     >
       <template v-if="texto">{{ texto }}</template>
       <span

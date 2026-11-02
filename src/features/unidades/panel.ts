@@ -46,6 +46,25 @@ export function porQueNoSeVe(
   return camino.slice(0, -1).some((a) => colapsados.has(a.id)) ? "plegada" : null;
 }
 
+/** Recuerda el último valor enviado a guardar: el mismo cambio puede avisarse dos veces antes de que termine de guardarse. */
+export function ultimoEnviado<T>(inicial: T) {
+  let ultimo = inicial;
+  let previo = inicial;
+  return {
+    /** Si `valor` hay que enviarlo; si sí, queda como el último. */
+    cambia(valor: T) {
+      if (valor === ultimo) return false;
+      previo = ultimo;
+      ultimo = valor;
+      return true;
+    },
+    /** El último envío no se guardó: ese valor se puede volver a enviar. */
+    fallo() {
+      ultimo = previo;
+    },
+  };
+}
+
 export interface OpcionUnidad {
   unidad: Unidad;
   /** Superiores de la unidad (texto); vacío en una raíz. */

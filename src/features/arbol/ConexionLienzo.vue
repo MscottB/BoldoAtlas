@@ -1,53 +1,119 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import { useEventListener } from "@vueuse/core";
 import { useVueFlow } from "@vue-flow/core";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useOrganizacion } from "@/stores/organizacion";
 import EditorConexion from "@/features/unidades/EditorConexion.vue";
 import ListaUnidades from "@/features/unidades/ListaUnidades.vue";
-import { excluidasParaConexion } from "@/features/unidades/panel";
-import { ventanaConexion as ventana } from "./useLienzo";
+import { excluidasParaConexion, porQueNoSeVe } from "@/features/unidades/panel";
+import { CONTEXTO_LIENZO } from "./contexto";
+import { encuadreDeLinea, type Trazado } from "./lateral";
+import { useLienzo, ventanaConexion as ventana, verConexion } from "./useLienzo";
+import { useVista } from "./useVista";
 
 // La ventanita de las conexiones: una sola para todas, aquí y no dentro de cada línea. La abren la línea, «Conectar con…» de
 // la tarjeta y el lápiz del panel. Fuera de Vue Flow: nada de lo que pase en ella toca el lienzo.
 const { t } = useI18n();
 const org = useOrganizacion();
-const { viewport } = useVueFlow();
+const { viewport, dimensions, setCenter } = useVueFlow();
+const { trazados, mostradas } = inject(CONTEXTO_LIENZO)!;
+const { colapsados, abrirRuta } = useLienzo();
+const { config } = useVista();
 
 const editar = computed(() => (ventana.value && "id" in ventana.value ? ventana.value : null));
 const conectar = computed(() => (ventana.value && "origen" in ventana.value ? ventana.value : null));
+// Al cerrarse sigue el último lugar: sin ancla, la ventana pasaría por la esquina de la pantalla.
 const referencia = computed(() => {
-  const a = ventana.value?.ancla;
-  return a && !(a instanceof Element)
-    ? { getBoundingClientRect: () => new DOMRect(a.x, a.y, 0, 0) }
-    : (a ?? undefined);
+  const a = ventana.value?.ancla ?? ultima.ancla;
+  return a && { getBoundingClientRect: () => a };
 });
 
 const cerrar = () => (ventana.value = null);
-// La ventana queda en un punto de la pantalla: al mover o acercar el lienzo ya no estaría junto a la línea. Lo escrito se guarda.
-watch(viewport, cerrar);
+// La ventana queda en un punto de la pantalla: al mover o acercar el lienzo ya no estaría junto a la línea. Lo escrito se
+// guarda. Salvo que la mueva `mostrarLinea`, que además la lleva junto a la línea.
+let moviendo = false;
+watch(viewport, () => moviendo || cerrar());
 onBeforeUnmount(cerrar);
 
+let creando = false;
 async function elegir(destino: string | null) {
   const v = conectar.value;
-  if (!v || !destino) return;
+  if (!v || !destino || creando) return; // un doble clic o Enter repetido no crea dos
+  creando = true;
   const r = await org.crearConexion(v.origen, destino);
+  creando = false;
   if (!r.ok) return void toast.error(r.mensaje);
   if (ventana.value === v) ventana.value = { id: r.id!, ancla: v.ancla, foco: v.foco };
+  verConexion.value = r.id!;
 }
+
+const cuadro = () => new Promise(requestAnimationFrame);
+const botonDe = (id: string) => document.querySelector<HTMLElement>(`[data-conexion="${CSS.escape(id)}"]`);
+
+// El próximo layout trae la línea, si es que llega a dibujarse; con tope por si nunca.
+function proximoTrazado(id: string) {
+  return new Promise<Trazado | undefined>((listo) => {
+    const parar = watch(trazados, (ts) => {
+      if (ts.has(id)) terminar(ts.get(id));
+    });
+    const plazo = setTimeout(() => terminar(undefined), 10000);
+    function terminar(t: Trazado | undefined) {
+      parar();
+      clearTimeout(plazo);
+      listo(t);
+    }
+  });
+}
+
+/** Mueve el lienzo lo necesario para ver la línea; la ventanita, si es de esta conexión, queda junto a ella. */
+async function mostrarLinea(id: string, trazado: Trazado) {
+  const destino = encuadreDeLinea(trazado.puntos, viewport.value, dimensions.value);
+  if (destino) {
+    moviendo = true;
+    await setCenter(destino.x, destino.y, { zoom: destino.zoom });
+    await nextTick();
+    moviendo = false;
+  }
+  await cuadro();
+  await cuadro();
+  const boton = botonDe(id);
+  const v = editar.value;
+  if (boton && v?.id === id) ventana.value = { ...v, ancla: boton.getBoundingClientRect() };
+  // «Ver en el diagrama» desaparece al pulsarlo: el foco no se pierde.
+  if (document.activeElement !== document.body) return;
+  if (v)
+    document.querySelector<HTMLElement>("[role='dialog'][data-state='open'] :is(input, button)")?.focus();
+  else boton?.focus();
+}
+
+// Solo actúa si una de sus unidades está en una rama plegada; en cualquier otro caso no se abre nada por sí solo.
+watch(verConexion, async (id) => {
+  if (!id) return;
+  verConexion.value = null;
+  const c = org.conexiones.find((x) => x.id === id);
+  if (!c || !config.value.relacionesLaterales) return;
+  const motivos = [c.origen_id, c.destino_id].map((u) => porQueNoSeVe(mostradas.value, colapsados.value, u));
+  if (!motivos.includes("plegada") || motivos.includes("fuera")) return;
+  const viene = proximoTrazado(id);
+  abrirRuta(c.origen_id);
+  abrirRuta(c.destino_id);
+  const trazado = await viene;
+  if (trazado) await mostrarLinea(id, trazado);
+});
 
 // El foco vuelve a quien abrió; si ya no está (la barra de la tarjeta, una conexión eliminada), a su línea, al panel o a la
 // tarjeta de una de sus unidades. Al cerrarse `ventana` ya está vacía: se decide con lo último que hubo.
-let ultima: { foco: HTMLElement | null; id?: string; unidad?: string } = { foco: null };
+let ultima: { foco: HTMLElement | null; ancla?: DOMRect; id?: string; unidad?: string } = { foco: null };
 watch(
   ventana,
   (v) => {
     if (!v) return;
     const id = "id" in v ? v.id : undefined;
     const unidad = "origen" in v ? v.origen : org.conexiones.find((c) => c.id === id)?.origen_id;
-    ultima = { foco: v.foco, id, unidad };
+    ultima = { foco: v.foco, ancla: v.ancla, id, unidad };
   },
   { flush: "sync" },
 );
@@ -59,11 +125,37 @@ function alCerrar(e: Event) {
   const buscar = (s: string) => document.querySelector<HTMLElement>(s);
   const destino =
     (foco !== document.body && foco?.isConnected && foco) ||
-    (id && buscar(`[data-conexion="${CSS.escape(id)}"]`)) ||
+    (id && botonDe(id)) ||
     buscar("[data-panel-unidad]") ||
     (unidad && buscar(`.vue-flow__node[data-id="${CSS.escape(unidad)}"] button`));
   if (destino) destino.focus();
+  if (id && !foco?.closest("[data-panel-unidad]")) esperarDibujo(id);
 }
+
+// Lo escrito al cerrar puede cambiar la línea: el próximo dibujo rehace su botón y el foco caería en body. Hasta ese dibujo se
+// lo devuelve, salvo que antes pase otra cosa (un clic, o el plazo si la escritura no cambió nada).
+let volverA: string | null = null;
+let plazoVolver: ReturnType<typeof setTimeout> | undefined;
+const olvidarVuelta = () => {
+  volverA = null;
+  clearTimeout(plazoVolver);
+};
+function esperarDibujo(id: string) {
+  olvidarVuelta();
+  volverA = id;
+  plazoVolver = setTimeout(olvidarVuelta, 10000);
+}
+useEventListener(window, "pointerdown", olvidarVuelta, { capture: true });
+onBeforeUnmount(olvidarVuelta);
+watch(trazados, async () => {
+  const id = volverA;
+  if (!id) return;
+  olvidarVuelta();
+  await nextTick();
+  await cuadro();
+  await cuadro();
+  if (document.activeElement === document.body) botonDe(id)?.focus();
+});
 </script>
 
 <template>
@@ -73,7 +165,7 @@ function alCerrar(e: Event) {
       side="bottom"
       align="center"
       :collision-padding="8"
-      class="max-h-(--reka-popover-content-available-height)"
+      class="max-h-(--reka-popover-content-available-height) data-closed:animate-none"
       :class="conectar ? 'overflow-hidden p-0' : 'overflow-y-auto p-3'"
       :aria-label="t(conectar ? 'unidad.conectarCon' : 'conexion.ventana')"
       @close-auto-focus="alCerrar"

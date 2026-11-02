@@ -564,6 +564,7 @@
     "descripcionConexion": "Descripción de la conexión (opcional)",
     "conectarCon": "Conectar con…",
     "editarConexion": "Editar la conexión con «{nombre}»",
+    "verConexion": "Ver en el diagrama la conexión con «{nombre}»",
     "quitarConexion": "Quitar la conexión con «{nombre}»",
     "ocultaPlegada": "No se ve en el diagrama: «{nombre}» está en una rama plegada.",
     "ocultaFuera": "No se ve en el diagrama: «{nombre}» está fuera de esta vista.",
@@ -591,6 +592,11 @@
     "cambiarUnidad": "Cambiar unidad",
     "cambiarUnidadDe": "Cambiar unidad: {nombre}",
     "eliminar": "Eliminar conexión",
+    "eliminarTitulo": "¿Eliminar la conexión entre {origen} y {destino}?",
+    "eliminarTexto": "Podrás deshacerlo durante 8 segundos.",
+    "eliminarBoton": "Eliminar",
+    "eliminada": "Conexión entre {origen} y {destino} eliminada",
+    "verEnDiagrama": "Ver en el diagrama",
     "sinDescripcion": "Sin descripción"
   },
   "personas": {
