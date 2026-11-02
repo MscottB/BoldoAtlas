@@ -9,6 +9,23 @@ export interface InfoApp {
   portable: boolean;
   versionEsquema: number;
   error: string | null;
+  /** La organización que no abrió al arrancar, y por qué: se abrió `boldo.db` en su lugar. */
+  avisoInicio?: { codigo: string; nombre: string } | null;
+}
+
+export interface Organizacion {
+  id: string;
+  nombre: string;
+  color: string;
+  abierta: string;
+  externa: boolean;
+  ruta: string;
+  existe: boolean;
+  activa: boolean;
+  logo: string | null;
+  bytesBase: number;
+  bytesRespaldos: number;
+  ejemplo: boolean;
 }
 
 export interface Sentencia {
@@ -52,6 +69,10 @@ function conBase<T>(comando: string, args: Record<string, unknown> = {}, antes?:
 
 export function infoApp(): Promise<InfoApp> {
   return invoke<InfoApp>("info_app");
+}
+
+export function listarOrganizaciones(): Promise<Organizacion[]> {
+  return invoke<Organizacion[]>("listar_organizaciones");
 }
 
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {
