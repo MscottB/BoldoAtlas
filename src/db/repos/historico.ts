@@ -7,6 +7,8 @@ export const SQL_HISTORICO = {
     FROM puestos ORDER BY orden`,
   asignaciones: `SELECT id, puesto_id, trabajador_id, tipo, desde, hasta, motivo, created_at, deleted_at
     FROM asignaciones ORDER BY desde, created_at`,
-  trabajadores: `SELECT id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id, foto_png, notas, deleted_at
+  // Como SQL_TRABAJADORES: sin foto ni notas, que no se muestran hasta pedirlas.
+  trabajadores: `SELECT id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id,
+    COALESCE(octet_length(foto_png) > 0, 0) AS tiene_foto, updated_at, deleted_at
     FROM trabajadores ORDER BY nombre`,
 };

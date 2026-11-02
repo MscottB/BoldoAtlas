@@ -38,7 +38,22 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 :::
 
 - The **email** must look like an address (for example, ana@company.com) and cannot be shared between people.
-- The **photo** is optional: PNG, JPG or WebP up to 1 MB.
+- The **photo** is optional: PNG, JPG or WebP up to 30 MB.
+
+## Photos
+
+When you choose a photo, BoldoAtlas reduces it before saving it: its longest side becomes 256 pixels and it is saved as JPEG. It looks the same at every size where it appears and weighs much less, also in backups and in `.boldo` files. A small photo is not enlarged. Transparent areas turn white. An image over 120 megapixels is not accepted. If you close the record while the photo is being prepared, it waits until the photo is saved; if that is not possible, it lets you know before closing.
+
+The converted photo does not keep the data the file carried, such as where it was taken or the camera. If converting it would make it heavier, it is saved as it is, **with whatever data it carries**. The same goes for a JPEG or WebP without that data that would barely get lighter: it is saved as it is.
+
+Photos you already have are reduced in **Settings › Photos › Optimize existing photos**, only if you ask. Those over about 36 KB are checked; lighter ones are not touched and keep whatever data they carry.
+
+1. First you see how much they take up, how much they would take up afterwards and how much the backup will take up.
+2. A backup is made, marked **Before optimizing photos**, which keeps the originals. The last 3 are kept.
+3. The photos are converted in parts, with a progress bar. You can keep working, and **Cancel** keeps what was already optimized.
+4. At the end you see how many were optimized and how much space was freed. A photo that could not be optimized is named and stays as it was.
+
+Optimizing does not change the person's modification date: it is the same photo with less weight. If you merge with another copy that still has the original photo, that photo shows up as a difference with the same date, and you choose which one stays.
 
 ## Head of unit
 

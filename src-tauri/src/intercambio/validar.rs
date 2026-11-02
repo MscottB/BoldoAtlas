@@ -71,10 +71,11 @@ pub fn revisar_solo_esquema(
     revisar_esquema(&solo_lectura(ruta)?, &migraciones[..version])
 }
 
-/// Tope de cada campo, en bytes. Lo vivo se carga entero en la interfaz: un archivo pesado la dejaría inutilizable.
+/// Tope de cada campo, en bytes. Lo vivo se carga entero en la interfaz, salvo fotos y notas de las personas, que se piden al
+/// mostrarlas: un archivo pesado la dejaría inutilizable.
 const MAX_CORTO: i64 = 1024;
 const MAX_LARGO: i64 = 256 * 1024;
-/// Fotos y logo: la app acepta hasta 1 MB, en base64.
+/// Fotos y logo: la app guarda hasta 1 MB, en base64.
 const MAX_IMAGEN: i64 = 2 * 1024 * 1024;
 const MAX_FILAS_VIVAS: i64 = 500_000;
 const MAX_BYTES_VIVOS: i64 = 512 * 1024 * 1024;

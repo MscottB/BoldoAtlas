@@ -32,7 +32,7 @@ To take a copy elsewhere, press **Open folder** and copy the `.db` file you want
 
 ## Before replacing your data
 
-When you choose **New empty organization** or **Explore the example** with data loaded, or when you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. The ones made before replacing and before restoring are never deleted automatically. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
+When you choose **New empty organization** or **Explore the example** with data loaded, or when you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. The ones made before replacing and before restoring are never deleted automatically. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
 
 ## Restore
 
