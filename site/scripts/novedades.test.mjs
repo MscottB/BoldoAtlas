@@ -23,7 +23,7 @@ test("la prueba de palabras prohibidas detecta cada una", () => {
 
 test("ninguna novedad se quita: novedades.json acumula", () => {
   const ids = novedades.map((n) => n.id);
-  for (const id of ["fotos-livianas", "lineas-e-interaccion", "revisar-y-decidir", "inicio-con-resumen", "exportar-importar", "bandeja", "actualizaciones", "ayuda-visual"])
+  for (const id of ["zonas", "version-a-la-vista", "fotos-livianas", "lineas-e-interaccion", "revisar-y-decidir", "inicio-con-resumen", "exportar-importar", "bandeja", "actualizaciones", "ayuda-visual"])
     assert.ok(ids.includes(id), `falta ${id}`);
 });
 
@@ -97,7 +97,7 @@ test("ningún texto de la portada tiene versiones, «Próximamente», fases ni �
     "acerca.md": [leer("acerca.md")],
     "en/acerca.md": [leer("en/acerca.md")],
     // sin las URL de las fuentes: una puede traer una fecha en su nombre
-    "comparador.json": textos({ ...comparador, fuentes: comparador.fuentes.map((f) => f.titulo) }),
+    "comparador.json": textos({ ...comparador, fuentes: comparador.fuentes.map((f) => [f.titulo, f.titulo_en]) }),
     "Comparador.vue": [leer(".vitepress/theme/Comparador.vue")],
   };
   for (const [archivo, lista] of Object.entries(fuentes)) {

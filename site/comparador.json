@@ -10,13 +10,13 @@
     { "id": "talana", "nombre": "Talana" }
   ],
   "fuentes": [
-    { "id": "boldo-inicio", "producto": "boldo", "titulo": "Manual: Inicio", "url": "https://mscottb.github.io/BoldoAtlas/manual/inicio" },
+    { "id": "boldo-inicio", "producto": "boldo", "titulo": "Manual: Inicio", "url": "https://mscottb.github.io/BoldoAtlas/manual/inicio", "titulo_en": "Manual: Getting started", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/inicio" },
     { "id": "boldo-seguridad", "producto": "boldo", "titulo": "SECURITY.md", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md" },
     { "id": "boldo-licencia", "producto": "boldo", "titulo": "LICENSE (AGPL-3.0)", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/LICENSE" },
-    { "id": "boldo-medicion", "producto": "boldo", "titulo": "Nota de medición: fotos optimizadas y carga bajo demanda", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/docs/superpowers/notas/2026-11-01-fotos-optimizadas.md" },
-    { "id": "boldo-fecha", "producto": "boldo", "titulo": "Manual: Ver a una fecha", "url": "https://mscottb.github.io/BoldoAtlas/manual/arbol#ver-a-una-fecha" },
-    { "id": "boldo-fichas", "producto": "boldo", "titulo": "Manual: Fichas de personas", "url": "https://mscottb.github.io/BoldoAtlas/manual/fichas" },
-    { "id": "boldo-importar", "producto": "boldo", "titulo": "Manual: Exportar e importar", "url": "https://mscottb.github.io/BoldoAtlas/manual/exportar-importar" },
+    { "id": "boldo-medicion", "producto": "boldo", "titulo": "Nota de medición: fotos optimizadas y carga bajo demanda", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/docs/superpowers/notas/2026-11-01-fotos-optimizadas.md", "titulo_en": "Measurement note: optimized photos and on-demand loading" },
+    { "id": "boldo-fecha", "producto": "boldo", "titulo": "Manual: Ver a una fecha", "url": "https://mscottb.github.io/BoldoAtlas/manual/arbol#ver-a-una-fecha", "titulo_en": "Manual: Viewing a past date", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/arbol#viewing-a-past-date" },
+    { "id": "boldo-fichas", "producto": "boldo", "titulo": "Manual: Fichas de personas", "url": "https://mscottb.github.io/BoldoAtlas/manual/fichas", "titulo_en": "Manual: Person records", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/fichas" },
+    { "id": "boldo-importar", "producto": "boldo", "titulo": "Manual: Exportar e importar", "url": "https://mscottb.github.io/BoldoAtlas/manual/exportar-importar", "titulo_en": "Manual: Export and import", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/exportar-importar" },
     { "id": "visio-planes", "producto": "visio", "titulo": "Visio plans and pricing", "url": "https://www.microsoft.com/en-us/microsoft-365/visio/visio-plans-and-pricing" },
     { "id": "lucid-planes", "producto": "lucid", "titulo": "Lucid Plans", "url": "https://help.lucid.co/hc/en-us/articles/360056903132-Lucid-Plans" },
     { "id": "lucid-importar", "producto": "lucid", "titulo": "Import an org chart from a CSV, Excel file, or Google Sheet", "url": "https://help.lucid.co/hc/en-us/articles/44818725952276" },
@@ -24,7 +24,7 @@
     { "id": "lucid-offline", "producto": "lucid", "titulo": "Edit offline in Lucid", "url": "https://help.lucid.co/hc/en-us/articles/14756313957268-Edit-offline-in-Lucid" },
     { "id": "drawio-inicio", "producto": "drawio", "titulo": "draw.io", "url": "https://www.drawio.com/" },
     { "id": "drawio-offline", "producto": "drawio", "titulo": "Offline vs online diagramming with draw.io", "url": "https://www.drawio.com/docs/security/diagrams-offline/" },
-    { "id": "drawio-repo", "producto": "drawio", "titulo": "drawio-desktop en GitHub", "url": "https://github.com/jgraph/drawio-desktop" },
+    { "id": "drawio-repo", "producto": "drawio", "titulo": "drawio-desktop en GitHub", "url": "https://github.com/jgraph/drawio-desktop", "titulo_en": "drawio-desktop on GitHub" },
     { "id": "drawio-firma", "producto": "drawio", "titulo": "drawio-desktop: RELEASE_PROCESS", "url": "https://github.com/jgraph/drawio-desktop/blob/dev/doc/RELEASE_PROCESS.md" },
     { "id": "drawio-colaborar", "producto": "drawio", "titulo": "Collaborate in real time using draw.io", "url": "https://www.drawio.com/docs/manual/collaboration/concurrent-editing/" },
     { "id": "drawio-csv", "producto": "drawio", "titulo": "Insert a diagram from specially formatted CSV data", "url": "https://www.drawio.com/docs/manual/insert/insert-from-csv/" },
@@ -39,7 +39,6 @@
     { "id": "talana-resumen", "producto": "talana", "titulo": "Descripción de Talana (llms.txt)", "url": "https://web.talana.com/llms.txt" },
     { "id": "talana-remuneraciones", "producto": "talana", "titulo": "Software de remuneraciones", "url": "https://web.talana.com/software-remuneraciones" },
     { "id": "talana-organigrama", "producto": "talana", "titulo": "Centro de ayuda: Organigrama", "url": "https://ayuda.talana.com/hc/es-419/articles/7537760389011-Organigrama" },
-    { "id": "talana-ficha", "producto": "talana", "titulo": "Centro de ayuda: Estructura de la ficha del empleado", "url": "https://ayuda.talana.com/hc/es-419/articles/22728046788883-Estructura-de-la-ficha-del-empleado" },
     { "id": "talana-carga", "producto": "talana", "titulo": "Centro de ayuda: Actualización de campos de la ficha", "url": "https://ayuda.talana.com/hc/es-419/articles/22726919499155-Actualizaci%C3%B3n-de-campos-Ficha-del-trabajador" }
   ],
   "grupos": [
@@ -55,7 +54,7 @@
           "celdas": {
             "boldo": { "es": "App de escritorio para organigramas y fichas", "en": "Desktop app for org charts and records", "f": ["boldo-inicio"] },
             "visio": { "es": "Diagramas, en web y escritorio", "en": "Diagrams, on the web and desktop", "f": ["visio-planes"] },
-            "lucid": { "es": "Diagramas, en el navegador", "en": "Diagrams, in the browser", "f": ["lucid-planes", "lucid-offline"] },
+            "lucid": { "es": "Diagramas, en el navegador y apps móviles", "en": "Diagrams, in the browser and mobile apps", "f": ["lucid-planes", "lucid-offline"] },
             "drawio": { "es": "Diagramas, en web y escritorio", "en": "Diagrams, on the web and desktop", "f": ["drawio-inicio"] },
             "orgchart": { "es": "Organigramas y planificación de dotación", "en": "Org charts and workforce planning", "f": ["orgchart-inicio"] },
             "buk": { "es": "Plataforma de RR. HH. con organigrama", "en": "HR platform with an org chart", "f": ["buk-plataforma", "buk-organigrama"] },
@@ -83,7 +82,7 @@
           "celdas": {
             "boldo": { "es": "Funciona completa", "en": "Works fully", "f": ["boldo-inicio"] },
             "visio": { "es": "Plan 2: la app de escritorio funciona sin conexión", "en": "Plan 2: the desktop app works offline", "f": ["visio-planes"] },
-            "lucid": { "es": "Edita el documento abierto; no abre ni crea otros", "en": "Edits the open document; can't open or create others", "f": ["lucid-offline"] },
+            "lucid": { "es": "Edita los documentos ya abiertos; no abre ni crea otros", "en": "Edits the documents already open; can't open or create others", "f": ["lucid-offline"] },
             "drawio": { "es": "La app de escritorio funciona sin conexión", "en": "The desktop app works offline", "f": ["drawio-offline"] },
             "orgchart": { "ni": true },
             "buk": { "es": "Se presenta con acceso por internet", "en": "Presented as reached over the internet", "f": ["buk-plataforma"] },
@@ -96,12 +95,12 @@
           "en": "Needs an account",
           "celdas": {
             "boldo": { "es": "No", "en": "No", "f": ["boldo-seguridad"] },
-            "visio": { "es": "Sí: Microsoft 365 de trabajo o escuela", "en": "Yes: Microsoft 365 work or school", "f": ["visio-planes"] },
+            "visio": { "es": "Sí en la web: cuenta de trabajo o escuela de Microsoft 365", "en": "Yes on the web: Microsoft 365 work or school account", "f": ["visio-planes"] },
             "lucid": { "es": "Sí: correo y contraseña, o Google o Microsoft", "en": "Yes: email and password, or Google or Microsoft", "f": ["lucid-planes"] },
             "drawio": { "es": "No", "en": "No", "f": ["drawio-inicio"] },
-            "orgchart": { "es": "Sí: con SSO y MFA", "en": "Yes: with SSO and MFA", "f": ["orgchart-planes"] },
+            "orgchart": { "es": "Sí: admite SSO y MFA", "en": "Yes: supports SSO and MFA", "f": ["orgchart-planes"] },
             "buk": { "es": "Sí: cuentas de usuario con perfiles de acceso", "en": "Yes: user accounts with access profiles", "f": ["buk-plataforma"] },
-            "talana": { "es": "Sí: el acceso depende de las restricciones de la cuenta", "en": "Yes: access depends on the account's restrictions", "f": ["talana-organigrama"] }
+            "talana": { "es": "Sí: con restricciones de acceso no se ve el organigrama", "en": "Yes: with access restrictions, the org chart isn't shown", "f": ["talana-organigrama"] }
           }
         },
         {
@@ -140,7 +139,7 @@
             "boldo": { "es": "Sí: AGPL-3.0", "en": "Yes: AGPL-3.0", "f": ["boldo-licencia"] },
             "visio": { "ni": true },
             "lucid": { "ni": true },
-            "drawio": { "es": "Sí: GPL v3, cerrado a contribuciones externas", "en": "Yes: GPL v3, closed to outside contributions", "f": ["drawio-repo"] },
+            "drawio": { "es": "Sí: Apache 2.0 el editor y GPL v3 la app de escritorio; cerrado a contribuciones externas", "en": "Yes: Apache 2.0 for the editor and GPL v3 for the desktop app; closed to outside contributions", "f": ["drawio-repo", "drawio-inicio"] },
             "orgchart": { "ni": true },
             "buk": { "ni": true },
             "talana": { "ni": true }
@@ -182,10 +181,10 @@
             "boldo": { "es": "Sí, con puestos e historial de puestos", "en": "Yes, with positions and position history", "f": ["boldo-fichas"] },
             "visio": { "es": "Campos y fotos en el organigrama (Plan 1 o 2)", "en": "Fields and photos in the org chart (Plan 1 or 2)", "f": ["visio-planes"] },
             "lucid": { "es": "Campos en la forma de cada persona", "en": "Fields on each person's shape", "f": ["lucid-importar"] },
-            "drawio": { "ni": true },
+            "drawio": { "es": "Campos en la forma de cada persona: imagen, nombre, cargo y correo", "en": "Fields on each person's shape: image, name, role and email", "f": ["drawio-organigramas"] },
             "orgchart": { "es": "Muestra vacantes; ficha no indicada", "en": "Shows vacancies; record not stated", "f": ["orgchart-automatico"] },
             "buk": { "es": "Ficha de colaboradores", "en": "Employee record", "f": ["buk-plataforma"] },
-            "talana": { "es": "Ficha del trabajador", "en": "Employee record", "f": ["talana-ficha"] }
+            "talana": { "es": "Ficha del trabajador", "en": "Employee record", "f": ["talana-carga"] }
           }
         }
       ]
@@ -203,8 +202,8 @@
             "boldo": { "es": "No: las copias se juntan con un archivo .boldo", "en": "No: copies are merged with a .boldo file", "f": ["boldo-importar"] },
             "visio": { "es": "Sí", "en": "Yes", "f": ["visio-planes"] },
             "lucid": { "es": "Sí, con conexión", "en": "Yes, when connected", "f": ["lucid-offline"] },
-            "drawio": { "es": "En el editor web, con archivos en Google Drive u OneDrive", "en": "In the web editor, with files on Google Drive or OneDrive", "f": ["drawio-colaborar"] },
-            "orgchart": { "ni": true },
+            "drawio": { "es": "Con archivos en Google Drive, OneDrive o Nextcloud, o en Confluence Cloud", "en": "With files on Google Drive, OneDrive or Nextcloud, or in Confluence Cloud", "f": ["drawio-colaborar"] },
+            "orgchart": { "es": "Sí, en el plan Pro, al planificar dotación", "en": "Yes, on the Pro plan, in workforce planning", "f": ["orgchart-planes", "orgchart-inicio"] },
             "buk": { "ni": true },
             "talana": { "ni": true }
           }
@@ -215,12 +214,12 @@
           "en": "Integration with payroll or HR systems",
           "celdas": {
             "boldo": { "es": "No", "en": "No", "f": ["boldo-seguridad"] },
-            "visio": { "es": "Excel, Exchange y Entra ID; nómina no indicada", "en": "Excel, Exchange and Entra ID; payroll not stated", "f": ["visio-planes"] },
+            "visio": { "es": "Plan 2: Excel, Exchange y Entra ID; nómina no indicada", "en": "Plan 2: Excel, Exchange and Entra ID; payroll not stated", "f": ["visio-planes"] },
             "lucid": { "es": "BambooHR", "en": "BambooHR", "f": ["lucid-bamboo"] },
             "drawio": { "es": "No indicada; documenta exportar a CSV desde el sistema de personal", "en": "Not stated; documents exporting to CSV from the staff system", "f": ["drawio-organigramas"] },
             "orgchart": { "es": "Más de 50 sistemas, como Workday, ADP y UKG", "en": "Over 50 systems, such as Workday, ADP and UKG", "f": ["orgchart-automatico"] },
-            "buk": { "es": "Remuneraciones propias; API y más de 30 socios", "en": "Its own payroll; API and over 30 partners", "f": ["buk-plataforma"] },
-            "talana": { "es": "Remuneraciones propias; archivos para Previred, SII y DT", "en": "Its own payroll; files for Previred, SII and DT", "f": ["talana-remuneraciones"] }
+            "buk": { "es": "Remuneraciones propias; más de 30 socios; API en plan Pro", "en": "Its own payroll; over 30 partners; API on the Pro plan", "f": ["buk-plataforma"] },
+            "talana": { "es": "Remuneraciones propias; API abierta; archivos para Previred, SII y DT", "en": "Its own payroll; open API; files for Previred, SII and DT", "f": ["talana-remuneraciones"] }
           }
         },
         {
@@ -229,12 +228,12 @@
           "en": "Create or load from a spreadsheet",
           "celdas": {
             "boldo": { "es": "No", "en": "No", "f": ["boldo-importar"] },
-            "visio": { "es": "Excel", "en": "Excel", "f": ["visio-planes"] },
+            "visio": { "es": "Plan 2: Excel", "en": "Plan 2: Excel", "f": ["visio-planes"] },
             "lucid": { "es": "CSV, Excel y Google Sheets", "en": "CSV, Excel and Google Sheets", "f": ["lucid-importar"] },
             "drawio": { "es": "CSV", "en": "CSV", "f": ["drawio-csv"] },
             "orgchart": { "es": "CSV u otras planillas", "en": "CSV or other spreadsheets", "f": ["orgchart-planes"] },
-            "buk": { "es": "Plan Pro: plantillas Excel", "en": "Pro plan: Excel templates", "f": ["buk-plataforma"] },
-            "talana": { "es": "Cargador de empleados; formato no indicado", "en": "Employee loader; format not stated", "f": ["talana-carga"] }
+            "buk": { "es": "Plantillas Excel (Esencial y Pro)", "en": "Excel templates (Esencial and Pro)", "f": ["buk-plataforma"] },
+            "talana": { "es": "Cargador de empleados con planilla de ejemplo; formato de archivo no indicado", "en": "Employee loader with a sample spreadsheet; file format not stated", "f": ["talana-carga"] }
           }
         },
         {

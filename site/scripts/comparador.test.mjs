@@ -45,7 +45,19 @@ test("las fuentes son de los sitios oficiales de cada producto, y todas se usan"
     assert.ok(DOMINIOS[f.producto].includes(url.hostname), `${f.id}: ${url.hostname} no es oficial`);
     if (url.hostname === "github.com") assert.match(url.pathname, /^\/(MscottB\/BoldoAtlas|jgraph\/drawio-desktop)(\/|$)/, f.id);
     assert.ok(usadas.has(f.id), `${f.id}: no la usa ningún dato`);
+    if (f.url_en) assert.ok(f.url_en.startsWith("https://mscottb.github.io/BoldoAtlas/en/"), `${f.id}: url_en`);
   }
+});
+
+test("en inglés, las fuentes de BoldoAtlas en español traen título y enlace propios", () => {
+  for (const id of ["boldo-inicio", "boldo-fecha", "boldo-fichas", "boldo-importar"]) {
+    const f = fuentes.find((x) => x.id === id);
+    assert.ok(f.titulo_en && f.url_en, id);
+  }
+  for (const id of ["boldo-medicion", "drawio-repo"]) assert.ok(fuentes.find((x) => x.id === id).titulo_en, id);
+  const vue = leer(".vitepress/theme/Comparador.vue");
+  assert.match(vue, /\(lang === 'en' && f\.url_en\) \|\| f\.url/);
+  assert.match(vue, /\(lang === "en" && f\.titulo_en\) \|\| f\.titulo/);
 });
 
 test("muestra lo que BoldoAtlas no tiene, sin precios", () => {

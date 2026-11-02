@@ -33,7 +33,7 @@ const TEXTOS = {
       "Soporte comercial: se atiende en GitHub, sin plazo garantizado.",
     ],
     tablaTitulo: "Producto por producto",
-    leer: "«No indicado» significa que no lo encontramos en su sitio oficial ni en su documentación, no que el producto no lo tenga. Muchos datos cambian según el plan y el país. Los números pequeños llevan a la fuente de cada dato.",
+    leer: "“No indicado” significa que no lo encontramos en las páginas oficiales que revisamos, no que el producto no lo tenga. Muchos datos cambian según el plan y el país. Los números pequeños llevan a la fuente de cada dato.",
     criterio: "Qué comparar",
     noIndicado: "No indicado",
     fuente: "Fuente",
@@ -71,7 +71,7 @@ const TEXTOS = {
       "Commercial support: help is on GitHub, with no guaranteed response time.",
     ],
     tablaTitulo: "Product by product",
-    leer: "“Not stated” means we didn't find it on the official site or in the documentation, not that the product lacks it. Many details change by plan and country. The small numbers lead to the source of each data point.",
+    leer: "“Not stated” means we didn't find it on the official pages we reviewed, not that the product lacks it. Many details change by plan and country. The small numbers lead to the source of each data point.",
     criterio: "What to compare",
     noIndicado: "Not stated",
     fuente: "Source",
@@ -170,7 +170,10 @@ const celda = (fila: (typeof datos.grupos)[number]["filas"][number], producto: s
       <p class="leer">{{ t.fuentesTexto }}</p>
       <ol>
         <li v-for="f in datos.fuentes" :id="`fuente-${f.id}`" :key="f.id">
-          {{ nombre(f.producto) }}: <a :href="f.url" rel="noopener noreferrer" target="_blank">{{ f.titulo }}</a>
+          {{ nombre(f.producto) }}:
+          <a :href="(lang === 'en' && f.url_en) || f.url" rel="noopener noreferrer" target="_blank">{{
+            (lang === "en" && f.titulo_en) || f.titulo
+          }}</a>
         </li>
       </ol>
     </section>

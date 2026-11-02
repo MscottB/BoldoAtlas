@@ -117,6 +117,7 @@ const TEXTOS = {
             "Ramas que se pliegan, y botones 1, 2, 3 y Todo para elegir cuántos niveles ver.",
             "Relaciones laterales entre unidades: líneas punteadas con su descripción, por el espacio libre entre tarjetas.",
             "Varios árboles en la misma base, y cualquier rama se abre como árbol propio.",
+            "Zonas con nombre y color que agrupan unidades de cualquier rama, sin cambiar quién depende de quién.",
             "Vistas guardadas y resaltado por etiqueta o por texto.",
           ],
           imagen: {
@@ -443,6 +444,7 @@ const TEXTOS = {
             "Branches fold away, and the 1, 2, 3 and All buttons choose how many levels you see.",
             "Lateral connections between units: dotted lines with their description, through the free space between cards.",
             "Several trees in one database, and any branch opens as a tree of its own.",
+            "Zones with a name and a color that group units from any branch, without changing who reports to whom.",
             "Saved views, and highlighting by tag or by text.",
           ],
           imagen: {
