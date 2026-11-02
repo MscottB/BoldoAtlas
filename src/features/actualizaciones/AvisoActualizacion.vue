@@ -4,17 +4,19 @@ import { CircleArrowUp } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { useActualizaciones } from "@/stores/actualizaciones";
 
+defineProps<{ destacado?: boolean }>();
+
 const { t } = useI18n();
 const actualizaciones = useActualizaciones();
 </script>
 
 <template>
-  <!-- Aviso discreto de versión nueva (spec §12): abre la ventana de actualización; nunca instala solo. -->
+  <!-- Aviso de versión nueva (spec §12): abre la ventana de actualización; nunca instala solo. -->
   <Button
     v-if="actualizaciones.disponible"
-    variant="ghost"
+    :variant="destacado ? 'default' : 'outline'"
     size="sm"
-    class="text-marca-texto"
+    :class="destacado ? '' : 'text-marca-texto'"
     @click="actualizaciones.ventanaAbierta = true"
   >
     <CircleArrowUp aria-hidden="true" />

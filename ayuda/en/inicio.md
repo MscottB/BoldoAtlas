@@ -16,7 +16,7 @@ When you open a database with no units, BoldoAtlas shows the welcome screen with
 - **Open a .boldo file:** takes you to **Import/Export** to choose the file (see [Export and import](exportar-importar.md)).
 - **Explore an example:** creates a sample organization, in the interface language, to look around the app.
 
-At the top right are the **ES / EN** language switch and the light or dark theme button: you can choose them right away, without going into any path first.
+At the top right are the **ES / EN** language switch and the light or dark theme button: you can choose them right away, without going into any path first. Under the title, with or without data, you see the version, **About** and **Check for updates**.
 
 ![BoldoAtlas welcome screen with three cards (Create an empty organization, Open a .boldo file and Explore an example) and the theme button at the top right.](../img/en/inicio-bienvenida.webp "The welcome screen. 1: create an empty organization. 2: open a .boldo file. 3: explore a sample organization. 4: switch between light and dark theme."){width=784 height=364}
 

@@ -9,7 +9,7 @@ import {
 } from "vue-router";
 import { useEventListener } from "@vueuse/core";
 import { toast } from "vue-sonner";
-import { esVistaCerrable } from "@/app/estructura";
+import { RUTA_BIENVENIDA, esVistaCerrable } from "@/app/estructura";
 import { i18n } from "@/i18n";
 import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
@@ -35,6 +35,8 @@ export const usePestanas = defineStore("pestanas", () => {
   let enProyecto = false;
   /** Pestaña que pasa a activa cuando llegue la navegación a su ruta: así la vista vieja no se remonta con otra key. */
   let destino: { id: string; ruta: string } | null = null;
+  /** Vista de paso abierta con un enlace de Inicio: «Cerrar» vuelve allí. No se guarda: solo vale para esta visita. */
+  let vueltaAInicio = false;
 
   const lista = computed(() => modelo.value.lista);
   const activa = computed(() => modelo.value.activa);
@@ -71,6 +73,7 @@ export const usePestanas = defineStore("pestanas", () => {
         if (!isNavigationFailure(fallo, NavigationFailureType.cancelled)) destino = null;
         return;
       }
+      if (!esVistaCerrable(to.name) || destino) vueltaAInicio = false;
       if (to.meta.sinMarco) return void (enProyecto = false);
       const cambios: Partial<P.Pestana> = { ruta: to.fullPath };
       if (!enProyecto) {
@@ -171,7 +174,10 @@ export const usePestanas = defineStore("pestanas", () => {
     /** «Cerrar» en Configuración, Ayuda o Acerca de: a la ruta de esta pestaña desde la que se abrió, o al inicio. */
     async cerrarVista() {
       const p = modelo.value.lista.find((x) => x.id === modelo.value.activa);
-      await router?.replace(p?.volver ?? P.RUTA_INICIO);
+      await router?.replace(vueltaAInicio ? RUTA_BIENVENIDA : (p?.volver ?? P.RUTA_INICIO));
+    },
+    marcarVueltaAInicio() {
+      vueltaAInicio = true;
     },
     mover(id: string, posicion: number): Resultado {
       modelo.value = P.mover(modelo.value, id, posicion);

@@ -142,6 +142,25 @@ describe("usePestanas", () => {
     expect(rutas()).toEqual(["/directorio"]);
   });
 
+  it("una vista de paso abierta con un enlace de Inicio: «Cerrar» vuelve a Inicio, solo esa vez", async () => {
+    datos.set(
+      "boldo:pestanas:C:/datos/boldo.db",
+      JSON.stringify({ lista: [{ id: "b", ruta: "/directorio" }], activa: "b" }),
+    );
+    const p = usePestanas();
+    p.conectar(router, "C:/datos/boldo.db");
+    await router.replace("/bienvenida");
+    p.marcarVueltaAInicio();
+    await router.push("/ayuda");
+    await p.cerrarVista();
+    expect(rutaActual()).toBe("/bienvenida");
+
+    await router.push("/configuracion");
+    await p.cerrarVista();
+    expect(rutaActual()).toBe("/directorio");
+    expect(rutas()).toEqual(["/directorio"]);
+  });
+
   it("la Bienvenida no se abre en una pestaña", async () => {
     const p = await arrancar();
     expect(p.abrirNueva("/bienvenida").ok).toBe(false);

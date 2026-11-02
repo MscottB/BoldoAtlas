@@ -1,5 +1,19 @@
 [
   {
+    "id": "version-a-la-vista",
+    "pagina": "actualizaciones",
+    "es": {
+      "titulo": "La versión y la actualización, a la vista",
+      "texto": "Inicio muestra la versión que usas, con Acerca de y Buscar actualizaciones al lado. Cuando hay una versión nueva, aparece el botón para actualizar en Inicio y en la barra superior, también mientras trabajas en un árbol. No hace falta ir a buscarla.",
+      "ancla": "como-se-busca"
+    },
+    "en": {
+      "titulo": "Your version and updates, in plain sight",
+      "texto": "Home shows the version you use, with About and Check for updates next to it. When there is a new version, the update button appears on Home and in the top bar, also while you work on a tree. No need to go looking for it.",
+      "ancla": "how-it-checks"
+    }
+  },
+  {
     "id": "fotos-livianas",
     "pagina": "fichas",
     "es": {

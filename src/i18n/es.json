@@ -950,7 +950,7 @@
     "buscar": "Buscar actualizaciones",
     "buscando": "Buscando…",
     "alDia": "Ya tienes la última versión.",
-    "disponible": "Versión {version} disponible",
+    "disponible": "Actualizar a {version}",
     "titulo": "Actualización disponible",
     "versiones": "Tienes la versión {actual}; la nueva es la {nueva}.",
     "queTrae": "Qué trae la versión nueva",
