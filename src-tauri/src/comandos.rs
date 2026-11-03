@@ -1,6 +1,6 @@
 use crate::db::{self, Sentencia};
 use crate::intercambio::validar::solo_lectura_cerrada;
-use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
+use crate::intercambio::{self, Importacion, Sesiones, alcance, fusion, revision};
 use crate::organizaciones::{
     self, Abierta, ArchivoAgregado, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, EliminadaVista, Entrada,
     Lista, OTRA_BASE, OrganizacionVista, abrir_base, abrir_entrada, abrir_principal_libre,
@@ -573,6 +573,13 @@ impl Estado {
         let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
         let abierta = self.base_abierta().map(|b| b.id);
         organizaciones::restaurar_eliminada(r, nombre, abierta.as_deref(), migraciones)
+    }
+
+    /// Un `.boldo` ya abierto, como organización nueva. Con la lista tomada todo el tiempo.
+    fn como_nueva(&self, i: &Importacion) -> Result<String, Fallo> {
+        let r = self.rutas()?;
+        let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+        intercambio::como_nueva(i, r)
     }
 
     /// Crea una organización y devuelve su id. No cambia de base: la abre `abrir_organizacion`. Usa `boldo.db` si está libre,
@@ -1346,6 +1353,23 @@ pub async fn importar_reemplazar(
     .await
     .map_err(|e| e.to_string())??;
     app.restart()
+}
+
+/// «Como organización nueva». Devuelve su id, y no cambia de base. Si falla, la importación sigue abierta para reintentar o cancelar.
+/// Sin `base_id`: no es un dato de la abierta.
+#[tauri::command]
+pub async fn importar_como_nueva(app: AppHandle, trabajo: String) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        let i = sesiones.tomar_importacion(&trabajo)?;
+        let hecho = estado.como_nueva(&i);
+        if hecho.is_err() {
+            let _ = sesiones.guardar_importacion(&trabajo, i);
+        }
+        hecho
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// «Revisar y decidir»: compara el archivo con la base, sin escribir nada. Comparar de nuevo conserva las decisiones sobre las
@@ -3868,6 +3892,56 @@ mod crear_nueva {
             ruta_de(&r, &entrada_de(&r, &segunda)),
             e.base_abierta().unwrap().bd
         );
+    }
+}
+
+#[cfg(test)]
+mod como_nueva {
+    use super::*;
+    use crate::intercambio::prueba::base_con_datos;
+    use crate::organizaciones::prueba::rutas;
+    use std::sync::mpsc;
+
+    /// `abrir`, con un archivo de esa base.
+    fn importacion(r: &Rutas, origen: &Connection, d: &Path) -> Importacion {
+        let copia = alcance::copiar(origen, d).unwrap();
+        let (t, _) = alcance::preparar(copia, d, None).unwrap();
+        let archivo = d.join("a.boldo");
+        let codigo = intercambio::guardar(t.ruta(), &archivo, |_, _| true).unwrap();
+        intercambio::abrir(&archivo, &r.datos, &codigo, db::MIGRACIONES, |_, _| true).unwrap()
+    }
+
+    #[test]
+    fn espera_a_que_se_suelte_la_lista() {
+        let (d, origen) = base_con_datos();
+        let (_exe, r) = rutas();
+        let i = importacion(&r, &origen, d.path());
+        let e = Estado::de_prueba(None, None, Some(r.clone()));
+        let (listo, hecho) = mpsc::channel();
+        std::thread::scope(|s| {
+            let tomada = e.lista.lock().unwrap();
+            s.spawn(|| listo.send(e.como_nueva(&i)).unwrap());
+            assert!(hecho.recv_timeout(Duration::from_millis(200)).is_err());
+            assert!(cargar_lista(&r).organizaciones.is_empty());
+            drop(tomada);
+            let id = hecho.recv().unwrap().unwrap();
+            assert_eq!(cargar_lista(&r).organizaciones[0].id, id);
+        });
+    }
+
+    /// Solo toma la lista: con la conexión ocupada en un respaldo también se puede, y la abierta sigue siendo la misma.
+    #[test]
+    fn no_necesita_la_conexion_y_la_abierta_no_cambia() {
+        let (d, origen) = base_con_datos();
+        let (_exe, r) = rutas();
+        let e = Estado::de_prueba(None, None, Some(r.clone()));
+        e.abrir_inicial_con(Duration::ZERO, db::MIGRACIONES);
+        let abierta = e.base_abierta().unwrap();
+        let i = importacion(&r, &origen, d.path());
+        let _conn = e.conn.lock().unwrap();
+        let id = e.como_nueva(&i).unwrap();
+        assert_ne!(abierta.id, id);
+        assert_eq!(e.base_abierta(), Some(abierta));
     }
 }
 

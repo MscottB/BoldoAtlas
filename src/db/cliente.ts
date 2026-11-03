@@ -339,6 +339,14 @@ export function importarReemplazar(trabajo: string): Promise<void> {
   return conBase("importar_reemplazar", { trabajo });
 }
 
+/**
+ * El archivo como una organización nueva. Devuelve su id, y no cambia de base: la abre `abrirOrganizacion`, una vez soltado el
+ * trabajo con `intercambioCancelar`, porque con un trabajo sin soltar no se cambia de organización.
+ */
+export function importarComoNueva(trabajo: string): Promise<string> {
+  return invoke<string>("importar_como_nueva", { trabajo });
+}
+
 export type TipoCaso =
   "nuevo" | "diferente" | "borrado_vs_editado" | "borrado_sin_conflicto" | "duplicado_persona" | "union";
 

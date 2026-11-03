@@ -146,6 +146,7 @@ pub fn run() {
             comandos::importar_abrir,
             comandos::importar_agregar,
             comandos::importar_reemplazar,
+            comandos::importar_como_nueva,
             comandos::importar_comparar,
             comandos::importar_volver,
             comandos::revision_resumen,

@@ -157,7 +157,7 @@ const LISTA: &str = "organizaciones.json";
 const VERSION_LISTA: u32 = 1;
 /// El archivo de siempre: no se mueve, y sus respaldos siguen en `respaldos/`.
 const PRINCIPAL: &str = "boldo.db";
-const CARPETA: &str = "organizaciones";
+pub(crate) const CARPETA: &str = "organizaciones";
 const ARCHIVO: &str = "organizacion.db";
 const ELIMINADAS: &str = "organizaciones-eliminadas";
 /// Cuánto del nombre de la organización va en el nombre de su copia. Un nombre largo no debe agotar el de la ruta.
@@ -217,7 +217,7 @@ impl Entrada {
     }
 }
 
-fn ruta_interna(id: &str) -> String {
+pub(crate) fn ruta_interna(id: &str) -> String {
     format!("{CARPETA}/{id}/{ARCHIVO}")
 }
 
@@ -688,7 +688,7 @@ fn escribir_id_nuevo(bd: &Path) -> Result<String, Fallo> {
 /// Copia un archivo a una organización nueva en `organizaciones/`, sin escribir en él. Se queda con `id_libre` si es el que trae
 /// la copia y su carpeta no tiene base ni restos que SQLite aplicaría; si no, recibe uno nuevo. Pasa por un temporal: un corte no
 /// deja una base a medias en esa carpeta.
-fn copiar_a_carpeta(
+pub(crate) fn copiar_a_carpeta(
     r: &Rutas,
     origen: &Path,
     id_libre: Option<&str>,
@@ -716,8 +716,13 @@ fn copiar_a_carpeta(
         }
     };
     let destino = r.datos.join(ruta_interna(&id));
-    fs::create_dir_all(r.datos.join(CARPETA).join(&id))?;
-    fs::rename(temporal.ruta(), &destino)?;
+    let carpeta = r.datos.join(CARPETA).join(&id);
+    fs::create_dir_all(&carpeta)?;
+    if let Err(f) = fs::rename(temporal.ruta(), &destino) {
+        // solo si quedó vacía: una conservada puede tener sus respaldos
+        let _ = fs::remove_dir(&carpeta);
+        return Err(f.into());
+    }
     Ok(id)
 }
 
