@@ -13,6 +13,12 @@ export interface InfoApp {
   avisoInicio?: { codigo: string; nombre: string } | null;
 }
 
+export interface ArchivoAgregado {
+  id: string | null;
+  pide: "red" | "otro_id" | "tope" | null;
+  avisos: ("copia" | "fuera_de_portable")[];
+}
+
 export interface Organizacion {
   id: string;
   nombre: string;
@@ -86,6 +92,21 @@ export function abrirOrganizacion(id: string): Promise<Organizacion> {
 /** Crea una organización y devuelve su id. No cambia de base: la abre `abrirOrganizacion`. */
 export function crearOrganizacionNueva(sentencias: Sentencia[], ejemplo: boolean): Promise<string> {
   return invoke<string>("crear_organizacion", { sentencias, versionApp: __APP_VERSION__, ejemplo });
+}
+
+/**
+ * Pide un `.db` y lo deja en la lista, sin abrirlo: lo abre `abrirOrganizacion`. `buscando`: la entrada que se reubica.
+ * `null` si no se eligió nada. Con `pide`, responder con `confirmarArchivoOrganizacion`.
+ */
+export function agregarArchivoOrganizacion(buscando?: string): Promise<ArchivoAgregado | null> {
+  return invoke<ArchivoAgregado | null>("agregar_archivo_organizacion", {
+    buscando: buscando ?? null,
+  });
+}
+
+/** Responde lo que preguntó el archivo. `null` si no se sigue; con otro `pide`, hay otra pregunta. */
+export function confirmarArchivoOrganizacion(si: boolean): Promise<ArchivoAgregado | null> {
+  return invoke<ArchivoAgregado | null>("confirmar_archivo_organizacion", { si });
 }
 
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {

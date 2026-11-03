@@ -1,8 +1,13 @@
 //! Cada organización es un archivo aparte. Aquí está lo que hace falta para abrir uno, su identidad y su bloqueo, y la lista
 //! de las que tiene esta copia de la app.
 use crate::db;
-use crate::intercambio::validar::{solo_lectura_cerrada, version_leida, version_y_esquema};
-use crate::respaldos::{Fallo, borrar_bd, con_sufijo, copia_de, limpiar_parciales};
+use crate::intercambio::Temporal;
+use crate::intercambio::validar::{
+    MAX_BYTES_VIVOS, revisar_organizacion, solo_lectura_cerrada, version_leida, version_y_esquema,
+};
+use crate::respaldos::{
+    Fallo, borrar_bd, cerrar_copia, con_sufijo, copia_de_base, limpiar_parciales,
+};
 use crate::rutas::Rutas;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -10,7 +15,7 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf, Prefix};
 use std::sync::mpsc;
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
@@ -512,9 +517,17 @@ pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
     hecho
 }
 
-/// El `db_id` que tiene el archivo. A diferencia de `leer_meta`, separa que no lo tenga (sin fila, nulo o que no es texto:
-/// `Ok(None)`) de que la consulta falle (`Err`).
+/// El `db_id` que tiene el archivo. A diferencia de `leer_meta`, separa que no lo tenga (sin tabla, sin fila, nulo o que no es
+/// texto: `Ok(None)`) de que la consulta falle (`Err`).
 fn id_del_archivo(conn: &Connection) -> rusqlite::Result<Option<String>> {
+    let hay_meta: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta')",
+        [],
+        |f| f.get(0),
+    )?;
+    if !hay_meta {
+        return Ok(None);
+    }
     conn.query_row("SELECT valor FROM meta WHERE clave = 'db_id'", [], |f| {
         Ok(f.get::<_, String>(0).ok())
     })
@@ -567,20 +580,251 @@ pub fn abrir_entrada(
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
     if e.externa {
-        limpiar_restauracion(&base.bd);
+        // lo que dejó una restauración interrumpida: `limpiar_carpetas` no entra en esa carpeta, y aquí ya se tiene el bloqueo
+        let _ = borrar_bd(&copia_de_base(&base));
     }
     Ok(a)
 }
 
-/// Lo que dejó una restauración interrumpida junto a una externa: `limpiar_carpetas` no entra en esa carpeta, y aquí ya se
-/// tiene el bloqueo. Sin mirar mayúsculas: en Windows y macOS, `x.RESTAURANDO` es el archivo que `copia_de` nombra.
-fn limpiar_restauracion(bd: &Path) {
-    if !bd
-        .extension()
-        .is_some_and(|x| x.eq_ignore_ascii_case("restaurando"))
-    {
-        let _ = borrar_bd(&copia_de(bd));
+/// Lo que pasó al agregar un archivo. Con `pide` no se cambió nada, y se repite con ese motivo en los confirmados.
+#[derive(Debug, PartialEq, Serialize)]
+pub struct ArchivoAgregado {
+    pub id: Option<String>,
+    /// `"red"`, `"otro_id"` o `"tope"`.
+    pub pide: Option<&'static str>,
+    /// `"copia"` o `"fuera_de_portable"`.
+    pub avisos: Vec<&'static str>,
+}
+
+/// `ruta`, ya canónica. No toca el disco.
+pub fn es_ruta_de_red(ruta: &Path) -> bool {
+    // shortcut: en Linux y macOS no detecta carpetas montadas; si hace falta, leer /proc/mounts y statfs.
+    matches!(ruta.components().next(), Some(Component::Prefix(p))
+        if matches!(p.kind(), Prefix::UNC(..) | Prefix::VerbatimUNC(..)))
+}
+
+fn es_db(ruta: &Path) -> bool {
+    ruta.extension()
+        .is_some_and(|x| x.eq_ignore_ascii_case("db"))
+}
+
+/// Dónde está lo que se eligió: la ruta absoluta, para guardar, y la canónica, para comparar. El filtro del diálogo no basta: un
+/// `x.restaurando` sería su propia copia al restaurar. `immutable` no ve un `-journal`, que al abrir para escribir cambiaría lo
+/// ya revisado; la app trabaja en WAL, así que no es de ella.
+fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
+    let invalido = |detalle| Err(Fallo::de("contenido_invalido", detalle));
+    if !es_db(ruta) {
+        return invalido("extension");
     }
+    let absoluta = std::path::absolute(ruta)?;
+    let canonica = fs::canonicalize(&absoluta).map_err(|e| match e.kind() {
+        io::ErrorKind::NotFound => Fallo::de("no_encontrado", ruta.display()),
+        _ => e.into(),
+    })?;
+    if !es_db(&canonica) {
+        return invalido("extension");
+    }
+    if !canonica.is_file() {
+        return invalido("archivo");
+    }
+    if con_sufijo(&canonica, "-journal").exists() {
+        return invalido("journal");
+    }
+    Ok((absoluta, canonica))
+}
+
+/// Si `e` apunta al archivo de `canonica`, por el camino que sea. `false` si su unidad no responde.
+fn es_el_mismo(r: &Rutas, e: &Entrada, canonica: &Path) -> bool {
+    let (ruta, canonica) = (ruta_de(r, e), canonica.to_path_buf());
+    con_limite(LIMITE_UNIDAD, move || {
+        fs::canonicalize(ruta).is_ok_and(|c| c == canonica)
+    })
+}
+
+/// Escribe un `db_id` nuevo en un archivo ya revisado. Con el bloqueo: otra copia de la app puede tenerlo abierto.
+fn escribir_id_nuevo(bd: &Path) -> Result<String, Fallo> {
+    let _bloqueo = bloquear(bd, ESPERA_CAMBIO)?;
+    let c = db::abrir(bd)?;
+    let id = identidad_nueva(&c)?;
+    c.close().map_err(|(_, e)| e)?;
+    Ok(id)
+}
+
+/// Copia un archivo ya revisado a una organización nueva en `organizaciones/`, sin escribir en él. Se queda con `id_libre` si su
+/// carpeta no tiene base; si no, recibe uno nuevo. Pasa por un temporal: un corte no deja una base a medias en esa carpeta.
+fn copiar_a_carpeta(r: &Rutas, origen: &Path, id_libre: Option<&str>) -> Result<String, Fallo> {
+    let temporal = Temporal::nuevo(&r.datos, "archivo");
+    solo_lectura_cerrada(origen)?.execute("VACUUM INTO ?1", [temporal.ruta().to_string_lossy()])?;
+    let id = match id_libre.filter(|id| !r.datos.join(ruta_interna(id)).exists()) {
+        Some(id) => id.to_owned(),
+        None => {
+            let c = db::abrir(temporal.ruta())?;
+            let id = identidad_nueva(&c)?;
+            cerrar_copia(c, temporal.ruta())?;
+            id
+        }
+    };
+    let destino = r.datos.join(ruta_interna(&id));
+    fs::create_dir_all(r.datos.join(CARPETA).join(&id))?;
+    fs::rename(temporal.ruta(), &destino)?;
+    Ok(id)
+}
+
+/// Deja en la lista un archivo que eligió el usuario, validado como un `.boldo`. No lo abre: lo abre `abrir_organizacion`.
+/// `buscando` es la entrada que se está reubicando.
+pub fn agregar_archivo(
+    r: &Rutas,
+    ruta: &Path,
+    buscando: Option<&str>,
+    confirmados: &[&str],
+    migraciones: &[&str],
+) -> Result<ArchivoAgregado, Fallo> {
+    agregar_con_tope(r, ruta, buscando, confirmados, migraciones, MAX_BYTES_VIVOS)
+}
+
+fn agregar_con_tope(
+    r: &Rutas,
+    ruta: &Path,
+    buscando: Option<&str>,
+    confirmados: &[&str],
+    migraciones: &[&str],
+    max_bytes: i64,
+) -> Result<ArchivoAgregado, Fallo> {
+    agregar_con_red(
+        r,
+        ruta,
+        buscando,
+        confirmados,
+        migraciones,
+        max_bytes,
+        es_ruta_de_red,
+    )
+}
+
+/// `es_red` es para las pruebas: una carpeta de red no se puede armar en un temporal.
+pub(crate) fn agregar_con_red(
+    r: &Rutas,
+    ruta: &Path,
+    buscando: Option<&str>,
+    confirmados: &[&str],
+    migraciones: &[&str],
+    max_bytes: i64,
+    es_red: fn(&Path) -> bool,
+) -> Result<ArchivoAgregado, Fallo> {
+    let preguntar = |motivo| {
+        Ok(ArchivoAgregado {
+            id: None,
+            pide: Some(motivo),
+            avisos: Vec::new(),
+        })
+    };
+    let mut lista = cargar_lista(r);
+    if lista.no_escribir {
+        return Err(lista_protegida());
+    }
+    if let Some(b) = buscando
+        && !lista.organizaciones.iter().any(|e| e.id == b)
+    {
+        return Err(Fallo::de("desconocido", b));
+    }
+    let (absoluta, canonica) = ubicar(ruta)?;
+    let datos = fs::canonicalize(&r.datos)?;
+    let relativa = canonica.strip_prefix(&datos).ok();
+    let de_red = relativa.is_none() && es_red(&canonica);
+    if de_red && !confirmados.contains(&"red") {
+        return preguntar("red");
+    }
+    let revisada = revisar_organizacion(&absoluta, migraciones, max_bytes)?;
+    let (id_archivo, nombre) = {
+        let c = solo_lectura_cerrada(&absoluta)?;
+        let id = id_del_archivo(&c)?.filter(|id| es_id_valido(id));
+        (id, leer_meta(&c, "org_nombre").unwrap_or_default())
+    };
+    let id_archivo = id_archivo.as_deref();
+    if buscando.is_some_and(|b| id_archivo != Some(b)) && !confirmados.contains(&"otro_id") {
+        return preguntar("otro_id");
+    }
+    if revisada.excede_bytes && !confirmados.contains(&"tope") {
+        return preguntar("tope");
+    }
+
+    // la buscada, si este archivo no es ella, se reemplaza. Una entrada de este archivo con otro id ya no apunta a nada.
+    lista.organizaciones.retain(|e| {
+        id_archivo == Some(e.id.as_str())
+            || (buscando != Some(e.id.as_str()) && !es_el_mismo(r, e, &canonica))
+    });
+    let duena = lista
+        .organizaciones
+        .iter()
+        .find(|e| id_archivo == Some(e.id.as_str()));
+    if duena.is_some_and(|e| es_el_mismo(r, e, &canonica)) {
+        escribir_lista(r, &lista)?;
+        return Ok(ArchivoAgregado {
+            id: id_archivo.map(str::to_owned),
+            pide: None,
+            avisos: Vec::new(),
+        });
+    }
+    // su id lo tiene otra entrada: si su archivo ya no está, este es ese archivo movido; si está, este es una copia
+    let es_copia = duena.is_some_and(|e| {
+        let bd = ruta_de(r, e);
+        con_limite(LIMITE_UNIDAD, move || bd.is_file())
+    });
+    let id_libre = id_archivo.filter(|_| !es_copia);
+    let principal = relativa == Some(Path::new(PRINCIPAL));
+    let en_su_carpeta = id_libre.is_some_and(|id| relativa == Some(Path::new(&ruta_interna(id))));
+    // dentro de `datos/`, fuera de su lugar, escribirle un id lo dañaría como respaldo, y la poda lo borraría (decisión 27)
+    let copiar = de_red || (relativa.is_some() && !principal && !en_su_carpeta);
+    let id = if copiar {
+        copiar_a_carpeta(r, &absoluta, id_libre)?
+    } else if let Some(id) = id_libre {
+        id.to_owned()
+    } else {
+        escribir_id_nuevo(&absoluta)?
+    };
+    let externa = relativa.is_none() && !copiar;
+    let ruta_nueva = if externa {
+        absoluta.to_string_lossy().into_owned()
+    } else if principal {
+        PRINCIPAL.to_owned()
+    } else {
+        ruta_interna(&id)
+    };
+    if let Some(e) = lista.organizaciones.iter_mut().find(|e| e.id == id) {
+        e.ruta = ruta_nueva;
+        e.externa = externa;
+        e.nombre = nombre;
+    } else {
+        let color = color_libre(&lista).into();
+        lista.organizaciones.push(Entrada {
+            id: id.clone(),
+            ruta: ruta_nueva,
+            externa,
+            nombre,
+            color,
+            abierta: String::new(),
+            ejemplo: false,
+        });
+    }
+    if let Err(f) = escribir_lista(r, &lista) {
+        if copiar {
+            let _ = borrar_bd(&r.datos.join(ruta_interna(&id)));
+        }
+        return Err(f);
+    }
+    let mut avisos = Vec::new();
+    if es_copia {
+        avisos.push("copia");
+    }
+    // su carpeta es la del programa, que contiene `datos/`
+    if externa && r.portable && !datos.parent().is_some_and(|c| canonica.starts_with(c)) {
+        avisos.push("fuera_de_portable");
+    }
+    Ok(ArchivoAgregado {
+        id: Some(id),
+        pide: None,
+        avisos,
+    })
 }
 
 /// Deja en la lista lo que se acaba de abrir, con su nombre y su hora. Un `boldo.db` vacío no se lista: lo usa la primera
@@ -1487,5 +1731,761 @@ mod tests_lista {
         assert!(ajeno.exists());
         assert!(en_la_rara.exists());
         assert!(carpeta.join("organizacion.db").exists());
+    }
+}
+
+#[cfg(test)]
+mod tests_archivo {
+    use super::prueba::*;
+    use super::*;
+    use crate::db::MIGRACIONES;
+    use tempfile::TempDir;
+
+    fn agregar(r: &Rutas, bd: &Path) -> Result<ArchivoAgregado, Fallo> {
+        agregar_archivo(r, bd, None, &[], MIGRACIONES)
+    }
+
+    fn de_red(_: &Path) -> bool {
+        true
+    }
+
+    /// Una lista vacía ya escrita: sin ella, `cargar_lista` reconstruye desde las carpetas.
+    fn con_lista_vacia() -> (TempDir, Rutas) {
+        let (exe, r) = rutas();
+        escribir(&r, vec![]);
+        (exe, r)
+    }
+
+    /// Una base válida, fuera de la carpeta de datos.
+    fn afuera(nombre: &str) -> (TempDir, PathBuf, String) {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join(nombre);
+        let id = crear(&bd, "Ajena", MIGRACIONES);
+        (dir, bd, id)
+    }
+
+    fn id_en(bd: &Path) -> Option<String> {
+        id_del_archivo(&solo_lectura_cerrada(bd).unwrap()).unwrap()
+    }
+
+    fn alterar(bd: &Path, sql: &str) {
+        let c = Connection::open(bd).unwrap();
+        c.execute_batch(sql).unwrap();
+        c.close().unwrap();
+    }
+
+    fn entrada_con(r: &Rutas, id: &str) -> Entrada {
+        cargar_lista(r)
+            .organizaciones
+            .into_iter()
+            .find(|e| e.id == id)
+            .unwrap()
+    }
+
+    fn sin_rastros_ni_bloqueo(bd: &Path) {
+        sin_rastros(bd);
+        assert!(!con_sufijo(bd, ".bloqueo").exists(), "{}", bd.display());
+    }
+
+    fn temporales_en(r: &Rutas) -> Vec<String> {
+        fs::read_dir(&r.datos)
+            .unwrap()
+            .flatten()
+            .map(|f| f.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.contains(".tmp"))
+            .collect()
+    }
+
+    #[test]
+    fn ajeno_rechazado_sin_abrir_para_escribir() {
+        for (cual, sql) in [
+            (
+                "trigger",
+                "CREATE TRIGGER t AFTER INSERT ON meta BEGIN DELETE FROM meta; END;",
+            ),
+            ("vista", "CREATE VIEW v AS SELECT * FROM meta;"),
+            ("tabla", "CREATE TABLE extra (x);"),
+            ("version", "PRAGMA user_version = 0;"),
+        ] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, _) = afuera("ajena.db");
+            alterar(&bd, sql);
+            let antes = fs::read(&bd).unwrap();
+            assert_eq!(
+                agregar(&r, &bd).unwrap_err().codigo,
+                "contenido_invalido",
+                "{cual}"
+            );
+            assert_eq!(fs::read(&bd).unwrap(), antes, "{cual}");
+            sin_rastros_ni_bloqueo(&bd);
+            assert!(cargar_lista(&r).organizaciones.is_empty());
+        }
+        for bytes in [&b"no soy sqlite, aunque me llame .db"[..], b""] {
+            let (_exe, r) = con_lista_vacia();
+            let d = tempfile::tempdir().unwrap();
+            let bd = d.path().join("ajena.db");
+            fs::write(&bd, bytes).unwrap();
+            assert_eq!(agregar(&r, &bd).unwrap_err().codigo, "contenido_invalido");
+            assert_eq!(fs::read(&bd).unwrap(), bytes);
+            sin_rastros_ni_bloqueo(&bd);
+        }
+    }
+
+    #[test]
+    fn archivo_con_otra_extension_se_rechaza_al_agregar_y_al_buscar() {
+        for nombre in ["x.restaurando", "x.RESTAURANDO", "x.boldo", "x", "x.db.bak"] {
+            let (_exe, r) = rutas();
+            let (_d, bd, _) = afuera(nombre);
+            let antes = fs::read(&bd).unwrap();
+            let buscada = entrada(&uuid::Uuid::now_v7().to_string(), "boldo.db", false, "x");
+            escribir(&r, vec![buscada.clone()]);
+            for buscando in [None, Some(buscada.id.as_str())] {
+                let e = agregar_archivo(&r, &bd, buscando, &["otro_id"], MIGRACIONES).unwrap_err();
+                assert_eq!(e.codigo, "contenido_invalido", "{nombre}");
+            }
+            assert_eq!(fs::read(&bd).unwrap(), antes);
+            assert_eq!(cargar_lista(&r).organizaciones, vec![buscada]);
+        }
+    }
+
+    #[test]
+    fn archivo_con_extension_en_mayusculas_vale() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("x.DB");
+        assert_eq!(agregar(&r, &bd).unwrap().id, Some(id));
+    }
+
+    #[test]
+    fn archivo_que_no_esta_o_es_una_carpeta() {
+        let (_exe, r) = con_lista_vacia();
+        let d = tempfile::tempdir().unwrap();
+        assert_eq!(
+            agregar(&r, &d.path().join("no-esta.db"))
+                .unwrap_err()
+                .codigo,
+            "no_encontrado"
+        );
+        let carpeta = d.path().join("carpeta.db");
+        fs::create_dir(&carpeta).unwrap();
+        assert_eq!(
+            agregar(&r, &carpeta).unwrap_err().codigo,
+            "contenido_invalido"
+        );
+    }
+
+    /// `immutable` no ve un diario pendiente, y abrir para escribir lo aplicaría sobre lo ya revisado.
+    #[test]
+    fn archivo_con_un_diario_al_lado_se_rechaza() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, _) = afuera("x.db");
+        fs::write(con_sufijo(&bd, "-journal"), "lo que cambiaría al abrir").unwrap();
+        let antes = fs::read(&bd).unwrap();
+        assert_eq!(agregar(&r, &bd).unwrap_err().codigo, "contenido_invalido");
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert!(cargar_lista(&r).organizaciones.is_empty());
+    }
+
+    #[test]
+    fn externa_sobre_el_tope_pregunta_antes_de_abrir() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("pesada.db");
+        let antes = fs::read(&bd).unwrap();
+        let hecho = agregar_con_tope(&r, &bd, None, &[], MIGRACIONES, 1).unwrap();
+        assert_eq!(hecho.pide, Some("tope"));
+        assert_eq!(hecho.id, None);
+        assert!(hecho.avisos.is_empty());
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros_ni_bloqueo(&bd);
+        // rechazado: nadie vuelve a llamar, y no queda nada
+        assert!(cargar_lista(&r).organizaciones.is_empty());
+
+        let hecho = agregar_con_tope(&r, &bd, None, &["tope"], MIGRACIONES, 1).unwrap();
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (Some(id.as_str()), None));
+        assert_eq!(entrada_con(&r, &id).ruta, bd.display().to_string());
+    }
+
+    #[test]
+    fn archivo_con_un_campo_sobre_su_tope_no_pregunta() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, _) = afuera("x.db");
+        let c = db::abrir(&bd).unwrap();
+        c.execute(
+            "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('a', ?1, 'x', 'x')",
+            ["x".repeat(2048)],
+        )
+        .unwrap();
+        c.close().unwrap();
+        for confirmados in [&[][..], &["tope"]] {
+            let e = agregar_con_tope(&r, &bd, None, confirmados, MIGRACIONES, 1).unwrap_err();
+            assert_eq!(e.codigo, "muy_pesado");
+        }
+    }
+
+    #[test]
+    fn cada_motivo_se_pregunta_por_separado() {
+        let (_exe, r) = rutas();
+        let buscada = entrada(&uuid::Uuid::now_v7().to_string(), "boldo.db", false, "x");
+        escribir(&r, vec![buscada.clone()]);
+        let (_d, bd, id) = afuera("en-red.db");
+        let pide = |confirmados: &[&str]| {
+            agregar_con_red(
+                &r,
+                &bd,
+                Some(&buscada.id),
+                confirmados,
+                MIGRACIONES,
+                1,
+                de_red,
+            )
+            .unwrap()
+        };
+        assert_eq!(pide(&[]).pide, Some("red"));
+        assert_eq!(pide(&["red"]).pide, Some("otro_id"));
+        assert_eq!(pide(&["red", "otro_id"]).pide, Some("tope"));
+        // una respuesta vale solo para lo que se preguntó
+        assert_eq!(pide(&["otro_id", "tope"]).pide, Some("red"));
+        assert_eq!(pide(&["red", "tope"]).pide, Some("otro_id"));
+        // nada de eso tocó la lista
+        assert_eq!(cargar_lista(&r).organizaciones, vec![buscada.clone()]);
+
+        let hecho = pide(&["red", "otro_id", "tope"]);
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (Some(id.as_str()), None));
+        assert_eq!(ids_de(&r), [id]);
+    }
+
+    fn ids_de(r: &Rutas) -> Vec<String> {
+        cargar_lista(r)
+            .organizaciones
+            .into_iter()
+            .map(|e| e.id)
+            .collect()
+    }
+
+    #[test]
+    fn esquema_mas_nuevo_rechazado() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, _) = afuera("x.db");
+        alterar(&bd, "PRAGMA user_version = 99;");
+        let antes = fs::read(&bd).unwrap();
+        assert_eq!(agregar(&r, &bd).unwrap_err().codigo, "esquema_nuevo");
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros_ni_bloqueo(&bd);
+    }
+
+    #[test]
+    fn un_esquema_anterior_se_agrega_y_migra_al_abrir() {
+        let (_exe, r) = con_lista_vacia();
+        let d = tempfile::tempdir().unwrap();
+        let bd = d.path().join("vieja.db");
+        let id = crear(&bd, "Vieja", &MIGRACIONES[..1]);
+        assert_eq!(agregar(&r, &bd).unwrap().id.as_ref(), Some(&id));
+        let a = abrir_entrada(&r, &entrada_con(&r, &id), ESPERA_CAMBIO, MIGRACIONES)
+            .ok()
+            .unwrap();
+        assert_eq!(a.version, MIGRACIONES.len() as i64);
+    }
+
+    #[test]
+    fn externa_guarda_ruta_absoluta_y_sus_respaldos_van_a_la_app() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, bd, id) = afuera("externa.db");
+        let hecho = agregar(&r, &bd).unwrap();
+        assert_eq!(hecho.id.as_deref(), Some(id.as_str()));
+        let e = entrada_con(&r, &id);
+        assert!(e.externa);
+        assert!(Path::new(&e.ruta).is_absolute());
+        assert_eq!(e.nombre, "Ajena");
+        assert_eq!(e.abierta, "");
+        assert!(!e.ejemplo);
+        assert_eq!(e.color, PALETA[0]);
+        assert_eq!(
+            base_de(&r, &e).respaldos,
+            r.datos.join("organizaciones").join(&id).join("respaldos")
+        );
+        // agregar no abre: nada al lado del archivo ni carpeta de respaldos
+        sin_rastros_ni_bloqueo(&bd);
+        assert!(!r.datos.join("organizaciones").join(&id).exists());
+        assert!(!d.path().join("respaldos").exists());
+        // la siguiente recibe otro color
+        let (_d2, otra, id2) = afuera("otra.db");
+        agregar(&r, &otra).unwrap();
+        assert_eq!(entrada_con(&r, &id2).color, PALETA[1]);
+        // y lo agregado abre, con su id
+        let a = abrir_entrada(&r, &e, ESPERA_CAMBIO, MIGRACIONES)
+            .ok()
+            .unwrap();
+        assert_eq!(a.id, id);
+    }
+
+    #[test]
+    fn mismo_archivo_por_otro_camino_no_es_copia() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, bd, id) = afuera("a.db");
+        agregar(&r, &bd).unwrap();
+        let antes = fs::read(&bd).unwrap();
+        let carpeta = d.path().file_name().unwrap();
+        let mut caminos = vec![d.path().join("..").join(carpeta).join("a.db")];
+        if cfg!(windows) {
+            caminos.push(PathBuf::from(bd.to_str().unwrap().to_uppercase()));
+        }
+        for camino in caminos {
+            let hecho = agregar(&r, &camino).unwrap();
+            assert_eq!(
+                hecho.id.as_deref(),
+                Some(id.as_str()),
+                "{}",
+                camino.display()
+            );
+            assert!(hecho.avisos.is_empty(), "{}", camino.display());
+            assert_eq!(ids_de(&r), std::slice::from_ref(&id));
+            assert_eq!(fs::read(&bd).unwrap(), antes);
+            sin_rastros_ni_bloqueo(&bd);
+        }
+    }
+
+    #[test]
+    fn copia_recibe_un_db_id_nuevo_escrito_en_el_archivo() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, original, id) = afuera("a.db");
+        agregar(&r, &original).unwrap();
+        let copia = d.path().join("b.db");
+        fs::copy(&original, &copia).unwrap();
+        let antes = fs::read(&original).unwrap();
+
+        let hecho = agregar(&r, &copia).unwrap();
+        assert!(hecho.avisos.contains(&"copia"));
+        let nuevo = hecho.id.unwrap();
+        assert_ne!(nuevo, id);
+        assert!(es_id_valido(&nuevo));
+        assert_eq!(id_en(&copia).as_deref(), Some(nuevo.as_str()));
+        assert_eq!(fs::read(&original).unwrap(), antes);
+        assert_eq!(ids_de(&r), [id, nuevo]);
+        sin_rastros(&copia);
+    }
+
+    #[test]
+    fn copia_abierta_en_otra_copia_de_la_app_no_se_toca() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, original, id) = afuera("a.db");
+        agregar(&r, &original).unwrap();
+        let copia = d.path().join("b.db");
+        fs::copy(&original, &copia).unwrap();
+        let _bloqueo = bloquear(&copia, ESPERA_CAMBIO).unwrap();
+        assert_eq!(
+            agregar(&r, &copia).unwrap_err().codigo,
+            "abierta_en_otra_copia"
+        );
+        assert_eq!(id_en(&copia).as_deref(), Some(id.as_str()));
+        assert_eq!(ids_de(&r), [id]);
+    }
+
+    #[test]
+    fn archivo_movido_no_es_copia() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, bd, id) = afuera("a.db");
+        agregar(&r, &bd).unwrap();
+        let antes = entrada_con(&r, &id);
+        let nuevo = d.path().join("movido.db");
+        fs::rename(&bd, &nuevo).unwrap();
+        let hecho = agregar(&r, &nuevo).unwrap();
+        assert_eq!(hecho.id.as_deref(), Some(id.as_str()));
+        assert!(!hecho.avisos.contains(&"copia"));
+        assert_eq!(id_en(&nuevo).as_deref(), Some(id.as_str()));
+        assert_eq!(
+            cargar_lista(&r).organizaciones,
+            vec![Entrada {
+                ruta: nuevo.display().to_string(),
+                ..antes
+            }]
+        );
+    }
+
+    #[test]
+    fn db_id_invalido_recibe_uno_nuevo() {
+        for sql in [
+            "UPDATE meta SET valor = '../../x' WHERE clave = 'db_id';",
+            "UPDATE meta SET valor = NULL WHERE clave = 'db_id';",
+            "DELETE FROM meta WHERE clave = 'db_id';",
+        ] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, viejo) = afuera("x.db");
+            alterar(&bd, sql);
+            let hecho = agregar(&r, &bd).unwrap();
+            let id = hecho.id.unwrap();
+            assert!(es_id_valido(&id), "{sql}");
+            assert_ne!(id, viejo);
+            assert!(!hecho.avisos.contains(&"copia"), "{sql}");
+            assert_eq!(id_en(&bd).as_deref(), Some(id.as_str()));
+            assert!(entrada_con(&r, &id).es_valida());
+            sin_rastros(&bd);
+        }
+    }
+
+    #[test]
+    fn buscar_con_otro_id_pide_confirmar() {
+        let (_exe, r) = rutas();
+        let d = tempfile::tempdir().unwrap();
+        let perdida = d.path().join("perdida.db");
+        let buscada = entrada(
+            &uuid::Uuid::now_v7().to_string(),
+            perdida.to_str().unwrap(),
+            true,
+            "2020",
+        );
+        let otra = interna(&r, "2021");
+        escribir(&r, vec![buscada.clone(), otra.clone()]);
+        let (_d, bd, id) = afuera("otra.db");
+
+        let hecho = agregar_archivo(&r, &bd, Some(&buscada.id), &[], MIGRACIONES).unwrap();
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (None, Some("otro_id")));
+        assert_eq!(
+            cargar_lista(&r).organizaciones,
+            vec![buscada.clone(), otra.clone()]
+        );
+        sin_rastros_ni_bloqueo(&bd);
+
+        let hecho = agregar_archivo(&r, &bd, Some(&buscada.id), &["otro_id"], MIGRACIONES).unwrap();
+        assert_eq!(hecho.id.as_deref(), Some(id.as_str()));
+        assert_eq!(ids_de(&r), [otra.id, id]);
+    }
+
+    #[test]
+    fn buscar_el_mismo_id_no_pregunta_y_conserva_la_entrada() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, bd, id) = afuera("a.db");
+        agregar(&r, &bd).unwrap();
+        let nuevo = d.path().join("encontrado.db");
+        fs::rename(&bd, &nuevo).unwrap();
+        let hecho = agregar_archivo(&r, &nuevo, Some(&id), &[], MIGRACIONES).unwrap();
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (Some(id.as_str()), None));
+        assert_eq!(entrada_con(&r, &id).ruta, nuevo.display().to_string());
+        assert_eq!(ids_de(&r), [id]);
+    }
+
+    #[test]
+    fn buscar_una_copia_de_otra_entrada_le_da_otro_id() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, original, id) = afuera("a.db");
+        agregar(&r, &original).unwrap();
+        let (_d2, buscada, id_buscada) = afuera("b.db");
+        agregar(&r, &buscada).unwrap();
+        fs::remove_file(&buscada).unwrap();
+        let copia = d.path().join("copia.db");
+        fs::copy(&original, &copia).unwrap();
+
+        let hecho =
+            agregar_archivo(&r, &copia, Some(&id_buscada), &["otro_id"], MIGRACIONES).unwrap();
+        assert!(hecho.avisos.contains(&"copia"));
+        let nuevo = hecho.id.unwrap();
+        assert_ne!(nuevo, id);
+        assert_eq!(id_en(&copia).as_deref(), Some(nuevo.as_str()));
+        assert_eq!(ids_de(&r), [id, nuevo]);
+    }
+
+    #[test]
+    fn buscar_una_entrada_que_no_esta_es_desconocido() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, _) = afuera("a.db");
+        let e = agregar_archivo(&r, &bd, Some("..\\..\\x"), &[], MIGRACIONES).unwrap_err();
+        assert_eq!(e.codigo, "desconocido");
+    }
+
+    #[test]
+    fn dentro_de_datos_no_es_externa() {
+        let (_exe, r) = con_lista_vacia();
+        let id = crear(&r.bd, "La mía", MIGRACIONES);
+        let e = interna(&r, "");
+        let (bd_principal, bd_interna) = (r.bd.clone(), ruta_de(&r, &e));
+        let antes = (
+            fs::read(&bd_principal).unwrap(),
+            fs::read(&bd_interna).unwrap(),
+        );
+
+        assert_eq!(agregar(&r, &bd_principal).unwrap().id.as_ref(), Some(&id));
+        assert_eq!(agregar(&r, &bd_interna).unwrap().id.as_ref(), Some(&e.id));
+
+        let principal = entrada_con(&r, &id);
+        assert!(principal.es_principal());
+        let otra = entrada_con(&r, &e.id);
+        assert!(!otra.externa);
+        // quedó fuera de la lista y vuelve con su id: su carpeta sigue alineada, y nada se escribió en ellas
+        assert_eq!(otra.ruta, ruta_interna(&e.id));
+        assert_eq!(
+            antes,
+            (
+                fs::read(&bd_principal).unwrap(),
+                fs::read(&bd_interna).unwrap()
+            )
+        );
+        sin_rastros_ni_bloqueo(&bd_principal);
+        sin_rastros_ni_bloqueo(&bd_interna);
+    }
+
+    #[test]
+    fn boldo_db_con_el_id_de_otra_entrada_recibe_uno_nuevo() {
+        let (_exe, r) = con_lista_vacia();
+        let e = interna(&r, "x");
+        escribir(&r, vec![e.clone()]);
+        fs::copy(ruta_de(&r, &e), &r.bd).unwrap();
+        let hecho = agregar(&r, &r.bd).unwrap();
+        assert_eq!(hecho.avisos, ["copia"]);
+        let id = hecho.id.unwrap();
+        assert_ne!(id, e.id);
+        assert!(entrada_con(&r, &id).es_principal());
+        assert_eq!(id_en(&r.bd), Some(id));
+    }
+
+    #[test]
+    fn base_en_respaldos_se_copia_a_su_carpeta_nueva() {
+        for lugar in ["respaldos", "organizaciones-eliminadas", "otra-carpeta"] {
+            let (_exe, r) = con_lista_vacia();
+            let carpeta = r.datos.join(lugar);
+            fs::create_dir_all(&carpeta).unwrap();
+            let bd = carpeta.join("boldo-20260101-0900.db");
+            let original = crear(&bd, "De respaldo", MIGRACIONES);
+            let antes = fs::read(&bd).unwrap();
+
+            let hecho = agregar(&r, &bd).unwrap();
+            assert_eq!(hecho.pide, None, "{lugar}");
+            assert!(hecho.avisos.is_empty(), "{lugar}");
+            let id = hecho.id.unwrap();
+            // el id estaba libre: se conserva, y sus pestañas siguen valiendo
+            assert_eq!(id, original);
+            let e = entrada_con(&r, &id);
+            assert!(!e.externa);
+            assert_eq!(e.ruta, ruta_interna(&id));
+            assert_eq!(e.nombre, "De respaldo");
+            assert_eq!(id_en(&ruta_de(&r, &e)).as_deref(), Some(id.as_str()));
+
+            assert_eq!(fs::read(&bd).unwrap(), antes, "{lugar}");
+            sin_rastros_ni_bloqueo(&bd);
+            assert!(temporales_en(&r).is_empty(), "{:?}", temporales_en(&r));
+            let a = abrir_entrada(&r, &e, ESPERA_CAMBIO, MIGRACIONES)
+                .ok()
+                .unwrap();
+            assert_eq!(a.id, id);
+        }
+    }
+
+    #[test]
+    fn respaldo_de_una_organizacion_de_la_lista_es_una_copia() {
+        let (_exe, r) = con_lista_vacia();
+        let e = interna(&r, "x");
+        escribir(&r, vec![e.clone()]);
+        let bd = r.respaldos.join("boldo-20260101-0900.db");
+        fs::copy(ruta_de(&r, &e), &bd).unwrap();
+        let antes = fs::read(&bd).unwrap();
+
+        let hecho = agregar(&r, &bd).unwrap();
+        assert_eq!(hecho.avisos, ["copia"]);
+        let id = hecho.id.unwrap();
+        assert_ne!(id, e.id);
+        assert_eq!(entrada_con(&r, &id).ruta, ruta_interna(&id));
+        assert_eq!(id_en(&r.datos.join(ruta_interna(&id))), Some(id.clone()));
+        // ni el respaldo ni la organización cambian
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert_eq!(id_en(&ruta_de(&r, &e)), Some(e.id));
+    }
+
+    #[test]
+    fn carpeta_con_otro_id_no_se_toca_y_se_copia() {
+        let (_exe, r) = con_lista_vacia();
+        let e = interna(&r, "x");
+        let ajeno = uuid::Uuid::now_v7().to_string();
+        let bd = ruta_de(&r, &e);
+        alterar(
+            &bd,
+            &format!("UPDATE meta SET valor = '{ajeno}' WHERE clave = 'db_id';"),
+        );
+        let antes = fs::read(&bd).unwrap();
+        let hecho = agregar(&r, &bd).unwrap();
+        assert_eq!(hecho.id.as_deref(), Some(ajeno.as_str()));
+        assert_eq!(entrada_con(&r, &ajeno).ruta, ruta_interna(&ajeno));
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+    }
+
+    #[test]
+    fn carpeta_cuyo_id_usa_otra_entrada_no_cambia_de_id() {
+        let (_exe, r) = con_lista_vacia();
+        let e = interna(&r, "x");
+        let bd = ruta_de(&r, &e);
+        let (_d, otra, _) = afuera("a.db");
+        fs::copy(&bd, &otra).unwrap();
+        agregar(&r, &otra).unwrap();
+        let antes = fs::read(&bd).unwrap();
+
+        let hecho = agregar(&r, &bd).unwrap();
+        assert_eq!(hecho.avisos, ["copia"]);
+        let nuevo = hecho.id.unwrap();
+        assert_ne!(nuevo, e.id);
+        assert_eq!(entrada_con(&r, &nuevo).ruta, ruta_interna(&nuevo));
+        // su archivo sigue con el id que dice su carpeta
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert_eq!(id_en(&bd), Some(e.id));
+    }
+
+    #[test]
+    fn copia_con_su_carpeta_ocupada_recibe_otro_id() {
+        let (_exe, r) = con_lista_vacia();
+        let e = interna(&r, "x");
+        let bd = r.respaldos.join("boldo-20260101-0900.db");
+        fs::copy(ruta_de(&r, &e), &bd).unwrap();
+        let antes = fs::read(ruta_de(&r, &e)).unwrap();
+        let id = agregar(&r, &bd).unwrap().id.unwrap();
+        assert_ne!(id, e.id);
+        assert_eq!(fs::read(ruta_de(&r, &e)).unwrap(), antes);
+    }
+
+    #[test]
+    fn portable_avisa_una_vez_fuera_de_su_carpeta() {
+        let (exe, r) = con_lista_vacia();
+        let (_d, bd, _) = afuera("a.db");
+        assert_eq!(agregar(&r, &bd).unwrap().avisos, ["fuera_de_portable"]);
+        assert!(agregar(&r, &bd).unwrap().avisos.is_empty());
+        // junto al programa, pero fuera de `datos/`: sigue en su carpeta
+        let junto = exe.path().join("junto.db");
+        crear(&junto, "Junto", MIGRACIONES);
+        let hecho = agregar(&r, &junto).unwrap();
+        assert!(hecho.avisos.is_empty());
+        assert!(entrada_con(&r, &hecho.id.unwrap()).externa);
+    }
+
+    #[test]
+    fn instalada_no_avisa_de_la_portable() {
+        let (exe, appdata) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let r = crate::rutas::dir_datos(exe.path(), Some(appdata.path())).unwrap();
+        escribir(&r, vec![]);
+        let (_d, bd, _) = afuera("a.db");
+        assert!(agregar(&r, &bd).unwrap().avisos.is_empty());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn ruta_de_red() {
+        assert!(es_ruta_de_red(Path::new(r"\\srv\c\a.db")));
+        assert!(es_ruta_de_red(Path::new(r"\\?\UNC\srv\c\a.db")));
+        assert!(!es_ruta_de_red(Path::new(r"C:\a.db")));
+        assert!(!es_ruta_de_red(Path::new(r"\\?\C:\a.db")));
+    }
+
+    #[test]
+    fn archivo_de_red_pide_confirmar_y_se_copia_a_la_app() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("en-red.db");
+        let antes = fs::read(&bd).unwrap();
+        let con = |confirmados: &[&str]| {
+            agregar_con_red(&r, &bd, None, confirmados, MIGRACIONES, i64::MAX, de_red).unwrap()
+        };
+        let hecho = con(&[]);
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (None, Some("red")));
+        assert!(cargar_lista(&r).organizaciones.is_empty());
+
+        let hecho = con(&["red"]);
+        assert_eq!(hecho.id.as_deref(), Some(id.as_str()));
+        assert!(hecho.avisos.is_empty());
+        let e = entrada_con(&r, &id);
+        assert!(!e.externa);
+        assert_eq!(e.ruta, ruta_interna(&id));
+        assert_eq!(id_en(&ruta_de(&r, &e)), Some(id));
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros_ni_bloqueo(&bd);
+        assert!(temporales_en(&r).is_empty());
+    }
+
+    #[test]
+    fn dentro_de_datos_no_se_pregunta_por_la_red() {
+        // una portable en una carpeta de red: `boldo.db` no se copia a sí mismo
+        let (_exe, r) = con_lista_vacia();
+        let id = crear(&r.bd, "La mía", MIGRACIONES);
+        let hecho = agregar_con_red(&r, &r.bd, None, &[], MIGRACIONES, i64::MAX, de_red).unwrap();
+        assert_eq!(hecho.id, Some(id));
+    }
+
+    #[test]
+    fn una_lista_protegida_no_toca_nada() {
+        let (_exe, r) = rutas();
+        let json = r.datos.join("organizaciones.json");
+        fs::write(&json, r#"{"version":2}"#).unwrap();
+        let (_d, bd, _) = afuera("a.db");
+        // su id tendría que escribirse: no se llega a eso
+        alterar(&bd, "DELETE FROM meta WHERE clave = 'db_id';");
+        let antes = fs::read(&bd).unwrap();
+        assert_eq!(agregar(&r, &bd).unwrap_err().codigo, "lista_protegida");
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros_ni_bloqueo(&bd);
+        assert_eq!(fs::read_to_string(&json).unwrap(), r#"{"version":2}"#);
+    }
+
+    #[test]
+    fn vacuum_into_funciona_desde_solo_lectura() {
+        let (_d, bd, _) = afuera("a.db");
+        let d = tempfile::tempdir().unwrap();
+        let antes = fs::read(&bd).unwrap();
+
+        // cerrada: `immutable`, sin nada al lado
+        let destino = d.path().join("copia.db");
+        solo_lectura_cerrada(&bd)
+            .unwrap()
+            .execute("VACUUM INTO ?1", [destino.to_string_lossy()])
+            .unwrap();
+        sin_rastros(&bd);
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert_eq!(id_en(&destino), id_en(&bd));
+        let c = solo_lectura_cerrada(&destino).unwrap();
+        let ok: String = c
+            .query_row("PRAGMA integrity_check", [], |f| f.get(0))
+            .unwrap();
+        assert_eq!(ok, "ok");
+
+        // con su `-wal`: lo que no se ha volcado también va en la copia
+        let escritora = db::abrir(&bd).unwrap();
+        escritora
+            .execute(
+                "UPDATE meta SET valor = 'sin volcar' WHERE clave = 'org_nombre'",
+                [],
+            )
+            .unwrap();
+        assert!(con_sufijo(&bd, "-wal").exists());
+        let destino = d.path().join("con-wal.db");
+        solo_lectura_cerrada(&bd)
+            .unwrap()
+            .execute("VACUUM INTO ?1", [destino.to_string_lossy()])
+            .unwrap();
+        let nombre = leer_meta(&solo_lectura_cerrada(&destino).unwrap(), "org_nombre");
+        assert_eq!(nombre.as_deref(), Some("sin volcar"));
+    }
+
+    /// Lo que no tiene `meta` no es de la entrada: no se le crea el esquema, ni un id, ni nada al lado.
+    #[test]
+    fn archivo_sin_tabla_meta_es_otro_id_sin_tocar_nada() {
+        let (_exe, r) = rutas();
+        let e = interna(&r, "x");
+        let bd = ruta_de(&r, &e);
+        fs::remove_file(&bd).unwrap();
+        for bytes in [None, Some(())] {
+            fs::write(&bd, "").unwrap();
+            if bytes.is_some() {
+                alterar(&bd, "CREATE TABLE otra (x);");
+            }
+            let antes = fs::read(&bd).unwrap();
+            let f = abrir_entrada(&r, &e, ESPERA_CAMBIO, MIGRACIONES)
+                .err()
+                .unwrap();
+            assert_eq!(f.codigo, "otro_id");
+            assert_eq!(fs::read(&bd).unwrap(), antes);
+            sin_rastros_ni_bloqueo(&bd);
+            fs::remove_file(&bd).unwrap();
+        }
+        // una externa de 0 bytes, igual
+        let d = tempfile::tempdir().unwrap();
+        let bd = d.path().join("vacia.db");
+        fs::write(&bd, "").unwrap();
+        let e = entrada(&e.id, bd.to_str().unwrap(), true, "x");
+        let f = abrir_entrada(&r, &e, ESPERA_CAMBIO, MIGRACIONES)
+            .err()
+            .unwrap();
+        assert_eq!(f.codigo, "otro_id");
+        assert_eq!(fs::read(&bd).unwrap(), b"");
+        sin_rastros_ni_bloqueo(&bd);
     }
 }

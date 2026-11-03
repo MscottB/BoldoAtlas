@@ -1,10 +1,11 @@
 use crate::db::{self, Sentencia};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::organizaciones::{
-    Abierta, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, Entrada, Lista, OTRA_BASE, OrganizacionVista,
-    abrir_base, abrir_entrada, abrir_principal_libre, anotar_abierta, anotar_creada, base_de,
-    bloquear, cargar_lista, crear_en_carpeta, entrada_de_base, escribir_lista, identidad_nueva,
-    lista_protegida, principal_libre, vista_de, vistas,
+    Abierta, ArchivoAgregado, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, Entrada, Lista, OTRA_BASE,
+    OrganizacionVista, abrir_base, abrir_entrada, abrir_principal_libre, agregar_archivo,
+    anotar_abierta, anotar_creada, base_de, bloquear, cargar_lista, crear_en_carpeta,
+    entrada_de_base, escribir_lista, identidad_nueva, lista_protegida, principal_libre, vista_de,
+    vistas,
 };
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
@@ -13,7 +14,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Mutex, MutexGuard, RwLock, TryLockError};
 use std::time::{Duration, Instant};
@@ -51,10 +52,27 @@ pub struct Estado {
     bloqueo: Mutex<Option<File>>,
     /// Se toma durante todo leer, cambiar y escribir `organizaciones.json`. Orden: `conn`, luego `lista`.
     lista: Mutex<()>,
+    /// El archivo que espera una respuesta: ruta, entrada buscada y lo que vale como confirmado si la respuesta es sí.
+    pendiente: Mutex<Option<ArchivoPendiente>>,
     rutas: Option<Rutas>,
     version_esquema: AtomicI64,
     error: Mutex<Option<String>>,
     aviso_inicio: Mutex<Option<AvisoInicio>>,
+}
+
+type ArchivoPendiente = (PathBuf, Option<String>, Vec<&'static str>);
+
+/// `agregar_archivo`, sin las migraciones: las pruebas ponen otra, que pregunta más.
+type Agregar<'a> =
+    &'a dyn Fn(&Rutas, &Path, Option<&str>, &[&str]) -> Result<ArchivoAgregado, Fallo>;
+
+fn agregar_de_verdad(
+    r: &Rutas,
+    ruta: &Path,
+    buscando: Option<&str>,
+    confirmados: &[&str],
+) -> Result<ArchivoAgregado, Fallo> {
+    agregar_archivo(r, ruta, buscando, confirmados, db::MIGRACIONES)
 }
 
 impl Estado {
@@ -90,6 +108,7 @@ impl Estado {
             base: Mutex::new(None),
             bloqueo: Mutex::new(None),
             lista: Mutex::new(()),
+            pendiente: Mutex::new(None),
             rutas,
             version_esquema: AtomicI64::new(0),
             error: Mutex::new(error),
@@ -108,6 +127,7 @@ impl Estado {
             base: Mutex::new(base),
             bloqueo: Mutex::new(None),
             lista: Mutex::new(()),
+            pendiente: Mutex::new(None),
             rutas,
             version_esquema: AtomicI64::new(0),
             error: Mutex::new(None),
@@ -387,6 +407,52 @@ impl Estado {
         crear_en_carpeta(r, &mut lista, migraciones, llenar)
     }
 
+    /// Deja un archivo en la lista, con ella tomada todo el tiempo. Si hay que preguntar, queda pendiente con lo que ya se
+    /// confirmó más lo que se pregunta, que vale solo si la respuesta es sí. La abierta no se reemplaza: su archivo está ahí.
+    fn agregar_archivo_con(
+        &self,
+        ruta: PathBuf,
+        buscando: Option<String>,
+        mut confirmados: Vec<&'static str>,
+        agregar: Agregar,
+    ) -> Result<ArchivoAgregado, Fallo> {
+        let r = self.rutas()?;
+        if let Some(b) = &buscando
+            && self.base_abierta().is_some_and(|abierta| abierta.id == *b)
+        {
+            return Err(Fallo::de("abierta", b));
+        }
+        let hecho = {
+            let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            agregar(r, &ruta, buscando.as_deref(), &confirmados)?
+        };
+        if let Some(motivo) = hecho.pide {
+            confirmados.push(motivo);
+            *self.pendiente.lock().unwrap_or_else(|p| p.into_inner()) =
+                Some((ruta, buscando, confirmados));
+        }
+        Ok(hecho)
+    }
+
+    /// Responde lo que preguntó `agregar_archivo_con`, una sola vez. Con un sí se revisa de nuevo: el archivo pudo cambiar.
+    fn confirmar_archivo_con(
+        &self,
+        si: bool,
+        agregar: Agregar,
+    ) -> Result<Option<ArchivoAgregado>, Fallo> {
+        let pendiente = self
+            .pendiente
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .take();
+        match pendiente {
+            Some((ruta, buscando, confirmados)) if si => self
+                .agregar_archivo_con(ruta, buscando, confirmados, agregar)
+                .map(Some),
+            _ => Ok(None),
+        }
+    }
+
     pub fn base_abierta(&self) -> Option<Base> {
         self.base.lock().unwrap_or_else(|p| p.into_inner()).clone()
     }
@@ -555,6 +621,41 @@ pub async fn crear_organizacion(
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
             .crear(&sentencias, &version_app, ejemplo, db::MIGRACIONES)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Pide un `.db` y lo deja en la lista, sin abrirlo. `None` si no se eligió nada. En un hilo aparte: revisarlo lo lee entero.
+#[tauri::command]
+pub async fn agregar_archivo_organizacion(
+    app: AppHandle,
+    buscando: Option<String>,
+) -> Result<Option<ArchivoAgregado>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        *estado.pendiente.lock().unwrap_or_else(|p| p.into_inner()) = None;
+        let elegido = dialogo_con(&app, "db").blocking_pick_file();
+        let Some(ruta) = elegido.and_then(|f| f.into_path().ok()) else {
+            return Ok(None);
+        };
+        estado
+            .agregar_archivo_con(ruta, buscando, Vec::new(), &agregar_de_verdad)
+            .map(Some)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// La respuesta a lo que preguntó `agregar_archivo_organizacion`. `None` si no se sigue.
+#[tauri::command]
+pub async fn confirmar_archivo_organizacion(
+    app: AppHandle,
+    si: bool,
+) -> Result<Option<ArchivoAgregado>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .confirmar_archivo_con(si, &agregar_de_verdad)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -772,7 +873,11 @@ fn seguimiento(
 
 /// Diálogo nativo desde Rust: la interfaz nunca ve ni envía una ruta, y no necesita ningún permiso del plugin.
 fn dialogo(app: &AppHandle) -> FileDialogBuilder<tauri::Wry> {
-    let d = app.dialog().file().add_filter("BoldoAtlas", &["boldo"]);
+    dialogo_con(app, "boldo")
+}
+
+fn dialogo_con(app: &AppHandle, extension: &str) -> FileDialogBuilder<tauri::Wry> {
+    let d = app.dialog().file().add_filter("BoldoAtlas", &[extension]);
     match app.get_webview_window("main") {
         Some(v) => d.set_parent(&v),
         None => d,
@@ -2173,10 +2278,9 @@ mod cambiar_a {
     use super::*;
     use crate::intercambio::validar::solo_lectura_cerrada;
     use crate::organizaciones::prueba::{crear, entrada, escribir, interna, rutas, sin_rastros};
-    use crate::organizaciones::{Lista, ruta_de};
+    use crate::organizaciones::{Lista, agregar_con_red, ruta_de};
     use crate::respaldos::con_sufijo;
     use std::fs;
-    use std::path::Path;
     use std::sync::mpsc;
 
     const YA: Duration = Duration::ZERO;
@@ -2814,15 +2918,146 @@ mod cambiar_a {
         let afuera = tempfile::tempdir().unwrap();
         let bd = afuera.path().join("externa.db");
         let id = con_externa(&d, &bd);
-        let copia = bd.with_extension("restaurando");
-        let ajeno = afuera.path().join("notas.txt");
-        for p in [&copia, &con_sufijo(&copia, "-wal"), &ajeno] {
+        let copia = respaldos::copia_de_base(&Base {
+            id: id.clone(),
+            bd: bd.clone(),
+            respaldos: d.r.datos.join("organizaciones").join(&id).join("respaldos"),
+        });
+        // `externa.restaurando` puede ser de otra organización: no es de esta
+        let ajenos = [
+            afuera.path().join("notas.txt"),
+            bd.with_extension("restaurando"),
+        ];
+        for p in [&copia, &con_sufijo(&copia, "-wal"), &ajenos[0], &ajenos[1]] {
             fs::write(p, "x").unwrap();
         }
         cambiar(&d.e, &id).unwrap();
         assert!(!copia.exists());
         assert!(!con_sufijo(&copia, "-wal").exists());
-        assert!(ajeno.exists());
+        assert!(ajenos.iter().all(|p| p.exists()));
+        assert_eq!(nombre_en(&d.e, &id).unwrap(), "Externa");
+    }
+
+    /// Con el tope de 1 byte y como si fuera de red: es lo que hace preguntar más de una vez.
+    fn con_preguntas(
+        r: &Rutas,
+        ruta: &Path,
+        buscando: Option<&str>,
+        confirmados: &[&str],
+    ) -> Result<ArchivoAgregado, Fallo> {
+        agregar_con_red(r, ruta, buscando, confirmados, db::MIGRACIONES, 1, |_| true)
+    }
+
+    fn un_archivo(nombre: &str) -> (tempfile::TempDir, PathBuf, String) {
+        let carpeta = tempfile::tempdir().unwrap();
+        let bd = carpeta.path().join(nombre);
+        let id = crear(&bd, "Externa", db::MIGRACIONES);
+        (carpeta, bd, id)
+    }
+
+    #[test]
+    fn archivo_con_varias_preguntas_necesita_un_si_para_cada_una() {
+        let d = dos();
+        let (_c, bd, id) = un_archivo("a.db");
+        let antes = lista_del_json(&d.r).organizaciones;
+        let hecho =
+            d.e.agregar_archivo_con(bd.clone(), Some(d.b.id.clone()), vec![], &con_preguntas)
+                .unwrap();
+        assert_eq!(hecho.pide, Some("red"));
+        let hecho = d.e.confirmar_archivo_con(true, &con_preguntas).unwrap();
+        assert_eq!(hecho.unwrap().pide, Some("otro_id"));
+        let hecho = d.e.confirmar_archivo_con(true, &con_preguntas).unwrap();
+        assert_eq!(hecho.unwrap().pide, Some("tope"));
+        assert_eq!(lista_del_json(&d.r).organizaciones, antes);
+
+        let hecho =
+            d.e.confirmar_archivo_con(true, &con_preguntas)
+                .unwrap()
+                .unwrap();
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (Some(id.as_str()), None));
+        let ids: Vec<_> = lista_del_json(&d.r)
+            .organizaciones
+            .into_iter()
+            .map(|o| o.id)
+            .collect();
+        assert_eq!(ids, [d.a.id.clone(), id]);
+        // ya no queda nada que confirmar
+        assert!(
+            d.e.confirmar_archivo_con(true, &con_preguntas)
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn archivo_rechazado_no_queda_pendiente_ni_en_la_lista() {
+        let d = dos();
+        let (_c, bd, _) = un_archivo("a.db");
+        let antes = lista_del_json(&d.r).organizaciones;
+        d.e.agregar_archivo_con(bd, None, vec![], &con_preguntas)
+            .unwrap();
+        assert!(
+            d.e.confirmar_archivo_con(false, &con_preguntas)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            d.e.confirmar_archivo_con(true, &con_preguntas)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(lista_del_json(&d.r).organizaciones, antes);
+    }
+
+    #[test]
+    fn archivo_se_agrega_con_la_lista_tomada() {
+        let d = dos();
+        let (_c, bd, id) = un_archivo("a.db");
+        let vista = std::cell::Cell::new(false);
+        let con_lista = |r: &Rutas, ruta: &Path, b: Option<&str>, c: &[&str]| {
+            vista.set(d.e.lista.try_lock().is_err());
+            agregar_archivo(r, ruta, b, c, db::MIGRACIONES)
+        };
+        let hecho =
+            d.e.agregar_archivo_con(bd, None, vec![], &con_lista)
+                .unwrap();
+        assert!(vista.get());
+        assert_eq!(hecho.id, Some(id));
+        assert!(d.e.lista.try_lock().is_ok());
+    }
+
+    #[test]
+    fn archivo_no_reemplaza_la_entrada_abierta() {
+        let d = dos();
+        let (_c, bd, _) = un_archivo("a.db");
+        let antes = lista_del_json(&d.r).organizaciones;
+        let de_verdad = |r: &Rutas, ruta: &Path, b: Option<&str>, c: &[&str]| {
+            agregar_archivo(r, ruta, b, c, db::MIGRACIONES)
+        };
+        let e =
+            d.e.agregar_archivo_con(bd, Some(d.a.id.clone()), vec!["otro_id"], &de_verdad)
+                .unwrap_err();
+        assert_eq!(e.codigo, "abierta");
+        assert_eq!(lista_del_json(&d.r).organizaciones, antes);
+    }
+
+    #[test]
+    fn archivo_agregado_abre_con_abrir_organizacion() {
+        let d = dos();
+        let (_c, bd, id) = un_archivo("a.db");
+        let de_verdad = |r: &Rutas, ruta: &Path, b: Option<&str>, c: &[&str]| {
+            agregar_archivo(r, ruta, b, c, db::MIGRACIONES)
+        };
+        d.e.agregar_archivo_con(bd.clone(), None, vec![], &de_verdad)
+            .unwrap();
+        assert_eq!(cambiar(&d.e, &id).unwrap().id, id);
+        assert_eq!(nombre_en(&d.e, &id).unwrap(), "Externa");
+        // volver a elegirlo, ya abierto, no lo toma por una copia ni le cambia el id
+        let hecho =
+            d.e.agregar_archivo_con(bd, None, vec![], &de_verdad)
+                .unwrap();
+        assert_eq!(hecho.id, Some(id.clone()));
+        assert!(hecho.avisos.iter().all(|a| *a != "copia"));
         assert_eq!(nombre_en(&d.e, &id).unwrap(), "Externa");
     }
 

@@ -202,6 +202,16 @@ pub(crate) fn copia_de(bd: &Path) -> PathBuf {
     bd.with_extension("restaurando")
 }
 
+/// La de `base`. La carpeta de una externa es ajena, y su `x.restaurando` puede ser de otra organización: se reconoce porque sus
+/// respaldos no están al lado, y su copia lleva el id.
+pub(crate) fn copia_de_base(base: &Base) -> PathBuf {
+    if base.bd.parent() == base.respaldos.parent() {
+        copia_de(&base.bd)
+    } else {
+        con_sufijo(&base.bd, &format!(".{}.restaurando", base.id))
+    }
+}
+
 /// Borra los temporales que dejó un respaldo, un `.boldo` o una restauración interrumpidos. Se llama en `setup`, ya pasado
 /// el plugin de instancia única: una segunda instancia sale antes y no le borra nada a la que está trabajando.
 /// `bd` es la base que vive en `dir`, si hay una.
@@ -407,7 +417,7 @@ pub fn reemplazar_antes_respaldando(
 
 /// Lo escrito en la copia vive en su WAL hasta cerrarla. Si SQLite no pudo volcarlo, cierra sin avisar, y al renombrar se
 /// perdería: la base quedaría sin migrar y con el `db_id` del archivo que llegó.
-fn cerrar_copia(c: Connection, copia: &Path) -> Result<(), Fallo> {
+pub(crate) fn cerrar_copia(c: Connection, copia: &Path) -> Result<(), Fallo> {
     c.close().map_err(|(_, e)| e)?;
     if con_sufijo(copia, "-wal").exists() {
         return Err(Fallo::de("fallo", copia.display()));
@@ -424,7 +434,7 @@ fn cambiar_base(
 ) -> Result<(), Fallo> {
     let (bd, dir) = (&base.bd, &base.respaldos);
     // Se prepara (y migra) una copia aparte: la base actual no se toca hasta el reemplazo final.
-    let copia = copia_de(bd);
+    let copia = copia_de_base(base);
     let mut reemplazar = || -> Result<(), Fallo> {
         borrar_bd(&copia)?;
         fs::copy(origen, &copia)?;
@@ -875,6 +885,37 @@ mod tests {
             archivos(&carpeta)
         );
         assert!(!dir.path().join("boldo.db").exists());
+    }
+
+    #[test]
+    fn restaurar_una_externa_no_toca_lo_ajeno_de_su_carpeta() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut b, _, mut conn) = base_en(dir.path(), "x.db");
+        escribir(&mut conn, 1);
+        let app = tempfile::tempdir().unwrap();
+        b.respaldos = app.path().join("respaldos");
+        fs::create_dir_all(&b.respaldos).unwrap();
+        let nombre = respaldar(&conn, &b.respaldos, "20260101-0900").unwrap();
+        escribir(&mut conn, 3);
+        let ajeno = dir.path().join("x.restaurando");
+        fs::write(&ajeno, "de otra organización").unwrap();
+        // el nombre no se puede confundir con un archivo del usuario, ni con la propia base
+        let copia = copia_de_base(&b);
+        assert_ne!(copia, ajeno);
+        assert!(copia.to_string_lossy().contains(&b.id));
+
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        assert_eq!(revision(&db::abrir(&b.bd).unwrap()), 1);
+        assert_eq!(fs::read_to_string(&ajeno).unwrap(), "de otra organización");
+        assert!(!copia.exists());
+    }
+
+    #[test]
+    fn la_copia_interna_conserva_su_nombre() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, _, _conn) = base_en(dir.path(), "organizacion.db");
+        assert_eq!(copia_de_base(&b), copia_de(&b.bd));
     }
 
     #[test]

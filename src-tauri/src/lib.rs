@@ -118,6 +118,8 @@ pub fn run() {
             comandos::listar_organizaciones,
             comandos::abrir_organizacion,
             comandos::crear_organizacion,
+            comandos::agregar_archivo_organizacion,
+            comandos::confirmar_archivo_organizacion,
             comandos::db_consultar,
             comandos::db_lote,
             fotos::foto_bytes,
