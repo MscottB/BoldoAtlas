@@ -333,10 +333,17 @@ mod tests {
             let mut b = original.clone();
             b[6 + i * 4..10 + i * 4].copy_from_slice(&valor.to_le_bytes());
             fs::write(&boldo, &b).unwrap();
-            let t = Instant::now();
-            assert_eq!(abrir(&boldo, CODIGO).unwrap_err().codigo, "no_abre");
-            // rechazado sin derivar: reservar 4 TiB o dar 4 mil millones de pasadas no terminaría
-            assert!(t.elapsed().as_millis() < 50, "{i} {valor}");
+            // rechazado sin derivar: reservar 4 TiB o dar 4 mil millones de pasadas no terminaría, y 256 MiB cuesta unos 350 ms.
+            // Rechazar es solo leer la cabecera: el menor de tres, porque una pausa del sistema no dice nada de esto
+            let menor = (0..3)
+                .map(|_| {
+                    let t = Instant::now();
+                    assert_eq!(abrir(&boldo, CODIGO).unwrap_err().codigo, "no_abre");
+                    t.elapsed()
+                })
+                .min()
+                .unwrap();
+            assert!(menor.as_millis() < 100, "{i} {valor}: {menor:?}");
         }
     }
 

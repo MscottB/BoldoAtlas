@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fijarBase } from "./baseActiva";
 import {
+  borrarPreferenciasOrg,
   guardarPreferencia,
   guardarPreferenciaOrg,
   leerPreferencia,
@@ -19,6 +20,7 @@ function simularAlmacen(inicial: Record<string, string> = {}) {
   vi.stubGlobal("localStorage", {
     getItem: (k: string) => datos.get(k) ?? null,
     setItem: (k: string, v: string) => datos.set(k, v),
+    removeItem: (k: string) => datos.delete(k),
     get length() {
       return datos.size;
     },
@@ -26,6 +28,44 @@ function simularAlmacen(inicial: Record<string, string> = {}) {
   });
   return datos;
 }
+
+describe("borrarPreferenciasOrg", () => {
+  it("quita las de esa organización y deja las demás", () => {
+    const datos = simularAlmacen({
+      "boldo:vista:A": "1",
+      "boldo:minimapa:A": "1",
+      "boldo:vista:arbol:A": "1",
+      "boldo:directorio:columnas:A": "1",
+      "boldo:vista:B": "2",
+      "boldo:minimapa:B": "2",
+      "boldo:vista": "por PC",
+      "boldo:tema": "por PC",
+      "boldo:plegado:A": "no es de una organización",
+      "otra:vista:A": "ajena",
+    });
+    borrarPreferenciasOrg("A");
+    expect([...datos.keys()].sort()).toEqual([
+      "boldo:minimapa:B",
+      "boldo:plegado:A",
+      "boldo:tema",
+      "boldo:vista",
+      "boldo:vista:B",
+      "otra:vista:A",
+    ]);
+  });
+
+  it("sin id no borra nada, y sin localStorage no falla", () => {
+    const datos = simularAlmacen({ "boldo:vista:": "1", "boldo:vista": "por PC" });
+    borrarPreferenciasOrg("");
+    expect(datos.size).toBe(2);
+    vi.stubGlobal("localStorage", {
+      get length(): number {
+        throw new Error("bloqueado");
+      },
+    });
+    expect(() => borrarPreferenciasOrg("A")).not.toThrow();
+  });
+});
 
 describe("preferencias", () => {
   it("leerPreferencia usa el valor por defecto si localStorage falla", () => {

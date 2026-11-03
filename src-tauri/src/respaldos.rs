@@ -17,6 +17,8 @@ const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
 /// Copia que se hace antes de optimizar las fotos, con las originales: de estas quedan las últimas `CONSERVAR_OPTIMIZAR`.
 const PREFIJO_OPTIMIZAR: &str = "boldo-antes-de-optimizar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
+/// Lo que `db.rs` deja antes de migrar, con el nombre de ahora (`.db`) o de versiones anteriores (`.boldo`).
+const PREFIJO_MIGRACION: &str = "antes-migracion-";
 pub const CONSERVAR: usize = 10;
 /// Cuántos `boldo-antes-de-importar-` quedan al crear uno nuevo.
 pub const CONSERVAR_IMPORTAR: usize = 20;
@@ -175,7 +177,12 @@ fn entradas(dir: &Path) -> Result<Vec<Entrada>, Fallo> {
     Ok(v)
 }
 
-fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<String, Fallo> {
+pub(crate) fn volcar(
+    conn: &Connection,
+    dir: &Path,
+    prefijo: &str,
+    sello: &str,
+) -> Result<String, Fallo> {
     let nombre = (1..)
         .map(|n| match n {
             1 => format!("{prefijo}{sello}.db"),
@@ -200,6 +207,16 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
 /// Dónde `cambiar_base` prepara la copia, al lado de la base.
 pub(crate) fn copia_de(bd: &Path) -> PathBuf {
     bd.with_extension("restaurando")
+}
+
+/// La de `base`. La carpeta de una externa es ajena, y su `x.restaurando` puede ser de otra organización: se reconoce porque sus
+/// respaldos no están al lado, y su copia lleva el id.
+pub(crate) fn copia_de_base(base: &Base) -> PathBuf {
+    if base.bd.parent() == base.respaldos.parent() {
+        copia_de(&base.bd)
+    } else {
+        con_sufijo(&base.bd, &format!(".{}.restaurando", base.id))
+    }
 }
 
 /// Borra los temporales que dejó un respaldo, un `.boldo` o una restauración interrumpidos. Se llama en `setup`, ya pasado
@@ -299,6 +316,27 @@ fn revision(ruta: &Path) -> Option<i64> {
     .ok()
 }
 
+/// `AAAAMMDD-HHMM` como `AAAA-MM-DDTHH:MM`.
+fn fecha_de_sello(s: &str) -> String {
+    format!(
+        "{}-{}-{}T{}:{}",
+        &s[..4],
+        &s[4..6],
+        &s[6..8],
+        &s[9..11],
+        &s[11..]
+    )
+}
+
+/// La fecha de una copia de `organizaciones-eliminadas/`: `<nombre>_AAAAMMDD-HHMM[-N].db`, con la misma cola que un respaldo.
+/// `None` si no tiene esa forma: no es una de ellas.
+pub(crate) fn fecha_de_eliminada(nombre: &str) -> Option<String> {
+    let (_, cola) = nombre.rsplit_once('_')?;
+    entrada(&format!("{PREFIJO}{cola}"))
+        .filter(|e| !e.seguridad)
+        .map(|e| fecha_de_sello(&e.sello))
+}
+
 /// Respaldos de la carpeta, del más nuevo al más viejo. Un archivo ilegible se lista sin revisión;
 /// uno que ni siquiera se puede consultar (desapareció, sin permisos) se omite.
 pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
@@ -308,16 +346,8 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
             let ruta = dir.join(&e.nombre);
             let bytes = fs::metadata(&ruta).ok()?.len();
             let revision = revision(&ruta);
-            let s = &e.sello;
             Some(Respaldo {
-                fecha: format!(
-                    "{}-{}-{}T{}:{}",
-                    &s[..4],
-                    &s[4..6],
-                    &s[6..8],
-                    &s[9..11],
-                    &s[11..]
-                ),
+                fecha: fecha_de_sello(&e.sello),
                 bytes,
                 legible: revision.is_some(),
                 revision,
@@ -337,17 +367,38 @@ pub(crate) fn con_sufijo(ruta: &Path, sufijo: &str) -> PathBuf {
     s.into()
 }
 
-/// Borra el archivo y sus -wal/-shm/-journal, si existen.
+/// Borra el archivo y sus -wal/-shm/-journal, si existen. Primero el archivo: si algo lo retiene, lo que sigue en su `-wal` no se
+/// pierde.
 pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
     for p in [
+        ruta.into(),
         con_sufijo(ruta, "-wal"),
         con_sufijo(ruta, "-shm"),
         con_sufijo(ruta, "-journal"),
-        ruta.into(),
     ] {
         match fs::remove_file(p) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
             _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Los respaldos de una organización que se elimina. Solo los nombres propios: lo demás de la carpeta es del usuario.
+pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
+    limpiar_parciales(dir, None);
+    let archivos = match fs::read_dir(dir) {
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(()),
+        otro => otro?,
+    };
+    for f in archivos {
+        let f = f?;
+        let propio = f
+            .file_name()
+            .to_str()
+            .is_some_and(|n| entrada(n).is_some() || n.starts_with(PREFIJO_MIGRACION));
+        if propio && f.file_type()?.is_file() {
+            fs::remove_file(f.path())?;
         }
     }
     Ok(())
@@ -407,7 +458,7 @@ pub fn reemplazar_antes_respaldando(
 
 /// Lo escrito en la copia vive en su WAL hasta cerrarla. Si SQLite no pudo volcarlo, cierra sin avisar, y al renombrar se
 /// perdería: la base quedaría sin migrar y con el `db_id` del archivo que llegó.
-fn cerrar_copia(c: Connection, copia: &Path) -> Result<(), Fallo> {
+pub(crate) fn cerrar_copia(c: Connection, copia: &Path) -> Result<(), Fallo> {
     c.close().map_err(|(_, e)| e)?;
     if con_sufijo(copia, "-wal").exists() {
         return Err(Fallo::de("fallo", copia.display()));
@@ -424,7 +475,7 @@ fn cambiar_base(
 ) -> Result<(), Fallo> {
     let (bd, dir) = (&base.bd, &base.respaldos);
     // Se prepara (y migra) una copia aparte: la base actual no se toca hasta el reemplazo final.
-    let copia = copia_de(bd);
+    let copia = copia_de_base(base);
     let mut reemplazar = || -> Result<(), Fallo> {
         borrar_bd(&copia)?;
         fs::copy(origen, &copia)?;
@@ -593,6 +644,18 @@ mod tests {
             "boldo-20260101-0900.db"
         );
         assert_eq!(listar(&respaldos).unwrap()[0].revision, Some(0));
+    }
+
+    /// Lo que retiene un antivirus: una carpeta con ese nombre tampoco se puede quitar con `remove_file`, en ningún sistema.
+    #[test]
+    fn borrar_bd_no_quita_el_wal_si_no_puede_quitar_el_archivo() {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join("x.db");
+        fs::create_dir(&bd).unwrap();
+        let wal = con_sufijo(&bd, "-wal");
+        fs::write(&wal, "filas sin aplicar").unwrap();
+        assert!(borrar_bd(&bd).is_err());
+        assert_eq!(fs::read(&wal).unwrap(), b"filas sin aplicar");
     }
 
     #[test]
@@ -875,6 +938,37 @@ mod tests {
             archivos(&carpeta)
         );
         assert!(!dir.path().join("boldo.db").exists());
+    }
+
+    #[test]
+    fn restaurar_una_externa_no_toca_lo_ajeno_de_su_carpeta() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut b, _, mut conn) = base_en(dir.path(), "x.db");
+        escribir(&mut conn, 1);
+        let app = tempfile::tempdir().unwrap();
+        b.respaldos = app.path().join("respaldos");
+        fs::create_dir_all(&b.respaldos).unwrap();
+        let nombre = respaldar(&conn, &b.respaldos, "20260101-0900").unwrap();
+        escribir(&mut conn, 3);
+        let ajeno = dir.path().join("x.restaurando");
+        fs::write(&ajeno, "de otra organización").unwrap();
+        // el nombre no se puede confundir con un archivo del usuario, ni con la propia base
+        let copia = copia_de_base(&b);
+        assert_ne!(copia, ajeno);
+        assert!(copia.to_string_lossy().contains(&b.id));
+
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        assert_eq!(revision(&db::abrir(&b.bd).unwrap()), 1);
+        assert_eq!(fs::read_to_string(&ajeno).unwrap(), "de otra organización");
+        assert!(!copia.exists());
+    }
+
+    #[test]
+    fn la_copia_interna_conserva_su_nombre() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, _, _conn) = base_en(dir.path(), "organizacion.db");
+        assert_eq!(copia_de_base(&b), copia_de(&b.bd));
     }
 
     #[test]

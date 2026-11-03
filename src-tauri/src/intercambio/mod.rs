@@ -8,8 +8,12 @@ pub mod revision;
 pub mod validar;
 
 use crate::db;
-use crate::organizaciones::Base;
+use crate::organizaciones::{
+    Base, CARPETA, Entrada, cargar_lista, color_libre, copiar_a_carpeta, escribir_lista,
+    lista_protegida, ruta_interna,
+};
 use crate::respaldos::{self, Fallo};
+use crate::rutas::Rutas;
 use fusion::Informe;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 use serde::Serialize;
@@ -315,6 +319,15 @@ fn fecha_y_revision(conn: &Connection) -> Result<(String, String), Fallo> {
     )?)
 }
 
+/// Para usar un nombre en un archivo: sin lo que un sistema de archivos no acepta. Puede quedar vacío.
+pub fn nombre_limpio(nombre: &str) -> String {
+    nombre
+        .trim()
+        .chars()
+        .map(|x| if x.is_alphanumeric() { x } else { '_' })
+        .collect()
+}
+
 /// `Organizacion_AAAA-MM-DD_rN.boldo`, sin lo que un sistema de archivos no acepta.
 pub fn nombre_sugerido(copia: &Path) -> Result<String, Fallo> {
     let c = validar::solo_lectura(copia)?;
@@ -326,12 +339,7 @@ pub fn nombre_sugerido(copia: &Path) -> Result<String, Fallo> {
         )
         .unwrap_or(None);
     let (fecha, revision) = fecha_y_revision(&c)?;
-    let limpio: String = organizacion
-        .unwrap_or_default()
-        .trim()
-        .chars()
-        .map(|x| if x.is_alphanumeric() { x } else { '_' })
-        .collect();
+    let limpio = nombre_limpio(&organizacion.unwrap_or_default());
     let base = if limpio.is_empty() {
         "BoldoAtlas"
     } else {
@@ -433,14 +441,51 @@ pub fn reemplazar(
     if i.meta.parcial {
         return Err(Fallo::de("solo_completo", ""));
     }
+    limpiar_meta(i, None)?;
+    respaldos::reemplazar_antes_respaldando(conexion, base, i.temporal.ruta(), migraciones)
+}
+
+/// De `meta` deja solo lo conocido, más `origen` si viene. Sobre el temporal: lo demás es de la exportación, o de quien armó el
+/// archivo.
+fn limpiar_meta(i: &Importacion, origen: Option<&str>) -> Result<(), Fallo> {
     let c = validar::abrir_no_confiable(i.temporal.ruta(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
     let lista = vec!["?"; META_CONOCIDAS.len()].join(", ");
     c.execute(
         &format!("DELETE FROM meta WHERE clave NOT IN ({lista})"),
         rusqlite::params_from_iter(META_CONOCIDAS),
     )?;
+    if let Some(origen) = origen {
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('origen_db_id', ?1)",
+            [origen],
+        )?;
+    }
     c.close().map_err(|(_, e)| e)?;
-    respaldos::reemplazar_antes_respaldando(conexion, base, i.temporal.ruta(), migraciones)
+    Ok(())
+}
+
+/// El archivo como una organización nueva, en su carpeta y con un id recién generado: importarlo dos veces da dos. También un
+/// archivo parcial: no borra nada que haya. No cambia de base: la abre `abrir_organizacion`. Quien llama tiene la lista tomada.
+pub fn como_nueva(i: &Importacion, r: &Rutas) -> Result<String, Fallo> {
+    let mut lista = cargar_lista(r);
+    if lista.no_escribir {
+        return Err(lista_protegida());
+    }
+    limpiar_meta(i, i.meta.origen.as_deref())?;
+    let id = copiar_a_carpeta(r, i.temporal.ruta(), None, db::MIGRACIONES)?;
+    let color = color_libre(&lista).into();
+    lista.organizaciones.push(Entrada {
+        nombre: i.meta.organizacion.clone(),
+        color,
+        ruta: ruta_interna(&id),
+        ..Entrada::principal(&id)
+    });
+    if let Err(f) = escribir_lista(r, &lista) {
+        // el id recién se generó: la carpeta es de esta llamada
+        let _ = fs::remove_dir_all(r.datos.join(CARPETA).join(&id));
+        return Err(f);
+    }
+    Ok(id)
 }
 
 #[cfg(test)]
@@ -832,22 +877,28 @@ mod tests {
         assert_eq!(v, MIGRACIONES.len() as i64 + 1);
     }
 
-    #[test]
-    fn un_archivo_del_esquema_1_entra_con_las_tablas_de_zonas_vacias() {
-        let (d, origen) = base_con_datos();
-        let (archivo, codigo) = exportar(&origen, d.path(), None);
-        // el archivo de una versión anterior: se reescribe descifrado, sin lo que agregó la migración 2
-        let (dd, ..) = destino();
-        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
-        let antigua = dd.path().join("antigua.db");
+    /// El archivo de una versión anterior: se reescribe descifrado, sin lo que agregó la migración 2. `trabajo` es una carpeta para
+    /// el temporal; `d`, donde queda el archivo.
+    fn archivo_del_esquema_1(origen: &Connection, d: &Path, trabajo: &Path) -> (PathBuf, String) {
+        let (archivo, codigo) = exportar(origen, d, None);
+        let i = abrir(&archivo, trabajo, &codigo, MIGRACIONES, SIGUE).unwrap();
+        let antigua = d.join("antigua.db");
         fs::copy(i.temporal.ruta(), &antigua).unwrap();
         drop(i);
         let c = Connection::open(&antigua).unwrap();
         c.execute_batch("DROP TABLE zona_unidades; DROP TABLE zonas; PRAGMA user_version = 1;")
             .unwrap();
         c.close().unwrap();
-        let archivo = d.path().join("antigua.boldo");
+        let archivo = d.join("antigua.boldo");
         let codigo = guardar(&antigua, &archivo, SIGUE).unwrap();
+        (archivo, codigo)
+    }
+
+    #[test]
+    fn un_archivo_del_esquema_1_entra_con_las_tablas_de_zonas_vacias() {
+        let (d, origen) = base_con_datos();
+        let (dd, ..) = destino();
+        let (archivo, codigo) = archivo_del_esquema_1(&origen, d.path(), dd.path());
 
         let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
         let c = validar::solo_lectura(i.temporal.ruta()).unwrap();
@@ -859,6 +910,445 @@ mod tests {
         assert_eq!(n("SELECT count(*) FROM zonas"), 0);
         assert_eq!(n("SELECT count(*) FROM zona_unidades"), 0);
         assert!(n("SELECT count(*) FROM unidades") > 0);
+    }
+
+    /// Un `.boldo` como organización nueva. Lo que importa es que no quede nada a medias.
+    mod como_nueva {
+        use super::*;
+        use crate::comandos::Estado;
+        use crate::organizaciones::prueba::{rutas, sin_rastros};
+        use crate::organizaciones::{PALETA, cargar_lista, es_id_valido, esta_vacia};
+        use crate::respaldos::con_sufijo;
+        use crate::rutas::Rutas;
+        use std::time::Duration;
+
+        fn bd_de(r: &Rutas, id: &str) -> PathBuf {
+            r.datos
+                .join("organizaciones")
+                .join(id)
+                .join("organizacion.db")
+        }
+
+        fn meta_de(bd: &Path, clave: &str) -> Option<String> {
+            validar::solo_lectura_cerrada(bd)
+                .unwrap()
+                .query_row("SELECT valor FROM meta WHERE clave = ?1", [clave], |f| {
+                    f.get(0)
+                })
+                .ok()
+        }
+
+        fn ids(r: &Rutas) -> Vec<String> {
+            cargar_lista(r)
+                .organizaciones
+                .into_iter()
+                .map(|o| o.id)
+                .collect()
+        }
+
+        fn arrancar(r: &Rutas) -> Estado {
+            let e = Estado::de_prueba(None, None, Some(r.clone()));
+            e.abrir_inicial_con(Duration::ZERO, MIGRACIONES);
+            e
+        }
+
+        /// Solo lo que trae `abrir`: lo que deje la copia es un temporal de más.
+        fn solo_la_importacion(r: &Rutas) {
+            let quedan = temporales(&r.datos);
+            assert_eq!(quedan.len(), 1, "{quedan:?}");
+            assert!(quedan[0].starts_with("boldo-importando-"), "{quedan:?}");
+        }
+
+        #[test]
+        fn como_nueva_genera_db_id_y_conserva_el_origen() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let i = importacion(d.path(), &origen, &r.datos);
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let bd = bd_de(&r, &id);
+            assert!(es_id_valido(&id));
+            assert_ne!(id, id_de(&origen));
+            assert_eq!(meta_de(&bd, "db_id").as_deref(), Some(id.as_str()));
+            assert_eq!(meta_de(&bd, "origen_db_id"), Some(id_de(&origen)));
+            assert_eq!(meta_de(&bd, "alcance"), None);
+            assert_eq!(meta_de(&bd, "raices"), None);
+            assert_eq!(meta_de(&bd, "org_nombre").as_deref(), Some("Mi Org / SA"));
+
+            let l = cargar_lista(&r).organizaciones;
+            assert_eq!(l.len(), 1);
+            assert_eq!(l[0].id, id);
+            assert_eq!(l[0].ruta, format!("organizaciones/{id}/organizacion.db"));
+            assert!(!l[0].externa && !l[0].ejemplo);
+            assert_eq!(l[0].nombre, "Mi Org / SA");
+            assert_eq!(l[0].color, PALETA[0]);
+            // aún no se abre: la hora la pone `abrir_organizacion`
+            assert_eq!(l[0].abierta, "");
+
+            sin_rastros(&bd);
+            assert!(!con_sufijo(&bd, ".bloqueo").exists());
+            solo_la_importacion(&r);
+        }
+
+        #[test]
+        fn importar_dos_veces_da_dos_organizaciones() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (archivo, codigo) = exportar(&origen, d.path(), None);
+
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+            let primera = como_nueva(&i, &r).unwrap();
+            let segunda = como_nueva(&i, &r).unwrap();
+            drop(i);
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+            let tercera = como_nueva(&i, &r).unwrap();
+
+            assert_ne!(primera, segunda);
+            assert_ne!(segunda, tercera);
+            assert_ne!(primera, tercera);
+            assert_eq!(ids(&r), [primera.clone(), segunda.clone(), tercera.clone()]);
+            let l = cargar_lista(&r).organizaciones;
+            assert_ne!(l[0].color, l[1].color);
+            for o in [&primera, &segunda, &tercera] {
+                let bd = bd_de(&r, o);
+                assert_eq!(meta_de(&bd, "db_id").as_ref(), Some(o));
+                assert_eq!(meta_de(&bd, "origen_db_id"), Some(id_de(&origen)));
+            }
+        }
+
+        #[test]
+        fn archivo_parcial_se_puede_importar_como_nueva() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (archivo, codigo) = exportar(&origen, d.path(), Some(&["rama".into()]));
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+            assert!(i.meta.parcial);
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let bd = bd_de(&r, &id);
+            assert_eq!(meta_de(&bd, "alcance"), None);
+            assert_eq!(meta_de(&bd, "raices"), None);
+            assert_eq!(meta_de(&bd, "origen_db_id"), Some(id_de(&origen)));
+            let e = arrancar(&r);
+            assert_eq!(e.base_abierta().unwrap().id, id);
+            let unidades = e.con_conexion(&id, |c| Ok::<_, String>(cuenta(c, "unidades")));
+            assert_eq!(unidades, Ok(2));
+        }
+
+        #[test]
+        fn archivo_de_esquema_anterior_queda_al_dia() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (archivo, codigo) = archivo_del_esquema_1(&origen, d.path(), &r.datos);
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let c = validar::solo_lectura_cerrada(&bd_de(&r, &id)).unwrap();
+            let v: i64 = c
+                .pragma_query_value(None, "user_version", |f| f.get(0))
+                .unwrap();
+            assert_eq!(v, MIGRACIONES.len() as i64);
+            assert_eq!(cuenta(&c, "zonas"), 0);
+            assert_eq!(cuenta(&c, "unidades"), cuenta(&origen, "unidades"));
+        }
+
+        #[test]
+        fn no_toca_la_base_abierta_ni_usa_boldo_db_vacio() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let e = arrancar(&r);
+            let base = e.base_abierta().unwrap();
+            assert_eq!(base.bd, r.bd);
+            let i = importacion(d.path(), &origen, &r.datos);
+            let antes = fs::read(&r.bd).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            assert_ne!(id, base.id);
+            assert_eq!(e.base_abierta(), Some(base.clone()));
+            assert_eq!(fs::read(&r.bd).unwrap(), antes);
+            let vacia = e.con_conexion(&base.id, |c| esta_vacia(c).map_err(|f| f.to_string()));
+            assert_eq!(vacia, Ok(true));
+            assert_eq!(ids(&r), std::slice::from_ref(&id));
+            assert!(bd_de(&r, &id).is_file());
+        }
+
+        #[test]
+        fn sin_espacio_o_falla_no_deja_carpeta_ni_entrada() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let i = importacion(d.path(), &origen, &r.datos);
+            let json = r.datos.join("organizaciones.json");
+            let carpetas = r.datos.join("organizaciones");
+            let sin_nada = || {
+                assert_eq!(fs::read_dir(&carpetas).into_iter().flatten().count(), 0);
+                solo_la_importacion(&r);
+                assert!(!json.exists());
+            };
+
+            // no se puede leer: no se llega a tocar nada
+            fs::create_dir(&json).unwrap();
+            assert_eq!(como_nueva(&i, &r).unwrap_err().codigo, "lista_protegida");
+            fs::remove_dir(&json).unwrap();
+            sin_nada();
+
+            // no se puede escribir, ya con la copia en su carpeta
+            let tmp = con_sufijo(&json, ".tmp");
+            fs::create_dir(&tmp).unwrap();
+            assert!(como_nueva(&i, &r).is_err());
+            fs::remove_dir(&tmp).unwrap();
+            sin_nada();
+
+            // no se puede crear su carpeta
+            fs::remove_dir(&carpetas).unwrap();
+            fs::write(&carpetas, "").unwrap();
+            assert!(como_nueva(&i, &r).is_err());
+            assert_eq!(fs::read(&carpetas).unwrap(), b"");
+            fs::remove_file(&carpetas).unwrap();
+            sin_nada();
+
+            // la importación sigue abierta: se puede reintentar
+            let id = como_nueva(&i, &r).unwrap();
+            assert_eq!(ids(&r), std::slice::from_ref(&id));
+            assert_eq!(fs::read_dir(&carpetas).unwrap().count(), 1);
+        }
+
+        #[test]
+        fn una_lista_protegida_no_toca_nada() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (archivo, codigo) = exportar(&origen, d.path(), Some(&["rama".into()]));
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+            let json = r.datos.join("organizaciones.json");
+            fs::write(&json, r#"{"version":2}"#).unwrap();
+
+            assert_eq!(como_nueva(&i, &r).unwrap_err().codigo, "lista_protegida");
+
+            assert_eq!(fs::read_to_string(&json).unwrap(), r#"{"version":2}"#);
+            assert!(!r.datos.join("organizaciones").exists());
+            solo_la_importacion(&r);
+            // tampoco la importación
+            let alcance = i.solo_lectura().unwrap().query_row(
+                "SELECT valor FROM meta WHERE clave = 'alcance'",
+                [],
+                |f| f.get::<_, String>(0),
+            );
+            assert_eq!(alcance.as_deref(), Ok("parcial"));
+        }
+
+        #[test]
+        fn si_falla_la_importacion_sigue_sirviendo_para_agregar() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (archivo, codigo) = exportar(&origen, d.path(), Some(&["rama".into()]));
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+            let tmp = con_sufijo(&r.datos.join("organizaciones.json"), ".tmp");
+            fs::create_dir(&tmp).unwrap();
+            assert!(como_nueva(&i, &r).is_err());
+
+            let (_dd, _bd, respaldos, mut conn) = destino();
+            agregar(&mut conn, &respaldos, &i, &HashMap::new(), "1").unwrap();
+            assert_eq!(cuenta(&conn, "unidades"), 2);
+        }
+
+        /// `reemplazar` ya le quitó `origen_db_id` al temporal cuando falla, y la importación sigue abierta.
+        #[test]
+        fn un_reemplazar_fallido_no_le_quita_el_origen() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (_dd, bd, respaldos, conn) = destino();
+            let i = importacion(d.path(), &origen, &r.datos);
+            let mut slot = Some(conn);
+            let rota = [MIGRACIONES, &["ESTO NO ES SQL;"]].concat();
+            let f = reemplazar_con(&mut slot, &bd, &respaldos, &i, &rota).unwrap_err();
+            assert_eq!(f.codigo, "fallo");
+            assert_eq!(meta_de(i.temporal.ruta(), "origen_db_id"), None);
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let nueva = bd_de(&r, &id);
+            assert_eq!(meta_de(&nueva, "origen_db_id"), Some(id_de(&origen)));
+            assert_eq!(meta_de(&nueva, "db_id").as_ref(), Some(&id));
+        }
+
+        /// Quien ya no está en la rama viaja solo con nombre y correo, por su historial, y eso llega a la organización nueva.
+        #[test]
+        fn un_archivo_parcial_conserva_la_historia() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let raices = ["rama".to_string()];
+            let copia = alcance::copiar(&origen, d.path()).unwrap();
+            let (t, resumen) = alcance::preparar(copia, d.path(), Some(&raices)).unwrap();
+            assert_eq!(resumen.cortes.historial, 1);
+            let archivo = d.path().join("rama.boldo");
+            let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let c = validar::solo_lectura_cerrada(&bd_de(&r, &id)).unwrap();
+            let persona: (String, String) = c
+                .query_row(
+                    "SELECT nombre, correo FROM trabajadores WHERE id = 'yanoesta'",
+                    [],
+                    |f| Ok((f.get(0)?, f.get(1)?)),
+                )
+                .unwrap();
+            assert_eq!(persona, ("PersonaYaNoEsta".into(), "yanoesta@x.cl".into()));
+            let pasada: (String, String, String, String, String) = c
+                .query_row(
+                    "SELECT trabajador_id, puesto_id, desde, hasta, motivo
+                     FROM asignaciones WHERE id = 'as-yanoesta'",
+                    [],
+                    |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?)),
+                )
+                .unwrap();
+            assert_eq!(
+                pasada,
+                (
+                    "yanoesta".into(),
+                    "p-hija".into(),
+                    "2015-01-01".into(),
+                    "2020-01-01".into(),
+                    "motivo-yanoesta".into()
+                )
+            );
+            // lo que estaba fuera de la rama, no
+            let fuera: i64 = c
+                .query_row(
+                    "SELECT count(*) FROM trabajadores WHERE id = 'fuera'",
+                    [],
+                    |f| f.get(0),
+                )
+                .unwrap();
+            assert_eq!(fuera, 0);
+        }
+
+        #[test]
+        fn la_nueva_se_puede_abrir_y_exportar() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let e = arrancar(&r);
+            let i = importacion(d.path(), &origen, &r.datos);
+            let id = como_nueva(&i, &r).unwrap();
+
+            let v = e.cambiar_a(&id, &|| false, MIGRACIONES).unwrap();
+            assert!(v.activa);
+            assert_eq!(v.nombre, "Mi Org / SA");
+            assert_eq!(e.base_abierta().unwrap().bd, bd_de(&r, &id));
+
+            let copia = e
+                .con_conexion(&id, |c| alcance::copiar(c, &r.datos))
+                .unwrap();
+            let (t, _) = alcance::preparar(copia, &r.datos, None).unwrap();
+            let archivo = d.path().join("de-nuevo.boldo");
+            let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+            let otra = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+            assert!(!otra.meta.parcial);
+            let c = otra.solo_lectura().unwrap();
+            assert_eq!(cuenta(&c, "unidades"), cuenta(&origen, "unidades"));
+            // ahora el origen es ella
+            let marca: String = c
+                .query_row(
+                    "SELECT valor FROM meta WHERE clave = 'origen_db_id'",
+                    [],
+                    |f| f.get(0),
+                )
+                .unwrap();
+            assert_eq!(marca, id);
+        }
+
+        #[test]
+        fn de_meta_queda_lo_conocido_y_el_origen() {
+            let (_d, archivo, codigo) =
+                hostil("INSERT INTO meta (clave, valor) VALUES ('ajena', 'x');");
+            let (_exe, r) = rutas();
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let claves: Vec<String> = validar::solo_lectura_cerrada(&bd_de(&r, &id))
+                .unwrap()
+                .prepare("SELECT clave FROM meta")
+                .unwrap()
+                .query_map([], |f| f.get(0))
+                .unwrap()
+                .map(Result::unwrap)
+                .collect();
+            for k in &claves {
+                assert!(
+                    k == "origen_db_id" || META_CONOCIDAS.contains(&k.as_str()),
+                    "{k}"
+                );
+            }
+            assert!(claves.iter().any(|k| k == "origen_db_id"));
+        }
+
+        /// El id da nombre a la carpeta: el del archivo lo escribe quien lo envía.
+        #[test]
+        fn el_id_del_archivo_no_decide_la_carpeta() {
+            let (_d, archivo, codigo) =
+                hostil(r"UPDATE meta SET valor = '..\..\x' WHERE clave = 'db_id';");
+            let (_exe, r) = rutas();
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            assert!(es_id_valido(&id));
+            assert_eq!(meta_de(&bd_de(&r, &id), "db_id").as_ref(), Some(&id));
+        }
+
+        /// `abrir` ya revisó el temporal. Lo que llega a la carpeta se revisa de nuevo: pasa a ser una base de la app.
+        #[test]
+        fn un_temporal_alterado_no_llega_a_su_carpeta() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let i = importacion(d.path(), &origen, &r.datos);
+            Connection::open(i.temporal.ruta())
+                .unwrap()
+                .execute_batch(
+                    "CREATE TRIGGER t AFTER INSERT ON meta BEGIN DELETE FROM unidades; END;",
+                )
+                .unwrap();
+
+            let f = como_nueva(&i, &r).unwrap_err();
+
+            assert_eq!(f.codigo, "contenido_invalido");
+            assert!(ids(&r).is_empty());
+            assert_eq!(
+                fs::read_dir(r.datos.join("organizaciones"))
+                    .into_iter()
+                    .flatten()
+                    .count(),
+                0
+            );
+            solo_la_importacion(&r);
+        }
+
+        /// Quien lo envía elige la cabecera: en WAL, escribir en el temporal deja archivos al lado mientras dura.
+        #[test]
+        fn un_archivo_en_wal_no_deja_nada_al_lado() {
+            let (d, origen) = base_con_datos();
+            let copia = alcance::copiar(&origen, d.path()).unwrap();
+            let (t, _) = alcance::preparar(copia, d.path(), None).unwrap();
+            let c = Connection::open(t.ruta()).unwrap();
+            c.query_row("PRAGMA journal_mode = WAL", [], |_| Ok(()))
+                .unwrap();
+            c.close().unwrap();
+            let archivo = d.path().join("en-wal.boldo");
+            let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+            let (_exe, r) = rutas();
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            sin_rastros(i.temporal.ruta());
+            sin_rastros(&bd_de(&r, &id));
+            assert_eq!(meta_de(&bd_de(&r, &id), "db_id").as_ref(), Some(&id));
+        }
     }
 
     #[test]

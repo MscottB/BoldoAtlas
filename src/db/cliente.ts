@@ -13,6 +13,12 @@ export interface InfoApp {
   avisoInicio?: { codigo: string; nombre: string } | null;
 }
 
+export interface ArchivoAgregado {
+  id: string | null;
+  pide: "red" | "otro_id" | "tope" | null;
+  avisos: ("copia" | "fuera_de_portable")[];
+}
+
 export interface Organizacion {
   id: string;
   nombre: string;
@@ -26,6 +32,13 @@ export interface Organizacion {
   bytesBase: number;
   bytesRespaldos: number;
   ejemplo: boolean;
+}
+
+export interface OrganizacionEliminada {
+  nombre: string;
+  organizacion: string;
+  fecha: string;
+  bytes: number;
 }
 
 export interface Sentencia {
@@ -86,6 +99,52 @@ export function abrirOrganizacion(id: string): Promise<Organizacion> {
 /** Crea una organización y devuelve su id. No cambia de base: la abre `abrirOrganizacion`. */
 export function crearOrganizacionNueva(sentencias: Sentencia[], ejemplo: boolean): Promise<string> {
   return invoke<string>("crear_organizacion", { sentencias, versionApp: __APP_VERSION__, ejemplo });
+}
+
+/**
+ * Pide un `.db` y lo deja en la lista, sin abrirlo: lo abre `abrirOrganizacion`. `buscando`: la entrada que se reubica.
+ * `null` si no se eligió nada. Con `pide`, responder con `confirmarArchivoOrganizacion`.
+ */
+export function agregarArchivoOrganizacion(buscando?: string): Promise<ArchivoAgregado | null> {
+  return invoke<ArchivoAgregado | null>("agregar_archivo_organizacion", {
+    buscando: buscando ?? null,
+  });
+}
+
+/** Responde lo que preguntó el archivo. `null` si no se sigue; con otro `pide`, hay otra pregunta. */
+export function confirmarArchivoOrganizacion(si: boolean): Promise<ArchivoAgregado | null> {
+  return invoke<ArchivoAgregado | null>("confirmar_archivo_organizacion", { si });
+}
+
+/** Solo la saca de la lista: no borra nada. La abierta da el error `abierta`. */
+export function quitarOrganizacion(id: string): Promise<void> {
+  return invoke<void>("quitar_organizacion", { id });
+}
+
+/** Borra del disco. Si era la abierta, devuelve la que quedó abierta en su lugar. */
+export function eliminarOrganizacion(
+  id: string,
+  guardarCopia: boolean,
+  borrarArchivo: boolean,
+): Promise<Organizacion | null> {
+  return invoke<Organizacion | null>("eliminar_organizacion", { id, guardarCopia, borrarArchivo });
+}
+
+export function colorOrganizacion(id: string, color: string): Promise<void> {
+  return invoke<void>("color_organizacion", { id, color });
+}
+
+export function listarEliminadas(): Promise<OrganizacionEliminada[]> {
+  return invoke<OrganizacionEliminada[]>("listar_eliminadas");
+}
+
+export function borrarEliminada(nombre: string): Promise<void> {
+  return invoke<void>("borrar_eliminada", { nombre });
+}
+
+/** Una organización nueva con lo que tiene la copia. Devuelve su id: la abre `abrirOrganizacion`. */
+export function restaurarEliminada(nombre: string): Promise<string> {
+  return invoke<string>("restaurar_eliminada", { nombre });
 }
 
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -278,6 +337,11 @@ export function importarAgregar(
 export function importarReemplazar(trabajo: string): Promise<void> {
   vaciarRecientes();
   return conBase("importar_reemplazar", { trabajo });
+}
+
+/** El archivo como una organización nueva. Devuelve su id, y no cambia de base: la abre `abrirOrganizacion`. */
+export function importarComoNueva(trabajo: string): Promise<string> {
+  return invoke<string>("importar_como_nueva", { trabajo });
 }
 
 export type TipoCaso =

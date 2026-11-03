@@ -129,7 +129,8 @@ const MAX_LARGO: i64 = 256 * 1024;
 /// Fotos y logo: la app guarda hasta 1 MB, en base64.
 const MAX_IMAGEN: i64 = 2 * 1024 * 1024;
 const MAX_FILAS_VIVAS: i64 = 500_000;
-const MAX_BYTES_VIVOS: i64 = 512 * 1024 * 1024;
+pub const MAX_BYTES_VIVOS: i64 = 512 * 1024 * 1024;
+const PESADO_TOTAL: &str = "muy_pesado_total";
 
 fn tope_de(columna: &str) -> i64 {
     match columna {
@@ -233,10 +234,10 @@ fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), F
         filas += c.query_row(&sql, [], |f| f.get::<_, i64>(0))?;
     }
     if filas > max_filas {
-        return Err(Fallo::de("muy_pesado_total", "filas"));
+        return Err(Fallo::de(PESADO_TOTAL, "filas"));
     }
     if bytes > max_bytes {
-        return Err(Fallo::de("muy_pesado_total", "bytes"));
+        return Err(Fallo::de(PESADO_TOTAL, "bytes"));
     }
     Ok(())
 }
@@ -325,6 +326,8 @@ pub struct MetaArchivo {
     pub parcial: bool,
     pub ramas: Vec<RamaExportada>,
     pub organizacion: String,
+    /// De qué base salió. Aquí, y no solo en el temporal: un `reemplazar` que falla ya se lo quitó.
+    pub origen: Option<String>,
 }
 
 fn meta(c: &Connection, clave: &str) -> rusqlite::Result<Option<String>> {
@@ -369,12 +372,24 @@ pub fn leer_meta(c: &Connection) -> Result<MetaArchivo, Fallo> {
         parcial,
         ramas,
         organizacion: m("org_nombre")?.unwrap_or_default(),
+        origen: m("origen_db_id")?,
     })
 }
 
-/// Toda la revisión, de solo lectura. Devuelve la versión de esquema del archivo.
-pub fn revisar(ruta: &Path, migraciones: &[&str]) -> Result<usize, Fallo> {
-    let c = solo_lectura(ruta)?;
+/// Lo que se sabe de un archivo revisado que no se rechaza.
+#[derive(Debug)]
+pub struct Revisada {
+    pub version: usize,
+    pub excede_bytes: bool,
+}
+
+/// Toda la revisión, de solo lectura, sin dejarle nada al lado. Pasarse del total de bytes no rechaza: lo decide quien pregunta.
+pub fn revisar_organizacion(
+    ruta: &Path,
+    migraciones: &[&str],
+    max_bytes: i64,
+) -> Result<Revisada, Fallo> {
+    let c = solo_lectura_cerrada(ruta)?;
     let version: i64 = c
         .pragma_query_value(None, "user_version", |f| f.get(0))
         .map_err(invalido)?;
@@ -406,9 +421,28 @@ pub fn revisar(ruta: &Path, migraciones: &[&str]) -> Result<usize, Fallo> {
     if version >= 2 && hay_color_de_zona_invalido(&c).map_err(invalido)? {
         return Err(invalido("datos"));
     }
-    revisar_topes(&c, MAX_FILAS_VIVAS, MAX_BYTES_VIVOS)?;
-    leer_meta(&c)?;
-    Ok(version)
+    let excede_bytes = match revisar_topes(&c, MAX_FILAS_VIVAS, max_bytes) {
+        Err(f) if f.codigo == PESADO_TOTAL && f.detalle == "bytes" => true,
+        otro => otro.map(|()| false)?,
+    };
+    Ok(Revisada {
+        version,
+        excede_bytes,
+    })
+}
+
+/// Toda la revisión de un `.boldo`, de solo lectura. Devuelve la versión de esquema del archivo.
+pub fn revisar(ruta: &Path, migraciones: &[&str]) -> Result<usize, Fallo> {
+    revisar_con_tope(ruta, migraciones, MAX_BYTES_VIVOS)
+}
+
+fn revisar_con_tope(ruta: &Path, migraciones: &[&str], max_bytes: i64) -> Result<usize, Fallo> {
+    let r = revisar_organizacion(ruta, migraciones, max_bytes)?;
+    if r.excede_bytes {
+        return Err(Fallo::de(PESADO_TOTAL, "bytes"));
+    }
+    leer_meta(&solo_lectura_cerrada(ruta)?)?;
+    Ok(r.version)
 }
 
 /// Lleva la copia temporal al esquema de esta app y la vuelve a revisar.
@@ -768,6 +802,66 @@ mod tests {
             revisar_topes(&c, 100, 10).unwrap_err().codigo,
             "muy_pesado_total"
         );
+    }
+
+    #[test]
+    fn un_boldo_sobre_el_tope_se_sigue_rechazando() {
+        let (_d, ruta) = copia();
+        let r = revisar_organizacion(&ruta, MIGRACIONES, 1).unwrap();
+        assert!(r.excede_bytes);
+        assert_eq!(r.version, MIGRACIONES.len());
+        let e = revisar_con_tope(&ruta, MIGRACIONES, 1).unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle.as_str()),
+            ("muy_pesado_total", "bytes")
+        );
+        assert!(
+            !revisar_organizacion(&ruta, MIGRACIONES, MAX_BYTES_VIVOS)
+                .unwrap()
+                .excede_bytes
+        );
+    }
+
+    #[test]
+    fn una_organizacion_no_necesita_lo_que_agrega_la_exportacion() {
+        let (_d, ruta) = copia();
+        alterar(&ruta, "DELETE FROM meta WHERE clave = 'alcance';");
+        assert_eq!(codigo(&ruta), "contenido_invalido");
+        revisar_organizacion(&ruta, MIGRACIONES, MAX_BYTES_VIVOS).unwrap();
+    }
+
+    #[test]
+    fn una_organizacion_se_revisa_igual_salvo_el_total() {
+        const T: &str = "'00000000-0000-7000-8000-000000000001'";
+        for (sql, esperado) in [
+            (
+                "CREATE VIEW v AS SELECT * FROM meta;".to_string(),
+                "contenido_invalido",
+            ),
+            ("PRAGMA user_version = 0;".into(), "contenido_invalido"),
+            ("PRAGMA user_version = 99;".into(), "esquema_nuevo"),
+            (
+                format!(
+                    "INSERT INTO unidades (id, tipo_id, nombre, parent_id, created_at, updated_at) VALUES ('a', {T}, 'A', 'nadie', 'x', 'x');"
+                ),
+                "contenido_invalido",
+            ),
+            (
+                format!(
+                    "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at) VALUES ('a', {T}, '{}', 'x', 'x');",
+                    "x".repeat(2048)
+                ),
+                "muy_pesado",
+            ),
+        ] {
+            let (_d, ruta) = copia();
+            alterar(&ruta, &sql);
+            let e = revisar_organizacion(&ruta, MIGRACIONES, MAX_BYTES_VIVOS)
+                .err()
+                .unwrap();
+            assert_eq!(e.codigo, esperado, "{sql:.60}");
+            sin_wal_ni_shm(&ruta);
+        }
     }
 
     #[test]
