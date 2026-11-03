@@ -1,9 +1,10 @@
 use crate::db::{self, Sentencia};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::organizaciones::{
-    Abierta, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, Entrada, OTRA_BASE, OrganizacionVista,
-    abrir_base, abrir_entrada, anotar_abierta, base_de, bloquear, cargar_lista, entrada_de_base,
-    escribir_lista, identidad_nueva, lista_protegida, vista_de, vistas,
+    Abierta, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, Entrada, Lista, OTRA_BASE, OrganizacionVista,
+    abrir_base, abrir_entrada, abrir_principal_libre, anotar_abierta, anotar_creada, base_de,
+    bloquear, cargar_lista, crear_en_carpeta, entrada_de_base, escribir_lista, identidad_nueva,
+    lista_protegida, principal_libre, vista_de, vistas,
 };
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
@@ -339,6 +340,51 @@ impl Estado {
         Ok(())
     }
 
+    /// Crea una organización y devuelve su id. No cambia de base: la abre `abrir_organizacion`. Usa `boldo.db` si está libre,
+    /// abierto o no; si no, una carpeta nueva. `sentencias` viene de la interfaz: `db::lote` deja pasar solo lo permitido.
+    pub fn crear(
+        &self,
+        sentencias: &[Sentencia],
+        version_app: &str,
+        ejemplo: bool,
+        migraciones: &[&str],
+    ) -> Result<String, Fallo> {
+        let r = self.rutas()?;
+        let mut conn = self
+            .conn
+            .lock()
+            .map_err(|_| "La conexión quedó en un estado inválido.".to_string())?;
+        let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+        let mut lista = cargar_lista(r);
+        if lista.no_escribir {
+            return Err(lista_protegida());
+        }
+        // shortcut: en `boldo.db`, si la lista no se puede escribir tras el lote, sus filas quedan ahí sin listar. No se pierde
+        // nada, porque estaba vacío y la creación informa el error; deshacerlo si llega a pasar
+        let llenar = |l: &mut Lista, e: Entrada, c: &mut Connection| -> Result<(), Fallo> {
+            db::lote(c, sentencias, version_app)?;
+            anotar_creada(l, e, c, ejemplo);
+            escribir_lista(r, l)
+        };
+        match self.base_abierta().filter(|b| b.bd == r.bd) {
+            Some(b) => {
+                if let Some(c) = conn.as_mut()
+                    && principal_libre(&lista, &b.id, c)
+                {
+                    llenar(&mut lista, Entrada::principal(&b.id), c)?;
+                    return Ok(b.id);
+                }
+            }
+            None => {
+                if let Some(mut a) = abrir_principal_libre(r, &lista, migraciones) {
+                    llenar(&mut lista, Entrada::principal(&a.id), &mut a.conn)?;
+                    return Ok(a.id);
+                }
+            }
+        }
+        crear_en_carpeta(r, &mut lista, migraciones, llenar)
+    }
+
     pub fn base_abierta(&self) -> Option<Base> {
         self.base.lock().unwrap_or_else(|p| p.into_inner()).clone()
     }
@@ -491,6 +537,22 @@ pub async fn abrir_organizacion(app: AppHandle, id: String) -> Result<Organizaci
         let sesiones = app.state::<Sesiones>();
         app.state::<Estado>()
             .cambiar_a(&id, &|| sesiones.ocupada(), db::MIGRACIONES)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// En un hilo aparte: crea y migra un archivo. Sin `base_id`: no es un dato de la base abierta.
+#[tauri::command]
+pub async fn crear_organizacion(
+    app: AppHandle,
+    sentencias: Vec<Sentencia>,
+    version_app: String,
+    ejemplo: bool,
+) -> Result<String, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .crear(&sentencias, &version_app, ejemplo, db::MIGRACIONES)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -2807,5 +2869,424 @@ mod cambiar_a {
         assert!(o.es_principal());
         assert_eq!(o.nombre, "La mía");
         assert_eq!(l.organizaciones.len(), 3);
+    }
+}
+
+#[cfg(test)]
+mod crear_nueva {
+    use super::*;
+    use crate::intercambio::validar::solo_lectura_cerrada;
+    use crate::organizaciones::prueba::{crear, entrada, escribir, interna, rutas, sin_rastros};
+    use crate::organizaciones::{Lista, PALETA, ruta_de};
+    use crate::respaldos::con_sufijo;
+    use serde_json::json;
+    use std::fs;
+    use std::path::Path;
+
+    const YA: Duration = Duration::ZERO;
+
+    fn arrancar(r: &Rutas) -> Estado {
+        let e = Estado::de_prueba(None, None, Some(r.clone()));
+        e.abrir_inicial_con(YA, db::MIGRACIONES);
+        e
+    }
+
+    fn con_nombre(nombre: &str) -> Vec<Sentencia> {
+        vec![Sentencia {
+            sql: "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?1)".into(),
+            params: vec![json!(nombre)],
+        }]
+    }
+
+    fn nueva(e: &Estado) -> Result<String, Fallo> {
+        e.crear(&con_nombre("Nueva"), "t", false, db::MIGRACIONES)
+    }
+
+    fn lista_del_json(r: &Rutas) -> Lista {
+        serde_json::from_slice(&fs::read(r.datos.join("organizaciones.json")).unwrap()).unwrap()
+    }
+
+    fn entrada_de(r: &Rutas, id: &str) -> Entrada {
+        lista_del_json(r)
+            .organizaciones
+            .into_iter()
+            .find(|o| o.id == id)
+            .unwrap()
+    }
+
+    fn carpetas(r: &Rutas) -> usize {
+        fs::read_dir(r.datos.join("organizaciones"))
+            .into_iter()
+            .flatten()
+            .count()
+    }
+
+    fn meta_de(bd: &Path, clave: &str) -> String {
+        solo_lectura_cerrada(bd)
+            .unwrap()
+            .query_row("SELECT valor FROM meta WHERE clave = ?1", [clave], |f| {
+                f.get(0)
+            })
+            .unwrap()
+    }
+
+    fn meta_abierta(e: &Estado, id: &str, clave: &str) -> String {
+        e.con_conexion(id, |c| {
+            c.query_row("SELECT valor FROM meta WHERE clave = ?1", [clave], |f| {
+                f.get(0)
+            })
+            .map_err(|x| x.to_string())
+        })
+        .unwrap()
+    }
+
+    /// Una organización interna abierta, sola en la lista.
+    fn con_interna(r: &Rutas) -> (Entrada, Estado) {
+        let otra = interna(r, "2026");
+        escribir(r, vec![otra.clone()]);
+        let e = arrancar(r);
+        assert_eq!(e.base_abierta().unwrap().id, otra.id);
+        (otra, e)
+    }
+
+    /// Lo creó en su carpeta: `db_id`, `respaldos/` y entrada, y el archivo quedó cerrado.
+    fn esta_en_su_carpeta(r: &Rutas, id: &str) {
+        let carpeta = r.datos.join("organizaciones").join(id);
+        let bd = carpeta.join("organizacion.db");
+        assert_eq!(meta_de(&bd, "db_id"), id);
+        assert!(carpeta.join("respaldos").is_dir());
+        let o = entrada_de(r, id);
+        assert_eq!(o.ruta, format!("organizaciones/{id}/organizacion.db"));
+        assert!(!o.externa);
+        assert_eq!(o.nombre, "Nueva");
+        sin_rastros(&bd);
+        drop(bloquear(&bd, YA).unwrap());
+    }
+
+    #[test]
+    fn la_primera_usa_boldo_db_vacio_y_abierto() {
+        let (_exe, r) = rutas();
+        let e = arrancar(&r);
+        let base = e.base_abierta().unwrap();
+        assert_eq!(base.bd, r.bd);
+
+        let id = nueva(&e).unwrap();
+
+        assert_eq!(id, base.id);
+        assert!(!r.datos.join("organizaciones").exists());
+        let l = lista_del_json(&r);
+        assert_eq!(l.organizaciones.len(), 1);
+        let o = &l.organizaciones[0];
+        assert!(o.es_principal());
+        assert_eq!(o.nombre, "Nueva");
+        assert_eq!(o.color, PALETA[0]);
+        // aún no se abre: la hora la pone `abrir_organizacion`
+        assert_eq!(o.abierta, "");
+        assert!(!o.ejemplo);
+        assert_eq!(e.base_abierta(), Some(base));
+        assert_eq!(meta_abierta(&e, &id, "org_nombre"), "Nueva");
+        assert_eq!(meta_abierta(&e, &id, "data_revision"), "1");
+    }
+
+    #[test]
+    fn con_boldo_db_ausente_lo_usa() {
+        let (_exe, r) = rutas();
+        let (otra, e) = con_interna(&r);
+        assert!(!r.bd.exists());
+
+        let id = nueva(&e).unwrap();
+
+        assert_eq!(meta_de(&r.bd, "db_id"), id);
+        assert_eq!(meta_de(&r.bd, "org_nombre"), "Nueva");
+        assert!(entrada_de(&r, &id).es_principal());
+        assert_eq!(carpetas(&r), 1);
+        // no se cambió de base, y `boldo.db` quedó cerrado
+        assert_eq!(e.base_abierta().unwrap().id, otra.id);
+        sin_rastros(&r.bd);
+        drop(bloquear(&r.bd, YA).unwrap());
+    }
+
+    #[test]
+    fn con_boldo_db_con_datos_crea_su_carpeta() {
+        let (_exe, r) = rutas();
+        crear(&r.bd, "La mía", db::MIGRACIONES);
+        let e = arrancar(&r);
+        let base = e.base_abierta().unwrap();
+        let revision = meta_abierta(&e, &base.id, "data_revision");
+
+        let id = nueva(&e).unwrap();
+
+        assert_ne!(id, base.id);
+        esta_en_su_carpeta(&r, &id);
+        let l = lista_del_json(&r);
+        assert_eq!(l.organizaciones.len(), 2);
+        // el color es el menos usado
+        assert_ne!(l.organizaciones[0].color, l.organizaciones[1].color);
+        // la base abierta no cambió
+        assert_eq!(e.base_abierta(), Some(base.clone()));
+        assert_eq!(meta_abierta(&e, &base.id, "org_nombre"), "La mía");
+        assert_eq!(meta_abierta(&e, &base.id, "data_revision"), revision);
+    }
+
+    const UN_CARGO: &str =
+        "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c', 'C', 'x', 'x')";
+
+    #[test]
+    fn un_boldo_db_abierto_solo_con_catalogos_no_se_hereda() {
+        let (_exe, r) = rutas();
+        let e = arrancar(&r);
+        let base = e.base_abierta().unwrap();
+        e.con_conexion(&base.id, |c| {
+            c.execute_batch(UN_CARGO).map_err(|x| x.to_string())
+        })
+        .unwrap();
+
+        let id = nueva(&e).unwrap();
+
+        assert_ne!(id, base.id);
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(meta_abierta(&e, &base.id, "data_revision"), "0");
+    }
+
+    #[test]
+    fn un_boldo_db_cerrado_solo_con_catalogos_no_se_toca() {
+        let (_exe, r) = rutas();
+        crear(&r.bd, "", db::MIGRACIONES);
+        let c = db::abrir(&r.bd).unwrap();
+        c.execute_batch(UN_CARGO).unwrap();
+        c.close().unwrap();
+        let antes = fs::read(&r.bd).unwrap();
+        let (_otra, e) = con_interna(&r);
+
+        let id = nueva(&e).unwrap();
+
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(fs::read(&r.bd).unwrap(), antes);
+    }
+
+    #[test]
+    fn lote_que_falla_no_deja_carpeta_ni_entrada() {
+        for (sql, detalle) in [
+            ("INSERT INTO no_existe VALUES (1)", "no_existe"),
+            ("DROP TABLE meta", "Sentencia no permitida"),
+        ] {
+            let malas = [Sentencia {
+                sql: sql.into(),
+                params: vec![],
+            }];
+            let falla = |e: &Estado| {
+                let f = e.crear(&malas, "t", false, db::MIGRACIONES).unwrap_err();
+                assert!(f.detalle.contains(detalle), "{sql}: {}", f.detalle);
+            };
+
+            // hacia su carpeta
+            let (_exe, r) = rutas();
+            crear(&r.bd, "La mía", db::MIGRACIONES);
+            let e = arrancar(&r);
+            let antes = lista_del_json(&r);
+            falla(&e);
+            assert_eq!(carpetas(&r), 0, "{sql}");
+            assert_eq!(lista_del_json(&r), antes);
+            let id = e.base_abierta().unwrap().id;
+            assert_eq!(meta_abierta(&e, &id, "org_nombre"), "La mía");
+
+            // hacia `boldo.db` abierto
+            let (_exe, r) = rutas();
+            let e = arrancar(&r);
+            falla(&e);
+            assert_eq!(carpetas(&r), 0, "{sql}");
+            assert!(lista_del_json(&r).organizaciones.is_empty());
+            let id = e.base_abierta().unwrap().id;
+            assert_eq!(meta_abierta(&e, &id, "data_revision"), "0");
+
+            // hacia `boldo.db` cerrado
+            let (_exe, r) = rutas();
+            let (otra, e) = con_interna(&r);
+            let antes = lista_del_json(&r);
+            falla(&e);
+            assert_eq!(carpetas(&r), 1, "{sql}");
+            assert_eq!(lista_del_json(&r), antes);
+            assert_eq!(e.base_abierta().unwrap().id, otra.id);
+            // lo que queda es lo que deja una instalación nueva, y lo usa la próxima
+            let id = nueva(&e).unwrap();
+            assert!(entrada_de(&r, &id).es_principal());
+        }
+    }
+
+    #[test]
+    fn si_no_se_puede_escribir_la_lista_no_queda_la_carpeta() {
+        let (_exe, r) = rutas();
+        crear(&r.bd, "La mía", db::MIGRACIONES);
+        let e = arrancar(&r);
+        fs::create_dir(con_sufijo(&r.datos.join("organizaciones.json"), ".tmp")).unwrap();
+
+        assert!(nueva(&e).is_err());
+
+        assert_eq!(carpetas(&r), 0);
+    }
+
+    #[test]
+    fn boldo_db_listado_y_vacio_no_se_reusa() {
+        // cerrado
+        let (_exe, r) = rutas();
+        let principal = crear(&r.bd, "", db::MIGRACIONES);
+        let otra = interna(&r, "2026");
+        escribir(
+            &r,
+            vec![otra, entrada(&principal, "boldo.db", false, "2020")],
+        );
+        let e = arrancar(&r);
+        let antes = fs::read(&r.bd).unwrap();
+        let id = nueva(&e).unwrap();
+        assert_ne!(id, principal);
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(fs::read(&r.bd).unwrap(), antes);
+
+        // abierto, y listado con su id o con otro
+        for con_su_id in [true, false] {
+            let (_exe, r) = rutas();
+            let e = arrancar(&r);
+            let base = e.base_abierta().unwrap();
+            let otro = uuid::Uuid::now_v7().to_string();
+            let listado = if con_su_id { &base.id } else { &otro };
+            escribir(&r, vec![entrada(listado, "boldo.db", false, "2020")]);
+            let id = nueva(&e).unwrap();
+            assert_ne!(id, base.id);
+            esta_en_su_carpeta(&r, &id);
+            assert_eq!(meta_abierta(&e, &base.id, "data_revision"), "0");
+        }
+    }
+
+    #[test]
+    fn no_comparte_id_con_ninguna_entrada() {
+        // `boldo.db` cerrado y vacío, con el id de otra
+        let (_exe, r) = rutas();
+        crear(&r.bd, "", db::MIGRACIONES);
+        let (otra, e) = con_interna(&r);
+        let c = db::abrir(&r.bd).unwrap();
+        c.execute(
+            "UPDATE meta SET valor = ?1 WHERE clave = 'db_id'",
+            [&otra.id],
+        )
+        .unwrap();
+        c.close().unwrap();
+        let id = nueva(&e).unwrap();
+        assert_ne!(id, otra.id);
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(meta_de(&r.bd, "db_id"), otra.id);
+
+        // `boldo.db` abierto y vacío, con el id de otra
+        let (_exe, r) = rutas();
+        let e = arrancar(&r);
+        let base = e.base_abierta().unwrap();
+        let ruta = format!("organizaciones/{}/organizacion.db", base.id);
+        escribir(&r, vec![entrada(&base.id, &ruta, false, "2020")]);
+        let id = nueva(&e).unwrap();
+        assert_ne!(id, base.id);
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(meta_abierta(&e, &base.id, "data_revision"), "0");
+    }
+
+    #[test]
+    fn si_boldo_db_no_se_puede_usar_crea_su_carpeta() {
+        // lo tiene otra copia
+        let (_exe, r) = rutas();
+        crear(&r.bd, "", db::MIGRACIONES);
+        let (_otra, e) = con_interna(&r);
+        let tomado = bloquear(&r.bd, YA).unwrap();
+        let id = nueva(&e).unwrap();
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(meta_de(&r.bd, "data_revision"), "0");
+        drop(tomado);
+
+        // no es una base
+        let (_exe, r) = rutas();
+        fs::write(&r.bd, "no soy sqlite").unwrap();
+        let (_otra, e) = con_interna(&r);
+        let id = nueva(&e).unwrap();
+        esta_en_su_carpeta(&r, &id);
+        assert_eq!(fs::read(&r.bd).unwrap(), b"no soy sqlite");
+    }
+
+    #[test]
+    fn con_una_lista_protegida_no_crea_nada() {
+        let (_exe, r) = rutas();
+        let e = arrancar(&r);
+        let json = r.datos.join("organizaciones.json");
+        fs::write(&json, r#"{"version":2}"#).unwrap();
+        let base = e.base_abierta().unwrap();
+
+        assert_eq!(nueva(&e).unwrap_err().codigo, "lista_protegida");
+
+        assert_eq!(fs::read_to_string(&json).unwrap(), r#"{"version":2}"#);
+        assert!(!r.datos.join("organizaciones").exists());
+        assert_eq!(meta_abierta(&e, &base.id, "data_revision"), "0");
+    }
+
+    #[test]
+    fn portable_no_escribe_fuera_de_su_carpeta() {
+        let padre = tempfile::tempdir().unwrap();
+        let exe = padre.path().join("exe");
+        fs::create_dir(&exe).unwrap();
+        fs::write(exe.join("portable.flag"), "").unwrap();
+        let r = rutas::dir_datos(&exe, None).unwrap();
+        let e = arrancar(&r);
+
+        // una en `boldo.db` y otra en su carpeta
+        assert!(entrada_de(&r, &nueva(&e).unwrap()).es_principal());
+        assert!(!entrada_de(&r, &nueva(&e).unwrap()).es_principal());
+
+        let nombres = |p: &Path| {
+            let mut n: Vec<_> = fs::read_dir(p)
+                .unwrap()
+                .flatten()
+                .map(|f| f.file_name().to_string_lossy().into_owned())
+                .collect();
+            n.sort();
+            n
+        };
+        assert_eq!(nombres(padre.path()), ["exe"]);
+        assert_eq!(nombres(&exe), ["datos", "portable.flag"]);
+    }
+
+    #[test]
+    fn ejemplo_queda_marcado() {
+        let (_exe, r) = rutas();
+        let e = arrancar(&r);
+        let con = |ejemplo| {
+            e.crear(&con_nombre("Nueva"), "t", ejemplo, db::MIGRACIONES)
+                .unwrap()
+        };
+        let (en_principal, en_carpeta, sin_marca) = (con(true), con(true), con(false));
+        assert!(entrada_de(&r, &en_principal).es_principal());
+        assert!(entrada_de(&r, &en_carpeta).ejemplo);
+        assert!(entrada_de(&r, &en_principal).ejemplo);
+        assert!(!entrada_de(&r, &sin_marca).ejemplo);
+
+        // abrirla no le quita la marca
+        e.cambiar_a(&en_carpeta, &|| false, db::MIGRACIONES)
+            .unwrap();
+        assert!(entrada_de(&r, &en_carpeta).ejemplo);
+    }
+
+    #[test]
+    fn lo_creado_se_abre_con_abrir_organizacion() {
+        let (_exe, r) = rutas();
+        let (otra, e) = con_interna(&r);
+        let primera = nueva(&e).unwrap();
+        let segunda = nueva(&e).unwrap();
+        assert_eq!(e.base_abierta().unwrap().id, otra.id);
+
+        for id in [&primera, &segunda] {
+            let v = e.cambiar_a(id, &|| false, db::MIGRACIONES).unwrap();
+            assert!(v.activa);
+            assert_eq!(v.nombre, "Nueva");
+            assert_eq!(meta_abierta(&e, id, "org_nombre"), "Nueva");
+            assert!(entrada_de(&r, id).abierta.ends_with('Z'));
+        }
+        assert_eq!(
+            ruta_de(&r, &entrada_de(&r, &segunda)),
+            e.base_abierta().unwrap().bd
+        );
     }
 }

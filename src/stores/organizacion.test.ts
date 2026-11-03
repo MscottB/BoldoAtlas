@@ -1807,3 +1807,40 @@ describe("reemplazarCon", () => {
     expect(revision()).toBe(rev);
   });
 });
+
+describe("sentenciasNueva", () => {
+  afterEach(() => cambiarIdioma("es"));
+
+  it("'vacia' aplicada deja la raíz y el nombre", async () => {
+    const s = nuevo();
+    h.bd!.aplicar(s.sentenciasNueva("vacia", { nombre: " Acme ", nombreRaiz: " Matriz " }));
+    await s.cargar();
+    expect(s.org.nombre).toBe("Acme");
+    expect(s.unidades.map((u) => [u.nombre, u.tipo_id])).toEqual([["Matriz", TIPO_GERENCIA]]);
+  });
+
+  it("'ejemplo' aplicado deja el nombre de hoy y escribe lo mismo que cargarEjemplo", async () => {
+    const s = nuevo();
+    h.bd!.aplicar(s.sentenciasNueva("ejemplo"));
+    await s.cargar();
+    expect(s.org.nombre).toBe("Compañía Demo");
+    const unidades = s.unidades.map((u) => u.nombre).sort();
+    expect(unidades.length).toBeGreaterThanOrEqual(10);
+
+    h.bd = abrirBasePrueba();
+    const otra = nuevo();
+    await otra.cargarEjemplo();
+    expect(otra.unidades.map((u) => u.nombre).sort()).toEqual(unidades);
+  });
+
+  it("con la interfaz en inglés usa el nombre y los tipos en inglés, sin mirar la base abierta", async () => {
+    const s = nuevo();
+    await unidad(s, "Con datos"); // en la base abierta un tipo está en uso: no cuenta para la nueva
+    cambiarIdioma("en");
+    h.bd = abrirBasePrueba();
+    h.bd.aplicar(s.sentenciasNueva("ejemplo"));
+    await s.cargar();
+    expect(s.org.nombre).toBe("Demo Company");
+    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toContain("Area");
+  });
+});

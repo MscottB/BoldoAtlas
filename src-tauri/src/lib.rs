@@ -117,6 +117,7 @@ pub fn run() {
             comandos::info_app,
             comandos::listar_organizaciones,
             comandos::abrir_organizacion,
+            comandos::crear_organizacion,
             comandos::db_consultar,
             comandos::db_lote,
             fotos::foto_bytes,

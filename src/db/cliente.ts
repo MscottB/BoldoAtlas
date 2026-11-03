@@ -83,6 +83,11 @@ export function abrirOrganizacion(id: string): Promise<Organizacion> {
   return invoke<Organizacion>("abrir_organizacion", { id });
 }
 
+/** Crea una organización y devuelve su id. No cambia de base: la abre `abrirOrganizacion`. */
+export function crearOrganizacionNueva(sentencias: Sentencia[], ejemplo: boolean): Promise<string> {
+  return invoke<string>("crear_organizacion", { sentencias, versionApp: __APP_VERSION__, ejemplo });
+}
+
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   return conBase<T[]>("db_consultar", { sql, params });
 }

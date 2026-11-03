@@ -626,6 +626,71 @@ pub fn anotar_abierta(
     Ok(())
 }
 
+/// `boldo.db` recibe una organización nueva si ni él ni su id están en la lista y no tiene nada que heredar. `id` y `conn` son
+/// los suyos.
+pub fn principal_libre(l: &Lista, id: &str, conn: &Connection) -> bool {
+    !l.organizaciones
+        .iter()
+        .any(|o| o.es_principal() || o.id == id)
+        && esta_vacia(conn).unwrap_or(false)
+}
+
+/// `boldo.db` cerrado, listo para recibir una organización nueva. `None` si no lo está, también si otra copia lo tiene o no
+/// abre: no impide crearla en su carpeta. Se mira antes sin tocarlo, y abierto se mira de nuevo, ya con el bloqueo.
+pub fn abrir_principal_libre(r: &Rutas, l: &Lista, migraciones: &[&str]) -> Option<Abierta> {
+    let parece_libre = !l.organizaciones.iter().any(Entrada::es_principal)
+        && (!r.bd.exists()
+            || solo_lectura_cerrada(&r.bd).is_ok_and(|c| esta_vacia(&c).unwrap_or(false)));
+    if !parece_libre {
+        return None;
+    }
+    abrir_base(&r.bd, &r.respaldos, None, ESPERA_CAMBIO, migraciones)
+        .ok()
+        .filter(|a| principal_libre(l, &a.id, &a.conn))
+}
+
+/// Una organización nueva en su carpeta. `llenar` recibe la entrada y el archivo ya abierto. Si algo falla no queda nada: el id
+/// recién se generó, así que la carpeta es de esta llamada.
+pub fn crear_en_carpeta(
+    r: &Rutas,
+    l: &mut Lista,
+    migraciones: &[&str],
+    llenar: impl FnOnce(&mut Lista, Entrada, &mut Connection) -> Result<(), Fallo>,
+) -> Result<String, Fallo> {
+    let id = uuid::Uuid::now_v7().to_string();
+    let e = Entrada {
+        ruta: ruta_interna(&id),
+        ..Entrada::principal(&id)
+    };
+    let base = base_de(r, &e);
+    // el archivo se cierra al salir, antes de borrar: Windows no borra uno abierto
+    let hecho = (|| {
+        let mut a = abrir_base(
+            &base.bd,
+            &base.respaldos,
+            Some(&id),
+            ESPERA_CAMBIO,
+            migraciones,
+        )?;
+        llenar(l, e, &mut a.conn)
+    })();
+    if hecho.is_err() {
+        let _ = fs::remove_dir_all(r.datos.join(CARPETA).join(&id));
+    }
+    hecho.map(|()| id)
+}
+
+/// Agrega lo recién creado a la lista. Sin hora, que es de cuando se abre: hasta entonces no es la que abre el arranque.
+pub fn anotar_creada(l: &mut Lista, e: Entrada, conn: &Connection, ejemplo: bool) {
+    let color = color_libre(l).into();
+    l.organizaciones.push(Entrada {
+        nombre: leer_meta(conn, "org_nombre").unwrap_or_default(),
+        color,
+        ejemplo,
+        ..e
+    });
+}
+
 fn bytes_de_archivos(carpeta: &Path) -> u64 {
     fs::read_dir(carpeta)
         .into_iter()
