@@ -97,25 +97,26 @@ While viewing the chart at a past date there is no multiple selection.
 
 ## Connections
 
-A connection links two units that work together without one depending on the other: for example, Maintenance and Purchasing. It does not change who they report to.
+A connection links two units that work together: for example, from Maintenance to Purchasing. It has a direction, from one unit to the other, but it does not change who they report to.
 
-On the canvas it is a dotted line that runs through the free space between cards, with its description on top or, if it has none, a dot. The **Lines** strip below the canvas reminds you what it means. When you hover over the line, it stands out and says what it links. A long description is shortened: hover over it, or reach it with `Tab`, to see it in full. When you hover over a card or focus it, its connections stand out and the others fade.
+On the canvas it is a dotted line that runs through the free space between cards, with an arrow pointing at the destination unit and its description on top or, if it has none, a dot. Zoomed far out with many cards, the line is simplified and has no arrow. The **Lines** strip below the canvas reminds you what it means. When you hover over the line, it stands out and says which unit it goes from and to, for example “Maintenance → Purchasing”, with its description if it has one. A long description is shortened: hover over it, or reach it with `Tab`, to see it in full. When you hover over a card or focus it, its connections stand out and the others fade.
 
 **To create a connection:**
 
-1. Press **Connect to…** in the card's actions or in its context menu. It is also under **Connections**, in the unit panel.
-2. Choose the other unit. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
+1. Press **Connect to…** in the card's actions, in its context menu or under **Connections** in the unit panel. The same window always opens. At the top, **Already connected** lists the connections the unit already has, so you can see if one is missing: `→` if it goes to the other unit, `←` if it comes from it, with its description and a note if the other unit is not visible. Press a row to open that connection.
+2. Choose the other unit in the list. The connection goes from the unit you are on to the one you choose. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
 3. If you want, type a description. You can leave it empty.
 
-**To edit a connection:** press the line, its description or its dot (or reach it with `Tab` and press `Enter`). A small window opens right there:
+**To edit a connection:** press the line, its description or its dot (or reach it with `Tab` and press `Enter`). A small window opens right there, with the direction in its title:
 
-![The window of the Maintenance ↔ Purchasing connection, above its dotted line.](../img/en/arbol-conexion.webp "A connection's window: description, Change unit and Delete connection."){width=320 height=298}
+![The window of the Maintenance → Purchasing connection, above its dotted line.](../img/en/arbol-conexion.webp "A connection's window: description, Change unit, Reverse and Delete connection."){width=320 height=298}
 
 - **Description**: saved when you leave the field, with `Enter` or when the window closes.
 - **Change unit**: choose another unit for either end. If it is in a collapsed branch, the branch opens by itself and the canvas moves to show the line.
+- **Reverse**: changes the direction of the connection, without touching its units or its description.
 - **Delete connection**: asks first. After deleting, a notice offers **Undo** for 8 seconds.
 
-`Esc` or a click outside closes the window, and `Esc` returns the focus to the line. Moving or zooming the canvas also closes it. The pencil on a row, under **Connections** in the unit panel, opens the same window; there you only change the other unit. The X on the row deletes the connection, also asking first and with **Undo**.
+`Esc` or a click outside closes the window, and `Esc` returns the focus to the line. Moving or zooming the canvas also closes it. The pencil on a row, under **Connections** in the unit panel, opens the same window, as does a row under **Already connected** or a connection you just created; there you only change the other unit. The X on a panel row deletes the connection, also asking first and with **Undo**.
 
 A unit cannot be connected to itself, and if two units are already connected you cannot create a second connection between them.
 
@@ -225,19 +226,21 @@ While you view the org chart at a past date everything is read-only: you cannot 
 
 ## Unit panel
 
-Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on the right: the canvas shrinks, it is not covered. Focus moves into the panel. The **Close the panel** button (the X), `Esc` or a click on the canvas background close it; with the X or `Esc` focus returns to the card, and `Esc` first saves whatever you were typing. At the top you see the unit's full location, with the type of each step; each step can be pressed to select that unit.
+Selecting a card (with the mouse, or with `Enter` on its name) opens a panel on the right: the canvas shrinks, it is not covered. Focus moves into the panel. The **Close the panel** button (the X), `Esc` or a click on the canvas background close it; with the X or `Esc` focus returns to the card, and `Esc` first saves whatever you were typing. At the top you see its parent units, with the type of each one, and below them the unit's name; each parent can be pressed to select it.
 
 ![The tree with the Operations card selected and its unit panel open on the right.](../img/en/arbol-panel.webp "The unit panel. 1: the selected card. 2: the Summary, Positions and People tabs. 3: the button to close the panel."){width=892 height=664}
 
-The **Summary** tab shows the type, name, head, figures, tags and connections in plain view. **Description**, **Parent unit** and **Mark** are under **Advanced**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it. **Save in Trees**, **Duplicate branch** and **Delete unit** sit apart at the bottom. It holds:
+The **Summary** tab holds, in this order:
 
-- **Type** and **name**, in plain view, and **description**, under **Advanced**. The name and description are saved when you finish typing (`Enter`, `Tab` or leaving the field). The **type** is chosen from the unit-type list, as in the person records: type to filter and, if it does not exist, **Add “text” to the list** creates it and selects it, without going to the lists screen.
-- **Parent unit** (under **Advanced**): a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
-- **Mark** (under **Advanced**): a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
-- **Head**: choose which of the unit's positions is the head (or **No head**). With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see who holds it: the holder or, if there is none, **Replacement: name**.
 - The direct **headcount** (positions with a holder in the unit itself), the total (with the whole branch) and the branch **vacancies**.
+- **Name**: saved when you finish typing (`Enter`, `Tab` or leaving the field).
+- **Type**: chosen from the unit-type list, as in the person records: type to filter and, if it does not exist, **Add “text” to the list** creates it and selects it, without going to the lists screen.
+- **Reports to**: a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
+- **Head**: choose which of the unit's positions is the head (or **No head**); the list shows the job title and the holder. With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see **Replacement: name** if a replacement holds it, or a notice if the unit has no positions.
+- **Description**: a text to explain what the unit does. It is saved like the name.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
-- **Connections**, with how many it has: **Connect to…** adds another; on each row, the pencil edits it and the X removes it. If the line is not visible because the other unit is collapsed or outside the view, the row says so (see “Connections”).
+- **Connections**, with how many it has and the direction of each one: **Connect to…** adds another; on each row, the pencil edits it and the X removes it. If the line is not visible because the other unit is collapsed or outside the view, the row says so (see “Connections”).
+- **Appearance**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it: the **Mark**, a color and a code of up to 4 characters, shown when you pick "Color by" in **Customize**. **Remove mark** clears both.
 - **Save in Trees** (not shown on roots, which already are a tree), **Duplicate branch** and **Delete unit**, at the bottom.
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements").

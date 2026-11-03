@@ -103,8 +103,8 @@ export function abrirMenuContextual(el: Element) {
 
 /**
  * Qué muestra la ventanita de conexiones (ConexionLienzo), junto a qué y a quién vuelve el foco al cerrarse. Con `id` edita una
- * conexión (`fija`: la unidad del panel desde el que se abrió, que no se cambia); con `origen` es «Conectar con…»: primero se
- * elige con qué unidad.
+ * conexión (`fija`: la unidad desde la que se abrió, en el panel o en «Conectar con…», que no se cambia); con `origen` es
+ * «Conectar con…»: sus conexiones y con qué unidad conectarla.
  */
 export type VentanaConexion = { ancla: DOMRect; foco: HTMLElement | null } & (
   | { id: string; fija?: string }

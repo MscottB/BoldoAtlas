@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, useId, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useEventListener } from "@vueuse/core";
@@ -7,15 +7,16 @@ import { useVueFlow } from "@vue-flow/core";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useOrganizacion } from "@/stores/organizacion";
 import EditorConexion from "@/features/unidades/EditorConexion.vue";
+import FilasConexion from "@/features/unidades/FilasConexion.vue";
 import ListaUnidades from "@/features/unidades/ListaUnidades.vue";
-import { excluidasParaConexion, porQueNoSeVe } from "@/features/unidades/panel";
+import { excluidasParaConexion, filasDeConexiones, porQueNoSeVe } from "@/features/unidades/panel";
 import { CONTEXTO_LIENZO } from "./contexto";
 import { encuadreDeLinea, type Trazado } from "./lateral";
 import { useLienzo, ventanaConexion as ventana, verConexion } from "./useLienzo";
 import { useVista } from "./useVista";
 
 // La ventanita de las conexiones: una sola para todas, aquí y no dentro de cada línea. La abren la línea, «Conectar con…» de
-// la tarjeta y el lápiz del panel. Fuera de Vue Flow: nada de lo que pase en ella toca el lienzo.
+// la tarjeta y del panel, y el lápiz del panel. Fuera de Vue Flow: nada de lo que pase en ella toca el lienzo.
 const { t } = useI18n();
 const org = useOrganizacion();
 const { viewport, dimensions, setCenter } = useVueFlow();
@@ -25,6 +26,10 @@ const { config } = useVista();
 
 const editar = computed(() => (ventana.value && "id" in ventana.value ? ventana.value : null));
 const conectar = computed(() => (ventana.value && "origen" in ventana.value ? ventana.value : null));
+const yaConectadas = computed(() =>
+  conectar.value ? filasDeConexiones(org.conexiones, org.porId, conectar.value.origen) : [],
+);
+const uid = useId();
 // Al cerrarse sigue el último lugar: sin ancla, la ventana pasaría por la esquina de la pantalla.
 const referencia = computed(() => {
   const a = ventana.value?.ancla ?? ultima.ancla;
@@ -46,8 +51,13 @@ async function elegir(destino: string | null) {
   const r = await org.crearConexion(v.origen, destino);
   creando = false;
   if (!r.ok) return void toast.error(r.mensaje);
-  if (ventana.value === v) ventana.value = { id: r.id!, ancla: v.ancla, foco: v.foco };
+  if (ventana.value === v) abrirConexion(r.id!);
   verConexion.value = r.id!;
+}
+// Se llegó desde esa unidad: como en el panel, lo que se ofrece cambiar es la otra.
+function abrirConexion(id: string) {
+  const v = conectar.value;
+  if (v) ventana.value = { id, fija: v.origen, ancla: v.ancla, foco: v.foco };
 }
 
 const cuadro = () => new Promise(requestAnimationFrame);
@@ -166,16 +176,38 @@ watch(trazados, async () => {
       align="center"
       :collision-padding="8"
       class="max-h-(--reka-popover-content-available-height) data-closed:hidden"
-      :class="conectar ? 'overflow-hidden p-0' : 'overflow-y-auto p-3'"
+      :class="conectar ? 'gap-0 overflow-hidden p-0' : 'overflow-y-auto p-3'"
       :aria-label="t(conectar ? 'unidad.conectarCon' : 'conexion.ventana')"
       @close-auto-focus="alCerrar"
     >
       <EditorConexion v-if="editar" :id="editar.id" :key="editar.id" :fija="editar.fija" @cerrar="cerrar" />
       <template v-else-if="conectar">
-        <h2 class="px-2.5 pt-2.5 pb-1 text-sm font-semibold">
+        <h2 class="shrink-0 px-2.5 pt-2.5 pb-1 text-sm font-semibold">
           {{ t("conexion.conectarTitulo", { nombre: org.porId.get(conectar.origen)?.nombre }) }}
         </h2>
-        <ListaUnidades :excluidas="excluidasParaConexion(org.conexiones, conectar.origen)" @elegir="elegir" />
+        <!-- Las dos listas se reparten el alto que haya y cada una se desplaza: la ventana no se sale de la pantalla. -->
+        <section
+          v-if="yaConectadas.length"
+          class="flex max-h-60 min-h-20 flex-col gap-1 border-b px-2.5 pb-2"
+          :aria-labelledby="`${uid}-ya`"
+        >
+          <h3 :id="`${uid}-ya`" class="shrink-0 text-xs font-medium text-muted-foreground">
+            {{ t("conexion.yaConectada") }} ({{ yaConectadas.length }})
+          </h3>
+          <FilasConexion
+            pulsable
+            class="min-h-0 overflow-y-auto"
+            :filas="yaConectadas"
+            :aria-labelledby="`${uid}-ya`"
+            @abrir="abrirConexion"
+          />
+        </section>
+        <ListaUnidades
+          v-if="!org.fechaVista"
+          class="min-h-0"
+          :excluidas="excluidasParaConexion(org.conexiones, conectar.origen)"
+          @elegir="elegir"
+        />
       </template>
     </PopoverContent>
   </Popover>

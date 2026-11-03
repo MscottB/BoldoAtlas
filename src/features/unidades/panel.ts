@@ -11,13 +11,15 @@ export interface Miga {
   tipo: string;
 }
 
-/** Ruta completa desde la raíz; cada tramo con el nombre de su tipo (también si el tipo está desactivado). */
+/** Los superiores desde la raíz, sin la propia unidad; cada uno con el nombre de su tipo (también si el tipo está desactivado). */
 export const migas = (unidades: Unidad[], tipos: ValorCatalogo[], id: string): Miga[] =>
-  ruta(unidades, id).map((u) => ({
-    id: u.id,
-    nombre: u.nombre,
-    tipo: tipos.find((t) => t.id === u.tipo_id)?.nombre ?? "",
-  }));
+  ruta(unidades, id)
+    .slice(0, -1)
+    .map((u) => ({
+      id: u.id,
+      nombre: u.nombre,
+      tipo: tipos.find((t) => t.id === u.tipo_id)?.nombre ?? "",
+    }));
 
 /** Quien no puede ser superior de `id`: ella misma y su rama (lo mismo que rechaza `creaCiclo`). */
 export const excluidasComoSuperior = (unidades: Unidad[], id: string): Set<string> =>
@@ -31,6 +33,26 @@ export const excluidasParaConexion = (conexiones: Conexion[], id: string): Set<s
       c.origen_id === id ? [c.destino_id] : c.destino_id === id ? [c.origen_id] : [],
     ),
   ]);
+
+export interface FilaConexion {
+  id: string;
+  otro: Unidad;
+  /** Vista desde la unidad: «hacia» la otra si ella es el origen, «desde» la otra si es el destino. */
+  sentido: "hacia" | "desde";
+  etiqueta: string | null;
+}
+
+/** Las conexiones de la unidad `id`, con su sentido. Se omite la que apunta a una unidad que ya no está. */
+export const filasDeConexiones = (
+  conexiones: Conexion[],
+  porId: ReadonlyMap<string, Unidad>,
+  id: string,
+): FilaConexion[] =>
+  conexiones.flatMap((c) => {
+    const hacia = c.origen_id === id;
+    const otro = hacia || c.destino_id === id ? porId.get(hacia ? c.destino_id : c.origen_id) : undefined;
+    return otro ? [{ id: c.id, otro, sentido: hacia ? "hacia" : "desde", etiqueta: c.etiqueta }] : [];
+  });
 
 /**
  * Por qué una unidad no se dibuja: un superior plegado o, si no está en `mostradas` (lo que el lienzo dibuja), fuera de la

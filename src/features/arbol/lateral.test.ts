@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { caminoSvg, encuadreDeLinea, trazarLaterales, type Caja, type Lateral, type Punto } from "./lateral";
+import {
+  acotarPista,
+  caminoSvg,
+  encuadreDeLinea,
+  puntaFlecha,
+  trazarLaterales,
+  type Caja,
+  type Lateral,
+  type Punto,
+} from "./lateral";
 
 const caja = (x: number, y: number, ancho = 220, alto = 112): Caja => ({ x, y, ancho, alto });
 const lat = (origen_id: string, destino_id: string, etiqueta: string | null = null, id = "l"): Lateral => ({
@@ -52,6 +61,147 @@ const tapa = (e: Punto, cajas: Map<string, Caja>, w = 120, h = 20) =>
     (c) =>
       e.x - w / 2 < c.x + c.ancho && e.x + w / 2 > c.x && e.y - h / 2 < c.y + c.alto && e.y + h / 2 > c.y,
   );
+
+describe("sentido de la línea", () => {
+  const cajas = new Map([...fila("a", 3, 0), ...fila("b", 3, 200)]);
+  const extremos = (l: Lateral, c: Map<string, Caja>, d: "vertical" | "horizontal" = "vertical") => {
+    const { puntos } = trazarLaterales([l], c, d).get(l.id)!;
+    return { inicio: puntos[0]!, fin: puntos[puntos.length - 1]! };
+  };
+
+  it("va del borde del origen al del destino, y al invertir la conexión se invierte", () => {
+    const ida = extremos(lat("a0", "b2"), cajas);
+    expect(enBorde(ida.inicio, cajas.get("a0")!)).toBe(true);
+    expect(enBorde(ida.fin, cajas.get("b2")!)).toBe(true);
+    const vuelta = extremos(lat("b2", "a0"), cajas);
+    expect(enBorde(vuelta.inicio, cajas.get("b2")!)).toBe(true);
+    expect(enBorde(vuelta.fin, cajas.get("a0")!)).toBe(true);
+  });
+
+  it("también en horizontal", () => {
+    const giradas = new Map(
+      [...cajas].map(([id, c]): [string, Caja] => [id, { x: c.y, y: c.x, ancho: c.alto, alto: c.ancho }]),
+    );
+    const { inicio, fin } = extremos(lat("a0", "b2"), giradas, "horizontal");
+    expect(enBorde(inicio, giradas.get("a0")!)).toBe(true);
+    expect(enBorde(fin, giradas.get("b2")!)).toBe(true);
+  });
+
+  it("también junto a otras: trazar primero las con descripción no cambia el sentido", () => {
+    const ts = trazarLaterales(
+      [lat("a0", "b2", null, "x"), lat("b1", "a2", "Texto", "y")],
+      cajas,
+      "vertical",
+    );
+    const fin = (p: Punto[]) => p[p.length - 1]!;
+    expect(enBorde(ts.get("x")!.puntos[0]!, cajas.get("a0")!)).toBe(true);
+    expect(enBorde(fin(ts.get("x")!.puntos), cajas.get("b2")!)).toBe(true);
+    expect(enBorde(ts.get("y")!.puntos[0]!, cajas.get("b1")!)).toBe(true);
+    expect(enBorde(fin(ts.get("y")!.puntos), cajas.get("a2")!)).toBe(true);
+  });
+});
+
+describe("puntaFlecha", () => {
+  /** Los tres vértices del triángulo que devuelve. */
+  const vertices = (d: string) =>
+    [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m): Punto => ({ x: Number(m[1]), y: Number(m[2]) }));
+
+  it("tiene el vértice en el final de la línea y la base hacia atrás, en cada dirección", () => {
+    const fin = { x: 100, y: 100 };
+    for (const [desde, base] of [
+      [
+        { x: 100, y: 0 },
+        { x: 100, y: 90 },
+      ], // baja
+      [
+        { x: 100, y: 200 },
+        { x: 100, y: 110 },
+      ], // sube
+      [
+        { x: 0, y: 100 },
+        { x: 90, y: 100 },
+      ], // a la derecha
+      [
+        { x: 200, y: 100 },
+        { x: 110, y: 100 },
+      ], // a la izquierda
+    ] as const) {
+      const [vertice, a, b] = vertices(puntaFlecha([desde, fin], 10, 8)!);
+      expect(vertice).toEqual(fin);
+      expect({ x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 }).toEqual(base);
+      expect(Math.hypot(a!.x - b!.x, a!.y - b!.y)).toBe(8);
+    }
+  });
+
+  it("mira solo el último tramo, aunque la línea tenga codos", () => {
+    const codo = [
+      { x: 0, y: 0 },
+      { x: 0, y: 50 },
+      { x: 80, y: 50 },
+    ];
+    const [vertice, a] = vertices(puntaFlecha(codo, 10, 8)!);
+    expect(vertice).toEqual({ x: 80, y: 50 });
+    expect(a!.x).toBe(70);
+  });
+
+  it("sirve para la línea diagonal de emergencia", () => {
+    const diagonal = [
+      { x: 0, y: 0 },
+      { x: 30, y: 40 },
+    ];
+    const [vertice, a, b] = vertices(puntaFlecha(diagonal, 10, 8)!);
+    expect(vertice).toEqual({ x: 30, y: 40 });
+    expect((a!.x + b!.x) / 2).toBeCloseTo(24);
+    expect((a!.y + b!.y) / 2).toBeCloseTo(32);
+  });
+
+  it("sin un tramo que le dé dirección, no hay punta", () => {
+    expect(puntaFlecha([{ x: 1, y: 1 }])).toBeNull();
+    expect(
+      puntaFlecha([
+        { x: 1, y: 1 },
+        { x: 1, y: 1 },
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("acotarPista", () => {
+  const ventana = { ancho: 1000, alto: 600 };
+  const medida = { ancho: 200, alto: 40 };
+  const punto = (x: number, y: number): Caja => ({ x, y, ancho: 0, alto: 0 });
+
+  it("centrada sobre el puntero, con su separación", () => {
+    expect(acotarPista(punto(500, 300), medida, ventana)).toEqual({ x: 400, y: 246 });
+  });
+
+  it("sobre un botón: se centra en él y se separa de su borde de arriba", () => {
+    expect(acotarPista({ x: 450, y: 300, ancho: 100, alto: 20 }, medida, ventana)).toEqual({
+      x: 400,
+      y: 246,
+    });
+  });
+
+  it("no se sale por los costados", () => {
+    expect(acotarPista(punto(10, 300), medida, ventana).x).toBe(8);
+    expect(acotarPista(punto(995, 300), medida, ventana).x).toBe(792);
+  });
+
+  it("sin lugar arriba va debajo del ancla, sin taparla", () => {
+    expect(acotarPista({ x: 450, y: 20, ancho: 100, alto: 20 }, medida, ventana).y).toBe(54);
+  });
+
+  it("sin lugar arriba ni abajo queda dentro de la ventana", () => {
+    const baja = { ancho: 1000, alto: 60 };
+    const { y } = acotarPista(punto(500, 30), medida, baja);
+    expect(y).toBeGreaterThanOrEqual(8);
+    expect(y + medida.alto).toBeLessThanOrEqual(baja.alto);
+  });
+
+  it("más ancha que la ventana: empieza en el margen", () => {
+    expect(acotarPista(punto(50, 300), { ancho: 400, alto: 40 }, { ancho: 300, alto: 600 }).x).toBe(8);
+  });
+});
 
 describe("encuadreDeLinea", () => {
   const panta = { width: 1000, height: 600 };

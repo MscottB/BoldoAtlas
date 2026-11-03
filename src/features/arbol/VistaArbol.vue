@@ -1004,16 +1004,21 @@ function verCompleto() {
 .lienzo :deep(.vue-flow__pane.selection [data-zona-conexion]) {
   pointer-events: none;
 }
-/* Las etiquetas de las laterales van sobre las tarjetas; la tarjeta con sus acciones, sobre las etiquetas y las vecinas. */
+/* Las etiquetas de las laterales van sobre las tarjetas: `.vue-flow__nodes` no crea contexto de apilado, así que cada tarjeta compite
+   directo con esta capa. Por eso 1001: Vue Flow da 1000 a las del recuadro y la seleccionada, con sus acciones, tiene 999. Esa va sobre
+   las vecinas; bajo el puntero o con el foco, también sobre las etiquetas, que caen en la franja donde flotan sus botones. */
 .lienzo :deep(.vue-flow__edge-labels) {
-  z-index: 1;
+  z-index: 1001;
 }
 .lienzo :deep(.vue-flow__node:has([data-acciones-tarjeta])) {
   z-index: 999 !important;
 }
+.lienzo :deep(.vue-flow__node:has([data-acciones-tarjeta]):is(:hover, :focus-within)) {
+  z-index: 1002 !important;
+}
 /* La tarjeta que se arrastra va sobre todo lo demás, también sobre su destino. */
 .lienzo :deep(.vue-flow__node.dragging) {
-  z-index: 1000 !important;
+  z-index: 1003 !important;
 }
 .lienzo :deep(.vue-flow__minimap) {
   background: var(--card);

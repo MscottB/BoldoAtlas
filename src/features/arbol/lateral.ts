@@ -6,7 +6,7 @@ export type Punto = { x: number; y: number };
 export type Caja = Punto & { ancho: number; alto: number };
 
 export interface Trazado {
-  /** La línea, en ángulos rectos: de un borde del origen a un borde del destino. */
+  /** La línea, en ángulos rectos y en ese orden: de un borde del origen a un borde del destino. */
   puntos: Punto[];
   /** Centro de la etiqueta (o del punto, si no tiene descripción), sobre la línea. */
   etiqueta: Punto;
@@ -468,6 +468,38 @@ export function encuadreDeLinea(
     y1 > y0 ? (pantalla.height * 0.8) / (y1 - y0) : Infinity,
   );
   return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, zoom };
+}
+
+/**
+ * Dónde va la pista, en coordenadas de pantalla: centrada sobre `ancla` (el puntero o el botón); si arriba no cabe, debajo, y
+ * siempre dentro de la ventana.
+ */
+export function acotarPista(
+  ancla: Caja,
+  medida: { ancho: number; alto: number },
+  ventana: { ancho: number; alto: number },
+  margen = 8,
+  separacion = 14,
+): Punto {
+  const arriba = ancla.y - separacion - medida.alto;
+  const dentro = (v: number, tam: number, total: number) =>
+    Math.max(margen, Math.min(v, total - tam - margen));
+  return {
+    x: dentro(ancla.x + ancla.ancho / 2 - medida.ancho / 2, medida.ancho, ventana.ancho),
+    y: dentro(arriba >= margen ? arriba : ancla.y + ancla.alto + separacion, medida.alto, ventana.alto),
+  };
+}
+
+/** El `d` de la punta de flecha: un triángulo con el vértice donde termina la línea, en el destino. Null si no hay un último tramo. */
+export function puntaFlecha(puntos: Punto[], largo = 9, ancho = 8): string | null {
+  const fin = puntos[puntos.length - 1];
+  const antes = puntos[puntos.length - 2];
+  const tramo = fin && antes && Math.hypot(fin.x - antes.x, fin.y - antes.y);
+  if (!tramo) return null;
+  const [ux, uy] = [(fin.x - antes.x) / tramo, (fin.y - antes.y) / tramo];
+  const base = { x: fin.x - ux * largo, y: fin.y - uy * largo };
+  const [dx, dy] = [(-uy * ancho) / 2, (ux * ancho) / 2];
+  return `M ${fin.x} ${fin.y} L ${base.x + dx} ${base.y + dy} L ${base.x - dx} ${base.y - dy} Z`;
 }
 
 /** El `d` de un <path>: la línea con las esquinas redondeadas (sin pasarse de la mitad de cada tramo). */
