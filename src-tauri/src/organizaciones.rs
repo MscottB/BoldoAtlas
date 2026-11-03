@@ -10,7 +10,7 @@ use crate::respaldos::{
     fecha_de_eliminada, limpiar_parciales, sello_local, volcar,
 };
 use crate::rutas::Rutas;
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::{Connection, ErrorCode, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
@@ -548,6 +548,12 @@ fn con_limite(limite: Duration, f: impl FnOnce() -> bool + Send + 'static) -> bo
     recibo.recv_timeout(limite).unwrap_or(false)
 }
 
+/// Por un enlace, SQLite lo busca junto al enlace o junto al archivo, según el sistema.
+fn tiene_diario(bd: &Path) -> bool {
+    con_sufijo(bd, "-journal").exists()
+        || fs::canonicalize(bd).is_ok_and(|c| con_sufijo(&c, "-journal").exists())
+}
+
 /// Una unidad que no responde cuelga hasta esto, y el arranque ocurre antes de crear la ventana.
 fn esta_su_archivo(e: &Entrada, bd: &Path) -> bool {
     if e.externa {
@@ -585,14 +591,10 @@ fn abrir_entrada_con(
         // shortcut: si la unidad se cuelga justo después, aquí no hay límite: el arranque espera, y un cambio de organización
         // también, con `conn` tomado, así que la base abierta queda sin responder; cambiarlo si llega a pasar
         // lo mismo que al agregarla, porque pudo cambiar: una unidad que ahora es de red, un diario que cambiaría lo revisado
-        let canonica = fs::canonicalize(&base.bd).ok();
-        if canonica.as_deref().is_some_and(es_red) {
+        if fs::canonicalize(&base.bd).is_ok_and(|c| es_red(&c)) {
             return Err(Fallo::de("contenido_invalido", "red"));
         }
-        // por un enlace, SQLite lo busca junto al enlace o junto al archivo, según el sistema
-        if con_sufijo(&base.bd, "-journal").exists()
-            || canonica.is_some_and(|c| con_sufijo(&c, "-journal").exists())
-        {
+        if tiene_diario(&base.bd) {
             return Err(Fallo::de("contenido_invalido", "journal"));
         }
         version_y_esquema(&base.bd, migraciones)?;
@@ -1059,18 +1061,31 @@ pub struct EliminadaVista {
     pub bytes: u64,
 }
 
-/// Lo que impide eliminar `e`, sabido antes de tocar nada. Devuelve si su archivo está.
+/// Lo que impide eliminar `e`, sabido antes de tocar nada. Devuelve si su archivo está. La abierta se copia con su conexión, y su
+/// archivo es el que abrió: de ella solo importa lo que diga la externa sobre borrarlo.
 pub fn revisar_para_eliminar(
     r: &Rutas,
     e: &Entrada,
+    abierta: bool,
     guardar_copia: bool,
     borrar_archivo: bool,
 ) -> Result<bool, Fallo> {
     let bd = ruta_de(r, e);
     let existe = esta_su_archivo(e, &bd);
     // una unidad retirada: sacarla de la lista no borraría lo que hay en ella, y hay que decirlo
-    if !existe && (guardar_copia || (e.externa && borrar_archivo)) {
+    if !existe && ((guardar_copia && !abierta) || (e.externa && borrar_archivo)) {
         return Err(Fallo::de("no_encontrado", bd.display()));
+    }
+    // se borraría el enlace, y el archivo de verdad seguiría ahí
+    if e.externa && borrar_archivo && fs::symlink_metadata(&bd).is_ok_and(|m| m.is_symlink()) {
+        return Err(Fallo::de("contenido_invalido", "enlace"));
+    }
+    if abierta {
+        return Ok(existe);
+    }
+    // `immutable` no lo ve: se copiarían páginas a medio escribir, y luego se borraría lo que las arregla
+    if existe && guardar_copia && tiene_diario(&bd) {
+        return Err(Fallo::de("contenido_invalido", "journal"));
     }
     let usa_el_archivo = !e.externa || borrar_archivo || guardar_copia;
     if existe && usa_el_archivo && !es_de_la_entrada(&bd, e) {
@@ -1079,14 +1094,33 @@ pub fn revisar_para_eliminar(
     Ok(existe)
 }
 
-/// Lo que se ve dañado o sin id en su lugar de siempre sigue siendo de ella, y eliminarla es lo que más le sirve. Una externa
-/// pudo cambiar por fuera: sin ver su id, no se sabe qué es.
+/// Lo ilegible en su lugar de siempre sigue siendo de ella, y eliminarla es lo que más le sirve. Lo que se lee sin id, solo si no
+/// tiene nada que perder: si no, es de otro. Una externa pudo cambiar por fuera: sin ver su id, no se sabe qué es.
 fn es_de_la_entrada(bd: &Path, e: &Entrada) -> bool {
-    let id = solo_lectura_cerrada(bd).and_then(|c| Ok(id_del_archivo(&c)?));
-    match id {
+    let Ok(c) = solo_lectura_cerrada(bd) else {
+        return !e.externa;
+    };
+    match id_del_archivo(&c) {
         Ok(Some(id)) => id == e.id,
-        _ => !e.externa,
+        Ok(None) => !e.externa && no_tiene_nada(&c),
+        // otro error, como uno pasajero, no dice nada del archivo
+        Err(f) => {
+            !e.externa
+                && matches!(
+                    f.sqlite_error_code(),
+                    Some(ErrorCode::NotADatabase | ErrorCode::DatabaseCorrupt)
+                )
+        }
     }
+}
+
+/// Sin una tabla (un archivo de 0 bytes), o con las de la app y sin filas. Lo que no se pueda mirar, tiene algo.
+fn no_tiene_nada(c: &Connection) -> bool {
+    c.query_row("SELECT NOT EXISTS (SELECT 1 FROM sqlite_master)", [], |f| {
+        f.get(0)
+    })
+    .unwrap_or(false)
+        || esta_vacia(c).unwrap_or(false)
 }
 
 /// La copia de `e` en `organizaciones-eliminadas/`. Pasa por un temporal: un corte no deja una copia a medias con nombre válido.
@@ -1503,6 +1537,22 @@ pub(crate) mod prueba {
             },
         )
         .unwrap();
+    }
+
+    /// `false`, con un aviso a la vista, si el sistema no deja crearlo (Windows sin ese permiso): la prueba no comprueba eso.
+    pub fn crear_enlace(archivo: &Path, enlace: &Path) -> bool {
+        #[cfg(windows)]
+        let creado = std::os::windows::fs::symlink_file(archivo, enlace);
+        #[cfg(unix)]
+        let creado = std::os::unix::fs::symlink(archivo, enlace);
+        if let Err(e) = &creado {
+            // directo y sin `eprintln!`: `cargo test` esconde lo que este escribe en una prueba que pasa
+            let _ = writeln!(
+                io::stderr(),
+                "AVISO: esta prueba no comprobó los enlaces, porque no se pudo crear uno: {e}"
+            );
+        }
+        creado.is_ok()
     }
 
     pub fn sin_rastros(bd: &Path) {
@@ -2757,12 +2807,7 @@ mod tests_archivo {
         let (_d, bd, id) = afuera("a.db");
         let enlaces = tempfile::tempdir().unwrap();
         let enlace = enlaces.path().join("enlace.db");
-        #[cfg(windows)]
-        let creado = std::os::windows::fs::symlink_file(&bd, &enlace);
-        #[cfg(unix)]
-        let creado = std::os::unix::fs::symlink(&bd, &enlace);
-        if creado.is_err() {
-            // Windows sin el permiso de crear enlaces: no hay cómo armar el caso
+        if !crear_enlace(&bd, &enlace) {
             return;
         }
         escribir(

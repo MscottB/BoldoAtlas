@@ -367,13 +367,14 @@ pub(crate) fn con_sufijo(ruta: &Path, sufijo: &str) -> PathBuf {
     s.into()
 }
 
-/// Borra el archivo y sus -wal/-shm/-journal, si existen.
+/// Borra el archivo y sus -wal/-shm/-journal, si existen. Primero el archivo: si algo lo retiene, lo que sigue en su `-wal` no se
+/// pierde.
 pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
     for p in [
+        ruta.into(),
         con_sufijo(ruta, "-wal"),
         con_sufijo(ruta, "-shm"),
         con_sufijo(ruta, "-journal"),
-        ruta.into(),
     ] {
         match fs::remove_file(p) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
@@ -643,6 +644,18 @@ mod tests {
             "boldo-20260101-0900.db"
         );
         assert_eq!(listar(&respaldos).unwrap()[0].revision, Some(0));
+    }
+
+    /// Lo que retiene un antivirus: una carpeta con ese nombre tampoco se puede quitar con `remove_file`, en ningún sistema.
+    #[test]
+    fn borrar_bd_no_quita_el_wal_si_no_puede_quitar_el_archivo() {
+        let dir = tempfile::tempdir().unwrap();
+        let bd = dir.path().join("x.db");
+        fs::create_dir(&bd).unwrap();
+        let wal = con_sufijo(&bd, "-wal");
+        fs::write(&wal, "filas sin aplicar").unwrap();
+        assert!(borrar_bd(&bd).is_err());
+        assert_eq!(fs::read(&wal).unwrap(), b"filas sin aplicar");
     }
 
     #[test]
