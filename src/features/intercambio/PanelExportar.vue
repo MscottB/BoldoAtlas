@@ -11,6 +11,7 @@ import {
   type ResumenExportacion,
 } from "@/db/cliente";
 import { indiceHijos } from "@/features/arbol/jerarquia";
+import { deLaAbierta } from "@/lib/trabajos";
 import { useOrganizacion } from "@/stores/organizacion";
 import BarraAvance from "./BarraAvance.vue";
 import {
@@ -66,7 +67,7 @@ async function preparar() {
   const propio = trabajo.nuevo();
   paso.value = "trabajando";
   avance.value = null;
-  const r = await intentarTrabajo(t("trabajos.exportarPreparar"), () =>
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.exportarPreparar")), () =>
     exportarPreparar(propio, modo.value === "todo" ? null : [...marcadas.value]),
   );
   if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
@@ -92,7 +93,7 @@ async function guardar() {
   if (!elegido.valor) return;
   paso.value = "trabajando";
   avance.value = null;
-  const r = await intentarTrabajo(t("trabajos.exportarGuardar"), () => exportarGuardar(propio));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.exportarGuardar")), () => exportarGuardar(propio));
   if (trabajo.actual.value !== propio) return;
   if (!r.ok) return fallar(r.mensaje, r.codigo, "alcance");
   codigo.value = r.valor.codigo;

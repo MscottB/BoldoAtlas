@@ -27,7 +27,7 @@ import {
 import { tamano } from "@/lib/formato";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { FRECUENCIA_POR_DEFECTO, FRECUENCIAS } from "./programa";
-import { conTrabajo, ultimoFin } from "@/lib/trabajos";
+import { conTrabajo, deLaAbierta, ultimoFin } from "@/lib/trabajos";
 import { mensajeFallo, PREFERENCIA, respaldar as hacerRespaldo } from "./respaldos";
 import { claseSelect } from "@/lib/utils";
 
@@ -77,7 +77,7 @@ async function restaurar() {
   ocupado.value = true;
   try {
     const { nombre } = elegido.value;
-    await conTrabajo(t("trabajos.restaurar"), () => restaurarRespaldo(nombre)); // si sale bien, la app se reinicia
+    await conTrabajo(deLaAbierta(t("trabajos.restaurar")), () => restaurarRespaldo(nombre)); // si sale bien, la app se reinicia
   } catch (e) {
     toast.error(mensajeFallo(e));
     ocupado.value = false;

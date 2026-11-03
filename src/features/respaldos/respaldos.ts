@@ -3,7 +3,7 @@ import { listarRespaldos, respaldarAhora, type AvanceEliminar, type FalloRespald
 import { i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
 import { leerPreferencia } from "@/lib/preferencias";
-import { conTrabajo, trabajos } from "@/lib/trabajos";
+import { conTrabajo, deLaAbierta, trabajos } from "@/lib/trabajos";
 import type { Resultado } from "@/stores/organizacion";
 import { FRECUENCIA_POR_DEFECTO, tocaRespaldar, ultimoRespaldo } from "./programa";
 
@@ -51,7 +51,7 @@ export function falloOrganizacion(e: unknown): {
 
 /** «Respaldar ahora» y el automático: cuenta como trabajo en curso. */
 export const respaldar = (): Promise<string> =>
-  conTrabajo(i18n.global.t("trabajos.respaldar"), respaldarAhora);
+  conTrabajo(deLaAbierta(i18n.global.t("trabajos.respaldar")), respaldarAhora);
 
 let noAntesDe = 0;
 
@@ -60,6 +60,7 @@ let noAntesDe = 0;
  * la trae al frente, y no debe hacerlo en cada revisión.
  */
 export async function respaldoAutomatico(alAbrir = true): Promise<void> {
+  const aviso = deLaAbierta(i18n.global.t("respaldos.automaticoFallo"));
   try {
     const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
     if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir)) await respaldar();
@@ -67,7 +68,7 @@ export async function respaldoAutomatico(alAbrir = true): Promise<void> {
     if (e instanceof BaseCambiada) return; // se pasó a otra organización: no falló nada
     noAntesDe = Date.now() + ESPERA_TRAS_FALLO;
     // Sin caducar: con la ventana oculta nadie lo ve antes de volver a ella.
-    toast(i18n.global.t("respaldos.automaticoFallo"), {
+    toast(aviso, {
       description: mensajeFallo(e),
       duration: Infinity,
     });
@@ -91,7 +92,7 @@ export async function conRespaldoPrevio(
   accion: () => Promise<Resultado>,
 ): Promise<Resultado> {
   try {
-    await conTrabajo(i18n.global.t("trabajos.respaldar"), hacerRespaldo);
+    await conTrabajo(deLaAbierta(i18n.global.t("trabajos.respaldar")), hacerRespaldo);
   } catch (e) {
     return { ok: false, mensaje: mensajeFallo(e) };
   }

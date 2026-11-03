@@ -1,6 +1,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { defineStore } from "pinia";
 import { toast } from "vue-sonner";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { soltarYEsperarEscrituras } from "@/app/ventana";
 import {
   abrirOrganizacion,
@@ -28,9 +29,9 @@ import {
 } from "@/features/respaldos/respaldos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
-import { BaseCambiada, baseActual, fijarBase, marcarCambio, soltarDatos } from "@/lib/baseActiva";
+import { alSoltarDatos, BaseCambiada, baseActual, fijarBase, marcarCambio, soltarDatos } from "@/lib/baseActiva";
 import { borrarPreferenciasOrg } from "@/lib/preferencias";
-import { trabajos } from "@/lib/trabajos";
+import { registrarAbierta, trabajos } from "@/lib/trabajos";
 import { useOrganizacion, type Resultado } from "./organizacion";
 
 const MAX_RECIENTES = 8;
@@ -81,6 +82,15 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   const sinAbrir = ref(new Map<string, Motivo>());
   /** Las organizaciones ya abiertas en esta sesión: con la frecuencia «al abrir», solo la primera vez respalda. */
   const yaAbiertas = new Set([baseActual()]);
+
+  // `baseActual` no es reactiva, y la barra y la bandeja siguen a la abierta.
+  const idAbierta = ref(baseActual());
+  alSoltarDatos(() => (idAbierta.value = baseActual()));
+  const abierta = computed(() => lista.value.find((o) => o.id === idAbierta.value) ?? null);
+  // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama. Sin la bandera, solo el de la base.
+  const nombreAbierta = computed(() => org.org.nombre || (ORGANIZACIONES_VISIBLES && abierta.value?.nombre) || "");
+  const varias = computed(() => ORGANIZACIONES_VISIBLES && lista.value.length > 1);
+  registrarAbierta(() => ({ nombre: nombreAbierta.value || t("barra.sinNombre"), varias: varias.value }));
 
   watch(
     () => org.org.nombre,
@@ -394,6 +404,9 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   return {
     lista,
     recientes,
+    abierta,
+    nombreAbierta,
+    varias,
     cambiando,
     listaProtegida,
     intentosEliminar,

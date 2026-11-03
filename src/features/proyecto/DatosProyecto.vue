@@ -17,12 +17,13 @@ import { abrirCarpetaDatos, infoProyecto, type InfoProyecto } from "@/db/cliente
 import { tamano } from "@/lib/formato";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { useRetornoFoco } from "@/lib/foco";
-import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { datosProyectoAbierto } from "./menuApp";
 
 // Dónde están los datos del proyecto abierto. La ruta la entrega Rust: la interfaz solo la muestra y la copia.
 const { t, locale } = useI18n();
-const org = useOrganizacion();
+const organizaciones = useOrganizaciones();
 const info = ref<InfoProyecto | null>(null);
 const error = ref("");
 const retorno = useRetornoFoco();
@@ -64,8 +65,16 @@ const abrirCarpeta = () => abrirCarpetaDatos().catch((e: unknown) => toast.error
     >
       <DialogHeader>
         <DialogTitle>{{ t("proyecto.titulo") }}</DialogTitle>
-        <DialogDescription>
-          {{ org.org.nombre || t("barra.sinNombre") }} · {{ t("proyecto.principal") }}
+        <DialogDescription v-if="ORGANIZACIONES_VISIBLES" class="flex items-center gap-2">
+          <span
+            class="size-2.5 shrink-0 rounded-full"
+            :style="{ backgroundColor: organizaciones.abierta?.color || 'currentColor' }"
+            aria-hidden="true"
+          />
+          {{ organizaciones.nombreAbierta || t("barra.sinNombre") }}
+        </DialogDescription>
+        <DialogDescription v-else>
+          {{ organizaciones.nombreAbierta || t("barra.sinNombre") }} · {{ t("proyecto.principal") }}
         </DialogDescription>
       </DialogHeader>
       <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>

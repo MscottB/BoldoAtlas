@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { effectScope, nextTick, ref, watch } from "vue";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import { enCambio, baseActual, fijarBase, marcarCambio, soltarDatos, alSoltarDatos } from "@/lib/baseActiva";
-import { trabajos } from "@/lib/trabajos";
+import { deLaAbierta, trabajos } from "@/lib/trabajos";
 import { recordarPorArbol, useVista } from "@/features/arbol/useVista";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
@@ -94,6 +94,56 @@ afterEach(async () => {
   await new Promise((res) => setTimeout(res)); // lo que quede en camino, como el foco tras cerrar, con `document` aún puesto
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe("la abierta, para la barra y la bandeja", () => {
+  const de = (id: string, nombre: string) => ({ id, nombre, color: `#${id}` });
+
+  it("con la bandera apagada, el nombre es solo el de la base, y los trabajos se nombran como hoy", async () => {
+    c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa"), de("B", "Beta")]);
+    const o = useOrganizaciones();
+    await o.cargarLista();
+    expect(o.varias).toBe(false);
+    expect(o.nombreAbierta).toBe("");
+    expect(deLaAbierta("Respaldo")).toBe("Respaldo");
+  });
+
+  it("tras cambiar, es de la nueva y no queda nada de la anterior", async () => {
+    c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa"), de("B", "Beta")]);
+    c.leerMeta.mockResolvedValue({ org_nombre: "Alfa" });
+    const o = useOrganizaciones();
+    const org = useOrganizacion();
+    await o.cargarLista();
+    await org.cargar();
+    expect(o.abierta?.id).toBe("A");
+    expect(o.nombreAbierta).toBe("Alfa");
+
+    const carga = pendiente<Record<string, string>>();
+    c.leerMeta.mockReturnValue(carga.promesa);
+    await arrancar(null);
+    const cambio = o.abrir("B");
+    await vi.waitFor(() => expect(baseActual()).toBe("B"));
+    // ya es B y sus datos aún no llegan: ni el color ni el nombre siguen siendo los de A
+    expect(o.abierta?.color).toBe("#B");
+    expect(org.org.nombre).toBe("");
+    expect(o.nombreAbierta).toBe("");
+    carga.resolver({ org_nombre: "Beta" });
+    await cambio;
+    expect(o.nombreAbierta).toBe("Beta");
+  });
+
+  it("si la base no abre, la abierta sigue siendo la misma", async () => {
+    c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa"), de("B", "Beta")]);
+    c.leerMeta.mockResolvedValue({ org_nombre: "Alfa" });
+    const o = useOrganizaciones();
+    await o.cargarLista();
+    await useOrganizacion().cargar();
+    await arrancar(null);
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("no_encontrado"));
+    await o.abrir("B");
+    expect(o.abierta?.id).toBe("A");
+    expect(o.nombreAbierta).toBe("Alfa");
+  });
 });
 
 const TRES = {
