@@ -333,6 +333,7 @@ describe("puestos y asignaciones", () => {
 describe("cargarEjemplo", () => {
   it("crea una organización de muestra en un solo lote", async () => {
     const s = nuevo();
+    await s.cargar();
     const antes = revision();
     const r = await s.cargarEjemplo();
     expect(r).toEqual({ ok: true });
@@ -1674,6 +1675,15 @@ describe("duplicar rama", () => {
 });
 
 describe("guarda de datos existentes", () => {
+  it("crearOrganizacion y cargarEjemplo se niegan si los datos no cargaron: vacía no quiere decir sin datos", async () => {
+    const s = nuevo(); // sin `cargar`: como tras soltar los datos y fallar la carga
+    expect(s.vacia).toBe(true);
+    const antes = revision();
+    expect((await s.crearOrganizacion("Acme", "Raíz")).ok).toBe(false);
+    expect((await s.cargarEjemplo()).ok).toBe(false);
+    expect(revision()).toBe(antes);
+  });
+
   it("crearOrganizacion y cargarEjemplo se niegan si ya hay unidades y no escriben", async () => {
     const s = nuevo();
     await unidad(s, "Existente");
@@ -1760,6 +1770,7 @@ describe("reemplazarCon", () => {
 
   it("con 'ejemplo' queda exactamente lo que da el ejemplo sobre una base nueva", async () => {
     const limpia = nuevo();
+    await limpia.cargar();
     await limpia.cargarEjemplo();
     const esperado = filas();
     h.bd = abrirBasePrueba(); // otra base, para partir de datos propios
@@ -1830,6 +1841,7 @@ describe("sentenciasNueva", () => {
 
     h.bd = abrirBasePrueba();
     const otra = nuevo();
+    await otra.cargar();
     await otra.cargarEjemplo();
     expect(otra.unidades.map((u) => u.nombre).sort()).toEqual(unidades);
   });

@@ -743,6 +743,7 @@
     "sinAbrir": "This organization could not be opened",
     "detalle": "Error details",
     "errorCopiar": "Couldn't copy. Select the details and copy them by hand.",
+    "reintentar": "Try again",
     "buscarArchivo": "Find file",
     "buscandoArchivo": "Finding and checking the file. A large one may take a while…",
     "cerrarPestana": "Close tab",

@@ -66,7 +66,7 @@ async function entrar(r: Resultado) {
 }
 
 // Con datos en la base, empezar de nuevo los reemplaza: pide confirmación y hace antes un respaldo.
-const hayDatos = computed(() => !org.vacia);
+const hayDatos = computed(() => !org.cargado || !org.vacia);
 const confirmando = ref(false);
 // No se limpia al cerrar el diálogo: la acción lo necesita después de que el diálogo se cierra.
 const reemplazo = ref<"vacia" | "ejemplo">("vacia");

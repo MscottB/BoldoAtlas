@@ -698,30 +698,91 @@ describe("desde las pestañas", () => {
       expect(toast.warning).toHaveBeenCalled();
     });
 
-    it("si no cargaron sus datos, cerrarla va a Inicio y el motivo sigue en la que queda", async () => {
+    it("si no cargaron sus datos, cerrarla no va a Inicio y el motivo sigue en la que queda", async () => {
       const { p, o } = await arrancar();
       c.consultar.mockRejectedValue("no such table: unidades");
       await o.activarPestana("b1");
+      const ruta = router.currentRoute.value.fullPath;
       expect(p.cerrar("b1")).toEqual({ ok: true });
-      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe("/bienvenida"));
+      await esperar();
+      expect(router.currentRoute.value.fullPath).toBe(ruta);
       expect(ids()).not.toContain("b1");
       expect(p.lista.find((x) => x.id === p.activa)?.org).toBe("B");
       expect(o.sinAbrir.get(p.activa)?.codigo).toBe("fallo");
     });
+
+    describe("con sus datos sin cargar y otra pestaña de la misma organización", () => {
+      const CON_B2 = {
+        lista: [
+          { id: "a1", org: "A", ruta: "/" },
+          { id: "b1", org: "B", ruta: "/revision" },
+          { id: "b2", org: "B", ruta: "/directorio?persona=pB" },
+        ],
+        activa: "a1",
+      };
+
+      it("ir a la otra reintenta: ni árbol vacío ni rutas borradas", async () => {
+        const { p, o } = await arrancar(CON_B2);
+        c.consultar.mockRejectedValue("no such table: unidades");
+        await o.activarPestana("b1");
+        c.abrirOrganizacion.mockClear();
+        p.activar("b2");
+        await vi.waitFor(() => expect(o.sinAbrir.has("b2")).toBe(true));
+        expect(c.abrirOrganizacion).toHaveBeenCalledWith("B");
+        expect(p.activa).toBe("b2");
+        expect(p.lista.find((x) => x.id === "b2")?.ruta).toBe("/directorio?persona=pB");
+      });
+
+      it("si ahora cargan, ninguna pestaña de esa organización sigue con ese motivo", async () => {
+        const { p, o } = await arrancar(CON_B2);
+        c.consultar.mockRejectedValueOnce("no such table: unidades");
+        await o.activarPestana("b1");
+        c.consultar.mockResolvedValue([]);
+        p.activar("b2");
+        await vi.waitFor(() => expect(o.sinAbrir.size).toBe(0));
+      });
+
+      it("«Reintentar» vuelve a pedir la misma organización y recarga", async () => {
+        const { p, o } = await arrancar(CON_B2);
+        c.consultar.mockRejectedValueOnce("no such table: unidades");
+        await o.activarPestana("b1");
+        c.abrirOrganizacion.mockClear();
+        c.consultar.mockResolvedValue([]);
+        expect(await o.activarPestana("b1")).toEqual({ ok: true });
+        expect(c.abrirOrganizacion).toHaveBeenCalledWith("B");
+        expect(o.sinAbrir.has("b1")).toBe(false);
+        expect(useOrganizacion().cargado).toBe(true);
+        expect(p.activa).toBe("b1");
+      });
+
+      it("volver de Inicio no descarta pestañas por ids que no se pueden comprobar, ni pierde el motivo", async () => {
+        const { p, o } = await arrancar(CON_B2);
+        await router.replace("/bienvenida");
+        c.consultar.mockRejectedValue("no such table: unidades");
+        expect((await o.abrir("B")).ok).toBe(true);
+        await vi.waitFor(() => expect(router.currentRoute.value.path).not.toBe("/bienvenida"));
+        await esperar();
+        expect(ids()).toContain("b2");
+        expect(p.lista.find((x) => x.id === "b2")?.ruta).toBe("/directorio?persona=pB");
+        expect(o.sinAbrir.has(p.activa)).toBe(true);
+      });
+    });
   });
 
-  it("al ir a otra pestaña de la abierta, lo que nombra su ruta se comprueba", async () => {
+  it("una pestaña reasignada se queda en su vista, sin los ids ni el estado de la que ya no está", async () => {
     const { p } = await arrancar({
       lista: [
         { id: "a1", org: "A", ruta: "/revision" },
-        { id: "z1", org: "Z", ruta: "/directorio?persona=pZ" },
+        { id: "z1", org: "Z", ruta: "/directorio?persona=pZ", volver: "/?ver=uZ" },
       ],
       activa: "a1",
     });
-    p.reasignar("Z", "A"); // sus ids son de la que ya no está
+    p.guardarEstado("z1", "/directorio?persona=pZ", { algo: 1 });
+    p.reasignar("Z", "A");
+    expect(p.lista.find((x) => x.id === "z1")).toEqual({ id: "z1", org: "A", ruta: "/directorio" });
     p.activar("z1");
     await vi.waitFor(() => expect(p.activa).toBe("z1"));
-    expect(router.currentRoute.value.fullPath).toBe("/");
+    expect(router.currentRoute.value.fullPath).toBe("/directorio");
   });
 
   it("la única pestaña, sin abrir, se cierra y queda una de la abierta en su inicio", async () => {

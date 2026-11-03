@@ -743,6 +743,7 @@
     "sinAbrir": "No se pudo abrir esta organización",
     "detalle": "Detalle del error",
     "errorCopiar": "No se pudo copiar. Selecciona el detalle y cópialo a mano.",
+    "reintentar": "Reintentar",
     "buscarArchivo": "Buscar archivo",
     "buscandoArchivo": "Buscando y revisando el archivo. Con uno grande puede tardar…",
     "cerrarPestana": "Cerrar pestaña",

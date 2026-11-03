@@ -73,11 +73,22 @@ async function buscar() {
   const r = await organizaciones.agregarArchivo(preguntar, org);
   buscando.value = false;
   if (r.ok) for (const a of r.avisos ?? []) toast.warning(t(`organizaciones.avisoArchivo.${a}`));
-  else toast.error(r.mensaje);
-  // Este botón pudo desaparecer: con la pestaña ya abierta, o con otro motivo que no ofrece buscar.
+  else if (r.mensaje) toast.error(r.mensaje);
+  await enfocarSiQuedoSuelto();
+}
+
+// El botón pudo desaparecer: con la pestaña ya abierta, o con otro motivo que no lo ofrece.
+async function enfocarSiQuedoSuelto() {
   await nextTick();
   if (!document.activeElement || document.activeElement === document.body)
     document.getElementById(ID_AREA)?.focus();
+}
+
+const puedeReintentar = computed(() => ["fallo", "abierta_en_otra_copia"].includes(props.motivo.codigo));
+async function reintentar() {
+  const r = await organizaciones.activarPestana(props.id);
+  if (!r.ok && r.mensaje) toast.error(r.mensaje);
+  await enfocarSiQuedoSuelto();
 }
 
 function cerrar() {
@@ -106,6 +117,7 @@ function cerrar() {
       <Button v-if="puedeBuscar" :aria-busy="buscando" @click="buscar">
         {{ t("organizaciones.buscarArchivo") }}
       </Button>
+      <Button v-if="puedeReintentar" @click="reintentar">{{ t("organizaciones.reintentar") }}</Button>
       <Button v-if="motivo.codigo === 'esquema_nuevo'" @click="buscarActualizaciones">
         {{ t("menu.actualizar") }}
       </Button>

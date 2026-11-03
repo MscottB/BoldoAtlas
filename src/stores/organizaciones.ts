@@ -149,6 +149,10 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
         pestanas.marcarActiva(pestana);
         if (r.ok) {
           sinAbrir.value.delete(pestana);
+          // Sus datos ya cargaron: tampoco vale para las otras pestañas de esta organización.
+          for (const [otra, m] of sinAbrir.value)
+            if (m.codigo === "fallo" && pestanas.lista.find((x) => x.id === otra)?.org === id)
+              sinAbrir.value.delete(otra);
           pestanas.validarActivada(pestana);
           await pestanas.navegar(pestana);
         } else {
@@ -329,14 +333,15 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       while (r?.pide) r = await confirmarArchivoOrganizacion(await confirmar(r.pide));
       if (!r?.id) return { ok: true };
       // Con otros datos, Rust saca la buscada de la lista y este archivo toma su lugar; una copia no: lo dice la lista. Vale
-      // aunque `abrir` no llegue a abrirlo: en la lista ya no está. Sin poder leerla, la lista anterior aún la tiene.
+      // aunque `abrir` no llegue a abrirlo: en la lista ya no está. Sin poder leerla, las pestañas no se mueven.
       if (buscando && r.id !== buscando) {
-        await cargarLista();
-        if (!lista.value.some((o) => o.id === buscando)) {
+        const ahora = await listarOrganizaciones().catch(() => null);
+        if (ahora && !ahora.some((o) => o.id === buscando)) {
           const pestanas = usePestanas();
           pestanas.asegurarCargadas();
           pestanas.reasignar(buscando, r.id);
         }
+        void cargarLista();
       }
       return { ...(await abrir(r.id)), avisos: r.avisos };
     } catch (e) {

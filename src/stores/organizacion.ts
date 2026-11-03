@@ -748,7 +748,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Primer uso: el nombre de la organización y su unidad raíz (del primer tipo activo), en un solo lote. */
   async function crearOrganizacion(nombre: string, nombreRaiz: string): Promise<Resultado> {
-    if (!vacia.value) return rechazar(t("store.hayDatos"));
+    // sin cargar, «vacía» no quiere decir sin datos: los mezclaría con los que hay, sin respaldo
+    if (!cargado.value || !vacia.value) return rechazar(t("store.hayDatos"));
     if (!nombre.trim() || !nombreRaiz.trim()) return rechazar(t("store.nombreVacio"));
     const tipo = activos("tipos_unidad")[0];
     if (!tipo) return rechazar(t("arbol.sinTiposActivos"));
@@ -912,7 +913,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Solo con la base sin unidades: reemplazar datos existentes es `reemplazarCon`. Todo en un solo lote. */
   function cargarEjemplo(): Promise<Resultado> {
-    if (!vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
+    if (!cargado.value || !vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
     return escribir(() => sentenciasEjemplo(renombresSemilla()));
   }
 
