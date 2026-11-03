@@ -354,8 +354,9 @@ async function primeraApertura(exe, carpeta) {
 
   // la organización se crea desde la interfaz: pasa por el store, cliente.ts y su baseId
   await app.hasta(`document.getElementById("bienvenida-camino-vacia")`, "la pantalla de bienvenida");
-  await app.hasta(
-    `document.visibilityState === "visible" && innerWidth >= screen.availWidth - 20`,
+  const ventana = (comando) => app.llamar(`plugin:window|${comando}`, { label: "main" });
+  await esperar(
+    async () => (await ventana("is_visible")).valor && (await ventana("is_maximized")).valor,
     "la ventana a la vista y maximizada",
   );
   comprobar(

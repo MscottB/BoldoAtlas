@@ -106,9 +106,10 @@ pub fn run() {
             // arrancada por el sistema no le quita el foco a lo que el usuario abre al iniciar sesión; minimizada
             // y no oculta, porque no siempre hay bandeja desde donde volver
             let por_el_sistema = std::env::args().any(|a| a == inicio::ARGUMENTO);
+            ventana = ventana.maximized(true);
             // abierta a mano se muestra al cargar la página: sin pantalla blanca, ya dice «Iniciando…»
             ventana = if por_el_sistema {
-                ventana.maximized(true).focused(false)
+                ventana.focused(false)
             } else {
                 ventana.visible(false)
             };
