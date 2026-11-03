@@ -345,7 +345,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0], comoJefatura = false) =>
     escribir(() => {
       const p = P.crearPuesto(datos);
-      return { id: p.id, sentencias: comoJefatura ? [...p.sentencias, ...U.asignarJefe(datos.unidad_id, p.id)] : p.sentencias };
+      return {
+        id: p.id,
+        sentencias: comoJefatura ? [...p.sentencias, ...U.asignarJefe(datos.unidad_id, p.id)] : p.sentencias,
+      };
     });
   const editarPuesto = (id: string, cambios: Parameters<typeof P.editarPuesto>[1]) =>
     escribir(() => P.editarPuesto(id, cambios));
@@ -858,6 +861,20 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return s;
   }
 
+  /** Lo que escribe una organización vacía o el ejemplo sobre una base recién hecha: sus tipos son los sembrados y sin uso. */
+  function sentenciasNueva(
+    tipo: "vacia" | "ejemplo",
+    datos?: { nombre: string; nombreRaiz: string },
+  ): Sentencia[] {
+    const renombres = renombresSemilla(
+      TIPOS_SEMILLA.map((s) => ({ ...s, deleted_at: null })),
+      () => 0,
+    );
+    return tipo === "ejemplo"
+      ? sentenciasEjemplo(renombres)
+      : sentenciasRaiz(datos!.nombre, datos!.nombreRaiz, TIPO_GERENCIA, renombres).sentencias;
+  }
+
   /** Solo con la base sin unidades: reemplazar datos existentes es `reemplazarCon`. Todo en un solo lote. */
   function cargarEjemplo(): Promise<Resultado> {
     if (!vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
@@ -874,19 +891,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
   ): Promise<Resultado> {
     if (tipo === "vacia" && (!datos?.nombre.trim() || !datos.nombreRaiz.trim()))
       return Promise.resolve(rechazar(t("store.nombreVacio")));
-    // Tras vaciar, los tipos de unidad son los sembrados y sin uso.
-    const renombres = renombresSemilla(
-      TIPOS_SEMILLA.map((s) => ({ ...s, deleted_at: null })),
-      () => 0,
-    );
     return escribir(
-      () => {
-        const nuevo =
-          tipo === "ejemplo"
-            ? sentenciasEjemplo(renombres)
-            : sentenciasRaiz(datos!.nombre, datos!.nombreRaiz, TIPO_GERENCIA, renombres).sentencias;
-        return [...vaciarOrganizacion(), ...nuevo];
-      },
+      // Tras vaciar, los tipos de unidad son los sembrados y sin uso.
+      () => [...vaciarOrganizacion(), ...sentenciasNueva(tipo, datos)],
       () => {
         // Nada de lo anterior existe ya: ni deshacer, ni la fecha vista, ni el estilo copiado.
         ultimoBorrado.value = null;
@@ -973,6 +980,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     deshacer,
     cargarEjemplo,
     crearOrganizacion,
+    sentenciasNueva,
     reemplazarCon,
     crearValor,
     renombrarValor,

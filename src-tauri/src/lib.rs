@@ -45,6 +45,11 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol(fotos::ESQUEMA, |ctx, pedido, responder| {
             fotos::atender(ctx.app_handle().clone(), pedido, responder)
         })
+        .on_page_load(|ventana, carga| {
+            ventana
+                .state::<intercambio::Sesiones>()
+                .al_cargar_pagina(carga.event());
+        })
         .on_window_event(|ventana, evento| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
                 salida::al_pedir_cierre(ventana.app_handle(), api);
@@ -111,6 +116,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             comandos::info_app,
             comandos::listar_organizaciones,
+            comandos::abrir_organizacion,
+            comandos::crear_organizacion,
             comandos::db_consultar,
             comandos::db_lote,
             fotos::foto_bytes,

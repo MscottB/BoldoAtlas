@@ -2,7 +2,7 @@
 //! de las que tiene esta copia de la app.
 use crate::db;
 use crate::intercambio::validar::{solo_lectura_cerrada, version_leida, version_y_esquema};
-use crate::respaldos::{Fallo, con_sufijo, limpiar_parciales};
+use crate::respaldos::{Fallo, borrar_bd, con_sufijo, copia_de, limpiar_parciales};
 use crate::rutas::Rutas;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -260,6 +260,25 @@ pub fn base_de(r: &Rutas, e: &Entrada) -> Base {
     }
 }
 
+/// La entrada de la base abierta que no está en la lista: su lugar se sabe por dónde está. Nombre, color y hora los pone
+/// `anotar_abierta`.
+pub fn entrada_de_base(r: &Rutas, b: &Base) -> Entrada {
+    if b.bd == r.bd {
+        return Entrada::principal(&b.id);
+    }
+    let interna = ruta_interna(&b.id);
+    let externa = b.bd != r.datos.join(&interna);
+    Entrada {
+        ruta: if externa {
+            b.bd.to_string_lossy().into_owned()
+        } else {
+            interna
+        },
+        externa,
+        ..Entrada::principal(&b.id)
+    }
+}
+
 fn leer_meta(conn: &Connection, clave: &str) -> Option<String> {
     conn.query_row("SELECT valor FROM meta WHERE clave = ?1", [clave], |f| {
         f.get(0)
@@ -463,13 +482,17 @@ pub fn cargar_lista(r: &Rutas) -> Lista {
     }
 }
 
+pub fn lista_protegida() -> Fallo {
+    Fallo::de(
+        "lista_protegida",
+        "organizaciones.json no se pudo leer o es de una versión más nueva: no se reemplaza",
+    )
+}
+
 /// A un temporal, que se renombra: un corte no la deja a medias.
 pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
     if l.no_escribir {
-        return Err(Fallo::de(
-            "fallo",
-            "organizaciones.json no se pudo leer o es de una versión más nueva: no se reemplaza",
-        ));
+        return Err(lista_protegida());
     }
     let destino = r.datos.join(LISTA);
     let temporal = con_sufijo(&destino, ".tmp");
@@ -528,7 +551,8 @@ pub fn abrir_entrada(
         return Err(Fallo::de("no_encontrado", base.bd.display()));
     }
     if e.externa {
-        // shortcut: si la unidad se cuelga justo después, aquí no hay límite y el arranque espera; cambiarlo si llega a pasar
+        // shortcut: si la unidad se cuelga justo después, aquí no hay límite: el arranque espera, y un cambio de organización
+        // también, con `conn` tomado, así que la base abierta queda sin responder; cambiarlo si llega a pasar
         version_y_esquema(&base.bd, migraciones)?;
     }
     // si la consulta falla no se sabe de quién es: lo decide `abrir_base`, para no tomar un error pasajero por `otro_id`
@@ -542,7 +566,21 @@ pub fn abrir_entrada(
     if a.id != e.id {
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
+    if e.externa {
+        limpiar_restauracion(&base.bd);
+    }
     Ok(a)
+}
+
+/// Lo que dejó una restauración interrumpida junto a una externa: `limpiar_carpetas` no entra en esa carpeta, y aquí ya se
+/// tiene el bloqueo. Sin mirar mayúsculas: en Windows y macOS, `x.RESTAURANDO` es el archivo que `copia_de` nombra.
+fn limpiar_restauracion(bd: &Path) {
+    if !bd
+        .extension()
+        .is_some_and(|x| x.eq_ignore_ascii_case("restaurando"))
+    {
+        let _ = borrar_bd(&copia_de(bd));
+    }
 }
 
 /// Deja en la lista lo que se acaba de abrir, con su nombre y su hora. Un `boldo.db` vacío no se lista: lo usa la primera
@@ -588,6 +626,72 @@ pub fn anotar_abierta(
     Ok(())
 }
 
+/// `boldo.db` recibe una organización nueva si ni él ni su id están en la lista y no tiene nada que heredar. `id` y `conn` son
+/// los suyos.
+pub fn principal_libre(l: &Lista, id: &str, conn: &Connection) -> bool {
+    !l.organizaciones
+        .iter()
+        .any(|o| o.es_principal() || o.id == id)
+        && esta_vacia(conn).unwrap_or(false)
+}
+
+/// `boldo.db` cerrado, listo para recibir una organización nueva. `None` si no lo está, también si otra copia lo tiene o no
+/// abre: no impide crearla en su carpeta. Se mira antes sin tocarlo, y abierto se mira de nuevo, ya con el bloqueo.
+pub fn abrir_principal_libre(r: &Rutas, l: &Lista, migraciones: &[&str]) -> Option<Abierta> {
+    let parece_libre = !l.organizaciones.iter().any(Entrada::es_principal)
+        && (!r.bd.exists()
+            || solo_lectura_cerrada(&r.bd).is_ok_and(|c| esta_vacia(&c).unwrap_or(false)));
+    if !parece_libre {
+        return None;
+    }
+    abrir_base(&r.bd, &r.respaldos, None, ESPERA_CAMBIO, migraciones)
+        .ok()
+        .filter(|a| principal_libre(l, &a.id, &a.conn))
+}
+
+/// Una organización nueva en su carpeta. `llenar` recibe la entrada y el archivo ya abierto. Si algo falla se borra la carpeta: el
+/// id recién se generó, así que es de esta llamada. Un corte, o un borrado que falla, la deja sin listar, sin datos del usuario.
+pub fn crear_en_carpeta(
+    r: &Rutas,
+    l: &mut Lista,
+    migraciones: &[&str],
+    llenar: impl FnOnce(&mut Lista, Entrada, &mut Connection) -> Result<(), Fallo>,
+) -> Result<String, Fallo> {
+    let id = uuid::Uuid::now_v7().to_string();
+    let e = Entrada {
+        ruta: ruta_interna(&id),
+        ..Entrada::principal(&id)
+    };
+    let base = base_de(r, &e);
+    // el archivo se cierra al salir, antes de borrar: Windows no borra uno abierto
+    let hecho = (|| {
+        let mut a = abrir_base(
+            &base.bd,
+            &base.respaldos,
+            Some(&id),
+            ESPERA_CAMBIO,
+            migraciones,
+        )?;
+        llenar(l, e, &mut a.conn)
+    })();
+    if hecho.is_err() {
+        // si no se puede, el error que importa es el de arriba: lo que queda solo tiene lo que se intentaba crear
+        let _ = fs::remove_dir_all(r.datos.join(CARPETA).join(&id));
+    }
+    hecho.map(|()| id)
+}
+
+/// Agrega lo recién creado a la lista. Sin hora, que es de cuando se abre: hasta entonces no es la que abre el arranque.
+pub fn anotar_creada(l: &mut Lista, e: Entrada, conn: &Connection, ejemplo: bool) {
+    let color = color_libre(l).into();
+    l.organizaciones.push(Entrada {
+        nombre: leer_meta(conn, "org_nombre").unwrap_or_default(),
+        color,
+        ejemplo,
+        ..e
+    });
+}
+
 fn bytes_de_archivos(carpeta: &Path) -> u64 {
     fs::read_dir(carpeta)
         .into_iter()
@@ -626,6 +730,16 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
             }
         })
         .collect()
+}
+
+/// Lo que Inicio muestra de `e`, la abierta. Con los datos de `lista`, si está: un `boldo.db` vacío no se lista.
+pub fn vista_de(r: &Rutas, mut lista: Lista, e: Entrada) -> OrganizacionVista {
+    let id = e.id.clone();
+    lista.organizaciones.retain(|o| o.id == id);
+    if lista.organizaciones.is_empty() {
+        lista.organizaciones.push(e);
+    }
+    vistas(r, &lista, Some(&id)).remove(0)
 }
 
 /// Los temporales que dejó un corte en cada organización. Solo carpetas con nombre de id: nada sale de lo que diga un archivo.
@@ -1227,7 +1341,10 @@ mod tests_lista {
             organizaciones: vec![],
             no_escribir: true,
         };
-        assert_eq!(escribir_lista(&r, &l).unwrap_err().codigo, "fallo");
+        assert_eq!(
+            escribir_lista(&r, &l).unwrap_err().codigo,
+            "lista_protegida"
+        );
         assert_eq!(fs::read_to_string(&json).unwrap(), "lo que había");
         assert!(!con_sufijo(&json, ".tmp").exists());
         // la marca no llega al archivo

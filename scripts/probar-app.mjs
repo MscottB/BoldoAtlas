@@ -485,6 +485,25 @@ async function reapertura(exe, carpeta, primera) {
   const conOtra = await app.evaluar(cargarImagen(url.replace(info.baseId, OTRA_BASE)));
   comprobar("la misma URL con otra base da fallo", conOtra === null, conOtra);
 
+  // con un id que no está en la lista, `abrir_organizacion` no cambia nada: da `trabajo_en_curso` si la sesión está ocupada y
+  // `desconocido` si no. Una recarga no corre `onUnmounted`: la suelta Rust al empezar a cargar la página.
+  const nadie = "00000000-0000-7000-8000-0000000000ff";
+  const preparada = await app.llamar("exportar_preparar", {
+    baseId: info.baseId,
+    trabajo: "humo-recarga",
+    raices: null,
+  });
+  comprobar("exportar_preparar deja un trabajo a medias", preparada.ok, preparada);
+  await app.evaluar(
+    `location.hash = "#/acerca"; history.pushState(null, "", "#/ayuda"); new Promise((r) => setTimeout(r, 300))`,
+  );
+  const sigue = await app.llamar("abrir_organizacion", { id: nadie });
+  comprobar("navegar por hash no suelta el trabajo", sigue.error?.codigo === "trabajo_en_curso", sigue);
+  await app.evaluar(`window.__antes = true; void setTimeout(() => location.reload(), 0)`);
+  await app.hasta(`!window.__antes && Boolean(window.__TAURI_INTERNALS__)`, "que la página recargue");
+  const libre = await app.llamar("abrir_organizacion", { id: nadie });
+  comprobar("recargar suelta el trabajo", libre.error?.codigo === "desconocido", libre);
+
   const codigo = await app.cerrar();
   comprobar("la app reabierta cierra sola y con código 0", codigo === 0, codigo);
 }

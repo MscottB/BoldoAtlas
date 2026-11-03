@@ -17,6 +17,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use tauri::webview::PageLoadEvent;
 use validar::MetaArchivo;
 
 /// Copia en claro de una base, dentro de `datos/`. Se borra al soltarla; si la app se cierra de golpe, la borra
@@ -111,6 +112,11 @@ impl Sesiones {
         self.estado().trabajo.as_deref() == Some(trabajo)
     }
 
+    /// Con un trabajo sin soltar no se cambia de organización: sus pasos siguientes son sobre la base abierta.
+    pub fn ocupada(&self) -> bool {
+        self.estado().trabajo.is_some()
+    }
+
     /// Detiene ese trabajo y borra sus temporales. Si ya hay otro, no le pasa nada.
     pub fn cancelar(&self, trabajo: &str) {
         {
@@ -129,6 +135,17 @@ impl Sesiones {
     /// Al salir de la app.
     pub fn cancelar_todo(&self) {
         *self.estado() = EstadoSesion::default();
+    }
+
+    /// Una recarga de la ventana no corre `onUnmounted`: nadie queda para soltar el trabajo, y sin esto ningún cambio de
+    /// organización pasaría hasta reiniciar. Lo que termine tarde recibe `cancelado`.
+    /// shortcut: un `empezar` que llegue después de `Started` (un comando enviado justo antes de recargar) la deja ocupada hasta
+    /// otra recarga; importaría si alguien recibe `trabajo_en_curso` sin nada a la vista, y entonces la interfaz debería soltarlo
+    /// al arrancar.
+    pub fn al_cargar_pagina(&self, evento: PageLoadEvent) {
+        if evento == PageLoadEvent::Started {
+            self.cancelar_todo();
+        }
     }
 
     pub fn guardar_exportacion(&self, trabajo: &str, t: Temporal) -> Result<(), Fallo> {
@@ -521,6 +538,33 @@ mod tests {
     use db::MIGRACIONES;
 
     const SIGUE: fn(u64, u64) -> bool = |_, _| true;
+
+    #[test]
+    fn ocupada_mientras_haya_un_trabajo_sin_soltar() {
+        let s = Sesiones::default();
+        assert!(!s.ocupada());
+        s.empezar("t").unwrap();
+        assert!(s.ocupada());
+        s.cancelar("otro");
+        assert!(s.ocupada());
+        s.cancelar("t");
+        assert!(!s.ocupada());
+    }
+
+    #[test]
+    fn recargar_la_ventana_suelta_el_trabajo() {
+        let s = Sesiones::default();
+        s.empezar("t").unwrap();
+        // terminar de cargar no es una recarga: por ahí pasa también la primera carga
+        s.al_cargar_pagina(PageLoadEvent::Finished);
+        assert!(s.ocupada());
+        s.al_cargar_pagina(PageLoadEvent::Started);
+        assert!(!s.ocupada());
+        // lo que termina tarde no vuelve a dejarla ocupada
+        let f = s.guardar_archivo("t", PathBuf::from("x")).unwrap_err();
+        assert_eq!(f.codigo, "cancelado");
+        assert!(!s.ocupada());
+    }
 
     /// Solo los temporales: las demás cosas de la carpeta no importan aquí.
     fn temporales(dir: &Path) -> Vec<String> {
