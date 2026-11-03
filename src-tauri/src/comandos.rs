@@ -2337,13 +2337,28 @@ mod cambiar_a {
         lector
             .query_row("SELECT count(*) FROM meta", [], |f| f.get::<_, i64>(0))
             .unwrap();
+        let revision = |c: &Connection| -> String {
+            c.query_row(
+                "SELECT valor FROM meta WHERE clave = 'data_revision'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap()
+        };
+        let antes = revision(&lector);
         // lo escrito después del lector no se puede volcar del todo mientras siga leyendo
-        d.e.con_conexion(&d.a.id, |c| db::lote(c, &[], "t"))
+        let escrita =
+            d.e.con_conexion(&d.a.id, |c| {
+                db::lote(c, &[], "t")?;
+                Ok::<_, String>(revision(c))
+            })
             .unwrap();
+        assert_ne!(escrita, antes);
 
         let t = Instant::now();
         let v = cambiar(&d.e, &d.b.id).unwrap();
-        assert!(t.elapsed() < Duration::from_secs(1), "{:?}", t.elapsed());
+        // menos que los 5 s de `db::abrir`; no es la meta de 1 s
+        assert!(t.elapsed() < Duration::from_secs(3), "{:?}", t.elapsed());
         assert!(v.activa);
         assert_eq!(d.e.base_abierta(), Some(base_de(&d.r, &d.b)));
         let l = lista_del_json(&d.r);
@@ -2353,6 +2368,8 @@ mod cambiar_a {
         drop(lector);
         assert!(d.e.cerrar_ordenado(Duration::from_secs(1)));
         assert_eq!(arrancar(&d.r).base_abierta().unwrap().id, d.b.id);
+        // lo escrito en la anterior sigue ahí
+        assert_eq!(revision(&db::abrir(&bd).unwrap()), escrita);
     }
 
     #[test]

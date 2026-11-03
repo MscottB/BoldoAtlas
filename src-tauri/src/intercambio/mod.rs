@@ -139,6 +139,9 @@ impl Sesiones {
 
     /// Una recarga de la ventana no corre `onUnmounted`: nadie queda para soltar el trabajo, y sin esto ningún cambio de
     /// organización pasaría hasta reiniciar. Lo que termine tarde recibe `cancelado`.
+    /// shortcut: un `empezar` que llegue después de `Started` (un comando enviado justo antes de recargar) la deja ocupada hasta
+    /// otra recarga; importaría si alguien recibe `trabajo_en_curso` sin nada a la vista, y entonces la interfaz debería soltarlo
+    /// al arrancar.
     pub fn al_cargar_pagina(&self, evento: PageLoadEvent) {
         if evento == PageLoadEvent::Started {
             self.cancelar_todo();

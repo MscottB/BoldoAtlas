@@ -16,7 +16,7 @@ La spec choca con el código o queda ambigua en estos puntos. **[VISIBLE]** camb
 
 1. **[VISIBLE] Nada se ve hasta el último PR.** Cada PR publica una versión. Las pantallas nuevas van tras `ORGANIZACIONES_VISIBLES` (`src/app/proximamente.ts`, en `false`). La Task 18 cambia Inicio y quita la bandera.
 2. **[VISIBLE] No existe la pregunta «igual que al cerrar la ventana».** Cerrar solo pregunta por trabajos en curso; un formulario sin terminar se pierde (`ventana.ts:129`, `ayuda/es/inicio.md:46`). El único guardia de cambios es el de la ficha (`useFicha.registrarGuardia`). El cambio de organización quita el foco para guardar el campo en edición, espera a `org.guardando` hasta 2 s y, si la ficha tiene cambios, usa su «Hay cambios sin guardar». Los demás formularios son modales y tapan la barra de pestañas.
-3. **[VISIBLE] La spec dice dos cosas sobre un fallo al cambiar.** «Abrir y cambiar», paso 4, dice que se queda en la pestaña actual; «Pestañas» dice que el motivo va dentro de la pestaña. Se separan por causa. Si es del archivo (`no_encontrado`, `esquema_nuevo`, `contenido_invalido`, `danado`, `otro_id`, `abierta_en_otra_copia`, `desconocido`, `migracion`), la pestaña se activa y muestra el motivo, y la base anterior sigue abierta. Si es pasajero (`trabajo_en_curso`, `sin_espacio`, `fallo`), se queda en la actual con un aviso.
+3. **[VISIBLE] La spec dice dos cosas sobre un fallo al cambiar.** «Abrir y cambiar», paso 4, dice que se queda en la pestaña actual; «Pestañas» dice que el motivo va dentro de la pestaña. Se separan por causa. Si es del archivo (`no_encontrado`, `esquema_nuevo`, `contenido_invalido`, `danado`, `otro_id`, `abierta_en_otra_copia`, `desconocido`, `migracion`), la pestaña se activa y muestra el motivo, y la base anterior sigue abierta. Si es pasajero (`trabajo_en_curso`, `lista_protegida`, `sin_espacio`, `fallo`), se queda en la actual con un aviso.
 4. **[VISIBLE] Arranque si la última organización no abre.** La spec no lo dice. Hoy un error de apertura deja la pantalla de error. Se abre `boldo.db` (o se crea vacío), e Inicio avisa qué organización no abrió y por qué. La pantalla de error queda solo si falla `boldo.db`.
 5. **[VISIBLE] Eliminar o quitar la organización abierta.** Inicio necesita una base abierta. Al eliminar la abierta se pasa antes a la más reciente que abra o, si no hay, a `boldo.db` vacío, y se va a Inicio. Sus pestañas se cierran solas (decisión 23). **Quitar de la lista** no se ofrece sobre la abierta.
 6. **[VISIBLE] `.boldo` como organización nueva.** Se admite también un archivo parcial: el motivo para rechazarlo en «Reemplazar todo» (borra lo demás) no aplica. Siempre crea `organizaciones/<id>/`, aunque `boldo.db` esté vacío: reemplazar un archivo abierto exigiría reiniciar. Ese `boldo.db` vacío sigue sin listarse y lo usa el próximo **Crear**.
@@ -56,7 +56,7 @@ La spec choca con el código o queda ambigua en estos puntos. **[VISIBLE]** camb
 - Rutas relativas a la carpeta de datos: `boldo.db` y `respaldos/` sin mover; `organizaciones/<id>/organizacion.db`, `organizaciones/<id>/respaldos/`, `organizaciones.json`, `organizaciones-eliminadas/`.
 - `<id>` es el `db_id` en forma canónica (UUID de 36 caracteres en minúsculas). Nunca se borra ni se crea una carpeta con una ruta salida del JSON: se deriva de un id validado.
 - `organizaciones.json`: `{"version":1,"organizaciones":[{id,ruta,externa,nombre,color,abierta}]}`, más `ejemplo` (decisión 17). Se escribe a un temporal y se renombra. Internas con ruta relativa; externas con absoluta.
-- Códigos de error: `otra_base`, `abierta_en_otra_copia`, `trabajo_en_curso`, `no_encontrado`, `otro_id`, `sin_espacio`, `migracion`, `abierta`. Más los existentes `esquema_nuevo`, `danado`, `contenido_invalido`, `desconocido`, `fallo`. Se traducen en `respaldos.error.<codigo>`, es y en.
+- Códigos de error: `otra_base`, `abierta_en_otra_copia`, `trabajo_en_curso`, `lista_protegida`, `no_encontrado`, `otro_id`, `sin_espacio`, `migracion`, `abierta`. Más los existentes `esquema_nuevo`, `danado`, `contenido_invalido`, `desconocido`, `fallo`. Se traducen en `respaldos.error.<codigo>`, es y en.
 - `otra_base` no se reintenta: se registra y se pide recargar.
 - Bloqueo: `<base>.bloqueo` con `File::try_lock`; sin dependencias nuevas.
 - Orden de `abrir_organizacion`: la nueva abre antes de soltar la anterior.
@@ -488,7 +488,7 @@ Expected: job `actualizar` en verde. Si GitHub no deja abrir la app en el runner
   - `Sesiones::ocupada(&self) -> bool`: `trabajo.is_some()`
   - `Estado::cambiar_a(&self, id: &str, ocupada: &dyn Fn() -> bool, migraciones: &[&str]) -> Result<OrganizacionVista, Fallo>`
   - Comando `abrir_organizacion(app, id: String) -> Result<OrganizacionVista, Fallo>`, en `spawn_blocking`
-  - `fn cambiar_a_abierta(&self, nueva: Abierta, bd: PathBuf, respaldos: PathBuf, entrada: Option<&Entrada>) -> Result<(), Fallo>`, privada: pasos 4 a 6; `Base.id` sale de `nueva.id`. Sin `entrada` (un `boldo.db` sin listar, Task 12), lo agrega a la lista solo si no está vacío.
+  - `fn cambiar_a_abierta(&self, conn: &mut Option<Connection>, nueva: Abierta, bd: PathBuf, respaldos: PathBuf, entrada: Option<&Entrada>) -> Result<(), Fallo>`, privada: pasos 4 a 6, con la ranura de `conn` ya tomada por quien llama; `Base.id` sale de `nueva.id`. Sin `entrada` (un `boldo.db` sin listar, Task 12), lo agrega a la lista solo si no está vacío.
   - `cliente.ts`: `abrirOrganizacion(id: string): Promise<Organizacion>`, sin `baseId`
 
 - [ ] **Step 1: Escribir las pruebas que fallan**
@@ -737,7 +737,7 @@ Con `vi.mock("@/db/cliente")`:
 - «con un trabajo en curso avisa y no cambia»: `ok: false`, sin `abrirOrganizacion`.
 - «la ficha con cambios y Cancelar no cambia».
 - «un error del archivo muestra el motivo en la pestaña y no cambia la base»: `no_encontrado`, `desconocido` y `migracion` dejan `sinAbrir`, la pestaña activa con `marcarActiva` y `baseActual()` igual.
-- «un error pasajero se queda en la pestaña actual»: `trabajo_en_curso`: `ok: false`, sin `sinAbrir`.
+- «un error pasajero se queda en la pestaña actual»: `trabajo_en_curso` y `lista_protegida`: `ok: false`, sin `sinAbrir`.
 - «al abrir: `fijarBase`, luego `soltarDatos`, luego `org.cargar`»: por orden de llamadas.
 - «si `org.cargar` falla tras cambiar, `sinAbrir` lleva su mensaje».
 - «durante el cambio `cambiando` y `enCambio()` son true y la vista se desmonta antes de abrir; con error, ambos vuelven a false».
