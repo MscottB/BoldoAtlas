@@ -14,6 +14,8 @@ on:
       - "scripts/probar-instalador.ps1"
       - "scripts/probar-actualizacion.mjs"
       - "scripts/probar-app.mjs"
+      - "scripts/release.mjs"
+      - ".github/actions/**"
       - ".github/workflows/instalador.yml"
   workflow_dispatch:
 
@@ -73,7 +75,7 @@ jobs:
           [ -n "$etiqueta" ] || { echo "No hay ninguna versión publicada que actualizar"; exit 1; }
           # una versión recién publicada puede no tener aún el archivo: hasta ~2 min
           for intento in 1 2 3 4 5 6 7 8; do
-            gh release download "$etiqueta" -p BoldoAtlas_windows_x64_setup.exe -D anterior && break
+            gh release download "$etiqueta" -p BoldoAtlas_windows_x64_setup.exe -D anterior --clobber && break
             [ "$intento" = 8 ] && { echo "La versión $etiqueta no tiene BoldoAtlas_windows_x64_setup.exe para descargar"; exit 1; }
             sleep 15
           done

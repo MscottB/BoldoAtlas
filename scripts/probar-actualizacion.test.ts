@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as hijos from "node:child_process";
-import { comoLoInstalaNsis, principal, problemas } from "./probar-actualizacion.mjs";
+import { accionSobreLista, comoLoInstalaNsis, principal, problemas } from "./probar-actualizacion.mjs";
 
 vi.mock("node:child_process", () => ({
   execFileSync: vi.fn(),
@@ -67,5 +67,24 @@ describe("comoLoInstalaNsis", () => {
     expect(() => comoLoInstalaNsis(Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK".repeat(2)))).toThrow(
       /una sola vez/,
     );
+  });
+});
+
+describe("accionSobreLista", () => {
+  it("sin lista la nueva debe crearla", () => {
+    expect(accionSobreLista(null)).toBe("crear");
+  });
+
+  it("una lista vacía (base vacía al abrir) se reabre para que la app escriba la entrada", () => {
+    expect(accionSobreLista({ version: 1, organizaciones: [] })).toBe("reabrir");
+  });
+
+  it("con una entrada se edita", () => {
+    expect(accionSobreLista({ version: 1, organizaciones: [{ id: "a" }] })).toBe("editar");
+  });
+
+  it("con dos o con otra forma falla, en vez de editar a ciegas", () => {
+    expect(() => accionSobreLista({ organizaciones: [{}, {}] })).toThrow(/0 o 1/);
+    expect(() => accionSobreLista({})).toThrow(/0 o 1/);
   });
 });

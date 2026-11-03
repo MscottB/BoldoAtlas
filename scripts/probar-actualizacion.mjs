@@ -43,6 +43,26 @@ export function problemas({ lista, dbId, nombre, unidades, respaldo, dbIdAntes, 
   return mal;
 }
 
+/**
+ * Qué hacer con la lista que dejó la versión publicada, ya sembrados el nombre y la unidad.
+ * - "crear": no hay lista; la nueva debe crearla.
+ * - "reabrir": hay lista pero sin entradas (la app la escribió con la base vacía): se vuelve a abrir la publicada para que
+ *   ella escriba la entrada con su formato real.
+ * - "editar": una entrada; se le deja lo que un usuario habría cambiado.
+ * @param {any} lista lo leído de organizaciones.json, o null si no existe
+ * @returns {"crear" | "reabrir" | "editar"}
+ */
+export function accionSobreLista(lista) {
+  if (lista === null) return "crear";
+  const n = Array.isArray(lista?.organizaciones) ? lista.organizaciones.length : -1;
+  if (n === 0) return "reabrir";
+  if (n === 1) return "editar";
+  throw new Error(`La lista de la versión publicada debía tener 0 o 1 entradas: ${JSON.stringify(lista)}`);
+}
+
+/** @param {string} ruta */
+const leerLista = (ruta) => (existsSync(ruta) ? JSON.parse(readFileSync(ruta, "utf8")) : null);
+
 /** @param {number} ms */
 const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
@@ -201,11 +221,22 @@ async function correr(anterior, nuevo, compilado) {
   // cambiado (nombre y color) y se exige después. Si no la escribe, la nueva debe crearla.
   /** @type {string | null} */
   let colorAntes = null;
-  const listaAntes = existsSync(lista);
+  let previa = leerLista(lista);
+  const listaAntes = previa !== null;
+  if (accionSobreLista(previa) === "reabrir") {
+    console.log(
+      "   la lista de la versión publicada está vacía: se abre de nuevo para que escriba la entrada",
+    );
+    previa = await abrirHasta(
+      programa,
+      () => {
+        const j = leerLista(lista);
+        return j?.organizaciones?.length === 1 ? j : null;
+      },
+      `${lista} con 1 entrada`,
+    );
+  }
   if (listaAntes) {
-    const previa = JSON.parse(readFileSync(lista, "utf8"));
-    if (previa.organizaciones?.length !== 1)
-      throw new Error(`La lista de la versión publicada no tiene 1 entrada: ${JSON.stringify(previa)}`);
     Object.assign(previa.organizaciones[0], { nombre: NOMBRE, color: COLOR_PRUEBA, abierta: ABIERTA_PRUEBA });
     writeFileSync(lista, JSON.stringify(previa));
     colorAntes = COLOR_PRUEBA;
@@ -225,7 +256,7 @@ async function correr(anterior, nuevo, compilado) {
   if (exeDespues === exeAntes) throw new Error("/UPDATE terminó sin reemplazar boldo-atlas.exe");
   if (exeDespues !== exeCompilado)
     throw new Error(
-      `El boldo-atlas.exe instalado no es el compilado en este trabajo: ${diferencias(instalado, esperado)}`,
+      `El boldo-atlas.exe instalado no es el compilado en este trabajo (¿cambió el parche de tauri-utils, que comoLoInstalaNsis imita?): ${diferencias(instalado, esperado)}`,
     );
 
   console.log("5. abrirla, esperar la lista");
