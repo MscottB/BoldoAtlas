@@ -359,8 +359,10 @@ impl Estado {
         if lista.no_escribir {
             return Err(lista_protegida());
         }
-        // shortcut: en `boldo.db`, si la lista no se puede escribir tras el lote, sus filas quedan ahí sin listar. No se pierde
-        // nada, porque estaba vacío y la creación informa el error; deshacerlo si llega a pasar
+        // si no se puede escribir, se sabe antes de tocar nada: en `boldo.db` el lote no tiene vuelta atrás
+        escribir_lista(r, &lista)?;
+        // shortcut: si la lista deja de poder escribirse justo entre esa escritura y la de aquí, en `boldo.db` las filas quedan
+        // sin listar, y si hay otras entradas no se vuelven a ver; deshacer el lote si llega a pasar
         let llenar = |l: &mut Lista, e: Entrada, c: &mut Connection| -> Result<(), Fallo> {
             db::lote(c, sentencias, version_app)?;
             anotar_creada(l, e, c, ejemplo);
@@ -3114,15 +3116,33 @@ mod crear_nueva {
     }
 
     #[test]
-    fn si_no_se_puede_escribir_la_lista_no_queda_la_carpeta() {
+    fn si_no_se_puede_escribir_la_lista_no_toca_nada() {
+        let sin_escribir = |r: &Rutas| {
+            fs::create_dir(con_sufijo(&r.datos.join("organizaciones.json"), ".tmp")).unwrap();
+        };
+
+        // hacia su carpeta
         let (_exe, r) = rutas();
         crear(&r.bd, "La mía", db::MIGRACIONES);
         let e = arrancar(&r);
-        fs::create_dir(con_sufijo(&r.datos.join("organizaciones.json"), ".tmp")).unwrap();
-
+        sin_escribir(&r);
         assert!(nueva(&e).is_err());
-
         assert_eq!(carpetas(&r), 0);
+
+        // hacia `boldo.db` abierto
+        let (_exe, r) = rutas();
+        let e = arrancar(&r);
+        let base = e.base_abierta().unwrap();
+        sin_escribir(&r);
+        assert!(nueva(&e).is_err());
+        assert_eq!(meta_abierta(&e, &base.id, "data_revision"), "0");
+
+        // hacia `boldo.db` cerrado
+        let (_exe, r) = rutas();
+        let (_otra, e) = con_interna(&r);
+        sin_escribir(&r);
+        assert!(nueva(&e).is_err());
+        assert!(!r.bd.exists());
     }
 
     #[test]
@@ -3262,6 +3282,15 @@ mod crear_nueva {
         assert!(entrada_de(&r, &en_carpeta).ejemplo);
         assert!(entrada_de(&r, &en_principal).ejemplo);
         assert!(!entrada_de(&r, &sin_marca).ejemplo);
+
+        // pedir el `boldo.db` que ya está abierto le pone la hora y no le quita la marca
+        let v = e
+            .cambiar_a(&en_principal, &|| false, db::MIGRACIONES)
+            .unwrap();
+        assert!(v.activa && v.ejemplo);
+        let o = entrada_de(&r, &en_principal);
+        assert!(o.abierta.ends_with('Z'), "{}", o.abierta);
+        assert!(o.ejemplo);
 
         // abrirla no le quita la marca
         e.cambiar_a(&en_carpeta, &|| false, db::MIGRACIONES)

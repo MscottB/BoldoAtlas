@@ -649,8 +649,8 @@ pub fn abrir_principal_libre(r: &Rutas, l: &Lista, migraciones: &[&str]) -> Opti
         .filter(|a| principal_libre(l, &a.id, &a.conn))
 }
 
-/// Una organización nueva en su carpeta. `llenar` recibe la entrada y el archivo ya abierto. Si algo falla no queda nada: el id
-/// recién se generó, así que la carpeta es de esta llamada.
+/// Una organización nueva en su carpeta. `llenar` recibe la entrada y el archivo ya abierto. Si algo falla se borra la carpeta: el
+/// id recién se generó, así que es de esta llamada. Un corte, o un borrado que falla, la deja sin listar, sin datos del usuario.
 pub fn crear_en_carpeta(
     r: &Rutas,
     l: &mut Lista,
@@ -675,6 +675,7 @@ pub fn crear_en_carpeta(
         llenar(l, e, &mut a.conn)
     })();
     if hecho.is_err() {
+        // si no se puede, el error que importa es el de arriba: lo que queda solo tiene lo que se intentaba crear
         let _ = fs::remove_dir_all(r.datos.join(CARPETA).join(&id));
     }
     hecho.map(|()| id)
