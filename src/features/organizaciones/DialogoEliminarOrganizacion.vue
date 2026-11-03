@@ -21,12 +21,12 @@ import { tamano } from "@/lib/formato";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import {
   aconsejaSinCopia,
+  claveAbierta,
   claveFalloFuera,
   claveHecha,
   claveQueSeBorra,
   espacioQueLibera,
   ID_SECCION,
-  intentoQueBorro,
   intentoTrasFallo,
   opcionesEliminar,
   pestanasDe,
@@ -49,16 +49,14 @@ const corriendo = ref(false);
 const error = ref("");
 const codigo = ref("");
 const detalle = ref("");
-/** Rust dijo que el archivo no está aunque la lista diga otra cosa: solo se termina sin las casillas. */
+/** Rust dijo que el archivo no está, o que lo borró, y la lista quizá aún no lo sepa: solo se termina sin las casillas. */
 const noEncontrado = ref(false);
 let eliminada = false;
 
 const nombre = computed(() => textoAConfirmar(props.organizacion, t("barra.sinNombre")));
 const sinArchivo = computed(() => noEncontrado.value || !props.organizacion.existe);
-const yaBorro = computed(() =>
-  intentoQueBorro(props.organizacion, organizaciones.intentosEliminar.get(props.organizacion.id)),
-);
-const { escrito, confirmado, alEnter } = useConfirmacion(
+const intento = computed(() => organizaciones.intentosEliminar.get(props.organizacion.id));
+const { escrito, confirmado, alEnter, trasFallo } = useConfirmacion(
   () => nombre.value,
   () => sinArchivo.value,
   () => confirmar(),
@@ -81,8 +79,13 @@ const opciones = computed(() =>
 );
 const seBorra = computed(() =>
   t(
-    `organizaciones.eliminar.seBorra.${claveQueSeBorra(props.organizacion, sinArchivo.value, opciones.value.borrarArchivo, yaBorro.value)}`,
+    `organizaciones.eliminar.seBorra.${claveQueSeBorra(props.organizacion, sinArchivo.value, opciones.value.borrarArchivo, intento.value)}`,
+    { copia: intento.value?.copia ?? "" },
   ),
+);
+// La que el texto de arriba no nombra: copió, y el archivo sigue o no se sabe qué pasó con él.
+const copiaAnterior = computed(() =>
+  intento.value?.copia && !(sinArchivo.value && intento.value.archivoBorrado) ? intento.value.copia : "",
 );
 const ofreceCopia = computed(() => !sinArchivo.value && (!props.organizacion.externa || archivo.value));
 const libera = computed(() => espacioQueLibera(props.organizacion, opciones.value.borrarArchivo));
@@ -99,12 +102,13 @@ onBeforeUnmount(() => (desmontado = true));
 
 async function avisarFuera(o: Organizacion, mensaje: string) {
   if (!mensaje) return toast(t("organizaciones.eliminar.noSeHizo"));
-  await organizaciones.cargarLista();
+  const lista = await organizaciones.cargarLista();
   const clave = claveFalloFuera({
     pasoAOtra: o.activa && baseActual() !== o.id,
-    sigueEnLaLista: organizaciones.lista.some((x) => x.id === o.id),
+    sigueEnLaLista: lista.ok ? organizaciones.lista.some((x) => x.id === o.id) : null,
   });
   if (!clave) return toast.error(mensaje);
+  if (clave === "falloSinVuelta") organizaciones.olvidarEliminada(o.id);
   toast.error(t(`organizaciones.eliminar.${clave}`, { nombre: nombre.value }), {
     description: mensaje,
     duration: Infinity,
@@ -116,7 +120,7 @@ async function confirmar() {
   const o = props.organizacion;
   const pedidas = opciones.value;
   const sinArchivoAlPedir = sinArchivo.value;
-  const yaBorroAlPedir = yaBorro.value;
+  const intentoAlPedir = intento.value;
   corriendo.value = true;
   error.value = "";
   codigo.value = "";
@@ -125,20 +129,17 @@ async function confirmar() {
   corriendo.value = false;
   if (r.ok) {
     organizaciones.intentosEliminar.delete(o.id);
-    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas, yaBorroAlPedir)}`, { nombre: nombre.value }));
+    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas, sinArchivoAlPedir, intentoAlPedir)}`, { nombre: nombre.value }));
     eliminada = true;
     abierto.value = false;
     emit("terminado", true);
     return;
   }
   if (r.codigo === "lista_protegida") organizaciones.listaProtegida = true;
-  const intento = intentoTrasFallo(
-    organizaciones.intentosEliminar.get(o.id),
-    pedidas,
-    sinArchivoAlPedir,
-    r.codigo,
-  );
-  if (intento) organizaciones.intentosEliminar.set(o.id, intento);
+  trasFallo(r.codigo);
+  if (r.codigo === "no_encontrado" || r.avance?.archivoBorrado) noEncontrado.value = true;
+  const sabido = intentoTrasFallo(organizaciones.intentosEliminar.get(o.id), r.avance);
+  if (sabido) organizaciones.intentosEliminar.set(o.id, sabido);
   if (desmontado) {
     await avisarFuera(o, r.mensaje);
     await nextTick();
@@ -148,7 +149,6 @@ async function confirmar() {
   error.value = r.mensaje || t("organizaciones.eliminar.noSeHizo");
   codigo.value = r.codigo ?? "";
   detalle.value = r.detalle ?? "";
-  if (r.codigo === "no_encontrado") noEncontrado.value = true;
   emit("terminado", false);
   await nextTick();
   document.getElementById(ID_CAMPO)?.focus();
@@ -182,7 +182,8 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
           <template v-if="opciones.guardarCopia">{{ t("organizaciones.eliminar.liberaConCopia") }}</template>
         </p>
         <p>{{ t("organizaciones.eliminar.noSeTocan") }}</p>
-        <p v-if="organizacion.activa">{{ t("organizaciones.eliminar.abierta") }}</p>
+        <p v-if="organizacion.activa">{{ t(`organizaciones.eliminar.${claveAbierta(organizacion)}`) }}</p>
+        <p v-if="copiaAnterior">{{ t("organizaciones.eliminar.copiaAnterior", { copia: copiaAnterior }) }}</p>
         <p v-if="nPestanas">{{ t("organizaciones.eliminar.pestanas", { n: nPestanas }, nPestanas) }}</p>
 
         <label v-if="organizacion.externa && !sinArchivo" class="flex items-start gap-2">
@@ -201,7 +202,9 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
               <span class="block text-xs text-muted-foreground">{{ t("organizaciones.eliminar.copiaAyuda") }}</span>
             </span>
           </label>
-          <p v-if="!copia" role="alert" class="text-destructive">{{ t("organizaciones.eliminar.sinCopia") }}</p>
+          <p v-if="!copia && !intento?.copia" role="alert" class="text-destructive">
+            {{ t("organizaciones.eliminar.sinCopia") }}
+          </p>
         </template>
 
         <div class="grid gap-1.5">
@@ -221,12 +224,12 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
 
         <div v-if="error" role="alert" class="grid gap-1 text-destructive">
           <p>{{ error }}</p>
-          <p v-if="noEncontrado">{{ t("organizaciones.eliminar.noEncontrado") }}</p>
+          <p v-if="codigo === 'no_encontrado'">{{ t("organizaciones.eliminar.noEncontrado") }}</p>
           <p v-else-if="codigo === 'fallo'">{{ t("organizaciones.eliminar.trasFallo") }}</p>
           <p v-else-if="ofreceCopia && copia && aconsejaSinCopia(codigo, detalle)">
             {{ t("organizaciones.eliminar.sinPoderCopiar") }}
           </p>
-          <p v-if="sinArchivo && !escrito">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
+          <p v-if="!escrito">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
         </div>
         <p role="status" class="text-muted-foreground">
           {{ corriendo ? t("organizaciones.eliminar.eliminando") : "" }}

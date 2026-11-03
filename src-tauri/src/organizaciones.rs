@@ -6,7 +6,7 @@ use crate::intercambio::validar::{
 };
 use crate::intercambio::{Temporal, nombre_limpio};
 use crate::respaldos::{
-    Fallo, borrar_bd, borrar_respaldos, bytes_propios, cerrar_copia, con_sufijo, copia_de_base,
+    Fallo, borrar_bd, borrar_respaldos, bytes_en, cerrar_copia, con_sufijo, copia_de_base,
     fecha_de_eliminada, limpiar_parciales, sello_local, volcar,
 };
 use crate::rutas::Rutas;
@@ -1063,7 +1063,8 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
                 bytes_base: tam(&base.bd)
                     .zip(tam(&con_sufijo(&base.bd, "-wal")))
                     .map(|(bd, wal)| bd + wal),
-                bytes_respaldos: bytes_propios(&base.respaldos),
+                // lo que libera: de una interna se borra toda su carpeta, y de las demás solo los nombres propios
+                bytes_respaldos: bytes_en(&base.respaldos, e.externa || e.es_principal()),
                 ejemplo: e.ejemplo,
             }
         })

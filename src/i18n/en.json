@@ -805,15 +805,17 @@
       "seBorra": {
         "interna": "Its database and its backups are deleted from disk. This can't be undone.",
         "principal": "This is BoldoAtlas's main database (boldo.db). The file and its backups are deleted from disk; any other files in that backups folder stay. If no organization is left, you start with an empty one. This can't be undone.",
-        "internaSinArchivo": "Its file is gone, so it can't be copied. It's removed from the list and its backups are deleted, and they may be all that's left of its data. To keep them, cancel and use “Remove from list”, which deletes nothing.",
+        "internaSinArchivo": "Its file is gone: a previous attempt deleted it, or it's no longer in its place. What's left is to take it off the list and delete its backups, which may be all that remains of its data. To keep them, cancel and use “Remove from list”, which deletes nothing.",
         "externa": "It leaves the list and its backups are deleted. The file isn't touched: it stays where it is.",
         "externaConArchivo": "It leaves the list, and the file and its backups are deleted from disk. This can't be undone.",
-        "reintentoConCopia": "Its file was already deleted in the previous attempt, and its copy is in “Copies of deleted organizations”. What's left is to take it off the list and delete its backups.",
-        "reintentoSinCopia": "Its file was already deleted in the previous attempt, without a copy. What's left is to take it off the list and delete its backups, which are now all that remains of its data. To keep them, cancel and use “Remove from list”, which deletes nothing.",
-        "externaSinArchivo": "Its file can't be found: it may have moved, or be on a drive that isn't connected. It leaves the list and its backups are deleted, and they may be all you have at hand; the file, if it exists, isn't touched. To keep the backups, cancel and use “Remove from list”, which deletes nothing."
+        "reintentoConCopia": "The previous attempt deleted its file and saved a copy in “Copies of deleted organizations”: {copia}. What's left is to take it off the list and delete its backups.",
+        "reintentoSinCopia": "The previous attempt deleted its file, without a copy. What's left is to take it off the list and delete its backups, which are now all that remains of its data. To keep them, cancel and use “Remove from list”, which deletes nothing.",
+        "externaSinArchivo": "Its file can't be found: a previous attempt deleted it, it moved, or it's on a drive that isn't connected. It leaves the list and its backups are deleted, which may be all that remains of its data; the file, if it exists, isn't touched. To keep the backups, cancel and use “Remove from list”, which deletes nothing."
       },
       "libera": "Frees {tamano}.",
       "liberaConCopia": "The copy uses part of that space.",
+      "copiaAnterior": "A previous attempt already saved a copy: {copia}. It's in “Copies of deleted organizations”.",
+      "abiertaPrincipal": "It's the one you have open: BoldoAtlas first switches to another and goes back to Home. If there's no other, you start with an empty one.",
       "noSeTocan": "Your other organizations aren't touched.",
       "abierta": "It's the one you have open: BoldoAtlas first switches to another (or to the main one, if there's none) and goes back to Home.",
       "pestanas": "It has {n} open tab, which closes when you confirm. | It has {n} open tabs, which close when you confirm.",
@@ -822,7 +824,7 @@
       "copiaAyuda": "Of the database, without the backups. It goes to “Copies of deleted organizations”, where it can be restored.",
       "sinCopia": "Without a copy, what's deleted can't be recovered.",
       "escribe": "To confirm, type:",
-      "escribeOtraVez": "What's going to be deleted has changed: type the name again to confirm.",
+      "escribeOtraVez": "To try again, type the name again.",
       "confirmar": "Delete",
       "terminar": "Finish deleting",
       "eliminando": "Deleting…",
@@ -831,10 +833,12 @@
       "trasFallo": "What couldn't be deleted is still in place, and the organization is still on the list. Deleting it again finishes what's left.",
       "sinPoderCopiar": "If another program is using the file, close it and try again. If it can't be copied, you can clear “Save a copy first” and delete without a copy.",
       "falloYaEnOtra": "“{nombre}” wasn't fully deleted, and another organization is now open. It's still on the list: delete it again in Settings to finish.",
+      "falloYaEnOtraSinLista": "“{nombre}” wasn't fully deleted, and another organization is now open. The list couldn't be read: if it's still there, delete it again in Settings to finish.",
       "falloSinVuelta": "“{nombre}” was deleted and an empty organization was opened in its place, but something couldn't be deleted: some of its backups may remain in the backups folder.",
       "hecha": "“{nombre}” was deleted.",
       "hechaConCopia": "“{nombre}” was deleted. Its copy is in Settings, under “Copies of deleted organizations”.",
-      "salio": "“{nombre}” left the list and its backups were deleted. Its file wasn't touched."
+      "salio": "“{nombre}” left the list and its backups were deleted. Its file wasn't touched.",
+      "salioSinArchivo": "“{nombre}” left the list and its backups were deleted. Its file wasn't found."
     },
     "error": {
       "desconocido": "This organization is no longer on the list.",

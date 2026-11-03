@@ -1216,6 +1216,34 @@ describe("eliminar", () => {
     expect(o.cambiando).toBe(false);
   });
 
+  it("devuelve lo que Rust dijo que hizo antes de fallar", async () => {
+    const { o } = await arrancar();
+    const avance = { archivoBorrado: true, copia: "B_1.db" };
+    c.eliminarOrganizacion.mockRejectedValue({ codigo: "fallo", detalle: "x", avance });
+    expect(await o.eliminar("B", { guardarCopia: true, borrarArchivo: false })).toMatchObject({ ok: false, avance });
+  });
+
+  it("olvidar la que Rust ya sacó de la lista cierra sus pestañas y borra lo suyo", async () => {
+    const { o } = await arrancar();
+    datos.set("boldo:minimapa:B", "true");
+    o.intentosEliminar.set("B", { archivoBorrado: true, copia: null });
+    o.olvidarEliminada("B");
+    expect(ids()).toEqual(["a1", "c1"]);
+    expect(datos.has("boldo:minimapa:B")).toBe(false);
+    expect(o.intentosEliminar.has("B")).toBe(false);
+  });
+
+  it("quitar de la lista olvida su intento; si falla, no", async () => {
+    const { o } = await arrancar();
+    o.intentosEliminar.set("B", { archivoBorrado: true, copia: null });
+    c.quitarOrganizacion.mockRejectedValueOnce(fallo("lista_protegida"));
+    await o.quitar("B");
+    expect(o.intentosEliminar.has("B")).toBe(true);
+    c.quitarOrganizacion.mockResolvedValueOnce(undefined);
+    await o.quitar("B");
+    expect(o.intentosEliminar.has("B")).toBe(false);
+  });
+
   it("devuelve el código de Rust, para que el diálogo sepa qué ofrecer", async () => {
     const { o } = await arrancar();
     c.eliminarOrganizacion.mockRejectedValue(fallo("contenido_invalido", "enlace"));

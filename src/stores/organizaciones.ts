@@ -15,6 +15,7 @@ import {
   quitarOrganizacion,
   sincronizarOrganizacion,
   type ArchivoAgregado,
+  type AvanceEliminar,
   type Organizacion,
 } from "@/db/cliente";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
@@ -25,7 +26,6 @@ import {
   mensajeOrganizacion,
   respaldoAutomatico,
 } from "@/features/respaldos/respaldos";
-import type { OpcionesEliminar } from "@/features/organizaciones/eliminar";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
 import { BaseCambiada, baseActual, fijarBase, marcarCambio, soltarDatos } from "@/lib/baseActiva";
@@ -73,8 +73,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   const cambiando = ref(false);
   /** Rust dijo `lista_protegida`: hasta reiniciar no se puede cambiar. Lo anota quien lo recibe, y sobrevive a la vista. */
   const listaProtegida = ref(false);
-  /** Por id: lo que pidió el último eliminar que falló a medias. Lo anota el diálogo, y sobrevive a la vista que se remonta. */
-  const intentosEliminar = ref(new Map<string, OpcionesEliminar>());
+  /** Por id: lo que Rust dijo que hicieron los eliminar que fallaron. Lo anota el diálogo, y sobrevive a la vista que se remonta. */
+  const intentosEliminar = ref(new Map<string, AvanceEliminar>());
   /** Por id de pestaña: por qué no se pudo abrir o cargar su organización. */
   const sinAbrir = ref(new Map<string, Motivo>());
   /** Las organizaciones ya abiertas en esta sesión: con la frecuencia «al abrir», solo la primera vez respalda. */
@@ -287,6 +287,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   async function quitar(id: string): Promise<Resultado> {
     try {
       await quitarOrganizacion(id);
+      intentosEliminar.value.delete(id);
       await cargarLista();
       return { ok: true };
     } catch (e) {
@@ -340,11 +341,17 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       }
       // Ya se borró: lo que falle al entrar no es un fallo de eliminar, y sus pestañas no tienen a qué volver.
       if (otra) await entrarEn(otra.id, null, inicio).catch((e: unknown) => console.error(e));
-      pestanas.cerrarDeOrganizacion(id);
-      borrarPreferenciasOrg(id);
+      olvidarEliminada(id);
       void cargarLista();
       return { ok: true };
     });
+
+  /** Ya no está en la lista, ni hay reintento: sus pestañas se cierran solas y lo suyo se borra. */
+  function olvidarEliminada(id: string) {
+    usePestanas().cerrarDeOrganizacion(id);
+    borrarPreferenciasOrg(id);
+    intentosEliminar.value.delete(id);
+  }
 
   /** Pide un archivo y lo abre. Las preguntas y los avisos los muestra quien llama. Sin elegir, o con un no, no cambia nada. */
   async function agregarArchivo(
@@ -389,6 +396,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     explorarEjemplo,
     quitar,
     eliminar,
+    olvidarEliminada,
     cambiarColor,
     agregarArchivo,
   };

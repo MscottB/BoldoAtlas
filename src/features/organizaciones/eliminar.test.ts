@@ -3,12 +3,12 @@ import { nextTick, ref } from "vue";
 import type { Organizacion } from "@/db/cliente";
 import {
   aconsejaSinCopia,
+  claveAbierta,
   claveFalloFuera,
   claveHecha,
   claveQueSeBorra,
   confirmaEliminar,
   espacioQueLibera,
-  intentoQueBorro,
   intentoTrasFallo,
   opcionesEliminar,
   pestanasDe,
@@ -154,7 +154,7 @@ describe("claveHecha: una externa sin su archivo no se dice eliminada", () => {
     ["hecha", org({ externa: true }), { guardarCopia: false, borrarArchivo: true }],
     ["hechaConCopia", org({ externa: true }), { guardarCopia: true, borrarArchivo: true }],
   ] as const)("%s", (clave, o, opciones) => {
-    expect(claveHecha(o, opciones)).toBe(clave);
+    expect(claveHecha(o, opciones, false)).toBe(clave);
   });
 });
 
@@ -186,6 +186,19 @@ describe("useConfirmacion: lo escrito confirma las opciones de ese momento", () 
     expect(confirmado.value).toBe(true);
   });
 
+  it("tras un fallo de Rust se vacía sin ceder el hilo: otro Enter no llega con el nombre escrito", () => {
+    const { trasFallo, escrito, confirmado } = preparar();
+    trasFallo("fallo");
+    expect(escrito.value).toBe("");
+    expect(confirmado.value).toBe(false);
+  });
+
+  it("un cancelado no pasó por Rust, y conserva lo escrito", () => {
+    const { trasFallo, escrito } = preparar();
+    trasFallo(undefined);
+    expect(escrito.value).toBe("Acme");
+  });
+
   it("Enter mantenido no confirma: cuenta solo la pulsación nueva", () => {
     const { alEnter, confirmar } = preparar();
     alEnter({ repeat: true } as KeyboardEvent);
@@ -195,51 +208,76 @@ describe("useConfirmacion: lo escrito confirma las opciones de ese momento", () 
   });
 });
 
-describe("un intento que falló a medias", () => {
-  const conCopia = { guardarCopia: true, borrarArchivo: false };
-  const conArchivo = { guardarCopia: false, borrarArchivo: true };
-  const nada = { guardarCopia: false, borrarArchivo: false };
+describe("lo que Rust dijo que hizo un intento que falló", () => {
+  const nada = { archivoBorrado: false, copia: null };
+  const copio = { archivoBorrado: false, copia: "Acme_1.db" };
+  const borro = { archivoBorrado: true, copia: null };
+  const ambas = { archivoBorrado: true, copia: "Acme_1.db" };
 
-  it("se anota lo que pidió, y un no_encontrado o un cancelado no tocaron nada", () => {
-    expect(intentoTrasFallo(undefined, conCopia, false, "fallo")).toEqual(conCopia);
-    expect(intentoTrasFallo(undefined, conCopia, false, "no_encontrado")).toBeUndefined();
-    expect(intentoTrasFallo(undefined, conCopia, false, undefined)).toBeUndefined();
+  it("sin avance, como un cancelado, no cambia nada", () => {
+    expect(intentoTrasFallo(undefined, undefined)).toBeUndefined();
+    expect(intentoTrasFallo(copio, undefined)).toEqual(copio);
   });
 
-  it("reintentar sin las casillas no borra lo que logró el anterior", () => {
-    expect(intentoTrasFallo(conCopia, nada, true, "fallo")).toEqual(conCopia);
+  it("un segundo intento no borra lo que hizo el primero", () => {
+    expect(intentoTrasFallo(ambas, nada)).toEqual(ambas);
+    expect(intentoTrasFallo(copio, borro)).toEqual(ambas);
+    expect(intentoTrasFallo(borro, copio)).toEqual(ambas);
   });
 
-  it("con el archivo aún ahí, vale el último: el anterior no llegó a borrar nada", () => {
-    expect(intentoTrasFallo(conCopia, nada, false, "fallo")).toEqual(nada);
+  it("la copia más nueva es la que se nombra", () => {
+    expect(intentoTrasFallo(copio, { archivoBorrado: false, copia: "Acme_2.db" })?.copia).toBe("Acme_2.db");
   });
 
-  it("solo cuenta si su archivo ya no está y le tocaba borrarlo", () => {
-    expect(intentoQueBorro(org({ existe: false }), conCopia)).toEqual(conCopia);
-    expect(intentoQueBorro(org({ existe: true }), conCopia)).toBeUndefined();
-    expect(intentoQueBorro(org({ existe: false }), undefined)).toBeUndefined();
-    expect(intentoQueBorro(org({ existe: false, externa: true }), conArchivo)).toEqual(conArchivo);
-    // una externa a la que no se le pidió borrar: si no está, no fue la app
-    expect(intentoQueBorro(org({ existe: false, externa: true }), nada)).toBeUndefined();
+  it("falló antes de tocar nada y el archivo desapareció: no afirma un borrado ni una copia", () => {
+    const interna = org({ existe: false });
+    const externa = org({ existe: false, externa: true });
+    expect(claveQueSeBorra(interna, true, false, nada)).toBe("internaSinArchivo");
+    expect(claveQueSeBorra(externa, true, false, nada)).toBe("externaSinArchivo");
+    const sinPedir = { guardarCopia: false, borrarArchivo: false };
+    expect(claveHecha(interna, sinPedir, true, nada)).toBe("hecha");
+    expect(claveHecha(externa, sinPedir, true, nada)).toBe("salioSinArchivo");
   });
 
-  it("externa con su casilla: al terminar no dice que su archivo no se tocó, ni que pudo moverse", () => {
+  it("no se sabe (se reinició la app): tampoco lo afirma", () => {
+    const externa = org({ existe: false, externa: true });
+    expect(claveQueSeBorra(externa, true, false, undefined)).toBe("externaSinArchivo");
+    expect(claveHecha(externa, { guardarCopia: false, borrarArchivo: false }, true)).toBe("salioSinArchivo");
+  });
+
+  it("borró el archivo: lo dice con certeza, con la copia o sin ella", () => {
+    const o = org({ existe: false });
+    expect(claveQueSeBorra(o, true, false, borro)).toBe("reintentoSinCopia");
+    expect(claveQueSeBorra(o, true, false, ambas)).toBe("reintentoConCopia");
+    const sinPedir = { guardarCopia: false, borrarArchivo: false };
+    expect(claveHecha(o, sinPedir, true, borro)).toBe("hecha");
+    expect(claveHecha(o, sinPedir, true, ambas)).toBe("hechaConCopia");
+  });
+
+  it("externa cuyo archivo borró la app: al terminar no dice que no se encontró", () => {
     const o = org({ externa: true, existe: false });
-    const ya = intentoQueBorro(o, conArchivo);
-    expect(claveQueSeBorra(o, true, false, ya)).toBe("reintentoSinCopia");
-    expect(claveHecha(o, nada, ya)).toBe("hecha");
+    expect(claveHecha(o, { guardarCopia: false, borrarArchivo: false }, true, borro)).toBe("hecha");
   });
 
-  it("interna con copia: dice que la copia está, no que no se puede copiar", () => {
-    const o = org({ existe: false });
-    const ya = intentoQueBorro(o, conCopia);
-    expect(claveQueSeBorra(o, true, false, ya)).toBe("reintentoConCopia");
-    expect(claveHecha(o, nada, ya)).toBe("hechaConCopia");
+  it("copió pero no borró, y sigue el archivo: el texto es el normal, y al final la copia no se niega", () => {
+    const o = org();
+    expect(claveQueSeBorra(o, false, false, copio)).toBe("interna");
+    expect(claveHecha(o, { guardarCopia: false, borrarArchivo: false }, false, copio)).toBe("hechaConCopia");
   });
 
-  it("interna sin copia: sus respaldos son lo único que queda", () => {
-    const o = org({ existe: false });
-    expect(claveQueSeBorra(o, true, false, intentoQueBorro(o, nada))).toBe("reintentoSinCopia");
+  it("el archivo volvió a estar: no dice que falta quitarla", () => {
+    expect(claveQueSeBorra(org(), false, false, borro)).toBe("interna");
+  });
+
+  it("externa que no está aunque la lista diga que sí: tampoco dice que no se tocó", () => {
+    expect(claveHecha(org({ externa: true }), { guardarCopia: false, borrarArchivo: false }, true)).toBe("salioSinArchivo");
+  });
+});
+
+describe("claveAbierta", () => {
+  it("boldo.db no se pasa a sí misma", () => {
+    expect(claveAbierta(org())).toBe("abierta");
+    expect(claveAbierta(org({ ruta: "C:\\datos\\boldo.db" }))).toBe("abiertaPrincipal");
   });
 });
 
@@ -249,6 +287,9 @@ describe("claveFalloFuera: el aviso cuando el diálogo ya no está", () => {
   });
   it("ya en otra y sigue en la lista: se puede terminar", () => {
     expect(claveFalloFuera({ pasoAOtra: true, sigueEnLaLista: true })).toBe("falloYaEnOtra");
+  });
+  it("sin poder leer la lista, no afirma que sigue en ella", () => {
+    expect(claveFalloFuera({ pasoAOtra: true, sigueEnLaLista: null })).toBe("falloYaEnOtraSinLista");
   });
   it("boldo.db, la última: ya no está en la lista, y no se ofrece reintentar lo que no se puede", () => {
     expect(claveFalloFuera({ pasoAOtra: true, sigueEnLaLista: false })).toBe("falloSinVuelta");

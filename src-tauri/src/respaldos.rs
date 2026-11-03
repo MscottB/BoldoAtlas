@@ -33,6 +33,18 @@ pub struct Fallo {
     /// Para un archivo o una base que se pasa de un tope: en qué fila y campo, para poder corregirlo.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub donde: Option<Donde>,
+    /// Solo al eliminar: lo que alcanzó a hacer antes de fallar. En una caja para que `Fallo` siga siendo chico en cada `Result`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avance: Option<Box<AvanceEliminar>>,
+}
+
+/// Lo que un `eliminar` que falló ya hizo y no se deshace: el diálogo lo dice tal cual, en vez de deducirlo.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AvanceEliminar {
+    pub archivo_borrado: bool,
+    /// El nombre de la copia en `organizaciones-eliminadas/`.
+    pub copia: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -48,6 +60,7 @@ impl Fallo {
             codigo,
             detalle: detalle.to_string(),
             donde: None,
+            avance: None,
         }
     }
 }
@@ -384,14 +397,14 @@ pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Los respaldos de una organización que se elimina. Solo los nombres propios: lo demás de la carpeta es del usuario.
 /// Lo que `borrar_respaldos` considera suyo: un `notas.txt` del usuario no.
 fn es_propio(nombre: &str) -> bool {
     entrada(nombre).is_some() || nombre.starts_with(PREFIJO_MIGRACION)
 }
 
-/// Lo que ocupa lo que `borrar_respaldos` borraría. `None` si no se pudo leer: no es lo mismo que no tener nada.
-pub fn bytes_propios(dir: &Path) -> Option<u64> {
+/// Lo que ocupan los archivos de `dir`, o solo los que `borrar_respaldos` borraría. `None` si no se pudo leer: no es lo mismo que no
+/// tener nada.
+pub fn bytes_en(dir: &Path, solo_propios: bool) -> Option<u64> {
     let archivos = match fs::read_dir(dir) {
         Err(e) if e.kind() == ErrorKind::NotFound => return Some(0),
         otro => otro.ok()?,
@@ -399,7 +412,7 @@ pub fn bytes_propios(dir: &Path) -> Option<u64> {
     let mut total = 0;
     for f in archivos {
         let f = f.ok()?;
-        if f.file_name().to_str().is_some_and(es_propio) {
+        if !solo_propios || f.file_name().to_str().is_some_and(es_propio) {
             let m = f.metadata().ok()?;
             if m.is_file() {
                 total += m.len();
@@ -409,6 +422,7 @@ pub fn bytes_propios(dir: &Path) -> Option<u64> {
     Some(total)
 }
 
+/// Los respaldos de una organización que se elimina. Solo los nombres propios: lo demás de la carpeta es del usuario.
 pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
     limpiar_parciales(dir, None);
     let archivos = match fs::read_dir(dir) {
@@ -605,14 +619,32 @@ mod tests {
     }
 
     #[test]
-    fn bytes_propios_no_cuenta_lo_ajeno_ni_inventa_un_cero() {
+    fn bytes_en_cuenta_lo_que_se_borraria_y_no_inventa_un_cero() {
         let d = tempfile::tempdir().unwrap();
-        assert_eq!(bytes_propios(&d.path().join("no_existe")), Some(0));
+        assert_eq!(bytes_en(&d.path().join("no_existe"), true), Some(0));
         fs::write(d.path().join("boldo-20200101-0000.db"), "12345").unwrap();
         fs::write(d.path().join("notas.txt"), "1234567").unwrap();
-        assert_eq!(bytes_propios(d.path()), Some(5));
+        assert_eq!(bytes_en(d.path(), true), Some(5));
+        assert_eq!(bytes_en(d.path(), false), Some(12));
         // un archivo donde debería haber una carpeta: no se pudo leer, y no es lo mismo que vacío
-        assert_eq!(bytes_propios(&d.path().join("notas.txt")), None);
+        assert_eq!(bytes_en(&d.path().join("notas.txt"), true), None);
+    }
+
+    #[test]
+    fn solo_eliminar_lleva_avance_en_lo_que_se_serializa() {
+        let f = Fallo::de("fallo", "x");
+        assert!(serde_json::to_value(&f).unwrap().get("avance").is_none());
+        let f = Fallo {
+            avance: Some(Box::new(AvanceEliminar {
+                archivo_borrado: true,
+                copia: Some("c.db".into()),
+            })),
+            ..f
+        };
+        assert_eq!(
+            serde_json::to_value(&f).unwrap()["avance"],
+            serde_json::json!({"archivoBorrado": true, "copia": "c.db"})
+        );
     }
 
     #[test]

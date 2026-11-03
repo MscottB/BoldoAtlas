@@ -1,5 +1,5 @@
 import { computed, ref, watch } from "vue";
-import type { Organizacion } from "@/db/cliente";
+import type { AvanceEliminar, Organizacion } from "@/db/cliente";
 import type { Pestana } from "@/features/pestanas/pestanas";
 
 /** El título de la sección: adonde va el foco si lo que lo tenía ya no está. */
@@ -20,7 +20,8 @@ export function confirmaEliminar(escrito: string, esperado: string): boolean {
 
 /**
  * El nombre escrito confirma las opciones de ese momento. Si pasan a ser sin archivo, lo que se va a hacer es otra cosa: borrar los
- * respaldos sin copia. Hay que escribirlo otra vez, y un Enter mantenido o repetido no decide por nadie.
+ * respaldos sin copia. Hay que escribirlo otra vez, y un Enter mantenido o repetido no decide por nadie. Tras un fallo de Rust se
+ * vacía sin ceder el hilo: el archivo pudo irse, y lo escrito no puede esperar a que llegue la lista, que quizá no llegue.
  */
 export function useConfirmacion(nombre: () => string, sinArchivo: () => boolean, confirmar: () => unknown) {
   const escrito = ref("");
@@ -29,7 +30,10 @@ export function useConfirmacion(nombre: () => string, sinArchivo: () => boolean,
   const alEnter = (e: KeyboardEvent) => {
     if (!e.repeat) void confirmar();
   };
-  return { escrito, confirmado, alEnter };
+  const trasFallo = (codigo: string | undefined) => {
+    if (codigo) escrito.value = "";
+  };
+  return { escrito, confirmado, alEnter, trasFallo };
 }
 
 export const espacioQueLibera = (o: Organizacion, borrarArchivo: boolean): number =>
@@ -59,54 +63,53 @@ export function opcionesEliminar(
 /** La lista solo da la ruta completa: `boldo.db` es la que está en su carpeta de datos con ese nombre. */
 const esPrincipal = (o: Organizacion) => !o.externa && /[\\/]boldo\.db$/.test(o.ruta);
 
-/**
- * Lo que queda anotado tras un fallo. Un `no_encontrado` o un cancelado no tocaron nada. Reintentar sin las casillas no borra lo que
- * logró el anterior: su copia sigue ahí. Con el archivo aún ahí vale el último, porque el anterior no llegó a borrarlo.
- */
+/** Lo que se sabe tras un fallo: lo que dijo Rust, sumado a lo anterior. Un segundo intento no deshace lo que hizo el primero. */
 export function intentoTrasFallo(
-  anterior: OpcionesEliminar | undefined,
-  pedidas: OpcionesEliminar,
-  sinArchivo: boolean,
-  codigo: string | undefined,
-): OpcionesEliminar | undefined {
-  return !codigo || codigo === "no_encontrado" || sinArchivo ? anterior : pedidas;
+  anterior: AvanceEliminar | undefined,
+  avance: AvanceEliminar | undefined,
+): AvanceEliminar | undefined {
+  if (!avance) return anterior;
+  return {
+    archivoBorrado: !!anterior?.archivoBorrado || avance.archivoBorrado,
+    copia: avance.copia ?? anterior?.copia ?? null,
+  };
 }
-
-/**
- * El intento anterior, si fue la app la que borró el archivo. Rust copia antes de borrar: sin archivo, la copia que pidió está hecha.
- * shortcut: un fallo antes de borrar seguido de retirar el pendrive se contaría como borrado; para distinguirlo, Rust tendría que decirlo.
- */
-export const intentoQueBorro = (
-  o: Organizacion,
-  intento: OpcionesEliminar | undefined,
-): OpcionesEliminar | undefined =>
-  intento && !o.existe && (!o.externa || intento.borrarArchivo) ? intento : undefined;
 
 /** Qué texto explica lo que se va a borrar y lo que no, dentro de `organizaciones.eliminar.seBorra`. */
 export function claveQueSeBorra(
   o: Organizacion,
   sinArchivo: boolean,
   borrarArchivo: boolean,
-  yaBorro?: OpcionesEliminar,
+  intento?: AvanceEliminar,
 ): string {
-  if (yaBorro) return yaBorro.guardarCopia ? "reintentoConCopia" : "reintentoSinCopia";
+  if (sinArchivo && intento?.archivoBorrado) return intento.copia ? "reintentoConCopia" : "reintentoSinCopia";
   if (o.externa) return sinArchivo ? "externaSinArchivo" : borrarArchivo ? "externaConArchivo" : "externa";
   if (sinArchivo) return "internaSinArchivo";
   return esPrincipal(o) ? "principal" : "interna";
 }
 
 /** Qué aviso dar al terminar, dentro de `organizaciones.eliminar`: lo que solo salió de la lista no se dice eliminado. */
-export function claveHecha(o: Organizacion, opciones: OpcionesEliminar, yaBorro?: OpcionesEliminar): string {
-  if (o.externa && !opciones.borrarArchivo && !yaBorro) return "salio";
-  return opciones.guardarCopia || yaBorro?.guardarCopia ? "hechaConCopia" : "hecha";
+export function claveHecha(
+  o: Organizacion,
+  opciones: OpcionesEliminar,
+  sinArchivo: boolean,
+  intento?: AvanceEliminar,
+): string {
+  if (o.externa && !opciones.borrarArchivo && !intento?.archivoBorrado)
+    return sinArchivo ? "salioSinArchivo" : "salio";
+  return opciones.guardarCopia || intento?.copia ? "hechaConCopia" : "hecha";
 }
+
+/** `boldo.db` no se pasa a sí misma. */
+export const claveAbierta = (o: Organizacion): string => (esPrincipal(o) ? "abiertaPrincipal" : "abierta");
 
 /**
  * El aviso si el diálogo ya no está, dentro de `organizaciones.eliminar`; null si basta el motivo. `boldo.db`, la última: Rust ya la
- * vació y abrió otra con su lugar en la lista, así que no hay nada que reintentar.
+ * vació y abrió otra con su lugar en la lista, así que no hay nada que reintentar. `sigueEnLaLista` null: no se pudo leer.
  */
-export function claveFalloFuera(f: { pasoAOtra: boolean; sigueEnLaLista: boolean }): string | null {
+export function claveFalloFuera(f: { pasoAOtra: boolean; sigueEnLaLista: boolean | null }): string | null {
   if (!f.pasoAOtra) return null;
+  if (f.sigueEnLaLista === null) return "falloYaEnOtraSinLista";
   return f.sigueEnLaLista ? "falloYaEnOtra" : "falloSinVuelta";
 }
 

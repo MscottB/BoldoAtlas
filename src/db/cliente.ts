@@ -213,6 +213,14 @@ export interface Respaldo {
 export interface FalloRespaldo {
   codigo: string;
   detalle: string;
+  avance?: AvanceEliminar;
+}
+
+/** Lo que un eliminar que falló ya hizo y no se deshace. */
+export interface AvanceEliminar {
+  archivoBorrado: boolean;
+  /** El nombre de la copia en `organizaciones-eliminadas/`. */
+  copia: string | null;
 }
 
 export function listarRespaldos(): Promise<Respaldo[]> {

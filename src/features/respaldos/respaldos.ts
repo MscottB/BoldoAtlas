@@ -1,5 +1,5 @@
 import { toast } from "vue-sonner";
-import { listarRespaldos, respaldarAhora, type FalloRespaldo } from "@/db/cliente";
+import { listarRespaldos, respaldarAhora, type AvanceEliminar, type FalloRespaldo } from "@/db/cliente";
 import { i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
 import { leerPreferencia } from "@/lib/preferencias";
@@ -37,9 +37,16 @@ export function falloOrganizacion(e: unknown): {
   mensaje: string;
   codigo: string;
   detalle: string;
+  avance?: AvanceEliminar;
 } {
   const f: Partial<FalloRespaldo> = typeof e === "object" && e !== null ? e : {};
-  return { ok: false, mensaje: mensajeOrganizacion(e), codigo: f.codigo ?? "", detalle: f.detalle ?? "" };
+  return {
+    ok: false,
+    mensaje: mensajeOrganizacion(e),
+    codigo: f.codigo ?? "",
+    detalle: f.detalle ?? "",
+    avance: f.avance,
+  };
 }
 
 /** «Respaldar ahora» y el automático: cuenta como trabajo en curso. */

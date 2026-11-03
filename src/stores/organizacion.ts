@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
-import { leerMeta, lote, consultar, type Sentencia } from "@/db/cliente";
+import { leerMeta, lote, consultar, type AvanceEliminar, type Sentencia } from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import {
   TABLAS_CATALOGO,
@@ -51,10 +51,10 @@ import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 
-/** `codigo` y `detalle`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
+/** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
   | { ok: true; id?: string }
-  | { ok: false; mensaje: string; codigo?: string; detalle?: string };
+  | { ok: false; mensaje: string; codigo?: string; detalle?: string; avance?: AvanceEliminar };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
 export type ResultadoEliminar =

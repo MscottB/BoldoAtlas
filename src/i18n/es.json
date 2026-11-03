@@ -805,15 +805,17 @@
       "seBorra": {
         "interna": "Se borran del disco su base de datos y sus respaldos. No se puede deshacer.",
         "principal": "Es la base principal de BoldoAtlas (boldo.db). Se borran del disco el archivo y sus respaldos; si hay otros archivos en esa carpeta de respaldos, se quedan. Si no queda ninguna organización, se empieza con una vacía. No se puede deshacer.",
-        "internaSinArchivo": "Su archivo ya no está, así que no se puede copiar. Se quita de la lista y se borran sus respaldos, que pueden ser lo único que queda de sus datos. Para conservarlos, cancela y usa «Quitar de la lista», que no borra nada.",
+        "internaSinArchivo": "Su archivo ya no está: lo borró un intento anterior, o dejó de estar en su lugar. Falta quitarla de la lista y borrar sus respaldos, que pueden ser lo único que quede de sus datos. Para conservarlos, cancela y usa «Quitar de la lista», que no borra nada.",
         "externa": "Sale de la lista y se borran sus respaldos. El archivo no se toca: se queda en su lugar.",
         "externaConArchivo": "Sale de la lista y se borran del disco el archivo y sus respaldos. No se puede deshacer.",
-        "reintentoConCopia": "Su archivo ya se borró en el intento anterior, y su copia quedó en «Copias de organizaciones eliminadas». Falta quitarla de la lista y borrar sus respaldos.",
-        "reintentoSinCopia": "Su archivo ya se borró en el intento anterior, sin copia. Falta quitarla de la lista y borrar sus respaldos, que ahora son lo único que queda de sus datos. Para conservarlos, cancela y usa «Quitar de la lista», que no borra nada.",
-        "externaSinArchivo": "No se encuentra su archivo: pudo moverse o estar en una unidad sin conectar. Sale de la lista y se borran sus respaldos, que pueden ser lo único que tengas a mano; el archivo, si existe, no se toca. Para conservar los respaldos, cancela y usa «Quitar de la lista», que no borra nada."
+        "reintentoConCopia": "El intento anterior borró su archivo y guardó una copia en «Copias de organizaciones eliminadas»: {copia}. Falta quitarla de la lista y borrar sus respaldos.",
+        "reintentoSinCopia": "El intento anterior borró su archivo, sin copia. Falta quitarla de la lista y borrar sus respaldos, que ahora son lo único que queda de sus datos. Para conservarlos, cancela y usa «Quitar de la lista», que no borra nada.",
+        "externaSinArchivo": "No se encuentra su archivo: lo borró un intento anterior, se movió o está en una unidad sin conectar. Sale de la lista y se borran sus respaldos, que pueden ser lo único que quede de sus datos; el archivo, si existe, no se toca. Para conservar los respaldos, cancela y usa «Quitar de la lista», que no borra nada."
       },
       "libera": "Libera {tamano}.",
       "liberaConCopia": "La copia ocupa parte de ese espacio.",
+      "copiaAnterior": "Un intento anterior ya guardó una copia: {copia}. Está en «Copias de organizaciones eliminadas».",
+      "abiertaPrincipal": "Es la que tienes abierta: antes se pasa a otra y se vuelve a Inicio. Si no hay otra, se empieza con una vacía.",
       "noSeTocan": "Las demás organizaciones no se tocan.",
       "abierta": "Es la que tienes abierta: antes se pasa a otra (o a la principal, si no hay) y se vuelve a Inicio.",
       "pestanas": "Tiene {n} pestaña abierta, que se cierra al confirmar. | Tiene {n} pestañas abiertas, que se cierran al confirmar.",
@@ -822,7 +824,7 @@
       "copiaAyuda": "De la base de datos, sin los respaldos. Queda en «Copias de organizaciones eliminadas», y desde ahí se puede restaurar.",
       "sinCopia": "Sin copia, lo que se borra no se puede recuperar.",
       "escribe": "Para confirmar, escribe:",
-      "escribeOtraVez": "Cambió lo que se va a borrar: escribe el nombre otra vez para confirmar.",
+      "escribeOtraVez": "Para intentarlo de nuevo, escribe el nombre otra vez.",
       "confirmar": "Eliminar",
       "terminar": "Terminar de eliminar",
       "eliminando": "Eliminando…",
@@ -831,10 +833,12 @@
       "trasFallo": "Lo que no se alcanzó a borrar sigue en su lugar, y la organización sigue en la lista. Eliminarla de nuevo termina lo que falta.",
       "sinPoderCopiar": "Si otro programa está usando el archivo, ciérralo e inténtalo de nuevo. Si no se puede copiar, puedes desmarcar «Guardar una copia antes» y eliminar sin copia.",
       "falloYaEnOtra": "«{nombre}» no se terminó de eliminar, y ya se pasó a otra organización. Sigue en la lista: elimínala de nuevo en Configuración para terminar.",
+      "falloYaEnOtraSinLista": "«{nombre}» no se terminó de eliminar, y ya se pasó a otra organización. No se pudo leer la lista: si sigue en ella, elimínala de nuevo en Configuración para terminar.",
       "falloSinVuelta": "«{nombre}» se eliminó y se abrió una organización vacía en su lugar, pero algo no se pudo borrar: pueden quedar respaldos suyos en la carpeta de respaldos.",
       "hecha": "Se eliminó «{nombre}».",
       "hechaConCopia": "Se eliminó «{nombre}». Su copia está en Configuración, en «Copias de organizaciones eliminadas».",
-      "salio": "«{nombre}» salió de la lista y se borraron sus respaldos. Su archivo no se tocó."
+      "salio": "«{nombre}» salió de la lista y se borraron sus respaldos. Su archivo no se tocó.",
+      "salioSinArchivo": "«{nombre}» salió de la lista y se borraron sus respaldos. Su archivo no se encontró."
     },
     "error": {
       "desconocido": "Esta organización ya no está en la lista.",
