@@ -578,10 +578,14 @@ fn abrir_entrada_con(
         // shortcut: si la unidad se cuelga justo después, aquí no hay límite: el arranque espera, y un cambio de organización
         // también, con `conn` tomado, así que la base abierta queda sin responder; cambiarlo si llega a pasar
         // lo mismo que al agregarla, porque pudo cambiar: una unidad que ahora es de red, un diario que cambiaría lo revisado
-        if fs::canonicalize(&base.bd).is_ok_and(|c| es_red(&c)) {
+        let canonica = fs::canonicalize(&base.bd).ok();
+        if canonica.as_deref().is_some_and(es_red) {
             return Err(Fallo::de("contenido_invalido", "red"));
         }
-        if con_sufijo(&base.bd, "-journal").exists() {
+        // por un enlace, SQLite lo busca junto al enlace o junto al archivo, según el sistema
+        if con_sufijo(&base.bd, "-journal").exists()
+            || canonica.is_some_and(|c| con_sufijo(&c, "-journal").exists())
+        {
             return Err(Fallo::de("contenido_invalido", "journal"));
         }
         version_y_esquema(&base.bd, migraciones)?;
@@ -836,6 +840,12 @@ pub(crate) fn agregar_con_red(
     } else {
         ruta_interna(&id)
     };
+    // el mismo archivo, ya de red, que no pudo conservar su id: su entrada seguiría apuntando a la red
+    if es_la_misma && id_archivo != Some(id.as_str()) {
+        lista
+            .organizaciones
+            .retain(|e| id_archivo != Some(e.id.as_str()));
+    }
     if let Some(e) = lista.organizaciones.iter_mut().find(|e| e.id == id) {
         e.ruta = ruta_nueva;
         e.externa = externa;
@@ -2491,7 +2501,64 @@ mod tests_archivo {
         let e = entrada_con(&r, &id);
         assert!(!e.externa);
         assert_eq!(e.ruta, ruta_interna(&id));
+        assert_eq!(id_en(&r.datos.join(ruta_interna(&id))), Some(id.clone()));
+        let a = abrir_entrada(&r, &e, ESPERA_CAMBIO, MIGRACIONES).unwrap();
+        assert_eq!(a.id, id);
         assert_eq!(fs::read(&bd).unwrap(), antes);
+    }
+
+    /// Sin poder conservar su id, la copia no se queda con la entrada: esa seguiría apuntando a la red.
+    #[test]
+    fn externa_que_paso_a_la_red_con_otro_id_no_deja_la_entrada_vieja() {
+        for buscar in [false, true] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, id) = afuera("a.db");
+            agregar(&r, &bd).unwrap();
+            let huerfano = con_sufijo(&r.datos.join(ruta_interna(&id)), "-wal");
+            fs::create_dir_all(huerfano.parent().unwrap()).unwrap();
+            fs::write(&huerfano, "de antes").unwrap();
+
+            let buscando = buscar.then_some(id.as_str());
+            let hecho = agregar_con_red(&r, &bd, buscando, &["red"], MIGRACIONES, i64::MAX, de_red)
+                .unwrap();
+
+            let nuevo = hecho.id.unwrap();
+            assert_ne!(nuevo, id);
+            assert_eq!(hecho.avisos, ["copia"]);
+            let l = cargar_lista(&r).organizaciones;
+            assert_eq!(l.len(), 1, "{l:?}");
+            assert_eq!(l[0].id, nuevo);
+            assert!(!l[0].externa);
+        }
+    }
+
+    /// `es_red` ya mira la canónica: con un enlace, el diario está junto a ella y no junto a la ruta guardada.
+    #[test]
+    fn externa_por_un_enlace_con_un_diario_junto_al_archivo_no_se_abre() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("a.db");
+        let enlaces = tempfile::tempdir().unwrap();
+        let enlace = enlaces.path().join("enlace.db");
+        #[cfg(windows)]
+        let creado = std::os::windows::fs::symlink_file(&bd, &enlace);
+        #[cfg(unix)]
+        let creado = std::os::unix::fs::symlink(&bd, &enlace);
+        if creado.is_err() {
+            // Windows sin el permiso de crear enlaces: no hay cómo armar el caso
+            return;
+        }
+        escribir(
+            &r,
+            vec![entrada(&id, enlace.to_str().unwrap(), true, "2020")],
+        );
+        fs::write(con_sufijo(&bd, "-journal"), "lo que cambiaría al abrir").unwrap();
+        let f = abrir_entrada(&r, &entrada_con(&r, &id), ESPERA_CAMBIO, MIGRACIONES)
+            .err()
+            .unwrap();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "journal")
+        );
     }
 
     #[test]

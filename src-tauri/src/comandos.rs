@@ -332,12 +332,11 @@ impl Estado {
         let e = entrada
             .cloned()
             .unwrap_or_else(|| Entrada::principal(&nueva.id));
-        {
-            let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
-            let mut lista = cargar_lista(r);
-            anotar_abierta(&mut lista, &e, &nueva.conn, true)?;
-            escribir_lista(r, &lista)?;
-        }
+        // hasta escribir `base`: antes, una búsqueda confirmada no vería que esta ya es la abierta y la sacaría de la lista
+        let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+        let mut lista = cargar_lista(r);
+        anotar_abierta(&mut lista, &e, &nueva.conn, true)?;
+        escribir_lista(r, &lista)?;
         // ya no hay vuelta atrás: la lista dice que abre la nueva, así que un error aquí no la detiene
         if let Some(anterior) = conn.take() {
             // sin esperar a otro lector, con `conn` tomado: su `-wal` se recupera al reabrirla
@@ -2389,6 +2388,42 @@ mod cambiar_a {
             "abierta_en_otra_copia"
         );
         bloquear(&ruta_de(&d.r, &d.a), YA).unwrap();
+    }
+
+    /// Mientras la lista dice la nueva y `base` todavía la anterior, una búsqueda confirmada no debe poder sacar a la nueva de la
+    /// lista: se detiene el cambio justo antes de escribir `base`, tomando lo que necesita ahí.
+    #[test]
+    fn la_lista_sigue_tomada_hasta_escribir_la_base() {
+        let d = dos();
+        let tomado = d.e.bloqueo.lock().unwrap();
+        std::thread::scope(|s| {
+            let hilo = s.spawn(|| cambiar(&d.e, &d.b.id).map(|_| ()).map_err(|f| f.codigo));
+            let ya_anotada = || {
+                fs::read(d.r.datos.join("organizaciones.json"))
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<Lista>(&b).ok())
+                    .is_some_and(|l| {
+                        l.organizaciones
+                            .iter()
+                            .any(|o| o.id == d.b.id && o.abierta != d.b.abierta)
+                    })
+            };
+            let limite = Instant::now() + Duration::from_secs(10);
+            while !ya_anotada() {
+                assert!(Instant::now() < limite, "el cambio no llegó a anotarse");
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            // lo que tarda en soltarla si no la retuviera
+            std::thread::sleep(Duration::from_millis(100));
+            assert_eq!(d.e.base_abierta().unwrap().id, d.a.id);
+            assert!(matches!(
+                d.e.lista.try_lock(),
+                Err(TryLockError::WouldBlock)
+            ));
+            drop(tomado);
+            hilo.join().unwrap().unwrap();
+        });
+        assert_eq!(d.e.base_abierta().unwrap().id, d.b.id);
     }
 
     #[test]
