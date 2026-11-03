@@ -417,13 +417,14 @@ impl Estado {
         agregar: Agregar,
     ) -> Result<ArchivoAgregado, Fallo> {
         let r = self.rutas()?;
-        if let Some(b) = &buscando
-            && self.base_abierta().is_some_and(|abierta| abierta.id == *b)
-        {
-            return Err(Fallo::de("abierta", b));
-        }
         let hecho = {
             let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            // `base` se toma y se suelta aquí mismo: nadie la retiene esperando `lista`, y `ya_abierta` ya va en este orden
+            if let Some(b) = &buscando
+                && self.base_abierta().is_some_and(|abierta| abierta.id == *b)
+            {
+                return Err(Fallo::de("abierta", b));
+            }
             agregar(r, &ruta, buscando.as_deref(), &confirmados)?
         };
         if let Some(motivo) = hecho.pide {

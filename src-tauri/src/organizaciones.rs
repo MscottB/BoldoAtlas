@@ -552,6 +552,17 @@ pub fn abrir_entrada(
     espera: Duration,
     migraciones: &[&str],
 ) -> Result<Abierta, Fallo> {
+    abrir_entrada_con(r, e, espera, migraciones, es_ruta_de_red)
+}
+
+/// `es_red` es para las pruebas: una carpeta de red no se puede armar en un temporal.
+fn abrir_entrada_con(
+    r: &Rutas,
+    e: &Entrada,
+    espera: Duration,
+    migraciones: &[&str],
+    es_red: fn(&Path) -> bool,
+) -> Result<Abierta, Fallo> {
     let base = base_de(r, e);
     // una unidad que no responde cuelga hasta esto, y el arranque ocurre antes de crear la ventana
     let existe = if e.externa {
@@ -566,6 +577,13 @@ pub fn abrir_entrada(
     if e.externa {
         // shortcut: si la unidad se cuelga justo después, aquí no hay límite: el arranque espera, y un cambio de organización
         // también, con `conn` tomado, así que la base abierta queda sin responder; cambiarlo si llega a pasar
+        // lo mismo que al agregarla, porque pudo cambiar: una unidad que ahora es de red, un diario que cambiaría lo revisado
+        if fs::canonicalize(&base.bd).is_ok_and(|c| es_red(&c)) {
+            return Err(Fallo::de("contenido_invalido", "red"));
+        }
+        if con_sufijo(&base.bd, "-journal").exists() {
+            return Err(Fallo::de("contenido_invalido", "journal"));
+        }
         version_y_esquema(&base.bd, migraciones)?;
     }
     // si la consulta falla no se sabe de quién es: lo decide `abrir_base`, para no tomar un error pasajero por `otro_id`
@@ -617,6 +635,10 @@ fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
         return invalido("extension");
     }
     let absoluta = std::path::absolute(ruta)?;
+    // la lista la guarda como texto: otra ruta no volvería a encontrar el archivo
+    if absoluta.to_str().is_none() {
+        return invalido("ruta");
+    }
     let canonica = fs::canonicalize(&absoluta).map_err(|e| match e.kind() {
         io::ErrorKind::NotFound => Fallo::de("no_encontrado", ruta.display()),
         _ => e.into(),
@@ -650,12 +672,28 @@ fn escribir_id_nuevo(bd: &Path) -> Result<String, Fallo> {
     Ok(id)
 }
 
-/// Copia un archivo ya revisado a una organización nueva en `organizaciones/`, sin escribir en él. Se queda con `id_libre` si su
-/// carpeta no tiene base; si no, recibe uno nuevo. Pasa por un temporal: un corte no deja una base a medias en esa carpeta.
-fn copiar_a_carpeta(r: &Rutas, origen: &Path, id_libre: Option<&str>) -> Result<String, Fallo> {
+/// Copia un archivo a una organización nueva en `organizaciones/`, sin escribir en él. Se queda con `id_libre` si es el que trae
+/// la copia y su carpeta no tiene base ni restos que SQLite aplicaría; si no, recibe uno nuevo. Pasa por un temporal: un corte no
+/// deja una base a medias en esa carpeta.
+fn copiar_a_carpeta(
+    r: &Rutas,
+    origen: &Path,
+    id_libre: Option<&str>,
+    migraciones: &[&str],
+) -> Result<String, Fallo> {
     let temporal = Temporal::nuevo(&r.datos, "archivo");
     solo_lectura_cerrada(origen)?.execute("VACUUM INTO ?1", [temporal.ruta().to_string_lossy()])?;
-    let id = match id_libre.filter(|id| !r.datos.join(ruta_interna(id)).exists()) {
+    // el origen se leyó dos veces, y otro equipo pudo cambiarlo entre medio: una interna no vuelve a pasar por `version_y_esquema`.
+    // El total no rechaza: ya se preguntó por el del origen.
+    revisar_organizacion(temporal.ruta(), migraciones, MAX_BYTES_VIVOS)?;
+    let id_copia = id_del_archivo(&solo_lectura_cerrada(temporal.ruta())?)?;
+    let ocupada = |id: &str| {
+        let bd = r.datos.join(ruta_interna(id));
+        ["", "-wal", "-journal"]
+            .iter()
+            .any(|s| con_sufijo(&bd, s).exists())
+    };
+    let id = match id_libre.filter(|id| id_copia.as_deref() == Some(*id) && !ocupada(id)) {
         Some(id) => id.to_owned(),
         None => {
             let c = db::abrir(temporal.ruta())?;
@@ -731,6 +769,10 @@ pub(crate) fn agregar_con_red(
     let datos = fs::canonicalize(&r.datos)?;
     let relativa = canonica.strip_prefix(&datos).ok();
     let de_red = relativa.is_none() && es_red(&canonica);
+    // con un `-wal`, leerlo usa memoria compartida y deja un `-shm` en la carpeta compartida
+    if de_red && con_sufijo(&absoluta, "-wal").exists() {
+        return Err(Fallo::de("contenido_invalido", "wal"));
+    }
     if de_red && !confirmados.contains(&"red") {
         return preguntar("red");
     }
@@ -757,7 +799,9 @@ pub(crate) fn agregar_con_red(
         .organizaciones
         .iter()
         .find(|e| id_archivo == Some(e.id.as_str()));
-    if duena.is_some_and(|e| es_el_mismo(r, e, &canonica)) {
+    let es_la_misma = duena.is_some_and(|e| es_el_mismo(r, e, &canonica));
+    // el mismo archivo, salvo si ahora es de red: esa entrada ya no abre, y se copia conservando su id
+    if es_la_misma && !de_red {
         escribir_lista(r, &lista)?;
         return Ok(ArchivoAgregado {
             id: id_archivo.map(str::to_owned),
@@ -765,18 +809,20 @@ pub(crate) fn agregar_con_red(
             avisos: Vec::new(),
         });
     }
-    // su id lo tiene otra entrada: si su archivo ya no está, este es ese archivo movido; si está, este es una copia
-    let es_copia = duena.is_some_and(|e| {
-        let bd = ruta_de(r, e);
-        con_limite(LIMITE_UNIDAD, move || bd.is_file())
-    });
+    // su id lo tiene otra entrada: si su archivo ya no está, este es ese archivo movido; si está, este es una copia. Una unidad
+    // que no responde no cuenta como que ya no está: el archivo de esa entrada puede seguir ahí
+    let es_copia = !es_la_misma
+        && duena.is_some_and(|e| {
+            let bd = ruta_de(r, e);
+            !con_limite(LIMITE_UNIDAD, move || !bd.is_file())
+        });
     let id_libre = id_archivo.filter(|_| !es_copia);
     let principal = relativa == Some(Path::new(PRINCIPAL));
     let en_su_carpeta = id_libre.is_some_and(|id| relativa == Some(Path::new(&ruta_interna(id))));
     // dentro de `datos/`, fuera de su lugar, escribirle un id lo dañaría como respaldo, y la poda lo borraría (decisión 27)
     let copiar = de_red || (relativa.is_some() && !principal && !en_su_carpeta);
     let id = if copiar {
-        copiar_a_carpeta(r, &absoluta, id_libre)?
+        copiar_a_carpeta(r, &absoluta, id_libre, migraciones)?
     } else if let Some(id) = id_libre {
         id.to_owned()
     } else {
@@ -813,7 +859,8 @@ pub(crate) fn agregar_con_red(
         return Err(f);
     }
     let mut avisos = Vec::new();
-    if es_copia {
+    // no conservó el id que traía: lo tiene otra entrada, o su carpeta ya tiene base
+    if id_archivo.is_some_and(|a| a != id) {
         avisos.push("copia");
     }
     // su carpeta es la del programa, que contiene `datos/`
@@ -2331,9 +2378,141 @@ mod tests_archivo {
         let bd = r.respaldos.join("boldo-20260101-0900.db");
         fs::copy(ruta_de(&r, &e), &bd).unwrap();
         let antes = fs::read(ruta_de(&r, &e)).unwrap();
-        let id = agregar(&r, &bd).unwrap().id.unwrap();
+        let hecho = agregar(&r, &bd).unwrap();
+        assert_eq!(hecho.avisos, ["copia"]);
+        let id = hecho.id.unwrap();
         assert_ne!(id, e.id);
         assert_eq!(fs::read(ruta_de(&r, &e)).unwrap(), antes);
+    }
+
+    #[test]
+    fn copia_que_trae_un_trigger_no_llega_a_su_carpeta() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("a.db");
+        alterar(
+            &bd,
+            "CREATE TRIGGER t AFTER INSERT ON meta BEGIN DELETE FROM meta; END;",
+        );
+        let f = copiar_a_carpeta(&r, &bd, Some(&id), MIGRACIONES).unwrap_err();
+        assert_eq!(f.codigo, "contenido_invalido");
+        assert!(!r.datos.join(ruta_interna(&id)).exists());
+        assert!(temporales_en(&r).is_empty(), "{:?}", temporales_en(&r));
+    }
+
+    /// El origen pudo cambiar entre la revisión y la copia: la carpeta se nombra con lo que quedó en la copia.
+    #[test]
+    fn copia_con_otro_id_que_el_revisado_no_desalinea_su_carpeta() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("a.db");
+        let revisado = uuid::Uuid::now_v7().to_string();
+        let nuevo = copiar_a_carpeta(&r, &bd, Some(&revisado), MIGRACIONES).unwrap();
+        assert_ne!(nuevo, revisado);
+        assert_ne!(nuevo, id);
+        assert_eq!(id_en(&r.datos.join(ruta_interna(&nuevo))), Some(nuevo));
+        assert!(!r.datos.join(ruta_interna(&revisado)).exists());
+    }
+
+    #[test]
+    fn copia_con_restos_en_su_carpeta_recibe_otro_id() {
+        for sufijo in ["-wal", "-journal"] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, id) = afuera("a.db");
+            let huerfano = con_sufijo(&r.datos.join(ruta_interna(&id)), sufijo);
+            fs::create_dir_all(huerfano.parent().unwrap()).unwrap();
+            fs::write(&huerfano, "de antes").unwrap();
+            let nuevo = copiar_a_carpeta(&r, &bd, Some(&id), MIGRACIONES).unwrap();
+            assert_ne!(nuevo, id, "{sufijo}");
+            assert_eq!(fs::read_to_string(&huerfano).unwrap(), "de antes");
+            assert!(!r.datos.join(ruta_interna(&id)).exists());
+        }
+    }
+
+    #[test]
+    fn archivo_de_red_con_un_wal_se_rechaza_sin_dejar_nada_al_lado() {
+        for confirmados in [&[][..], &["red"]] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, _) = afuera("en-red.db");
+            let wal = con_sufijo(&bd, "-wal");
+            fs::write(&wal, "de otro equipo").unwrap();
+            let antes = fs::read(&bd).unwrap();
+            let f = agregar_con_red(&r, &bd, None, confirmados, MIGRACIONES, i64::MAX, de_red)
+                .unwrap_err();
+            assert_eq!(
+                (f.codigo, f.detalle.as_str()),
+                ("contenido_invalido", "wal")
+            );
+            assert!(!con_sufijo(&bd, "-shm").exists());
+            assert_eq!(fs::read_to_string(&wal).unwrap(), "de otro equipo");
+            assert_eq!(fs::read(&bd).unwrap(), antes);
+            assert!(cargar_lista(&r).organizaciones.is_empty());
+        }
+    }
+
+    #[test]
+    fn externa_con_un_diario_al_lado_no_se_abre() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("a.db");
+        agregar(&r, &bd).unwrap();
+        fs::write(con_sufijo(&bd, "-journal"), "lo que cambiaría al abrir").unwrap();
+        let antes = fs::read(&bd).unwrap();
+        let f = abrir_entrada(&r, &entrada_con(&r, &id), ESPERA_CAMBIO, MIGRACIONES)
+            .err()
+            .unwrap();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "journal")
+        );
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros_ni_bloqueo(&bd);
+    }
+
+    #[test]
+    fn externa_que_paso_a_la_red_no_se_abre_y_se_copia_al_buscarla() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("a.db");
+        agregar(&r, &bd).unwrap();
+        let e = entrada_con(&r, &id);
+        let antes = fs::read(&bd).unwrap();
+        let f = abrir_entrada_con(&r, &e, ESPERA_CAMBIO, MIGRACIONES, de_red)
+            .err()
+            .unwrap();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "red")
+        );
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        sin_rastros_ni_bloqueo(&bd);
+        assert!(!base_de(&r, &e).respaldos.exists());
+
+        let hecho =
+            agregar_con_red(&r, &bd, Some(&id), &["red"], MIGRACIONES, i64::MAX, de_red).unwrap();
+        assert_eq!(hecho.id.as_deref(), Some(id.as_str()));
+        assert!(hecho.avisos.is_empty(), "{:?}", hecho.avisos);
+        let e = entrada_con(&r, &id);
+        assert!(!e.externa);
+        assert_eq!(e.ruta, ruta_interna(&id));
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+    }
+
+    #[test]
+    fn ruta_que_no_es_utf8_se_rechaza() {
+        #[cfg(windows)]
+        let ruta: PathBuf = {
+            use std::os::windows::ffi::OsStringExt;
+            let mut nombre = vec![u16::from(b'x'), 0xD800];
+            nombre.extend(".db".encode_utf16());
+            std::ffi::OsString::from_wide(&nombre).into()
+        };
+        #[cfg(unix)]
+        let ruta: PathBuf = {
+            use std::os::unix::ffi::OsStrExt;
+            std::ffi::OsStr::from_bytes(b"x\xff.db").into()
+        };
+        let f = ubicar(&ruta).unwrap_err();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "ruta")
+        );
     }
 
     #[test]
