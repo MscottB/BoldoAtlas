@@ -397,6 +397,15 @@ pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Si se puede afirmar que el archivo no está. `exists` da false ante cualquier error al mirar, y Windows da `NotFound` con una
+/// letra de unidad retirada: por eso también debe estar su carpeta.
+pub fn ya_no_esta(ruta: &Path) -> bool {
+    matches!(ruta.try_exists(), Ok(false))
+        && ruta
+            .parent()
+            .is_some_and(|p| matches!(p.try_exists(), Ok(true)))
+}
+
 /// Lo que `borrar_respaldos` considera suyo: un `notas.txt` del usuario no.
 fn es_propio(nombre: &str) -> bool {
     entrada(nombre).is_some() || nombre.starts_with(PREFIJO_MIGRACION)
@@ -628,6 +637,19 @@ mod tests {
         assert_eq!(bytes_en(d.path(), false), Some(12));
         // un archivo donde debería haber una carpeta: no se pudo leer, y no es lo mismo que vacío
         assert_eq!(bytes_en(&d.path().join("notas.txt"), true), None);
+    }
+
+    #[test]
+    fn ya_no_esta_solo_si_se_puede_afirmar() {
+        let d = tempfile::tempdir().unwrap();
+        let bd = d.path().join("x.db");
+        assert!(ya_no_esta(&bd));
+        fs::write(&bd, "x").unwrap();
+        assert!(!ya_no_esta(&bd));
+        // sin carpeta: como una letra de unidad retirada en Windows, que también da `NotFound`
+        assert!(!ya_no_esta(&d.path().join("no_existe").join("x.db")));
+        // un error al mirar no es que no esté
+        assert!(!ya_no_esta(Path::new("con\0nulo")));
     }
 
     #[test]

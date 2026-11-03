@@ -30,6 +30,8 @@ import {
   intentoTrasFallo,
   opcionesEliminar,
   pestanasDe,
+  quedanAuxiliares,
+  sinArchivoAlAbrir,
   textoAConfirmar,
   useConfirmacion,
 } from "./eliminar";
@@ -70,7 +72,7 @@ watch(abierto, (a) => {
   error.value = "";
   codigo.value = "";
   detalle.value = "";
-  noEncontrado.value = false;
+  noEncontrado.value = sinArchivoAlAbrir(intento.value, organizaciones.listaAlDia);
   eliminada = false;
 });
 
@@ -87,6 +89,7 @@ const seBorra = computed(() =>
 const copiaAnterior = computed(() =>
   intento.value?.copia && !(sinArchivo.value && intento.value.archivoBorrado) ? intento.value.copia : "",
 );
+const auxiliares = computed(() => quedanAuxiliares(props.organizacion, sinArchivo.value, intento.value));
 const ofreceCopia = computed(() => !sinArchivo.value && (!props.organizacion.externa || archivo.value));
 const libera = computed(() => espacioQueLibera(props.organizacion, opciones.value.borrarArchivo));
 const nPestanas = computed(() => pestanasDe(pestanas.lista, props.organizacion.id));
@@ -121,6 +124,7 @@ async function confirmar() {
   const pedidas = opciones.value;
   const sinArchivoAlPedir = sinArchivo.value;
   const intentoAlPedir = intento.value;
+  const avisoAuxiliares = auxiliares.value ? t("organizaciones.eliminar.auxiliares", { ruta: o.ruta }) : undefined;
   corriendo.value = true;
   error.value = "";
   codigo.value = "";
@@ -129,7 +133,9 @@ async function confirmar() {
   corriendo.value = false;
   if (r.ok) {
     organizaciones.intentosEliminar.delete(o.id);
-    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas, sinArchivoAlPedir, intentoAlPedir)}`, { nombre: nombre.value }));
+    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas, sinArchivoAlPedir, intentoAlPedir)}`, { nombre: nombre.value }), {
+      description: avisoAuxiliares,
+    });
     eliminada = true;
     abierto.value = false;
     emit("terminado", true);
@@ -183,6 +189,7 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
         </p>
         <p>{{ t("organizaciones.eliminar.noSeTocan") }}</p>
         <p v-if="organizacion.activa">{{ t(`organizaciones.eliminar.${claveAbierta(organizacion)}`) }}</p>
+        <p v-if="auxiliares">{{ t("organizaciones.eliminar.auxiliares", { ruta: organizacion.ruta }) }}</p>
         <p v-if="copiaAnterior">{{ t("organizaciones.eliminar.copiaAnterior", { copia: copiaAnterior }) }}</p>
         <p v-if="nPestanas">{{ t("organizaciones.eliminar.pestanas", { n: nPestanas }, nPestanas) }}</p>
 
@@ -202,8 +209,12 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
               <span class="block text-xs text-muted-foreground">{{ t("organizaciones.eliminar.copiaAyuda") }}</span>
             </span>
           </label>
-          <p v-if="!copia && !intento?.copia" role="alert" class="text-destructive">
-            {{ t("organizaciones.eliminar.sinCopia") }}
+          <p v-if="!copia" role="alert" class="text-destructive">
+            {{
+              intento?.copia
+                ? t("organizaciones.eliminar.sinCopiaConAnterior", { copia: intento.copia })
+                : t("organizaciones.eliminar.sinCopia")
+            }}
           </p>
         </template>
 
@@ -229,7 +240,7 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
           <p v-else-if="ofreceCopia && copia && aconsejaSinCopia(codigo, detalle)">
             {{ t("organizaciones.eliminar.sinPoderCopiar") }}
           </p>
-          <p v-if="!escrito">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
+          <p v-if="!escrito && codigo !== 'lista_protegida'">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
         </div>
         <p role="status" class="text-muted-foreground">
           {{ corriendo ? t("organizaciones.eliminar.eliminando") : "" }}

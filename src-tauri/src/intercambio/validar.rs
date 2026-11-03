@@ -144,7 +144,6 @@ fn tope_de(columna: &str) -> i64 {
 /// Dónde está lo que se pasó, para poder corregirlo: nunca el contenido, y el nombre de la fila solo si no es lo que se pasó.
 fn pesado_en(tabla: &str, columna: &str, nombre: Option<String>) -> Fallo {
     Fallo {
-        avance: None,
         donde: Some(Donde {
             tabla: tabla.to_string(),
             columna: columna.to_string(),

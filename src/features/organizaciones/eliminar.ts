@@ -95,10 +95,21 @@ export function claveHecha(
   sinArchivo: boolean,
   intento?: AvanceEliminar,
 ): string {
-  if (o.externa && !opciones.borrarArchivo && !intento?.archivoBorrado)
+  if (o.externa && !opciones.borrarArchivo && !(sinArchivo && intento?.archivoBorrado))
     return sinArchivo ? "salioSinArchivo" : "salio";
   return opciones.guardarCopia || intento?.copia ? "hechaConCopia" : "hecha";
 }
+
+/**
+ * Una externa cuyo archivo borró la app: reintentar sin la casilla no toca lo que hay junto a donde estaba (`-wal`, `.bloqueo`…), que
+ * podría ser de otro. Se dice. De las demás se ocupa Rust al reintentar.
+ */
+export const quedanAuxiliares = (o: Organizacion, sinArchivo: boolean, intento?: AvanceEliminar): boolean =>
+  o.externa && sinArchivo && !!intento?.archivoBorrado;
+
+/** Al reabrir: si la lista no se pudo leer, su `existe` es viejo, y lo que dijo Rust sigue valiendo. Si se pudo, manda ella. */
+export const sinArchivoAlAbrir = (intento: AvanceEliminar | undefined, listaAlDia: boolean): boolean =>
+  !listaAlDia && !!intento?.archivoBorrado;
 
 /** `boldo.db` no se pasa a sí misma. */
 export const claveAbierta = (o: Organizacion): string => (esPrincipal(o) ? "abiertaPrincipal" : "abierta");

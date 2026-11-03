@@ -823,6 +823,8 @@
       "copia": "Save a copy first",
       "copiaAyuda": "Of the database, without the backups. It goes to “Copies of deleted organizations”, where it can be restored.",
       "sinCopia": "Without a copy, what's deleted can't be recovered.",
+      "sinCopiaConAnterior": "Without a new copy, only the one from the previous attempt remains ({copia}), and it may not include later changes.",
+      "auxiliares": "Auxiliary files, such as -wal, -shm, -journal or .bloqueo, may remain next to where it was ({ruta}). BoldoAtlas doesn't touch them: check that folder.",
       "escribe": "To confirm, type:",
       "escribeOtraVez": "To try again, type the name again.",
       "confirmar": "Delete",

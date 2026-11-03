@@ -1233,6 +1233,26 @@ describe("eliminar", () => {
     expect(o.intentosEliminar.has("B")).toBe(false);
   });
 
+  it("una copia borrada deja de afirmarse en los intentos que la nombran; lo demás se queda", async () => {
+    const { o } = await arrancar();
+    o.intentosEliminar.set("B", { archivoBorrado: true, copia: "B_1.db" });
+    o.intentosEliminar.set("C", { archivoBorrado: false, copia: "C_1.db" });
+    o.copiaBorrada("B_1.db");
+    expect(o.intentosEliminar.get("B")).toEqual({ archivoBorrado: true, copia: null });
+    expect(o.intentosEliminar.get("C")).toEqual({ archivoBorrado: false, copia: "C_1.db" });
+  });
+
+  it("listaAlDia dice si la última lectura de la lista salió bien", async () => {
+    const { o } = await arrancar();
+    await o.cargarLista();
+    expect(o.listaAlDia).toBe(true);
+    c.listarOrganizaciones.mockRejectedValueOnce(fallo("fallo"));
+    await o.cargarLista();
+    expect(o.listaAlDia).toBe(false);
+    await o.cargarLista();
+    expect(o.listaAlDia).toBe(true);
+  });
+
   it("quitar de la lista olvida su intento; si falla, no", async () => {
     const { o } = await arrancar();
     o.intentosEliminar.set("B", { archivoBorrado: true, copia: null });

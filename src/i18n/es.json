@@ -823,6 +823,8 @@
       "copia": "Guardar una copia antes",
       "copiaAyuda": "De la base de datos, sin los respaldos. Queda en «Copias de organizaciones eliminadas», y desde ahí se puede restaurar.",
       "sinCopia": "Sin copia, lo que se borra no se puede recuperar.",
+      "sinCopiaConAnterior": "Sin copia nueva, solo queda la del intento anterior ({copia}), que puede no incluir los cambios posteriores.",
+      "auxiliares": "Junto a donde estaba ({ruta}) pueden quedar archivos auxiliares, como -wal, -shm, -journal o .bloqueo. BoldoAtlas no los toca: revisa esa carpeta.",
       "escribe": "Para confirmar, escribe:",
       "escribeOtraVez": "Para intentarlo de nuevo, escribe el nombre otra vez.",
       "confirmar": "Eliminar",

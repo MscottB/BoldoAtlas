@@ -437,12 +437,7 @@ impl Estado {
                 avance.copia = Some(guardar_eliminada(r, &e, c)?);
             }
             if !self.pasar_a_otra(&mut conn, &lista, &e, migraciones)? {
-                let vaciada = self.vaciar_principal(&mut conn, &base, migraciones);
-                // lo que abrió en su lugar: con otro id, el archivo es otro. Sin nada abierto, se mira si sigue ahí
-                avance.archivo_borrado = self
-                    .base_abierta()
-                    .map_or(!base.bd.exists(), |b| b.id != e.id);
-                vaciada?;
+                self.vaciar_principal(&mut conn, &base, existe, migraciones, avance)?;
                 ya_borrado = true;
             }
         } else {
@@ -460,7 +455,7 @@ impl Estado {
             }
             let borrado = borrar_archivo_de(&base, bloqueo);
             // quita primero el archivo: si falla lo de al lado, igual ya no está
-            avance.archivo_borrado = existe && !base.bd.exists();
+            avance.archivo_borrado = existe && respaldos::ya_no_esta(&base.bd);
             borrado?;
         }
         borrar_respaldos_de(r, &e)?;
@@ -526,7 +521,9 @@ impl Estado {
         &self,
         conn: &mut Option<Connection>,
         base: &Base,
+        existe: bool,
         migraciones: &[&str],
+        avance: &mut AvanceEliminar,
     ) -> Result<(), Fallo> {
         if let Some(c) = conn.take() {
             let _ = c.close();
@@ -537,8 +534,11 @@ impl Estado {
             .unwrap_or_else(|p| p.into_inner())
             .take();
         let mut borrado = borrar_archivo_de(base, bloqueo);
+        // aquí y no después: lo que abre a continuación crea uno nuevo con el mismo nombre
+        let ya_no_esta = respaldos::ya_no_esta(&base.bd);
+        avance.archivo_borrado = existe && ya_no_esta;
         // aunque haya fallado lo de al lado: lo que abra ahora es otra organización, y ya no se puede reintentar
-        if !base.bd.exists() {
+        if ya_no_esta {
             borrado = borrado.and(respaldos::borrar_respaldos(&base.respaldos));
         }
         let abierta = abrir_base(&base.bd, &base.respaldos, None, ESPERA_CAMBIO, migraciones)
@@ -5012,13 +5012,28 @@ mod eliminar {
         let d = cuatro();
         let bd = ruta_de(&d.r, &d.i);
         let otro = db::abrir(&bd).unwrap();
-        assert!(eliminar(&d.e, &d.i.id, false, false).is_err());
+        let f = eliminar(&d.e, &d.i.id, false, false).err().unwrap();
+        assert_eq!(avance_de(&f), (false, None));
         assert!(bd.exists());
         assert!(ids(&d.r).contains(&d.i.id));
         otro.close().unwrap();
         eliminar(&d.e, &d.i.id, false, false).unwrap();
         assert!(!bd.exists());
         assert!(!ids(&d.r).contains(&d.i.id));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn si_no_se_puede_borrar_tras_copiar_dice_la_copia_y_no_el_borrado() {
+        let d = cuatro();
+        let bd = ruta_de(&d.r, &d.i);
+        let otro = db::abrir(&bd).unwrap();
+        let f = eliminar(&d.e, &d.i.id, true, false).err().unwrap();
+        let (borrado, copia) = avance_de(&f);
+        assert!(!borrado);
+        assert_eq!(eliminadas(&d.r), [copia.unwrap().to_string()]);
+        assert!(bd.exists());
+        otro.close().unwrap();
     }
 
     #[cfg(windows)]

@@ -162,6 +162,7 @@ function pedirBorrarCopia(c: OrganizacionEliminada, i: number) {
       correr(
         async () => {
           await borrarEliminada(c.nombre);
+          organizaciones.copiaBorrada(c.nombre);
           return { ok: true };
         },
         () => copiaEn(i),

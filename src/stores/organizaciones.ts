@@ -75,6 +75,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   const listaProtegida = ref(false);
   /** Por id: lo que Rust dijo que hicieron los eliminar que fallaron. Lo anota el diálogo, y sobrevive a la vista que se remonta. */
   const intentosEliminar = ref(new Map<string, AvanceEliminar>());
+  /** Si la última lectura de la lista salió bien: si no, lo que dice de cada una (como `existe`) puede ser viejo. */
+  const listaAlDia = ref(false);
   /** Por id de pestaña: por qué no se pudo abrir o cargar su organización. */
   const sinAbrir = ref(new Map<string, Motivo>());
   /** Las organizaciones ya abiertas en esta sesión: con la frecuencia «al abrir», solo la primera vez respalda. */
@@ -98,9 +100,13 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     const esta = ++cargaLista;
     try {
       const l = await listarOrganizaciones();
-      if (esta === cargaLista) lista.value = l;
+      if (esta === cargaLista) {
+        lista.value = l;
+        listaAlDia.value = true;
+      }
       return { ok: true };
     } catch (e) {
+      if (esta === cargaLista) listaAlDia.value = false;
       return { ok: false, mensaje: mensajeOrganizacion(e) };
     }
   }
@@ -346,6 +352,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       return { ok: true };
     });
 
+  /** Se borró esa copia: los intentos que la nombran ya no pueden afirmarla. */
+  function copiaBorrada(nombre: string) {
+    for (const [id, a] of intentosEliminar.value)
+      if (a.copia === nombre) intentosEliminar.value.set(id, { ...a, copia: null });
+  }
+
   /** Ya no está en la lista, ni hay reintento: sus pestañas se cierran solas y lo suyo se borra. */
   function olvidarEliminada(id: string) {
     usePestanas().cerrarDeOrganizacion(id);
@@ -385,6 +397,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     cambiando,
     listaProtegida,
     intentosEliminar,
+    listaAlDia,
     enCurso,
     /** Si otro pedido espera su turno: lo que se pida ahora lo reemplaza. */
     hayEspera: () => espera !== null,
@@ -397,6 +410,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     quitar,
     eliminar,
     olvidarEliminada,
+    copiaBorrada,
     cambiarColor,
     agregarArchivo,
   };

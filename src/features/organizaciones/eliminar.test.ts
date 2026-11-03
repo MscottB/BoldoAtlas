@@ -12,6 +12,8 @@ import {
   intentoTrasFallo,
   opcionesEliminar,
   pestanasDe,
+  quedanAuxiliares,
+  sinArchivoAlAbrir,
   textoAConfirmar,
   useConfirmacion,
 } from "./eliminar";
@@ -267,6 +269,30 @@ describe("lo que Rust dijo que hizo un intento que falló", () => {
 
   it("el archivo volvió a estar: no dice que falta quitarla", () => {
     expect(claveQueSeBorra(org(), false, false, borro)).toBe("interna");
+  });
+
+  it("externa cuyo archivo volvió: Rust no lo toca, y el aviso no dice que se eliminó", () => {
+    const sinPedir = { guardarCopia: false, borrarArchivo: false };
+    expect(claveHecha(org({ externa: true }), sinPedir, false, borro)).toBe("salio");
+    expect(claveHecha(org({ externa: true }), sinPedir, false, ambas)).toBe("salio");
+    // si la borra otra vez con su casilla, sí
+    expect(claveHecha(org({ externa: true }), { guardarCopia: false, borrarArchivo: true }, false, borro)).toBe("hecha");
+  });
+
+  it("solo una externa cuyo archivo borró la app puede dejar archivos auxiliares", () => {
+    const externa = org({ externa: true, existe: false });
+    expect(quedanAuxiliares(externa, true, borro)).toBe(true);
+    expect(quedanAuxiliares(externa, true, nada)).toBe(false); // no se sabe: no lo afirma
+    expect(quedanAuxiliares(externa, true, undefined)).toBe(false);
+    expect(quedanAuxiliares(org({ externa: true }), false, borro)).toBe(false); // el archivo volvió
+    expect(quedanAuxiliares(org({ existe: false }), true, borro)).toBe(false); // Rust limpia la interna
+  });
+
+  it("al reabrir sin poder leer la lista, lo que dijo Rust sigue valiendo", () => {
+    expect(sinArchivoAlAbrir(borro, false)).toBe(true);
+    expect(sinArchivoAlAbrir(borro, true)).toBe(false); // manda la lista, que puede decir que volvió
+    expect(sinArchivoAlAbrir(copio, false)).toBe(false);
+    expect(sinArchivoAlAbrir(undefined, false)).toBe(false);
   });
 
   it("externa que no está aunque la lista diga que sí: tampoco dice que no se tocó", () => {
