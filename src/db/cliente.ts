@@ -61,7 +61,11 @@ function vigilar<T>(base: string, hecho: Promise<T>): Promise<T> {
 }
 
 /** El único que agrega `baseId`. La base es la de ahora, aunque el comando salga después de `antes`. */
-function conBase<T>(comando: string, args: Record<string, unknown> = {}, antes?: Promise<unknown>): Promise<T> {
+function conBase<T>(
+  comando: string,
+  args: Record<string, unknown> = {},
+  antes?: Promise<unknown>,
+): Promise<T> {
   const base = baseActual();
   const salir = () => invoke<T>(comando, { ...args, baseId: base });
   return vigilar(base, antes ? antes.then(salir) : salir());
@@ -207,7 +211,14 @@ export interface RamaImportada {
 }
 
 export interface InformeImportacion {
-  tablas: { tabla: string; trae: number; nuevas: number; existentes: number; unidas: number; omitidas: number }[];
+  tablas: {
+    tabla: string;
+    trae: number;
+    nuevas: number;
+    existentes: number;
+    unidas: number;
+    omitidas: number;
+  }[];
   detalle: Detalle[];
   totalDetalle: number;
   vaciadas: number;
@@ -265,12 +276,7 @@ export function importarReemplazar(trabajo: string): Promise<void> {
 }
 
 export type TipoCaso =
-  | "nuevo"
-  | "diferente"
-  | "borrado_vs_editado"
-  | "borrado_sin_conflicto"
-  | "duplicado_persona"
-  | "union";
+  "nuevo" | "diferente" | "borrado_vs_editado" | "borrado_sin_conflicto" | "duplicado_persona" | "union";
 
 export type Lado = "mio" | "archivo" | "igual";
 
@@ -301,7 +307,12 @@ export interface ResumenRevision {
   version: number;
   /** Lo que dice `bloqueos` vale para las decisiones de ahora. */
   verificada: boolean;
-  grupos: { tipo: TipoCaso; total: number; borradosAqui: number; tablas: { tabla: string; total: number }[] }[];
+  grupos: {
+    tipo: TipoCaso;
+    total: number;
+    borradosAqui: number;
+    tablas: { tabla: string; total: number }[];
+  }[];
   iguales: number;
   dudosas: number;
   /** Lo decidido a mano: se pierde si se sale. */
