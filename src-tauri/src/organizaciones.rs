@@ -260,6 +260,25 @@ pub fn base_de(r: &Rutas, e: &Entrada) -> Base {
     }
 }
 
+/// La entrada de la base abierta que no está en la lista: su lugar se sabe por dónde está. Nombre, color y hora los pone
+/// `anotar_abierta`.
+pub fn entrada_de_base(r: &Rutas, b: &Base) -> Entrada {
+    if b.bd == r.bd {
+        return Entrada::principal(&b.id);
+    }
+    let interna = ruta_interna(&b.id);
+    let externa = b.bd != r.datos.join(&interna);
+    Entrada {
+        ruta: if externa {
+            b.bd.to_string_lossy().into_owned()
+        } else {
+            interna
+        },
+        externa,
+        ..Entrada::principal(&b.id)
+    }
+}
+
 fn leer_meta(conn: &Connection, clave: &str) -> Option<String> {
     conn.query_row("SELECT valor FROM meta WHERE clave = ?1", [clave], |f| {
         f.get(0)
@@ -463,13 +482,17 @@ pub fn cargar_lista(r: &Rutas) -> Lista {
     }
 }
 
+pub fn lista_protegida() -> Fallo {
+    Fallo::de(
+        "lista_protegida",
+        "organizaciones.json no se pudo leer o es de una versión más nueva: no se reemplaza",
+    )
+}
+
 /// A un temporal, que se renombra: un corte no la deja a medias.
 pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
     if l.no_escribir {
-        return Err(Fallo::de(
-            "lista_protegida",
-            "organizaciones.json no se pudo leer o es de una versión más nueva: no se reemplaza",
-        ));
+        return Err(lista_protegida());
     }
     let destino = r.datos.join(LISTA);
     let temporal = con_sufijo(&destino, ".tmp");
@@ -528,7 +551,8 @@ pub fn abrir_entrada(
         return Err(Fallo::de("no_encontrado", base.bd.display()));
     }
     if e.externa {
-        // shortcut: si la unidad se cuelga justo después, aquí no hay límite y el arranque espera; cambiarlo si llega a pasar
+        // shortcut: si la unidad se cuelga justo después, aquí no hay límite: el arranque espera, y un cambio de organización
+        // también, con `conn` tomado, así que la base abierta queda sin responder; cambiarlo si llega a pasar
         version_y_esquema(&base.bd, migraciones)?;
     }
     // si la consulta falla no se sabe de quién es: lo decide `abrir_base`, para no tomar un error pasajero por `otro_id`

@@ -2,8 +2,8 @@ use crate::db::{self, Sentencia};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::organizaciones::{
     Abierta, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, Entrada, OTRA_BASE, OrganizacionVista,
-    abrir_base, abrir_entrada, anotar_abierta, base_de, bloquear, cargar_lista, escribir_lista,
-    identidad_nueva, vista_de, vistas,
+    abrir_base, abrir_entrada, anotar_abierta, base_de, bloquear, cargar_lista, entrada_de_base,
+    escribir_lista, identidad_nueva, lista_protegida, vista_de, vistas,
 };
 use crate::respaldos::{self, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
@@ -242,14 +242,19 @@ impl Estado {
             drop(conn);
             return self.ya_abierta(r, id);
         }
-        let e = {
+        let lista = {
             let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
             cargar_lista(r)
+        };
+        // no se podría anotar el cambio, así que la otra no se toca. Y reconstruida no tiene las externas: no es `desconocido`
+        if lista.no_escribir {
+            return Err(lista_protegida());
         }
-        .organizaciones
-        .into_iter()
-        .find(|o| o.id == id)
-        .ok_or_else(|| Fallo::de("desconocido", id))?;
+        let e = lista
+            .organizaciones
+            .into_iter()
+            .find(|o| o.id == id)
+            .ok_or_else(|| Fallo::de("desconocido", id))?;
         let nueva = abrir_entrada(r, &e, ESPERA_CAMBIO, migraciones)?;
         let base = base_de(r, &e);
         self.cambiar_a_abierta(&mut conn, nueva, base.bd, base.respaldos, Some(&e))?;
@@ -273,11 +278,11 @@ impl Estado {
                 .iter()
                 .find(|o| o.id == id)
                 .cloned()
-                // un `boldo.db` vacío no está en la lista
+                // un `boldo.db` vacío no se lista, y una externa sale de una lista reconstruida
                 .or_else(|| {
                     self.base_abierta()
-                        .filter(|b| b.bd == r.bd)
-                        .map(|_| Entrada::principal(id))
+                        .filter(|b| b.id == id)
+                        .map(|b| entrada_de_base(r, &b))
                 })
                 .ok_or_else(|| Fallo::de("desconocido", id))?;
             if let Ok(conn) = &conn
@@ -326,6 +331,9 @@ impl Estado {
             respaldos,
         });
         self.version_esquema.store(nueva.version, Ordering::Relaxed);
+        // eran del arranque: una recarga de la ventana no debe volver a mostrarlos
+        *self.error.lock().unwrap_or_else(|p| p.into_inner()) = None;
+        *self.aviso_inicio.lock().unwrap_or_else(|p| p.into_inner()) = None;
         Ok(())
     }
 
@@ -2265,9 +2273,19 @@ mod cambiar_a {
         b_libre(&d);
     }
 
+    /// Ni un archivo al lado, ni su carpeta de respaldos, ni una migración.
+    fn b_sin_tocar(d: &Dos, antes: &[u8]) {
+        let bd = ruta_de(&d.r, &d.b);
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert!(!con_sufijo(&bd, ".bloqueo").exists());
+        assert!(!base_de(&d.r, &d.b).respaldos.exists());
+        sin_rastros(&bd);
+    }
+
     #[test]
-    fn falla_al_escribir_la_lista_deja_la_anterior() {
+    fn una_lista_ilegible_no_toca_la_otra() {
         let d = dos();
+        let antes = fs::read(ruta_de(&d.r, &d.b)).unwrap();
         let json = d.r.datos.join("organizaciones.json");
         fs::remove_file(&json).unwrap();
         fs::create_dir(&json).unwrap();
@@ -2276,21 +2294,61 @@ mod cambiar_a {
             "lista_protegida"
         );
         sigue_a(&d);
-        b_libre(&d);
+        b_sin_tocar(&d, &antes);
         assert!(json.is_dir());
     }
 
     #[test]
-    fn falla_al_reemplazar_una_lista_buena_deja_la_anterior() {
+    fn una_lista_ilegible_no_dice_desconocido_de_una_externa() {
+        let d = dos();
+        let afuera = tempfile::tempdir().unwrap();
+        let id = con_externa(&d, &afuera.path().join("externa.db"));
+        let json = d.r.datos.join("organizaciones.json");
+        fs::remove_file(&json).unwrap();
+        fs::create_dir(&json).unwrap();
+        // reconstruida no la tiene, pero sí está en el archivo que no se pudo leer
+        assert_eq!(cambiar(&d.e, &id).unwrap_err().codigo, "lista_protegida");
+        sigue_a(&d);
+    }
+
+    /// El fallo real entre los pasos 3 y 5: la lista se leyó bien, B ya se abrió, y falla recién al escribirla.
+    #[test]
+    fn falla_al_escribir_la_lista_deja_la_anterior() {
         let d = dos();
         let json = d.r.datos.join("organizaciones.json");
         let antes = fs::read(&json).unwrap();
-        // el temporal no se puede crear: la lista se leyó bien, y falla recién al escribirla
         fs::create_dir(con_sufijo(&json, ".tmp")).unwrap();
         assert_eq!(cambiar(&d.e, &d.b.id).unwrap_err().codigo, "fallo");
         sigue_a(&d);
+        // llegó a abrirla: su carpeta de respaldos lo dice
+        assert!(base_de(&d.r, &d.b).respaldos.is_dir());
         b_libre(&d);
         assert_eq!(fs::read(&json).unwrap(), antes);
+    }
+
+    #[test]
+    fn un_lector_en_la_anterior_no_detiene_el_cambio() {
+        let d = dos();
+        let bd = ruta_de(&d.r, &d.a);
+        let lector = db::abrir(&bd).unwrap();
+        lector.execute_batch("BEGIN").unwrap();
+        lector
+            .query_row("SELECT count(*) FROM meta", [], |f| f.get::<_, i64>(0))
+            .unwrap();
+        // lo escrito después del lector no se puede volcar del todo mientras siga leyendo
+        d.e.con_conexion(&d.a.id, |c| db::lote(c, &[], "t"))
+            .unwrap();
+
+        let v = cambiar(&d.e, &d.b.id).unwrap();
+        assert!(v.activa);
+        assert_eq!(d.e.base_abierta(), Some(base_de(&d.r, &d.b)));
+        let l = lista_del_json(&d.r);
+        let de = |id: &str| l.organizaciones.iter().find(|o| o.id == id).unwrap();
+        assert!(de(&d.b.id).abierta > de(&d.a.id).abierta);
+
+        drop(lector);
+        assert!(d.e.cerrar_ordenado(Duration::from_secs(1)));
+        assert_eq!(arrancar(&d.r).base_abierta().unwrap().id, d.b.id);
     }
 
     #[test]
@@ -2304,12 +2362,13 @@ mod cambiar_a {
         }))
         .unwrap();
         fs::write(&json, &antes).unwrap();
+        let de_b = fs::read(ruta_de(&d.r, &d.b)).unwrap();
         assert_eq!(
             cambiar(&d.e, &d.b.id).unwrap_err().codigo,
             "lista_protegida"
         );
         sigue_a(&d);
-        b_libre(&d);
+        b_sin_tocar(&d, &de_b);
         assert_eq!(fs::read(&json).unwrap(), antes);
         // seguir en la que ya está abierta no es un cambio: no falla, y la lista no se toca
         assert!(cambiar(&d.e, &d.a.id).unwrap().activa);
@@ -2341,6 +2400,79 @@ mod cambiar_a {
         sigue_a(&d);
         // ni siquiera se intentó abrir la otra
         assert!(!con_sufijo(&ruta_de(&d.r, &d.b), ".bloqueo").exists());
+    }
+
+    #[test]
+    fn un_trabajo_que_termina_a_tiempo_no_estorba() {
+        let d = dos();
+        let vueltas = std::cell::Cell::new(0);
+        let ocupada = || {
+            vueltas.set(vueltas.get() + 1);
+            vueltas.get() < 3
+        };
+        assert!(d.e.cambiar_a(&d.b.id, &ocupada, db::MIGRACIONES).is_ok());
+        assert_eq!(vueltas.get(), 3);
+        assert_eq!(d.e.base_abierta().unwrap().id, d.b.id);
+    }
+
+    #[test]
+    fn cambiar_limpia_el_aviso_y_el_error_del_arranque() {
+        let d = dos();
+        let poner = || {
+            *d.e.error.lock().unwrap() = Some("motivo".into());
+            *d.e.aviso_inicio.lock().unwrap() = Some(AvisoInicio {
+                codigo: "no_encontrado",
+                nombre: "Otra".into(),
+            });
+        };
+        poner();
+        // un cambio que falla no los quita, ni pedir la misma
+        let desconocida = uuid::Uuid::now_v7().to_string();
+        cambiar(&d.e, &desconocida).unwrap_err();
+        cambiar(&d.e, &d.a.id).unwrap();
+        assert!(d.e.error.lock().unwrap().is_some());
+        assert!(d.e.aviso_inicio.lock().unwrap().is_some());
+
+        cambiar(&d.e, &d.b.id).unwrap();
+        assert_eq!(*d.e.error.lock().unwrap(), None);
+        assert_eq!(*d.e.aviso_inicio.lock().unwrap(), None);
+    }
+
+    #[test]
+    fn la_abierta_que_salio_de_la_lista_vuelve_a_ella() {
+        let d = dos();
+        let afuera = tempfile::tempdir().unwrap();
+        let bd = afuera.path().join("externa.db");
+        let id = con_externa(&d, &bd);
+        cambiar(&d.e, &id).unwrap();
+        // la externa ya no está, ni la interna que estaba al lado
+        escribir(&d.r, vec![]);
+
+        let v = cambiar(&d.e, &id).unwrap();
+        assert!(v.activa);
+        assert!(v.externa);
+        assert_eq!(v.nombre, "Externa");
+        let l = lista_del_json(&d.r);
+        assert_eq!(l.organizaciones.len(), 1);
+        let o = &l.organizaciones[0];
+        assert_eq!((o.id.as_str(), o.nombre.as_str()), (id.as_str(), "Externa"));
+        assert!(o.externa);
+        assert_eq!(o.ruta, bd.to_str().unwrap());
+        assert!(!o.color.is_empty());
+        // sigue siendo un lugar válido: la lista la conserva al leerla
+        assert_eq!(cargar_lista(&d.r).organizaciones.len(), 1);
+    }
+
+    #[test]
+    fn la_interna_abierta_que_salio_de_la_lista_vuelve_con_su_ruta() {
+        let d = dos();
+        escribir(&d.r, vec![]);
+        let v = cambiar(&d.e, &d.a.id).unwrap();
+        assert!(v.activa && !v.externa);
+        let l = cargar_lista(&d.r);
+        assert_eq!(l.organizaciones.len(), 1);
+        assert_eq!(l.organizaciones[0].ruta, d.a.ruta);
+        assert!(!l.organizaciones[0].externa);
     }
 
     #[test]
