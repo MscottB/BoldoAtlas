@@ -74,6 +74,7 @@ pub fn run() {
             if let Some(r) = rutas_app {
                 respaldos::limpiar_parciales(&r.datos, Some(&r.bd));
                 respaldos::limpiar_parciales(&r.respaldos, None);
+                organizaciones::limpiar_carpetas(&r);
                 // temporales de una actualización anterior, en otro hilo: ya en setup, con el entorno ajustado
                 actualizar::limpiar_al_iniciar(r.datos);
             }
@@ -109,6 +110,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             comandos::info_app,
+            comandos::listar_organizaciones,
             comandos::db_consultar,
             comandos::db_lote,
             fotos::foto_bytes,

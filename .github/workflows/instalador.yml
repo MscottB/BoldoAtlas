@@ -1,11 +1,21 @@
 name: instalador
 
 # Ejecuta el instalador de Windows en el runner cuando cambia su plantilla: compila, instala y actualiza de verdad.
+# El trabajo `actualizar` parte de la última versión publicada y comprueba que la organización de siempre sobrevive.
 on:
   pull_request:
     paths:
       - "src-tauri/instalador/**"
+      - "src-tauri/src/**"
+      - "src-tauri/migrations/**"
+      - "src-tauri/tauri.conf.json"
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/Cargo.lock"
       - "scripts/probar-instalador.ps1"
+      - "scripts/probar-actualizacion.mjs"
+      - "scripts/probar-app.mjs"
+      - "scripts/release.mjs"
+      - ".github/actions/**"
       - ".github/workflows/instalador.yml"
   workflow_dispatch:
 
@@ -19,6 +29,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,3 +47,39 @@ jobs:
           BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
       - run: ./scripts/probar-instalador.ps1 -Instalador (Resolve-Path release/*/BoldoAtlas_windows_x64_setup.exe)
         shell: pwsh
+  # Runner limpio aparte: parte de la última versión publicada, y comprueba que la organización sobrevive.
+  actualizar:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # etiquetas para calcular la versión
+          persist-credentials: false
+      - uses: ./.github/actions/preparar-node
+      - uses: ./.github/actions/preparar-rust
+        with:
+          cache: boldo-prueba
+      - id: v
+        run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
+        shell: bash
+      - run: node scripts/release.mjs --perfil prueba
+        env:
+          BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
+      - name: Descargar la última versión publicada
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          etiqueta=$(gh release list --exclude-drafts --limit 1 --json tagName -q '.[0].tagName')
+          [ -n "$etiqueta" ] || { echo "No hay ninguna versión publicada que actualizar"; exit 1; }
+          # una versión recién publicada puede no tener aún el archivo: hasta ~2 min
+          for intento in 1 2 3 4 5 6 7 8; do
+            gh release download "$etiqueta" -p BoldoAtlas_windows_x64_setup.exe -D anterior --clobber && break
+            [ "$intento" = 8 ] && { echo "La versión $etiqueta no tiene BoldoAtlas_windows_x64_setup.exe para descargar"; exit 1; }
+            sleep 15
+          done
+          echo "Versión anterior: $etiqueta"
+      - run: node scripts/probar-actualizacion.mjs anterior/BoldoAtlas_windows_x64_setup.exe release/*/BoldoAtlas_windows_x64_setup.exe src-tauri/target/prueba/boldo-atlas.exe
+        shell: bash
+        timeout-minutes: 10
