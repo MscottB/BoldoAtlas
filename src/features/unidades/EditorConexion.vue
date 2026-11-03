@@ -97,7 +97,7 @@ const quitando = ref<string | null>(null);
 
 <template>
   <div v-if="conexion" ref="raiz" tabindex="-1" class="grid gap-3 outline-hidden">
-    <h2 class="text-sm font-semibold break-words">{{ titulo }}</h2>
+    <h2 class="text-sm font-semibold break-words" aria-live="polite">{{ titulo }}</h2>
 
     <template v-if="soloLectura">
       <p class="text-sm" :class="!conexion.etiqueta && 'text-muted-foreground'">

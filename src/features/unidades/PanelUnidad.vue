@@ -30,7 +30,14 @@ import EditorEtiquetas from "./EditorEtiquetas.vue";
 import PersonasUnidad from "./PersonasUnidad.vue";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
-import { decisionEliminar, excluidasComoSuperior, filasDePuestos, migas, validarMarca } from "./panel";
+import {
+  decisionEliminar,
+  excluidasComoSuperior,
+  filasDePuestos,
+  migas,
+  notaJefatura,
+  validarMarca,
+} from "./panel";
 import { claseSelect } from "@/lib/utils";
 
 // Panel lateral de la unidad seleccionada: junto al lienzo (no lo tapa). Esc lo cierra y guarda lo que se estaba escribiendo.
@@ -144,12 +151,11 @@ const filas = computed(() =>
     org.leyendas,
   ),
 );
-// La lista ya dice cargo y titular: esto solo agrega quién la ejerce si no hay titular.
-const reemplazoJefe = computed(() => {
-  const a = jefeVisible(props.unidad, vigentes.value);
-  const nombre = org.enFecha.trabajadores.find((w) => w.id === a?.trabajador_id)?.nombre;
-  return a?.tipo === "reemplazo" && nombre ? t("arbol.reemplazo", { nombre }) : null;
-});
+const jefe = computed(() => jefeVisible(props.unidad, vigentes.value));
+const nota = computed(() => notaJefatura(jefe.value, filas.value.length > 0));
+const nombreReemplazo = computed(
+  () => org.enFecha.trabajadores.find((w) => w.id === jefe.value?.trabajador_id)?.nombre,
+);
 const personal = computed(() =>
   dotacion(
     org.enFecha.unidades,
@@ -307,9 +313,15 @@ async function eliminar() {
               <option v-for="f in filas" :key="f.id" :value="f.id">{{ textoPuesto(f) }}</option>
               <option v-if="!soloLectura" :value="NUEVO_PUESTO">{{ t("unidad.nuevoPuestoJefatura") }}</option>
             </select>
-            <p v-if="reemplazoJefe" class="text-sm">{{ reemplazoJefe }}</p>
-            <p v-else-if="!filas.length" class="text-sm text-amber-800 dark:text-amber-400">
-              {{ t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura") }}
+            <p v-if="nota === 'reemplazo'" class="text-sm">
+              {{ t("arbol.reemplazo", { nombre: nombreReemplazo }) }}
+            </p>
+            <p v-else-if="nota" class="text-sm text-amber-800 dark:text-amber-400">
+              {{
+                nota === "sinJefatura"
+                  ? t("arbol.sinJefatura")
+                  : t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura")
+              }}
             </p>
           </div>
           <div class="grid gap-1.5">

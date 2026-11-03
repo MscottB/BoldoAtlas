@@ -8,10 +8,10 @@ export type Caja = Punto & { ancho: number; alto: number };
 export interface Trazado {
   /** La línea, en ángulos rectos y en ese orden: de un borde del origen a un borde del destino. */
   puntos: Punto[];
-  /** Centro de la etiqueta (o del punto, si no tiene descripción), sobre la línea. */
+  /** Centro de la etiqueta (o del punto), sobre la línea. */
   etiqueta: Punto;
-  /** No hubo lugar libre y la etiqueta asoma sobre una tarjeta: entonces no debe capturar sus clics. */
-  etiquetaTapa: boolean;
+  /** Su descripción cabe sin tocar tarjetas ni otras etiquetas. Si no, en reposo queda solo el punto. */
+  conTexto: boolean;
   /** Tarjetas que atraviesa: 0 salvo que no haya otro camino (entonces, las menos posibles). */
   cruces: number;
 }
@@ -43,6 +43,8 @@ const ALTO_ETIQUETA = 20;
 const ANCHO_LETRA = 6.5;
 const ANCHO_ETIQUETA = 192; // el texto más largo se abrevia a esto (max-w-48 en AristaLateral.vue)
 const AJUSTES_ETIQUETA = [0, 4, -4, 8, -8]; // cuánto puede correrse fuera de su línea (la sigue tocando: mide 20 de alto)
+// Lo que debe quedar libre alrededor de una etiqueta. Por arriba y abajo, poco: a la escala mayor mide 26 y el hueco entre hermanas, 28.
+const MARGEN_ETIQUETA = { aLoLargo: 6, aLoAlto: 1 };
 const MAX_SONDAS = 300; // lugares que se prueban por etiqueta
 const CELDA = 256; // lado de la rejilla de etiquetas ya ubicadas
 // Varias líneas por la misma franja van en carriles distintos; el medio (0,5) es de las líneas jerárquicas.
@@ -324,9 +326,10 @@ const solape = (p: Punto, w: number, h: number, c: Caja) =>
   Math.max(0, Math.min(p.y + h / 2, c.y + c.alto) - Math.max(p.y - h / 2, c.y));
 
 /**
- * El punto de la línea donde la etiqueta tapa menos tarjetas y otras etiquetas. Se mira primero el tramo más largo que corre
- * a lo ancho de la pantalla (ahí cabe el texto) y desde su centro hacia afuera, con un tope de intentos. `pantallaX`: el eje
- * horizontal de la pantalla. `tapa`: cuánto queda sobre otra cosa (0 = libre).
+ * El primer lugar de la línea donde cabe `[w, h]` (la etiqueta con su margen) sin tocar tarjetas ni etiquetas ya ubicadas. Se mira primero el tramo más largo
+ * que corre a lo ancho de la pantalla (ahí cabe el texto) y desde su centro hacia afuera, con un tope de intentos. `pantallaX`:
+ * el eje horizontal de la pantalla. `tapa`: cuánto queda sobre otra cosa (0 = libre). Sin lugar libre, `libre` es false y `punto`
+ * el de menos solape: un texto no se pone ahí, un punto sí, porque la línea debe conservarlo.
  */
 function ubicarEtiqueta(
   puntos: Punto[],
@@ -334,7 +337,7 @@ function ubicarEtiqueta(
   filas: Fila[],
   ocupadas: Rejilla,
   pantallaX: "x" | "y",
-): { punto: Punto; tapaTarjeta: boolean } {
+): { punto: Punto; libre: boolean } {
   const largo = (p: Punto, q: Punto) => Math.abs(p.x - q.x) + Math.abs(p.y - q.y);
   const tramos = puntos
     .slice(1)
@@ -343,21 +346,17 @@ function ubicarEtiqueta(
       const [am, an] = [m[0][pantallaX] !== m[1][pantallaX], n[0][pantallaX] !== n[1][pantallaX]];
       return am === an ? largo(n[0], n[1]) - largo(m[0], m[1]) : am ? -1 : 1;
     });
-  const sobreTarjetas = (p: Punto) => {
-    let total = 0;
-    cajasEn(filas, p.x - w / 2, p.x + w / 2, p.y - h / 2, p.y + h / 2, (c) => (total += solape(p, w, h, c)));
-    return total;
-  };
   const tapa = (p: Punto) => {
-    let total = sobreTarjetas(p);
+    let total = 0;
     const sumar = (c: Caja) => (total += solape(p, w, h, c));
+    cajasEn(filas, p.x - w / 2, p.x + w / 2, p.y - h / 2, p.y + h / 2, sumar);
     celdas({ x: p.x - w / 2, y: p.y - h / 2, ancho: w, alto: h }, (k) => ocupadas.get(k)?.forEach(sumar));
     return total;
   };
   let mejor = puntos[0]!;
   let menos = Infinity;
   let sondas = 0;
-  const elegido = () => ({ punto: mejor, tapaTarjeta: sobreTarjetas(mejor) > 0 });
+  const elegido = () => ({ punto: mejor, libre: menos === 0 });
   for (const [p, q] of tramos) {
     const paso = Math.max(8, largo(p, q) / 48) / Math.max(1, largo(p, q));
     const aLoAncho = p.y === q.y;
@@ -387,6 +386,7 @@ const anchoEtiqueta = (texto: string) => Math.min(ANCHO_ETIQUETA, texto.length *
 /**
  * El trazado de cada lateral cuyas dos tarjetas están en `cajas`. Si no hay un camino sin cruzar tarjetas (una unidad rodeada
  * por completo), devuelve el que cruza menos y lo dice en `cruces`. `escalaEtiqueta`: lo más que se agrandará la etiqueta.
+ * Se recorre por id: el resultado no depende del orden de la lista y una conexión nueva no mueve a las que ya estaban.
  */
 export function trazarLaterales(
   laterales: Lateral[],
@@ -407,7 +407,8 @@ export function trazarLaterales(
     usos.set(id, n + 1);
     return n;
   };
-  const caminos = laterales.flatMap((l, i) => {
+  const porId = [...laterales].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const caminos = porId.flatMap((l, i) => {
     const [ca, cb] = [cajas.get(l.origen_id), cajas.get(l.destino_id)];
     if (!ca || !cb || ca === cb) return [];
     const [a, b] = [normCaja(ca), normCaja(cb)];
@@ -417,17 +418,26 @@ export function trazarLaterales(
     ];
     return [{ l, puntos }];
   });
-  // Primero las que tienen descripción: un texto necesita más lugar que un punto y no debe cedérselo.
-  for (const { l, puntos } of [
-    ...caminos.filter((c) => c.l.etiqueta),
-    ...caminos.filter((c) => !c.l.etiqueta),
-  ]) {
-    const ancho = anchoEtiqueta(l.etiqueta ?? "") * escalaEtiqueta;
-    const alto = ALTO_ETIQUETA * escalaEtiqueta;
-    const medida: [number, number] = horizontal ? [alto, ancho] : [ancho, alto];
-    // Sin descripción se ubica igual: ahí va el punto de la línea (AristaLateral).
-    const { punto, tapaTarjeta } = ubicarEtiqueta(puntos, medida, filas, ocupadas, horizontal ? "y" : "x");
-    const [w, h] = medida;
+  const alto = ALTO_ETIQUETA * escalaEtiqueta;
+  const ubicar = (puntos: Punto[], texto: string) => {
+    const ancho = (texto ? anchoEtiqueta(texto) : ALTO_ETIQUETA) * escalaEtiqueta; // el punto es un botón cuadrado
+    const [largo, grueso] = [ancho + 2 * MARGEN_ETIQUETA.aLoLargo, alto + 2 * MARGEN_ETIQUETA.aLoAlto];
+    return {
+      ...ubicarEtiqueta(
+        puntos,
+        horizontal ? [grueso, largo] : [largo, grueso],
+        filas,
+        ocupadas,
+        horizontal ? "y" : "x",
+      ),
+      medida: (horizontal ? [alto, ancho] : [ancho, alto]) as [number, number],
+    };
+  };
+  const dejar = (
+    { l, puntos }: (typeof caminos)[number],
+    { punto, medida: [w, h] }: ReturnType<typeof ubicar>,
+    conTexto: boolean,
+  ) => {
     const caja = { x: punto.x - w / 2, y: punto.y - h / 2, ancho: w, alto: h };
     celdas(caja, (k) => {
       const lista = ocupadas.get(k);
@@ -437,10 +447,18 @@ export function trazarLaterales(
     res.set(l.id, {
       puntos: puntos.map(norm),
       etiqueta: norm(punto),
-      etiquetaTapa: tapaTarjeta,
+      conTexto,
       cruces: puntos.slice(1).reduce((n, q, k) => n + crucesDelTramo(filas, puntos[k]!, q), 0),
     });
-  }
+  };
+  // Primero los textos: necesitan más lugar que un punto y no deben cedérselo. El que no cabe queda como punto, con los demás.
+  const puntosSolos = caminos.filter((c) => {
+    if (!c.l.etiqueta) return true;
+    const lugar = ubicar(c.puntos, c.l.etiqueta);
+    if (lugar.libre) dejar(c, lugar, true);
+    return !lugar.libre;
+  });
+  for (const c of puntosSolos) dejar(c, ubicar(c.puntos, ""), false);
   return res;
 }
 
@@ -472,32 +490,67 @@ export function encuadreDeLinea(
 
 /**
  * Dónde va la pista, en coordenadas de pantalla: centrada sobre `ancla` (el puntero o el botón); si arriba no cabe, debajo, y
- * siempre dentro de la ventana.
+ * siempre dentro de la ventana. No cubre la etiqueta resaltada, `etiqueta`: si arriba y abajo del ancla la cubre, va más allá de
+ * ella. Entre los lados que quedan, el que menos pisa las `tarjetas`; a igual solape, el primero.
  */
 export function acotarPista(
   ancla: Caja,
   medida: { ancho: number; alto: number },
   ventana: { ancho: number; alto: number },
+  etiqueta?: Caja | null,
+  tarjetas: Caja[] = [],
   margen = 8,
   separacion = 14,
 ): Punto {
-  const arriba = ancla.y - separacion - medida.alto;
   const dentro = (v: number, tam: number, total: number) =>
     Math.max(margen, Math.min(v, total - tam - margen));
-  return {
-    x: dentro(ancla.x + ancla.ancho / 2 - medida.ancho / 2, medida.ancho, ventana.ancho),
-    y: dentro(arriba >= margen ? arriba : ancla.y + ancla.alto + separacion, medida.alto, ventana.alto),
-  };
+  const x = dentro(ancla.x + ancla.ancho / 2 - medida.ancho / 2, medida.ancho, ventana.ancho);
+  const lados = [ancla.y - separacion - medida.alto, ancla.y + ancla.alto + separacion];
+  if (etiqueta) lados.push(etiqueta.y - separacion - medida.alto, etiqueta.y + etiqueta.alto + separacion);
+  const cabe = (y: number) => y >= margen && y + medida.alto <= ventana.alto - margen;
+  const cubre = (y: number, c: Caja) =>
+    x < c.x + c.ancho && x + medida.ancho > c.x && y < c.y + c.alto && y + medida.alto > c.y;
+  const sinEtiqueta = lados.filter((y) => cabe(y) && !(etiqueta && cubre(y, etiqueta)));
+  const pisa = (y: number) =>
+    tarjetas.reduce(
+      (n, c) =>
+        cubre(y, c)
+          ? n +
+            (Math.min(x + medida.ancho, c.x + c.ancho) - Math.max(x, c.x)) *
+              (Math.min(y + medida.alto, c.y + c.alto) - Math.max(y, c.y))
+          : n,
+      0,
+    );
+  let y = sinEtiqueta[0] ?? lados.find(cabe) ?? lados[0]!;
+  let menos = pisa(y);
+  for (const v of sinEtiqueta.slice(1)) {
+    if (!menos) break;
+    const n = pisa(v);
+    if (n < menos) [y, menos] = [v, n];
+  }
+  return { x, y: dentro(y, medida.alto, ventana.alto) };
 }
 
-/** El `d` de la punta de flecha: un triángulo con el vértice donde termina la línea, en el destino. Null si no hay un último tramo. */
-export function puntaFlecha(puntos: Punto[], largo = 9, ancho = 8): string | null {
+/** Cuánto crece la punta de flecha al alejar para seguir viéndose, con un tope: mide en unidades del lienzo y encoge con el zoom. */
+export const escalaPunta = (zoom: number) => Math.min(4, Math.max(1, 0.75 / zoom));
+
+/**
+ * El `d` de la punta de flecha: un triángulo con el vértice donde termina la línea, en el destino, sin que su base pase del último
+ * codo. Null si no hay un último tramo.
+ */
+export function puntaFlecha(
+  puntos: Punto[],
+  escala = 1,
+  largo = 9 * escala,
+  ancho = 8 * escala,
+): string | null {
   const fin = puntos[puntos.length - 1];
   const antes = puntos[puntos.length - 2];
   const tramo = fin && antes && Math.hypot(fin.x - antes.x, fin.y - antes.y);
   if (!tramo) return null;
   const [ux, uy] = [(fin.x - antes.x) / tramo, (fin.y - antes.y) / tramo];
-  const base = { x: fin.x - ux * largo, y: fin.y - uy * largo };
+  const atras = Math.min(largo, tramo);
+  const base = { x: fin.x - ux * atras, y: fin.y - uy * atras };
   const [dx, dy] = [(-uy * ancho) / 2, (ux * ancho) / 2];
   return `M ${fin.x} ${fin.y} L ${base.x + dx} ${base.y + dy} L ${base.x - dx} ${base.y - dy} Z`;
 }

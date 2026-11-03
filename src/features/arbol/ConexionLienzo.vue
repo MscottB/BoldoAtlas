@@ -201,6 +201,9 @@ watch(trazados, async () => {
             :aria-labelledby="`${uid}-ya`"
             @abrir="abrirConexion"
           />
+          <p v-if="!config.relacionesLaterales" class="shrink-0 text-xs text-muted-foreground">
+            {{ t("unidad.relacionesApagadas") }}
+          </p>
         </section>
         <ListaUnidades
           v-if="!org.fechaVista"

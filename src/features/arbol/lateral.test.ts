@@ -3,11 +3,13 @@ import {
   acotarPista,
   caminoSvg,
   encuadreDeLinea,
+  escalaPunta,
   puntaFlecha,
   trazarLaterales,
   type Caja,
   type Lateral,
   type Punto,
+  type Trazado,
 } from "./lateral";
 
 const caja = (x: number, y: number, ancho = 220, alto = 112): Caja => ({ x, y, ancho, alto });
@@ -126,7 +128,7 @@ describe("puntaFlecha", () => {
         { x: 110, y: 100 },
       ], // a la izquierda
     ] as const) {
-      const [vertice, a, b] = vertices(puntaFlecha([desde, fin], 10, 8)!);
+      const [vertice, a, b] = vertices(puntaFlecha([desde, fin], 1, 10, 8)!);
       expect(vertice).toEqual(fin);
       expect({ x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 }).toEqual(base);
       expect(Math.hypot(a!.x - b!.x, a!.y - b!.y)).toBe(8);
@@ -139,7 +141,7 @@ describe("puntaFlecha", () => {
       { x: 0, y: 50 },
       { x: 80, y: 50 },
     ];
-    const [vertice, a] = vertices(puntaFlecha(codo, 10, 8)!);
+    const [vertice, a] = vertices(puntaFlecha(codo, 1, 10, 8)!);
     expect(vertice).toEqual({ x: 80, y: 50 });
     expect(a!.x).toBe(70);
   });
@@ -149,10 +151,32 @@ describe("puntaFlecha", () => {
       { x: 0, y: 0 },
       { x: 30, y: 40 },
     ];
-    const [vertice, a, b] = vertices(puntaFlecha(diagonal, 10, 8)!);
+    const [vertice, a, b] = vertices(puntaFlecha(diagonal, 1, 10, 8)!);
     expect(vertice).toEqual({ x: 30, y: 40 });
     expect((a!.x + b!.x) / 2).toBeCloseTo(24);
     expect((a!.y + b!.y) / 2).toBeCloseTo(32);
+  });
+
+  it("la base no pasa del último codo", () => {
+    const corto = [
+      { x: 0, y: 0 },
+      { x: 0, y: 50 },
+      { x: 4, y: 50 },
+    ];
+    const [, a] = vertices(puntaFlecha(corto, 1, 10, 8)!);
+    expect(a!.x).toBe(0);
+  });
+
+  it("crece al alejar, con un tope, y a zoom normal no cambia", () => {
+    expect(escalaPunta(1)).toBe(1);
+    expect(escalaPunta(0.25)).toBe(3);
+    expect(escalaPunta(0.05)).toBe(4);
+    const recto = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    const [, a] = vertices(puntaFlecha(recto, 3)!);
+    expect(a!.x).toBe(73);
   });
 
   it("sin un tramo que le dé dirección, no hay punta", () => {
@@ -201,6 +225,44 @@ describe("acotarPista", () => {
   it("más ancha que la ventana: empieza en el margen", () => {
     expect(acotarPista(punto(50, 300), { ancho: 400, alto: 40 }, { ancho: 300, alto: 600 }).x).toBe(8);
   });
+
+  describe("sin cubrir la etiqueta resaltada", () => {
+    const etiqueta = { x: 420, y: 260, ancho: 160, alto: 20 };
+    const cubre = ({ x, y }: Punto) =>
+      x < etiqueta.x + etiqueta.ancho &&
+      x + medida.ancho > etiqueta.x &&
+      y < etiqueta.y + etiqueta.alto &&
+      y + medida.alto > etiqueta.y;
+
+    it("si arriba la cubriría, va debajo del puntero", () => {
+      const p = acotarPista(punto(500, 300), medida, ventana, etiqueta);
+      expect(cubre(p)).toBe(false);
+      expect(p).toEqual({ x: 400, y: 314 });
+    });
+
+    it("si no la cubre, queda donde siempre", () => {
+      expect(acotarPista(punto(500, 300), medida, ventana, { ...etiqueta, x: 800 })).toEqual({
+        x: 400,
+        y: 246,
+      });
+    });
+
+    it("va al lado que menos pisa las tarjetas; a igual solape, el de siempre", () => {
+      const arriba = caja(300, 240, 400, 40);
+      const abajo = caja(300, 320, 400, 40);
+      expect(acotarPista(punto(500, 300), medida, ventana, null, [arriba]).y).toBe(314);
+      expect(acotarPista(punto(500, 300), medida, ventana, null, [abajo]).y).toBe(246);
+      expect(acotarPista(punto(500, 300), medida, ventana, null, [arriba, abajo]).y).toBe(246);
+      expect(acotarPista(punto(500, 300), medida, ventana, null, [arriba, { ...abajo, y: 350 }]).y).toBe(314);
+    });
+
+    it("si tampoco cabe debajo, se corre más allá de la etiqueta", () => {
+      const baja = { ancho: 1000, alto: 330 };
+      const p = acotarPista(punto(500, 300), medida, baja, etiqueta);
+      expect(cubre(p)).toBe(false);
+      expect(p.y + medida.alto).toBeLessThanOrEqual(baja.alto);
+    });
+  });
 });
 
 describe("encuadreDeLinea", () => {
@@ -236,7 +298,6 @@ describe("trazado de las conexiones laterales", () => {
     const t = validar(cajas, lat("a0", "a4"));
     expect(t.etiqueta).not.toEqual(t.puntos[0]);
     expect(tapa(t.etiqueta, cajas, 14, 20)).toBe(false);
-    expect(t.etiquetaTapa).toBe(false);
     const sobreLaLinea = t.puntos.slice(1).some((q, k) => {
       const p = t.puntos[k]!;
       return (
@@ -259,22 +320,18 @@ describe("trazado de las conexiones laterales", () => {
     expect(t.etiqueta).toEqual({ x: (p.x + q.x) / 2, y: p.y });
   });
 
-  it("solo pierde el puntero si tapa una tarjeta, no si pisa otra etiqueta u otro punto", () => {
-    // Dos tarjetas lado a lado y tres líneas sin más lugar que el mismo hueco: se pisan entre ellas, no a las tarjetas.
+  it("sin lugar para el texto queda su punto, pero sin tapar tarjetas si la línea tiene por dónde", () => {
+    // Dos tarjetas lado a lado y cuatro líneas sin más lugar que el mismo hueco.
     const cajas = new Map([
       ["a", caja(0, 0)],
       ["b", caja(248, 0)],
     ]);
     const ls = ["x", "y", "z", "w"].map((id) => lat("a", "b", null, id));
     const t = trazarLaterales(ls, cajas, "vertical");
-    for (const id of ["x", "y", "z", "w"]) {
-      const e = t.get(id)!;
-      expect(e.etiquetaTapa).toBe(tapa(e.etiqueta, cajas, 14, 20));
-    }
+    for (const id of ["x", "y", "z", "w"]) expect(tapa(t.get(id)!.etiqueta, cajas, 14, 20)).toBe(false);
   });
 
-  it("una etiqueta sobre una tarjeta sí pierde el puntero", () => {
-    // Hueco de 2 px entre vecinas: el texto, por corto que sea, asoma sobre ellas.
+  it("la descripción con texto nunca toca una tarjeta, aunque el hueco entre vecinas sea de 2 px", () => {
     const cajas = new Map([
       ["a", caja(0, 0)],
       ["b", caja(222, 0)],
@@ -282,7 +339,7 @@ describe("trazado de las conexiones laterales", () => {
     const t = trazarLaterales([lat("a", "b", "Una descripción bien larga", "x")], cajas, "vertical").get(
       "x",
     )!;
-    expect(t.etiquetaTapa).toBe(tapa(t.etiqueta, cajas, 26 * 6.5 + 14, 20));
+    if (t.conTexto) expect(tapa(t.etiqueta, cajas, 26 * 6.5 + 14, 20)).toBe(false);
   });
 
   it("los puntos de dos líneas por la misma franja no quedan uno sobre otro", () => {
@@ -371,10 +428,13 @@ describe("trazado de las conexiones laterales", () => {
     const r = trazarLaterales(ls, cajas, "vertical");
     const franjas = ls.map((l) => Math.max(...r.get(l.id)!.puntos.map((p) => p.y)));
     expect(new Set(franjas).size).toBe(3);
-    // Dos caben sin tocarse. La tercera, anidada en las otras, puede rozarlas (una franja de 64 px no da para más): no las tapa.
-    const [e1, e2, e3] = ls.map((l) => r.get(l.id)!.etiqueta) as [Punto, Punto, Punto];
-    expect(Math.abs(e1.y - e2.y)).toBeGreaterThanOrEqual(20);
-    for (const otra of [e1, e2]) expect(Math.abs(otra.y - e3.y)).toBeGreaterThan(5);
+    // Dos caben sin tocarse. La tercera, anidada en las otras: si una franja de 64 px no da para más, queda como punto.
+    const [t1, t2, t3] = ls.map((l) => r.get(l.id)!) as [Trazado, Trazado, Trazado];
+    expect(t1.conTexto && t2.conTexto).toBe(true);
+    expect(Math.abs(t1.etiqueta.y - t2.etiqueta.y)).toBeGreaterThanOrEqual(20);
+    if (t3.conTexto)
+      for (const otra of [t1, t2])
+        expect(Math.abs(otra.etiqueta.y - t3.etiqueta.y)).toBeGreaterThanOrEqual(20);
     for (const l of ls) expect(r.get(l.id)!.cruces).toBe(0);
   });
 
@@ -399,7 +459,7 @@ describe("trazado de las conexiones laterales", () => {
     const t = trazarLaterales([lat("a1", "a2", "Abastecimiento de repuestos")], cajas, "vertical", 1.3).get(
       "l",
     )!;
-    expect(t.etiquetaTapa).toBe(false);
+    expect(t.conTexto).toBe(true);
     expect(tapa(t.etiqueta, cajas, 170 * 1.3, 20 * 1.3)).toBe(false);
   });
 
@@ -408,19 +468,143 @@ describe("trazado de las conexiones laterales", () => {
       Array.from({ length: 6 }, (_, i): [string, Caja] => [`${pre}${i}`, caja(i * 230, y, 220, 40)]);
     const cajas = new Map([...f(0, "a"), ...f(68, "b")]);
     const t = trazarLaterales([lat("a1", "a3", "Flujo")], cajas, "vertical").get("l")!;
-    expect(t.etiquetaTapa).toBe(false);
+    expect(t.conTexto).toBe(true);
     const linea = t.puntos.find((p, k) => k && t.puntos[k - 1]!.y === p.y)!;
     expect(Math.abs(t.etiqueta.y - linea.y)).toBeLessThanOrEqual(8);
   });
 
-  it("sin lugar libre la etiqueta lo avisa, para no capturar los clics de la tarjeta", () => {
+  it("sin lugar libre se queda con su punto en la línea, sin texto", () => {
     const apretada = new Map<string, Caja>();
     for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) apretada.set(`${r}-${c}`, caja(c * 224, r * 116)); // huecos de 4 px
     const t = trazarLaterales([lat("3-3", "3-4", "Texto que no cabe en un hueco")], apretada, "vertical").get(
       "l",
     )!;
     expect(t.cruces).toBe(0);
-    expect(t.etiquetaTapa).toBe(true);
+    expect(t.conTexto).toBe(false);
+  });
+
+  describe("en reposo nada se pisa", () => {
+    /** La caja de una etiqueta, con el ancho que reserva el trazado. */
+    const cajaTexto = (l: Lateral, e: Punto, escala: number) => {
+      const [w, h] = [Math.min(192, l.etiqueta!.length * 6.5 + 14) * escala, 20 * escala];
+      return caja(e.x - w / 2, e.y - h / 2, w, h);
+    };
+    const tocan = (a: Caja, b: Caja, margen: number) =>
+      a.x - margen < b.x + b.ancho &&
+      a.x + a.ancho + margen > b.x &&
+      a.y - margen < b.y + b.alto &&
+      a.y + a.alto + margen > b.y;
+
+    // Muchas conexiones con descripción entre las mismas filas, como en un árbol cargado.
+    function cargado(alto: number, franja: number, gap: number) {
+      const cajas = new Map([
+        ...fila("a", 8, 0, gap, alto),
+        ...fila("b", 8, alto + franja, gap, alto),
+        ...fila("c", 8, 2 * (alto + franja), gap, alto),
+      ]);
+      const ls: Lateral[] = [];
+      for (let i = 0; i < 8; i++)
+        for (let k = 0; k < 8; k++)
+          if (i !== k)
+            ls.push(
+              lat(
+                `${"ab"[i % 2]}${i}`,
+                `${"bc"[k % 2]}${k}`,
+                `Descripción larga número ${i}-${k}`,
+                `l${i}-${k}`,
+              ),
+            );
+      return { cajas, ls: ls.filter((l) => l.origen_id !== l.destino_id) };
+    }
+
+    for (const [nombre, alto, franja, gap, escala] of [
+      ["normal", 112, 64, 28, 1.3],
+      ["compacta", 40, 28, 10, 1],
+    ] as const) {
+      it(`${nombre}: ninguna etiqueta toca una tarjeta ni otra etiqueta, con su margen`, () => {
+        const { cajas, ls } = cargado(alto, franja, gap);
+        const t = trazarLaterales(ls, cajas, "vertical", escala);
+        const conTexto = ls.filter((l) => t.get(l.id)?.conTexto);
+        expect(conTexto.length).toBeGreaterThan(0); // alguna cabe
+        expect(conTexto.length).toBeLessThan(ls.length); // y no todas: el caso sirve
+        const textos = conTexto.map((l) => cajaTexto(l, t.get(l.id)!.etiqueta, escala));
+        for (const [k, c] of textos.entries()) {
+          for (const tarjeta of cajas.values()) expect(tocan(c, tarjeta, 0)).toBe(false);
+          for (const otra of textos.slice(k + 1)) expect(tocan(c, otra, 0)).toBe(false);
+        }
+      });
+    }
+
+    it("en horizontal también", () => {
+      // En horizontal las columnas se separan 64 y las hermanas, una bajo otra, 28.
+      const { cajas, ls } = cargado(112, 64, 28);
+      const giradas = new Map(
+        [...cajas].map(([id, c]): [string, Caja] => [
+          id,
+          caja((c.y / 176) * (220 + 64), (c.x / 248) * (112 + 28)),
+        ]),
+      );
+      const t = trazarLaterales(ls, giradas, "horizontal", 1.3);
+      const textos = ls
+        .filter((l) => t.get(l.id)?.conTexto)
+        .map((l) => {
+          const e = t.get(l.id)!.etiqueta;
+          const [w, h] = [Math.min(192, l.etiqueta!.length * 6.5 + 14) * 1.3, 20 * 1.3];
+          return caja(e.x - w / 2, e.y - h / 2, w, h);
+        });
+      expect(textos.length).toBeGreaterThan(0);
+      for (const [k, c] of textos.entries()) {
+        for (const tarjeta of giradas.values()) expect(tocan(c, tarjeta, 0)).toBe(false);
+        for (const otra of textos.slice(k + 1)) expect(tocan(c, otra, 0)).toBe(false);
+      }
+    });
+
+    it("el texto se queda con el primer lugar libre: el centro del tramo a lo ancho más largo", () => {
+      const cajas = new Map(fila("a", 5, 0));
+      const t = trazarLaterales([lat("a0", "a4", "Texto")], cajas, "vertical").get("l")!;
+      const [p, q] = t.puntos
+        .slice(1)
+        .map((b, k) => [t.puntos[k]!, b] as const)
+        .sort(([a, b], [c, d]) => Math.abs(d.x - c.x) - Math.abs(b.x - a.x))[0]!;
+      expect(t.conTexto).toBe(true);
+      expect(t.etiqueta.x).toBe((p.x + q.x) / 2);
+      expect(Math.abs(t.etiqueta.y - p.y)).toBeLessThanOrEqual(8); // se corre lo justo para no rozar la tarjeta
+    });
+
+    it("un texto que no cabe no le quita el lugar a otro: queda su punto sobre su línea", () => {
+      const { cajas, ls } = cargado(40, 28, 10);
+      const t = trazarLaterales(ls, cajas, "vertical");
+      const sinTexto = ls.filter((l) => !t.get(l.id)!.conTexto);
+      expect(sinTexto.length).toBeGreaterThan(0);
+      for (const l of sinTexto) {
+        const { etiqueta: e, puntos } = t.get(l.id)!;
+        const cerca = puntos.slice(1).some((q, k) => {
+          const p = puntos[k]!;
+          return (
+            e.x >= Math.min(p.x, q.x) - 8 &&
+            e.x <= Math.max(p.x, q.x) + 8 &&
+            e.y >= Math.min(p.y, q.y) - 8 &&
+            e.y <= Math.max(p.y, q.y) + 8
+          );
+        });
+        expect(cerca).toBe(true);
+      }
+    });
+
+    it("el orden es estable: no depende del orden de la lista", () => {
+      const { cajas, ls } = cargado(40, 28, 10);
+      const a = trazarLaterales(ls, cajas, "vertical");
+      const b = trazarLaterales([...ls].reverse(), cajas, "vertical");
+      for (const l of ls) expect(b.get(l.id)).toEqual(a.get(l.id));
+    });
+
+    it("una conexión nueva no mueve a las que ya estaban", () => {
+      const { cajas, ls } = cargado(112, 64, 28);
+      const a = trazarLaterales(ls.slice(0, 20), cajas, "vertical", 1.3);
+      const nueva = lat("a0", "c2", "Conexión recién creada", "z-nueva");
+      const b = trazarLaterales([nueva, ...ls.slice(0, 20)], cajas, "vertical", 1.3);
+      for (const l of ls.slice(0, 20)) expect(b.get(l.id)).toEqual(a.get(l.id));
+    });
   });
 
   it("muchas etiquetas por la misma franja: todas se trazan, sin cruces", () => {

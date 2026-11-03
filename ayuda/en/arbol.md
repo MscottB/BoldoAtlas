@@ -21,7 +21,7 @@ Each unit is a card with:
 
 Unit types are your organization's own list: it starts with Gerencia, Área, Subárea and Otra, which you can rename, reorder, deactivate or add to (for example, Superintendency or Department). The order of the list doesn't restrict the structure: any type can report to any other.
 
-Solid lines join each unit to its parent. Dotted lines are connections between units that work together without one depending on the other (see “Connections”).
+Solid lines join each unit to its parent. Dotted lines with an arrow are connections from one unit to another (see “Connections”).
 
 ## Collapsing and expanding branches
 
@@ -99,7 +99,9 @@ While viewing the chart at a past date there is no multiple selection.
 
 A connection links two units that work together: for example, from Maintenance to Purchasing. It has a direction, from one unit to the other, but it does not change who they report to.
 
-On the canvas it is a dotted line that runs through the free space between cards, with an arrow pointing at the destination unit and its description on top or, if it has none, a dot. Zoomed far out with many cards, the line is simplified and has no arrow. The **Lines** strip below the canvas reminds you what it means. When you hover over the line, it stands out and says which unit it goes from and to, for example “Maintenance → Purchasing”, with its description if it has one. A long description is shortened: hover over it, or reach it with `Tab`, to see it in full. When you hover over a card or focus it, its connections stand out and the others fade.
+On the canvas it is a dotted line that runs through the free space between cards, with an arrow pointing at the destination unit and its description on top or, if it has none, a dot. Descriptions do not overlap each other or the cards: one that does not fit stays as a dot on its line. Zoomed far out with many cards, you only see the dots and the line is simplified, with no arrow. The **Lines** strip below the canvas reminds you what it means.
+
+Whatever is under the pointer comes to the front and stands out. When you hover over a line, its description or its dot, or reach them with `Tab`, the description shows in full on top of everything, and a hint says which unit it goes from and to, for example “Maintenance → Purchasing”. When you hover over a card or focus it, its connections stand out and the others fade.
 
 **To create a connection:**
 
@@ -236,7 +238,7 @@ The **Summary** tab holds, in this order:
 - **Name**: saved when you finish typing (`Enter`, `Tab` or leaving the field).
 - **Type**: chosen from the unit-type list, as in the person records: type to filter and, if it does not exist, **Add “text” to the list** creates it and selects it, without going to the lists screen.
 - **Reports to**: a unit search to move the unit elsewhere without dragging it (this is the keyboard way). It does not offer the unit itself or anything below it; **No parent (root)** makes it a root.
-- **Head**: choose which of the unit's positions is the head (or **No head**); the list shows the job title and the holder. With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see **Replacement: name** if a replacement holds it, or a notice if the unit has no positions.
+- **Head**: choose which of the unit's positions is the head (or **No head**); the list shows the job title and the holder. With **New position…**, at the end of the list, the new position opens: pick its job title, press **Create position** and it becomes the unit's head. Below you see **Replacement: name** if a replacement holds it. If nobody does, an amber notice: **No head assigned**, or that the unit has no positions.
 - **Description**: a text to explain what the unit does. It is saved like the name.
 - **Tags**: remove one with its X, add an existing one or pick **New tag…** to create it with a color. If the name already exists, that tag is used instead of duplicating it.
 - **Connections**, with how many it has and the direction of each one: **Connect to…** adds another; on each row, the pencil edits it and the X removes it. If the line is not visible because the other unit is collapsed or outside the view, the row says so (see “Connections”).

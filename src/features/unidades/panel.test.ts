@@ -11,6 +11,7 @@ import {
   filasDeConexiones,
   filasDePuestos,
   migas,
+  notaJefatura,
   porQueNoSeVe,
   ultimoEnviado,
   validarMarca,
@@ -153,6 +154,16 @@ describe("conexiones", () => {
       ]);
     });
 
+    it("salen por nombre de la otra unidad, para ver si falta alguna", () => {
+      const nombres = filas(
+        cx("c1", "mantencion", "operaciones"),
+        cx("c2", "gg", "mantencion"),
+        cx("c3", "mantencion", "finanzas"),
+      ).map((f) => f.otro.nombre);
+      expect(nombres).toEqual([...nombres].sort((x, y) => x.localeCompare(y, "es")));
+      expect(new Set(nombres).size).toBe(3);
+    });
+
     it("trae la descripción tal cual", () => {
       const c = { ...cx("c1", "mantencion", "finanzas"), etiqueta: "Compras" };
       expect(filas(c)[0]!.etiqueta).toBe("Compras");
@@ -162,6 +173,18 @@ describe("conexiones", () => {
     it("omite las de otras unidades y las hacia una unidad que ya no está", () => {
       expect(filas(cx("c1", "gg", "finanzas"), cx("c2", "mantencion", "borrada"))).toEqual([]);
     });
+  });
+});
+
+describe("notaJefatura", () => {
+  it("con titular la lista ya lo dice; un reemplazo se agrega", () => {
+    expect(notaJefatura({ tipo: "titular" }, true)).toBeNull();
+    expect(notaJefatura({ tipo: "reemplazo" }, true)).toBe("reemplazo");
+  });
+
+  it("sin nadie que la ejerza avisa: con puestos, sin jefatura; sin ellos, que no hay", () => {
+    expect(notaJefatura(null, true)).toBe("sinJefatura");
+    expect(notaJefatura(null, false)).toBe("sinPuestos");
   });
 });
 

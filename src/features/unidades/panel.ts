@@ -42,17 +42,21 @@ export interface FilaConexion {
   etiqueta: string | null;
 }
 
-/** Las conexiones de la unidad `id`, con su sentido. Se omite la que apunta a una unidad que ya no está. */
+/** Las conexiones de la unidad `id`, por nombre de la otra, para ver si falta alguna. Se omite la que apunta a una unidad que ya no está. */
 export const filasDeConexiones = (
   conexiones: Conexion[],
   porId: ReadonlyMap<string, Unidad>,
   id: string,
 ): FilaConexion[] =>
-  conexiones.flatMap((c) => {
-    const hacia = c.origen_id === id;
-    const otro = hacia || c.destino_id === id ? porId.get(hacia ? c.destino_id : c.origen_id) : undefined;
-    return otro ? [{ id: c.id, otro, sentido: hacia ? "hacia" : "desde", etiqueta: c.etiqueta }] : [];
-  });
+  conexiones
+    .flatMap((c) => {
+      const hacia = c.origen_id === id;
+      const otro = hacia || c.destino_id === id ? porId.get(hacia ? c.destino_id : c.origen_id) : undefined;
+      return otro
+        ? [{ id: c.id, otro, sentido: hacia ? "hacia" : "desde", etiqueta: c.etiqueta } as const]
+        : [];
+    })
+    .sort((a, b) => a.otro.nombre.localeCompare(b.otro.nombre, "es"));
 
 /**
  * Por qué una unidad no se dibuja: un superior plegado o, si no está en `mostradas` (lo que el lienzo dibuja), fuera de la
@@ -151,6 +155,12 @@ export function validarMarca(color: string | null, codigo: string): ResultadoMar
   const k = codigo.trim();
   if ([...k].length > 4) return { ok: false, error: "codigo" };
   return { ok: true, color: c, codigo: k || null };
+}
+
+/** Qué agrega el panel bajo la lista de jefatura, que ya dice cargo y titular: quién la ejerce si es un reemplazo o, si nadie, un aviso. */
+export function notaJefatura(visible: { tipo: string } | null, hayPuestos: boolean) {
+  if (visible) return visible.tipo === "reemplazo" ? "reemplazo" : null;
+  return hayPuestos ? "sinJefatura" : "sinPuestos";
 }
 
 export interface FilaPuesto {
