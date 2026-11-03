@@ -1890,6 +1890,16 @@ mod tests_lista {
     }
 
     #[test]
+    fn paleta_de_ts_coincide() {
+        let ts = include_str!("../../src/features/organizaciones/paleta.ts");
+        for color in PALETA {
+            assert!(ts.contains(color), "{color}");
+        }
+        assert_eq!(ts.matches("color: \"#").count(), PALETA.len());
+        assert_eq!(PALETA.len(), 8);
+    }
+
+    #[test]
     fn externa_ausente_aparece_como_no_existe() {
         let (_exe, r) = rutas();
         let afuera = tempfile::tempdir().unwrap();

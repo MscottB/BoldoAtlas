@@ -70,6 +70,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     [...lista.value].sort((a, b) => b.abierta.localeCompare(a.abierta)).slice(0, MAX_RECIENTES),
   );
   const cambiando = ref(false);
+  /** Rust dijo `lista_protegida`: hasta reiniciar no se puede cambiar. Lo anota quien lo recibe, y sobrevive a la vista. */
+  const listaProtegida = ref(false);
   /** Por id de pestaña: por qué no se pudo abrir o cargar su organización. */
   const sinAbrir = ref(new Map<string, Motivo>());
   /** Las organizaciones ya abiertas en esta sesión: con la frecuencia «al abrir», solo la primera vez respalda. */
@@ -369,6 +371,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     lista,
     recientes,
     cambiando,
+    listaProtegida,
     enCurso,
     /** Si otro pedido espera su turno: lo que se pida ahora lo reemplaza. */
     hayEspera: () => espera !== null,
