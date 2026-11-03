@@ -345,7 +345,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0], comoJefatura = false) =>
     escribir(() => {
       const p = P.crearPuesto(datos);
-      return { id: p.id, sentencias: comoJefatura ? [...p.sentencias, ...U.asignarJefe(datos.unidad_id, p.id)] : p.sentencias };
+      return {
+        id: p.id,
+        sentencias: comoJefatura ? [...p.sentencias, ...U.asignarJefe(datos.unidad_id, p.id)] : p.sentencias,
+      };
     });
   const editarPuesto = (id: string, cambios: Parameters<typeof P.editarPuesto>[1]) =>
     escribir(() => P.editarPuesto(id, cambios));
