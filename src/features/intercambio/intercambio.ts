@@ -180,7 +180,8 @@ let terminarRevision: (() => void) | null = null;
 
 /** Mientras haya decisiones sin aplicar, cerrar la app pregunta: se perderían. */
 export function revisionConDecisiones(hay: boolean) {
-  if (hay && !terminarRevision) terminarRevision = iniciarTrabajo(deLaAbierta(i18n.global.t("trabajos.revisionAbierta")));
+  if (hay && !terminarRevision)
+    terminarRevision = iniciarTrabajo(deLaAbierta(i18n.global.t("trabajos.revisionAbierta")));
   if (!hay && terminarRevision) {
     terminarRevision();
     terminarRevision = null;

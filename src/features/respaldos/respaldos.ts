@@ -63,7 +63,8 @@ export async function respaldoAutomatico(alAbrir = true): Promise<void> {
   const aviso = deLaAbierta(i18n.global.t("respaldos.automaticoFallo"));
   try {
     const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
-    if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir)) await respaldar();
+    if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir))
+      await respaldar();
   } catch (e) {
     if (e instanceof BaseCambiada) return; // se pasó a otra organización: no falló nada
     noAntesDe = Date.now() + ESPERA_TRAS_FALLO;

@@ -6,7 +6,8 @@ import { trabajos, ultimoFin } from "@/lib/trabajos";
 import type { ResumenImportacion } from "@/db/cliente";
 import { filasVisibles, intentar, intentarTrabajo, modoInicial, revisionConDecisiones } from "./intercambio";
 
-const resumenDe = (r: Partial<ResumenImportacion>) => ({ parcial: false, informe: null, ...r }) as ResumenImportacion;
+const resumenDe = (r: Partial<ResumenImportacion>) =>
+  ({ parcial: false, informe: null, ...r }) as ResumenImportacion;
 const conInforme = { informe: {} } as Partial<ResumenImportacion>;
 
 describe("modoInicial", () => {
@@ -137,7 +138,14 @@ describe("revisión con decisiones", () => {
         expect(te(`intercambio.revisar.grupo.${tipo}.titulo`, locale), tipo).toBe(true);
         expect(te(`intercambio.revisar.grupo.${tipo}.ayuda`, locale), tipo).toBe(true);
       }
-      for (const a of ["todo_mio", "todo_archivo", "agregar_todo", "omitir_todo", "mantener_todo", "borrar_todo"])
+      for (const a of [
+        "todo_mio",
+        "todo_archivo",
+        "agregar_todo",
+        "omitir_todo",
+        "mantener_todo",
+        "borrar_todo",
+      ])
         expect(te(`intercambio.revisar.masivo.${a}`, locale), a).toBe(true);
       for (const b of ["unica", "regla", "referencia", "ciclo"])
         expect(te(`intercambio.revisar.bloqueo.${b}`, locale), b).toBe(true);

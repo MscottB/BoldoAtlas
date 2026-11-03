@@ -29,7 +29,14 @@ import {
 } from "@/features/respaldos/respaldos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
-import { alSoltarDatos, BaseCambiada, baseActual, fijarBase, marcarCambio, soltarDatos } from "@/lib/baseActiva";
+import {
+  alSoltarDatos,
+  BaseCambiada,
+  baseActual,
+  fijarBase,
+  marcarCambio,
+  soltarDatos,
+} from "@/lib/baseActiva";
 import { borrarPreferenciasOrg } from "@/lib/preferencias";
 import { registrarAbierta, trabajos } from "@/lib/trabajos";
 import { useOrganizacion, type Resultado } from "./organizacion";
@@ -88,7 +95,9 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   alSoltarDatos(() => (idAbierta.value = baseActual()));
   const abierta = computed(() => lista.value.find((o) => o.id === idAbierta.value) ?? null);
   // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama. Sin la bandera, solo el de la base.
-  const nombreAbierta = computed(() => org.org.nombre || (ORGANIZACIONES_VISIBLES && abierta.value?.nombre) || "");
+  const nombreAbierta = computed(
+    () => org.org.nombre || (ORGANIZACIONES_VISIBLES && abierta.value?.nombre) || "",
+  );
   const varias = computed(() => ORGANIZACIONES_VISIBLES && lista.value.length > 1);
   registrarAbierta(() => ({ nombre: nombreAbierta.value || t("barra.sinNombre"), varias: varias.value }));
 

@@ -44,7 +44,9 @@ export async function crearBandeja(router: Router): Promise<void> {
   const tooltip = () => {
     if (trabajos.value.length) return t("bandeja.trabajoEnCurso", { trabajo: trabajos.value.join(", ") });
     if (terminado.value) return t("bandeja.trabajoTerminado", { trabajo: terminado.value });
-    return a.disponible ? t("bandeja.versionNueva", { version: a.disponible.version }) : deLaAbierta("BoldoAtlas");
+    return a.disponible
+      ? t("bandeja.versionNueva", { version: a.disponible.version })
+      : deLaAbierta("BoldoAtlas");
   };
   // en el idioma de la interfaz; la entrada del actualizador cambia si hay versión nueva
   const textos = () => ({

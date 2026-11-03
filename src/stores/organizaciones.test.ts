@@ -1270,7 +1270,10 @@ describe("eliminar", () => {
     const { o } = await arrancar();
     const avance = { archivoBorrado: true, copia: "B_1.db" };
     c.eliminarOrganizacion.mockRejectedValue({ codigo: "fallo", detalle: "x", avance });
-    expect(await o.eliminar("B", { guardarCopia: true, borrarArchivo: false })).toMatchObject({ ok: false, avance });
+    expect(await o.eliminar("B", { guardarCopia: true, borrarArchivo: false })).toMatchObject({
+      ok: false,
+      avance,
+    });
   });
 
   it("olvidar la que Rust ya sacó de la lista cierra sus pestañas y borra lo suyo", async () => {
