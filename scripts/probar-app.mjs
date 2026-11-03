@@ -354,6 +354,16 @@ async function primeraApertura(exe, carpeta) {
 
   // la organización se crea desde la interfaz: pasa por el store, cliente.ts y su baseId
   await app.hasta(`document.getElementById("bienvenida-camino-vacia")`, "la pantalla de bienvenida");
+  await app.hasta(
+    `document.visibilityState === "visible" && innerWidth >= screen.availWidth - 20`,
+    "la ventana a la vista y maximizada",
+  );
+  comprobar(
+    "«Iniciando…» cargó con la CSP y se fue al montar",
+    await app.evaluar(
+      `!document.getElementById("arranque") && getComputedStyle(document.documentElement).backgroundColor !== "rgba(0, 0, 0, 0)"`,
+    ),
+  );
   await app.evaluar(`document.getElementById("bienvenida-camino-vacia").click()`);
   await app.hasta(`document.getElementById("bienvenida-org")`, "el diálogo de organización vacía");
   await app.evaluar(`(() => {

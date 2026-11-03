@@ -95,6 +95,23 @@ pub fn mostrar<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Solo la primera vez, con «Iniciando…» ya en la página: una recarga no saca la ventana de la bandeja, y arrancada por
+/// el sistema sigue minimizada. Se maximiza aquí porque, pedido al crearla junto con `visible(false)`, podría mostrarla.
+pub fn mostrar_al_arrancar<R: Runtime>(app: &AppHandle<R>) {
+    static MOSTRADA: AtomicBool = AtomicBool::new(false);
+    if std::env::args().any(|a| a == crate::inicio::ARGUMENTO) {
+        return;
+    }
+    // sin ventana todavía no se marca: el aviso de carga podría adelantarse a que quede registrada
+    let Some(v) = app.get_webview_window(VENTANA) else {
+        return;
+    };
+    if !MOSTRADA.swap(true, Ordering::SeqCst) {
+        let _ = v.maximize();
+        mostrar(app);
+    }
+}
+
 #[tauri::command]
 pub fn cierre_listo(cierre: State<Cierre>) {
     cierre.lista.store(true, Ordering::SeqCst);

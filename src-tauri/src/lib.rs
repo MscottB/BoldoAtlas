@@ -49,6 +49,9 @@ pub fn run() {
             ventana
                 .state::<intercambio::Sesiones>()
                 .al_cargar_pagina(carga.event());
+            if carga.event() == tauri::webview::PageLoadEvent::Finished {
+                salida::mostrar_al_arrancar(ventana.app_handle());
+            }
         })
         .on_window_event(|ventana, evento| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
@@ -100,16 +103,30 @@ pub fn run() {
                     .to_logical::<f64>(pantalla.scale_factor());
                 ventana = ventana.position(origen.x, origen.y);
             }
-            ventana = ventana.maximized(true);
             // arrancada por el sistema no le quita el foco a lo que el usuario abre al iniciar sesión; minimizada
             // y no oculta, porque no siempre hay bandeja desde donde volver
             let por_el_sistema = std::env::args().any(|a| a == inicio::ARGUMENTO);
-            if por_el_sistema {
-                ventana = ventana.focused(false);
-            }
+            // abierta a mano se muestra al cargar la página: sin pantalla blanca, ya dice «Iniciando…»
+            ventana = if por_el_sistema {
+                ventana.maximized(true).focused(false)
+            } else {
+                ventana.visible(false)
+            };
             let ventana = ventana.build()?;
+            // el fondo antes de pintar. El tema elegido en la app no se conoce aquí: a lo sumo un instante con el del sistema
+            let oscuro = ventana.theme().is_ok_and(|t| t == tauri::Theme::Dark);
+            let fondo = if oscuro { 10 } else { 240 };
+            let _ =
+                ventana.set_background_color(Some(tauri::window::Color(fondo, fondo, fondo, 255)));
             if por_el_sistema {
                 let _ = ventana.minimize();
+            } else {
+                // si la página nunca termina de cargar, la ventana aparece igual: oculta parecería que la app no abrió
+                let app = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    salida::mostrar_al_arrancar(&app);
+                });
             }
             Ok(())
         })
