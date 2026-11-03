@@ -1093,7 +1093,7 @@ pub fn revisar_para_eliminar(
         return Err(Fallo::de("contenido_invalido", "journal"));
     }
     let usa_el_archivo = !e.externa || borrar_archivo || guardar_copia;
-    if existe && usa_el_archivo && !es_de_la_entrada(&bd, e)? {
+    if existe && usa_el_archivo && !es_de_la_entrada(&solo_lectura_cerrada(&bd)?, e)? {
         return Err(Fallo::de("otro_id", bd.display()));
     }
     Ok(existe)
@@ -1102,12 +1102,11 @@ pub fn revisar_para_eliminar(
 /// Lo ilegible en su lugar de siempre sigue siendo de ella, y eliminarla es lo que más le sirve. Lo que se lee sin id, solo si no
 /// tiene nada que perder: si no, es de otro. Una externa pudo cambiar por fuera: sin ver su id, no se sabe qué es. Si no se pudo
 /// mirar (no abre, un error pasajero), no se sabe nada del archivo: el error sigue, y no se borra ni se dice que es de otro.
-fn es_de_la_entrada(bd: &Path, e: &Entrada) -> Result<bool, Fallo> {
-    let c = solo_lectura_cerrada(bd)?;
+fn es_de_la_entrada(c: &Connection, e: &Entrada) -> Result<bool, Fallo> {
     let mirar = || -> rusqlite::Result<bool> {
-        Ok(match id_del_archivo(&c)? {
+        Ok(match id_del_archivo(c)? {
             Some(id) => id == e.id,
-            None => !e.externa && no_tiene_nada(&c)?,
+            None => !e.externa && no_tiene_nada(c)?,
         })
     };
     match mirar() {
@@ -3041,7 +3040,8 @@ mod tests_archivo {
         let i = interna(&r, "2020");
         let carpeta = r.datos.join("organizaciones");
         for e in [&i, &entrada(&i.id, carpeta.to_str().unwrap(), true, "2020")] {
-            assert!(es_de_la_entrada(&carpeta, e).is_err());
+            let hecho = solo_lectura_cerrada(&carpeta).and_then(|c| es_de_la_entrada(&c, e));
+            assert!(hecho.is_err());
         }
     }
 
@@ -3062,7 +3062,7 @@ mod tests_archivo {
         assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
     }
 
-    /// Otra conexión con la base tomada en exclusiva: `SQLITE_BUSY`, tras la espera de 5 s de cada conexión.
+    /// Otra conexión con la base tomada en exclusiva: `SQLITE_BUSY` de verdad, sin la espera de 5 s de cada conexión.
     #[test]
     fn un_error_pasajero_no_sale_como_otro_id() {
         let (_exe, r) = rutas();
@@ -3073,13 +3073,14 @@ mod tests_archivo {
             .unwrap();
         otra.execute("UPDATE meta SET valor = 'x' WHERE clave = 'org_nombre'", [])
             .unwrap();
-        let x = entrada(&i.id, bd.to_str().unwrap(), true, "2020");
-        for e in [&i, &x] {
-            let f = revisar_para_eliminar(&r, e, false, false, true).unwrap_err();
-            assert_eq!(f.codigo, "fallo", "{}", f.detalle);
-        }
-        otra.close().unwrap();
-        assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
+        let c = solo_lectura_cerrada(&bd).unwrap();
+        c.busy_timeout(Duration::ZERO).unwrap();
+        let error = id_del_archivo(&c).unwrap_err();
+        assert_eq!(error.sqlite_error_code(), Some(ErrorCode::DatabaseBusy));
+
+        let f = es_de_la_entrada(&c, &i).unwrap_err();
+
+        assert_eq!(f.codigo, "fallo", "{}", f.detalle);
     }
 
     /// Una tabla `meta` que no es la de la app, o sin las tablas de la app: tiene otra forma, y eso sí dice que es de otro.

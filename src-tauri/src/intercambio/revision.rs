@@ -4476,6 +4476,7 @@ mod tests {
                     parcial: false,
                     ramas: Vec::new(),
                     organizacion: String::new(),
+                    origen: None,
                 },
             },
         );
@@ -5074,6 +5075,7 @@ mod tests {
                     parcial: false,
                     ramas: Vec::new(),
                     organizacion: String::new(),
+                    origen: None,
                 },
             },
         );

@@ -441,19 +441,25 @@ pub fn reemplazar(
     if i.meta.parcial {
         return Err(Fallo::de("solo_completo", ""));
     }
-    limpiar_meta(i, &[])?;
+    limpiar_meta(i, None)?;
     respaldos::reemplazar_antes_respaldando(conexion, base, i.temporal.ruta(), migraciones)
 }
 
-/// De `meta` deja solo lo conocido y `ademas`. Sobre el temporal: lo demás es de la exportación, o de quien armó el archivo.
-fn limpiar_meta(i: &Importacion, ademas: &[&str]) -> Result<(), Fallo> {
+/// De `meta` deja solo lo conocido, más `origen` si viene. Sobre el temporal: lo demás es de la exportación, o de quien armó el
+/// archivo.
+fn limpiar_meta(i: &Importacion, origen: Option<&str>) -> Result<(), Fallo> {
     let c = validar::abrir_no_confiable(i.temporal.ruta(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
-    let claves = [META_CONOCIDAS, ademas].concat();
-    let lista = vec!["?"; claves.len()].join(", ");
+    let lista = vec!["?"; META_CONOCIDAS.len()].join(", ");
     c.execute(
         &format!("DELETE FROM meta WHERE clave NOT IN ({lista})"),
-        rusqlite::params_from_iter(claves),
+        rusqlite::params_from_iter(META_CONOCIDAS),
     )?;
+    if let Some(origen) = origen {
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('origen_db_id', ?1)",
+            [origen],
+        )?;
+    }
     c.close().map_err(|(_, e)| e)?;
     Ok(())
 }
@@ -465,7 +471,7 @@ pub fn como_nueva(i: &Importacion, r: &Rutas) -> Result<String, Fallo> {
     if lista.no_escribir {
         return Err(lista_protegida());
     }
-    limpiar_meta(i, &["origen_db_id"])?;
+    limpiar_meta(i, i.meta.origen.as_deref())?;
     let id = copiar_a_carpeta(r, i.temporal.ruta(), None, db::MIGRACIONES)?;
     let color = color_libre(&lista).into();
     lista.organizaciones.push(Entrada {
@@ -1146,6 +1152,79 @@ mod tests {
             let (_dd, _bd, respaldos, mut conn) = destino();
             agregar(&mut conn, &respaldos, &i, &HashMap::new(), "1").unwrap();
             assert_eq!(cuenta(&conn, "unidades"), 2);
+        }
+
+        /// `reemplazar` ya le quitó `origen_db_id` al temporal cuando falla, y la importación sigue abierta.
+        #[test]
+        fn un_reemplazar_fallido_no_le_quita_el_origen() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let (_dd, bd, respaldos, conn) = destino();
+            let i = importacion(d.path(), &origen, &r.datos);
+            let mut slot = Some(conn);
+            let rota = [MIGRACIONES, &["ESTO NO ES SQL;"]].concat();
+            let f = reemplazar_con(&mut slot, &bd, &respaldos, &i, &rota).unwrap_err();
+            assert_eq!(f.codigo, "fallo");
+            assert_eq!(meta_de(i.temporal.ruta(), "origen_db_id"), None);
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let nueva = bd_de(&r, &id);
+            assert_eq!(meta_de(&nueva, "origen_db_id"), Some(id_de(&origen)));
+            assert_eq!(meta_de(&nueva, "db_id").as_ref(), Some(&id));
+        }
+
+        /// Quien ya no está en la rama viaja solo con nombre y correo, por su historial, y eso llega a la organización nueva.
+        #[test]
+        fn un_archivo_parcial_conserva_la_historia() {
+            let (d, origen) = base_con_datos();
+            let (_exe, r) = rutas();
+            let raices = ["rama".to_string()];
+            let copia = alcance::copiar(&origen, d.path()).unwrap();
+            let (t, resumen) = alcance::preparar(copia, d.path(), Some(&raices)).unwrap();
+            assert_eq!(resumen.cortes.historial, 1);
+            let archivo = d.path().join("rama.boldo");
+            let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+            let i = abrir(&archivo, &r.datos, &codigo, MIGRACIONES, SIGUE).unwrap();
+
+            let id = como_nueva(&i, &r).unwrap();
+
+            let c = validar::solo_lectura_cerrada(&bd_de(&r, &id)).unwrap();
+            let persona: (String, String) = c
+                .query_row(
+                    "SELECT nombre, correo FROM trabajadores WHERE id = 'yanoesta'",
+                    [],
+                    |f| Ok((f.get(0)?, f.get(1)?)),
+                )
+                .unwrap();
+            assert_eq!(persona, ("PersonaYaNoEsta".into(), "yanoesta@x.cl".into()));
+            let pasada: (String, String, String, String, String) = c
+                .query_row(
+                    "SELECT trabajador_id, puesto_id, desde, hasta, motivo
+                     FROM asignaciones WHERE id = 'as-yanoesta'",
+                    [],
+                    |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?)),
+                )
+                .unwrap();
+            assert_eq!(
+                pasada,
+                (
+                    "yanoesta".into(),
+                    "p-hija".into(),
+                    "2015-01-01".into(),
+                    "2020-01-01".into(),
+                    "motivo-yanoesta".into()
+                )
+            );
+            // lo que estaba fuera de la rama, no
+            let fuera: i64 = c
+                .query_row(
+                    "SELECT count(*) FROM trabajadores WHERE id = 'fuera'",
+                    [],
+                    |f| f.get(0),
+                )
+                .unwrap();
+            assert_eq!(fuera, 0);
         }
 
         #[test]

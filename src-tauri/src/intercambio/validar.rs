@@ -326,6 +326,8 @@ pub struct MetaArchivo {
     pub parcial: bool,
     pub ramas: Vec<RamaExportada>,
     pub organizacion: String,
+    /// De qué base salió. Aquí, y no solo en el temporal: un `reemplazar` que falla ya se lo quitó.
+    pub origen: Option<String>,
 }
 
 fn meta(c: &Connection, clave: &str) -> rusqlite::Result<Option<String>> {
@@ -370,6 +372,7 @@ pub fn leer_meta(c: &Connection) -> Result<MetaArchivo, Fallo> {
         parcial,
         ramas,
         organizacion: m("org_nombre")?.unwrap_or_default(),
+        origen: m("origen_db_id")?,
     })
 }
 
