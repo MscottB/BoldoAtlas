@@ -24,7 +24,6 @@ import {
   restaurarRespaldo,
   type Respaldo,
 } from "@/db/cliente";
-import { BaseCambiada } from "@/lib/baseActiva";
 import { tamano } from "@/lib/formato";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { FRECUENCIA_POR_DEFECTO, FRECUENCIAS } from "./programa";
@@ -44,7 +43,7 @@ async function cargar() {
   try {
     lista.value = await listarRespaldos();
   } catch (e) {
-    if (!(e instanceof BaseCambiada)) toast.error(mensajeFallo(e));
+    toast.error(mensajeFallo(e));
   }
 }
 onMounted(cargar);
@@ -58,7 +57,7 @@ async function respaldar() {
     toast.success(t("respaldos.hecho"));
     await cargar();
   } catch (e) {
-    if (!(e instanceof BaseCambiada)) toast.error(mensajeFallo(e));
+    toast.error(mensajeFallo(e));
   } finally {
     ocupado.value = false;
   }

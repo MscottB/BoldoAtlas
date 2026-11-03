@@ -294,7 +294,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     } catch (e) {
       const r = fallo(e);
       // recargar aquí le quitaría su turno a la carga del cambio, que es la que dice cuándo están los datos
-      if (e instanceof BaseCambiada) return r;
+      if (e instanceof BaseCambiada) {
+        console.warn("Escritura rechazada: se está cambiando de organización", e);
+        return r;
+      }
       await cargar();
       error.value = r.mensaje;
       return r;

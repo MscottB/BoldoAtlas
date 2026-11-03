@@ -14,6 +14,7 @@ const ESPERA_TRAS_FALLO = 86_400_000;
 
 /** Traduce el código de error que devuelve Rust; lo inesperado muestra el detalle técnico. */
 export function mensajeFallo(e: unknown): string {
+  if (e instanceof BaseCambiada) return ""; // se pasó a otra organización: no falló nada, y `toast.error("")` no muestra nada
   const { t, te } = i18n.global;
   const f: Partial<FalloRespaldo> = typeof e === "object" && e !== null ? e : { detalle: String(e) };
   const clave = `respaldos.error.${f.codigo}`;

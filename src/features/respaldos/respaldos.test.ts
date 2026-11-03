@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cambiarIdioma } from "@/i18n";
+import { BaseCambiada } from "@/lib/baseActiva";
 import { conRespaldoPrevio, mensajeFallo, mensajeOrganizacion } from "./respaldos";
 
 describe("mensajeFallo", () => {
+  it("con BaseCambiada no hay nada que decir", () => {
+    expect(mensajeFallo(new BaseCambiada())).toBe("");
+    expect(mensajeOrganizacion(new BaseCambiada())).toBe("");
+  });
+
   describe.each(["es", "en"] as const)("códigos de las organizaciones en %s", (idioma) => {
     beforeEach(() => void cambiarIdioma(idioma));
     afterEach(() => void cambiarIdioma("es"));

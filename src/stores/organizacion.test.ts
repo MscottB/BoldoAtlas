@@ -1842,10 +1842,13 @@ describe("sentenciasNueva", () => {
     h.antesDeLote = async () => {
       throw new BaseCambiada();
     };
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
     const r = await s.crearArbol("Late", TIPO_AREA);
     expect(r).toEqual({ ok: false, mensaje: "" });
     expect(s.error).toBeNull();
     expect(lecturas).not.toHaveBeenCalled();
+    expect(aviso).toHaveBeenCalledOnce(); // lo que no se guardó deja rastro
+    aviso.mockRestore();
     h.antesDeLote = null;
     h.antesDeMeta = null;
   });

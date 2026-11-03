@@ -325,6 +325,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     recientes,
     cambiando,
     enCurso,
+    /** Si otro pedido espera su turno: lo que se pida ahora lo reemplaza. */
+    hayEspera: () => espera !== null,
     sinAbrir,
     cargarLista,
     abrir,

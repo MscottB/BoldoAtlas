@@ -439,6 +439,85 @@ describe("el último pedido gana", () => {
     expect(baseActual()).toBe("A");
   });
 
+  it("con b1 en curso y abrir(C) en espera, un clic en b1 gana y no termina en C", async () => {
+    const { p, o } = await arrancar();
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    const enEspera = o.abrir("C");
+    p.activar("b1");
+    expect(await enEspera).toEqual({ ok: false, mensaje: "" });
+    paso.resolver();
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "B"]));
+    await esperar();
+    expect(p.activa).toBe("b1");
+    expect(baseActual()).toBe("B");
+  });
+
+  it("con b1 en curso y eliminar en espera, un clic en b1 gana", async () => {
+    const { p, o } = await arrancar();
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    const enEspera = o.eliminar("C", { guardarCopia: false, borrarArchivo: false });
+    p.activar("b1");
+    expect(await enEspera).toEqual({ ok: false, mensaje: "" });
+    paso.resolver();
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "B"]));
+    await esperar();
+    expect(p.activa).toBe("b1");
+    expect(c.eliminarOrganizacion).not.toHaveBeenCalled();
+  });
+
+  it("otro clic en la que ya espera no hace perder adónde se va: Ctrl+Tab sigue contando desde ella", async () => {
+    const { p } = await arrancar();
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    p.activar("c1");
+    p.activar("c1");
+    await new Promise((res) => setTimeout(res)); // el reemplazado ya respondió
+    p.siguiente(1); // la vecina de c1 es a1
+    paso.resolver();
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "A"]));
+    await esperar();
+    expect(p.activa).toBe("a1");
+  });
+
+  it("ir durante eliminar queda en la cola", async () => {
+    const { p, o } = await arrancar();
+    const paso = pendiente<null>();
+    c.eliminarOrganizacion.mockReturnValueOnce(paso.promesa);
+    const r = o.eliminar("C", { guardarCopia: false, borrarArchivo: false });
+    await vi.waitFor(() => expect(c.eliminarOrganizacion).toHaveBeenCalled());
+    p.activar("b1");
+    expect(c.abrirOrganizacion).not.toHaveBeenCalled();
+    paso.resolver(null);
+    expect(await r).toEqual({ ok: true });
+    await vi.waitFor(() => expect(p.activa).toBe("b1"));
+    expect(baseActual()).toBe("B");
+    expect(ids()).toEqual(["a1", "b1"]);
+  });
+
+  it("al crear gana la nueva, aunque se pida otra pestaña mientras se crea", async () => {
+    datos.set("boldo:respaldos", JSON.stringify("nunca"));
+    const { p, o } = await arrancar();
+    const creada = pendiente<string>();
+    c.crearOrganizacionNueva.mockReturnValueOnce(creada.promesa);
+    const r = o.crear("ejemplo");
+    await vi.waitFor(() => expect(c.crearOrganizacionNueva).toHaveBeenCalled());
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    creada.resolver("N");
+    await new Promise((res) => setTimeout(res)); // la nueva ya pidió abrirse
+    paso.resolver();
+    expect((await r).ok).toBe(true);
+    expect(abiertas()).toEqual(["B", "N"]);
+    expect(baseActual()).toBe("N");
+    expect(p.lista.find((x) => x.id === p.activa)?.org).toBe("N");
+  });
+
   it("un eliminar en espera y reemplazado no dice que se hizo", async () => {
     const { o } = await arrancar();
     const paso = abrirConPausa();
@@ -532,6 +611,24 @@ describe("desde las pestañas", () => {
     p.activar("b1");
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(p.activa).toBe("a1");
+  });
+
+  it("cerrar hacia una vecina que no se pudo abrir no deja activa la que ya no está", async () => {
+    const { p, o } = await arrancar({
+      lista: [
+        { id: "a1", org: "A", ruta: "/" },
+        { id: "a2", org: "A", ruta: "/revision" },
+      ],
+      activa: "a1",
+    });
+    o.sinAbrir.set("a2", { codigo: "no_encontrado", mensaje: "m", detalle: "" }); // al ir a ella, reintenta
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("sin_espacio"));
+    p.cerrar("a1");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalled());
+    await vi.waitFor(() => expect(p.activa).toBe("a2"));
+    await esperar();
+    expect(ids()).toEqual(["a2"]);
+    expect(router.currentRoute.value.fullPath).toBe("/revision");
   });
 
   it("cerrar la última pestaña de la abierta: si el cambio sale bien, se quita", async () => {

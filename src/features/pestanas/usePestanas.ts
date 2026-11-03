@@ -41,6 +41,7 @@ export const usePestanas = defineStore("pestanas", () => {
   let vueltaAInicio = false;
   /** Pestaña a la que va un cambio de organización aún en curso: lo siguiente cuenta desde ella y pasa por la misma cola. */
   let pedida: string | null = null;
+  let ultimoPedido = 0;
   /** false mientras `modelo` sea el inicial: desde Inicio se puede llegar aquí sin `entrar`, y guardarlo pisaría la clave. */
   let cargadas = false;
 
@@ -65,7 +66,7 @@ export const usePestanas = defineStore("pestanas", () => {
     const org = baseActual();
     // la activa puede no estar en la lista: se cerró mientras se llegaba a otra
     const de = (x?: P.Pestana) => x?.org === org;
-    if (de(m.lista.find((x) => x.id === m.activa)!)) return m;
+    if (de(m.lista.find((x) => x.id === m.activa))) return m;
     const suya = m.lista.find(de);
     if (suya) return { ...m, activa: suya.id };
     const id = nuevoId();
@@ -172,8 +173,9 @@ export const usePestanas = defineStore("pestanas", () => {
   /** Cambia de organización para activar la pestaña. `pedida` se borra al terminar, salga bien o mal, si nadie pidió otra. */
   async function cambiarHacia(id: string): Promise<Resultado> {
     pedida = id;
+    const este = ++ultimoPedido;
     const r = await useOrganizaciones().activarPestana(id);
-    if (pedida === id) pedida = null;
+    if (este === ultimoPedido) pedida = null;
     return r;
   }
 
@@ -185,13 +187,19 @@ export const usePestanas = defineStore("pestanas", () => {
     if (p.org !== baseActual() || organizaciones.enCurso || organizaciones.sinAbrir.has(id)) {
       const r = await cambiarHacia(id);
       if (!r.ok && r.mensaje) toast.error(r.mensaje);
+      // La cerrada seguía como activa hasta llegar a su vecina, y no se llegó. Con otro cambio en curso, lo resuelve él.
+      if (!r.ok && !organizaciones.enCurso && !modelo.value.lista.some((x) => x.id === activa.value)) {
+        modelo.value = aLaAbierta(modelo.value);
+        await navegar(modelo.value.activa);
+      }
     } else await navegar(id);
     await enfocar(siempre);
   }
 
   function activar(id: string): Resultado {
-    // Se compara con adónde se va, no con la activa de ahora. Un `abrir` o `eliminar` en curso no dice adónde: a la cola.
-    const sinSaberAdonde = useOrganizaciones().enCurso && !pedida;
+    // Se compara con adónde se va, no con la activa de ahora. Un `abrir` o `eliminar` en curso o en espera no dice adónde: a la cola.
+    const organizaciones = useOrganizaciones();
+    const sinSaberAdonde = organizaciones.enCurso && (!pedida || organizaciones.hayEspera());
     if (sinSaberAdonde || id !== (pedida ?? destino?.id ?? activa.value)) void ir(id);
     return { ok: true };
   }
