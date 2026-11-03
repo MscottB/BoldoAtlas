@@ -190,7 +190,10 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
         <p>{{ t("organizaciones.eliminar.noSeTocan") }}</p>
         <p v-if="organizacion.activa">{{ t(`organizaciones.eliminar.${claveAbierta(organizacion)}`) }}</p>
         <p v-if="auxiliares">{{ t("organizaciones.eliminar.auxiliares", { ruta: organizacion.ruta }) }}</p>
-        <p v-if="copiaAnterior">{{ t("organizaciones.eliminar.copiaAnterior", { copia: copiaAnterior }) }}</p>
+        <!-- Con la casilla desmarcada, la nombra el aviso que está bajo ella. -->
+        <p v-if="copiaAnterior && (copia || !ofreceCopia)">
+          {{ t("organizaciones.eliminar.copiaAnterior", { copia: copiaAnterior }) }}
+        </p>
         <p v-if="nPestanas">{{ t("organizaciones.eliminar.pestanas", { n: nPestanas }, nPestanas) }}</p>
 
         <label v-if="organizacion.externa && !sinArchivo" class="flex items-start gap-2">
