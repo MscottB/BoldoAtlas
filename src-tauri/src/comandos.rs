@@ -319,6 +319,8 @@ impl Estado {
         }
         // ya no hay vuelta atrás: la lista dice que abre la nueva, así que un error aquí no la detiene
         if let Some(anterior) = conn.take() {
+            // sin esperar a otro lector, con `conn` tomado: su `-wal` se recupera al reabrirla
+            let _ = anterior.busy_timeout(Duration::ZERO);
             let _ = anterior.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
             let _ = anterior.close();
         }
@@ -2339,7 +2341,9 @@ mod cambiar_a {
         d.e.con_conexion(&d.a.id, |c| db::lote(c, &[], "t"))
             .unwrap();
 
+        let t = Instant::now();
         let v = cambiar(&d.e, &d.b.id).unwrap();
+        assert!(t.elapsed() < Duration::from_secs(1), "{:?}", t.elapsed());
         assert!(v.activa);
         assert_eq!(d.e.base_abierta(), Some(base_de(&d.r, &d.b)));
         let l = lista_del_json(&d.r);
