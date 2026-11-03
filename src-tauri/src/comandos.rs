@@ -43,6 +43,7 @@ fn motivo_de_apertura(f: Fallo) -> String {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AvisoInicio {
     codigo: &'static str,
+    detalle: String,
     nombre: String,
 }
 
@@ -175,6 +176,7 @@ impl Estado {
                     es_la_ultima = e.es_principal();
                     aviso = Some(AvisoInicio {
                         codigo: f.codigo,
+                        detalle: f.detalle,
                         nombre: e.nombre,
                     })
                 }
@@ -2119,6 +2121,8 @@ mod arranque_organizaciones {
         let e = arrancar(&r);
         assert_eq!(abrio_boldo_db(&e, &r).id, id);
         assert_eq!(aviso(&e), ("no_encontrado", ausente.nombre.clone()));
+        let detalle = e.aviso_inicio.lock().unwrap().clone().unwrap().detalle;
+        assert!(detalle.contains(&ausente.ruta), "{detalle}");
         assert!(!pendrive.exists());
 
         // la ausente sigue, igual que estaba, para cuando vuelva el pendrive
@@ -3019,6 +3023,7 @@ mod cambiar_a {
             *d.e.error.lock().unwrap() = Some("motivo".into());
             *d.e.aviso_inicio.lock().unwrap() = Some(AvisoInicio {
                 codigo: "no_encontrado",
+                detalle: String::new(),
                 nombre: "Otra".into(),
             });
         };

@@ -289,7 +289,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
       await lote(sentencias);
       alExito?.();
       const r = await cargar();
-      return r.ok ? { ok: true, id: Array.isArray(plan) ? undefined : plan.id } : r;
+      // sin mensaje: la recarga llegó con otra base, y el lote ya se guardó
+      return r.ok || !r.mensaje ? { ok: true, id: Array.isArray(plan) ? undefined : plan.id } : r;
     } catch (e) {
       const r = fallo(e);
       // recargar aquí le quitaría su turno a la carga del cambio, que es la que dice cuándo están los datos

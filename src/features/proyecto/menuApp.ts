@@ -15,9 +15,11 @@ import {
 import { RUTA_BIENVENIDA } from "@/app/estructura";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
+import { alSoltarDatos } from "@/lib/baseActiva";
 
 /** Si el diálogo «Datos del proyecto» está abierto. Lo abren el nombre en la barra superior, el menú y la paleta. */
 export const datosProyectoAbierto = ref(false);
+alSoltarDatos(() => (datosProyectoAbierto.value = false)); // muestra la ruta de la base anterior
 
 export interface EntradaMenu {
   /** Clave de i18n: `menu.<id>`. */

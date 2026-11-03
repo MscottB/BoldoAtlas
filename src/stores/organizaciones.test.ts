@@ -8,6 +8,7 @@ import { recordarPorArbol, useVista } from "@/features/arbol/useVista";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { useFicha } from "@/features/trabajadores/useFicha";
+import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion } from "./organizacion";
 import { useOrganizaciones } from "./organizaciones";
@@ -213,6 +214,7 @@ describe("el cambio, en orden", () => {
     const { o } = await arrancar();
     useFicha().abrir("persona-de-A");
     usePuesto().abrir("puesto-de-A");
+    datosProyectoAbierto.value = true;
     useOrganizacion().unidades = [{ id: "u", nombre: "de A", parent_id: null }] as never;
     useOrganizacion().org = { nombre: "A", logo: null };
     const carga = pendiente<never[]>();
@@ -221,6 +223,7 @@ describe("el cambio, en orden", () => {
     await vi.waitFor(() => expect(baseActual()).toBe("B"));
     expect(useFicha().abierta.value).toBeNull();
     expect(usePuesto().abierta.value).toBeNull();
+    expect(datosProyectoAbierto.value).toBe(false);
     expect(useOrganizacion().unidades).toEqual([]);
     expect(useOrganizacion().org.nombre).toBe("");
     carga.resolver([]);
@@ -327,7 +330,7 @@ describe("el cambio, en orden", () => {
     await vi.waitFor(() => expect(c.abrirOrganizacion).toHaveBeenCalledTimes(1));
     const c1 = o.activarPestana("c1");
     const d1 = o.activarPestana("d1");
-    expect(await c1).toEqual({ ok: true });
+    expect(await c1).toEqual({ ok: false, mensaje: "" });
     paso.resolver();
     await Promise.all([b, d1]);
     expect(c.abrirOrganizacion.mock.calls.map(([id]) => id)).toEqual(["B", "D"]);
@@ -349,6 +352,166 @@ describe("el cambio, en orden", () => {
     await esperar();
     expect(baseActual()).toBe("A");
     expect(router.currentRoute.value.fullPath).toBe("/revision");
+  });
+});
+
+describe("el último pedido gana", () => {
+  const DOS = { lista: [TRES.lista[0], TRES.lista[1]], activa: "a1" };
+
+  function abrirConPausa() {
+    const paso = pendiente<void>();
+    c.abrirOrganizacion.mockImplementationOnce(async (id: string) => (await paso.promesa, { id }));
+    return paso;
+  }
+  const abiertas = () => c.abrirOrganizacion.mock.calls.map(([id]) => id);
+  const unaAbriendose = () => vi.waitFor(() => expect(c.abrirOrganizacion).toHaveBeenCalledTimes(1));
+
+  it("A→B→A con dos pestañas termina en A", async () => {
+    const { p } = await arrancar(DOS);
+    const paso = abrirConPausa();
+    p.siguiente(1);
+    await unaAbriendose();
+    p.siguiente(1);
+    paso.resolver();
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "A"]));
+    await vi.waitFor(() => expect(baseActual()).toBe("A"));
+    await esperar();
+    expect(p.activa).toBe("a1");
+  });
+
+  it("un clic en la pestaña de partida mientras se abre otra vuelve a ella", async () => {
+    const { p } = await arrancar(DOS);
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    p.activar("a1");
+    paso.resolver();
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "A"]));
+    await esperar();
+    expect(p.activa).toBe("a1");
+    expect(baseActual()).toBe("A");
+  });
+
+  it("A→B→C en espera→a1 termina en A, sin pasar por C", async () => {
+    const { p } = await arrancar();
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    p.activar("c1");
+    p.activar("a1");
+    paso.resolver();
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "A"]));
+    await esperar();
+    expect(p.activa).toBe("a1");
+    expect(baseActual()).toBe("A");
+  });
+
+  it("ir durante abrir queda en la cola", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "a2", org: "A", ruta: "/revision" }, TRES.lista[1]],
+      activa: "a1",
+    });
+    const paso = abrirConPausa();
+    const r = o.abrir("B");
+    await unaAbriendose();
+    p.activar("a2");
+    expect(router.currentRoute.value.fullPath).toBe("/");
+    paso.resolver();
+    await r;
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "A"]));
+    await vi.waitFor(() => expect(p.activa).toBe("a2"));
+    await esperar();
+    expect(baseActual()).toBe("A");
+    expect(router.currentRoute.value.fullPath).toBe("/revision");
+  });
+
+  it("un clic en la activa durante abrir también gana", async () => {
+    const { p, o } = await arrancar(DOS);
+    const paso = abrirConPausa();
+    const r = o.abrir("B");
+    await unaAbriendose();
+    p.activar("a1");
+    paso.resolver();
+    await r;
+    await vi.waitFor(() => expect(abiertas()).toEqual(["B", "A"]));
+    await esperar();
+    expect(p.activa).toBe("a1");
+    expect(baseActual()).toBe("A");
+  });
+
+  it("un eliminar en espera y reemplazado no dice que se hizo", async () => {
+    const { o } = await arrancar();
+    const paso = abrirConPausa();
+    const b = o.activarPestana("b1");
+    await unaAbriendose();
+    const quitada = o.eliminar("C", { guardarCopia: false, borrarArchivo: false });
+    const a = o.activarPestana("a1");
+    expect(await quitada).toEqual({ ok: false, mensaje: "" });
+    paso.resolver();
+    await Promise.all([b, a]);
+    expect(c.eliminarOrganizacion).not.toHaveBeenCalled();
+    expect(ids()).toContain("c1");
+  });
+
+  it("cerrar hacia una vecina, si otro pedido lo reemplaza, no quita la pestaña ni vuelve a ella", async () => {
+    const { p } = await arrancar();
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    p.cerrar("a1"); // su vecina es b1, y queda en espera
+    p.activar("c1");
+    paso.resolver();
+    await vi.waitFor(() => expect(baseActual()).toBe("C"));
+    await esperar();
+    expect(p.activa).toBe("c1");
+    expect(ids()).toContain("a1");
+  });
+
+  it("si se cierra la pestaña mientras se cambia hacia ella, queda una de la abierta en su inicio", async () => {
+    const { p } = await arrancar();
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    p.cerrar("b1");
+    paso.resolver();
+    await vi.waitFor(() => expect(baseActual()).toBe("B"));
+    await esperar();
+    const activa = p.lista.find((x) => x.id === p.activa);
+    expect(activa).toMatchObject({ org: "B", ruta: "/" });
+    expect(router.currentRoute.value.fullPath).toBe("/");
+  });
+
+  it("y si la abierta tiene otra, activa esa", async () => {
+    const { p } = await arrancar({
+      lista: [TRES.lista[0], TRES.lista[1], { id: "b2", org: "B", ruta: "/revision" }],
+      activa: "a1",
+    });
+    const paso = abrirConPausa();
+    p.activar("b1");
+    await unaAbriendose();
+    p.cerrar("b1");
+    paso.resolver();
+    await vi.waitFor(() => expect(baseActual()).toBe("B"));
+    await esperar();
+    expect(p.activa).toBe("b2");
+    expect(router.currentRoute.value.fullPath).toBe("/revision");
+  });
+
+  it("si se cierra y el archivo no abre, sigue en la actual con el motivo en un aviso", async () => {
+    const { p } = await arrancar();
+    const paso = pendiente<void>();
+    c.abrirOrganizacion.mockImplementationOnce(async () => {
+      await paso.promesa;
+      throw fallo("no_encontrado");
+    });
+    p.activar("b1");
+    await unaAbriendose();
+    p.cerrar("b1");
+    paso.resolver();
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(p.activa).toBe("a1");
+    expect(baseActual()).toBe("A");
+    expect(useOrganizaciones().sinAbrir.size).toBe(0);
   });
 });
 
@@ -607,6 +770,22 @@ describe("crear", () => {
     const { o } = await arrancar();
     c.crearOrganizacionNueva.mockResolvedValue("N");
     await Promise.all([o.explorarEjemplo(), o.explorarEjemplo()]);
+    expect(c.crearOrganizacionNueva).toHaveBeenCalledTimes(1);
+  });
+
+  it("el segundo clic no decide con la lista vieja cuando el primero ya creó el ejemplo", async () => {
+    const { o } = await arrancar();
+    const creada = pendiente<string>();
+    const vieja = pendiente<unknown[]>();
+    c.crearOrganizacionNueva.mockReturnValue(creada.promesa);
+    c.listarOrganizaciones.mockResolvedValueOnce([]).mockReturnValueOnce(vieja.promesa);
+    const primero = o.explorarEjemplo();
+    await vi.waitFor(() => expect(c.crearOrganizacionNueva).toHaveBeenCalledTimes(1));
+    const segundo = o.explorarEjemplo(); // su lista se pidió antes de que exista el ejemplo
+    creada.resolver("N");
+    await primero;
+    vieja.resolver([]);
+    await segundo;
     expect(c.crearOrganizacionNueva).toHaveBeenCalledTimes(1);
   });
 });

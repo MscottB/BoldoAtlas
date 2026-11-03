@@ -666,10 +666,12 @@ fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
 
 /// Un corte durante el primer paso a WAL de un archivo en modo DELETE deja un `-journal` legítimo, sin el que la base queda
 /// corrupta. Leer el esquema lo aplica. Sin pasar a WAL: el archivo aún no se revisó. Con el bloqueo: otra copia de la app puede
-/// tenerlo abierto.
-fn aplicar_diario(bd: &Path) -> Result<(), Fallo> {
+/// tenerlo abierto. Por un enlace, SQLite busca el diario junto al enlace o junto al archivo, según el sistema: se abre por
+/// donde está.
+fn aplicar_diario(bd: &Path, canonica: &Path) -> Result<(), Fallo> {
     let _bloqueo = bloquear(bd, ESPERA_CAMBIO)?;
-    let c = Connection::open(bd)?;
+    let junto_al_real = !con_sufijo(bd, "-journal").exists();
+    let c = Connection::open(if junto_al_real { canonica } else { bd })?;
     c.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))?;
     c.close().map_err(|(_, e)| e)?;
     if tiene_diario(bd) {
@@ -806,7 +808,7 @@ pub(crate) fn agregar_con_red(
         if !confirmados.contains(&"journal") {
             return preguntar("journal");
         }
-        aplicar_diario(&absoluta)?;
+        aplicar_diario(&absoluta, &canonica)?;
     }
     // con un `-wal`, leerlo usa memoria compartida y deja un `-shm` en la carpeta compartida
     if de_red && con_sufijo(&absoluta, "-wal").exists() {
@@ -2297,6 +2299,42 @@ mod tests_archivo {
             )
             .unwrap();
         assert_eq!(a_medias, 0, "el diario deshizo la transacción cortada");
+    }
+
+    /// Por un enlace, el diario puede estar junto al archivo de verdad, y en Windows SQLite no lo buscaría allí si abre el enlace.
+    #[test]
+    fn buscar_por_un_enlace_aplica_el_diario_del_archivo_real() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, real, id) = afuera("x.db");
+        agregar(&r, &real).unwrap();
+        deja_un_diario_de_verdad(&real);
+        let enlace = d.path().join("enlace.db");
+        if !crear_enlace(&real, &enlace) {
+            return;
+        }
+        let buscar = |confirmados: &[&str]| {
+            agregar_con_red(
+                &r,
+                &enlace,
+                Some(&id),
+                confirmados,
+                MIGRACIONES,
+                i64::MAX,
+                no_es_red,
+            )
+        };
+        assert_eq!(buscar(&[]).unwrap().pide, Some("journal"));
+        buscar(&["journal"]).unwrap();
+        assert!(!con_sufijo(&real, "-journal").exists());
+        let c = solo_lectura_cerrada(&real).unwrap();
+        let a_medias: i64 = c
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE name = 'a_medias'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(a_medias, 0);
     }
 
     #[test]

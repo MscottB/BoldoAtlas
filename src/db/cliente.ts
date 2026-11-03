@@ -10,7 +10,7 @@ export interface InfoApp {
   versionEsquema: number;
   error: string | null;
   /** La organización que no abrió al arrancar, y por qué: se abrió `boldo.db` en su lugar. */
-  avisoInicio?: { codigo: string; nombre: string } | null;
+  avisoInicio?: { codigo: string; detalle: string; nombre: string } | null;
 }
 
 export interface ArchivoAgregado {

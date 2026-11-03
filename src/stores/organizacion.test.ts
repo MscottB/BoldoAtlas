@@ -1850,6 +1850,19 @@ describe("sentenciasNueva", () => {
     h.antesDeMeta = null;
   });
 
+  it("con el lote ya guardado, BaseCambiada en la recarga cuenta como éxito", async () => {
+    const s = nuevo();
+    await s.cargar();
+    h.antesDeMeta = async () => {
+      throw new BaseCambiada();
+    };
+    const r = await s.crearArbol("Guardada", TIPO_AREA);
+    h.antesDeMeta = null;
+    expect(r).toMatchObject({ ok: true, id: expect.any(String) });
+    expect(s.error).toBeNull();
+    expect(h.bd!.consultar("SELECT id FROM unidades WHERE nombre = 'Guardada'")).toHaveLength(1);
+  });
+
   it("una lectura que llega con BaseCambiada tampoco pone error", async () => {
     const s = nuevo();
     h.antesDeMeta = async () => {

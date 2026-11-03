@@ -6,6 +6,7 @@ import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
 import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
+import { callarAvisosVacios } from "./lib/avisos";
 import { fijarBase, soltarDatos } from "./lib/baseActiva";
 import { migrarPreferencias } from "./lib/preferencias";
 import { useTema } from "./features/tema/useTema";
@@ -21,6 +22,7 @@ import "./styles/main.css";
 
 // Antes de montar: el tema ya está aplicado en el primer pintado, sin parpadeo.
 useTema().aplicar();
+callarAvisosVacios();
 
 /* eslint-disable vue/one-component-per-file -- son dos raíces alternativas de createApp, no dos componentes */
 // Si Rust no pudo abrir la base (o ni siquiera responde), se muestra el motivo en vez de una ventana en blanco.
@@ -48,7 +50,7 @@ infoApp()
     app.mount("#app");
     if (info.avisoInicio)
       toast.warning(i18n.global.t("organizaciones.avisoInicio", { nombre: info.avisoInicio.nombre }), {
-        description: mensajeOrganizacion({ codigo: info.avisoInicio.codigo, detalle: "" }),
+        description: mensajeOrganizacion(info.avisoInicio),
         duration: Infinity,
       });
     iniciarRespaldoAutomatico();

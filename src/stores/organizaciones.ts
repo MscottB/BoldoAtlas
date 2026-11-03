@@ -88,17 +88,17 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   }
 
   // Un solo cambio a la vez: otro que llegue espera y, de los que esperan, vale el último (Ctrl+Tab rápido).
-  let enCurso = false;
+  const enCurso = ref(false);
   let espera: { pedido: () => Promise<Resultado>; listo: (r: Resultado) => void } | null = null;
   async function enOrden(pedido: () => Promise<Resultado>): Promise<Resultado> {
-    if (enCurso)
+    if (enCurso.value)
       return new Promise((listo) => {
-        espera?.listo({ ok: true }); // uno más nuevo lo reemplazó
+        espera?.listo(CANCELADO); // uno más nuevo lo reemplazó: este no se hizo
         espera = { pedido, listo };
       });
-    enCurso = true;
+    enCurso.value = true;
     const r = await pedido().catch((e: unknown) => ({ ok: false as const, mensaje: mensajeOrganizacion(e) }));
-    enCurso = false;
+    enCurso.value = false;
     const siguiente = espera;
     espera = null;
     if (siguiente) void enOrden(siguiente.pedido).then(siguiente.listo);
@@ -129,15 +129,16 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   };
 
   /** Pasos 5 y 6, con la base que dejó abierta Rust. `pestana` null es volver a Inicio. */
-  async function entrarEn(id: string, pestana: string | null, inicio: number) {
+  async function entrarEn(id: string, pedida: string | null, inicio: number) {
     const pestanas = usePestanas();
     fijarBase(id);
     marcarCambio(false);
     soltarDatos();
     try {
       const r = await org.cargar();
-      if (!pestana) await pestanas.irAInicio();
+      if (!pedida) await pestanas.irAInicio();
       else {
+        const pestana = pestanas.pestanaDeLlegada(pedida);
         pestanas.marcarActiva(pestana);
         if (r.ok) {
           sinAbrir.value.delete(pestana);
@@ -169,7 +170,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       volverSinCambio();
       const mensaje = mensajeOrganizacion(e);
       const codigo = campo(e, "codigo");
-      if (!DEL_ARCHIVO.has(codigo)) return { ok: false, mensaje };
+      // si la pestaña se cerró mientras tanto, no hay dónde dejar el motivo
+      if (!DEL_ARCHIVO.has(codigo) || !usePestanas().existe(pestana)) return { ok: false, mensaje };
       sinAbrir.value.set(pestana, { codigo, mensaje, detalle: campo(e, "detalle") });
       usePestanas().marcarActiva(pestana);
       return { ok: true };
@@ -230,12 +232,17 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     return (creando ??= crearYAbrir(tipo, datos).finally(() => (creando = null)));
   }
 
-  async function explorarEjemplo(): Promise<Resultado> {
+  async function buscarOCrearEjemplo(): Promise<Resultado> {
     const r = await cargarLista();
     if (!r.ok) return r;
     const ya = lista.value.find((o) => o.ejemplo);
     return ya ? abrir(ya.id) : crear("ejemplo");
   }
+
+  // Toda la acción, no solo el crear: un segundo clic decidiría con una lista pedida antes de que exista el ejemplo.
+  let explorando: Promise<Resultado> | null = null;
+  const explorarEjemplo = (): Promise<Resultado> =>
+    (explorando ??= buscarOCrearEjemplo().finally(() => (explorando = null)));
 
   /** Solo la saca de la lista: sus pestañas dicen que ya no está. */
   async function quitar(id: string): Promise<Resultado> {
@@ -317,6 +324,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     lista,
     recientes,
     cambiando,
+    enCurso,
     sinAbrir,
     cargarLista,
     abrir,

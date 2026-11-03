@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { abrirCarpetaDatos, infoProyecto, type InfoProyecto } from "@/db/cliente";
+import { BaseCambiada } from "@/lib/baseActiva";
 import { tamano } from "@/lib/formato";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { useRetornoFoco } from "@/lib/foco";
@@ -34,7 +35,7 @@ watch(datosProyectoAbierto, async (abierto) => {
   try {
     info.value = await infoProyecto();
   } catch (e) {
-    error.value = mensajeFallo(e);
+    if (!(e instanceof BaseCambiada)) error.value = mensajeFallo(e);
   }
 });
 

@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { infoProyecto, respaldarAntesDeOptimizar } from "@/db/cliente";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
+import { BaseCambiada } from "@/lib/baseActiva";
 import { tamano } from "@/lib/formato";
 import { conTrabajo } from "@/lib/trabajos";
 import { bytesEnFotos, estimar, leerCandidatas, optimizarTodas, PASOS, terminar } from "./optimizarFotos";
@@ -62,7 +63,7 @@ async function preparar() {
     etapa.value = "confirmar";
   } catch (e) {
     etapa.value = "reposo";
-    toast.error(mensajeFallo(e));
+    if (!(e instanceof BaseCambiada)) toast.error(mensajeFallo(e));
   }
 }
 
