@@ -9,6 +9,7 @@ import {
   leerPestanas,
   mover,
   rutaValida,
+  sinOrganizacion,
   unaPestana,
   vecina,
   type Pestanas,
@@ -23,6 +24,37 @@ const tres = (activa = "b"): Pestanas => ({
   activa,
 });
 const ids = (m: Pestanas) => m.lista.map((p) => p.id).join("");
+
+describe("sinOrganizacion", () => {
+  const dos: Pestanas = {
+    lista: [
+      { id: "a", org: "A", ruta: "/" },
+      { id: "b", org: "B", ruta: "/directorio" },
+      { id: "c", org: "B", ruta: "/revision" },
+    ],
+    activa: "a",
+  };
+
+  it("quita las suyas y deja la activa", () => {
+    expect(sinOrganizacion(dos, "B", () => "n", "A")).toEqual({ lista: [dos.lista[0]], activa: "a" });
+  });
+
+  it("si la activa era suya, pasa a una de la abierta", () => {
+    const m = sinOrganizacion({ ...dos, activa: "b" }, "B", () => "n", "A");
+    expect(m).toEqual({ lista: [dos.lista[0]], activa: "a" });
+  });
+
+  it("si no queda ninguna, deja una de la abierta en /", () => {
+    const m = sinOrganizacion({ lista: [dos.lista[1]!], activa: "b" }, "B", () => "n", "A");
+    expect(m).toEqual({ lista: [{ id: "n", org: "A", ruta: "/" }], activa: "n" });
+  });
+
+  it("si solo quedan de otras, también abre una de la abierta", () => {
+    const m = sinOrganizacion(dos, "A", () => "n", "Z");
+    expect(ids(m)).toBe("bcn");
+    expect(m.activa).toBe("n");
+  });
+});
 
 describe("abrir", () => {
   it("inserta a la derecha de la activa y la activa", () => {

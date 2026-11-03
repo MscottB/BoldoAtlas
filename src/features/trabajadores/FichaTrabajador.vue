@@ -229,6 +229,12 @@ const decidir = (seguir: boolean) => {
   alDecidir?.(seguir);
   alDecidir = null;
 };
+// Antes de dejar la organización se pregunta lo mismo; sin cambios no se cierra aquí, porque el cambio aún puede no ocurrir.
+ficha.registrarSoltar(async () => {
+  if (!ficha.abierta.value || !(await hayCambios())) return true;
+  confirmando.value = true;
+  return new Promise<boolean>((resolver) => (alDecidir = resolver));
+});
 
 async function pedirCerrar() {
   if (!ficha.abierta.value) return;

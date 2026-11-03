@@ -118,6 +118,7 @@ pub fn run() {
             comandos::listar_organizaciones,
             comandos::abrir_organizacion,
             comandos::crear_organizacion,
+            comandos::sincronizar_organizacion,
             comandos::agregar_archivo_organizacion,
             comandos::confirmar_archivo_organizacion,
             comandos::quitar_organizacion,

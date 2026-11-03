@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
+import { toast } from "vue-sonner";
 import App from "./App.vue";
 import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
@@ -11,7 +12,7 @@ import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
 import { useRecientes } from "./features/inicio/useRecientes";
-import { iniciarRespaldoAutomatico } from "./features/respaldos/respaldos";
+import { iniciarRespaldoAutomatico, mensajeOrganizacion } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
 import { crearBandeja } from "./features/actualizaciones/bandeja";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
@@ -45,6 +46,11 @@ infoApp()
     const app = createApp(App).use(pinia).use(router).use(i18n);
     await router.replace(destino);
     app.mount("#app");
+    if (info.avisoInicio)
+      toast.warning(i18n.global.t("organizaciones.avisoInicio", { nombre: info.avisoInicio.nombre }), {
+        description: mensajeOrganizacion({ codigo: info.avisoInicio.codigo, detalle: "" }),
+        duration: Infinity,
+      });
     iniciarRespaldoAutomatico();
     // «Novedades» tras actualizar y la consulta periódica de versiones nuevas (la única conexión automática)
     useActualizaciones(pinia).iniciar();

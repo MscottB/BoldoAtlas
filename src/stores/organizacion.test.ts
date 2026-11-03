@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
+import { BaseCambiada, soltarDatos } from "@/lib/baseActiva";
 import * as U from "@/db/repos/unidades";
 import * as X from "@/db/repos/conexiones";
 import { useOrganizacion } from "./organizacion";
@@ -1831,6 +1832,64 @@ describe("sentenciasNueva", () => {
     const otra = nuevo();
     await otra.cargarEjemplo();
     expect(otra.unidades.map((u) => u.nombre).sort()).toEqual(unidades);
+  });
+
+  it("BaseCambiada no pone error y no recarga con la base nueva", async () => {
+    const s = nuevo();
+    await s.cargar();
+    const lecturas = vi.fn();
+    h.antesDeMeta = async () => lecturas();
+    h.antesDeLote = async () => {
+      throw new BaseCambiada();
+    };
+    const r = await s.crearArbol("Late", TIPO_AREA);
+    expect(r).toEqual({ ok: false, mensaje: "" });
+    expect(s.error).toBeNull();
+    expect(lecturas).not.toHaveBeenCalled();
+    h.antesDeLote = null;
+    h.antesDeMeta = null;
+  });
+
+  it("una lectura que llega con BaseCambiada tampoco pone error", async () => {
+    const s = nuevo();
+    h.antesDeMeta = async () => {
+      throw new BaseCambiada();
+    };
+    expect(await s.cargar()).toEqual({ ok: false, mensaje: "" });
+    expect(s.error).toBeNull();
+    h.antesDeMeta = null;
+  });
+
+  it("soltar vacía lo de la base anterior y descarta la carga en curso", async () => {
+    const s = nuevo();
+    await unidad(s, "De A");
+    await s.guardarOrg("Org A", null);
+    s.estiloCopiado = null;
+    s.fechaVista = "2026-01-01";
+    let soltarLectura = () => {};
+    h.antesDeMeta = () => new Promise<void>((r) => (soltarLectura = r));
+    const carga = s.cargar();
+    await vi.waitFor(() => expect(soltarLectura).not.toEqual(expect.any(Number)));
+    s.soltar();
+    soltarLectura();
+    await carga;
+    h.antesDeMeta = null;
+    expect(s.unidades).toEqual([]);
+    expect(s.trabajadores).toEqual([]);
+    expect(s.org).toEqual({ nombre: "", logo: null });
+    expect(s.fechaVista).toBeNull();
+    expect(s.estiloCopiado).toBeUndefined();
+    expect(s.ultimoBorrado).toBeNull();
+    expect(s.cambios).toBeNull();
+    expect(s.cargado).toBe(false);
+  });
+
+  it("soltarDatos llega al store, y antes de que exista no pasa nada", async () => {
+    expect(() => soltarDatos()).not.toThrow();
+    const s = nuevo();
+    await unidad(s, "De A");
+    soltarDatos();
+    expect(s.unidades).toEqual([]);
   });
 
   it("con la interfaz en inglés usa el nombre y los tipos en inglés, sin mirar la base abierta", async () => {

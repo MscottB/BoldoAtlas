@@ -81,6 +81,22 @@ describe("respaldo automático con la app abierta", () => {
     expect(respaldarAhora).toHaveBeenCalledTimes(1);
   });
 
+  it("BaseCambiada no avisa ni posterga el respaldo", async () => {
+    vi.resetModules();
+    const { toast } = await import("vue-sonner");
+    vi.mocked(toast).mockClear();
+    respaldarAhora.mockImplementationOnce(async () => {
+      const { BaseCambiada } = await import("@/lib/baseActiva");
+      throw new BaseCambiada();
+    });
+    await iniciar(25);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(respaldarAhora).toHaveBeenCalledTimes(1);
+    expect(toast).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(REVISION);
+    expect(respaldarAhora).toHaveBeenCalledTimes(2);
+  });
+
   it("cuenta como trabajo en curso", async () => {
     let fin: (archivo: string) => void = () => {};
     respaldarAhora.mockReturnValue(new Promise<string>((r) => (fin = r)));

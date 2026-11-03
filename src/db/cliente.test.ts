@@ -84,8 +84,28 @@ describe("el seguro", () => {
     invoke.mockImplementation(() => new Promise((_, r) => (rechazar = r)));
     const p = consultar("SELECT 1");
     fijarBase("B");
+    const consola = vi.spyOn(console, "error").mockImplementation(() => {});
     rechazar("malo");
     await expect(p).rejects.toBeInstanceOf(BaseCambiada);
+    expect(consola).toHaveBeenCalledWith("malo"); // descartado, pero con rastro
+    consola.mockRestore();
+  });
+
+  it("un otra_base descartado no ensucia la consola", async () => {
+    let rechazar: (e: unknown) => void = () => {};
+    invoke.mockImplementation(() => new Promise((_, r) => (rechazar = r)));
+    const p = consultar("SELECT 1");
+    fijarBase("B");
+    const consola = vi.spyOn(console, "error").mockImplementation(() => {});
+    rechazar("otra_base");
+    await expect(p).rejects.toBeInstanceOf(BaseCambiada);
+    expect(consola).not.toHaveBeenCalled();
+    consola.mockRestore();
+  });
+
+  it("sincronizarOrganizacion lleva baseId", async () => {
+    await c.sincronizarOrganizacion();
+    expect(invoke).toHaveBeenCalledWith("sincronizar_organizacion", { baseId: "A" });
   });
 
   it("un lote en cola sale con la base con que se pidió", async () => {

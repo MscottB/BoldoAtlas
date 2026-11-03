@@ -1,6 +1,7 @@
 import { toast } from "vue-sonner";
 import { listarRespaldos, respaldarAhora, type FalloRespaldo } from "@/db/cliente";
 import { i18n } from "@/i18n";
+import { BaseCambiada } from "@/lib/baseActiva";
 import { leerPreferencia } from "@/lib/preferencias";
 import { conTrabajo, trabajos } from "@/lib/trabajos";
 import type { Resultado } from "@/stores/organizacion";
@@ -16,7 +17,17 @@ export function mensajeFallo(e: unknown): string {
   const { t, te } = i18n.global;
   const f: Partial<FalloRespaldo> = typeof e === "object" && e !== null ? e : { detalle: String(e) };
   const clave = `respaldos.error.${f.codigo}`;
-  return t(te(clave) ? clave : "respaldos.error.fallo", { detalle: f.detalle ?? "" });
+  // contenido_invalido dice en `detalle` qué se encontró; los que no tienen texto propio usan el general
+  const precisa = f.codigo === "contenido_invalido" ? `${clave}_${f.detalle}` : clave;
+  return t(te(precisa) ? precisa : te(clave) ? clave : "respaldos.error.fallo", { detalle: f.detalle ?? "" });
+}
+
+/** Lo mismo al abrir una organización: lo que `respaldos.error` dice pensando en un respaldo tiene aquí su texto. */
+export function mensajeOrganizacion(e: unknown): string {
+  const { t, te } = i18n.global;
+  const codigo = typeof e === "object" && e !== null && "codigo" in e ? e.codigo : "";
+  const clave = `organizaciones.error.${String(codigo)}`;
+  return te(clave) ? t(clave) : mensajeFallo(e);
 }
 
 /** «Respaldar ahora» y el automático: cuenta como trabajo en curso. */
@@ -34,6 +45,7 @@ export async function respaldoAutomatico(alAbrir = true): Promise<void> {
     const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
     if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir)) await respaldar();
   } catch (e) {
+    if (e instanceof BaseCambiada) return; // se pasó a otra organización: no falló nada
     noAntesDe = Date.now() + ESPERA_TRAS_FALLO;
     // Sin caducar: con la ventana oculta nadie lo ve antes de volver a ella.
     toast(i18n.global.t("respaldos.automaticoFallo"), {

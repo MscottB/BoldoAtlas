@@ -48,6 +48,7 @@ import { excluidasParaConexion } from "@/features/unidades/panel";
 import { normalizarTexto } from "@/lib/texto";
 import { tiposARenombrar } from "@/features/configuracion/semillas";
 import { i18n, type Idioma } from "@/i18n";
+import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 
 export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string };
@@ -155,6 +156,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
           : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
 
   function fallo(e: unknown): { ok: false; mensaje: string } {
+    if (e instanceof BaseCambiada) return { ok: false, mensaje: "" }; // de la base anterior: no hay nada que mostrar
     const mensaje = traducirError(e);
     error.value = mensaje;
     return { ok: false, mensaje };
@@ -247,6 +249,33 @@ export const useOrganizacion = defineStore("organizacion", () => {
     }
   }
 
+  /** Se pasó a otra base: nada de la anterior queda a la vista, tampoco una foto (`urlFoto` lleva la base y no es reactiva). */
+  function soltar(): void {
+    ultimaCarga++;
+    unidades.value = [];
+    trabajadores.value = [];
+    puestos.value = [];
+    asignaciones.value = [];
+    etiquetas.value = [];
+    unidadEtiquetas.value = [];
+    zonas.value = [];
+    zonaUnidades.value = [];
+    conexiones.value = [];
+    subarboles.value = [];
+    vistas.value = [];
+    leyendas.value = [];
+    catalogos.value = catalogosVacios();
+    org.value = { nombre: "", logo: null };
+    cargado.value = false;
+    error.value = null;
+    ultimoBorrado.value = null;
+    fechaVista.value = null;
+    historico.value = null;
+    estiloCopiado.value = undefined;
+    cambios.value = null;
+  }
+  alSoltarDatos(soltar);
+
   // shortcut: recarga todo tras cada escritura; si una org de 2.000 unidades se siente lenta, aplicar el cambio en memoria.
   /** Única vía de escritura: un lote (una transacción) y recarga. Si falla, recarga igual para no mostrar datos viejos. */
   async function escribir(
@@ -263,6 +292,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
       return r.ok ? { ok: true, id: Array.isArray(plan) ? undefined : plan.id } : r;
     } catch (e) {
       const r = fallo(e);
+      // recargar aquí le quitaría su turno a la carga del cambio, que es la que dice cuándo están los datos
+      if (e instanceof BaseCambiada) return r;
       await cargar();
       error.value = r.mensaje;
       return r;
@@ -937,6 +968,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     activos,
     usos,
     cargar,
+    soltar,
     crearUnidad,
     crearArbol,
     editarUnidad,

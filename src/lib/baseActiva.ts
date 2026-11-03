@@ -8,9 +8,20 @@ export const fijarBase = (id: string): void => {
   actual = id;
 };
 
-/** Lo que la app guarda atado a la base abierta se suelta aquí al cambiar de base. */
+/**
+ * Lo que la app guarda atado a la base abierta se suelta aquí al cambiar de base. También corre al arrancar, antes de
+ * que exista Pinia: un store se suscribe desde su propio `setup`, no al cargar su módulo.
+ */
 export const alSoltarDatos = (f: () => void): void => void alSoltar.add(f);
-export const soltarDatos = (): void => alSoltar.forEach((f) => f());
+export const soltarDatos = (): void =>
+  alSoltar.forEach((f) => {
+    // uno que falla no deja a los demás con datos de la base anterior
+    try {
+      f();
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
 /** Una respuesta de una base que ya no es la activa: se descarta, y no es un error que mostrar. */
 export class BaseCambiada extends Error {

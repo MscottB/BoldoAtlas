@@ -520,6 +520,27 @@ impl Estado {
         borrado
     }
 
+    /// Deja en la lista lo que dice ahora la base abierta, como su nombre. No cuenta como abrirla.
+    pub fn sincronizar(&self, base_id: &str) -> Result<(), Fallo> {
+        let r = self.rutas()?;
+        self.con_conexion(base_id, |c| {
+            let base = self.base(base_id)?;
+            let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            let mut lista = cargar_lista(r);
+            if lista.no_escribir {
+                return Err(lista_protegida());
+            }
+            let e = lista
+                .organizaciones
+                .iter()
+                .find(|o| o.id == base_id)
+                .cloned()
+                .unwrap_or_else(|| entrada_de_base(r, &base));
+            anotar_abierta(&mut lista, &e, c, false)?;
+            escribir_lista(r, &lista)
+        })
+    }
+
     /// Solo la saca de la lista. La abierta no: su archivo está en uso, y la lista es de donde arranca.
     pub fn quitar(&self, id: &str) -> Result<(), Fallo> {
         let r = self.rutas()?;
@@ -893,6 +914,14 @@ pub async fn eliminar_organizacion(
 #[tauri::command]
 pub async fn color_organizacion(app: AppHandle, id: String, color: String) -> Result<(), Fallo> {
     tauri::async_runtime::spawn_blocking(move || app.state::<Estado>().colorear(&id, &color))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// En un hilo aparte: espera `conn` y `lista`.
+#[tauri::command]
+pub async fn sincronizar_organizacion(app: AppHandle, base_id: String) -> Result<(), Fallo> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<Estado>().sincronizar(&base_id))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -2670,6 +2699,41 @@ mod cambiar_a {
         let bd = ruta_de(&d.r, &d.b);
         drop(bloquear(&bd, YA).unwrap());
         sin_rastros(&bd);
+    }
+
+    #[test]
+    fn sincronizar_deja_el_nombre_en_la_lista_sin_tocar_la_fecha() {
+        let d = dos();
+        let antes = lista_del_json(&d.r);
+        let fecha = |l: &Lista| {
+            l.organizaciones
+                .iter()
+                .find(|o| o.id == d.a.id)
+                .map(|o| (o.abierta.clone(), o.nombre.clone()))
+                .unwrap()
+        };
+        d.e.con_conexion(&d.a.id, |c| {
+            c.execute(
+                "UPDATE meta SET valor = 'Renombrada' WHERE clave = 'org_nombre'",
+                [],
+            )
+            .map_err(|x| x.to_string())
+        })
+        .unwrap();
+        d.e.sincronizar(&d.a.id).unwrap();
+        let despues = lista_del_json(&d.r);
+        assert_eq!(fecha(&despues), (fecha(&antes).0, "Renombrada".to_string()));
+    }
+
+    #[test]
+    fn sincronizar_con_otra_base_no_escribe() {
+        let d = dos();
+        let antes = fs::read(d.r.datos.join("organizaciones.json")).unwrap();
+        assert_eq!(d.e.sincronizar(&d.b.id).unwrap_err().codigo, "otra_base");
+        assert_eq!(
+            fs::read(d.r.datos.join("organizaciones.json")).unwrap(),
+            antes
+        );
     }
 
     #[test]

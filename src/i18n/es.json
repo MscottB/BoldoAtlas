@@ -730,6 +730,21 @@
       "ayuda": "Ayuda"
     }
   },
+  "organizaciones": {
+    "cambiando": "Abriendo la organización…",
+    "avisoInicio": "No se pudo abrir «{nombre}». Se abrió otra organización en su lugar.",
+    "ejemplo": "Explorar el ejemplo",
+    "abrirIgual": "Abrir igual",
+    "pideRed": "Este archivo está en una carpeta de red, donde otro equipo podría dañarlo. ¿Copiarlo a este computador y abrir la copia?",
+    "pideOtroId": "Este archivo no es el de esta organización: tiene otros datos. ¿Usarlo en su lugar?",
+    "pideTope": "Este archivo pesa más de 512 MiB. Puede tardar en abrir y ocupar más memoria.",
+    "pideJournal": "Este archivo tiene una transacción sin terminar (un archivo -journal a su lado). BoldoAtlas puede recuperarla, y eso cambia el archivo. ¿Seguir?",
+    "error": {
+      "desconocido": "Esta organización ya no está en la lista.",
+      "esquema_nuevo": "Esta organización se guardó con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para abrirla.",
+      "danado": "El archivo está dañado o no es una base de BoldoAtlas. No se abrió."
+    }
+  },
   "pestanas": {
     "tituloVer": "Árbol · {nombre}",
     "barra": "Pestañas de trabajo",
@@ -946,6 +961,17 @@
       "otra_base": "BoldoAtlas tuvo un problema interno y no se cambió nada. Recarga la ventana para seguir.",
       "lista_protegida": "No se pudo leer la lista de organizaciones, o es de una versión más nueva de BoldoAtlas, y no se puede actualizar. Sigues en la misma organización. Reinicia BoldoAtlas o actualízalo.",
       "sin_espacio": "No queda espacio en el disco. Libera espacio e inténtalo de nuevo; no se cambió nada.",
+      "abierta": "Esa organización es la que está abierta. Pasa a otra antes de quitarla de la lista.",
+      "abierta_en_otra_copia": "Otra copia de BoldoAtlas tiene abierta esta organización. Ciérrala e inténtalo de nuevo; no se cambió nada.",
+      "trabajo_en_curso": "Hay un trabajo en curso. Espera a que termine e inténtalo de nuevo; no se cambió nada.",
+      "no_encontrado": "No se encontró el archivo de esta organización. Puede haberse movido, o estar en una unidad que no está conectada.",
+      "otro_id": "En el lugar de esta organización hay un archivo con otros datos. No se abrió ni se cambió. Devuelve el original a su lugar o busca el archivo correcto.",
+      "migracion": "No se pudo actualizar este archivo a la versión actual de BoldoAtlas. Se deshizo el intento y sigue como estaba.",
+      "contenido_invalido": "El archivo no es una organización válida de BoldoAtlas. No se cambió nada.",
+      "contenido_invalido_red": "El archivo ahora está en una carpeta de red, donde BoldoAtlas no trabaja directamente: otro equipo podría dañarlo. Búscalo de nuevo para copiarlo a este computador.",
+      "contenido_invalido_wal": "El archivo está en una carpeta de red y tiene cambios sin terminar (un archivo -wal a su lado). Ábrelo una vez en el equipo donde se usó, ciérralo bien e inténtalo de nuevo.",
+      "contenido_invalido_journal": "El archivo tiene una transacción sin terminar (un archivo -journal a su lado) y no se abrió. Mantén los dos juntos: hacen falta para recuperar los datos. Si esta organización ya está en tu lista, búscalo de nuevo para recuperarlo.",
+      "muy_pesado": "El archivo pesa más de lo que BoldoAtlas admite. No se cambió nada.",
       "fallo": "No se pudo completar la operación: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",

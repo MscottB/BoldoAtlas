@@ -730,6 +730,21 @@
       "ayuda": "Help"
     }
   },
+  "organizaciones": {
+    "cambiando": "Opening the organization…",
+    "avisoInicio": "“{nombre}” could not be opened. Another organization was opened instead.",
+    "ejemplo": "Explore the example",
+    "abrirIgual": "Open anyway",
+    "pideRed": "This file is in a network folder, where another computer could damage it. Copy it to this computer and open the copy?",
+    "pideOtroId": "This file isn't this organization's: it has different data. Use it instead?",
+    "pideTope": "This file is larger than 512 MiB. It may take a while to open and use more memory.",
+    "pideJournal": "This file has an unfinished transaction (a -journal file next to it). BoldoAtlas can recover it, and that changes the file. Continue?",
+    "error": {
+      "desconocido": "This organization is no longer on the list.",
+      "esquema_nuevo": "This organization was saved with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
+      "danado": "The file is damaged or is not a BoldoAtlas database. It wasn't opened."
+    }
+  },
   "pestanas": {
     "tituloVer": "Tree · {nombre}",
     "barra": "Work tabs",
@@ -946,6 +961,17 @@
       "otra_base": "BoldoAtlas ran into an internal problem and nothing was changed. Reload the window to continue.",
       "lista_protegida": "The list of organizations could not be read, or it comes from a newer version of BoldoAtlas, and it can't be updated. You're still in the same organization. Restart or update BoldoAtlas.",
       "sin_espacio": "There's no space left on the disk. Free up some space and try again; nothing was changed.",
+      "abierta": "That organization is the one that's open. Switch to another before removing it from the list.",
+      "abierta_en_otra_copia": "Another copy of BoldoAtlas has this organization open. Close it and try again; nothing was changed.",
+      "trabajo_en_curso": "A task is in progress. Wait for it to finish and try again; nothing was changed.",
+      "no_encontrado": "This organization's file could not be found. It may have been moved, or be on a drive that isn't connected.",
+      "otro_id": "There's a file with different data in this organization's place. It wasn't opened or changed. Put the original back or locate the right file.",
+      "migracion": "This file could not be updated to the current version of BoldoAtlas. The attempt was undone and it's still as it was.",
+      "contenido_invalido": "The file is not a valid BoldoAtlas organization. Nothing was changed.",
+      "contenido_invalido_red": "The file is now in a network folder, where BoldoAtlas doesn't work directly: another computer could damage it. Locate it again to copy it to this computer.",
+      "contenido_invalido_wal": "The file is in a network folder and has unfinished changes (a -wal file next to it). Open it once on the computer where it was used, close it properly and try again.",
+      "contenido_invalido_journal": "The file has an unfinished transaction (a -journal file next to it) and wasn't opened. Keep the two together: both are needed to recover the data. If this organization is already on your list, locate it again to recover it.",
+      "muy_pesado": "The file is larger than BoldoAtlas allows. Nothing was changed.",
       "fallo": "The operation could not be completed: {detalle}"
     },
     "ultimo": "Last backup: {fecha}",

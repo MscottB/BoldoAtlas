@@ -15,6 +15,7 @@ import { baseActual } from "@/lib/baseActiva";
 import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 import * as P from "./pestanas";
 
 /** Id del área central (el panel de las pestañas): recibe el foco si al cerrar una pestaña no queda barra. */
@@ -38,6 +39,10 @@ export const usePestanas = defineStore("pestanas", () => {
   let destino: { id: string; ruta: string } | null = null;
   /** Acerca de abierto con el enlace de Inicio: «Cerrar» vuelve allí. No se guarda: solo vale para esta visita. */
   let vueltaAInicio = false;
+  /** Pestaña a la que va un cambio de organización aún en curso: lo siguiente cuenta desde ella y pasa por la misma cola. */
+  let pedida: string | null = null;
+  /** false mientras `modelo` sea el inicial: desde Inicio se puede llegar aquí sin `entrar`, y guardarlo pisaría la clave. */
+  let cargadas = false;
 
   const lista = computed(() => modelo.value.lista);
   const activa = computed(() => modelo.value.activa);
@@ -63,8 +68,9 @@ export const usePestanas = defineStore("pestanas", () => {
     const suya = m.lista.find(de);
     if (suya) return { ...m, activa: suya.id };
     const id = nuevoId();
-    // Con el tope lleno de otras se pasa por una, que `leerPestanas` admite. shortcut: con esa de más y una tercera
-    // organización sin pestañas habría 14 y al releer se recorta la última; ver al abrir pestañas de otra organización.
+    // Con el tope lleno de otras se pasa por una, que `leerPestanas` admite. `abrir` de otra organización avisa en vez de
+    // pasarse. shortcut: al arrancar con esa de más, en una tercera sin pestañas porque la última no abrió, habría 14 y al
+    // releer se recorta la última; cerrar pestañas de más si alguien llega a eso.
     return (
       P.abrir(m, id, P.RUTA_INICIO, org) ?? {
         lista: [...m.lista, { id, org, ruta: P.RUTA_INICIO }],
@@ -73,10 +79,15 @@ export const usePestanas = defineStore("pestanas", () => {
     );
   }
 
-  /** Carga las pestañas guardadas del proyecto (validadas) y devuelve la ruta de la activa. */
-  function entrar(): string {
+  function cargarGuardadas() {
     const guardadas = clave ? leerPreferencia<unknown>(clave, null) : null;
     modelo.value = aLaAbierta(P.leerPestanas(guardadas, valida, nuevoId, baseActual()));
+    cargadas = true;
+  }
+
+  /** Carga las pestañas guardadas del proyecto (validadas) y devuelve la ruta de la activa. */
+  function entrar(): string {
+    cargarGuardadas();
     enProyecto = true;
     const p = modelo.value.lista.find((x) => x.id === modelo.value.activa)!;
     // Configuración, Ayuda y Acerca de son de paso: al entrar se llega a la vista de trabajo de la pestaña.
@@ -131,6 +142,8 @@ export const usePestanas = defineStore("pestanas", () => {
         cambios.volver = from.matched.length ? from.fullPath : undefined;
       }
       destino = null;
+      // La activa aún es de otra organización (cambiando, o sin abrir): esta ruta no es suya.
+      if (modelo.value.lista.find((p) => p.id === modelo.value.activa)?.org !== baseActual()) return;
       modelo.value = P.cambiar(modelo.value, modelo.value.activa, cambios);
     });
   }
@@ -145,13 +158,32 @@ export const usePestanas = defineStore("pestanas", () => {
   }
   const enLaBarra = () => !!document.activeElement?.closest?.('[role="tablist"]');
 
-  async function ir(id: string, siempre = enLaBarra()) {
+  /** Va a la ruta de la pestaña, que debe ser de la organización abierta. */
+  async function navegar(id: string) {
     const p = modelo.value.lista.find((x) => x.id === id);
     if (!p || !router) return;
     const r = router.resolve(p.ruta);
     destino = { id, ruta: r.fullPath };
     // force: dos pestañas pueden mostrar la misma ruta; igual hay que cambiar de pestaña.
     await router.replace({ path: r.path, query: r.query, hash: r.hash, force: true });
+  }
+
+  /** Cambia de organización para activar la pestaña. `pedida` se borra al terminar, salga bien o mal, si nadie pidió otra. */
+  async function cambiarHacia(id: string): Promise<Resultado> {
+    pedida = id;
+    const r = await useOrganizaciones().activarPestana(id);
+    if (pedida === id) pedida = null;
+    return r;
+  }
+
+  async function ir(id: string, siempre = enLaBarra()) {
+    const p = modelo.value.lista.find((x) => x.id === id);
+    if (!p || !router) return;
+    // Con un cambio en curso también pasa por la cola: `baseActual()` aún no dice dónde se va a terminar. Con motivo, reintenta.
+    if (p.org !== baseActual() || pedida || useOrganizaciones().sinAbrir.has(id)) {
+      const r = await cambiarHacia(id);
+      if (!r.ok && r.mensaje) toast.error(r.mensaje);
+    } else await navegar(id);
     await enfocar(siempre);
   }
 
@@ -173,10 +205,30 @@ export const usePestanas = defineStore("pestanas", () => {
     return { ok: true, id };
   }
 
+  /** La vecina es de otra organización: primero el cambio, y la pestaña se quita solo si salió bien. */
+  async function cerrarCambiando(id: string, vecina: string) {
+    const r = await cambiarHacia(vecina);
+    const motivo = useOrganizaciones().sinAbrir.get(vecina);
+    if (r.ok && !motivo) {
+      if (activa.value !== id) modelo.value = P.cerrar(modelo.value, id);
+    } else {
+      // el motivo queda en la vecina, para cuando se vaya a ella
+      modelo.value = { ...modelo.value, activa: id };
+      const mensaje = r.ok ? motivo?.mensaje : r.mensaje;
+      if (mensaje) toast.error(mensaje);
+    }
+    await enfocar(true);
+  }
+
   function cerrar(id: string): Resultado {
     if (modelo.value.lista.length <= 1) return { ok: false, mensaje: t("pestanas.ultima") };
     const m = P.cerrar(modelo.value, id);
     if (m === modelo.value) return { ok: false, mensaje: t("pestanas.noAbre") };
+    const nueva = m.lista.find((x) => x.id === m.activa)!;
+    if (id === activa.value && nueva.org !== baseActual()) {
+      void cerrarCambiando(id, nueva.id);
+      return { ok: true };
+    }
     // La cerrada sigue como activa (sin estar en la lista) hasta llegar a la ruta de la nueva.
     modelo.value = { ...m, activa: modelo.value.activa };
     if (id === activa.value) void ir(m.activa, true);
@@ -200,10 +252,53 @@ export const usePestanas = defineStore("pestanas", () => {
     activar,
     abrirNueva,
     cerrar,
-    /** Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1). */
     /** Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1); con un cambio aún en curso, cuenta desde la pestaña a la que se va. */
     siguiente: (paso: 1 | -1) =>
-      activar(P.vecina({ ...modelo.value, activa: destino?.id ?? modelo.value.activa }, paso)),
+      activar(P.vecina({ ...modelo.value, activa: pedida ?? destino?.id ?? modelo.value.activa }, paso)),
+    /** Las guardadas, si aún no se leyeron: lo que sigue parte de ellas y no de la pestaña inicial. */
+    asegurarCargadas() {
+      if (!cargadas) cargarGuardadas();
+    },
+    navegar,
+    /** Tras eliminar la organización abierta. */
+    async irAInicio() {
+      await router?.replace(RUTA_BIENVENIDA);
+    },
+    /** Activa sin navegar: la pestaña de una organización que no abrió, que muestra el motivo, o la del cambio en curso. */
+    marcarActiva(id: string) {
+      modelo.value = { ...modelo.value, activa: id };
+    },
+    /** Ya cargada su organización: lo que nombra su ruta se puede comprobar. Si no existe, vuelve al inicio. */
+    validarActivada(id: string) {
+      const p = modelo.value.lista.find((x) => x.id === id);
+      if (!p) return;
+      if (!valida(p.ruta))
+        modelo.value = P.cambiar(modelo.value, id, {
+          ruta: P.RUTA_INICIO,
+          volver: undefined,
+          estado: undefined,
+        });
+      else if (p.volver && !valida(p.volver))
+        modelo.value = P.cambiar(modelo.value, id, { volver: undefined });
+    },
+    /** Una pestaña nueva de `org` en el inicio, sin activarla. null con el tope lleno. */
+    agregarDe(org: string): string | null {
+      const id = nuevoId();
+      const m = P.abrir(modelo.value, id, P.RUTA_INICIO, org);
+      if (!m) return null;
+      modelo.value = { ...m, activa: modelo.value.activa };
+      return id;
+    },
+    /** La quita sin más: es la que `agregarDe` dejó para un cambio que no ocurrió, y nunca la activa. */
+    quitar(id: string) {
+      modelo.value = { ...modelo.value, lista: modelo.value.lista.filter((p) => p.id !== id) };
+    },
+    /** Sus pestañas se cierran solas: la organización ya no existe. */
+    cerrarDeOrganizacion(org: string) {
+      const antes = modelo.value.activa;
+      modelo.value = P.sinOrganizacion(modelo.value, org, nuevoId, baseActual());
+      if (enProyecto && modelo.value.activa !== antes) void ir(modelo.value.activa, true);
+    },
     /** «Cerrar» en Configuración, Ayuda o Acerca de: a la ruta de esta pestaña desde la que se abrió, o al inicio. */
     async cerrarVista() {
       const p = modelo.value.lista.find((x) => x.id === modelo.value.activa);

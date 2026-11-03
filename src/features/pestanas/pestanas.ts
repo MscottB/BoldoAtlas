@@ -54,6 +54,24 @@ export function cerrar(m: Pestanas, id: string): Pestanas {
   return { lista, activa: nueva.id };
 }
 
+/**
+ * Sin las pestañas de `org`, que ya no existe. La activa debe ser de la abierta: si era de `org`, pasa a una suya y, sin
+ * ninguna, a una nueva en el inicio. Aquí no rige «la última no se cierra», y como se quitó la activa hay lugar para ella.
+ */
+export function sinOrganizacion(
+  m: Pestanas,
+  org: string,
+  nuevoId: () => string,
+  orgAbierta: string,
+): Pestanas {
+  const lista = m.lista.filter((p) => p.org !== org);
+  if (lista.some((p) => p.id === m.activa)) return { lista, activa: m.activa };
+  const suya = lista.find((p) => p.org === orgAbierta);
+  if (suya) return { lista, activa: suya.id };
+  const id = nuevoId();
+  return { lista: [...lista, { id, org: orgAbierta, ruta: RUTA_INICIO }], activa: id };
+}
+
 /** La pestaña a `paso` de la activa, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab). */
 export function vecina(m: Pestanas, paso: 1 | -1): string {
   const n = m.lista.length;

@@ -621,7 +621,7 @@ fn abrir_entrada_con(
 #[derive(Debug, PartialEq, Serialize)]
 pub struct ArchivoAgregado {
     pub id: Option<String>,
-    /// `"red"`, `"otro_id"` o `"tope"`.
+    /// `"red"`, `"otro_id"`, `"tope"` o `"journal"`.
     pub pide: Option<&'static str>,
     /// `"copia"` o `"fuera_de_portable"`.
     pub avisos: Vec<&'static str>,
@@ -640,8 +640,7 @@ fn es_db(ruta: &Path) -> bool {
 }
 
 /// Dónde está lo que se eligió: la ruta absoluta, para guardar, y la canónica, para comparar. El filtro del diálogo no basta: un
-/// `x.restaurando` sería su propia copia al restaurar. `immutable` no ve un `-journal`, que al abrir para escribir cambiaría lo
-/// ya revisado; la app trabaja en WAL, así que no es de ella.
+/// `x.restaurando` sería su propia copia al restaurar.
 fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
     let invalido = |detalle| Err(Fallo::de("contenido_invalido", detalle));
     if !es_db(ruta) {
@@ -662,10 +661,21 @@ fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
     if !canonica.is_file() {
         return invalido("archivo");
     }
-    if con_sufijo(&canonica, "-journal").exists() {
-        return invalido("journal");
-    }
     Ok((absoluta, canonica))
+}
+
+/// Un corte durante el primer paso a WAL de un archivo en modo DELETE deja un `-journal` legítimo, sin el que la base queda
+/// corrupta. Leer el esquema lo aplica. Sin pasar a WAL: el archivo aún no se revisó. Con el bloqueo: otra copia de la app puede
+/// tenerlo abierto.
+fn aplicar_diario(bd: &Path) -> Result<(), Fallo> {
+    let _bloqueo = bloquear(bd, ESPERA_CAMBIO)?;
+    let c = Connection::open(bd)?;
+    c.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))?;
+    c.close().map_err(|(_, e)| e)?;
+    if tiene_diario(bd) {
+        return Err(Fallo::de("contenido_invalido", "journal"));
+    }
+    Ok(())
 }
 
 /// Si `e` apunta al archivo de `canonica`, por el camino que sea. `false` si su unidad no responde.
@@ -787,6 +797,17 @@ pub(crate) fn agregar_con_red(
     let datos = fs::canonicalize(&r.datos)?;
     let relativa = canonica.strip_prefix(&datos).ok();
     let de_red = relativa.is_none() && es_red(&canonica);
+    // `immutable` no ve un `-journal`, que al abrir para escribir cambiaría lo ya revisado: se aplica antes de revisar, y solo si
+    // se busca una organización propia que así lo dejó un corte, porque escribe en el archivo.
+    if tiene_diario(&absoluta) {
+        if de_red || buscando.is_none() {
+            return Err(Fallo::de("contenido_invalido", "journal"));
+        }
+        if !confirmados.contains(&"journal") {
+            return preguntar("journal");
+        }
+        aplicar_diario(&absoluta)?;
+    }
     // con un `-wal`, leerlo usa memoria compartida y deja un `-shm` en la carpeta compartida
     if de_red && con_sufijo(&absoluta, "-wal").exists() {
         return Err(Fallo::de("contenido_invalido", "wal"));
@@ -2214,6 +2235,95 @@ mod tests_archivo {
         assert_eq!(agregar(&r, &bd).unwrap_err().codigo, "contenido_invalido");
         assert_eq!(fs::read(&bd).unwrap(), antes);
         assert!(cargar_lista(&r).organizaciones.is_empty());
+    }
+
+    /// Lo que deja un corte con una transacción a medias en modo DELETE: páginas ya escritas y el diario que las deshace.
+    fn deja_un_diario_de_verdad(bd: &Path) {
+        let carpeta = tempfile::tempdir().unwrap();
+        let viva = carpeta.path().join("viva.db");
+        fs::copy(bd, &viva).unwrap();
+        let c = Connection::open(&viva).unwrap();
+        c.execute_batch(
+            "PRAGMA journal_mode = DELETE; PRAGMA cache_size = 2; BEGIN; CREATE TABLE a_medias (x);",
+        )
+        .unwrap();
+        for _ in 0..30 {
+            c.execute("INSERT INTO a_medias VALUES (zeroblob(100000))", [])
+                .unwrap();
+        }
+        fs::copy(&viva, bd).unwrap();
+        fs::copy(con_sufijo(&viva, "-journal"), con_sufijo(bd, "-journal")).unwrap();
+        drop(c);
+    }
+
+    fn no_es_red(_: &Path) -> bool {
+        false
+    }
+
+    #[test]
+    fn buscar_con_un_diario_pregunta_y_con_un_si_lo_aplica() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("x.db");
+        agregar(&r, &bd).unwrap();
+        deja_un_diario_de_verdad(&bd);
+        let diario = con_sufijo(&bd, "-journal");
+        let antes = fs::read(&bd).unwrap();
+        let buscar = |confirmados: &[&str]| {
+            agregar_con_red(
+                &r,
+                &bd,
+                Some(&id),
+                confirmados,
+                MIGRACIONES,
+                i64::MAX,
+                no_es_red,
+            )
+        };
+
+        assert_eq!(buscar(&[]).unwrap().pide, Some("journal"));
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert!(diario.exists());
+
+        let hecho = buscar(&["journal"]).unwrap();
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (Some(id.as_str()), None));
+        assert!(!diario.exists());
+        assert_eq!(id_en(&bd).as_deref(), Some(id.as_str()));
+        let c = solo_lectura_cerrada(&bd).unwrap();
+        let a_medias: i64 = c
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE name = 'a_medias'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(a_medias, 0, "el diario deshizo la transacción cortada");
+    }
+
+    #[test]
+    fn buscar_en_red_con_un_diario_no_lo_toca() {
+        for confirmados in [&["journal"][..], &["journal", "red"]] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, id) = afuera("x.db");
+            agregar(&r, &bd).unwrap();
+            deja_un_diario_de_verdad(&bd);
+            let antes = fs::read(&bd).unwrap();
+            let f = agregar_con_red(
+                &r,
+                &bd,
+                Some(&id),
+                confirmados,
+                MIGRACIONES,
+                i64::MAX,
+                de_red,
+            )
+            .unwrap_err();
+            assert_eq!(
+                (f.codigo, f.detalle.as_str()),
+                ("contenido_invalido", "journal")
+            );
+            assert_eq!(fs::read(&bd).unwrap(), antes);
+            assert!(con_sufijo(&bd, "-journal").exists());
+        }
     }
 
     #[test]
