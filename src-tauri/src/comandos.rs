@@ -362,7 +362,8 @@ impl Estado {
     }
 
     /// Borra una organización del disco. `Some` con la base nueva si era la abierta. Antes de borrar pasa todo lo que puede fallar
-    /// sin perder nada. Lo que falle ya borrando deja la entrada en la lista, y eliminarla de nuevo termina lo que faltó.
+    /// sin perder nada. Lo que falle ya borrando deja la entrada en la lista: eliminarla de nuevo termina lo que faltó; si el archivo
+    /// ya no está, sin pedir copia ni borrarlo.
     pub fn eliminar(
         &self,
         id: &str,
@@ -429,7 +430,8 @@ impl Estado {
             borrar_archivo_de(&base, bloqueo)?;
         }
         borrar_respaldos_de(r, &e)?;
-        // al final: si algo de lo anterior falla sigue en la lista, y eliminarla de nuevo termina lo que faltó
+        // al final: si algo de lo anterior falla sigue en la lista. Eliminarla de nuevo termina lo que faltó; si el archivo ya no
+        // está, sin pedir copia ni borrarlo
         let lista = {
             let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
             let mut lista = cargar_lista(r);
@@ -5120,6 +5122,58 @@ mod eliminar {
         assert_ne!(base.id, id);
         assert_eq!(nombres(&r.respaldos), ["notas.txt"]);
         assert!(ids(&r).is_empty());
+    }
+
+    /// SQLite va empaquetado y se actualiza: `vaciar_principal` abre un archivo nuevo donde pudo quedar el `-wal` del anterior.
+    #[test]
+    fn sqlite_no_aplica_un_wal_sin_su_archivo() {
+        let d = tempfile::tempdir().unwrap();
+        let bd = d.path().join("x.db");
+        crear(&bd, "Antes", db::MIGRACIONES);
+        deja_filas_en_el_wal(&bd, "En el wal");
+        assert!(con_sufijo(&bd, "-wal").exists());
+        fs::remove_file(&bd).unwrap();
+
+        let c = db::abrir(&bd).unwrap();
+
+        let hay_meta: bool = c
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE name = 'meta')",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert!(!hay_meta);
+        c.close().unwrap();
+        assert!(!con_sufijo(&bd, "-wal").exists());
+    }
+
+    /// El `.db` ya se fue y quedó algo al lado: pedirle lo mismo daría `no_encontrado`, y sacarla sin más termina.
+    #[test]
+    fn reintentar_sin_el_archivo_es_sin_pedir_copia_ni_borrarlo() {
+        let d = cuatro();
+        let bd = ruta_de(&d.r, &d.x);
+        // un `-wal` que no se puede abrir frena antes: leer el archivo ya falla, y no se borra nada. Comprobado solo en Windows
+        if cfg!(windows) {
+            let wal = con_sufijo(&bd, "-wal");
+            fs::create_dir(&wal).unwrap();
+            let f = eliminar(&d.e, &d.x.id, false, true).err().unwrap();
+            assert_eq!(f.codigo, "fallo", "{}", f.detalle);
+            assert!(bd.exists());
+            fs::remove_dir(&wal).unwrap();
+        }
+
+        fs::create_dir(con_sufijo(&bd, "-shm")).unwrap();
+        assert!(eliminar(&d.e, &d.x.id, false, true).is_err());
+        assert!(!bd.exists());
+        assert!(ids(&d.r).contains(&d.x.id));
+
+        let f = eliminar(&d.e, &d.x.id, false, true).err().unwrap();
+        assert_eq!(f.codigo, "no_encontrado");
+        assert!(ids(&d.r).contains(&d.x.id));
+
+        eliminar(&d.e, &d.x.id, false, false).unwrap();
+        assert!(!ids(&d.r).contains(&d.x.id));
     }
 
     #[test]

@@ -1088,39 +1088,41 @@ pub fn revisar_para_eliminar(
         return Err(Fallo::de("contenido_invalido", "journal"));
     }
     let usa_el_archivo = !e.externa || borrar_archivo || guardar_copia;
-    if existe && usa_el_archivo && !es_de_la_entrada(&bd, e) {
+    if existe && usa_el_archivo && !es_de_la_entrada(&bd, e)? {
         return Err(Fallo::de("otro_id", bd.display()));
     }
     Ok(existe)
 }
 
 /// Lo ilegible en su lugar de siempre sigue siendo de ella, y eliminarla es lo que más le sirve. Lo que se lee sin id, solo si no
-/// tiene nada que perder: si no, es de otro. Una externa pudo cambiar por fuera: sin ver su id, no se sabe qué es.
-fn es_de_la_entrada(bd: &Path, e: &Entrada) -> bool {
-    let Ok(c) = solo_lectura_cerrada(bd) else {
-        return !e.externa;
+/// tiene nada que perder: si no, es de otro. Una externa pudo cambiar por fuera: sin ver su id, no se sabe qué es. Si no se pudo
+/// mirar (no abre, un error pasajero), no se sabe nada del archivo: el error sigue, y no se borra ni se dice que es de otro.
+fn es_de_la_entrada(bd: &Path, e: &Entrada) -> Result<bool, Fallo> {
+    let c = solo_lectura_cerrada(bd)?;
+    let mirar = || -> rusqlite::Result<bool> {
+        Ok(match id_del_archivo(&c)? {
+            Some(id) => id == e.id,
+            None => !e.externa && no_tiene_nada(&c)?,
+        })
     };
-    match id_del_archivo(&c) {
-        Ok(Some(id)) => id == e.id,
-        Ok(None) => !e.externa && no_tiene_nada(&c),
-        // otro error, como uno pasajero, no dice nada del archivo
-        Err(f) => {
-            !e.externa
-                && matches!(
-                    f.sqlite_error_code(),
-                    Some(ErrorCode::NotADatabase | ErrorCode::DatabaseCorrupt)
-                )
-        }
+    match mirar() {
+        Err(f) => match (&f, f.sqlite_error_code()) {
+            // le falta una tabla o una columna de la app: tiene otra forma
+            (rusqlite::Error::SqlInputError { .. }, _) | (_, Some(ErrorCode::Unknown)) => Ok(false),
+            (_, Some(ErrorCode::NotADatabase | ErrorCode::DatabaseCorrupt)) => Ok(!e.externa),
+            _ => Err(f.into()),
+        },
+        Ok(de_ella) => Ok(de_ella),
     }
 }
 
-/// Sin una tabla (un archivo de 0 bytes), o con las de la app y sin filas. Lo que no se pueda mirar, tiene algo.
-fn no_tiene_nada(c: &Connection) -> bool {
-    c.query_row("SELECT NOT EXISTS (SELECT 1 FROM sqlite_master)", [], |f| {
-        f.get(0)
-    })
-    .unwrap_or(false)
-        || esta_vacia(c).unwrap_or(false)
+/// Sin una tabla (un archivo de 0 bytes), o con las de la app y sin filas.
+fn no_tiene_nada(c: &Connection) -> rusqlite::Result<bool> {
+    let sin_tablas: bool =
+        c.query_row("SELECT NOT EXISTS (SELECT 1 FROM sqlite_master)", [], |f| {
+            f.get(0)
+        })?;
+    Ok(sin_tablas || esta_vacia(c)?)
 }
 
 /// La copia de `e` en `organizaciones-eliminadas/`. Pasa por un temporal: un corte no deja una copia a medias con nombre válido.
@@ -2996,5 +2998,101 @@ mod tests_archivo {
         assert_eq!(f.codigo, "otro_id");
         assert_eq!(fs::read(&bd).unwrap(), b"");
         sin_rastros_ni_bloqueo(&bd);
+    }
+
+    fn truncar_a_su_primera_pagina(bd: &Path) {
+        let pagina: i64 = solo_lectura_cerrada(bd)
+            .unwrap()
+            .pragma_query_value(None, "page_size", |f| f.get(0))
+            .unwrap();
+        OpenOptions::new()
+            .write(true)
+            .open(bd)
+            .unwrap()
+            .set_len(pagina as u64)
+            .unwrap();
+    }
+
+    #[test]
+    fn truncada_a_su_primera_pagina_es_danada_y_solo_la_interna_se_puede_eliminar() {
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let bd = ruta_de(&r, &i);
+        truncar_a_su_primera_pagina(&bd);
+        let error = id_del_archivo(&solo_lectura_cerrada(&bd).unwrap()).unwrap_err();
+        assert_eq!(error.sqlite_error_code(), Some(ErrorCode::DatabaseCorrupt));
+
+        assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
+
+        let x = entrada(&i.id, bd.to_str().unwrap(), true, "2020");
+        let f = revisar_para_eliminar(&r, &x, false, false, true).unwrap_err();
+        assert_eq!(f.codigo, "otro_id");
+    }
+
+    /// No se pudo mirar: ni es ilegible, que dejaría borrarla sin ver su id, ni es de otro.
+    #[test]
+    fn lo_que_no_se_puede_abrir_no_dice_de_quien_es() {
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let carpeta = r.datos.join("organizaciones");
+        for e in [&i, &entrada(&i.id, carpeta.to_str().unwrap(), true, "2020")] {
+            assert!(es_de_la_entrada(&carpeta, e).is_err());
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn una_interna_que_otro_programa_retiene_no_se_da_por_ilegible() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let retenida = OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(ruta_de(&r, &i))
+            .unwrap();
+        let f = revisar_para_eliminar(&r, &i, false, false, false).unwrap_err();
+        assert_ne!(f.codigo, "otro_id");
+        drop(retenida);
+        assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
+    }
+
+    /// Otra conexión con la base tomada en exclusiva: `SQLITE_BUSY`, tras la espera de 5 s de cada conexión.
+    #[test]
+    fn un_error_pasajero_no_sale_como_otro_id() {
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let bd = ruta_de(&r, &i);
+        let otra = db::abrir(&bd).unwrap();
+        otra.pragma_update(None, "locking_mode", "EXCLUSIVE")
+            .unwrap();
+        otra.execute("UPDATE meta SET valor = 'x' WHERE clave = 'org_nombre'", [])
+            .unwrap();
+        let x = entrada(&i.id, bd.to_str().unwrap(), true, "2020");
+        for e in [&i, &x] {
+            let f = revisar_para_eliminar(&r, e, false, false, true).unwrap_err();
+            assert_eq!(f.codigo, "fallo", "{}", f.detalle);
+        }
+        otra.close().unwrap();
+        assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
+    }
+
+    /// Una tabla `meta` que no es la de la app, o sin las tablas de la app: tiene otra forma, y eso sí dice que es de otro.
+    #[test]
+    fn lo_que_tiene_otra_forma_es_de_otro() {
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let bd = ruta_de(&r, &i);
+        for sql in [
+            "CREATE TABLE meta (otra);",
+            "CREATE TABLE meta (clave, valor);",
+        ] {
+            fs::remove_file(&bd).unwrap();
+            let c = Connection::open(&bd).unwrap();
+            c.execute_batch(sql).unwrap();
+            c.close().unwrap();
+            let f = revisar_para_eliminar(&r, &i, false, false, false).unwrap_err();
+            assert_eq!(f.codigo, "otro_id", "{sql}");
+        }
     }
 }
