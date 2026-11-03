@@ -42,6 +42,21 @@ export function guardarPreferenciaOrg(clave: string, valor: unknown): void {
 // `plegado:*`, tema, idioma, respaldos y recientes siguen por PC.
 const POR_ORGANIZACION = /^(vista|vista:[^:]+|directorio|directorio:columnas|personas:vista|minimapa)$/;
 
+/** Quita las preferencias de una organización que ya no existe. Las de las demás, y las de cada PC, quedan. */
+export function borrarPreferenciasOrg(id: string): void {
+  if (!id) return;
+  const cola = `:${id}`;
+  try {
+    const claves = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+    for (const k of claves) {
+      if (!k?.startsWith(PREFIJO) || !k.endsWith(cola)) continue;
+      if (POR_ORGANIZACION.test(k.slice(PREFIJO.length, -cola.length))) localStorage.removeItem(k);
+    }
+  } catch {
+    // sin localStorage no hay qué borrar, y una preferencia nunca debe romper la app
+  }
+}
+
 /** Copia, una vez por copia de la app, las preferencias antiguas a las de la organización `id`. Deja las originales. */
 export function migrarPreferencias(id: string, dirDatos: string): void {
   const marca = `organizaciones:migrado:${dirDatos}`;

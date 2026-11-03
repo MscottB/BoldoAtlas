@@ -34,6 +34,13 @@ export interface Organizacion {
   ejemplo: boolean;
 }
 
+export interface OrganizacionEliminada {
+  nombre: string;
+  organizacion: string;
+  fecha: string;
+  bytes: number;
+}
+
 export interface Sentencia {
   sql: string;
   params?: unknown[];
@@ -107,6 +114,37 @@ export function agregarArchivoOrganizacion(buscando?: string): Promise<ArchivoAg
 /** Responde lo que preguntó el archivo. `null` si no se sigue; con otro `pide`, hay otra pregunta. */
 export function confirmarArchivoOrganizacion(si: boolean): Promise<ArchivoAgregado | null> {
   return invoke<ArchivoAgregado | null>("confirmar_archivo_organizacion", { si });
+}
+
+/** Solo la saca de la lista: no borra nada. La abierta da el error `abierta`. */
+export function quitarOrganizacion(id: string): Promise<void> {
+  return invoke<void>("quitar_organizacion", { id });
+}
+
+/** Borra del disco. Si era la abierta, devuelve la que quedó abierta en su lugar. */
+export function eliminarOrganizacion(
+  id: string,
+  guardarCopia: boolean,
+  borrarArchivo: boolean,
+): Promise<Organizacion | null> {
+  return invoke<Organizacion | null>("eliminar_organizacion", { id, guardarCopia, borrarArchivo });
+}
+
+export function colorOrganizacion(id: string, color: string): Promise<void> {
+  return invoke<void>("color_organizacion", { id, color });
+}
+
+export function listarEliminadas(): Promise<OrganizacionEliminada[]> {
+  return invoke<OrganizacionEliminada[]>("listar_eliminadas");
+}
+
+export function borrarEliminada(nombre: string): Promise<void> {
+  return invoke<void>("borrar_eliminada", { nombre });
+}
+
+/** Una organización nueva con lo que tiene la copia. Devuelve su id: la abre `abrirOrganizacion`. */
+export function restaurarEliminada(nombre: string): Promise<string> {
+  return invoke<string>("restaurar_eliminada", { nombre });
 }
 
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {

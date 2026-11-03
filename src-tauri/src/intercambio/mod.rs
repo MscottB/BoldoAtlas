@@ -315,6 +315,15 @@ fn fecha_y_revision(conn: &Connection) -> Result<(String, String), Fallo> {
     )?)
 }
 
+/// Para usar un nombre en un archivo: sin lo que un sistema de archivos no acepta. Puede quedar vacío.
+pub fn nombre_limpio(nombre: &str) -> String {
+    nombre
+        .trim()
+        .chars()
+        .map(|x| if x.is_alphanumeric() { x } else { '_' })
+        .collect()
+}
+
 /// `Organizacion_AAAA-MM-DD_rN.boldo`, sin lo que un sistema de archivos no acepta.
 pub fn nombre_sugerido(copia: &Path) -> Result<String, Fallo> {
     let c = validar::solo_lectura(copia)?;
@@ -326,12 +335,7 @@ pub fn nombre_sugerido(copia: &Path) -> Result<String, Fallo> {
         )
         .unwrap_or(None);
     let (fecha, revision) = fecha_y_revision(&c)?;
-    let limpio: String = organizacion
-        .unwrap_or_default()
-        .trim()
-        .chars()
-        .map(|x| if x.is_alphanumeric() { x } else { '_' })
-        .collect();
+    let limpio = nombre_limpio(&organizacion.unwrap_or_default());
     let base = if limpio.is_empty() {
         "BoldoAtlas"
     } else {

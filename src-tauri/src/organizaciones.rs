@@ -1,12 +1,13 @@
 //! Cada organización es un archivo aparte. Aquí está lo que hace falta para abrir uno, su identidad y su bloqueo, y la lista
 //! de las que tiene esta copia de la app.
 use crate::db;
-use crate::intercambio::Temporal;
 use crate::intercambio::validar::{
     MAX_BYTES_VIVOS, revisar_organizacion, solo_lectura_cerrada, version_leida, version_y_esquema,
 };
+use crate::intercambio::{Temporal, nombre_limpio};
 use crate::respaldos::{
-    Fallo, borrar_bd, cerrar_copia, con_sufijo, copia_de_base, limpiar_parciales,
+    Fallo, borrar_bd, borrar_respaldos, cerrar_copia, con_sufijo, copia_de_base,
+    fecha_de_eliminada, limpiar_parciales, sello_local, volcar,
 };
 use crate::rutas::Rutas;
 use rusqlite::{Connection, OptionalExtension};
@@ -158,6 +159,9 @@ const VERSION_LISTA: u32 = 1;
 const PRINCIPAL: &str = "boldo.db";
 const CARPETA: &str = "organizaciones";
 const ARCHIVO: &str = "organizacion.db";
+const ELIMINADAS: &str = "organizaciones-eliminadas";
+/// Cuánto del nombre de la organización va en el nombre de su copia. Un nombre largo no debe agotar el de la ruta.
+const LARGO_EN_COPIA: usize = 40;
 /// Cuántas veces se intenta leer la lista si el error no es que falte, y la pausa entre intentos.
 const LECTURAS_LISTA: u32 = 3;
 const PAUSA_LECTURA: Duration = Duration::from_millis(100);
@@ -544,6 +548,16 @@ fn con_limite(limite: Duration, f: impl FnOnce() -> bool + Send + 'static) -> bo
     recibo.recv_timeout(limite).unwrap_or(false)
 }
 
+/// Una unidad que no responde cuelga hasta esto, y el arranque ocurre antes de crear la ventana.
+fn esta_su_archivo(e: &Entrada, bd: &Path) -> bool {
+    if e.externa {
+        let bd = bd.to_path_buf();
+        con_limite(LIMITE_UNIDAD, move || bd.is_file())
+    } else {
+        bd.is_file()
+    }
+}
+
 /// Abre lo que dice la entrada, si sigue siendo eso. Lo que se pueda saber sin escribir se revisa antes: un archivo externo pudo
 /// cambiar desde que se agregó, y uno con otro id no es de esta entrada, así que no se migra ni se le deja nada al lado.
 pub fn abrir_entrada(
@@ -564,14 +578,7 @@ fn abrir_entrada_con(
     es_red: fn(&Path) -> bool,
 ) -> Result<Abierta, Fallo> {
     let base = base_de(r, e);
-    // una unidad que no responde cuelga hasta esto, y el arranque ocurre antes de crear la ventana
-    let existe = if e.externa {
-        let bd = base.bd.clone();
-        con_limite(LIMITE_UNIDAD, move || bd.is_file())
-    } else {
-        base.bd.is_file()
-    };
-    if !existe {
+    if !esta_su_archivo(e, &base.bd) {
         return Err(Fallo::de("no_encontrado", base.bd.display()));
     }
     if e.externa {
@@ -1043,6 +1050,182 @@ pub fn vista_de(r: &Rutas, mut lista: Lista, e: Entrada) -> OrganizacionVista {
     vistas(r, &lista, Some(&id)).remove(0)
 }
 
+/// Lo que `organizaciones-eliminadas/` muestra de cada copia.
+#[derive(Debug, Serialize)]
+pub struct EliminadaVista {
+    pub nombre: String,
+    pub organizacion: String,
+    pub fecha: String,
+    pub bytes: u64,
+}
+
+/// Lo que impide eliminar `e`, sabido antes de tocar nada. Devuelve si su archivo está.
+pub fn revisar_para_eliminar(
+    r: &Rutas,
+    e: &Entrada,
+    guardar_copia: bool,
+    borrar_archivo: bool,
+) -> Result<bool, Fallo> {
+    let bd = ruta_de(r, e);
+    let existe = esta_su_archivo(e, &bd);
+    // una unidad retirada: sacarla de la lista no borraría lo que hay en ella, y hay que decirlo
+    if !existe && (guardar_copia || (e.externa && borrar_archivo)) {
+        return Err(Fallo::de("no_encontrado", bd.display()));
+    }
+    let usa_el_archivo = !e.externa || borrar_archivo || guardar_copia;
+    if existe && usa_el_archivo && !es_de_la_entrada(&bd, e) {
+        return Err(Fallo::de("otro_id", bd.display()));
+    }
+    Ok(existe)
+}
+
+/// Lo que se ve dañado o sin id en su lugar de siempre sigue siendo de ella, y eliminarla es lo que más le sirve. Una externa
+/// pudo cambiar por fuera: sin ver su id, no se sabe qué es.
+fn es_de_la_entrada(bd: &Path, e: &Entrada) -> bool {
+    let id = solo_lectura_cerrada(bd).and_then(|c| Ok(id_del_archivo(&c)?));
+    match id {
+        Ok(Some(id)) => id == e.id,
+        _ => !e.externa,
+    }
+}
+
+/// La copia de `e` en `organizaciones-eliminadas/`. Pasa por un temporal: un corte no deja una copia a medias con nombre válido.
+pub fn guardar_eliminada(r: &Rutas, e: &Entrada, c: &Connection) -> Result<String, Fallo> {
+    let carpeta = r.datos.join(ELIMINADAS);
+    fs::create_dir_all(&carpeta)?;
+    let limpio: String = nombre_limpio(&e.nombre)
+        .chars()
+        .take(LARGO_EN_COPIA)
+        .collect();
+    let nombre = if limpio.is_empty() {
+        "organizacion"
+    } else {
+        &limpio
+    };
+    volcar(c, &carpeta, &format!("{nombre}_"), &sello_local(c)?)
+}
+
+/// El archivo de una organización y lo que tiene al lado. Con `bloqueo` tomado mientras tanto: otra copia no lo abre a medio
+/// borrar. Se suelta antes de quitar `.bloqueo`, que `borrar_bd` no incluye: Windows no borra uno abierto.
+pub fn borrar_archivo_de(base: &Base, bloqueo: Option<File>) -> Result<(), Fallo> {
+    borrar_bd(&base.bd)?;
+    borrar_bd(&copia_de_base(base))?;
+    drop(bloqueo);
+    // si queda no tiene datos
+    let _ = fs::remove_file(con_sufijo(&base.bd, ".bloqueo"));
+    Ok(())
+}
+
+/// Los respaldos de `e`. Su carpeta se deriva de su id, nunca de lo que diga la ruta de la lista. Es toda suya si es interna; en
+/// `boldo.db` y una externa solo se borran los respaldos, y lo demás se queda.
+pub fn borrar_respaldos_de(r: &Rutas, e: &Entrada) -> Result<(), Fallo> {
+    let carpeta = r.datos.join(CARPETA).join(&e.id);
+    if !e.externa && !e.es_principal() {
+        return match fs::remove_dir_all(&carpeta) {
+            Err(f) if f.kind() != io::ErrorKind::NotFound => Err(f.into()),
+            _ => Ok(()),
+        };
+    }
+    let respaldos = base_de(r, e).respaldos;
+    borrar_respaldos(&respaldos)?;
+    if e.externa {
+        // solo si quedaron vacías
+        let _ = fs::remove_dir(&respaldos);
+        let _ = fs::remove_dir(&carpeta);
+    }
+    Ok(())
+}
+
+/// Las copias que hay. Solo lo que tiene su forma de nombre: lo demás de la carpeta no se muestra, y por lo tanto no se borra.
+fn nombres_eliminadas(r: &Rutas) -> Vec<String> {
+    fs::read_dir(r.datos.join(ELIMINADAS))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|f| f.file_type().is_ok_and(|t| t.is_file()))
+        .filter_map(|f| f.file_name().into_string().ok())
+        .filter(|n| fecha_de_eliminada(n).is_some())
+        .collect()
+}
+
+/// De la más nueva a la más vieja.
+pub fn listar_eliminadas(r: &Rutas) -> Vec<EliminadaVista> {
+    let carpeta = r.datos.join(ELIMINADAS);
+    let mut copias: Vec<_> = nombres_eliminadas(r)
+        .into_iter()
+        .filter_map(|nombre| {
+            let ruta = carpeta.join(&nombre);
+            Some(EliminadaVista {
+                organizacion: solo_lectura_cerrada(&ruta)
+                    .ok()
+                    .and_then(|c| leer_meta(&c, "org_nombre"))
+                    .unwrap_or_default(),
+                fecha: fecha_de_eliminada(&nombre)?,
+                bytes: fs::metadata(&ruta).ok()?.len(),
+                nombre,
+            })
+        })
+        .collect();
+    copias.sort_by(|a, b| (&b.fecha, &b.nombre).cmp(&(&a.fecha, &a.nombre)));
+    copias
+}
+
+/// La ruta de una copia, solo si `nombre` es uno de la lista: nunca una ruta que venga de la interfaz.
+fn ruta_de_eliminada(r: &Rutas, nombre: &str) -> Result<PathBuf, Fallo> {
+    if !nombres_eliminadas(r).iter().any(|n| n == nombre) {
+        return Err(Fallo::de("desconocido", nombre));
+    }
+    Ok(r.datos.join(ELIMINADAS).join(nombre))
+}
+
+pub fn borrar_eliminada(r: &Rutas, nombre: &str) -> Result<(), Fallo> {
+    Ok(borrar_bd(&ruta_de_eliminada(r, nombre)?)?)
+}
+
+/// Una organización nueva en su carpeta, con lo que tiene la copia, que se queda donde está. Conserva su id si nadie lo usa, para
+/// recuperar pestañas y preferencias; `abierta` es la que puede no estar en la lista.
+pub fn restaurar_eliminada(
+    r: &Rutas,
+    nombre: &str,
+    abierta: Option<&str>,
+    migraciones: &[&str],
+) -> Result<String, Fallo> {
+    let origen = ruta_de_eliminada(r, nombre)?;
+    let mut lista = cargar_lista(r);
+    if lista.no_escribir {
+        return Err(lista_protegida());
+    }
+    let (id_libre, organizacion) = {
+        let c = solo_lectura_cerrada(&origen)?;
+        let id = id_del_archivo(&c)?.filter(|id| {
+            es_id_valido(id)
+                && abierta != Some(id.as_str())
+                && !lista.organizaciones.iter().any(|e| e.id == *id)
+        });
+        (id, leer_meta(&c, "org_nombre").unwrap_or_default())
+    };
+    let id = copiar_a_carpeta(r, &origen, id_libre.as_deref(), migraciones)?;
+    let color = color_libre(&lista).into();
+    lista.organizaciones.push(Entrada {
+        nombre: organizacion,
+        color,
+        ruta: ruta_interna(&id),
+        ..Entrada::principal(&id)
+    });
+    if let Err(f) = escribir_lista(r, &lista) {
+        let _ = borrar_bd(&r.datos.join(ruta_interna(&id)));
+        return Err(f);
+    }
+    Ok(id)
+}
+
+/// `#rrggbb`: va a la interfaz tal cual.
+pub fn es_color_valido(color: &str) -> bool {
+    color.len() == 7
+        && color.starts_with('#')
+        && color.bytes().skip(1).all(|b| b.is_ascii_hexdigit())
+}
+
 /// Los temporales que dejó un corte en cada organización. Solo carpetas con nombre de id: nada sale de lo que diga un archivo.
 pub fn limpiar_carpetas(r: &Rutas) {
     for carpeta in fs::read_dir(r.datos.join(CARPETA))
@@ -1054,6 +1237,20 @@ pub fn limpiar_carpetas(r: &Rutas) {
             let dir = carpeta.path();
             limpiar_parciales(&dir, Some(&dir.join(ARCHIVO)));
             limpiar_parciales(&dir.join("respaldos"), None);
+        }
+    }
+    // una copia de eliminada a medias, con su diario
+    for f in fs::read_dir(r.datos.join(ELIMINADAS))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        if f.file_name().to_str().is_some_and(|n| {
+            ["", "-journal", "-wal", "-shm"]
+                .iter()
+                .any(|s| n.ends_with(&format!(".db.tmp{s}")))
+        }) {
+            let _ = fs::remove_file(f.path());
         }
     }
 }
@@ -1788,6 +1985,27 @@ mod tests_lista {
         assert!(ajeno.exists());
         assert!(en_la_rara.exists());
         assert!(carpeta.join("organizacion.db").exists());
+    }
+
+    #[test]
+    fn limpiar_carpetas_quita_las_copias_de_eliminadas_a_medias() {
+        let (_exe, r) = rutas();
+        let carpeta = r.datos.join(ELIMINADAS);
+        fs::create_dir_all(&carpeta).unwrap();
+        let (a_medias, su_diario, copia, ajeno) = (
+            carpeta.join("x_20260101-0000.db.tmp"),
+            carpeta.join("x_20260101-0000.db.tmp-journal"),
+            carpeta.join("x_20260101-0000.db"),
+            carpeta.join("notas.tmp"),
+        );
+        for p in [&a_medias, &su_diario, &copia, &ajeno] {
+            fs::write(p, "x").unwrap();
+        }
+        limpiar_carpetas(&r);
+        assert!(!a_medias.exists());
+        assert!(!su_diario.exists());
+        assert!(copia.exists());
+        assert!(ajeno.exists());
     }
 }
 

@@ -17,6 +17,8 @@ const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
 /// Copia que se hace antes de optimizar las fotos, con las originales: de estas quedan las últimas `CONSERVAR_OPTIMIZAR`.
 const PREFIJO_OPTIMIZAR: &str = "boldo-antes-de-optimizar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
+/// Lo que `db.rs` deja antes de migrar, con el nombre de ahora (`.db`) o de versiones anteriores (`.boldo`).
+const PREFIJO_MIGRACION: &str = "antes-migracion-";
 pub const CONSERVAR: usize = 10;
 /// Cuántos `boldo-antes-de-importar-` quedan al crear uno nuevo.
 pub const CONSERVAR_IMPORTAR: usize = 20;
@@ -175,7 +177,12 @@ fn entradas(dir: &Path) -> Result<Vec<Entrada>, Fallo> {
     Ok(v)
 }
 
-fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<String, Fallo> {
+pub(crate) fn volcar(
+    conn: &Connection,
+    dir: &Path,
+    prefijo: &str,
+    sello: &str,
+) -> Result<String, Fallo> {
     let nombre = (1..)
         .map(|n| match n {
             1 => format!("{prefijo}{sello}.db"),
@@ -309,6 +316,27 @@ fn revision(ruta: &Path) -> Option<i64> {
     .ok()
 }
 
+/// `AAAAMMDD-HHMM` como `AAAA-MM-DDTHH:MM`.
+fn fecha_de_sello(s: &str) -> String {
+    format!(
+        "{}-{}-{}T{}:{}",
+        &s[..4],
+        &s[4..6],
+        &s[6..8],
+        &s[9..11],
+        &s[11..]
+    )
+}
+
+/// La fecha de una copia de `organizaciones-eliminadas/`: `<nombre>_AAAAMMDD-HHMM[-N].db`, con la misma cola que un respaldo.
+/// `None` si no tiene esa forma: no es una de ellas.
+pub(crate) fn fecha_de_eliminada(nombre: &str) -> Option<String> {
+    let (_, cola) = nombre.rsplit_once('_')?;
+    entrada(&format!("{PREFIJO}{cola}"))
+        .filter(|e| !e.seguridad)
+        .map(|e| fecha_de_sello(&e.sello))
+}
+
 /// Respaldos de la carpeta, del más nuevo al más viejo. Un archivo ilegible se lista sin revisión;
 /// uno que ni siquiera se puede consultar (desapareció, sin permisos) se omite.
 pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
@@ -318,16 +346,8 @@ pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
             let ruta = dir.join(&e.nombre);
             let bytes = fs::metadata(&ruta).ok()?.len();
             let revision = revision(&ruta);
-            let s = &e.sello;
             Some(Respaldo {
-                fecha: format!(
-                    "{}-{}-{}T{}:{}",
-                    &s[..4],
-                    &s[4..6],
-                    &s[6..8],
-                    &s[9..11],
-                    &s[11..]
-                ),
+                fecha: fecha_de_sello(&e.sello),
                 bytes,
                 legible: revision.is_some(),
                 revision,
@@ -358,6 +378,26 @@ pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
         match fs::remove_file(p) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
             _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Los respaldos de una organización que se elimina. Solo los nombres propios: lo demás de la carpeta es del usuario.
+pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
+    limpiar_parciales(dir, None);
+    let archivos = match fs::read_dir(dir) {
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(()),
+        otro => otro?,
+    };
+    for f in archivos {
+        let f = f?;
+        let propio = f
+            .file_name()
+            .to_str()
+            .is_some_and(|n| entrada(n).is_some() || n.starts_with(PREFIJO_MIGRACION));
+        if propio && f.file_type()?.is_file() {
+            fs::remove_file(f.path())?;
         }
     }
     Ok(())
