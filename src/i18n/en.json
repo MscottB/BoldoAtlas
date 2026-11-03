@@ -744,6 +744,7 @@
     "detalle": "Error details",
     "errorCopiar": "Couldn't copy. Select the details and copy them by hand.",
     "buscarArchivo": "Find file",
+    "buscandoArchivo": "Finding and checking the file. A large one may take a while…",
     "cerrarPestana": "Close tab",
     "cancelar": "Cancel",
     "copiarYAbrir": "Copy and open",

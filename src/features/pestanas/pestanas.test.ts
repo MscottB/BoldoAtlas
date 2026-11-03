@@ -4,6 +4,7 @@ import {
   abrir,
   cambiar,
   cerrar,
+  detalleUtil,
   estadoDe,
   hayVariasOrganizaciones,
   leerEstadoArbol,
@@ -58,6 +59,24 @@ describe("sePuedeBuscar", () => {
     ["fallo", "red"],
   ])("%s (%s) no lo ofrece", (codigo, detalle) => {
     expect(sePuedeBuscar({ codigo, detalle })).toBe(false);
+  });
+});
+
+describe("detalleUtil", () => {
+  const m = (detalle: string, mensaje = "No se abrió") => ({ detalle, mensaje });
+
+  it.each([
+    ["", "vacío"],
+    ["red", "un código"],
+    ["journal", "un código"],
+    ["0b5e7f6a-1234-4000-8000-000000000000", "un id"],
+    ["No se abrió", "lo mismo que el mensaje"],
+  ])("«%s» no aporta: %s", (detalle) => {
+    expect(detalleUtil(m(detalle))).toBe(false);
+  });
+
+  it.each(["D:/usb/org.db", "C:\\datos\\org.db", "disk I/O error"])("«%s» sí", (detalle) => {
+    expect(detalleUtil(m(detalle))).toBe(true);
   });
 });
 

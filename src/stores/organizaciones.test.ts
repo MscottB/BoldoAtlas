@@ -631,6 +631,99 @@ describe("desde las pestañas", () => {
     expect(router.currentRoute.value.fullPath).toBe("/revision");
   });
 
+  describe("una pestaña sin abrir", () => {
+    const motivo = (codigo = "no_encontrado") => ({ codigo, mensaje: "m", detalle: "" });
+    const TRES_CON_MOTIVO = {
+      lista: [
+        { id: "a1", org: "A", ruta: "/revision" },
+        { id: "z1", org: "Z", ruta: "/" },
+        { id: "y1", org: "Y", ruta: "/" },
+      ],
+      activa: "a1",
+    };
+
+    it("«Cerrar pestaña» cierra aunque la vecina tampoco abra, y sin cambiar de base", async () => {
+      const { p, o } = await arrancar(TRES_CON_MOTIVO);
+      p.marcarActiva("z1");
+      o.sinAbrir.set("z1", motivo());
+      c.abrirOrganizacion.mockRejectedValue(fallo("no_encontrado"));
+      expect(p.cerrar("z1")).toEqual({ ok: true });
+      await vi.waitFor(() => expect(p.activa).toBe("a1"));
+      expect(ids()).toEqual(["a1", "y1"]);
+      expect(c.abrirOrganizacion).not.toHaveBeenCalled();
+      expect(router.currentRoute.value.fullPath).toBe("/revision");
+    });
+
+    it("cerrar otra pestaña con motivo no toca la activa", async () => {
+      const { p, o } = await arrancar(TRES_CON_MOTIVO);
+      o.sinAbrir.set("z1", motivo());
+      p.cerrar("z1");
+      await esperar();
+      expect(p.activa).toBe("a1");
+      expect(ids()).toEqual(["a1", "y1"]);
+    });
+
+    it("navegar con ella a la vista abre la ruta en una pestaña nueva de la abierta", async () => {
+      const { p, o } = await arrancar(TRES_CON_MOTIVO);
+      p.marcarActiva("z1");
+      o.sinAbrir.set("z1", motivo());
+      await router.push("/directorio");
+      const nueva = p.lista.find((x) => x.ruta === "/directorio")!;
+      expect(p.activa).toBe(nueva.id);
+      expect(nueva.org).toBe("A");
+      expect(p.lista.find((x) => x.id === "z1")?.ruta).toBe("/");
+    });
+
+    it("con el tope lleno, avisa y no navega", async () => {
+      const { p, o } = await arrancar({
+        lista: Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `t${i}`, org: "A", ruta: "/" })),
+        activa: "t0",
+      });
+      o.sinAbrir.set("t0", motivo());
+      await router.push("/directorio");
+      expect(toast.warning).toHaveBeenCalled();
+      expect(p.lista).toHaveLength(MAX_PESTANAS);
+      expect(router.currentRoute.value.fullPath).toBe("/");
+    });
+
+    it("si no cargaron sus datos, no se abre otra pestaña vacía de esa organización", async () => {
+      const { p, o } = await arrancar();
+      c.consultar.mockRejectedValue("no such table: unidades");
+      await o.activarPestana("b1");
+      const antes = ids();
+      expect(p.abrirNueva("/revision").ok).toBe(false);
+      await router.push("/revision");
+      expect(ids()).toEqual(antes);
+      expect(router.currentRoute.value.fullPath).toBe("/");
+      expect(toast.warning).toHaveBeenCalled();
+    });
+
+    it("si no cargaron sus datos, cerrarla va a Inicio y el motivo sigue en la que queda", async () => {
+      const { p, o } = await arrancar();
+      c.consultar.mockRejectedValue("no such table: unidades");
+      await o.activarPestana("b1");
+      expect(p.cerrar("b1")).toEqual({ ok: true });
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe("/bienvenida"));
+      expect(ids()).not.toContain("b1");
+      expect(p.lista.find((x) => x.id === p.activa)?.org).toBe("B");
+      expect(o.sinAbrir.get(p.activa)?.codigo).toBe("fallo");
+    });
+  });
+
+  it("al ir a otra pestaña de la abierta, lo que nombra su ruta se comprueba", async () => {
+    const { p } = await arrancar({
+      lista: [
+        { id: "a1", org: "A", ruta: "/revision" },
+        { id: "z1", org: "Z", ruta: "/directorio?persona=pZ" },
+      ],
+      activa: "a1",
+    });
+    p.reasignar("Z", "A"); // sus ids son de la que ya no está
+    p.activar("z1");
+    await vi.waitFor(() => expect(p.activa).toBe("z1"));
+    expect(router.currentRoute.value.fullPath).toBe("/");
+  });
+
   it("la única pestaña, sin abrir, se cierra y queda una de la abierta en su inicio", async () => {
     const { p, o } = await arrancar({ lista: [{ id: "z1", org: "Z", ruta: "/revision" }], activa: "z1" });
     const deA = p.activa; // al entrar con A abierta se abrió una suya
@@ -1157,6 +1250,69 @@ describe("agregarArchivo", () => {
     expect(p.lista.map((x) => x.org)).toEqual(["A", "Z", "Z"]);
     expect(p.activa).toBe("z2");
     expect(o.sinAbrir.has("z2")).toBe(false);
+  });
+
+  it("una copia con el mismo id deja a la buscada en la lista: sus pestañas no se mueven", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "z1", org: "Z", ruta: "/" }],
+      activa: "a1",
+    });
+    p.marcarActiva("z1");
+    o.sinAbrir.set("z1", { codigo: "contenido_invalido", mensaje: "m", detalle: "red" });
+    c.listarOrganizaciones.mockResolvedValue([{ id: "Z" }, { id: "N" }]);
+    c.agregarArchivoOrganizacion.mockResolvedValue({ id: "N", pide: null, avisos: ["copia"] });
+    const r = await o.agregarArchivo(async () => true, "Z");
+    expect(r).toMatchObject({ ok: true, avisos: ["copia"] });
+    expect(p.lista.find((x) => x.id === "z1")?.org).toBe("Z");
+    expect(o.sinAbrir.has("z1")).toBe(true);
+    expect(p.lista.find((x) => x.id === p.activa)?.org).toBe("N");
+  });
+
+  it("y si esa copia no abre, la pestaña de la buscada sigue como estaba", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "z1", org: "Z", ruta: "/" }],
+      activa: "a1",
+    });
+    p.marcarActiva("z1");
+    o.sinAbrir.set("z1", { codigo: "contenido_invalido", mensaje: "m", detalle: "red" });
+    c.listarOrganizaciones.mockResolvedValue([{ id: "Z" }, { id: "N" }]);
+    c.agregarArchivoOrganizacion.mockResolvedValue({ id: "N", pide: null, avisos: ["copia"] });
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("sin_espacio"));
+    expect((await o.agregarArchivo(async () => true, "Z")).ok).toBe(false);
+    expect(ids()).toEqual(["a1", "z1"]);
+    expect(p.lista.find((x) => x.id === "z1")?.org).toBe("Z");
+    expect(p.activa).toBe("z1");
+    expect(o.sinAbrir.has("z1")).toBe(true);
+  });
+
+  it("si la buscada salió de la lista y la nueva no abre, las pestañas ya son de ella y siguen con motivo", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "z1", org: "Z", ruta: "/" }],
+      activa: "a1",
+    });
+    p.marcarActiva("z1");
+    o.sinAbrir.set("z1", { codigo: "no_encontrado", mensaje: "m", detalle: "" });
+    c.listarOrganizaciones.mockResolvedValue([{ id: "N" }]);
+    c.agregarArchivoOrganizacion.mockResolvedValue({ id: "N", pide: null, avisos: [] });
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("sin_espacio"));
+    expect((await o.agregarArchivo(async () => true, "Z")).ok).toBe(false);
+    expect(p.lista.find((x) => x.id === "z1")?.org).toBe("N");
+    expect(p.activa).toBe("z1");
+    expect(o.sinAbrir.has("z1")).toBe(true);
+    expect(baseActual()).toBe("A");
+  });
+
+  it("si la lista no se pudo leer, no mueve las pestañas", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "z1", org: "Z", ruta: "/" }],
+      activa: "a1",
+    });
+    c.listarOrganizaciones.mockResolvedValueOnce([{ id: "Z" }]);
+    await o.cargarLista();
+    c.listarOrganizaciones.mockRejectedValueOnce(fallo("lista_protegida"));
+    c.agregarArchivoOrganizacion.mockResolvedValue({ id: "N", pide: null, avisos: [] });
+    await o.agregarArchivo(async () => true, "Z");
+    expect(p.lista.find((x) => x.id === "z1")?.org).toBe("Z");
   });
 
   it("devuelve los avisos copia y fuera_de_portable", async () => {

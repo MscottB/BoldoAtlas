@@ -744,6 +744,7 @@
     "detalle": "Detalle del error",
     "errorCopiar": "No se pudo copiar. Selecciona el detalle y cópialo a mano.",
     "buscarArchivo": "Buscar archivo",
+    "buscandoArchivo": "Buscando y revisando el archivo. Con uno grande puede tardar…",
     "cerrarPestana": "Cerrar pestaña",
     "cancelar": "Cancelar",
     "copiarYAbrir": "Copiar y abrir",

@@ -81,6 +81,10 @@ export const sePuedeBuscar = ({ codigo, detalle }: { codigo: string; detalle: st
   codigo === "otro_id" ||
   (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal"));
 
+/** El detalle de un motivo solo se muestra si aporta: un código o un id sueltos no dicen nada, y el mensaje ya se ve. */
+export const detalleUtil = ({ detalle, mensaje }: { detalle: string; mensaje: string }): boolean =>
+  !!detalle && detalle !== mensaje && !/^[\w-]+$/.test(detalle);
+
 /** La pestaña a `paso` de la activa, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab). */
 export function vecina(m: Pestanas, paso: 1 | -1): string {
   const n = m.lista.length;

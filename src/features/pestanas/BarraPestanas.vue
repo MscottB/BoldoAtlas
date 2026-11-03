@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import { useI18n } from "vue-i18n";
 import { Plus, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { baseActual } from "@/lib/baseActiva";
+import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { RUTA_INICIO, hayVariasOrganizaciones } from "./pestanas";
 import { ID_AREA, abrirEnPestanaNueva, idPestana, usePestanas } from "./usePestanas";
@@ -12,20 +14,25 @@ import { ID_AREA, abrirEnPestanaNueva, idPestana, usePestanas } from "./usePesta
 const { t } = useI18n();
 const pestanas = usePestanas();
 const organizaciones = useOrganizaciones();
+const org = useOrganizacion();
 // Con varias organizaciones, cada una con su punto de color y su nombre: el color nunca es la única señal.
 const varias = computed(() => hayVariasOrganizaciones({ lista: pestanas.lista, activa: pestanas.activa }));
-const items = computed(() =>
-  pestanas.lista.map((p) => {
+const items = computed(() => {
+  const nombreDe = (id: string) =>
+    organizaciones.lista.find((o) => o.id === id)?.nombre || (id === baseActual() ? org.org.nombre : "");
+  // Las que no tienen nombre, o si la lista no cargó, no deben verse iguales: se numeran.
+  const sinNombre = [...new Set(pestanas.lista.map((p) => p.org).filter((id) => !nombreDe(id)))];
+  return pestanas.lista.map((p) => {
     const titulo = pestanas.titulo(p);
     if (!varias.value) return { id: p.id, titulo, color: "" };
-    const o = organizaciones.lista.find((x) => x.id === p.org);
+    const n = sinNombre.length > 1 ? ` ${sinNombre.indexOf(p.org) + 1}` : "";
     return {
       id: p.id,
-      titulo: o?.nombre ? `${o.nombre} · ${titulo}` : titulo,
-      color: o?.color || "currentColor",
+      titulo: `${nombreDe(p.org) || t("barra.sinNombre") + n} · ${titulo}`,
+      color: organizaciones.lista.find((o) => o.id === p.org)?.color || "currentColor",
     };
-  }),
-);
+  });
+});
 
 // Foco itinerante: la pestaña con tabindex 0 es la última enfocada; si ya no está, la activa.
 const foco = ref<string | null>(null);

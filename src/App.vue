@@ -42,7 +42,13 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
 import PestanaSinAbrir from "@/features/pestanas/PestanaSinAbrir.vue";
-import { ID_AREA, clicNuevaPestana, idPestana, usePestanas } from "@/features/pestanas/usePestanas";
+import {
+  ID_AREA,
+  abrirEnPestanaNueva,
+  clicNuevaPestana,
+  idPestana,
+  usePestanas,
+} from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: solo con MOSTRAR_PROXIMAMENTE se muestra, deshabilitada y con el aviso de la fase en que llega.
@@ -95,7 +101,10 @@ watch(() => org.org.nombre, ponerTitulo, { immediate: true });
 const cerrarVista = useCerrarVista();
 const pestanas = usePestanas();
 const organizaciones = useOrganizaciones();
-void organizaciones.cargarLista(); // nombre y color en las pestañas; las recientes del menú y la paleta
+// Nombre y color en las pestañas; las recientes del menú y la paleta.
+void organizaciones.cargarLista().then((r) => {
+  if (!r.ok) console.warn("No se pudo leer la lista de organizaciones:", r.mensaje);
+});
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);
@@ -103,6 +112,11 @@ const conPestanas = computed(() => pestanas.lista.length > 1);
 // cierra (en captura: antes de que el enlace navegue).
 function alPulsar(e: MouseEvent, item: Entrada) {
   if (item.to && clicNuevaPestana(e, item.to)) return;
+  // La pantalla del motivo tapa la vista: en la misma ruta, sin esto, el clic no haría nada (el resto lo ve `usePestanas`).
+  if (item.to && sinAbrirActiva.value) {
+    e.preventDefault();
+    return abrirEnPestanaNueva(item.to);
+  }
   if (!item.cierra || route.name !== item.cierra) return;
   e.preventDefault();
   cerrarVista();

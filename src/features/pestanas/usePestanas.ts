@@ -15,7 +15,7 @@ import { baseActual } from "@/lib/baseActiva";
 import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
-import { useOrganizaciones } from "@/stores/organizaciones";
+import { useOrganizaciones, type Motivo } from "@/stores/organizaciones";
 import * as P from "./pestanas";
 
 /** Id del área central (el panel de las pestañas): recibe el foco si al cerrar una pestaña no queda barra. */
@@ -57,8 +57,25 @@ export const usePestanas = defineStore("pestanas", () => {
     const r = router.resolve(ruta);
     return P.rutaValida(
       { nombre: r.name, query: org === baseActual() ? r.query : {} },
-      { unidad: (id) => datos.porId.has(id), persona: (id) => datos.trabajadores.some((x) => x.id === id) },
+      {
+        // también lo que existe en la fecha que se está viendo: desde ahí se abren pestañas
+        unidad: (id) => datos.porId.has(id) || datos.enFecha.porId.has(id),
+        persona: (id) => [...datos.trabajadores, ...datos.enFecha.trabajadores].some((x) => x.id === id),
+      },
     );
+  }
+
+  /** Ya cargada su organización: lo que nombra su ruta se puede comprobar. Si no existe, vuelve al inicio. */
+  function validarActivada(id: string) {
+    const p = modelo.value.lista.find((x) => x.id === id);
+    if (!p) return;
+    if (!valida(p.ruta))
+      modelo.value = P.cambiar(modelo.value, id, {
+        ruta: P.RUTA_INICIO,
+        volver: undefined,
+        estado: undefined,
+      });
+    else if (p.volver && !valida(p.volver)) modelo.value = P.cambiar(modelo.value, id, { volver: undefined });
   }
 
   /** Siempre activa una de la organización abierta; sin ninguna, abre una en el inicio. */
@@ -110,6 +127,18 @@ export const usePestanas = defineStore("pestanas", () => {
           P.leerPestanas(antigua, () => true, nuevoId, baseActual()),
         );
     }
+    // Con una pestaña sin abrir a la vista, ir a otra vista (la barra lateral, el menú, la bandeja) no se vería: esta misma
+    // navegación pasa a ser la de una pestaña nueva de la abierta (ver `destino`).
+    r.beforeEach((to) => {
+      if (!enProyecto || destino || to.meta.sinMarco || !useOrganizaciones().sinAbrir.has(activa.value))
+        return;
+      const nueva = agregarNueva(to.fullPath);
+      if (!nueva.ok) {
+        toast.warning(nueva.mensaje);
+        return false;
+      }
+      destino = { id: nueva.id!, ruta: to.fullPath };
+    });
     r.afterEach((to, from, fallo) => {
       if (fallo) {
         // Cancelada por otra navegación más nueva (p. ej. un segundo Ctrl+Tab antes de cargar la vista): el cambio de
@@ -192,7 +221,10 @@ export const usePestanas = defineStore("pestanas", () => {
         modelo.value = aLaAbierta(modelo.value);
         await navegar(modelo.value.activa);
       }
-    } else await navegar(id);
+    } else {
+      validarActivada(id); // una pestaña reasignada conserva ids de la organización que ya no está
+      await navegar(id);
+    }
     await enfocar(siempre);
   }
 
@@ -204,17 +236,26 @@ export const usePestanas = defineStore("pestanas", () => {
     return { ok: true };
   }
 
+  /** Una pestaña nueva de la abierta, sin activarla: se activa al llegar (ver `destino`). */
+  function agregarNueva(ruta: string): Resultado {
+    // Sus datos no cargaron: la pestaña nueva se vería vacía, y parecería que se perdieron.
+    const motivo = useOrganizaciones().sinAbrir.get(activa.value);
+    if (motivo?.codigo === "fallo") return { ok: false, mensaje: motivo.mensaje };
+    const id = nuevoId();
+    const m = P.abrir(modelo.value, id, ruta, baseActual());
+    if (!m) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
+    modelo.value = { ...m, activa: modelo.value.activa };
+    return { ok: true, id };
+  }
+
   /** Abre `destino` en una pestaña nueva, a la derecha de la activa, y la activa. */
   function abrirNueva(destino: RouteLocationRaw): Resultado {
     if (!router) return { ok: false, mensaje: t("pestanas.noAbre") };
     const r = router.resolve(destino);
     if (!r.matched.length || r.meta.sinMarco) return { ok: false, mensaje: t("pestanas.noAbre") };
-    const id = nuevoId();
-    const m = P.abrir(modelo.value, id, r.fullPath, baseActual());
-    if (!m) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
-    modelo.value = { ...m, activa: modelo.value.activa }; // se activa al llegar (ver `destino`)
-    void ir(id);
-    return { ok: true, id };
+    const nueva = agregarNueva(r.fullPath);
+    if (nueva.ok) void ir(nueva.id!);
+    return nueva;
   }
 
   /** La vecina es de otra organización: primero el cambio, y la pestaña se quita solo si salió bien. */
@@ -233,11 +274,26 @@ export const usePestanas = defineStore("pestanas", () => {
     await enfocar(true);
   }
 
-  function cerrar(id: string): Resultado {
-    if (modelo.value.lista.length <= 1) {
-      if (!useOrganizaciones().sinAbrir.has(id)) return { ok: false, mensaje: t("pestanas.ultima") };
-      abrirNueva(P.RUTA_INICIO); // la única, sin abrir: sin una de la abierta no habría salida
+  /** La activa muestra un motivo: no monta nada ni tiene por qué cambiar de base, así que se quita y queda una de la abierta. */
+  function cerrarSinAbrir(id: string, motivo: Motivo): Resultado {
+    const m = aLaAbierta({ ...modelo.value, lista: modelo.value.lista.filter((x) => x.id !== id) });
+    if (motivo.codigo === "fallo") {
+      // Sus datos no cargaron: la que queda se vería vacía. Lleva el motivo, y se va a Inicio, desde donde se puede abrir otra.
+      useOrganizaciones().sinAbrir.set(m.activa, motivo);
+      modelo.value = m;
+      void router?.replace(RUTA_BIENVENIDA);
+      return { ok: true };
     }
+    // La cerrada sigue como activa (sin estar en la lista) hasta llegar a la ruta de la nueva.
+    modelo.value = { ...m, activa: modelo.value.activa };
+    void ir(m.activa, true);
+    return { ok: true };
+  }
+
+  function cerrar(id: string): Resultado {
+    const motivo = useOrganizaciones().sinAbrir.get(id);
+    if (motivo && id === activa.value) return cerrarSinAbrir(id, motivo);
+    if (modelo.value.lista.length <= 1) return { ok: false, mensaje: t("pestanas.ultima") };
     const m = P.cerrar(modelo.value, id);
     if (m === modelo.value) return { ok: false, mensaje: t("pestanas.noAbre") };
     const nueva = m.lista.find((x) => x.id === m.activa)!;
@@ -291,19 +347,7 @@ export const usePestanas = defineStore("pestanas", () => {
     marcarActiva(id: string) {
       modelo.value = { ...modelo.value, activa: id };
     },
-    /** Ya cargada su organización: lo que nombra su ruta se puede comprobar. Si no existe, vuelve al inicio. */
-    validarActivada(id: string) {
-      const p = modelo.value.lista.find((x) => x.id === id);
-      if (!p) return;
-      if (!valida(p.ruta))
-        modelo.value = P.cambiar(modelo.value, id, {
-          ruta: P.RUTA_INICIO,
-          volver: undefined,
-          estado: undefined,
-        });
-      else if (p.volver && !valida(p.volver))
-        modelo.value = P.cambiar(modelo.value, id, { volver: undefined });
-    },
+    validarActivada,
     /** Viendo Inicio, las pestañas no están a la vista. */
     enInicio: () => !enProyecto,
     /** Otro archivo tomó el lugar de `de`: sus pestañas pasan a él. */

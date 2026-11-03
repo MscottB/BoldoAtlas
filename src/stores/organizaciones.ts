@@ -45,6 +45,13 @@ const campo = (e: unknown, nombre: string): string =>
 
 const CANCELADO: Resultado = { ok: false, mensaje: "" };
 
+/** Por qué una pestaña no pudo abrir o cargar su organización. */
+export interface Motivo {
+  codigo: string;
+  mensaje: string;
+  detalle: string;
+}
+
 /**
  * La lista de organizaciones y el cambio entre ellas, el único camino que cambia de base en TS. Sus acciones devuelven
  * `Resultado` y no lanzan. Nada de la organización anterior sigue vivo después: el orden está en `cambiarA`.
@@ -58,7 +65,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   );
   const cambiando = ref(false);
   /** Por id de pestaña: por qué no se pudo abrir o cargar su organización. */
-  const sinAbrir = ref(new Map<string, { codigo: string; mensaje: string; detalle: string }>());
+  const sinAbrir = ref(new Map<string, Motivo>());
   /** Las organizaciones ya abiertas en esta sesión: con la frecuencia «al abrir», solo la primera vez respalda. */
   const yaAbiertas = new Set([baseActual()]);
 
@@ -321,11 +328,15 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       let r = await agregarArchivoOrganizacion(buscando);
       while (r?.pide) r = await confirmarArchivoOrganizacion(await confirmar(r.pide));
       if (!r?.id) return { ok: true };
-      // Con otros datos, Rust ya sacó la buscada de la lista y este archivo toma su lugar.
+      // Con otros datos, Rust saca la buscada de la lista y este archivo toma su lugar; una copia no: lo dice la lista. Vale
+      // aunque `abrir` no llegue a abrirlo: en la lista ya no está. Sin poder leerla, la lista anterior aún la tiene.
       if (buscando && r.id !== buscando) {
-        const pestanas = usePestanas();
-        pestanas.asegurarCargadas();
-        pestanas.reasignar(buscando, r.id);
+        await cargarLista();
+        if (!lista.value.some((o) => o.id === buscando)) {
+          const pestanas = usePestanas();
+          pestanas.asegurarCargadas();
+          pestanas.reasignar(buscando, r.id);
+        }
       }
       return { ...(await abrir(r.id)), avisos: r.avisos };
     } catch (e) {
