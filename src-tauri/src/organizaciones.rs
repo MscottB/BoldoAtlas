@@ -2,7 +2,7 @@
 //! de las que tiene esta copia de la app.
 use crate::db;
 use crate::intercambio::validar::{solo_lectura_cerrada, version_leida, version_y_esquema};
-use crate::respaldos::{Fallo, con_sufijo, limpiar_parciales};
+use crate::respaldos::{Fallo, borrar_bd, con_sufijo, copia_de, limpiar_parciales};
 use crate::rutas::Rutas;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -467,7 +467,7 @@ pub fn cargar_lista(r: &Rutas) -> Lista {
 pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
     if l.no_escribir {
         return Err(Fallo::de(
-            "fallo",
+            "lista_protegida",
             "organizaciones.json no se pudo leer o es de una versión más nueva: no se reemplaza",
         ));
     }
@@ -542,7 +542,21 @@ pub fn abrir_entrada(
     if a.id != e.id {
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
+    if e.externa {
+        limpiar_restauracion(&base.bd);
+    }
     Ok(a)
+}
+
+/// Lo que dejó una restauración interrumpida junto a una externa: `limpiar_carpetas` no entra en esa carpeta, y aquí ya se
+/// tiene el bloqueo. Sin mirar mayúsculas: en Windows y macOS, `x.RESTAURANDO` es el archivo que `copia_de` nombra.
+fn limpiar_restauracion(bd: &Path) {
+    if !bd
+        .extension()
+        .is_some_and(|x| x.eq_ignore_ascii_case("restaurando"))
+    {
+        let _ = borrar_bd(&copia_de(bd));
+    }
 }
 
 /// Deja en la lista lo que se acaba de abrir, con su nombre y su hora. Un `boldo.db` vacío no se lista: lo usa la primera
@@ -626,6 +640,16 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
             }
         })
         .collect()
+}
+
+/// Lo que Inicio muestra de `e`, la abierta. Con los datos de `lista`, si está: un `boldo.db` vacío no se lista.
+pub fn vista_de(r: &Rutas, mut lista: Lista, e: Entrada) -> OrganizacionVista {
+    let id = e.id.clone();
+    lista.organizaciones.retain(|o| o.id == id);
+    if lista.organizaciones.is_empty() {
+        lista.organizaciones.push(e);
+    }
+    vistas(r, &lista, Some(&id)).remove(0)
 }
 
 /// Los temporales que dejó un corte en cada organización. Solo carpetas con nombre de id: nada sale de lo que diga un archivo.
@@ -1227,7 +1251,10 @@ mod tests_lista {
             organizaciones: vec![],
             no_escribir: true,
         };
-        assert_eq!(escribir_lista(&r, &l).unwrap_err().codigo, "fallo");
+        assert_eq!(
+            escribir_lista(&r, &l).unwrap_err().codigo,
+            "lista_protegida"
+        );
         assert_eq!(fs::read_to_string(&json).unwrap(), "lo que había");
         assert!(!con_sufijo(&json, ".tmp").exists());
         // la marca no llega al archivo

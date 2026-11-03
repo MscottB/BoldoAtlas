@@ -944,6 +944,7 @@
       "esquema_nuevo": "Este respaldo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para restaurarlo.",
       "en_uso": "Otra ventana de BoldoAtlas está usando los datos. Ciérrala e inténtalo de nuevo; no se cambió nada.",
       "otra_base": "BoldoAtlas tuvo un problema interno y no se cambió nada. Recarga la ventana para seguir.",
+      "lista_protegida": "No se pudo leer la lista de organizaciones, o es de una versión más nueva de BoldoAtlas, y no se puede actualizar. Sigues en la misma organización. Reinicia BoldoAtlas o actualízalo.",
       "sin_espacio": "No queda espacio en el disco. Libera espacio e inténtalo de nuevo; no se cambió nada.",
       "fallo": "No se pudo completar la operación: {detalle}"
     },

@@ -111,6 +111,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             comandos::info_app,
             comandos::listar_organizaciones,
+            comandos::abrir_organizacion,
             comandos::db_consultar,
             comandos::db_lote,
             fotos::foto_bytes,

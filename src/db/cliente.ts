@@ -75,6 +75,10 @@ export function listarOrganizaciones(): Promise<Organizacion[]> {
   return invoke<Organizacion[]>("listar_organizaciones");
 }
 
+export function abrirOrganizacion(id: string): Promise<Organizacion> {
+  return invoke<Organizacion>("abrir_organizacion", { id });
+}
+
 export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   return conBase<T[]>("db_consultar", { sql, params });
 }

@@ -944,6 +944,7 @@
       "esquema_nuevo": "This backup was made with a newer version of BoldoAtlas. Update BoldoAtlas to restore it.",
       "en_uso": "Another BoldoAtlas window is using the data. Close it and try again; nothing was changed.",
       "otra_base": "BoldoAtlas ran into an internal problem and nothing was changed. Reload the window to continue.",
+      "lista_protegida": "The list of organizations could not be read, or it comes from a newer version of BoldoAtlas, and it can't be updated. You're still in the same organization. Restart or update BoldoAtlas.",
       "sin_espacio": "There's no space left on the disk. Free up some space and try again; nothing was changed.",
       "fallo": "The operation could not be completed: {detalle}"
     },

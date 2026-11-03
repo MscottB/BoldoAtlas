@@ -198,7 +198,7 @@ fn volcar(conn: &Connection, dir: &Path, prefijo: &str, sello: &str) -> Result<S
 }
 
 /// Dónde `cambiar_base` prepara la copia, al lado de la base.
-fn copia_de(bd: &Path) -> PathBuf {
+pub(crate) fn copia_de(bd: &Path) -> PathBuf {
     bd.with_extension("restaurando")
 }
 

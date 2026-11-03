@@ -111,6 +111,11 @@ impl Sesiones {
         self.estado().trabajo.as_deref() == Some(trabajo)
     }
 
+    /// Con un trabajo sin soltar no se cambia de organización: sus pasos siguientes son sobre la base abierta.
+    pub fn ocupada(&self) -> bool {
+        self.estado().trabajo.is_some()
+    }
+
     /// Detiene ese trabajo y borra sus temporales. Si ya hay otro, no le pasa nada.
     pub fn cancelar(&self, trabajo: &str) {
         {
@@ -521,6 +526,18 @@ mod tests {
     use db::MIGRACIONES;
 
     const SIGUE: fn(u64, u64) -> bool = |_, _| true;
+
+    #[test]
+    fn ocupada_mientras_haya_un_trabajo_sin_soltar() {
+        let s = Sesiones::default();
+        assert!(!s.ocupada());
+        s.empezar("t").unwrap();
+        assert!(s.ocupada());
+        s.cancelar("otro");
+        assert!(s.ocupada());
+        s.cancelar("t");
+        assert!(!s.ocupada());
+    }
 
     /// Solo los temporales: las demás cosas de la carpeta no importan aquí.
     fn temporales(dir: &Path) -> Vec<String> {
