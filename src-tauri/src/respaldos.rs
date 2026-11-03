@@ -385,6 +385,30 @@ pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
 }
 
 /// Los respaldos de una organización que se elimina. Solo los nombres propios: lo demás de la carpeta es del usuario.
+/// Lo que `borrar_respaldos` considera suyo: un `notas.txt` del usuario no.
+fn es_propio(nombre: &str) -> bool {
+    entrada(nombre).is_some() || nombre.starts_with(PREFIJO_MIGRACION)
+}
+
+/// Lo que ocupa lo que `borrar_respaldos` borraría. `None` si no se pudo leer: no es lo mismo que no tener nada.
+pub fn bytes_propios(dir: &Path) -> Option<u64> {
+    let archivos = match fs::read_dir(dir) {
+        Err(e) if e.kind() == ErrorKind::NotFound => return Some(0),
+        otro => otro.ok()?,
+    };
+    let mut total = 0;
+    for f in archivos {
+        let f = f.ok()?;
+        if f.file_name().to_str().is_some_and(es_propio) {
+            let m = f.metadata().ok()?;
+            if m.is_file() {
+                total += m.len();
+            }
+        }
+    }
+    Some(total)
+}
+
 pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
     limpiar_parciales(dir, None);
     let archivos = match fs::read_dir(dir) {
@@ -393,10 +417,7 @@ pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
     };
     for f in archivos {
         let f = f?;
-        let propio = f
-            .file_name()
-            .to_str()
-            .is_some_and(|n| entrada(n).is_some() || n.starts_with(PREFIJO_MIGRACION));
+        let propio = f.file_name().to_str().is_some_and(es_propio);
         if propio && f.file_type()?.is_file() {
             fs::remove_file(f.path())?;
         }
@@ -581,6 +602,17 @@ mod tests {
             .collect();
         v.sort();
         v
+    }
+
+    #[test]
+    fn bytes_propios_no_cuenta_lo_ajeno_ni_inventa_un_cero() {
+        let d = tempfile::tempdir().unwrap();
+        assert_eq!(bytes_propios(&d.path().join("no_existe")), Some(0));
+        fs::write(d.path().join("boldo-20200101-0000.db"), "12345").unwrap();
+        fs::write(d.path().join("notas.txt"), "1234567").unwrap();
+        assert_eq!(bytes_propios(d.path()), Some(5));
+        // un archivo donde debería haber una carpeta: no se pudo leer, y no es lo mismo que vacío
+        assert_eq!(bytes_propios(&d.path().join("notas.txt")), None);
     }
 
     #[test]

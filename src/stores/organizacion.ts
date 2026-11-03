@@ -51,8 +51,10 @@ import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 
-/** `codigo`: el de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
-export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string; codigo?: string };
+/** `codigo` y `detalle`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
+export type Resultado =
+  | { ok: true; id?: string }
+  | { ok: false; mensaje: string; codigo?: string; detalle?: string };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
 export type ResultadoEliminar =

@@ -32,9 +32,14 @@ export function mensajeOrganizacion(e: unknown): string {
 }
 
 /** Una acción sobre organizaciones que falló, con el código de Rust para quien deba distinguirlo. */
-export function falloOrganizacion(e: unknown): { ok: false; mensaje: string; codigo: string } {
-  const codigo = typeof e === "object" && e !== null && "codigo" in e ? String(e.codigo) : "";
-  return { ok: false, mensaje: mensajeOrganizacion(e), codigo };
+export function falloOrganizacion(e: unknown): {
+  ok: false;
+  mensaje: string;
+  codigo: string;
+  detalle: string;
+} {
+  const f: Partial<FalloRespaldo> = typeof e === "object" && e !== null ? e : {};
+  return { ok: false, mensaje: mensajeOrganizacion(e), codigo: f.codigo ?? "", detalle: f.detalle ?? "" };
 }
 
 /** «Respaldar ahora» y el automático: cuenta como trabajo en curso. */

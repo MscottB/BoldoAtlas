@@ -29,8 +29,9 @@ export interface Organizacion {
   existe: boolean;
   activa: boolean;
   logo: string | null;
-  bytesBase: number;
-  bytesRespaldos: number;
+  /** null: no se pudo leer. */
+  bytesBase: number | null;
+  bytesRespaldos: number | null;
   ejemplo: boolean;
 }
 

@@ -1202,12 +1202,27 @@ describe("eliminar", () => {
     expect(p.lista.find((x) => x.id === p.activa)?.org).toBe("B");
   });
 
+  it("si falla al entrar tras un borrado que salió bien, no informa un fallo y las pestañas se cierran", async () => {
+    const { p, o } = await arrancar();
+    datos.set("boldo:minimapa:A", "true");
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    c.eliminarOrganizacion.mockResolvedValue({ id: "B" });
+    vi.spyOn(p, "irAInicio").mockRejectedValue(new Error("no se pudo navegar"));
+    expect(await o.eliminar("A", { guardarCopia: false, borrarArchivo: false })).toEqual({ ok: true });
+    expect(error).toHaveBeenCalled();
+    expect(ids()).toEqual(["b1", "c1"]);
+    expect(datos.has("boldo:minimapa:A")).toBe(false);
+    expect(baseActual()).toBe("B");
+    expect(o.cambiando).toBe(false);
+  });
+
   it("devuelve el código de Rust, para que el diálogo sepa qué ofrecer", async () => {
     const { o } = await arrancar();
-    c.eliminarOrganizacion.mockRejectedValue(fallo("no_encontrado"));
+    c.eliminarOrganizacion.mockRejectedValue(fallo("contenido_invalido", "enlace"));
     expect(await o.eliminar("B", { guardarCopia: true, borrarArchivo: false })).toMatchObject({
       ok: false,
-      codigo: "no_encontrado",
+      codigo: "contenido_invalido",
+      detalle: "enlace",
     });
   });
 

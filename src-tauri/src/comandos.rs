@@ -2569,8 +2569,8 @@ mod arranque_organizaciones {
         let v = &vista[0];
         assert_eq!(v.logo.as_deref(), Some("QUJD"));
         assert!(v.existe && !v.activa);
-        assert_eq!(v.bytes_base, antes.len() as u64);
-        assert_eq!(v.bytes_respaldos, 5);
+        assert_eq!(v.bytes_base, Some(antes.len() as u64));
+        assert_eq!(v.bytes_respaldos, Some(5));
         assert_eq!(v.nombre, o.nombre);
         sin_rastros(&bd);
         assert_eq!(fs::read(&bd).unwrap(), antes);

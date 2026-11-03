@@ -20,14 +20,18 @@ import { baseActual } from "@/lib/baseActiva";
 import { tamano } from "@/lib/formato";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import {
+  aconsejaSinCopia,
+  claveFalloFuera,
   claveHecha,
   claveQueSeBorra,
-  confirmaEliminar,
   espacioQueLibera,
   ID_SECCION,
+  intentoQueBorro,
+  intentoTrasFallo,
   opcionesEliminar,
   pestanasDe,
   textoAConfirmar,
+  useConfirmacion,
 } from "./eliminar";
 
 const props = defineProps<{ organizacion: Organizacion }>();
@@ -39,15 +43,26 @@ const organizaciones = useOrganizaciones();
 const pestanas = usePestanas();
 
 const ID_CAMPO = "eliminar-org-escrito";
-const escrito = ref("");
 const copia = ref(true);
 const archivo = ref(false);
 const corriendo = ref(false);
 const error = ref("");
 const codigo = ref("");
+const detalle = ref("");
 /** Rust dijo que el archivo no está aunque la lista diga otra cosa: solo se termina sin las casillas. */
 const noEncontrado = ref(false);
 let eliminada = false;
+
+const nombre = computed(() => textoAConfirmar(props.organizacion, t("barra.sinNombre")));
+const sinArchivo = computed(() => noEncontrado.value || !props.organizacion.existe);
+const yaBorro = computed(() =>
+  intentoQueBorro(props.organizacion, organizaciones.intentosEliminar.get(props.organizacion.id)),
+);
+const { escrito, confirmado, alEnter } = useConfirmacion(
+  () => nombre.value,
+  () => sinArchivo.value,
+  () => confirmar(),
+);
 
 watch(abierto, (a) => {
   if (!a) return;
@@ -56,27 +71,23 @@ watch(abierto, (a) => {
   archivo.value = false;
   error.value = "";
   codigo.value = "";
+  detalle.value = "";
   noEncontrado.value = false;
   eliminada = false;
 });
 
-const nombre = computed(() => textoAConfirmar(props.organizacion, t("barra.sinNombre")));
-const sinArchivo = computed(() => noEncontrado.value || !props.organizacion.existe);
 const opciones = computed(() =>
   opcionesEliminar(props.organizacion, { copia: copia.value, archivo: archivo.value }, sinArchivo.value),
 );
 const seBorra = computed(() =>
   t(
-    `organizaciones.eliminar.seBorra.${claveQueSeBorra(props.organizacion, sinArchivo.value, opciones.value.borrarArchivo)}`,
+    `organizaciones.eliminar.seBorra.${claveQueSeBorra(props.organizacion, sinArchivo.value, opciones.value.borrarArchivo, yaBorro.value)}`,
   ),
 );
 const ofreceCopia = computed(() => !sinArchivo.value && (!props.organizacion.externa || archivo.value));
 const libera = computed(() => espacioQueLibera(props.organizacion, opciones.value.borrarArchivo));
 const nPestanas = computed(() => pestanasDe(pestanas.lista, props.organizacion.id));
-const sePuede = computed(
-  () =>
-    confirmaEliminar(escrito.value, nombre.value) && !corriendo.value && !organizaciones.listaProtegida,
-);
+const sePuede = computed(() => confirmado.value && !corriendo.value && !organizaciones.listaProtegida);
 // Tras un fallo sin archivo, lo que falta es terminar: ya no hay nada que copiar ni borrar de él.
 const etiqueta = computed(() =>
   t(error.value && sinArchivo.value ? "organizaciones.eliminar.terminar" : "organizaciones.eliminar.confirmar"),
@@ -86,42 +97,57 @@ const etiqueta = computed(() =>
 let desmontado = false;
 onBeforeUnmount(() => (desmontado = true));
 
-function avisarFuera(o: Organizacion, mensaje: string) {
+async function avisarFuera(o: Organizacion, mensaje: string) {
   if (!mensaje) return toast(t("organizaciones.eliminar.noSeHizo"));
-  // Rust ya pasó a otra: sigue en la lista, y ahora se elimina como cualquier otra
-  if (o.activa && baseActual() !== o.id)
-    return toast.error(t("organizaciones.eliminar.falloYaEnOtra", { nombre: nombre.value }), {
-      description: mensaje,
-      duration: Infinity,
-    });
-  toast.error(mensaje);
+  await organizaciones.cargarLista();
+  const clave = claveFalloFuera({
+    pasoAOtra: o.activa && baseActual() !== o.id,
+    sigueEnLaLista: organizaciones.lista.some((x) => x.id === o.id),
+  });
+  if (!clave) return toast.error(mensaje);
+  toast.error(t(`organizaciones.eliminar.${clave}`, { nombre: nombre.value }), {
+    description: mensaje,
+    duration: Infinity,
+  });
 }
 
 async function confirmar() {
   if (!sePuede.value) return;
   const o = props.organizacion;
   const pedidas = opciones.value;
+  const sinArchivoAlPedir = sinArchivo.value;
+  const yaBorroAlPedir = yaBorro.value;
   corriendo.value = true;
   error.value = "";
   codigo.value = "";
+  detalle.value = "";
   const r = await organizaciones.eliminar(o.id, pedidas);
   corriendo.value = false;
   if (r.ok) {
-    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas)}`, { nombre: nombre.value }));
+    organizaciones.intentosEliminar.delete(o.id);
+    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas, yaBorroAlPedir)}`, { nombre: nombre.value }));
     eliminada = true;
     abierto.value = false;
     emit("terminado", true);
     return;
   }
   if (r.codigo === "lista_protegida") organizaciones.listaProtegida = true;
+  const intento = intentoTrasFallo(
+    organizaciones.intentosEliminar.get(o.id),
+    pedidas,
+    sinArchivoAlPedir,
+    r.codigo,
+  );
+  if (intento) organizaciones.intentosEliminar.set(o.id, intento);
   if (desmontado) {
-    avisarFuera(o, r.mensaje);
+    await avisarFuera(o, r.mensaje);
     await nextTick();
     return document.getElementById(ID_SECCION)?.focus(); // si sigue en Configuración
   }
   // CANCELADO llega sin mensaje: no se hizo, y no se dice otra cosa
   error.value = r.mensaje || t("organizaciones.eliminar.noSeHizo");
   codigo.value = r.codigo ?? "";
+  detalle.value = r.detalle ?? "";
   if (r.codigo === "no_encontrado") noEncontrado.value = true;
   emit("terminado", false);
   await nextTick();
@@ -189,7 +215,7 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
             autocomplete="off"
             spellcheck="false"
             :readonly="corriendo"
-            @keydown.enter.prevent="confirmar"
+            @keydown.enter.prevent="alEnter"
           />
         </div>
 
@@ -197,9 +223,10 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
           <p>{{ error }}</p>
           <p v-if="noEncontrado">{{ t("organizaciones.eliminar.noEncontrado") }}</p>
           <p v-else-if="codigo === 'fallo'">{{ t("organizaciones.eliminar.trasFallo") }}</p>
-          <p v-else-if="ofreceCopia && copia && (codigo === 'danado' || codigo === 'contenido_invalido')">
+          <p v-else-if="ofreceCopia && copia && aconsejaSinCopia(codigo, detalle)">
             {{ t("organizaciones.eliminar.sinPoderCopiar") }}
           </p>
+          <p v-if="sinArchivo && !escrito">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
         </div>
         <p role="status" class="text-muted-foreground">
           {{ corriendo ? t("organizaciones.eliminar.eliminando") : "" }}

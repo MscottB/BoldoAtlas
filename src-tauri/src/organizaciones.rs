@@ -6,7 +6,7 @@ use crate::intercambio::validar::{
 };
 use crate::intercambio::{Temporal, nombre_limpio};
 use crate::respaldos::{
-    Fallo, borrar_bd, borrar_respaldos, cerrar_copia, con_sufijo, copia_de_base,
+    Fallo, borrar_bd, borrar_respaldos, bytes_propios, cerrar_copia, con_sufijo, copia_de_base,
     fecha_de_eliminada, limpiar_parciales, sello_local, volcar,
 };
 use crate::rutas::Rutas;
@@ -244,8 +244,9 @@ pub struct OrganizacionVista {
     pub existe: bool,
     pub activa: bool,
     pub logo: Option<String>,
-    pub bytes_base: u64,
-    pub bytes_respaldos: u64,
+    /// `None`: no se pudo leer.
+    pub bytes_base: Option<u64>,
+    pub bytes_respaldos: Option<u64>,
     pub ejemplo: bool,
 }
 
@@ -1030,15 +1031,13 @@ pub fn anotar_creada(l: &mut Lista, e: Entrada, conn: &Connection, ejemplo: bool
     });
 }
 
-fn bytes_de_archivos(carpeta: &Path) -> u64 {
-    fs::read_dir(carpeta)
-        .into_iter()
-        .flatten()
-        .flatten()
-        .filter_map(|f| f.metadata().ok())
-        .filter(|m| m.is_file())
-        .map(|m| m.len())
-        .sum()
+/// `None` si no se pudo leer. Un archivo que no está no ocupa nada.
+fn tam(ruta: &Path) -> Option<u64> {
+    match fs::metadata(ruta) {
+        Ok(m) => Some(m.len()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Some(0),
+        Err(_) => None,
+    }
 }
 
 /// El logo sale del archivo: la lista no guarda imágenes.
@@ -1051,7 +1050,6 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
         .iter()
         .map(|e| {
             let base = base_de(r, e);
-            let tam = |p: &Path| fs::metadata(p).map(|m| m.len()).unwrap_or(0);
             OrganizacionVista {
                 id: e.id.clone(),
                 nombre: e.nombre.clone(),
@@ -1062,8 +1060,10 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
                 existe: base.bd.is_file(),
                 activa: activa == Some(e.id.as_str()),
                 logo: logo_de(&base.bd),
-                bytes_base: tam(&base.bd) + tam(&con_sufijo(&base.bd, "-wal")),
-                bytes_respaldos: bytes_de_archivos(&base.respaldos),
+                bytes_base: tam(&base.bd)
+                    .zip(tam(&con_sufijo(&base.bd, "-wal")))
+                    .map(|(bd, wal)| bd + wal),
+                bytes_respaldos: bytes_propios(&base.respaldos),
                 ejemplo: e.ejemplo,
             }
         })
@@ -1890,6 +1890,17 @@ mod tests_lista {
     }
 
     #[test]
+    fn lo_que_no_se_puede_leer_no_se_ve_como_cero() {
+        let d = tempfile::tempdir().unwrap();
+        let ausente = d.path().join("ausente");
+        assert_eq!(tam(&ausente), Some(0));
+        assert_eq!(tam(Path::new("con\0nulo")), None);
+        let archivo = d.path().join("archivo");
+        fs::write(&archivo, "123").unwrap();
+        assert_eq!(tam(&archivo), Some(3));
+    }
+
+    #[test]
     fn paleta_de_ts_coincide() {
         let ts = include_str!("../../src/features/organizaciones/paleta.ts");
         for color in PALETA {
@@ -1911,7 +1922,7 @@ mod tests_lista {
         };
         let v = &vistas(&r, &l, None)[0];
         assert!(!v.existe && !v.activa);
-        assert_eq!((v.bytes_base, v.bytes_respaldos), (0, 0));
+        assert_eq!((v.bytes_base, v.bytes_respaldos), (Some(0), Some(0)));
         assert_eq!(v.logo, None);
         assert_eq!(v.ruta, bd.display().to_string());
         // mirarla no crea nada

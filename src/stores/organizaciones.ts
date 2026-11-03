@@ -25,6 +25,7 @@ import {
   mensajeOrganizacion,
   respaldoAutomatico,
 } from "@/features/respaldos/respaldos";
+import type { OpcionesEliminar } from "@/features/organizaciones/eliminar";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
 import { BaseCambiada, baseActual, fijarBase, marcarCambio, soltarDatos } from "@/lib/baseActiva";
@@ -72,6 +73,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   const cambiando = ref(false);
   /** Rust dijo `lista_protegida`: hasta reiniciar no se puede cambiar. Lo anota quien lo recibe, y sobrevive a la vista. */
   const listaProtegida = ref(false);
+  /** Por id: lo que pidió el último eliminar que falló a medias. Lo anota el diálogo, y sobrevive a la vista que se remonta. */
+  const intentosEliminar = ref(new Map<string, OpcionesEliminar>());
   /** Por id de pestaña: por qué no se pudo abrir o cargar su organización. */
   const sinAbrir = ref(new Map<string, Motivo>());
   /** Las organizaciones ya abiertas en esta sesión: con la frecuencia «al abrir», solo la primera vez respalda. */
@@ -328,13 +331,15 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
         inicio = performance.now();
         await desmontar();
       }
+      let otra: Organizacion | null;
       try {
-        const otra = await eliminarOrganizacion(id, opciones.guardarCopia, opciones.borrarArchivo);
-        if (otra) await entrarEn(otra.id, null, inicio);
+        otra = await eliminarOrganizacion(id, opciones.guardarCopia, opciones.borrarArchivo);
       } catch (e) {
         if (esLaAbierta) await seguirARust(inicio);
         return falloOrganizacion(e);
       }
+      // Ya se borró: lo que falle al entrar no es un fallo de eliminar, y sus pestañas no tienen a qué volver.
+      if (otra) await entrarEn(otra.id, null, inicio).catch((e: unknown) => console.error(e));
       pestanas.cerrarDeOrganizacion(id);
       borrarPreferenciasOrg(id);
       void cargarLista();
@@ -372,6 +377,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     recientes,
     cambiando,
     listaProtegida,
+    intentosEliminar,
     enCurso,
     /** Si otro pedido espera su turno: lo que se pida ahora lo reemplaza. */
     hayEspera: () => espera !== null,

@@ -1,13 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { nextTick, ref } from "vue";
 import type { Organizacion } from "@/db/cliente";
 import {
+  aconsejaSinCopia,
+  claveFalloFuera,
   claveHecha,
   claveQueSeBorra,
   confirmaEliminar,
   espacioQueLibera,
+  intentoQueBorro,
+  intentoTrasFallo,
   opcionesEliminar,
   pestanasDe,
   textoAConfirmar,
+  useConfirmacion,
 } from "./eliminar";
 
 const org = (cambios: Partial<Organizacion> = {}): Organizacion => ({
@@ -149,5 +155,114 @@ describe("claveHecha: una externa sin su archivo no se dice eliminada", () => {
     ["hechaConCopia", org({ externa: true }), { guardarCopia: true, borrarArchivo: true }],
   ] as const)("%s", (clave, o, opciones) => {
     expect(claveHecha(o, opciones)).toBe(clave);
+  });
+});
+
+describe("useConfirmacion: lo escrito confirma las opciones de ese momento", () => {
+  const preparar = () => {
+    const sinArchivo = ref(false);
+    const confirmar = vi.fn();
+    const c = useConfirmacion(() => "Acme", () => sinArchivo.value, confirmar);
+    c.escrito.value = "Acme";
+    return { sinArchivo, confirmar, ...c };
+  };
+
+  it("si pasan a ser sin archivo, hay que escribir el nombre otra vez", async () => {
+    const { sinArchivo, escrito, confirmado } = preparar();
+    expect(confirmado.value).toBe(true);
+    sinArchivo.value = true; // `no_encontrado`, o la lista releída tras un fallo
+    await nextTick();
+    expect(escrito.value).toBe("");
+    expect(confirmado.value).toBe(false);
+  });
+
+  it("escrito de nuevo, vale para las opciones nuevas", async () => {
+    const { sinArchivo, escrito, confirmado } = preparar();
+    sinArchivo.value = true;
+    await nextTick();
+    escrito.value = "Acme";
+    await nextTick();
+    expect(escrito.value).toBe("Acme");
+    expect(confirmado.value).toBe(true);
+  });
+
+  it("Enter mantenido no confirma: cuenta solo la pulsación nueva", () => {
+    const { alEnter, confirmar } = preparar();
+    alEnter({ repeat: true } as KeyboardEvent);
+    expect(confirmar).not.toHaveBeenCalled();
+    alEnter({ repeat: false } as KeyboardEvent);
+    expect(confirmar).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("un intento que falló a medias", () => {
+  const conCopia = { guardarCopia: true, borrarArchivo: false };
+  const conArchivo = { guardarCopia: false, borrarArchivo: true };
+  const nada = { guardarCopia: false, borrarArchivo: false };
+
+  it("se anota lo que pidió, y un no_encontrado o un cancelado no tocaron nada", () => {
+    expect(intentoTrasFallo(undefined, conCopia, false, "fallo")).toEqual(conCopia);
+    expect(intentoTrasFallo(undefined, conCopia, false, "no_encontrado")).toBeUndefined();
+    expect(intentoTrasFallo(undefined, conCopia, false, undefined)).toBeUndefined();
+  });
+
+  it("reintentar sin las casillas no borra lo que logró el anterior", () => {
+    expect(intentoTrasFallo(conCopia, nada, true, "fallo")).toEqual(conCopia);
+  });
+
+  it("con el archivo aún ahí, vale el último: el anterior no llegó a borrar nada", () => {
+    expect(intentoTrasFallo(conCopia, nada, false, "fallo")).toEqual(nada);
+  });
+
+  it("solo cuenta si su archivo ya no está y le tocaba borrarlo", () => {
+    expect(intentoQueBorro(org({ existe: false }), conCopia)).toEqual(conCopia);
+    expect(intentoQueBorro(org({ existe: true }), conCopia)).toBeUndefined();
+    expect(intentoQueBorro(org({ existe: false }), undefined)).toBeUndefined();
+    expect(intentoQueBorro(org({ existe: false, externa: true }), conArchivo)).toEqual(conArchivo);
+    // una externa a la que no se le pidió borrar: si no está, no fue la app
+    expect(intentoQueBorro(org({ existe: false, externa: true }), nada)).toBeUndefined();
+  });
+
+  it("externa con su casilla: al terminar no dice que su archivo no se tocó, ni que pudo moverse", () => {
+    const o = org({ externa: true, existe: false });
+    const ya = intentoQueBorro(o, conArchivo);
+    expect(claveQueSeBorra(o, true, false, ya)).toBe("reintentoSinCopia");
+    expect(claveHecha(o, nada, ya)).toBe("hecha");
+  });
+
+  it("interna con copia: dice que la copia está, no que no se puede copiar", () => {
+    const o = org({ existe: false });
+    const ya = intentoQueBorro(o, conCopia);
+    expect(claveQueSeBorra(o, true, false, ya)).toBe("reintentoConCopia");
+    expect(claveHecha(o, nada, ya)).toBe("hechaConCopia");
+  });
+
+  it("interna sin copia: sus respaldos son lo único que queda", () => {
+    const o = org({ existe: false });
+    expect(claveQueSeBorra(o, true, false, intentoQueBorro(o, nada))).toBe("reintentoSinCopia");
+  });
+});
+
+describe("claveFalloFuera: el aviso cuando el diálogo ya no está", () => {
+  it("la que falló sin pasar a otra no necesita más que su motivo", () => {
+    expect(claveFalloFuera({ pasoAOtra: false, sigueEnLaLista: true })).toBeNull();
+  });
+  it("ya en otra y sigue en la lista: se puede terminar", () => {
+    expect(claveFalloFuera({ pasoAOtra: true, sigueEnLaLista: true })).toBe("falloYaEnOtra");
+  });
+  it("boldo.db, la última: ya no está en la lista, y no se ofrece reintentar lo que no se puede", () => {
+    expect(claveFalloFuera({ pasoAOtra: true, sigueEnLaLista: false })).toBe("falloSinVuelta");
+  });
+});
+
+describe("aconsejaSinCopia", () => {
+  it.each([
+    ["danado", "x", true],
+    ["contenido_invalido", "journal", true],
+    ["contenido_invalido", "enlace", false], // el problema es borrar un enlace: la copia no tiene que ver
+    ["fallo", "x", false],
+    ["no_encontrado", "x", false],
+  ])("%s (%s): %s", (codigo, detalle, si) => {
+    expect(aconsejaSinCopia(codigo, detalle)).toBe(si);
   });
 });

@@ -38,16 +38,22 @@ const idBorrarCopia = (nombre: string) => `copia-borrar-${nombre}`;
 
 const copias = ref<OrganizacionEliminada[]>([]);
 const errorCarga = ref("");
+// Antes de la primera lectura, o si falló, no se sabe si hay: no se dice que no.
+const listaLeida = ref(false);
+const copiasLeidas = ref(false);
 const ocupado = ref(false);
 /** Mientras algo corre, y con una lista que no se puede cambiar: Rust lo rechazaría igual. */
 const bloqueado = computed(() => ocupado.value || organizaciones.enCurso || organizaciones.listaProtegida);
 
 async function cargar() {
   const lista = await organizaciones.cargarLista();
+  listaLeida.value = lista.ok;
   let mensaje = lista.ok ? "" : lista.mensaje;
   try {
     copias.value = await listarEliminadas();
+    copiasLeidas.value = true;
   } catch (e) {
+    copiasLeidas.value = false;
     mensaje ||= falloOrganizacion(e).mensaje;
   }
   errorCarga.value = mensaje;
@@ -57,8 +63,10 @@ onMounted(cargar);
 const nombreDe = (o: Pick<Organizacion, "nombre">) => textoAConfirmar(o, t("barra.sinNombre"));
 const nombreDeCopia = (c: OrganizacionEliminada) => nombreDe({ nombre: c.organizacion });
 // Lo que no se pudo leer no rompe la pantalla ni se muestra como un número falso.
-const espacio = (bytes: number) =>
-  Number.isFinite(bytes) ? tamano(bytes, locale.value) : t("organizaciones.seccion.sinDato");
+const espacio = (bytes: number | null) =>
+  typeof bytes === "number" && Number.isFinite(bytes)
+    ? tamano(bytes, locale.value)
+    : t("organizaciones.seccion.sinDato");
 function fecha(valor: string) {
   const d = new Date(valor);
   return Number.isNaN(d.getTime())
@@ -121,6 +129,7 @@ function preguntar(p: Pregunta) {
   preguntando.value = true;
 }
 function responder() {
+  if (respondida) return; // un segundo clic mientras el diálogo se va
   respondida = true;
   void pregunta.value?.accion();
 }
@@ -130,7 +139,9 @@ const alCerrarPregunta = (e: Event) => respondida && e.preventDefault();
 function pedirQuitar(o: Organizacion, i: number) {
   preguntar({
     titulo: t("organizaciones.seccion.quitarTitulo", { nombre: nombreDe(o) }),
-    texto: t("organizaciones.seccion.quitarTexto", { ruta: o.ruta }),
+    texto: t(o.existe ? "organizaciones.seccion.quitarTexto" : "organizaciones.seccion.quitarTextoSinArchivo", {
+      ruta: o.ruta,
+    }),
     si: t("organizaciones.seccion.quitar"),
     destructiva: false,
     accion: () => correr(() => organizaciones.quitar(o.id), () => filaEn(i)),
@@ -225,7 +236,10 @@ async function trasEliminar(eliminada: boolean) {
       </Button>
     </div>
 
-    <ul class="divide-y text-sm">
+    <p v-if="listaLeida && !organizaciones.lista.length" class="text-sm text-muted-foreground">
+      {{ t("organizaciones.seccion.vacia") }}
+    </p>
+    <ul v-else class="divide-y text-sm">
       <li v-for="(o, i) in organizaciones.lista" :key="o.id" class="grid gap-2 py-3">
         <div class="flex flex-wrap items-center gap-2">
           <span class="size-3 shrink-0 rounded-full" :style="{ background: o.color }" aria-hidden="true" />
@@ -286,7 +300,7 @@ async function trasEliminar(eliminada: boolean) {
 
     <section class="grid gap-2" aria-labelledby="cfg-copias-eliminadas">
       <h3 id="cfg-copias-eliminadas" class="text-sm font-medium">{{ t("organizaciones.seccion.copias") }}</h3>
-      <p class="text-sm text-muted-foreground">
+      <p v-if="copias.length || copiasLeidas" class="text-sm text-muted-foreground">
         {{ t(copias.length ? "organizaciones.seccion.copiasAyuda" : "organizaciones.seccion.copiasVacio") }}
       </p>
       <ul v-if="copias.length" class="divide-y text-sm">
