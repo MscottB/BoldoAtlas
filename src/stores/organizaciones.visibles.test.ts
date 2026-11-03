@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { effect, stop } from "vue";
 import { i18n } from "@/i18n";
 import { fijarBase } from "@/lib/baseActiva";
 import { deLaAbierta } from "@/lib/trabajos";
@@ -33,6 +34,31 @@ describe("con la bandera", () => {
     await o.cargarLista();
     expect(o.varias).toBe(false);
     expect(deLaAbierta("Respaldo")).toBe("Respaldo");
+  });
+
+  it("con una sola, renombrar no despierta a quien nombra un trabajo; con varias, sí", async () => {
+    c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa")]);
+    const o = useOrganizaciones();
+    const org = useOrganizacion();
+    await o.cargarLista();
+    await org.cargar();
+    let veces = 0;
+    const e = effect(() => {
+      deLaAbierta("Respaldo");
+      veces++;
+    });
+    c.leerMeta.mockResolvedValue({ org_nombre: "Otro" });
+    await org.cargar();
+    expect(veces).toBe(1);
+
+    c.listarOrganizaciones.mockResolvedValue([de("A", "Otro"), de("B", "Beta")]);
+    await o.cargarLista();
+    expect(veces).toBeGreaterThan(1);
+    const conVarias = veces;
+    c.leerMeta.mockResolvedValue({ org_nombre: "Tercero" });
+    await org.cargar();
+    expect(veces).toBeGreaterThan(conVarias);
+    stop(e);
   });
 
   it("con varias, nombran la abierta", async () => {

@@ -12,7 +12,7 @@ import { abrirCarpetaDatos } from "@/db/cliente";
 import { buscarPersona } from "@/features/atajos/buscarPersona";
 import { mensajeFallo, respaldar as hacerRespaldo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
-import { deLaAbierta, trabajos, ultimoFin } from "@/lib/trabajos";
+import { abiertaAhora, conOrganizacion, deLaAbierta, trabajos, ultimoFin } from "@/lib/trabajos";
 import { useActualizaciones } from "@/stores/actualizaciones";
 import { buscarActualizaciones } from "./acciones";
 
@@ -25,7 +25,7 @@ import { buscarActualizaciones } from "./acciones";
  * Con una versión nueva, el texto del icono (tooltip) también lo avisa, y lo mismo un trabajo en curso o que termina bien
  * con la ventana oculta; si falla, la ventana vuelve al frente para que se vea el error.
  * Se crea una vez y sigue valiendo tras cambiar de organización: nada aquí guarda datos de una, y sus textos la nombran
- * según la abierta de ahora. «Abrir carpeta de datos» es la de la app, común a todas.
+ * según la abierta de ahora. «Abrir carpeta de datos» abre la de la base abierta: la decide Rust.
  * shortcut: el aviso de que terminó solo se ve al pasar el mouse sobre el icono; si no basta, una notificación del
  * sistema, que pide un plugin más.
  * En Linux, crear el icono sin libayatana-appindicator3 haría entrar en pánico a tray-icon y, con panic = "abort",
@@ -95,15 +95,16 @@ export async function crearBandeja(router: Router): Promise<void> {
     const respaldar = await MenuItem.new({
       id: "respaldar",
       text: x.respaldar,
-      action: () =>
-        hacerRespaldo().then(
-          // un trabajo en curso impide cambiar: sigue siendo la misma que se respaldó
-          () => toast.success(deLaAbierta(t("respaldos.hecho"))),
+      action: () => {
+        const { nombre, varias } = abiertaAhora(); // la que se respalda, aunque al terminar sea otra
+        return hacerRespaldo().then(
+          () => toast.success(conOrganizacion(t("respaldos.hecho"), nombre, varias)),
           (e: unknown) => {
             const mensaje = mensajeFallo(e);
-            if (mensaje) toast.error(deLaAbierta(mensaje));
+            if (mensaje) toast.error(conOrganizacion(mensaje, nombre, varias));
           },
-        ),
+        );
+      },
     });
     const carpeta = await MenuItem.new({
       id: "carpeta",

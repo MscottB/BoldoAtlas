@@ -17,7 +17,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Mutex, MutexGuard, RwLock, TryLockError};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -61,6 +61,8 @@ pub struct Estado {
     version_esquema: AtomicI64,
     error: Mutex<Option<String>>,
     aviso_inicio: Mutex<Option<AvisoInicio>>,
+    /// Viene `app.restart`: ya no empieza otra organización desde un archivo.
+    reiniciando: AtomicBool,
 }
 
 type ArchivoPendiente = (PathBuf, Option<String>, Vec<&'static str>);
@@ -116,6 +118,7 @@ impl Estado {
             version_esquema: AtomicI64::new(0),
             error: Mutex::new(error),
             aviso_inicio: Mutex::new(None),
+            reiniciando: AtomicBool::new(false),
         }
     }
 
@@ -135,6 +138,7 @@ impl Estado {
             version_esquema: AtomicI64::new(0),
             error: Mutex::new(None),
             aviso_inicio: Mutex::new(None),
+            reiniciando: AtomicBool::new(false),
         }
     }
 
@@ -637,7 +641,11 @@ impl Estado {
         let i = sesiones.tomar_importacion(trabajo)?;
         let hecho = {
             let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
-            intercambio::como_nueva(&i, r)
+            if self.reiniciando.load(Ordering::SeqCst) {
+                Err(Fallo::de("trabajo_en_curso", ""))
+            } else {
+                intercambio::como_nueva(&i, r)
+            }
         };
         if hecho.is_ok() {
             sesiones.cancelar(trabajo);
@@ -645,6 +653,20 @@ impl Estado {
             let _ = sesiones.guardar_importacion(trabajo, i);
         }
         hecho
+    }
+
+    /// Justo antes de `app.restart`, que cortaría `como_nueva` y dejaría una carpeta sin listar. Esa toma la lista todo el tiempo: se
+    /// espera a que la suelte, y no empieza otra. Se suelta antes de reiniciar: al salir se cierra la base, y que nada dependa de esto.
+    fn antes_de_reiniciar(&self) {
+        self.reiniciando.store(true, Ordering::SeqCst);
+        drop(self.lista.lock().unwrap_or_else(|p| p.into_inner()));
+    }
+
+    /// La carpeta de la base abierta: con `boldo.db`, la de datos.
+    fn carpeta_abierta(&self, r: &Rutas) -> PathBuf {
+        self.base_abierta()
+            .and_then(|b| b.bd.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| r.datos.clone())
     }
 
     /// Crea una organización y devuelve su id. No cambia de base: la abre `abrir_organizacion`. Usa `boldo.db` si está libre,
@@ -1141,9 +1163,12 @@ pub async fn restaurar_respaldo(
 ) -> Result<(), Fallo> {
     let app2 = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        app2.state::<Estado>().con_ranura(&base_id, |conexion, b| {
+        let estado = app2.state::<Estado>();
+        estado.con_ranura(&base_id, |conexion, b| {
             respaldos::restaurar(conexion, b, &nombre, db::MIGRACIONES)
-        })
+        })?;
+        estado.antes_de_reiniciar();
+        Ok::<(), Fallo>(())
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -1191,11 +1216,11 @@ pub fn info_proyecto(estado: State<Estado>, base_id: String) -> Result<InfoProye
     Ok(rutas::info_proyecto(estado.rutas()?, &base)?)
 }
 
-/// Abre la carpeta de datos conocida por Rust; la interfaz nunca envía una ruta.
+/// Abre la carpeta de la base abierta, conocida por Rust; la interfaz nunca envía una ruta.
 #[tauri::command]
 pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
     let r = estado.rutas()?;
-    abrir_carpeta(&app, r, &r.datos)
+    abrir_carpeta(&app, r, &estado.carpeta_abierta(r))
 }
 
 #[derive(Clone, Serialize)]
@@ -1420,6 +1445,8 @@ pub async fn importar_reemplazar(
         });
         if hecho.is_err() {
             let _ = sesiones.guardar_importacion(&trabajo, i);
+        } else {
+            estado.antes_de_reiniciar();
         }
         hecho
     })
@@ -2688,6 +2715,30 @@ mod cambiar_a {
 
     fn lista_del_json(r: &Rutas) -> Lista {
         serde_json::from_slice(&fs::read(r.datos.join("organizaciones.json")).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn la_carpeta_es_la_de_la_base_abierta() {
+        let (_exe, r) = rutas();
+        let solo_boldo = arrancar(&r);
+        assert_eq!(solo_boldo.base_abierta().unwrap().bd, r.bd);
+        assert_eq!(solo_boldo.carpeta_abierta(&r), r.datos);
+        drop(solo_boldo);
+
+        let d = dos();
+        assert_eq!(
+            d.e.carpeta_abierta(&d.r),
+            ruta_de(&d.r, &d.a).parent().unwrap()
+        );
+        assert_ne!(d.e.carpeta_abierta(&d.r), d.r.datos);
+
+        let afuera = tempfile::tempdir().unwrap();
+        let bd = afuera.path().join("externa.db");
+        let id = crear(&bd, "Externa", db::MIGRACIONES);
+        let o = entrada(&id, bd.to_str().unwrap(), true, "2020");
+        escribir(&d.r, vec![d.a.clone(), d.b.clone(), o]);
+        cambiar(&d.e, &id).unwrap();
+        assert_eq!(d.e.carpeta_abierta(&d.r), afuera.path());
     }
 
     fn fija_meta(bd: &Path, clave: &str, valor: &str) {
@@ -4050,6 +4101,30 @@ mod como_nueva {
         assert_eq!(temporales, 0);
         let v = e.cambiar_a(&id, &|| s.ocupada(), db::MIGRACIONES).unwrap();
         assert!(v.activa);
+    }
+
+    #[test]
+    fn reiniciar_espera_a_que_termine_y_no_deja_empezar_otra() {
+        let (d, origen) = base_con_datos();
+        let (_exe, r) = rutas();
+        let s = sesion_con_archivo(&r, &origen, d.path());
+        let e = Estado::de_prueba(None, None, Some(r.clone()));
+        let (listo, hecho) = mpsc::channel();
+        std::thread::scope(|hilos| {
+            let creando = e.lista.lock().unwrap();
+            hilos.spawn(|| {
+                e.antes_de_reiniciar();
+                listo.send(()).unwrap();
+            });
+            assert!(hecho.recv_timeout(Duration::from_millis(200)).is_err());
+            drop(creando);
+            hecho.recv().unwrap();
+        });
+        let f = e.como_nueva(&s, TRABAJO).unwrap_err();
+        assert_eq!(f.codigo, "trabajo_en_curso");
+        assert!(cargar_lista(&r).organizaciones.is_empty());
+        // el archivo sigue abierto en la sesión, como en cualquier otro fallo
+        assert!(s.importacion(TRABAJO).is_ok());
     }
 
     #[test]

@@ -1,7 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cambiarIdioma } from "@/i18n";
+import { cambiarIdioma, i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
 import { conRespaldoPrevio, mensajeFallo, mensajeOrganizacion } from "./respaldos";
+
+describe("un archivo que no se deja abrir", () => {
+  it("no se da por malo; uno dañado de verdad no culpa a otro programa", () => {
+    expect(mensajeOrganizacion({ codigo: "contenido_invalido", detalle: "no_abre" })).toContain(
+      "otro programa",
+    );
+    expect(i18n.global.te("respaldos.error.contenido_invalido_no_abre", "en")).toBe(true);
+    expect(mensajeOrganizacion({ codigo: "danado", detalle: "x" })).not.toContain("otro programa");
+    expect(mensajeOrganizacion({ codigo: "contenido_invalido", detalle: "esquema" })).not.toContain(
+      "otro programa",
+    );
+  });
+});
 
 describe("mensajeFallo", () => {
   it("con BaseCambiada no hay nada que decir", () => {

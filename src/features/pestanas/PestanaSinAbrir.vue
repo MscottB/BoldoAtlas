@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import type { ArchivoAgregado } from "@/db/cliente";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
 import { useOrganizaciones } from "@/stores/organizaciones";
-import { detalleUtil, sePuedeBuscar, sePuedeCerrar } from "./pestanas";
+import { detalleUtil, sePuedeBuscar, sePuedeCerrar, sePuedeReintentar } from "./pestanas";
 import { ID_AREA, usePestanas } from "./usePestanas";
 
 // La pestaña activa cuya organización no abrió: el motivo, qué se puede hacer y la salida. Las demás pestañas no se tocan.
@@ -84,7 +84,7 @@ async function enfocarSiQuedoSuelto() {
     document.getElementById(ID_AREA)?.focus();
 }
 
-const puedeReintentar = computed(() => ["fallo", "abierta_en_otra_copia"].includes(props.motivo.codigo));
+const puedeReintentar = computed(() => sePuedeReintentar(props.motivo));
 async function reintentar() {
   const r = await organizaciones.activarPestana(props.id);
   if (!r.ok && r.mensaje) toast.error(r.mensaje);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { effectScope, nextTick, ref, watch } from "vue";
+import { effect, effectScope, nextTick, ref, stop, watch } from "vue";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import { enCambio, baseActual, fijarBase, marcarCambio, soltarDatos, alSoltarDatos } from "@/lib/baseActiva";
 import { deLaAbierta, trabajos } from "@/lib/trabajos";
@@ -106,6 +106,35 @@ describe("la abierta, para la barra y la bandeja", () => {
     expect(o.varias).toBe(false);
     expect(o.nombreAbierta).toBe("");
     expect(deLaAbierta("Respaldo")).toBe("Respaldo");
+  });
+
+  it("con la bandera apagada, renombrar no despierta a quien nombra un trabajo", async () => {
+    const o = useOrganizaciones();
+    const org = useOrganizacion();
+    c.leerMeta.mockResolvedValue({ org_nombre: "Alfa" });
+    await org.cargar();
+    let veces = 0;
+    const e = effect(() => {
+      deLaAbierta("Respaldo");
+      veces++;
+    });
+    c.leerMeta.mockResolvedValue({ org_nombre: "Otro" });
+    await org.cargar();
+    stop(e);
+    expect(o.nombreAbierta).toBe("Otro");
+    expect(veces).toBe(1);
+  });
+
+  it("un archivo que no se deja abrir no se da por malo, y se puede reintentar", async () => {
+    const { p, o } = await arrancar(null);
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("contenido_invalido", "no_abre"));
+    expect(await o.abrir("B")).toEqual({ ok: true });
+    const motivo = o.sinAbrir.get(p.activa)!;
+    expect(motivo.mensaje).toContain("otro programa");
+    expect(motivo.mensaje).not.toContain("no es una organización válida");
+    expect(await o.activarPestana(p.activa)).toEqual({ ok: true });
+    expect(baseActual()).toBe("B");
+    expect(o.sinAbrir.size).toBe(0);
   });
 
   it("tras cambiar, es de la nueva y no queda nada de la anterior", async () => {

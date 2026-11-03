@@ -99,7 +99,11 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     () => org.org.nombre || (ORGANIZACIONES_VISIBLES && abierta.value?.nombre) || "",
   );
   const varias = computed(() => ORGANIZACIONES_VISIBLES && lista.value.length > 1);
-  registrarAbierta(() => ({ nombre: nombreAbierta.value || t("barra.sinNombre"), varias: varias.value }));
+  // Con una sola no se lee el nombre: renombrar no debe despertar a quien nombra un trabajo, como la bandeja.
+  registrarAbierta(() => ({
+    nombre: varias.value ? nombreAbierta.value || t("barra.sinNombre") : "",
+    varias: varias.value,
+  }));
 
   watch(
     () => org.org.nombre,

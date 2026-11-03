@@ -12,6 +12,7 @@ import {
   mover,
   rutaValida,
   sePuedeBuscar,
+  sePuedeReintentar,
   sePuedeCerrar,
   sinOrganizacion,
   unaPestana,
@@ -39,6 +40,26 @@ describe("hayVariasOrganizaciones", () => {
     expect(hayVariasOrganizaciones({ ...m, lista: [...m.lista, { id: "d", org: "B", ruta: "/" }] })).toBe(
       true,
     );
+  });
+});
+
+describe("sePuedeReintentar", () => {
+  it.each([
+    ["fallo", ""],
+    ["abierta_en_otra_copia", "x"],
+    ["contenido_invalido", "no_abre"],
+  ])("%s %s: lo que puede pasar solo se reintenta", (codigo, detalle) => {
+    expect(sePuedeReintentar({ codigo, detalle })).toBe(true);
+  });
+
+  it.each([
+    ["danado", "file is not a database"],
+    ["contenido_invalido", ""],
+    ["contenido_invalido", "red"],
+    ["contenido_invalido", "journal"],
+    ["esquema_nuevo", "9"],
+  ])("%s %s: lo que es del archivo, no", (codigo, detalle) => {
+    expect(sePuedeReintentar({ codigo, detalle })).toBe(false);
   });
 });
 

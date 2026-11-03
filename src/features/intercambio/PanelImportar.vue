@@ -46,7 +46,9 @@ import {
   conFilas,
   intentar,
   intentarTrabajo,
+  mensajeComoNueva,
   modoInicial,
+  organizacionEnCreacion,
   revisionConDecisiones,
   revisionDejada,
   useAvance,
@@ -175,12 +177,14 @@ async function comoNueva() {
   if (!propio || creandoNueva.value) return;
   const nombre = resumen.value?.organizacion || t("barra.sinNombre");
   creandoNueva.value = true;
+  organizacionEnCreacion.value = nombre;
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   const r = await intentarTrabajo(t("trabajos.importarNueva", { nombre }), () => importarComoNueva(propio));
   creandoNueva.value = false;
+  organizacionEnCreacion.value = null;
   if (!r.ok) {
-    toast.error(r.mensaje);
+    toast.error(mensajeComoNueva(r));
     if (r.codigo === "lista_protegida") organizaciones.listaProtegida = true;
     if (!conNueva.value && resumen.value) modo.value = modoInicial(resumen.value, false);
     if (fuera) void trabajo.soltar();
@@ -384,7 +388,7 @@ onUnmounted(() => {
 
     <form v-if="paso === 'elegir'" class="grid gap-4" @submit.prevent="abrir">
       <div class="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" @click="elegir">
+        <Button type="button" variant="outline" :disabled="!!organizacionEnCreacion" @click="elegir">
           <FolderOpen aria-hidden="true" />
           {{ t("intercambio.importar.elegir") }}
         </Button>
@@ -409,7 +413,9 @@ onUnmounted(() => {
       </div>
       <p v-if="error" id="importar-error" role="alert" class="text-sm text-destructive">{{ error }}</p>
       <div class="flex gap-2">
-        <Button type="submit" :disabled="!archivo || !codigo.trim()">{{ t("intercambio.importar.abrir") }}</Button>
+        <Button type="submit" :disabled="!archivo || !codigo.trim() || !!organizacionEnCreacion">
+          {{ t("intercambio.importar.abrir") }}
+        </Button>
         <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
       </div>
     </form>
@@ -567,10 +573,10 @@ onUnmounted(() => {
       <p v-if="errorNueva" role="alert" class="text-sm text-destructive">{{ errorNueva }}</p>
       <div class="flex flex-wrap gap-2">
         <Button type="button" :disabled="abriendoNueva" @click="abrirNueva">
-          {{ t("intercambio.importar.nuevaAbrir", { nombre: nueva.nombre }) }}
+          {{ t("intercambio.importar.nuevaAbrir") }}
         </Button>
         <Button type="button" variant="outline" :disabled="abriendoNueva" @click="salir">
-          {{ t("intercambio.importar.nuevaQuedarse", { nombre: nombreAbierta }) }}
+          {{ t("intercambio.importar.nuevaQuedarse") }}
         </Button>
       </div>
     </template>

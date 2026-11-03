@@ -16,6 +16,13 @@ export type ModoImportar = "nueva" | "agregar" | "revisar" | "reemplazar";
 export const modoInicial = (r: ResumenImportacion, conNueva: boolean): ModoImportar =>
   conNueva ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
 
+/** La que se está creando desde un archivo. Sigue aunque se salga del panel, y al volver hay que decirlo. */
+export const organizacionEnCreacion = ref<string | null>(null);
+
+/** El archivo ya pasó la revisión al abrirlo: si su copia no se deja leer, no es que el archivo no sirva. */
+export const mensajeComoNueva = (f: { codigo: string; mensaje: string }): string =>
+  f.codigo === "contenido_invalido" ? i18n.global.t("intercambio.importar.nuevaNoSeCreo") : f.mensaje;
+
 export type Intento<T> = { ok: true; valor: T } | { ok: false; codigo: string; mensaje: string };
 
 interface Donde {

@@ -81,6 +81,12 @@ export const sePuedeBuscar = ({ codigo, detalle }: { codigo: string; detalle: st
   codigo === "otro_id" ||
   (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal"));
 
+/** Lo que puede pasarse solo: la carga, otra copia de la app, un archivo que Rust no pudo ni abrir (`no_abre`, nunca uno dañado). */
+export const sePuedeReintentar = ({ codigo, detalle }: { codigo: string; detalle: string }): boolean =>
+  codigo === "fallo" ||
+  codigo === "abierta_en_otra_copia" ||
+  (codigo === "contenido_invalido" && detalle === "no_abre");
+
 /** Con datos que no cargaron y una sola pestaña, cerrar deja otra igual con el mismo motivo: parece no hacer nada. */
 export const sePuedeCerrar = (codigo: string, pestanas: number): boolean =>
   codigo !== "fallo" || pestanas > 1;

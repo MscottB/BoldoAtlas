@@ -4,7 +4,14 @@ import type { Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { trabajos, ultimoFin } from "@/lib/trabajos";
 import type { ResumenImportacion } from "@/db/cliente";
-import { filasVisibles, intentar, intentarTrabajo, modoInicial, revisionConDecisiones } from "./intercambio";
+import {
+  filasVisibles,
+  intentar,
+  intentarTrabajo,
+  mensajeComoNueva,
+  modoInicial,
+  revisionConDecisiones,
+} from "./intercambio";
 
 const resumenDe = (r: Partial<ResumenImportacion>) =>
   ({ parcial: false, informe: null, ...r }) as ResumenImportacion;
@@ -26,6 +33,16 @@ describe("modoInicial", () => {
 });
 
 describe("importar como nueva", () => {
+  it("contenido_invalido no culpa al archivo, que ya pasó la revisión al abrirlo", () => {
+    expect(
+      mensajeComoNueva({ codigo: "contenido_invalido", mensaje: "El archivo no es una copia válida" }),
+    ).toBe(
+      "No se pudo crear. Puede que otro programa esté usando el archivo. Inténtalo de nuevo. No se cambió nada.",
+    );
+    expect(i18n.global.te("intercambio.importar.nuevaNoSeCreo", "en")).toBe(true);
+    expect(mensajeComoNueva({ codigo: "sin_espacio", mensaje: "Sin espacio" })).toBe("Sin espacio");
+  });
+
   it.each(["lista_protegida", "sin_espacio", "contenido_invalido", "desconocido", "cancelado", "raro"])(
     "%s da un texto, nunca el código ni un aviso vacío",
     async (codigo) => {

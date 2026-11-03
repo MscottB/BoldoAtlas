@@ -31,6 +31,9 @@ export const registrarAbierta = (f: typeof abierta): void => {
   abierta = f;
 };
 
+/** Para nombrarla después, si puede haber cambiado cuando llegue el aviso. */
+export const abiertaAhora = (): { nombre: string; varias: boolean } => abierta();
+
 /** `conOrganizacion` con la organización abierta ahora. */
 export function deLaAbierta(nombreTrabajo: string): string {
   const { nombre, varias } = abierta();

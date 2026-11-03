@@ -38,5 +38,6 @@ describe("buscarPersona desde Inicio", () => {
     await buscarPersona(enInicio);
     expect(m.info).not.toHaveBeenCalled();
     expect(m.volverAlProyecto).toHaveBeenCalledOnce();
+    expect(paletaAbierta.value).toBe(false); // taparía el motivo
   });
 });

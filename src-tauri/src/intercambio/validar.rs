@@ -1,7 +1,7 @@
 //! La base descifrada no es confiable, aunque el código sea correcto: quien la envía puede ser cualquiera.
 use crate::respaldos::{Donde, Fallo, con_sufijo};
 use rusqlite::config::DbConfig;
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use rusqlite::{Connection, ErrorCode, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -12,8 +12,13 @@ fn invalido(detalle: impl ToString) -> Fallo {
 
 /// `flags` de solo lectura para revisar y leer; de escritura solo para trabajar sobre la copia temporal.
 pub fn abrir_no_confiable(ruta: &Path, flags: OpenFlags) -> Result<Connection, Fallo> {
-    let c = Connection::open_with_flags(ruta, flags | OpenFlags::SQLITE_OPEN_NO_MUTEX)
-        .map_err(invalido)?;
+    let c = Connection::open_with_flags(ruta, flags | OpenFlags::SQLITE_OPEN_NO_MUTEX).map_err(
+        |e| match e.sqlite_error_code() {
+            // no dice nada de lo que tiene: otro programa puede retenerlo. Uno dañado sí abre, y falla al leerlo
+            Some(ErrorCode::CannotOpen) => invalido("no_abre"),
+            _ => invalido(e),
+        },
+    )?;
     for (opcion, valor) in [
         (DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true),
         (DbConfig::SQLITE_DBCONFIG_TRUSTED_SCHEMA, false),
@@ -505,6 +510,16 @@ mod tests {
 
     fn codigo(ruta: &Path) -> &'static str {
         revisar(ruta, MIGRACIONES).unwrap_err().codigo
+    }
+
+    #[test]
+    fn lo_que_no_se_deja_abrir_lo_dice_con_su_detalle() {
+        let d = tempfile::tempdir().unwrap();
+        let f = solo_lectura(&d.path().join("no_esta.db")).err().unwrap();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "no_abre")
+        );
     }
 
     /// Una base como las de la app, en WAL, con su conexión abierta.

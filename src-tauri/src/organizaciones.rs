@@ -3232,6 +3232,50 @@ mod tests_archivo {
         assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn abrir_una_interna_retenida_lo_dice_y_se_puede_reintentar() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let retenida = OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(ruta_de(&r, &i))
+            .unwrap();
+        let f = abrir_entrada(&r, &i, ESPERA_CAMBIO, MIGRACIONES)
+            .err()
+            .unwrap();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "no_abre")
+        );
+        drop(retenida);
+        assert!(abrir_entrada(&r, &i, ESPERA_CAMBIO, MIGRACIONES).is_ok());
+    }
+
+    /// Una dañada abre y falla al leerla: nunca dice lo mismo que una que otro programa retiene.
+    #[test]
+    fn abrir_una_interna_danada_no_se_confunde_con_una_retenida() {
+        let (_exe, r) = rutas();
+        let basura = interna(&r, "2020");
+        fs::write(ruta_de(&r, &basura), "no soy sqlite").unwrap();
+        let cortada = interna(&r, "2021");
+        OpenOptions::new()
+            .write(true)
+            .open(ruta_de(&r, &cortada))
+            .unwrap()
+            .set_len(4096)
+            .unwrap();
+        let de = |e| {
+            abrir_entrada(&r, e, ESPERA_CAMBIO, MIGRACIONES)
+                .err()
+                .unwrap()
+        };
+        assert_eq!(de(&basura).codigo, "danado");
+        assert_eq!(de(&cortada).codigo, "danado");
+    }
+
     /// Otra conexión con la base tomada en exclusiva: `SQLITE_BUSY` de verdad, sin la espera de 5 s de cada conexión.
     #[test]
     fn un_error_pasajero_no_sale_como_otro_id() {
