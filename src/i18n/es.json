@@ -727,7 +727,8 @@
       "directorio": "Ir al directorio",
       "revision": "Ir a Revisión",
       "tema": "Cambiar tema",
-      "ayuda": "Ayuda"
+      "ayuda": "Ayuda",
+      "abrirOtra": "Abrir otra organización: {nombre}"
     }
   },
   "organizaciones": {
@@ -739,6 +740,19 @@
     "pideOtroId": "Este archivo no es el de esta organización: tiene otros datos. ¿Usarlo en su lugar?",
     "pideTope": "Este archivo pesa más de 512 MiB. Puede tardar en abrir y ocupar más memoria.",
     "pideJournal": "Este archivo tiene una transacción sin terminar (un archivo -journal a su lado). BoldoAtlas puede recuperarla, y eso cambia el archivo. ¿Seguir?",
+    "sinAbrir": "No se pudo abrir esta organización",
+    "detalle": "Detalle del error",
+    "errorCopiar": "No se pudo copiar. Selecciona el detalle y cópialo a mano.",
+    "buscarArchivo": "Buscar archivo",
+    "cerrarPestana": "Cerrar pestaña",
+    "cancelar": "Cancelar",
+    "copiarYAbrir": "Copiar y abrir",
+    "usarEste": "Usar este archivo",
+    "recuperarYAbrir": "Recuperar y abrir",
+    "avisoArchivo": {
+      "copia": "Este archivo es una copia de otra organización de tu lista. Se abrió como una organización aparte.",
+      "fuera_de_portable": "Este archivo está fuera de la carpeta de BoldoAtlas portable. Si llevas la carpeta a otro equipo, no irá con ella."
+    },
     "error": {
       "desconocido": "Esta organización ya no está en la lista.",
       "esquema_nuevo": "Esta organización se guardó con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para abrirla.",
@@ -1015,7 +1029,8 @@
     "respaldos": "Respaldos",
     "configuracion": "Configuración",
     "datos": "Datos del proyecto",
-    "actualizar": "Buscar actualizaciones"
+    "actualizar": "Buscar actualizaciones",
+    "abrirOtra": "Abrir otra organización…"
   },
   "proyecto": {
     "titulo": "Datos del proyecto",

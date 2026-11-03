@@ -234,7 +234,10 @@ export const usePestanas = defineStore("pestanas", () => {
   }
 
   function cerrar(id: string): Resultado {
-    if (modelo.value.lista.length <= 1) return { ok: false, mensaje: t("pestanas.ultima") };
+    if (modelo.value.lista.length <= 1) {
+      if (!useOrganizaciones().sinAbrir.has(id)) return { ok: false, mensaje: t("pestanas.ultima") };
+      abrirNueva(P.RUTA_INICIO); // la única, sin abrir: sin una de la abierta no habría salida
+    }
     const m = P.cerrar(modelo.value, id);
     if (m === modelo.value) return { ok: false, mensaje: t("pestanas.noAbre") };
     const nueva = m.lista.find((x) => x.id === m.activa)!;
@@ -300,6 +303,15 @@ export const usePestanas = defineStore("pestanas", () => {
         });
       else if (p.volver && !valida(p.volver))
         modelo.value = P.cambiar(modelo.value, id, { volver: undefined });
+    },
+    /** Viendo Inicio, las pestañas no están a la vista. */
+    enInicio: () => !enProyecto,
+    /** Otro archivo tomó el lugar de `de`: sus pestañas pasan a él. */
+    reasignar(de: string, a: string) {
+      modelo.value = {
+        ...modelo.value,
+        lista: modelo.value.lista.map((p) => (p.org === de ? { ...p, org: a } : p)),
+      };
     },
     /** Una pestaña nueva de `org` en el inicio, sin activarla. null con el tope lleno. */
     agregarDe(org: string): string | null {

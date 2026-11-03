@@ -727,7 +727,8 @@
       "directorio": "Go to the directory",
       "revision": "Go to Review",
       "tema": "Change theme",
-      "ayuda": "Help"
+      "ayuda": "Help",
+      "abrirOtra": "Open another organization: {nombre}"
     }
   },
   "organizaciones": {
@@ -739,6 +740,19 @@
     "pideOtroId": "This file isn't this organization's: it has different data. Use it instead?",
     "pideTope": "This file is larger than 512 MiB. It may take a while to open and use more memory.",
     "pideJournal": "This file has an unfinished transaction (a -journal file next to it). BoldoAtlas can recover it, and that changes the file. Continue?",
+    "sinAbrir": "This organization could not be opened",
+    "detalle": "Error details",
+    "errorCopiar": "Couldn't copy. Select the details and copy them by hand.",
+    "buscarArchivo": "Find file",
+    "cerrarPestana": "Close tab",
+    "cancelar": "Cancel",
+    "copiarYAbrir": "Copy and open",
+    "usarEste": "Use this file",
+    "recuperarYAbrir": "Recover and open",
+    "avisoArchivo": {
+      "copia": "This file is a copy of another organization on your list. It was opened as a separate organization.",
+      "fuera_de_portable": "This file is outside the portable BoldoAtlas folder. If you take the folder to another computer, it won't go with it."
+    },
     "error": {
       "desconocido": "This organization is no longer on the list.",
       "esquema_nuevo": "This organization was saved with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
@@ -1015,7 +1029,8 @@
     "respaldos": "Backups",
     "configuracion": "Settings",
     "datos": "Project data",
-    "actualizar": "Check for updates"
+    "actualizar": "Check for updates",
+    "abrirOtra": "Open another organization…"
   },
   "proyecto": {
     "titulo": "Project data",

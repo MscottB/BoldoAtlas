@@ -5,10 +5,12 @@ import {
   cambiar,
   cerrar,
   estadoDe,
+  hayVariasOrganizaciones,
   leerEstadoArbol,
   leerPestanas,
   mover,
   rutaValida,
+  sePuedeBuscar,
   sinOrganizacion,
   unaPestana,
   vecina,
@@ -24,6 +26,40 @@ const tres = (activa = "b"): Pestanas => ({
   activa,
 });
 const ids = (m: Pestanas) => m.lista.map((p) => p.id).join("");
+
+describe("hayVariasOrganizaciones", () => {
+  it("con todas de la misma organización no hay etiqueta", () => {
+    expect(hayVariasOrganizaciones(tres())).toBe(false);
+  });
+
+  it("con dos, sí", () => {
+    const m = tres();
+    expect(hayVariasOrganizaciones({ ...m, lista: [...m.lista, { id: "d", org: "B", ruta: "/" }] })).toBe(
+      true,
+    );
+  });
+});
+
+describe("sePuedeBuscar", () => {
+  it.each([
+    ["no_encontrado", "x"],
+    ["otro_id", "x"],
+    ["contenido_invalido", "red"],
+    ["contenido_invalido", "journal"],
+  ])("%s (%s) ofrece buscar el archivo", (codigo, detalle) => {
+    expect(sePuedeBuscar({ codigo, detalle })).toBe(true);
+  });
+
+  it.each([
+    ["contenido_invalido", "wal"],
+    ["contenido_invalido", "otro"],
+    ["esquema_nuevo", "x"],
+    ["desconocido", "x"],
+    ["fallo", "red"],
+  ])("%s (%s) no lo ofrece", (codigo, detalle) => {
+    expect(sePuedeBuscar({ codigo, detalle })).toBe(false);
+  });
+});
 
 describe("sinOrganizacion", () => {
   const dos: Pestanas = {

@@ -41,6 +41,7 @@ import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
+import PestanaSinAbrir from "@/features/pestanas/PestanaSinAbrir.vue";
 import { ID_AREA, clicNuevaPestana, idPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
@@ -94,6 +95,7 @@ watch(() => org.org.nombre, ponerTitulo, { immediate: true });
 const cerrarVista = useCerrarVista();
 const pestanas = usePestanas();
 const organizaciones = useOrganizaciones();
+void organizaciones.cargarLista(); // nombre y color en las pestañas; las recientes del menú y la paleta
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);
@@ -239,7 +241,12 @@ function escEnBarra(e: KeyboardEvent) {
           <p v-if="organizaciones.cambiando" role="status" class="p-6 text-sm text-muted-foreground">
             {{ t("organizaciones.cambiando") }}
           </p>
-          <p v-else-if="sinAbrirActiva" role="alert" class="p-6 text-sm">{{ sinAbrirActiva.mensaje }}</p>
+          <PestanaSinAbrir
+            v-else-if="sinAbrirActiva"
+            :id="pestanas.activa"
+            :key="pestanas.activa"
+            :motivo="sinAbrirActiva"
+          />
           <RouterView v-else v-slot="{ Component: vista }">
             <component :is="vista" :key="pestanas.activa" />
           </RouterView>

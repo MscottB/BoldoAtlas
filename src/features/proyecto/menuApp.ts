@@ -14,8 +14,11 @@ import {
 } from "@lucide/vue";
 import { RUTA_BIENVENIDA } from "@/app/estructura";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
+import { toast } from "vue-sonner";
+import type { Organizacion } from "@/db/cliente";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
 import { alSoltarDatos } from "@/lib/baseActiva";
+import { useOrganizaciones } from "@/stores/organizaciones";
 
 /** Si el diálogo «Datos del proyecto» está abierto. Lo abren el nombre en la barra superior, el menú y la paleta. */
 export const datosProyectoAbierto = ref(false);
@@ -36,6 +39,18 @@ export interface EntradaMenu {
 /** Hace la acción de la entrada, lleva a su ruta o, si no tiene ninguna, abre «Datos del proyecto». */
 export const irAEntrada = (e: EntradaMenu, router: Router) =>
   e.accion ? e.accion() : e.destino ? router.push(e.destino) : (datosProyectoAbierto.value = true);
+
+/** «Abrir otra organización…»: las recientes, sin la abierta. */
+export const entradasAbrirOtra = (
+  recientes: Organizacion[],
+  activa: string,
+): { id: string; nombre: string }[] =>
+  recientes.filter((o) => o.id !== activa).map(({ id, nombre }) => ({ id, nombre }));
+
+export async function abrirOtra(id: string) {
+  const r = await useOrganizaciones().abrir(id);
+  if (!r.ok) toast.error(r.mensaje);
+}
 
 // «Nueva organización vacía» y «Explorar el ejemplo» se resuelven en la Bienvenida (ahí está la confirmación).
 export const GRUPOS_MENU: EntradaMenu[][] = [

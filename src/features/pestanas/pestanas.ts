@@ -72,6 +72,15 @@ export function sinOrganizacion(
   return { lista: [...lista, { id, org: orgAbierta, ruta: RUTA_INICIO }], activa: id };
 }
 
+/** Con más de una organización, cada pestaña lleva su nombre y su color. */
+export const hayVariasOrganizaciones = (m: Pestanas): boolean => new Set(m.lista.map((p) => p.org)).size > 1;
+
+/** Si el motivo por el que no abrió se arregla buscando el archivo: `red` y `journal` piden hacerlo en su texto. */
+export const sePuedeBuscar = ({ codigo, detalle }: { codigo: string; detalle: string }): boolean =>
+  codigo === "no_encontrado" ||
+  codigo === "otro_id" ||
+  (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal"));
+
 /** La pestaña a `paso` de la activa, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab). */
 export function vecina(m: Pestanas, paso: 1 | -1): string {
   const n = m.lista.length;

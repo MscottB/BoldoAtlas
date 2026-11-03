@@ -4,6 +4,7 @@ import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
   CircleHelp,
+  FolderOpen,
   ListChecks,
   LocateFixed,
   Network,
@@ -23,10 +24,13 @@ import { rutaPuesto, useUbicar } from "@/features/arbol/useUbicar";
 import { buscarEnPaleta, indexarPaleta, type Accion, type Grupo } from "@/features/atajos/paleta";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
-import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
+import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
+import { baseActual } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 
 // Ctrl+K: unidades, personas, puestos vacantes y acciones. El filtro es propio (sin tildes ni mayúsculas): el de Command
 // compara contra `value`, que aquí es un id con prefijo de grupo.
@@ -35,6 +39,7 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
+const organizaciones = useOrganizaciones();
 const { revelar, nuevaHija } = useLienzo();
 const { tema } = useTema();
 const ficha = useFicha();
@@ -106,6 +111,14 @@ const acciones = computed<AccionPaleta[]>(() => [
     ejecutar: () => irAEntrada(e, router),
     ruta: e.destino && !router.resolve(e.destino).meta.sinMarco ? e.destino : undefined,
   })),
+  ...(ORGANIZACIONES_VISIBLES
+    ? entradasAbrirOtra(organizaciones.recientes, baseActual()).map((o) => ({
+        id: `abrir:${o.id}`,
+        etiqueta: t("paleta.acciones.abrirOtra", { nombre: o.nombre || t("barra.sinNombre") }),
+        icono: FolderOpen,
+        ejecutar: () => abrirOtra(o.id),
+      }))
+    : []),
   {
     id: "ayuda",
     etiqueta: t("paleta.acciones.ayuda"),

@@ -144,7 +144,10 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
           sinAbrir.value.delete(pestana);
           pestanas.validarActivada(pestana);
           await pestanas.navegar(pestana);
-        } else sinAbrir.value.set(pestana, { codigo: "fallo", mensaje: r.mensaje, detalle: r.mensaje });
+        } else {
+          sinAbrir.value.set(pestana, { codigo: "fallo", mensaje: r.mensaje, detalle: r.mensaje });
+          if (pestanas.enInicio()) await pestanas.navegar(pestana); // la base ya cambió: que se vea el motivo
+        }
       }
       performance.measure("cambio-organizacion", { start: inicio });
       // De paso hacia otra pedida (Ctrl+Tab rápido) no respalda: como trabajo en curso, impediría llegar a ella.
@@ -170,10 +173,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       volverSinCambio();
       const mensaje = mensajeOrganizacion(e);
       const codigo = campo(e, "codigo");
-      // si la pestaña se cerró mientras tanto, no hay dónde dejar el motivo
-      if (!DEL_ARCHIVO.has(codigo) || !usePestanas().existe(pestana)) return { ok: false, mensaje };
+      const pestanas = usePestanas();
+      // si la pestaña se cerró mientras tanto, o se pidió desde Inicio, no hay dónde mostrar el motivo: lo avisa quien pidió
+      if (!DEL_ARCHIVO.has(codigo) || !pestanas.existe(pestana) || pestanas.enInicio())
+        return { ok: false, mensaje };
       sinAbrir.value.set(pestana, { codigo, mensaje, detalle: campo(e, "detalle") });
-      usePestanas().marcarActiva(pestana);
+      pestanas.marcarActiva(pestana);
       return { ok: true };
     }
     await entrarEn(o.id, pestana, inicio);
@@ -192,7 +197,9 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     enOrden(async () => {
       const pestanas = usePestanas();
       pestanas.asegurarCargadas();
-      const suya = pestanas.lista.find((p) => p.org === id);
+      const suya =
+        pestanas.lista.find((p) => p.org === id && p.id === pestanas.activa) ??
+        pestanas.lista.find((p) => p.org === id);
       if (suya) return cambiarA(id, suya.id);
       const nueva = pestanas.agregarDe(id);
       if (!nueva) return { ok: false, mensaje: t("pestanas.limite", { n: MAX_PESTANAS }) };
@@ -314,6 +321,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       let r = await agregarArchivoOrganizacion(buscando);
       while (r?.pide) r = await confirmarArchivoOrganizacion(await confirmar(r.pide));
       if (!r?.id) return { ok: true };
+      // Con otros datos, Rust ya sacó la buscada de la lista y este archivo toma su lugar.
+      if (buscando && r.id !== buscando) {
+        const pestanas = usePestanas();
+        pestanas.asegurarCargadas();
+        pestanas.reasignar(buscando, r.id);
+      }
       return { ...(await abrir(r.id)), avisos: r.avisos };
     } catch (e) {
       return { ok: false, mensaje: mensajeOrganizacion(e) };

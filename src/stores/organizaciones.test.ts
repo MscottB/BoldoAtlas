@@ -631,6 +631,25 @@ describe("desde las pestañas", () => {
     expect(router.currentRoute.value.fullPath).toBe("/revision");
   });
 
+  it("la única pestaña, sin abrir, se cierra y queda una de la abierta en su inicio", async () => {
+    const { p, o } = await arrancar({ lista: [{ id: "z1", org: "Z", ruta: "/revision" }], activa: "z1" });
+    const deA = p.activa; // al entrar con A abierta se abrió una suya
+    p.marcarActiva("z1");
+    p.cerrar(deA);
+    o.sinAbrir.set("z1", { codigo: "no_encontrado", mensaje: "m", detalle: "" });
+    expect(p.lista.map((x) => x.id)).toEqual(["z1"]);
+    expect(p.cerrar("z1")).toEqual({ ok: true });
+    await vi.waitFor(() => expect(p.activa).not.toBe("z1"));
+    expect(p.lista).toHaveLength(1);
+    expect(p.lista[0]).toMatchObject({ org: "A", ruta: "/" });
+    expect(p.activa).toBe(p.lista[0]!.id);
+  });
+
+  it("la única pestaña de la abierta, sin motivo, no se cierra", async () => {
+    const { p } = await arrancar({ lista: [TRES.lista[0]], activa: "a1" });
+    expect(p.cerrar("a1").ok).toBe(false);
+  });
+
   it("cerrar la última pestaña de la abierta: si el cambio sale bien, se quita", async () => {
     const { p } = await arrancar({ lista: [TRES.lista[0], TRES.lista[1]], activa: "a1" });
     p.cerrar("a1");
@@ -719,6 +738,41 @@ describe("abrir", () => {
     const nueva = p.lista.find((x) => x.org === "Z")!;
     expect(o.sinAbrir.has(nueva.id)).toBe(true);
     expect(p.activa).toBe(nueva.id);
+  });
+
+  it("con dos pestañas de la organización, prefiere la activa", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], TRES.lista[1], { id: "b2", org: "B", ruta: "/revision" }],
+      activa: "a1",
+    });
+    p.marcarActiva("b2");
+    await o.abrir("B");
+    expect(p.activa).toBe("b2");
+  });
+
+  it("desde Inicio, un error del archivo vuelve a quien pidió abrir y no deja pestaña", async () => {
+    const { p, o } = await arrancar();
+    await router.replace("/bienvenida");
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("no_encontrado"));
+    const r = await o.abrir("Z");
+    expect(r).toEqual({ ok: false, mensaje: expect.stringMatching(/no se encontr/i) });
+    expect(ids()).toEqual(["a1", "b1", "c1"]);
+    expect(p.activa).toBe("a1");
+    expect(o.sinAbrir.size).toBe(0);
+    expect(router.currentRoute.value.fullPath).toBe("/bienvenida");
+    expect(baseActual()).toBe("A");
+  });
+
+  it("desde Inicio, si el archivo abre pero no carga, entra a su pestaña con el motivo", async () => {
+    const { p, o } = await arrancar();
+    await router.replace("/bienvenida");
+    c.consultar.mockRejectedValueOnce(new Error("rota"));
+    expect((await o.abrir("B")).ok).toBe(true);
+    expect(p.activa).toBe("b1");
+    expect(o.sinAbrir.has("b1")).toBe(true);
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe("/directorio"));
+    await esperar();
+    expect(p.activa).toBe("b1");
   });
 
   it("desde Inicio sin un entrar previo no pisa la clave nueva", async () => {
@@ -1073,6 +1127,36 @@ describe("agregarArchivo", () => {
     await o.agregarArchivo(confirmar, "B");
     expect(c.agregarArchivoOrganizacion).toHaveBeenCalledWith("B");
     expect(confirmar.mock.calls.map(([m]) => m)).toEqual(["red", "tope"]);
+  });
+
+  it("al buscar un archivo con otros datos, las pestañas de la buscada pasan a él", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "z1", org: "Z", ruta: "/" }, { id: "z2", org: "Z", ruta: "/revision" }],
+      activa: "a1",
+    });
+    p.marcarActiva("z2");
+    o.sinAbrir.set("z2", { codigo: "no_encontrado", mensaje: "m", detalle: "" });
+    c.agregarArchivoOrganizacion.mockResolvedValue({ id: null, pide: "otro_id", avisos: [] });
+    c.confirmarArchivoOrganizacion.mockResolvedValue({ id: "N", pide: null, avisos: [] });
+    expect((await o.agregarArchivo(async () => true, "Z")).ok).toBe(true);
+    expect(p.lista.map((x) => x.org)).toEqual(["A", "N", "N"]);
+    expect(p.activa).toBe("z2");
+    expect(o.sinAbrir.has("z2")).toBe(false);
+    expect(baseActual()).toBe("N");
+  });
+
+  it("al buscar el mismo archivo, la pestaña activa deja de mostrar el motivo", async () => {
+    const { p, o } = await arrancar({
+      lista: [TRES.lista[0], { id: "z1", org: "Z", ruta: "/" }, { id: "z2", org: "Z", ruta: "/revision" }],
+      activa: "a1",
+    });
+    p.marcarActiva("z2");
+    o.sinAbrir.set("z2", { codigo: "no_encontrado", mensaje: "m", detalle: "" });
+    c.agregarArchivoOrganizacion.mockResolvedValue({ id: "Z", pide: null, avisos: [] });
+    await o.agregarArchivo(async () => true, "Z");
+    expect(p.lista.map((x) => x.org)).toEqual(["A", "Z", "Z"]);
+    expect(p.activa).toBe("z2");
+    expect(o.sinAbrir.has("z2")).toBe(false);
   });
 
   it("devuelve los avisos copia y fuera_de_portable", async () => {

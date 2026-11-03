@@ -3,14 +3,29 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import { useI18n } from "vue-i18n";
 import { Plus, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
-import { RUTA_INICIO } from "./pestanas";
+import { useOrganizaciones } from "@/stores/organizaciones";
+import { RUTA_INICIO, hayVariasOrganizaciones } from "./pestanas";
 import { ID_AREA, abrirEnPestanaNueva, idPestana, usePestanas } from "./usePestanas";
 
 // Barra de pestañas sobre el área central (App.vue la muestra desde la segunda pestaña). Patrón tablist con activación
 // manual: las flechas solo mueven el foco (Enter o Espacio activan), para no montar el lienzo de cada pestaña al pasar.
 const { t } = useI18n();
 const pestanas = usePestanas();
-const items = computed(() => pestanas.lista.map((p) => ({ id: p.id, titulo: pestanas.titulo(p) })));
+const organizaciones = useOrganizaciones();
+// Con varias organizaciones, cada una con su punto de color y su nombre: el color nunca es la única señal.
+const varias = computed(() => hayVariasOrganizaciones({ lista: pestanas.lista, activa: pestanas.activa }));
+const items = computed(() =>
+  pestanas.lista.map((p) => {
+    const titulo = pestanas.titulo(p);
+    if (!varias.value) return { id: p.id, titulo, color: "" };
+    const o = organizaciones.lista.find((x) => x.id === p.org);
+    return {
+      id: p.id,
+      titulo: o?.nombre ? `${o.nombre} · ${titulo}` : titulo,
+      color: o?.color || "currentColor",
+    };
+  }),
+);
 
 // Foco itinerante: la pestaña con tabindex 0 es la última enfocada; si ya no está, la activa.
 const foco = ref<string | null>(null);
@@ -145,7 +160,12 @@ function alPulsarAux(e: MouseEvent, id: string) {
           @keydown="tecla($event, i)"
           @focus="foco = p.id"
         >
-          {{ p.titulo }}
+          <span
+            v-if="p.color"
+            class="mr-1.5 inline-block size-2 rounded-full align-middle"
+            :style="{ backgroundColor: p.color }"
+            aria-hidden="true"
+          />{{ p.titulo }}
         </button>
         <button
           type="button"

@@ -4,3 +4,6 @@
  * avisos de «próximamente» en ninguna parte. Con true vuelve a verse deshabilitado, con la fase en que llega.
  */
 export const MOSTRAR_PROXIMAMENTE: boolean = false;
+
+/** Las pantallas de varias organizaciones: no se ven hasta que estén todas. */
+export const ORGANIZACIONES_VISIBLES: boolean = false;
