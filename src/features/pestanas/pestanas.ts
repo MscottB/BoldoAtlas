@@ -81,6 +81,10 @@ export const sePuedeBuscar = ({ codigo, detalle }: { codigo: string; detalle: st
   codigo === "otro_id" ||
   (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal"));
 
+/** Con datos que no cargaron y una sola pestaña, cerrar deja otra igual con el mismo motivo: parece no hacer nada. */
+export const sePuedeCerrar = (codigo: string, pestanas: number): boolean =>
+  codigo !== "fallo" || pestanas > 1;
+
 /** El detalle de un motivo solo se muestra si aporta: un código o un id sueltos no dicen nada, y el mensaje ya se ve. */
 export const detalleUtil = ({ detalle, mensaje }: { detalle: string; mensaje: string }): boolean =>
   !!detalle && detalle !== mensaje && !/^[\w-]+$/.test(detalle);

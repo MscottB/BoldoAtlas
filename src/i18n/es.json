@@ -406,6 +406,7 @@
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
+    "sinCargar": "Los datos de esta organización no están cargados, así que no se escribió nada. Reintenta abrirla.",
     "hayDatos": "Ya hay datos en esta base: para reemplazarlos usa «Nueva organización vacía» o «Explorar el ejemplo» desde el menú de la app.",
     "cicloRama": "No se puede mover una unidad dentro de su propia rama.",
     "unidadInexistente": "La unidad ya no existe.",

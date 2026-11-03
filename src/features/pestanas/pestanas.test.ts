@@ -12,6 +12,7 @@ import {
   mover,
   rutaValida,
   sePuedeBuscar,
+  sePuedeCerrar,
   sinOrganizacion,
   unaPestana,
   vecina,
@@ -38,6 +39,14 @@ describe("hayVariasOrganizaciones", () => {
     expect(hayVariasOrganizaciones({ ...m, lista: [...m.lista, { id: "d", org: "B", ruta: "/" }] })).toBe(
       true,
     );
+  });
+});
+
+describe("sePuedeCerrar", () => {
+  it("con datos que no cargaron y una sola pestaña no se ofrece: dejaría otra con el mismo motivo", () => {
+    expect(sePuedeCerrar("fallo", 1)).toBe(false);
+    expect(sePuedeCerrar("fallo", 2)).toBe(true);
+    expect(sePuedeCerrar("no_encontrado", 1)).toBe(true);
   });
 });
 

@@ -324,9 +324,9 @@ export const usePestanas = defineStore("pestanas", () => {
       await router?.replace(RUTA_BIENVENIDA);
     },
     existe: (id: string) => modelo.value.lista.some((x) => x.id === id),
-    /** La pestaña a la que llega un cambio; si se cerró mientras tanto, una de la abierta, o una nueva en su inicio. */
-    pestanaDeLlegada(id: string): string {
-      if (modelo.value.lista.some((x) => x.id === id)) return id;
+    /** La pestaña a la que llega un cambio; si se cerró o no se pidió ninguna, una de la abierta, o una nueva en su inicio. */
+    pestanaDeLlegada(id: string | null): string {
+      if (id && modelo.value.lista.some((x) => x.id === id)) return id;
       modelo.value = aLaAbierta(modelo.value);
       return modelo.value.activa;
     },

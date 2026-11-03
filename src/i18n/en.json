@@ -406,6 +406,7 @@
   },
   "store": {
     "nombreVacio": "Enter a name.",
+    "sinCargar": "This organization's data isn't loaded, so nothing was written. Try opening it again.",
     "hayDatos": "This database already has data: to replace it use “New empty organization” or “Explore the example” from the app menu.",
     "cicloRama": "A unit cannot be moved inside its own branch.",
     "unidadInexistente": "The unit no longer exists.",

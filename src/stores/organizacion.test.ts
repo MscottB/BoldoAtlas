@@ -38,7 +38,9 @@ const revision = () =>
 
 function nuevo() {
   setActivePinia(createPinia());
-  return useOrganizacion();
+  const s = useOrganizacion();
+  s.cargado = true; // como en la app: a escribir se llega con los datos leídos, y cada escritura recarga
+  return s;
 }
 
 /** Crea una unidad y devuelve su id (falla el test si no se pudo). */
@@ -1674,13 +1676,44 @@ describe("duplicar rama", () => {
   });
 });
 
+describe("escribir sin los datos cargados", () => {
+  it("tras soltar los datos y fallar la carga, no escribe sobre lo que no leyó", async () => {
+    const s = nuevo();
+    await s.cargar();
+    soltarDatos();
+    h.antesDeMeta = async () => {
+      throw new Error("no se pudo leer");
+    };
+    expect((await s.cargar()).ok).toBe(false);
+    const antes = revision();
+    expect(await s.crearUnidad({ tipo_id: TIPO_AREA, nombre: "A", parent_id: null })).toMatchObject({
+      ok: false,
+      mensaje: expect.stringMatching(/no están cargados/),
+    });
+    expect(revision()).toBe(antes);
+    expect(s.error).toMatch(/no están cargados/);
+  });
+
+  it("reemplazarCon sí escribe: reemplaza lo que haya, con respaldo y confirmación de quien llama", async () => {
+    const s = nuevo();
+    s.cargado = false;
+    const r = await s.reemplazarCon("vacia", { nombre: "Acme", nombreRaiz: "Raíz" });
+    expect(r.ok).toBe(true);
+    expect(s.unidades.map((u) => u.nombre)).toEqual(["Raíz"]);
+  });
+});
+
 describe("guarda de datos existentes", () => {
   it("crearOrganizacion y cargarEjemplo se niegan si los datos no cargaron: vacía no quiere decir sin datos", async () => {
-    const s = nuevo(); // sin `cargar`: como tras soltar los datos y fallar la carga
+    const s = nuevo();
+    await s.cargar();
+    // catálogos a mano: la negativa no puede venir de que falte un tipo de unidad
+    expect(s.activos("tipos_unidad").length).toBeGreaterThan(0);
+    s.cargado = false;
     expect(s.vacia).toBe(true);
     const antes = revision();
-    expect((await s.crearOrganizacion("Acme", "Raíz")).ok).toBe(false);
-    expect((await s.cargarEjemplo()).ok).toBe(false);
+    expect(await s.crearOrganizacion("Acme", "Raíz")).toMatchObject({ ok: false, mensaje: expect.stringMatching(/Ya hay datos/) });
+    expect(await s.cargarEjemplo()).toMatchObject({ ok: false, mensaje: expect.stringMatching(/Ya hay datos/) });
     expect(revision()).toBe(antes);
   });
 

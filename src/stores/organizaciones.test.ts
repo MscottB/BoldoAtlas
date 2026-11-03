@@ -160,6 +160,7 @@ describe("el cambio, en orden", () => {
     const { o } = await arrancar();
     const fin = pendiente<void>();
     c.lote.mockReturnValue(fin.promesa);
+    await useOrganizacion().cargar();
     void useOrganizacion().guardarOrg("x", null);
     const r = o.activarPestana("b1");
     await new Promise((res) => setTimeout(res, 60));
@@ -1174,6 +1175,40 @@ describe("eliminar", () => {
     expect(ids()).toContain("a1");
     expect(o.cambiando).toBe(false);
     expect(enCambio()).toBe(false);
+  });
+
+  it("si la siguiente no carga, el motivo se avisa y queda en su pestaña al volver de Inicio", async () => {
+    const { p, o } = await arrancar();
+    c.eliminarOrganizacion.mockResolvedValue({ id: "B" });
+    c.consultar.mockRejectedValue(new Error("no se pudo leer"));
+    expect(await o.eliminar("A", { guardarCopia: false, borrarArchivo: false })).toEqual({ ok: true });
+    expect(router.currentRoute.value.fullPath).toBe("/bienvenida");
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/no se pudo leer/));
+    expect(ids()).toEqual(["b1", "c1"]);
+    expect(p.activa).toBe("b1");
+    expect(o.sinAbrir.get("b1")).toMatchObject({ codigo: "fallo" });
+    await p.volverAlProyecto();
+    expect(o.sinAbrir.has(p.activa)).toBe(true);
+  });
+
+  it("si Rust ya pasó a otra, falló al borrar y esa tampoco carga, también lo dice", async () => {
+    const { p, o } = await arrancar();
+    c.eliminarOrganizacion.mockRejectedValue(fallo("fallo", "no se pudo borrar"));
+    c.infoApp.mockResolvedValue({ baseId: "B", error: null });
+    c.consultar.mockRejectedValue(new Error("no se pudo leer"));
+    expect((await o.eliminar("A", { guardarCopia: false, borrarArchivo: false })).ok).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/no se pudo leer/));
+    expect(o.sinAbrir.get(p.activa)).toMatchObject({ codigo: "fallo" });
+    expect(p.lista.find((x) => x.id === p.activa)?.org).toBe("B");
+  });
+
+  it("devuelve el código de Rust, para que el diálogo sepa qué ofrecer", async () => {
+    const { o } = await arrancar();
+    c.eliminarOrganizacion.mockRejectedValue(fallo("no_encontrado"));
+    expect(await o.eliminar("B", { guardarCopia: true, borrarArchivo: false })).toMatchObject({
+      ok: false,
+      codigo: "no_encontrado",
+    });
   });
 
   it("la abierta respeta a la ficha y a los trabajos en curso", async () => {

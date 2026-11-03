@@ -31,6 +31,12 @@ export function mensajeOrganizacion(e: unknown): string {
   return te(clave) ? t(clave) : mensajeFallo(e);
 }
 
+/** Una acción sobre organizaciones que falló, con el código de Rust para quien deba distinguirlo. */
+export function falloOrganizacion(e: unknown): { ok: false; mensaje: string; codigo: string } {
+  const codigo = typeof e === "object" && e !== null && "codigo" in e ? String(e.codigo) : "";
+  return { ok: false, mensaje: mensajeOrganizacion(e), codigo };
+}
+
 /** «Respaldar ahora» y el automático: cuenta como trabajo en curso. */
 export const respaldar = (): Promise<string> =>
   conTrabajo(i18n.global.t("trabajos.respaldar"), respaldarAhora);

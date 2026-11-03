@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import type { ArchivoAgregado } from "@/db/cliente";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
 import { useOrganizaciones } from "@/stores/organizaciones";
-import { detalleUtil, sePuedeBuscar } from "./pestanas";
+import { detalleUtil, sePuedeBuscar, sePuedeCerrar } from "./pestanas";
 import { ID_AREA, usePestanas } from "./usePestanas";
 
 // La pestaña activa cuya organización no abrió: el motivo, qué se puede hacer y la salida. Las demás pestañas no se tocan.
@@ -121,7 +121,9 @@ function cerrar() {
       <Button v-if="motivo.codigo === 'esquema_nuevo'" @click="buscarActualizaciones">
         {{ t("menu.actualizar") }}
       </Button>
-      <Button variant="outline" @click="cerrar">{{ t("organizaciones.cerrarPestana") }}</Button>
+      <Button v-if="sePuedeCerrar(motivo.codigo, pestanas.lista.length)" variant="outline" @click="cerrar">
+        {{ t("organizaciones.cerrarPestana") }}
+      </Button>
     </div>
     <p role="status" class="text-sm text-muted-foreground">
       {{ buscando ? t("organizaciones.buscandoArchivo") : "" }}

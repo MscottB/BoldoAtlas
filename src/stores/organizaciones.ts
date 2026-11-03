@@ -1,5 +1,6 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { defineStore } from "pinia";
+import { toast } from "vue-sonner";
 import { soltarYEsperarEscrituras } from "@/app/ventana";
 import {
   abrirOrganizacion,
@@ -18,7 +19,12 @@ import {
 } from "@/db/cliente";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
-import { mensajeFallo, mensajeOrganizacion, respaldoAutomatico } from "@/features/respaldos/respaldos";
+import {
+  falloOrganizacion,
+  mensajeFallo,
+  mensajeOrganizacion,
+  respaldoAutomatico,
+} from "@/features/respaldos/respaldos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
 import { BaseCambiada, baseActual, fijarBase, marcarCambio, soltarDatos } from "@/lib/baseActiva";
@@ -143,8 +149,18 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     soltarDatos();
     try {
       const r = await org.cargar();
-      if (!pedida) await pestanas.irAInicio();
-      else {
+      if (!pedida) {
+        await pestanas.irAInicio();
+        if (!r.ok) {
+          // Inicio no lo muestra: se avisa ahora, y al volver la pestaña lleva el motivo en vez de verse vacía
+          sinAbrir.value.set(pestanas.pestanaDeLlegada(null), {
+            codigo: "fallo",
+            mensaje: r.mensaje,
+            detalle: r.mensaje,
+          });
+          if (r.mensaje) toast.error(r.mensaje);
+        }
+      } else {
         const pestana = pestanas.pestanaDeLlegada(pedida);
         pestanas.marcarActiva(pestana);
         if (r.ok) {
@@ -269,7 +285,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       await cargarLista();
       return { ok: true };
     } catch (e) {
-      return { ok: false, mensaje: mensajeOrganizacion(e) };
+      return falloOrganizacion(e);
     }
   }
 
@@ -279,7 +295,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       await cargarLista();
       return { ok: true };
     } catch (e) {
-      return { ok: false, mensaje: mensajeOrganizacion(e) };
+      return falloOrganizacion(e);
     }
   }
 
@@ -315,7 +331,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
         if (otra) await entrarEn(otra.id, null, inicio);
       } catch (e) {
         if (esLaAbierta) await seguirARust(inicio);
-        return { ok: false, mensaje: mensajeOrganizacion(e) };
+        return falloOrganizacion(e);
       }
       pestanas.cerrarDeOrganizacion(id);
       borrarPreferenciasOrg(id);

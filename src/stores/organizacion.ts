@@ -51,7 +51,8 @@ import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 
-export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string };
+/** `codigo`: el de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
+export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string; codigo?: string };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
 export type ResultadoEliminar =
@@ -277,8 +278,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   alSoltarDatos(soltar);
 
   // shortcut: recarga todo tras cada escritura; si una org de 2.000 unidades se siente lenta, aplicar el cambio en memoria.
-  /** Única vía de escritura: un lote (una transacción) y recarga. Si falla, recarga igual para no mostrar datos viejos. */
-  async function escribir(
+  /** Un lote (una transacción) y recarga. Si falla, recarga igual para no mostrar datos viejos. */
+  async function aplicar(
     hacer: () => Sentencia[] | { id: string; sentencias: Sentencia[] },
     alExito?: () => void,
   ): Promise<Resultado> {
@@ -310,6 +311,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     error.value = mensaje;
     return { ok: false, mensaje };
   };
+
+  /** Única vía de escritura. Sin los datos cargados no: lo escrito se calcularía sobre lo que no se leyó. */
+  const escribir = async (...args: Parameters<typeof aplicar>): Promise<Resultado> =>
+    cargado.value ? aplicar(...args) : rechazar(t("store.sinCargar"));
 
   const crearUnidad = (datos: Parameters<typeof U.crearUnidad>[0]) => escribir(() => U.crearUnidad(datos));
   const crearArbol = (nombre: string, tipo_id: string) => crearUnidad({ tipo_id, nombre });
@@ -927,7 +932,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   ): Promise<Resultado> {
     if (tipo === "vacia" && (!datos?.nombre.trim() || !datos.nombreRaiz.trim()))
       return Promise.resolve(rechazar(t("store.nombreVacio")));
-    return escribir(
+    // sin mirar `cargado`: lo que hubiera se reemplaza sin leerlo
+    return aplicar(
       // Tras vaciar, los tipos de unidad son los sembrados y sin uso.
       () => [...vaciarOrganizacion(), ...sentenciasNueva(tipo, datos)],
       () => {
