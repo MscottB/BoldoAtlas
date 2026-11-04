@@ -62,7 +62,7 @@ En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip 
 
 En Windows, abre el instalador desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación. Las aplicaciones empaquetadas como MSIX guardan en una zona privada lo que abren: la app no arrancaría al terminar, los accesos directos no tendrían icono y no saldría en Aplicaciones instaladas. El instalador se reabre solo fuera de esa aplicación o, si no puede, te pide moverlo a Descargas.
 
-Si ya quedó instalado así (sus accesos directos apuntan a `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): cierra BoldoAtlas y vuelve a instalar con doble clic en el instalador: lleva los accesos directos a la instalación nueva. Tus datos están en `%APPDATA%` y no se tocan.
+Si ya quedó instalado así (sus accesos directos apuntan a `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): cierra BoldoAtlas y vuelve a instalar con doble clic en el instalador: pasa a la instalación nueva los accesos directos del menú Inicio, del escritorio y de la barra de tareas que apuntaban a esa zona. Tus datos están en `%APPDATA%` y no se tocan.
 
 Para iniciar con el sistema en Windows, la versión instalada tiene una casilla en la última página del instalador y en **Configuración › Inicio con el sistema**; se abre minimizada y la entrada se quita al desinstalar. No se ofrece en la portable, porque escribiría fuera de su carpeta, ni en Linux y macOS. En Windows 11, los iconos nuevos de la bandeja quedan dentro de la flecha **^** junto al reloj; para tener a mano el de BoldoAtlas, arrástralo a la barra de tareas.
 

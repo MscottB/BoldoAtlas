@@ -62,7 +62,7 @@ In portable mode, extract the zip first: running it from inside the zip cannot s
 
 On Windows, open the installer from File Explorer (double-click it in Downloads), not from inside another app. Apps packaged as MSIX keep what they open in a private area: the app wouldn't start when setup finishes, the shortcuts would have no icon and it wouldn't appear in Installed apps. The installer reopens itself outside that app, or asks you to move it to Downloads if it can't.
 
-If it's already installed that way (its shortcuts point to `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): close BoldoAtlas and install again by double-clicking the installer: it moves the shortcuts to the new install. Your data is in `%APPDATA%` and is not touched.
+If it's already installed that way (its shortcuts point to `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): close BoldoAtlas and install again by double-clicking the installer: it points the Start menu, desktop and taskbar shortcuts that used that area to the new install. Your data is in `%APPDATA%` and is not touched.
 
 To start with the system on Windows, the installed version has a checkbox on the installer's last page and in **Settings › Start with the system**; it opens minimized and is removed when you uninstall. It isn't offered in the portable, because it would write outside its folder, nor on Linux and macOS. On Windows 11, new tray icons stay inside the **^** arrow next to the clock; to keep BoldoAtlas in sight, drag it onto the taskbar.
 
