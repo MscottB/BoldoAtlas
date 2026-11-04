@@ -5,7 +5,7 @@ description: Descarga BoldoAtlas para Windows, Linux o macOS, en versión portab
 
 # Descargas
 
-Cada sistema tiene una versión **portable**, la recomendada, y un **instalador**. Los enlaces apuntan a la última versión publicada; si un archivo no está en ella, el enlace lleva a la página de esa versión.
+Cada sistema tiene una versión **portable**, la recomendada, y un **instalador**.
 
 <Descargas lang="es" />
 

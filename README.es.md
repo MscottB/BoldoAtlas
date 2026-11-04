@@ -32,13 +32,17 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 
 ## Funciones
 
-- Base de datos SQLite 100 % local, modo portable (funciona desde un pendrive), respaldos automáticos antes de migrar
-- Versión visible en *Acerca de*, generada desde git (SemVer + fecha de compilación)
-- Lienzo del árbol: crear, renombrar, arrastrar para reorganizar, plegar ramas, conexiones laterales, resaltar por etiqueta
-- Administrador de árboles: varios árboles independientes y subárboles guardados (abrir cualquier rama como su propio árbol)
-- Fichas de personas y vacantes, con mantenedores de cargo, tipo de contrato, sede y jornada
-- Directorio con filtros, búsqueda con `Ctrl+K`, tema claro/oscuro con color de acento
-- Interfaz en español e inglés, con Ayuda integrada
+- Organigrama en un lienzo: crear, renombrar, arrastrar para reorganizar y plegar ramas, y zonas con nombre y color que agrupan unidades de cualquier rama
+- Conexiones laterales entre unidades, con su descripción, que se editan en el mismo diagrama
+- Varios árboles en la misma base, y cualquier rama se abre como árbol propio
+- Puestos, vacantes y fichas de personas, con listas propias de cargos, contratos, sedes y jornadas
+- El organigrama a cualquier fecha, en solo lectura: quién ocupaba cada puesto y qué cambió
+- Revisión: unidades sin jefatura, vacantes, personas sin puesto, correos repetidos y nombres parecidos
+- Directorio con filtros, búsqueda con `Ctrl+K`, tema claro u oscuro con color de acento
+- Exportar toda la base o una rama a un archivo `.boldo` cifrado, e importar eligiendo qué se queda
+- Base SQLite 100 % local y modo portable (funciona desde un pendrive), con respaldo automático cada 24 horas (se puede cambiar) y antes de importar, restaurar o migrar
+- Avisa de versiones nuevas y nunca instala sin confirmar; al cerrar puede quedar en la bandeja
+- Interfaz en español e inglés, con un manual con capturas dentro de la app
 
 ## Descarga
 
@@ -56,9 +60,9 @@ Requisitos: en Windows, WebView2 (ya viene en Windows 11 y en casi todo Windows 
 
 En modo portable, extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos. En macOS, las preferencias de la ventana (tema, escala, pestañas) y sus cachés web las guarda el sistema en tu carpeta `~/Library` (`WebKit`, `Caches`); los datos y los respaldos sí quedan en `datos/`.
 
-En Windows, abre el instalador desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación. Las aplicaciones empaquetadas como MSIX, como Claude Desktop, guardan en una zona privada lo que abren: la app no arrancaría al terminar, los accesos directos no tendrían icono y no saldría en Aplicaciones instaladas. El instalador se reabre solo fuera de esa aplicación o, si no puede, te pide moverlo a Descargas.
+En Windows, abre el instalador desde el Explorador de archivos (doble clic en Descargas), no desde dentro de otra aplicación. Las aplicaciones empaquetadas como MSIX guardan en una zona privada lo que abren: la app no arrancaría al terminar, los accesos directos no tendrían icono y no saldría en Aplicaciones instaladas. El instalador se reabre solo fuera de esa aplicación o, si no puede, te pide moverlo a Descargas.
 
-Si ya quedó instalado así (sus accesos directos apuntan a `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): cierra BoldoAtlas, abre esa carpeta en el Explorador, haz doble clic en `uninstall.exe` **sin marcar borrar datos** y vuelve a instalar con doble clic en el instalador. Tus datos están en `%APPDATA%` y no se tocan. En la zona privada de esa aplicación queda una entrada de desinstalación vieja, sin efecto. Estos pasos se probaron con una copia de prueba, no con una instalación real.
+Si ya quedó instalado así (sus accesos directos apuntan a `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): cierra BoldoAtlas y vuelve a instalar con doble clic en el instalador: lleva los accesos directos a la instalación nueva. Tus datos están en `%APPDATA%` y no se tocan.
 
 Para iniciar con el sistema en Windows, la versión instalada tiene una casilla en la última página del instalador y en **Configuración › Inicio con el sistema**; se abre minimizada y la entrada se quita al desinstalar. No se ofrece en la portable, porque escribiría fuera de su carpeta, ni en Linux y macOS. En Windows 11, los iconos nuevos de la bandeja quedan dentro de la flecha **^** junto al reloj; para tener a mano el de BoldoAtlas, arrástralo a la barra de tareas.
 
@@ -73,7 +77,7 @@ BoldoAtlas busca versiones nuevas al abrir y cada día (en la portable y en el i
 - **Instalado:** Windows corre el instalador nuevo, macOS reemplaza el `.app` y el AppImage se reemplaza a sí mismo.
 - **`.deb` y `.rpm`:** los actualiza el sistema; BoldoAtlas solo ofrece descargar el paquete nuevo.
 
-A mano siempre se puede: descarga el zip nuevo y reemplaza el programa; `datos/` no se toca. Las notas de versión se escriben en español (también se muestran así con la interfaz en inglés).
+A mano siempre se puede: descarga el zip nuevo y reemplaza el programa; `datos/` no se toca.
 
 ### Abrir un programa sin firma digital
 
@@ -100,12 +104,6 @@ npm run release        # release del sistema actual (instalador y portable) en r
 ```
 
 `npm run release` es el mismo comando que usa GitHub Actions en cada sistema, así que lo que genera en local es lo que se publicaría. En Linux necesita antes las bibliotecas de WebKitGTK ([requisitos de Tauri](https://v2.tauri.app/start/prerequisites/#linux)); en macOS arma el binario universal, así que pide `rustup target add aarch64-apple-darwin x86_64-apple-darwin`.
-
-### Versiones y releases
-
-Cada PR fusionado a `main` es una versión. Mientras dure la alpha, al fusionar se crea la etiqueta siguiente (`v0.1.0-alpha.N+1`) y se publica la prerelease con la sección **Notas de la versión** de cada PR fusionado desde el release anterior (si falta, su título). Los cambios que solo tocan documentación o CI no publican: salen en el siguiente release. Los labels `version:parche`, `version:menor` y `version:mayor` publican en cambio una versión X.Y.Z normal. Cada PR dice en un comentario con qué versión saldrá, y su portable de prueba (artefacto de `build-prueba`) lleva esa versión con el número del PR, p. ej. `0.1.0-alpha.3+pr4`. Los PR compilan la portable de Windows; las de Linux y macOS se piden con la etiqueta `build-todas` en el PR o con **Run workflow** en `build-prueba`. Cada release publica los tres sistemas. También se puede publicar a mano empujando una etiqueta: `git tag v1.2.0 && git push origin v1.2.0`.
-
-Documento de diseño: [docs/superpowers/specs](docs/superpowers/specs/2026-10-28-boldo-atlas-design.md).
 
 ## Licencia
 

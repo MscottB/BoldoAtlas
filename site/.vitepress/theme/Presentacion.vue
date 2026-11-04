@@ -100,13 +100,11 @@ const TEXTOS = {
     nuevo: {
       etiqueta: "Lo nuevo",
       titulo: "Lo último que ya puedes usar",
-      bajada: "Lo más nuevo primero. Cada novedad lleva al tema del manual que la explica.",
       todas: "Ver todas las novedades",
     },
     funciones: {
       etiqueta: "Funciones",
       titulo: "Así funciona",
-      bajada: "Capturas de la app con la organización de ejemplo que trae.",
       items: [
         {
           id: "arboles",
@@ -315,7 +313,7 @@ const TEXTOS = {
         },
         {
           p: "¿Es una versión final?",
-          r: "No: es una versión de prueba. Lo que muestra esta página ya funciona; si algo falla, cuéntalo en GitHub.",
+          r: "No: es una versión de prueba. Si algo falla, cuéntalo en GitHub.",
           enlace: { texto: "Avisar de un problema", href: `${REPO}/issues` },
         },
       ],
@@ -399,13 +397,11 @@ const TEXTOS = {
     nuevo: {
       etiqueta: "What's new",
       titulo: "The latest you can already use",
-      bajada: "Newest first. Each item leads to the manual topic that explains it.",
       todas: "See everything that's new",
     },
     funciones: {
       etiqueta: "Features",
       titulo: "How it works",
-      bajada: "Screenshots of the app with the sample organization it comes with.",
       items: [
         {
           id: "arboles",
@@ -611,7 +607,7 @@ const TEXTOS = {
         },
         {
           p: "Is it a final version?",
-          r: "No: it is a test version. Everything on this page already works; if something fails, tell us on GitHub.",
+          r: "No: it is a test version. If something fails, tell us on GitHub.",
           enlace: { texto: "Report a problem", href: `${REPO}/issues` },
         },
       ],
@@ -696,7 +692,6 @@ const hayMas = novedades.length > PORTADA;
       <div class="contenedor">
         <p class="etiqueta">{{ t.funciones.etiqueta }}</p>
         <h2 id="funciones">{{ t.funciones.titulo }}</h2>
-        <p class="bajada">{{ t.funciones.bajada }}</p>
         <article
           v-for="(f, i) in t.funciones.items"
           :id="f.id"
@@ -755,7 +750,6 @@ const hayMas = novedades.length > PORTADA;
       <div class="contenedor">
         <p class="etiqueta">{{ t.nuevo.etiqueta }}</p>
         <h2 id="lo-nuevo">{{ t.nuevo.titulo }}</h2>
-        <p class="bajada">{{ t.nuevo.bajada }}</p>
         <Novedades :lang="lang" ultimas />
         <a v-if="hayMas" class="mas todas" :href="enlace(t.rutas.novedades)">{{ t.nuevo.todas }} ({{ novedades.length }}) →</a>
       </div>
