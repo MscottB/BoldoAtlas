@@ -1,11 +1,11 @@
 ---
 title: What's new
-description: Everything added to BoldoAtlas, newest first.
+description: Everything added to BoldoAtlas.
 ---
 
 # What's new
 
-Everything added to BoldoAtlas, newest first. Each item leads to the manual topic that explains it.
+Everything added to BoldoAtlas.
 
 <Novedades lang="en" />
 

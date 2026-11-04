@@ -14,6 +14,10 @@ Open an [issue](https://github.com/MscottB/BoldoAtlas/issues). In the app's **Ab
 2. Build and test with the commands in the development section of the [README](README.md). Before opening the PR, run `npm run test` and `cargo test --manifest-path src-tauri/Cargo.toml`.
 3. Open the PR, fill in the template and tick the CLA acceptance box. Without it, the PR is not merged.
 
+## Versions and releases
+
+Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the **Notas de la versión** section of every PR merged since the previous release (or its title). Docs-only or CI-only merges don't publish; they ship with the next release. The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. PRs build the Windows portable; Linux and macOS ones are requested with the `build-todas` label on the PR or with **Run workflow** on `build-prueba`. Every release publishes all three systems. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
+
 ## Contributor License Agreement (CLA), version 1
 
 BoldoAtlas is published under [AGPL-3.0](LICENSE). This agreement also lets its author offer it under other licenses, including commercial licenses or a paid closed-source version. That is why we ask for it before accepting your contribution.

@@ -14,6 +14,10 @@ Abre un [issue](https://github.com/MscottB/BoldoAtlas/issues). En **Acerca de**,
 2. Compila y prueba con los comandos de la sección de desarrollo del [README](README.es.md). Antes de abrir el PR, corre `npm run test` y `cargo test --manifest-path src-tauri/Cargo.toml`.
 3. Abre el PR, completa la plantilla y marca la casilla de aceptación del CLA. Sin ella, el PR no se fusiona.
 
+## Versiones y releases
+
+Cada PR fusionado a `main` es una versión. Mientras dure la alpha, al fusionar se crea la etiqueta siguiente (`v0.1.0-alpha.N+1`) y se publica la prerelease con la sección **Notas de la versión** de cada PR fusionado desde el release anterior (si falta, su título). Los cambios que solo tocan documentación o CI no publican: salen en el siguiente release. Los labels `version:parche`, `version:menor` y `version:mayor` publican en cambio una versión X.Y.Z normal. Cada PR dice en un comentario con qué versión saldrá, y su portable de prueba (artefacto de `build-prueba`) lleva esa versión con el número del PR, p. ej. `0.1.0-alpha.3+pr4`. Los PR compilan la portable de Windows; las de Linux y macOS se piden con la etiqueta `build-todas` en el PR o con **Run workflow** en `build-prueba`. Cada release publica los tres sistemas. También se puede publicar a mano empujando una etiqueta: `git tag v1.2.0 && git push origin v1.2.0`.
+
 ## Acuerdo de licencia para colaboradores (CLA), versión 1
 
 BoldoAtlas se publica bajo [AGPL-3.0](LICENSE). Este acuerdo permite además que su autor lo ofrezca bajo otras licencias, incluidas licencias comerciales o una versión de pago de código cerrado. Por eso te lo pedimos antes de aceptar tu aporte.

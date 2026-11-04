@@ -32,13 +32,17 @@ It is designed for **large organizations**: very big trees, several independent 
 
 ## Features
 
-- 100 % local SQLite database, portable mode (runs from a USB drive), automatic backups before migrations
-- Version shown in *About*, generated from git (SemVer + build date)
-- Tree canvas: create, rename, drag to reorganize, collapse branches, lateral connections, highlight by tag
-- Tree manager: several independent trees and saved sub-trees (open any branch as its own tree)
-- People records and vacancies, with managed lists for job title, contract type, site and shift
-- Directory with filters, `Ctrl+K` search, light/dark theme with accent color
-- English and Spanish interface, built-in Help
+- Org chart on a canvas: create, rename, drag to reorganize and collapse branches, plus zones with a name and a color that group units from any branch
+- Lateral connections between units, with their description, edited right in the diagram
+- Several trees in one database, and any branch opens as a tree of its own
+- Positions, vacancies and people records, with your own lists of job titles, contracts, sites and shifts
+- The org chart on any date, read-only: who held each position and what changed
+- Review: units without a head, vacancies, people without a position, repeated emails and similar names
+- Directory with filters, `Ctrl+K` search, light or dark theme with accent color
+- Export the whole database or a branch to an encrypted `.boldo` file, and import choosing what stays
+- 100 % local SQLite database and portable mode (runs from a USB drive), with an automatic backup every 24 hours (you can change that) and before importing, restoring or migrating
+- Tells you about new versions and never installs without confirmation; it can stay in the tray when closed
+- English and Spanish interface, with an illustrated manual inside the app
 
 ## Download
 
@@ -56,9 +60,9 @@ Requirements: on Windows, WebView2 (included in Windows 11 and almost every Wind
 
 In portable mode, extract the zip first: running it from inside the zip cannot save data. On macOS, the system keeps the window preferences (theme, zoom, tabs) and its web caches in your `~/Library` folder (`WebKit`, `Caches`); data and backups do stay in `datos/`.
 
-On Windows, open the installer from File Explorer (double-click it in Downloads), not from inside another app. Apps packaged as MSIX, such as Claude Desktop, keep what they open in a private area: the app wouldn't start when setup finishes, the shortcuts would have no icon and it wouldn't appear in Installed apps. The installer reopens itself outside that app, or asks you to move it to Downloads if it can't.
+On Windows, open the installer from File Explorer (double-click it in Downloads), not from inside another app. Apps packaged as MSIX keep what they open in a private area: the app wouldn't start when setup finishes, the shortcuts would have no icon and it wouldn't appear in Installed apps. The installer reopens itself outside that app, or asks you to move it to Downloads if it can't.
 
-If it's already installed that way (its shortcuts point to `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): close BoldoAtlas, open that folder in File Explorer, double-click `uninstall.exe` **without ticking delete data**, and install again by double-clicking the installer. Your data is in `%APPDATA%` and is not touched. An old uninstall entry stays in that app's private area, with no effect. These steps were tested with a test copy, not with a real install.
+If it's already installed that way (its shortcuts point to `...\Packages\<app>\LocalCache\Local\BoldoAtlas`): close BoldoAtlas and install again by double-clicking the installer: it points the Start menu, desktop and taskbar shortcuts that used that area to the new install. Your data is in `%APPDATA%` and is not touched.
 
 To start with the system on Windows, the installed version has a checkbox on the installer's last page and in **Settings › Start with the system**; it opens minimized and is removed when you uninstall. It isn't offered in the portable, because it would write outside its folder, nor on Linux and macOS. On Windows 11, new tray icons stay inside the **^** arrow next to the clock; to keep BoldoAtlas in sight, drag it onto the taskbar.
 
@@ -73,7 +77,7 @@ BoldoAtlas checks for new versions when opening and every day (portable and inst
 - **Installed:** Windows runs the new installer, macOS replaces the `.app` and the AppImage replaces itself.
 - **`.deb` and `.rpm`:** the system updates them; BoldoAtlas only offers to download the new package.
 
-You can always update by hand: download the new zip and replace the program; `datos/` is not touched. Release notes are written in Spanish (also shown that way with the English interface).
+You can always update by hand: download the new zip and replace the program; `datos/` is not touched.
 
 ### Opening an unsigned program
 
@@ -100,12 +104,6 @@ npm run release        # release for the current system (installer and portable)
 ```
 
 `npm run release` is the same command GitHub Actions runs on each system, so a local build is exactly what would be published. On Linux it first needs the WebKitGTK libraries ([Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux)); on macOS it builds the universal binary, so it needs `rustup target add aarch64-apple-darwin x86_64-apple-darwin`.
-
-### Versions and releases
-
-Every PR merged into `main` is a version. While in alpha, merging creates the next tag (`v0.1.0-alpha.N+1`) and publishes the prerelease with the **Notas de la versión** section of every PR merged since the previous release (or its title). Docs-only or CI-only merges don't publish; they ship with the next release. The labels `version:parche`, `version:menor` and `version:mayor` publish a regular X.Y.Z instead. Each PR states its future version in a comment, and its test portable (the `build-prueba` artifact) carries that version plus the PR number, e.g. `0.1.0-alpha.3+pr4`. PRs build the Windows portable; Linux and macOS ones are requested with the `build-todas` label on the PR or with **Run workflow** on `build-prueba`. Every release publishes all three systems. You can still publish by hand by pushing a tag: `git tag v1.2.0 && git push origin v1.2.0`.
-
-Design document: [docs/superpowers/specs](docs/superpowers/specs/2026-10-28-boldo-atlas-design.md).
 
 ## License
 
