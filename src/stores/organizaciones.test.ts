@@ -341,6 +341,18 @@ describe("el cambio, en orden", () => {
     expect(o.sinAbrir.has("b1")).toBe(false);
   });
 
+  it("y el de las otras pestañas de esa organización que no encontraban su archivo", async () => {
+    const { o } = await arrancar({
+      lista: [TRES.lista[0], TRES.lista[1], { id: "b2", org: "B", ruta: "/revision" }],
+      activa: "a1",
+    });
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("no_encontrado"));
+    await o.activarPestana("b2");
+    expect(o.sinAbrir.get("b2")?.codigo).toBe("no_encontrado");
+    await o.activarPestana("b1");
+    expect(o.sinAbrir.has("b2")).toBe(false);
+  });
+
   it("durante el cambio cambiando y enCambio() son true y la vista se desmonta antes de abrir; con error, ambos vuelven", async () => {
     const { o } = await arrancar();
     let visto: unknown[] = [];

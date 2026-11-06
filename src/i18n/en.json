@@ -740,7 +740,6 @@
     "trabajosEnCurso": "A task is in progress: {trabajos}. Wait for it to finish and try again; nothing was changed. | Tasks are in progress: {trabajos}. Wait for them to finish and try again; nothing was changed.",
     "avisoInicio": "“{nombre}” could not be opened. Another organization was opened instead.",
     "reabrirDesdeMenu": "To try again, open it from the app menu, in “Open another organization…”.",
-    "ejemplo": "Explore the example",
     "abrirIgual": "Open anyway",
     "pideRed": "This file is in a network folder, where another computer could damage it. Copy it to this computer and open the copy?",
     "pideOtroId": "This file isn't this organization's: it has different data. Use it instead?",
@@ -821,6 +820,7 @@
       "libera": "Frees {tamano}.",
       "liberaConCopia": "The copy uses part of that space.",
       "copiaAnterior": "A previous attempt already saved a copy: {copia}. It's in “Copies of deleted organizations”.",
+      "copiaGuardada": "A copy was saved before it failed: {copia}. It's in Settings, under “Copies of deleted organizations”.",
       "abiertaPrincipal": "It's the one you have open: BoldoAtlas first switches to another and goes back to Home. If there's no other, you start with an empty one.",
       "noSeTocan": "Your other organizations aren't touched.",
       "abierta": "It's the one you have open: BoldoAtlas first switches to another (or to the main one, if there's none) and goes back to Home.",
@@ -1045,6 +1045,7 @@
     "ahora": "Back up now",
     "carpeta": "Open folder",
     "hecho": "Backup created.",
+    "duranteCambio": "No backup was made: another organization was being opened. Try again when it finishes.",
     "vacio": "No backups yet.",
     "columnas": {
       "fecha": "Date",

@@ -12,6 +12,7 @@ import { abrirCarpetaDatos } from "@/db/cliente";
 import { buscarPersona } from "@/features/atajos/buscarPersona";
 import { mensajeFallo, respaldar as hacerRespaldo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
+import { enCambio } from "@/lib/baseActiva";
 import { abiertaAhora, conOrganizacion, deLaAbierta, trabajos, ultimoFin } from "@/lib/trabajos";
 import { useActualizaciones } from "@/stores/actualizaciones";
 import { buscarActualizaciones } from "./acciones";
@@ -97,6 +98,8 @@ export async function crearBandeja(router: Router): Promise<void> {
       text: x.respaldar,
       action: () => {
         const { nombre, varias } = abiertaAhora(); // la que se respalda, aunque al terminar sea otra
+        // en pleno cambio Rust ya no tiene esa base: no se respaldaría, y sin esto no se diría nada
+        if (enCambio()) return toast.error(conOrganizacion(t("respaldos.duranteCambio"), nombre, varias));
         return hacerRespaldo().then(
           () => toast.success(conOrganizacion(t("respaldos.hecho"), nombre, varias)),
           (e: unknown) => {

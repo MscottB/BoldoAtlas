@@ -31,6 +31,7 @@ infoApp()
     if (info.error) return createApp(PantallaError, { info }).use(i18n).mount("#app");
     fijarBase(info.baseId);
     // router.ts importa VistaArbol sin carga diferida: useVista ya se evaluó con la base vacía y se relee aquí.
+    // Migrar antes de soltar: lo que se relee al soltar ya debe estar en las claves de esta organización.
     migrarPreferencias(info.baseId, info.dirDatos);
     soltarDatos();
     const pinia = createPinia();

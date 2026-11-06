@@ -20,7 +20,6 @@ import {
 import icono from "../../../assets/brand/icono.png";
 import { pedirSalir } from "@/app/ventana";
 import { IDIOMAS, cambiarIdioma, type Idioma } from "@/i18n";
-import { baseActual } from "@/lib/baseActiva";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "./menuApp";
 
@@ -29,7 +28,7 @@ import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "./menuApp
 const { t, locale } = useI18n();
 const router = useRouter();
 const organizaciones = useOrganizaciones();
-const otras = computed(() => entradasAbrirOtra(organizaciones.recientes, baseActual()));
+const otras = computed(() => entradasAbrirOtra(organizaciones.recientes, organizaciones.idAbierta));
 </script>
 
 <template>

@@ -54,9 +54,6 @@ const DEL_ARCHIVO = new Set([
   "muy_pesado",
 ]);
 
-const campo = (e: unknown, nombre: string): string =>
-  typeof e === "object" && e !== null && nombre in e ? String(e[nombre as keyof typeof e]) : "";
-
 const CANCELADO: Resultado = { ok: false, mensaje: "" };
 
 /** Por qué una pestaña no pudo abrir o cargar su organización. */
@@ -208,9 +205,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
         pestanas.marcarActiva(pestana);
         if (r.ok) {
           sinAbrir.value.delete(pestana);
-          // Sus datos ya cargaron: tampoco vale para las otras pestañas de esta organización.
+          // Sus datos ya cargaron, y su archivo está: tampoco vale para las otras pestañas de esta organización.
           for (const [otra, m] of sinAbrir.value)
-            if (m.codigo === "fallo" && pestanas.lista.find((x) => x.id === otra)?.org === id)
+            if (
+              (m.codigo === "fallo" || m.codigo === "no_encontrado") &&
+              pestanas.lista.find((x) => x.id === otra)?.org === id
+            )
               sinAbrir.value.delete(otra);
           pestanas.validarActivada(pestana);
           await pestanas.navegar(pestana);
@@ -241,13 +241,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       o = await abrirOrganizacion(id);
     } catch (e) {
       volverSinCambio();
-      const mensaje = mensajeOrganizacion(e);
-      const codigo = campo(e, "codigo");
+      const { mensaje, codigo, detalle } = falloOrganizacion(e);
       const pestanas = usePestanas();
       // si la pestaña se cerró mientras tanto, o se pidió desde Inicio, no hay dónde mostrar el motivo: lo avisa quien pidió
       if (!DEL_ARCHIVO.has(codigo) || !pestanas.existe(pestana) || pestanas.enInicio())
         return { ok: false, mensaje };
-      sinAbrir.value.set(pestana, { codigo, mensaje, detalle: campo(e, "detalle") });
+      sinAbrir.value.set(pestana, { codigo, mensaje, detalle });
       pestanas.marcarActiva(pestana);
       return { ok: true };
     }
@@ -428,6 +427,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     lista,
     recientes,
     abierta,
+    /** El id de la abierta, reactivo: `baseActual()` no lo es. */
+    idAbierta,
     nombreAbierta,
     varias,
     cambiando,

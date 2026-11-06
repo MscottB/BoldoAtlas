@@ -740,7 +740,6 @@
     "trabajosEnCurso": "Hay un trabajo en curso: {trabajos}. Espera a que termine e inténtalo de nuevo; no se cambió nada. | Hay trabajos en curso: {trabajos}. Espera a que terminen e inténtalo de nuevo; no se cambió nada.",
     "avisoInicio": "No se pudo abrir «{nombre}». Se abrió otra organización en su lugar.",
     "reabrirDesdeMenu": "Para volver a intentarlo, ábrela desde el menú de la app, en «Abrir otra organización…».",
-    "ejemplo": "Explorar el ejemplo",
     "abrirIgual": "Abrir igual",
     "pideRed": "Este archivo está en una carpeta de red, donde otro equipo podría dañarlo. ¿Copiarlo a este computador y abrir la copia?",
     "pideOtroId": "Este archivo no es el de esta organización: tiene otros datos. ¿Usarlo en su lugar?",
@@ -821,6 +820,7 @@
       "libera": "Libera {tamano}.",
       "liberaConCopia": "La copia ocupa parte de ese espacio.",
       "copiaAnterior": "Un intento anterior ya guardó una copia: {copia}. Está en «Copias de organizaciones eliminadas».",
+      "copiaGuardada": "Antes de fallar se guardó una copia: {copia}. Está en Configuración, en «Copias de organizaciones eliminadas».",
       "abiertaPrincipal": "Es la que tienes abierta: antes se pasa a otra y se vuelve a Inicio. Si no hay otra, se empieza con una vacía.",
       "noSeTocan": "Las demás organizaciones no se tocan.",
       "abierta": "Es la que tienes abierta: antes se pasa a otra (o a la principal, si no hay) y se vuelve a Inicio.",
@@ -1045,6 +1045,7 @@
     "ahora": "Respaldar ahora",
     "carpeta": "Abrir carpeta",
     "hecho": "Respaldo creado.",
+    "duranteCambio": "No se respaldó: se estaba abriendo otra organización. Inténtalo de nuevo cuando termine.",
     "vacio": "Todavía no hay respaldos.",
     "columnas": {
       "fecha": "Fecha",

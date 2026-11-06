@@ -19,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Organizacion } from "@/db/cliente";
@@ -36,6 +37,9 @@ const { t, locale } = useI18n();
 const organizaciones = useOrganizaciones();
 
 const idEntrada = (id: string) => `inicio-org-${id}`;
+const idProtegida = (id: string) => `inicio-protegida-${id}`;
+// Con la lista protegida, quitar y eliminar se ven desactivados: el motivo va arriba y en cada uno.
+const porProtegida = (id: string) => (organizaciones.listaProtegida ? idProtegida(id) : undefined);
 const idMenu = (id: string) => `inicio-org-menu-${id}`;
 const nombreDe = (o: Pick<Organizacion, "nombre">) => textoAConfirmar(o, t("barra.sinNombre"));
 const inicial = (o: Organizacion) => nombreDe(o).trim().charAt(0).toLocaleUpperCase(locale.value);
@@ -191,10 +195,18 @@ async function trasEliminar(eliminada: boolean) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuLabel
+                v-if="organizaciones.listaProtegida"
+                :id="idProtegida(o.id)"
+                class="max-w-72 text-xs font-normal text-muted-foreground"
+              >
+                {{ t("organizaciones.seccion.protegida") }}
+              </DropdownMenuLabel>
               <!-- Sin su archivo, buscarlo y quitarla están a la vista, bajo el nombre. -->
               <DropdownMenuItem
                 v-if="o.existe && !o.activa"
                 :disabled="bloqueado || organizaciones.listaProtegida"
+                :aria-describedby="porProtegida(o.id)"
                 @select="pedirQuitar(o)"
               >
                 <ListX aria-hidden="true" />
@@ -203,6 +215,7 @@ async function trasEliminar(eliminada: boolean) {
               <DropdownMenuItem
                 variant="destructive"
                 :disabled="bloqueado || organizaciones.listaProtegida"
+                :aria-describedby="porProtegida(o.id)"
                 @select="pedirEliminar(o)"
               >
                 <Trash2 aria-hidden="true" />

@@ -35,6 +35,8 @@ const organizaciones = useOrganizaciones();
 
 const idEliminar = (id: string) => `org-eliminar-${id}`;
 const idBorrarCopia = (nombre: string) => `copia-borrar-${nombre}`;
+const idMotivoQuitar = (id: string) => `org-quitar-motivo-${id}`;
+const idColor = (id: string) => `org-color-${id}`;
 
 const copias = ref<OrganizacionEliminada[]>([]);
 const errorCarga = ref("");
@@ -196,8 +198,8 @@ function pedirRestaurar(c: OrganizacionEliminada) {
           toast.success(t("organizaciones.seccion.restaurada", { nombre: nombreDeCopia(c) }));
           return { ok: true };
         },
-        // la nueva, que es lo que se fue a buscar; si falló, la misma copia
-        () => (nueva ? idEliminar(nueva) : idBorrarCopia(c.nombre)),
+        // la fila de la nueva, que es lo que se fue a buscar, sin caer en un botón que borra; si falló, la misma copia
+        () => (nueva ? idColor(nueva) : idBorrarCopia(c.nombre)),
         falloDeCopia,
       ),
   });
@@ -281,6 +283,7 @@ async function trasEliminar(eliminada: boolean) {
         </p>
         <div class="flex flex-wrap items-center gap-2">
           <select
+            :id="idColor(o.id)"
             :value="o.color"
             :class="claseSelect"
             :disabled="bloqueado"
@@ -292,12 +295,15 @@ async function trasEliminar(eliminada: boolean) {
             </option>
             <option v-for="p in PALETA" :key="p.color" :value="p.color">{{ t(p.nombre) }}</option>
           </select>
+          <!-- La única no tiene a cuál pasar antes de quitarla: no se ofrece. -->
           <Button
+            v-if="!o.activa || organizaciones.varias"
             type="button"
             variant="outline"
             size="sm"
             :disabled="bloqueado || o.activa"
             :aria-label="t('organizaciones.seccion.quitarDe', { nombre: nombreDe(o) })"
+            :aria-describedby="o.activa ? idMotivoQuitar(o.id) : undefined"
             @click="pedirQuitar(o, i)"
           >
             {{ t("organizaciones.seccion.quitar") }}
@@ -314,7 +320,13 @@ async function trasEliminar(eliminada: boolean) {
             {{ t("organizaciones.seccion.eliminar") }}
           </Button>
         </div>
-        <p v-if="o.activa" class="text-xs text-muted-foreground">{{ t("respaldos.error.abierta") }}</p>
+        <p
+          v-if="o.activa && organizaciones.varias"
+          :id="idMotivoQuitar(o.id)"
+          class="text-xs text-muted-foreground"
+        >
+          {{ t("respaldos.error.abierta") }}
+        </p>
       </li>
     </ul>
 

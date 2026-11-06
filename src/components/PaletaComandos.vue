@@ -33,7 +33,6 @@ import { useTema } from "@/features/tema/useTema";
 import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
-import { baseActual } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 
@@ -121,7 +120,7 @@ const acciones = computed<AccionPaleta[]>(() => [
     ejecutar: () => irAEntrada(e, router),
     ruta: e.destino && !router.resolve(e.destino).meta.sinMarco ? e.destino : undefined,
   })),
-  ...entradasAbrirOtra(organizaciones.recientes, baseActual()).map((o) => ({
+  ...entradasAbrirOtra(organizaciones.recientes, organizaciones.idAbierta).map((o) => ({
     id: `abrir:${o.id}`,
     etiqueta: t("paleta.acciones.abrirOtra", { nombre: o.nombre || t("barra.sinNombre") }),
     icono: FolderOpen,
