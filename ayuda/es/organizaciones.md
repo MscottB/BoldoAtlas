@@ -53,6 +53,7 @@ Un archivo abierto con **Abrir archivo…** se queda en su lugar y BoldoAtlas es
 - **Más de 512 MiB:** pregunta antes, porque puede tardar en abrir y ocupar más memoria; **Abrir igual** sigue.
 - **Una copia de otra de tu lista:** se abre como una organización aparte, y un aviso lo dice.
 - **Si deja de estar** (un pendrive desconectado): en **Abierto recientemente** dice «No se encuentra su archivo.» y ofrece **Buscar archivo** y **Quitar de la lista**. Si el archivo que eliges tiene otros datos, pregunta si usarlo en su lugar.
+- **Con una transacción sin terminar** (un archivo `-journal` a su lado): un archivo nuevo no se abre; mantén los dos juntos. Si es una organización de tu lista y la buscas con **Buscar archivo**, pregunta antes de recuperarla, porque eso cambia el archivo.
 
 ::: warning Importante
 Abrir un archivo de otra persona trae los mismos riesgos que importar uno: ábrelo solo si confías en quien lo envió.

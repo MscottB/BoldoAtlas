@@ -52,7 +52,8 @@ A file opened with **Open file…** stays where it is and BoldoAtlas writes to i
 - **Portable:** if the file is outside the BoldoAtlas portable folder, it warns that it will not go with the folder when you take it to another computer.
 - **Over 512 MiB:** it asks first, because it may take a while to open and use more memory; **Open anyway** goes ahead.
 - **A copy of another one in your list:** it opens as a separate organization, and a notice says so.
-- **If it is no longer there** (an unplugged USB drive): **Recently opened** says "Its file can’t be found." and offers **Find file** and **Remove from list**. If the file you choose has other data, it asks whether to use it instead.
+- **If it is no longer there** (an unplugged USB drive): **Recently opened** says "Its file can't be found." and offers **Find file** and **Remove from list**. If the file you choose has other data, it asks whether to use it instead.
+- **With an unfinished transaction** (a `-journal` file next to it): a new file does not open; keep the two together. If it is an organization on your list and you look for it with **Find file**, it asks before recovering it, because that changes the file.
 
 ::: warning Important
 Opening someone else's file carries the same risks as importing one: open it only if you trust whoever sent it.

@@ -183,7 +183,7 @@ On the selected card, the **Open as tree** button shows only that unit and every
 
 ## Customize
 
-The **Customize** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer. **Direction**, **Density**, **Color by**, **Show positions** and, if there are lateral connections, **Lateral connections** are in plain view; the rest is in two folded blocks, **What to show on cards** and **Advanced**, which open with a click (or `Enter`) and remember on this computer whether you left them open. **Reset** puts everything back as it was at first, except the highlighting.
+The **Customize** button, in the canvas bar, opens the options for how the tree is drawn. They are remembered on this computer, for each organization. **Direction**, **Density**, **Color by**, **Show positions** and, if there are lateral connections, **Lateral connections** are in plain view; the rest is in two folded blocks, **What to show on cards** and **Advanced**, which open with a click (or `Enter`) and remember on this computer whether you left them open. **Reset** puts everything back as it was at first, except the highlighting.
 
 ![Customize panel with Direction, Density, Color by, Show positions, Lateral connections and the folded blocks.](../img/en/arbol-personalizar.webp "The Customize panel. 1: tree direction. 2: card density. 3: color by. 4: show positions. 5: lateral connections."){width=380 height=490}
 
@@ -204,7 +204,7 @@ In addition, **Customize** lets you choose:
 - **What to show on cards** (with how many are on): people on the cards, unit type, head, head's photo, headcount, vacancies and tags.
 - **People on the cards** (on at first): the head shows with their job title and, below, the faces of the unit's team. The card gets a little taller. Since the head is already on the card, with **Show positions** their position isn't repeated underneath, as in a classic org chart; the other positions still show. The compact card and the simplified card (zoomed out with many cards) don't show people. On a past date you see the people of that day. The faces open the **People** tab with **Include sub-units** off, so the list is the same people they count. With **Head** off the head isn't shown on the card, but still counts in the team number (the name of the faces button).
 
-Each tree (the full one or a subtree saved in Trees) remembers on this computer the last configuration you used in it.
+Each tree (the full one or a subtree saved in Trees) remembers on this computer, for each organization, the last configuration you used in it.
 
 ## Saved views
 
@@ -257,7 +257,7 @@ The **People** tab lists who holds the positions: current holders and replacemen
 
 Press a person to see their **preview** in the same panel: photo, email, phone, current positions and history. **Open record** opens their full record to edit it; **Back to the list** (or `Esc`) returns to the list at the same place, with focus on the person you opened. With a date chosen, the list and the preview show who was assigned that day.
 
-**List** and **Tree** change how those same people are shown; your choice is remembered on this computer. The **tree** starts at the panel's unit and shows what sits below it, parent and child:
+**List** and **Tree** change how those same people are shown; your choice is remembered on this computer, for each organization. The **tree** starts at the panel's unit and shows what sits below it, parent and child:
 
 - Each unit shows its name, its type, its head (photo or initials, name and job title) and how many people its branch has: the holders, the same figure as the card (replacements show but do not add up). Above, **assignments** counts every row of people, like the list. Below it come its other people (replacements, marked), its positions with nobody as **Vacant** and then its sub-units. With **Include sub-units** off you see only the unit.
 - It opens at the first level. A unit's arrow opens or closes it; **Expand all** opens them all and **Collapse all** goes back to the first level.

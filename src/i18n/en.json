@@ -851,7 +851,7 @@
       "salioSinArchivo": "“{nombre}” left the list and its backups were deleted. Its file wasn't found."
     },
     "error": {
-      "desconocido": "This organization is no longer on the list: it was removed, or its file was replaced by another one. What’s on the list opens from Home.",
+      "desconocido": "This organization is no longer on the list: it was removed, or its file was replaced by another one. What's on the list opens from Home.",
       "esquema_nuevo": "This organization was saved with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
       "danado": "The file is damaged or is not a BoldoAtlas database. It wasn't opened.",
       "muy_pesado_total": "This file has {exceso}, more than BoldoAtlas can load. It wasn't opened or changed."
@@ -1118,11 +1118,11 @@
     "otra": "Create or open another organization",
     "abrirArchivo": "Open file…",
     "ejemplo": "Explore the example",
-    "sinArchivo": "Its file can’t be found.",
+    "sinArchivo": "Its file can't be found.",
     "accionesDe": "More actions for “{nombre}”",
     "eliminar": "Delete organization",
     "trabajando": "One moment…",
-    "sinCargar": "This organization’s data couldn’t be loaded. Go back to it to try again."
+    "sinCargar": "This organization's data couldn't be loaded. Go back to it to try again."
   },
   "menu": {
     "abrir": "App menu",

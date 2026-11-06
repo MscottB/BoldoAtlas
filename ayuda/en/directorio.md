@@ -13,7 +13,7 @@ The Directory is a table with every position and every person in the organizatio
 
 A person with two positions appears in two rows. Someone who is only a replacement appears in the row of the position they replace.
 
-There is one column for each unit type you use (for example Division, Area, Subarea): it shows the nearest unit of that type going up, including the position's own unit. **Person**, **Job title**, the Management and Area columns and **Email** are in view (if you use neither Management nor Area, the first type in use). The **Columns** button shows or hides the rest: **Replacement**, the other unit types, **Contract type**, **Site** and **Schedule**. Your choice is remembered on this computer.
+There is one column for each unit type you use (for example Division, Area, Subarea): it shows the nearest unit of that type going up, including the position's own unit. **Person**, **Job title**, the Management and Area columns and **Email** are in view (if you use neither Management nor Area, the first type in use). The **Columns** button shows or hides the rest: **Replacement**, the other unit types, **Contract type**, **Site** and **Schedule**. Your choice is remembered on this computer, for each organization.
 
 ![The Directory with the search box, the unit filter, the Filters and Columns buttons and the first rows of the table.](../img/en/directorio-tabla.webp "The Directory. 1: search. 2: unit filter. 3: Filters. 4: Columns. 5: icon to show the person in the org chart."){width=884 height=290}
 
@@ -27,7 +27,7 @@ To find a person:
 
 - The search box looks in the names of the person and the replacement, the job title and the holder's email, ignoring case and accents ("munoz" finds "Muñoz").
 - **Unit** includes its whole branch. **View in the directory**, on the People tab of a unit's panel, opens the directory with just that filter. The **Filters** button holds the rest and shows how many are active; **Clear these filters**, inside it, empties only those. **Job title**, **contract type**, **site** and **schedule** filter by exact value (deactivated ones too); contract type, site and schedule are the holder's, so a vacancy never matches them. **Tag** uses the tags of the position's unit. **Status** separates filled positions, vacancies and people with no position.
-- **Clear all**, next to the filters, removes them all (the text and the unit too). Filters and sort order are remembered on this computer.
+- **Clear all**, next to the filters, removes them all (the text and the unit too). Filters and sort order are remembered on this computer, for each organization.
 
 ![Filters panel with Job title, Contract type, Site, Schedule, Tag and Status.](../img/en/directorio-filtros.webp "The Filters panel: each list shows only what matches."){width=316 height=520}
 
