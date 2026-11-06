@@ -16,7 +16,7 @@ const enlaces = (e?: Enlace | Enlace[]) => (e ? [e].flat() : []);
 </script>
 
 <template>
-  <div class="seguridad">
+  <main class="seguridad">
     <header class="cabecera">
       <div class="pieza-contenedor">
         <p class="pieza-etiqueta">{{ s.etiqueta }}</p>
@@ -45,7 +45,7 @@ const enlaces = (e?: Enlace | Enlace[]) => (e ? [e].flat() : []);
     </div>
 
     <LlamadaDescarga :lang="lang" />
-  </div>
+  </main>
 </template>
 
 <style scoped>

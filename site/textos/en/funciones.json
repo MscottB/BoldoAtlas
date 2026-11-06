@@ -175,6 +175,10 @@
         "alto": 533,
         "temas": true,
         "alt": "Directory with 18 rows: person, job title, management, area and email, with search, a unit filter and a column picker."
+      },
+      "enlace": {
+        "texto": "How to use the directory",
+        "href": "/en/manual/directorio"
       }
     },
     {
@@ -218,6 +222,10 @@
         "alto": 622,
         "temas": true,
         "alt": "Backups section of the settings: last backup, a Back up now button, automatic backup every 24 hours and the list of backups to restore."
+      },
+      "enlace": {
+        "texto": "How backups work",
+        "href": "/en/manual/respaldos"
       }
     },
     {

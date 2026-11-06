@@ -9,9 +9,9 @@ import type { Funcion, Lang } from "./tipos";
 // y enlace al manual. Con `resumen` (Inicio): sin id, h3, sin puntos y «Ver más» a su bloque en Funciones.
 const props = defineProps<{ lang: Lang; funcion: Funcion; inverso?: boolean; resumen?: boolean }>();
 
-const MAS = { es: "Ver más", en: "Learn more" };
 const TEMAS = ["claro", "oscuro"] as const;
-const rutas = computed(() => textos(props.lang).comunes.rutas);
+const comunes = computed(() => textos(props.lang).comunes);
+const rutas = computed(() => comunes.value.rutas);
 </script>
 
 <template>
@@ -29,8 +29,8 @@ const rutas = computed(() => textos(props.lang).comunes.rutas);
         v-if="resumen"
         class="pieza-mas"
         :href="enlace(`${rutas.funciones}#${funcion.id}`)"
-        :aria-label="`${MAS[lang]}: ${funcion.titulo}`"
-        >{{ MAS[lang] }} →</a
+        :aria-label="`${comunes.verMas}: ${funcion.titulo}`"
+        >{{ comunes.verMas }} →</a
       >
       <a v-else-if="funcion.enlace" class="pieza-mas" :href="enlace(funcion.enlace.href)"
         >{{ funcion.enlace.texto }} →</a

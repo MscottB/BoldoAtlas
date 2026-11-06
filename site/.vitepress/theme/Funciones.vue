@@ -15,7 +15,7 @@ const f = computed(() => t.value.funciones);
 </script>
 
 <template>
-  <div class="funciones">
+  <main class="funciones">
     <header class="cabecera">
       <div class="pieza-contenedor">
         <p class="pieza-etiqueta">{{ f.etiqueta }}</p>
@@ -52,7 +52,7 @@ const f = computed(() => t.value.funciones);
     </section>
 
     <LlamadaDescarga :lang="lang" />
-  </div>
+  </main>
 </template>
 
 <style scoped>

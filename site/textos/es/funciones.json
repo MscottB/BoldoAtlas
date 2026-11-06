@@ -175,6 +175,10 @@
         "alto": 533,
         "temas": true,
         "alt": "Directorio con 18 filas: persona, cargo, gerencia, área y correo, con búsqueda, filtro por unidad y selector de columnas."
+      },
+      "enlace": {
+        "texto": "Cómo usar el directorio",
+        "href": "/manual/directorio"
       }
     },
     {
@@ -218,6 +222,10 @@
         "alto": 622,
         "temas": true,
         "alt": "Sección Respaldos de la configuración: último respaldo, botón Respaldar ahora, respaldo automático cada 24 horas y la lista de respaldos para restaurar."
+      },
+      "enlace": {
+        "texto": "Cómo funcionan los respaldos",
+        "href": "/manual/respaldos"
       }
     },
     {

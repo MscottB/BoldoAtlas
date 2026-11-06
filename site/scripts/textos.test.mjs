@@ -280,3 +280,33 @@ test("las garantías de Inicio enlazan a Seguridad", () => {
       assert.ok(g.enlace?.href.startsWith(`${seguridad}#`), `${idioma}: «${g.titulo}» → ${g.enlace?.href}`);
   }
 });
+
+test("cada función de funciones.json lleva su enlace al manual", () => {
+  for (const idioma of IDIOMAS)
+    for (const f of json(idioma, "funciones.json").items)
+      assert.ok(f.enlace?.texto && f.enlace?.href, `${idioma}: «${f.id}» no tiene enlace`);
+});
+
+// Enlaces que no están como {texto, href}: las rutas de comunes.json y los [..](/..) de las preguntas de Acerca de.
+const enlacesMarkdown = (texto) => [...texto.matchAll(/\]\((\/[^)\s]*)\)/g)].map((m) => m[1]);
+const hrefsSueltos = (idioma) => [
+  ...Object.values(json(idioma, "comunes.json").rutas),
+  ...enlacesMarkdown(readFileSync(new URL(idioma === "en" ? "en/acerca.md" : "acerca.md", sitio), "utf8")),
+];
+
+test("las rutas de comunes.json y los enlaces de Acerca de van a páginas, anclas y manual que existen", () => {
+  for (const idioma of IDIOMAS) {
+    const hrefs = hrefsSueltos(idioma);
+    assert.ok(hrefs.length > 8, idioma);
+    assert.deepEqual(
+      [...erroresIdioma(idioma, hrefs), ...erroresManual(idioma, hrefs), ...erroresPagina(idioma, hrefs)],
+      [],
+      idioma,
+    );
+  }
+  assert.deepEqual(enlacesMarkdown("a [x](/a#b) y [y](https://z.com) [w](/c)"), ["/a#b", "/c"]);
+  // una ruta en español dentro de en/, una página que falta y un ancla del manual que no existe se detectan
+  assert.equal(erroresIdioma("en", ["/funciones"]).length, 1);
+  assert.equal(erroresPagina("es", ["/no-existe"]).length, 1);
+  assert.equal(erroresManual("es", ["/manual/exportar-importar#no-existe"]).length, 1);
+});

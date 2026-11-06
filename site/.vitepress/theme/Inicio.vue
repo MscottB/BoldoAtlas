@@ -12,7 +12,7 @@ import { textos } from "./textos";
 import type { Lang } from "./tipos";
 
 // Inicio: portada, por qué, tres funciones destacadas, lo nuevo, garantías y llamada a descargar.
-// Los textos salen de site/textos/<idioma>/; las anclas #por-que, #funciones y #lo-nuevo siguen en esta página.
+// Los textos salen de site/textos/<idioma>/; las anclas #por-que y #lo-nuevo siguen en esta página; #funciones solo nombra la sección (anclasViejas lo lleva a /funciones).
 const props = defineProps<{ lang: Lang }>();
 
 const t = computed(() => textos(props.lang));
@@ -23,7 +23,7 @@ const hayMas = novedades.length > PORTADA;
 </script>
 
 <template>
-  <div class="inicio">
+  <main class="inicio">
     <Portada :lang="lang" />
 
     <section class="seccion alterna" aria-labelledby="por-que">
@@ -74,7 +74,7 @@ const hayMas = novedades.length > PORTADA;
     <Garantias :items="t.inicio.garantias.items" />
 
     <LlamadaDescarga :lang="lang" />
-  </div>
+  </main>
 </template>
 
 <style scoped>
