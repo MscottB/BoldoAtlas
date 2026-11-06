@@ -23,14 +23,15 @@ BoldoAtlas is maintained by one person, so there is no guaranteed response time.
 - **The interface is restricted.** A content security policy allows only the app's own scripts and styles and blocks loading anything from the internet. The interface cannot send file paths for backups or data folders. Its database access is limited to reading and changing rows.
 - **Text from outside is not trusted.** Release notes and help pages are shown with HTML turned off, and links open in your browser only if they are `http`, `https` or `mailto`.
 - **`.boldo` files are encrypted** with XChaCha20-Poly1305 and a key derived from a one-time code (Argon2id) that is not saved anywhere. When importing, the content is not trusted even if the code is correct: it is opened read-only and checked against the expected schema before anything is applied.
-- **Installed on Linux and macOS,** the data folder can be opened only by your user. On Windows, it is inside your user's `%APPDATA%`.
+- **The `.db` files you open with Open file… are checked before they are added,** with the same check as a `.boldo`: they are opened read-only and compared with the expected schema. After that, BoldoAtlas works on the file where it is and writes to it (also to update its structure): open them only if you trust whoever sent them. A `.boldo` imported as a new organization goes through the same check.
+- **Installed on Linux and macOS,** the data folder can be opened only by your user. On Windows, it is inside your user's `%APPDATA%`. An external file keeps the permissions of its folder.
 - **Each release** includes `SHA256SUMS.txt` and the list of its components (SBOM, in CycloneDX format). Known vulnerabilities in dependencies are checked every week.
 
 ## What the app does not protect today
 
 - **The database and the backups are not encrypted.** Anyone who can open your user account, your disk or your USB drive can read them. Use disk encryption (BitLocker, FileVault, LUKS) and keep the folder out of shared locations.
 - **The app has no login, users or permissions.** Everyone who can open it sees and changes everything, and it does not record who changed what.
-- **The portable version keeps its data next to the program.** The protection of that data is the protection of the folder or USB drive you put it in.
+- **The portable version keeps its data next to the program.** The protection of that data is the protection of the folder or USB drive you put it in, and the external files you open with Open file… stay, and are protected, where they are.
 - **It does not defend against malware or against someone with access to your user account.** Such a program could read or replace the files, including the program itself.
 - **The programs are not signed with a Windows or Apple certificate,** so the system may warn when you open them. Check them against `SHA256SUMS.txt`, downloaded from the official releases page.
 - **Automatic updates depend on GitHub and on the author's signing key.** The app cannot detect a release signed with a stolen key.
@@ -64,14 +65,15 @@ A BoldoAtlas lo mantiene una sola persona, así que no hay un plazo de respuesta
 - **La interfaz está restringida.** Una política de seguridad de contenido permite solo los scripts y estilos de la propia app y bloquea cargar cualquier cosa desde internet. La interfaz no puede enviar rutas de archivos para los respaldos ni para las carpetas de datos. Con la base de datos solo puede leer y cambiar filas.
 - **El texto de afuera no se da por seguro.** Las notas de versión y la ayuda se muestran con el HTML desactivado, y los enlaces se abren en tu navegador solo si son `http`, `https` o `mailto`.
 - **Los archivos `.boldo` van cifrados** con XChaCha20-Poly1305 y una clave derivada de un código de un solo uso (Argon2id) que no se guarda en ninguna parte. Al importar, el contenido no se da por seguro aunque el código sea correcto: se abre de solo lectura y se compara con el esquema esperado antes de aplicar nada.
-- **Instalada en Linux y macOS,** solo tu usuario puede abrir la carpeta de datos. En Windows, está dentro del `%APPDATA%` de tu usuario.
+- **Los `.db` que abres con Abrir archivo… se revisan antes de agregarlos** con la misma comprobación que un `.boldo`: se abren de solo lectura y se comparan con el esquema esperado. Después BoldoAtlas trabaja en el archivo donde está y escribe en él (también para actualizar su estructura): ábrelos solo si confías en quien los envió. Un `.boldo` importado como organización nueva pasa por la misma revisión.
+- **Instalada en Linux y macOS,** solo tu usuario puede abrir la carpeta de datos. En Windows, está dentro del `%APPDATA%` de tu usuario. Un archivo externo conserva los permisos de su carpeta.
 - **Cada versión publicada** trae `SHA256SUMS.txt` y la lista de sus componentes (SBOM, en formato CycloneDX). Las vulnerabilidades conocidas de las dependencias se revisan cada semana.
 
 ## Qué no protege hoy la app
 
 - **La base de datos y los respaldos no están cifrados.** Quien pueda abrir tu cuenta de usuario, tu disco o tu pendrive puede leerlos. Usa cifrado de disco (BitLocker, FileVault, LUKS) y no dejes la carpeta en lugares compartidos.
 - **La app no tiene inicio de sesión, usuarios ni permisos.** Quien pueda abrirla ve y cambia todo, y no queda registro de quién cambió qué.
-- **La portable guarda sus datos junto al programa.** Esos datos están tan protegidos como la carpeta o el pendrive donde los pongas.
+- **La portable guarda sus datos junto al programa.** Esos datos están tan protegidos como la carpeta o el pendrive donde los pongas, y los archivos externos que abras con Abrir archivo… se quedan, y se protegen, donde están.
 - **No defiende contra programas maliciosos ni contra quien tenga acceso a tu cuenta de usuario.** Ese programa podría leer o reemplazar los archivos, incluido el propio programa.
 - **Los programas no van firmados con un certificado de Windows o de Apple,** así que el sistema puede avisar al abrirlos. Compruébalos con `SHA256SUMS.txt`, descargado de la página oficial de releases.
 - **Las actualizaciones automáticas dependen de GitHub y de la clave de firma del autor.** La app no puede detectar una versión firmada con una clave robada.
