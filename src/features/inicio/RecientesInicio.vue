@@ -26,7 +26,7 @@ import DialogoEliminarOrganizacion from "@/features/organizaciones/DialogoElimin
 import PreguntaArchivo from "@/features/organizaciones/PreguntaArchivo.vue";
 import { textoAConfirmar } from "@/features/organizaciones/eliminar";
 import { useOrganizaciones } from "@/stores/organizaciones";
-import { volverAlTerminar } from "./foco";
+import { enfocarPrimero, volverAlTerminar } from "./foco";
 import { hace } from "./recientes";
 
 // «Abierto recientemente» de Inicio: las organizaciones de la lista, la última abierta primero. Un clic abre; cada una
@@ -79,24 +79,26 @@ async function buscar(o: Organizacion) {
   for (const a of r.avisos ?? []) toast.warning(t(`organizaciones.avisoArchivo.${a}`));
 }
 
-// Donde estaba la entrada: la que tomó su lugar, la última si era la última, o el título si no queda ninguna.
+// Donde estaba la entrada: la que tomó su lugar, la última si era la última, o el título si no queda ninguna. Con una
+// sola, esta lista se va (la cubre el panel de Inicio): el foco, al título de la página.
 async function enfocarEn(i: number) {
   await nextTick();
   const o = organizaciones.recientes[Math.min(i, organizaciones.recientes.length - 1)];
-  (document.getElementById(o ? idEntrada(o.id) : "") ?? document.getElementById(ID_RECIENTES))?.focus();
+  enfocarPrimero(o ? idEntrada(o.id) : null, ID_RECIENTES);
 }
 
 const aQuitar = ref<Organizacion | null>(null); // no se limpia al cerrar: el texto sigue ahí mientras el diálogo se va
 const quitando = ref(false);
 let quitada = false;
 function pedirQuitar(o: Organizacion) {
+  if (bloqueado.value) return;
   aQuitar.value = o;
   quitada = false;
   quitando.value = true;
 }
 async function quitar() {
   const o = aQuitar.value;
-  if (!o || quitada) return;
+  if (!o || quitada || bloqueado.value) return;
   quitada = true;
   const i = organizaciones.recientes.findIndex((x) => x.id === o.id);
   ocupado.value = true;
@@ -154,15 +156,26 @@ async function trasEliminar(eliminada: boolean) {
               :style="{ borderColor: o.color }"
               aria-hidden="true"
             >
-              <img v-if="o.logo" :src="`data:image/png;base64,${o.logo}`" alt="" class="size-full object-contain" />
+              <img
+                v-if="o.logo"
+                :src="`data:image/png;base64,${o.logo}`"
+                alt=""
+                class="size-full object-contain"
+              />
               <template v-else>{{ inicial(o) }}</template>
             </span>
             <span class="min-w-0 flex-1">
               <span class="block truncate font-medium" :title="nombreDe(o)">{{ nombreDe(o) }}</span>
-              <span v-if="!o.existe" class="block text-xs text-destructive">{{ t("inicio.sinArchivo") }}</span>
+              <span v-if="!o.existe" class="block text-xs text-destructive">{{
+                t("inicio.sinArchivo")
+              }}</span>
             </span>
-            <Badge v-if="o.activa" variant="outline" class="shrink-0">{{ t("organizaciones.seccion.abierta") }}</Badge>
-            <span v-if="cuando(o.abierta)" class="shrink-0 text-xs text-muted-foreground">{{ cuando(o.abierta) }}</span>
+            <Badge v-if="o.activa" variant="outline" class="shrink-0">{{
+              t("organizaciones.seccion.abierta")
+            }}</Badge>
+            <span v-if="cuando(o.abierta)" class="shrink-0 text-xs text-muted-foreground">{{
+              cuando(o.abierta)
+            }}</span>
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
@@ -199,7 +212,16 @@ async function trasEliminar(eliminada: boolean) {
           </DropdownMenu>
         </div>
         <div v-if="!o.existe" class="flex flex-wrap gap-2 px-3 pb-3 pl-15">
-          <Button type="button" variant="outline" size="sm" :aria-busy="ocupado" @click="buscar(o)">
+          <!-- aria-disabled y no disabled mientras corre: el botón no pierde el foco, al que vuelve el diálogo. -->
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="aria-disabled:opacity-50"
+            :aria-busy="ocupado"
+            :aria-disabled="bloqueado || undefined"
+            @click="buscar(o)"
+          >
             <FileSearch aria-hidden="true" />
             {{ t("organizaciones.buscarArchivo") }}
           </Button>
@@ -207,7 +229,9 @@ async function trasEliminar(eliminada: boolean) {
             type="button"
             variant="outline"
             size="sm"
+            class="aria-disabled:opacity-50"
             :disabled="organizaciones.listaProtegida"
+            :aria-disabled="bloqueado || undefined"
             @click="pedirQuitar(o)"
           >
             <ListX aria-hidden="true" />

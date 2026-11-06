@@ -104,7 +104,9 @@ async function abrir() {
   error.value = "";
   paso.value = "abriendo";
   avance.value = null;
-  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAbrir")), () => importarAbrir(propio, codigo.value));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAbrir")), () =>
+    importarAbrir(propio, codigo.value),
+  );
   if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
   if (!r.ok) {
     paso.value = "elegir";
@@ -114,9 +116,7 @@ async function abrir() {
   codigo.value = ""; // ya cumplió: no se queda en memoria de la interfaz
   resumen.value = r.valor;
   modo.value = modoInicial(r.valor, organizaciones.listaProtegida);
-  lugares.value = Object.fromEntries(
-    (r.valor.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
-  );
+  lugares.value = Object.fromEntries((r.valor.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]));
   paso.value = "revision";
 }
 
@@ -136,7 +136,9 @@ const porQueNoAgregar = computed(() => {
   const clave = `intercambio.motivoRevision.${resumen.value?.motivoRevision}`;
   const motivo = te(clave) ? t(clave) : t("intercambio.motivoRevision.fallo");
   return t(
-    resumen.value?.parcial ? "intercambio.importar.nadaDisponible" : "intercambio.importar.agregarNoDisponible",
+    resumen.value?.parcial
+      ? "intercambio.importar.nadaDisponible"
+      : "intercambio.importar.agregarNoDisponible",
     { motivo },
   );
 });
@@ -153,7 +155,9 @@ async function agregar() {
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   const destino = Object.fromEntries(Object.entries(lugares.value).map(([k, v]) => [k, v || null]));
-  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAgregar")), () => importarAgregar(propio, destino));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAgregar")), () =>
+    importarAgregar(propio, destino),
+  );
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -310,7 +314,18 @@ function dejarRevision(propio: string) {
 }
 const lineasHechas = computed(() =>
   (informeRevision.value?.tablas ?? []).flatMap((f) =>
-    (["agregadas", "cambiadas", "vaciadas", "borradas", "localesBorradas", "revividas", "unidas", "omitidas"] as const)
+    (
+      [
+        "agregadas",
+        "cambiadas",
+        "vaciadas",
+        "borradas",
+        "localesBorradas",
+        "revividas",
+        "unidas",
+        "omitidas",
+      ] as const
+    )
       .filter((k) => f[k] > 0)
       .map((k) => ({ clave: `${f.tabla}-${k}`, tabla: f.tabla, que: k, n: f[k] })),
   ),
@@ -321,7 +336,9 @@ async function reemplazar() {
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   // si sale bien, la app se reinicia: `app.restart` no pasa por «¿Seguro que quieres salir?» (src-tauri/src/salida.rs)
-  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarReemplazar")), () => importarReemplazar(propio));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarReemplazar")), () =>
+    importarReemplazar(propio),
+  );
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -382,7 +399,9 @@ onUnmounted(() => {
 
 <template>
   <div class="grid gap-4">
-    <h2 ref="titulo" tabindex="-1" class="font-medium outline-none">{{ t("intercambio.importar.titulo") }}</h2>
+    <h2 ref="titulo" tabindex="-1" class="font-medium outline-none">
+      {{ t("intercambio.importar.titulo") }}
+    </h2>
 
     <form v-if="paso === 'elegir'" class="grid gap-4" @submit.prevent="abrir">
       <div class="flex flex-wrap items-center gap-3">
@@ -444,8 +463,12 @@ onUnmounted(() => {
           <thead>
             <tr class="border-b text-left text-xs text-muted-foreground">
               <th scope="col" class="py-1 pr-6 font-medium">{{ t("intercambio.importar.columna.que") }}</th>
-              <th scope="col" class="px-3 text-right font-medium">{{ t("intercambio.importar.columna.trae") }}</th>
-              <th scope="col" class="px-3 text-right font-medium">{{ t("intercambio.importar.columna.nuevas") }}</th>
+              <th scope="col" class="px-3 text-right font-medium">
+                {{ t("intercambio.importar.columna.trae") }}
+              </th>
+              <th scope="col" class="px-3 text-right font-medium">
+                {{ t("intercambio.importar.columna.nuevas") }}
+              </th>
               <th scope="col" class="px-3 text-right font-medium">
                 {{ t("intercambio.importar.columna.existentes") }}
               </th>
@@ -453,7 +476,9 @@ onUnmounted(() => {
           </thead>
           <tbody class="divide-y">
             <tr v-for="f in filas" :key="f.tabla">
-              <th scope="row" class="py-1 pr-6 text-left font-normal">{{ t(`intercambio.tablas.${f.tabla}`) }}</th>
+              <th scope="row" class="py-1 pr-6 text-left font-normal">
+                {{ t(`intercambio.tablas.${f.tabla}`) }}
+              </th>
               <td class="px-3 text-right tabular-nums">{{ f.trae }}</td>
               <td class="px-3 text-right tabular-nums">{{ f.nuevas }}</td>
               <td class="px-3 text-right tabular-nums">{{ f.existentes + f.unidas + f.omitidas }}</td>
@@ -494,7 +519,13 @@ onUnmounted(() => {
           <span>
             <span class="font-medium">{{ sobreLaAbierta("intercambio.importar.reemplazar") }}</span>
             <span class="block text-muted-foreground">
-              {{ t(resumen.parcial ? "intercambio.importar.soloCompleta" : "intercambio.importar.reemplazarAyuda") }}
+              {{
+                t(
+                  resumen.parcial
+                    ? "intercambio.importar.soloCompleta"
+                    : "intercambio.importar.reemplazarAyuda",
+                )
+              }}
             </span>
           </span>
         </label>
@@ -532,13 +563,19 @@ onUnmounted(() => {
       </template>
 
       <p class="text-sm text-muted-foreground">
-        <template v-if="modo === 'nueva'">{{ t("intercambio.importar.nuevaNada", { nombre: nombreAbierta }) }}</template>
+        <template v-if="modo === 'nueva'">{{
+          t("intercambio.importar.nuevaNada", { nombre: nombreAbierta })
+        }}</template>
         <template v-else>
           {{ t(modo === "revisar" ? "intercambio.importar.revisarNada" : "intercambio.importar.respaldo") }}
         </template>
       </p>
       <div class="flex gap-2">
-        <Button type="button" :disabled="creandoNueva || (modo === 'agregar' && !resumen.informe)" @click="aplicar">
+        <Button
+          type="button"
+          :disabled="creandoNueva || (modo === 'agregar' && !resumen.informe)"
+          @click="aplicar"
+        >
           {{
             t(
               modo === "nueva"
@@ -566,8 +603,12 @@ onUnmounted(() => {
     />
 
     <template v-else-if="paso === 'hechoNueva' && nueva">
-      <p role="status" class="text-sm">{{ t("intercambio.importar.nuevaHecha", { nombre: nueva.nombre }) }}</p>
-      <p class="text-sm text-muted-foreground">{{ t("intercambio.importar.nuevaSigue", { nombre: nombreAbierta }) }}</p>
+      <p role="status" class="text-sm">
+        {{ t("intercambio.importar.nuevaHecha", { nombre: nueva.nombre }) }}
+      </p>
+      <p class="text-sm text-muted-foreground">
+        {{ t("intercambio.importar.nuevaSigue", { nombre: nombreAbierta }) }}
+      </p>
       <p v-if="errorNueva" role="alert" class="text-sm text-destructive">{{ errorNueva }}</p>
       <div class="flex flex-wrap gap-2">
         <Button type="button" :disabled="abriendoNueva" @click="abrirNueva">
@@ -625,7 +666,9 @@ onUnmounted(() => {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{{ t("intercambio.cancelar") }}</AlertDialogCancel>
-          <AlertDialogAction @click="reemplazar">{{ t("intercambio.importar.reemplazar") }}</AlertDialogAction>
+          <AlertDialogAction @click="reemplazar">{{
+            t("intercambio.importar.reemplazar")
+          }}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

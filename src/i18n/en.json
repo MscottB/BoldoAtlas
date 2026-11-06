@@ -1113,7 +1113,8 @@
     "sinArchivo": "Its file can’t be found.",
     "accionesDe": "More actions for “{nombre}”",
     "eliminar": "Delete organization",
-    "trabajando": "Opening…"
+    "trabajando": "One moment…",
+    "sinCargar": "This organization’s data couldn’t be loaded. Go back to it to try again."
   },
   "menu": {
     "abrir": "App menu",

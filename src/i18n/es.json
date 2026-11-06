@@ -1113,7 +1113,8 @@
     "sinArchivo": "No se encuentra su archivo.",
     "accionesDe": "Más acciones de «{nombre}»",
     "eliminar": "Eliminar organización",
-    "trabajando": "Abriendo…"
+    "trabajando": "Un momento…",
+    "sinCargar": "Los datos de esta organización no se pudieron cargar. Vuelve a ella para reintentarlo."
   },
   "menu": {
     "abrir": "Menú de la app",

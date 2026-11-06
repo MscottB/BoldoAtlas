@@ -34,7 +34,10 @@ async function buscar() {
   const org = pestanas.lista.find((p) => p.id === props.id)?.org;
   if (!org || buscando.value) return;
   buscando.value = true;
-  const r = await organizaciones.agregarArchivo((p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false), org);
+  const r = await organizaciones.agregarArchivo(
+    (p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false),
+    org,
+  );
   buscando.value = false;
   if (r.ok) for (const a of r.avisos ?? []) toast.warning(t(`organizaciones.avisoArchivo.${a}`));
   else if (r.mensaje) toast.error(r.mensaje);

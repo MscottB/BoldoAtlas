@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
 import AccesosRapidos from "@/features/inicio/AccesosRapidos.vue";
-import { enfocarAlVolver, volverAlTerminar } from "@/features/inicio/foco";
+import { ID_TITULO_INICIO as ID_TITULO, enfocarAlVolver, volverAlTerminar } from "@/features/inicio/foco";
 import ListaCaminos, { type Camino } from "@/features/inicio/ListaCaminos.vue";
 import PanelOrganizacion from "@/features/inicio/PanelOrganizacion.vue";
 import RecientesInicio from "@/features/inicio/RecientesInicio.vue";
@@ -39,8 +39,6 @@ const org = useOrganizacion();
 const organizaciones = useOrganizaciones();
 const actualizaciones = useActualizaciones();
 
-const ID_TITULO = "bienvenida-titulo";
-
 const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
   { id: "archivo", icono: FolderOpen },
@@ -52,8 +50,9 @@ const caminos = todos.filter((c) => MOSTRAR_PROXIMAMENTE || !c.fase);
 
 // Rust no lista un `boldo.db` sin nada que perder (`esta_vacia`): sin la abierta en la lista, Inicio es el de una instalación
 // nueva. Si la lista no se pudo leer, se mira lo cargado: solo cambia lo que se muestra, porque crear ya no reemplaza nada.
-const conDatos = computed(
-  () => org.cargado && (organizaciones.listaAlDia ? !!organizaciones.abierta : !org.vacia),
+// Sin sus datos cargados no se sabe si tiene: se muestra como con datos, y el panel dice que no cargaron.
+const conDatos = computed(() =>
+  organizaciones.listaAlDia ? !!organizaciones.abierta : !org.cargado || !org.vacia,
 );
 // Con una sola, ya es la del panel: la lista empieza a servir con otra.
 const verRecientes = computed(
@@ -90,11 +89,12 @@ function alCerrar(e: Event) {
   (origen?.isConnected ? origen : document.getElementById(idCrear()))?.focus();
 }
 function pedirNombres(desde: EventTarget | null = null) {
+  if (ocupado.value) return;
   origen = desde instanceof HTMLElement ? desde : null;
   creando.value = true;
 }
 async function crear() {
-  if (!nombreOrg.value.trim() || !nombreRaiz.value.trim()) return;
+  if (!nombreOrg.value.trim() || !nombreRaiz.value.trim() || ocupado.value) return;
   await hacer(idCrear(), () =>
     organizaciones.crear("vacia", { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value }),
   );
@@ -102,11 +102,13 @@ async function crear() {
 
 const preguntas = ref<InstanceType<typeof PreguntaArchivo> | null>(null);
 const abrirArchivo = (desde: string) =>
-  hacer(desde, () => organizaciones.agregarArchivo((p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false)));
+  hacer(desde, () =>
+    organizaciones.agregarArchivo((p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false)),
+  );
 const explorar = (desde: string) => hacer(desde, organizaciones.explorarEjemplo);
 
 function elegir(c: Camino, desde: EventTarget | null = null) {
-  if (c.fase) return;
+  if (c.fase || ocupado.value) return;
   if (c.id === "boldo") return router.push({ path: "/importar-exportar", query: { accion: "importar" } });
   if (c.id === "archivo") return abrirArchivo("bienvenida-camino-archivo");
   if (c.id === "ejemplo") return explorar("bienvenida-camino-ejemplo");
@@ -126,7 +128,7 @@ onMounted(async () => {
   // Con la lista ya leída, que decide qué se muestra: tras eliminar la abierta, o si falló algo pedido desde aquí, el
   // foco no queda en <body>.
   await nextTick();
-  enfocarAlVolver(ID_TITULO);
+  enfocarAlVolver();
 });
 </script>
 
@@ -141,7 +143,9 @@ onMounted(async () => {
           <BotonTema />
         </div>
       </div>
-      <h1 :id="ID_TITULO" tabindex="-1" class="text-xl font-semibold outline-none">{{ t("bienvenida.titulo") }}</h1>
+      <h1 :id="ID_TITULO" tabindex="-1" class="text-xl font-semibold outline-none">
+        {{ t("bienvenida.titulo") }}
+      </h1>
       <p v-if="!conDatos" class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
       <p class="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
         <span>{{ versionVisible() }}</span>
@@ -166,15 +170,36 @@ onMounted(async () => {
       <section aria-labelledby="inicio-otra" class="flex flex-col gap-2">
         <h2 id="inicio-otra" class="text-base font-semibold">{{ t("inicio.otra") }}</h2>
         <div class="flex flex-wrap gap-2">
-          <Button id="inicio-crear" type="button" variant="outline" :disabled="ocupado" @click="pedirNombres($event.currentTarget)">
+          <Button
+            id="inicio-crear"
+            type="button"
+            variant="outline"
+            :aria-disabled="ocupado || undefined"
+            class="aria-disabled:opacity-50"
+            @click="pedirNombres($event.currentTarget)"
+          >
             <FilePlus aria-hidden="true" />
             {{ t("bienvenida.crear") }}
           </Button>
-          <Button id="inicio-archivo" type="button" variant="outline" :disabled="ocupado" @click="abrirArchivo('inicio-archivo')">
+          <Button
+            id="inicio-archivo"
+            type="button"
+            variant="outline"
+            :aria-disabled="ocupado || undefined"
+            class="aria-disabled:opacity-50"
+            @click="abrirArchivo('inicio-archivo')"
+          >
             <FolderOpen aria-hidden="true" />
             {{ t("inicio.abrirArchivo") }}
           </Button>
-          <Button id="inicio-ejemplo" type="button" variant="outline" :disabled="ocupado" @click="explorar('inicio-ejemplo')">
+          <Button
+            id="inicio-ejemplo"
+            type="button"
+            variant="outline"
+            :aria-disabled="ocupado || undefined"
+            class="aria-disabled:opacity-50"
+            @click="explorar('inicio-ejemplo')"
+          >
             <Sparkles aria-hidden="true" />
             {{ t("inicio.ejemplo") }}
           </Button>
@@ -215,7 +240,13 @@ onMounted(async () => {
             <Button type="button" variant="outline" @click="creando = false">{{
               t("bienvenida.cancelar")
             }}</Button>
-            <Button type="submit" :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || ocupado" :aria-busy="ocupado">
+            <Button
+              type="submit"
+              :disabled="!nombreOrg.trim() || !nombreRaiz.trim()"
+              :aria-disabled="ocupado || undefined"
+              class="aria-disabled:opacity-50"
+              :aria-busy="ocupado"
+            >
               {{ t("bienvenida.crear") }}
             </Button>
           </DialogFooter>

@@ -36,7 +36,9 @@ const organizaciones = useOrganizaciones();
         :style="{ backgroundColor: organizaciones.abierta.color }"
         aria-hidden="true"
       />
-      <span class="min-w-0 truncate text-sm font-semibold">{{ organizaciones.nombreAbierta || t("barra.sinNombre") }}</span>
+      <span class="min-w-0 truncate text-sm font-semibold">{{
+        organizaciones.nombreAbierta || t("barra.sinNombre")
+      }}</span>
     </button>
 
     <div class="ml-auto flex items-center gap-2">

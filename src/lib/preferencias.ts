@@ -39,7 +39,7 @@ export function guardarPreferenciaOrg(clave: string, valor: unknown): void {
 // Lo que antes era por PC y ahora es por organización. `vista:<árbol>` lleva un solo tramo tras «vista:», así que no se
 // vuelven a copiar `vista:<árbol>:<db_id>`. shortcut: `vista:<db_id>` (la general ya copiada) sí calza y, si otra copia
 // de la app comparte localStorage, deja una clave `vista:<db_id>:<otro>` que nadie lee; inocua, sin limpiar.
-// `plegado:*`, tema, idioma, respaldos y recientes siguen por PC.
+// `plegado:*`, tema, idioma y respaldos siguen por PC; `recientes:*` se borra (`borrarRecientesViejos`).
 const POR_ORGANIZACION = /^(vista|vista:[^:]+|directorio|directorio:columnas|personas:vista|minimapa)$/;
 
 /** Quita las preferencias de una organización que ya no existe. Las de las demás, y las de cada PC, quedan. */
@@ -57,8 +57,22 @@ export function borrarPreferenciasOrg(id: string): void {
   }
 }
 
+/**
+ * El «Abierto recientemente» de antes (`recientes:<ruta>`) nombra personas, ya no se escribe ni hay cómo vaciarlo: se
+ * borra. Sin marca, porque también lo dejó quien ya migró; sin esas claves no hace nada.
+ */
+function borrarRecientesViejos(): void {
+  try {
+    const claves = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+    for (const k of claves) if (k?.startsWith(`${PREFIJO}recientes:`)) localStorage.removeItem(k);
+  } catch {
+    // sin localStorage no hay qué borrar
+  }
+}
+
 /** Copia, una vez por copia de la app, las preferencias antiguas a las de la organización `id`. Deja las originales. */
 export function migrarPreferencias(id: string, dirDatos: string): void {
+  borrarRecientesViejos();
   const marca = `organizaciones:migrado:${dirDatos}`;
   if (!id || leerPreferencia(marca, false)) return;
   try {
