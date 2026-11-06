@@ -134,7 +134,7 @@ const rutas = computed(() => textos(props.lang).comunes.rutas);
     0 12px 32px -12px rgba(0, 0, 0, 0.7);
 }
 .pantalla img {
-  display: block;
+  vertical-align: top;
   width: 100%;
   height: auto;
 }

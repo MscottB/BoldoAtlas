@@ -60,7 +60,7 @@ const hayMas = novedades.length > PORTADA;
       </div>
     </section>
 
-    <section class="seccion alterna" aria-labelledby="lo-nuevo">
+    <section class="seccion alterna lo-nuevo" aria-labelledby="lo-nuevo">
       <div class="pieza-contenedor">
         <p class="pieza-etiqueta">{{ t.inicio.nuevo.etiqueta }}</p>
         <h2 id="lo-nuevo">{{ t.inicio.nuevo.titulo }}</h2>
@@ -123,7 +123,6 @@ h2 {
   flex-direction: column;
   padding: 24px;
   border: 1px solid var(--vp-c-divider);
-  border-top: 3px solid var(--vp-c-brand-3);
   border-radius: 12px;
   background: var(--producto-fondo);
 }
@@ -152,6 +151,21 @@ h2 {
 @media (min-width: 960px) {
   .destacadas {
     gap: 96px;
+  }
+}
+/* en Inicio cada novedad va en su fila: la que tiene captura, sola en la suya, la mostraría enorme */
+.lo-nuevo :deep(.con-imagen) {
+  flex-basis: 100%;
+}
+@media (min-width: 768px) {
+  .lo-nuevo :deep(.con-imagen) {
+    flex-direction: row;
+  }
+  .lo-nuevo :deep(.con-imagen img) {
+    flex: none;
+    width: 40%;
+    border-bottom: 0;
+    border-right: 1px solid var(--vp-c-divider);
   }
 }
 .pieza-mas.todas {

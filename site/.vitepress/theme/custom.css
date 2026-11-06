@@ -152,10 +152,9 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-/* !important: gana al display: block que cada pieza le da a sus imágenes */
 .dark .solo-claro,
 :root:not(.dark) .solo-oscuro {
-  display: none !important;
+  display: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .pieza-boton {

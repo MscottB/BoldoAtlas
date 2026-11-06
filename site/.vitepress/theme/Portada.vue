@@ -72,7 +72,7 @@ h1 {
   margin: 0;
   max-width: 16ch;
   color: var(--producto-titulo);
-  font-size: clamp(2.5rem, 1.75rem + 2.6vw, 3.5rem);
+  font-size: clamp(2.5rem, 1rem + 3vw, 3.5rem);
   line-height: 1.08;
   font-weight: 750;
   letter-spacing: -0.025em;
@@ -107,11 +107,12 @@ h1 {
   padding: 14px 28px;
   font-size: 1.0625rem;
 }
+.mensaje,
 .captura {
   min-width: 0;
 }
 .captura img {
-  display: block;
+  vertical-align: top;
   width: 100%;
   height: auto;
   border: 1px solid var(--vp-c-divider);

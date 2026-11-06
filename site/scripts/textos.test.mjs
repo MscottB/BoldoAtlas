@@ -200,6 +200,20 @@ test("cada captura existe y lleva texto alternativo", () => {
   assert.equal(erroresCaptura("es", [{ ...ok, nombre: "nada", temas: false, ayuda: true }]).length, 1);
 });
 
+// Inicio busca cada función destacada en funciones.json (Inicio.vue hace find(...)!): ninguna puede faltar.
+const destacadasFaltantes = (inicio, funciones) =>
+  inicio.destacadas.ids.filter((id) => !funciones.items.some((f) => f.id === id));
+
+test("cada función destacada en Inicio existe en funciones.json", () => {
+  for (const idioma of IDIOMAS)
+    assert.deepEqual(
+      destacadasFaltantes(json(idioma, "inicio.json"), json(idioma, "funciones.json")),
+      [],
+      idioma,
+    );
+  assert.deepEqual(destacadasFaltantes({ destacadas: { ids: ["a", "b"] } }, { items: [{ id: "a" }] }), ["b"]);
+});
+
 test("cada página del sitio tiene su par en inglés", () => {
   const paginas = readdirSync(sitio).filter((f) => f.endsWith(".md") && f !== "README.md");
   assert.ok(paginas.length > 0);
