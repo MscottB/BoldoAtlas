@@ -120,8 +120,13 @@ jobs:
             sleep 15
           done
           echo "Versión anterior: $etiqueta"
-          # la última de antes de las preferencias y pestañas por organización, con su perfil en datos/
-          gh release download v0.1.0-alpha.38 -p BoldoAtlas_windows_x64_portable.zip -D antes-de-organizaciones --clobber
+          # v0.1.0-alpha.38 es la base de la migración: la última de antes de las preferencias y pestañas por organización,
+          # con su perfil en datos/. Con los mismos reintentos: una falla pasajera de la descarga no es un fallo del arnés
+          for intento in 1 2 3 4 5 6 7 8; do
+            gh release download v0.1.0-alpha.38 -p BoldoAtlas_windows_x64_portable.zip -D antes-de-organizaciones --clobber && break
+            [ "$intento" = 8 ] && { echo "No se pudo descargar v0.1.0-alpha.38"; exit 1; }
+            sleep 15
+          done
       - name: Arnés de organizaciones
         shell: bash # con pipefail: falla si falla el arnés, y si no dijo que terminó
         run: node scripts/arnes-organizaciones.mjs antes-de-organizaciones/BoldoAtlas_windows_x64_portable.zip anterior/BoldoAtlas_windows_x64_portable.zip | tee arnes.log && grep -q "^Arnés comprobado\.$" arnes.log

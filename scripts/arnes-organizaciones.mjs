@@ -302,22 +302,34 @@ async function abrirLaNueva(vieja, { carpeta, exe, datos }, antes, exeNuevo, que
   return { app, despues, almacen };
 }
 
+const EN_HORIZONTAL = `Boolean(document.querySelector(".vue-flow__node .vue-flow__handle-right")) && !document.querySelector(".vue-flow__node .vue-flow__handle-bottom")`;
+// si falla, de dónde salió la vista: las claves guardadas
+const VISTAS_GUARDADAS = `Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith("boldo:vista")))`;
+
 /**
- * El árbol se ve en horizontal (la vista sembrada) y la foto responde con su base y no con otra. Cierra la app.
+ * Una rama sin guardar y el árbol se ven en horizontal (la vista sembrada), y la foto responde con su base y no con otra.
+ * Cierra la app.
  * @param {App} app @param {string} baseId @param {string} que
  */
 async function verArbolYFoto(app, baseId, que) {
+  // Antes que el árbol completo, que cambia la general: una rama sin guardar usa la que se leyó al arrancar. Si main.ts
+  // soltara los datos antes de migrar las preferencias, sería la de fábrica (vertical).
+  await app.evaluar(`location.hash = "#/?raiz=${UNIDAD}"`);
+  await app.hasta(`Boolean(document.querySelector(".vue-flow__node"))`, "la rama sin guardar");
+  comprobar(
+    `${que}: una rama sin guardar se ve con la general sembrada (horizontal)`,
+    await app.evaluar(EN_HORIZONTAL),
+    await app.evaluar(VISTAS_GUARDADAS),
+  );
   await app.evaluar(`location.hash = "#/"`);
-  await app.hasta(`Boolean(document.querySelector(".vue-flow__node"))`, "el árbol con la raíz del arnés");
+  await app.hasta(
+    `location.hash === "#/" && Boolean(document.querySelector(".vue-flow__node"))`,
+    "el árbol con la raíz del arnés",
+  );
   comprobar(
     `${que}: el árbol se ve con la vista sembrada (horizontal)`,
-    await app.evaluar(
-      `Boolean(document.querySelector(".vue-flow__node .vue-flow__handle-right")) && !document.querySelector(".vue-flow__node .vue-flow__handle-bottom")`,
-    ),
-    // si falla, de dónde salió la vista: las claves guardadas
-    await app.evaluar(
-      `Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith("boldo:vista")))`,
-    ),
+    await app.evaluar(EN_HORIZONTAL),
+    await app.evaluar(VISTAS_GUARDADAS),
   );
   const url = await urlFoto(app, baseId, PERSONA);
   const conSuBase = await app.evaluar(cargarImagen(url));
@@ -499,7 +511,7 @@ function informar(sentido, ms) {
   const pantalla = mediana(ms.map((x) => x.pantalla));
   console.log(
     `cambio ${sentido}: ${app} ms según la app, ${pantalla} ms hasta verla dibujada ` +
-      `(${ms.length} cambios, app/pantalla:${ms.map((x) => `${x.app}/${x.pantalla}`).join(", ")} ms)`,
+      `(${ms.length} cambios, app/pantalla: ${ms.map((x) => `${x.app}/${x.pantalla}`).join(", ")} ms)`,
   );
   return { app, pantalla };
 }
