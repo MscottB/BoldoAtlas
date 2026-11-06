@@ -5,7 +5,7 @@ import { PORTADA, portada } from "../.vitepress/theme/portadaNovedades.ts";
 import { PROHIBIDO, slugTitulo } from "./reglas.mjs";
 
 // site/novedades.json es la lista completa (la más nueva primero, sin máximo; nada se quita): la misma lista en español
-// e inglés, sin versiones ni promesas. La portada muestra las 6 primeras y la página «Todas las novedades», todas.
+// e inglés, sin versiones ni promesas. La portada muestra las 3 primeras y la página «Todas las novedades», todas.
 const sitio = new URL("..", import.meta.url);
 const repo = new URL("../..", import.meta.url);
 const leer = (ruta, base = sitio) => readFileSync(new URL(ruta, base), "utf8");
@@ -56,15 +56,18 @@ test("hay al menos una novedad, y ninguna con id repetido", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("la portada toma solo las 6 primeras, en orden, y la página nueva las muestra todas", () => {
-  assert.equal(PORTADA, 6);
+test("la portada toma solo las 3 primeras, en orden, y la página nueva las muestra todas", () => {
+  assert.equal(PORTADA, 3);
   const lista = Array.from({ length: 9 }, (_, i) => ({ id: `n${i}` }));
-  assert.deepEqual(portada(lista), lista.slice(0, 6));
-  assert.deepEqual(portada(lista.slice(0, 4)), lista.slice(0, 4));
+  assert.deepEqual(
+    portada(lista).map((n) => n.id),
+    ["n0", "n1", "n2"],
+  );
+  assert.deepEqual(portada(lista.slice(0, 2)), lista.slice(0, 2));
   assert.deepEqual(portada([]), []);
   // los componentes usan esa función y no cortan la lista por su cuenta
   assert.match(leer(".vitepress/theme/Novedades.vue"), /ultimas \? portada\(novedades\) : novedades/);
-  assert.match(leer(".vitepress/theme/Presentacion.vue"), /<Novedades :lang="lang" ultimas \/>/);
+  assert.match(leer(".vitepress/theme/Inicio.vue"), /<Novedades :lang="lang" ultimas \/>/);
   for (const [md, idioma] of [
     ["novedades.md", "es"],
     ["en/novedades.md", "en"],
@@ -77,11 +80,9 @@ test("la portada toma solo las 6 primeras, en orden, y la página nueva las mues
   }
 });
 
-test("la portada enlaza a la página con todas las novedades solo si hay más de 6", () => {
-  const vue = leer(".vitepress/theme/Presentacion.vue");
-  assert.match(vue, /v-if="hayMas"[^>]*:href="enlace\(t\.rutas\.novedades\)"/);
-  assert.match(vue, /novedades: "\/novedades"/);
-  assert.match(vue, /novedades: "\/en\/novedades"/);
+test("la portada enlaza a todas las novedades solo si hay más de 3", () => {
+  const vue = leer(".vitepress/theme/Inicio.vue");
+  assert.match(vue, /v-if="hayMas"[^>]*:href="enlace\(t\.comunes\.rutas\.novedades\)"/);
   assert.match(vue, /const hayMas = novedades\.length > PORTADA/);
 });
 
@@ -125,6 +126,12 @@ test("ningún texto de la portada tiene versiones, «Próximamente», fases ni �
     "novedades.json": textos(novedades),
     "Presentacion.vue": [leer(".vitepress/theme/Presentacion.vue")],
     "Novedades.vue": [leer(".vitepress/theme/Novedades.vue")],
+    ...Object.fromEntries(
+      ["Inicio", "Portada", "BloqueFuncion", "Garantias", "LlamadaDescarga"].map((c) => [
+        `${c}.vue`,
+        [leer(`.vitepress/theme/${c}.vue`)],
+      ]),
+    ),
     "index.md": [leer("index.md")],
     "en/index.md": [leer("en/index.md")],
     "novedades.md": [leer("novedades.md")],

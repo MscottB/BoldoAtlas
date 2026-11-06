@@ -56,7 +56,17 @@ const erroresManual = (idioma, hrefs) =>
     return [];
   });
 
-// Las anclas de /funciones y /seguridad son los "id" de su JSON; las de las demás páginas, sus títulos y sus {#id}.
+// Los id="x" escritos tal cual en los componentes del tema que la página usa (<Descargas …/> → Descargas.vue).
+const anclasComponentes = (texto) =>
+  [...texto.matchAll(/<([A-Z]\w*)/g)].flatMap(([, nombre]) => {
+    const vue = new URL(`.vitepress/theme/${nombre}.vue`, sitio);
+    return existsSync(vue)
+      ? [...readFileSync(vue, "utf8").matchAll(/\sid="([\w-]+)"/g)].map((m) => m[1])
+      : [];
+  });
+
+// Las anclas de /funciones y /seguridad son los "id" de su JSON; las de las demás páginas, sus títulos, sus {#id}
+// y los id de sus componentes.
 const anclasPagina = (idioma, pagina, md) => {
   if (["funciones", "seguridad"].includes(pagina)) {
     const archivo = new URL(`textos/${idioma}/${pagina}.json`, sitio);
@@ -75,6 +85,7 @@ const anclasPagina = (idioma, pagina, md) => {
       m[2],
     ]),
     ...[...texto.matchAll(/\{#([\w-]+)\}/g)].map((m) => m[1]),
+    ...anclasComponentes(texto),
   ].filter(Boolean);
 };
 
@@ -170,6 +181,10 @@ test("cada enlace a otra página del sitio va a una página que existe", () => {
   assert.deepEqual(erroresPagina("en", ["/en/", "/en/descargas"]), []);
   assert.equal(erroresPagina("es", ["/no-existe"]).length, 1);
   assert.equal(erroresPagina("es", ["/descargas#no-existe"]).length, 1);
+  // el id de un componente cuenta solo en la página que lo usa
+  assert.deepEqual(erroresPagina("es", ["/descargas#portable"]), []);
+  assert.deepEqual(erroresPagina("en", ["/en/descargas#instaladores"]), []);
+  assert.equal(erroresPagina("es", ["/descargas#lo-bueno"]).length, 1);
   assert.equal(erroresPagina("en", ["/en/no-existe"]).length, 1);
 });
 

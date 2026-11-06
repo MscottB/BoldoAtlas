@@ -1,0 +1,81 @@
+{
+  "portada": {
+    "titulo": "Giant org charts, on your computer",
+    "texto": "Build your organization's org chart and a record for each person. No server, no accounts, and no need for internet: your data stays with you.",
+    "descargar": "Download",
+    "imagen": {
+      "nombre": "arbol",
+      "ancho": 1100,
+      "alto": 915,
+      "temas": true,
+      "alt": "Sample org chart: General Management with Operations, Finance and People; Operations open down to Maintenance, Production, Mechanical and Electrical, with heads, headcount and vacancies."
+    }
+  },
+  "beneficios": {
+    "etiqueta": "Why BoldoAtlas",
+    "titulo": "When the spreadsheet falls short and the data must stay on your computer",
+    "items": [
+      {
+        "titulo": "The org chart comes from your data",
+        "texto": "Assign a holder or move a unit, and the tree, the headcount and the vacancies update on their own.",
+        "enlace": { "texto": "How the tree works", "href": "/en/manual/arbol" }
+      },
+      {
+        "titulo": "Your people's records stay with you",
+        "texto": "Contact details, contract, site, shift, notes and photo stay in a SQLite database on your computer, with no accounts and no server.",
+        "enlace": { "texto": "Where your data lives", "href": "/en/manual/inicio#where-your-data-lives" }
+      },
+      {
+        "titulo": "You share only what's needed, encrypted",
+        "texto": "Export the whole database or a branch to an encrypted .boldo file, with a one-time code that is not saved anywhere.",
+        "enlace": { "texto": "How to export and import", "href": "/en/manual/exportar-importar" }
+      },
+      {
+        "titulo": "It runs from a USB drive, with its backups",
+        "texto": "The portable version doesn't install: your data stays next to the program, with an automatic backup every 24 hours.",
+        "enlace": { "texto": "How backups work", "href": "/en/manual/respaldos" }
+      }
+    ]
+  },
+  "destacadas": {
+    "etiqueta": "Features",
+    "titulo": "How it works",
+    "ids": ["arboles", "personas", "fechas"],
+    "todas": "See all features"
+  },
+  "nuevo": {
+    "etiqueta": "What's new",
+    "titulo": "The latest you can already use",
+    "todas": "See everything that's new"
+  },
+  "garantias": {
+    "items": [
+      {
+        "icono": "codigo",
+        "titulo": "Open source",
+        "texto": "AGPL-3.0 license. All the code is on GitHub for anyone to review.",
+        "enlace": { "texto": "See it on GitHub", "href": "https://github.com/MscottB/BoldoAtlas" }
+      },
+      {
+        "icono": "escudo",
+        "titulo": "Verifiable downloads and updates",
+        "texto": "Every release publishes SHA256SUMS.txt and the list of its components. The app rejects an update if its signature doesn't match.",
+        "enlace": { "texto": "How to verify", "href": "/en/descargas#verify-the-download" }
+      },
+      {
+        "icono": "sinRastreo",
+        "titulo": "No tracking in the app",
+        "texto": "The app has no analytics and no telemetry, and it sends your data nowhere."
+      },
+      {
+        "icono": "candado",
+        "titulo": "It helps you meet personal-data rules",
+        "texto": "The data stays on your computer and the files you share are encrypted: that helps you meet the rules that apply to you. Handling it lawfully is the responsibility of whoever uses the app.",
+        "enlace": {
+          "texto": "Security policy",
+          "href": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md"
+        }
+      }
+    ]
+  }
+}

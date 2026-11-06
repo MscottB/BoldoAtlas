@@ -1,0 +1,81 @@
+{
+  "portada": {
+    "titulo": "Organigramas gigantes, en tu computador",
+    "texto": "Arma el organigrama de tu organización y la ficha de cada persona. Sin servidor ni cuentas, y sin necesitar internet: tus datos se quedan contigo.",
+    "descargar": "Descargar",
+    "imagen": {
+      "nombre": "arbol",
+      "ancho": 1100,
+      "alto": 915,
+      "temas": true,
+      "alt": "Organigrama de ejemplo: Gerencia General con Operaciones, Finanzas y Personas; Operaciones abierta hasta Mantención, Producción, Mecánica y Eléctrica, con jefaturas, dotación y vacantes."
+    }
+  },
+  "beneficios": {
+    "etiqueta": "Por qué BoldoAtlas",
+    "titulo": "Cuando la planilla se queda corta y los datos no deben salir de tu computador",
+    "items": [
+      {
+        "titulo": "El organigrama sale de tus datos",
+        "texto": "Asignas un titular o mueves una unidad, y el árbol, la dotación y las vacantes se actualizan solos.",
+        "enlace": { "texto": "Cómo funciona el árbol", "href": "/manual/arbol" }
+      },
+      {
+        "titulo": "Las fichas de tu gente se quedan contigo",
+        "texto": "Contacto, contrato, sede, jornada, notas y foto quedan en una base SQLite en tu computador, sin cuentas ni servidor.",
+        "enlace": { "texto": "Dónde quedan tus datos", "href": "/manual/inicio#donde-quedan-tus-datos" }
+      },
+      {
+        "titulo": "Compartes solo lo necesario, cifrado",
+        "texto": "Exporta toda la base o una rama a un archivo .boldo cifrado, con un código de un solo uso que no se guarda en ninguna parte.",
+        "enlace": { "texto": "Cómo exportar e importar", "href": "/manual/exportar-importar" }
+      },
+      {
+        "titulo": "Funciona desde un pendrive, con sus respaldos",
+        "texto": "La portable no se instala: tus datos quedan junto al programa, con un respaldo automático cada 24 horas.",
+        "enlace": { "texto": "Cómo funcionan los respaldos", "href": "/manual/respaldos" }
+      }
+    ]
+  },
+  "destacadas": {
+    "etiqueta": "Funciones",
+    "titulo": "Así funciona",
+    "ids": ["arboles", "personas", "fechas"],
+    "todas": "Ver todas las funciones"
+  },
+  "nuevo": {
+    "etiqueta": "Lo nuevo",
+    "titulo": "Lo último que ya puedes usar",
+    "todas": "Ver todas las novedades"
+  },
+  "garantias": {
+    "items": [
+      {
+        "icono": "codigo",
+        "titulo": "Código abierto",
+        "texto": "Licencia AGPL-3.0. Todo el código está en GitHub para que cualquiera lo revise.",
+        "enlace": { "texto": "Ver en GitHub", "href": "https://github.com/MscottB/BoldoAtlas" }
+      },
+      {
+        "icono": "escudo",
+        "titulo": "Descargas y actualizaciones verificables",
+        "texto": "Cada versión publica SHA256SUMS.txt y la lista de sus componentes. La app rechaza una actualización si su firma no coincide.",
+        "enlace": { "texto": "Cómo verificar", "href": "/descargas#verificar-la-descarga" }
+      },
+      {
+        "icono": "sinRastreo",
+        "titulo": "Sin rastreo en la app",
+        "texto": "La app no tiene analítica ni telemetría, y no envía tus datos a ninguna parte."
+      },
+      {
+        "icono": "candado",
+        "titulo": "Te ayuda a cumplir con los datos personales",
+        "texto": "Los datos quedan en tu computador y los archivos que compartes van cifrados: eso te ayuda a cumplir las reglas que te apliquen. Tratarlos conforme a la ley es responsabilidad de quien usa la app.",
+        "enlace": {
+          "texto": "Política de seguridad",
+          "href": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md#política-de-seguridad"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "etiqueta": "Features",
+  "titulo": "How it works",
+  "bajada": "In a large organization, the spreadsheet has the data but not the org chart, the drawing falls behind at the first change, and a cloud service leaves your people's records on another company's servers. BoldoAtlas brings the tree, the positions and the records together in a database on your computer.",
+  "cifras": [
+    { "valor": "10,000", "texto": "people, 1,000 of them with a photo" },
+    { "valor": "2,000", "texto": "units and 3,000 positions" },
+    { "valor": "< 1 s", "texto": "to open all of that" }
+  ],
+  "nota": "Measured on Windows 11, from opening the app to seeing the totals on Home, with a test organization and generated portraits: 0.6 to 0.9 s with optimized or 300 KB photos. The first opening of each folder takes longer because it makes a backup.",
+  "items": [
+    {
+      "id": "arboles",
+      "etiqueta": "Very large trees",
+      "titulo": "The whole structure on one canvas",
+      "texto": "Each card shows the unit's head, the team's faces, the headcount and the vacancies.",
+      "puntos": [
+        "Branches fold away, and the 1, 2, 3 and All buttons choose how many levels you see.",
+        "Lateral connections between units: dotted lines with their description, through the free space between cards.",
+        "Several trees in one database, and any branch opens as a tree of its own.",
+        "Zones with a name and a color that group units from any branch, without changing who reports to whom.",
+        "Saved views, and highlighting by tag or by text."
+      ],
+      "imagen": {
+        "nombre": "arbol",
+        "ancho": 1100,
+        "alto": 915,
+        "temas": true,
+        "leyenda": "The sample organization that comes with the app (16 people)",
+        "alt": "Sample org chart: General Management with Operations, Finance and People; Operations open down to Maintenance, Production, Mechanical and Electrical, with heads, headcount and vacancies."
+      },
+      "enlace": { "texto": "Read how the tree works", "href": "/en/manual/arbol" }
+    },
+    {
+      "id": "personas",
+      "etiqueta": "People, positions and vacancies",
+      "titulo": "Every person's record, tied to their position",
+      "texto": "Each position knows who holds it and who covers it. The record keeps contact, contract, site and shift, with the position history.",
+      "puntos": [
+        "Vacancies in plain sight on every card of the tree.",
+        "Your own lists of job titles, contracts, sites and shifts.",
+        "Photos are reduced when you choose them: they look the same and weigh much less, in backups and .boldo files too."
+      ],
+      "imagen": {
+        "nombre": "ficha",
+        "ancho": 1100,
+        "alto": 813,
+        "temas": true,
+        "alt": "Person record for Andrés Soto: name, email, the unit he heads, his Manager position with its history, contract type, site and shift."
+      },
+      "enlace": { "texto": "Read about records", "href": "/en/manual/fichas" }
+    },
+    {
+      "id": "fechas",
+      "etiqueta": "The org chart on any date",
+      "titulo": "Look at another day without changing anything",
+      "texto": "Pick or type a date and see who held each position that day, read-only.",
+      "puntos": [
+        "Days with changes are marked on the calendar.",
+        "Jump to the previous or next change.",
+        "The list of what changed that day: who took over and who covered."
+      ],
+      "imagen": {
+        "nombre": "fecha",
+        "ancho": 1100,
+        "alto": 625,
+        "temas": true,
+        "alt": "The org chart as of September 1, 2026, read-only, with the calendar open and that day's change."
+      },
+      "enlace": { "texto": "Read how to view a past date", "href": "/en/manual/arbol#viewing-a-past-date" }
+    }
+  ],
+  "comparar": {
+    "titulo": "Comparing it with another product?",
+    "texto": "We reviewed Visio, Lucidchart, draw.io, OrgChart, Buk and Talana on their official sites: criterion by criterion, with the source of every data point.",
+    "enlace": "See the comparison"
+  }
+}

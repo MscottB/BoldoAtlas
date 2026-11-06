@@ -1,0 +1,78 @@
+{
+  "etiqueta": "Funciones",
+  "titulo": "Así funciona",
+  "bajada": "En una organización grande, la planilla tiene los datos pero no el organigrama, el dibujo queda atrás al primer cambio, y un servicio en la nube deja las fichas de tu gente en los servidores de otra empresa. BoldoAtlas junta el árbol, los puestos y las fichas en una base que está en tu computador.",
+  "cifras": [
+    { "valor": "10.000", "texto": "personas, 1.000 de ellas con foto" },
+    { "valor": "2.000", "texto": "unidades y 3.000 puestos" },
+    { "valor": "< 1 s", "texto": "para abrir todo eso" }
+  ],
+  "nota": "Medido en Windows 11, desde abrir la app hasta ver los totales en Inicio, con una organización de prueba y retratos generados: de 0,6 a 0,9 s con fotos optimizadas o de 300 KB. La primera apertura de cada carpeta tarda más porque hace un respaldo.",
+  "items": [
+    {
+      "id": "arboles",
+      "etiqueta": "Árboles muy grandes",
+      "titulo": "Toda la estructura en un solo lienzo",
+      "texto": "Cada tarjeta muestra la jefatura, las caras del equipo, la dotación y las vacantes de la unidad.",
+      "puntos": [
+        "Ramas que se pliegan, y botones 1, 2, 3 y Todo para elegir cuántos niveles ver.",
+        "Relaciones laterales entre unidades: líneas punteadas con su descripción, por el espacio libre entre tarjetas.",
+        "Varios árboles en la misma base, y cualquier rama se abre como árbol propio.",
+        "Zonas con nombre y color que agrupan unidades de cualquier rama, sin cambiar quién depende de quién.",
+        "Vistas guardadas y resaltado por etiqueta o por texto."
+      ],
+      "imagen": {
+        "nombre": "arbol",
+        "ancho": 1100,
+        "alto": 915,
+        "temas": true,
+        "leyenda": "Organización de ejemplo que trae la app (16 personas)",
+        "alt": "Organigrama de ejemplo: Gerencia General con Operaciones, Finanzas y Personas; Operaciones abierta hasta Mantención, Producción, Mecánica y Eléctrica, con jefaturas, dotación y vacantes."
+      },
+      "enlace": { "texto": "Leer cómo funciona el árbol", "href": "/manual/arbol" }
+    },
+    {
+      "id": "personas",
+      "etiqueta": "Personas, puestos y vacantes",
+      "titulo": "La ficha de cada persona, unida a su puesto",
+      "texto": "Cada puesto sabe quién lo ocupa y quién lo reemplaza. La ficha guarda el contacto, el contrato, la sede y la jornada, con el historial de puestos.",
+      "puntos": [
+        "Vacantes a la vista en cada tarjeta del árbol.",
+        "Listas propias de cargos, contratos, sedes y jornadas.",
+        "Las fotos se reducen al elegirlas: se ven igual y pesan mucho menos, también en respaldos y archivos .boldo."
+      ],
+      "imagen": {
+        "nombre": "ficha",
+        "ancho": 1100,
+        "alto": 813,
+        "temas": true,
+        "alt": "Ficha de persona de Andrés Soto: nombre, correo, la unidad que encabeza, su puesto de Gerente con el historial, tipo de contrato, sede y jornada."
+      },
+      "enlace": { "texto": "Leer sobre las fichas", "href": "/manual/fichas" }
+    },
+    {
+      "id": "fechas",
+      "etiqueta": "El organigrama a cualquier fecha",
+      "titulo": "Mira otro día sin tocar nada",
+      "texto": "Elige o escribe una fecha y verás quién ocupaba cada puesto ese día, en solo lectura.",
+      "puntos": [
+        "Los días con cambios aparecen marcados en el calendario.",
+        "Salta al cambio anterior o al siguiente.",
+        "La lista de lo que cambió ese día: quién asumió y quién reemplazó."
+      ],
+      "imagen": {
+        "nombre": "fecha",
+        "ancho": 1100,
+        "alto": 625,
+        "temas": true,
+        "alt": "El organigrama visto al 1 de septiembre de 2026, en solo lectura, con el calendario abierto y el cambio de ese día."
+      },
+      "enlace": { "texto": "Leer cómo ver a una fecha", "href": "/manual/arbol#ver-a-una-fecha" }
+    }
+  ],
+  "comparar": {
+    "titulo": "¿Lo estás comparando con otro producto?",
+    "texto": "Revisamos Visio, Lucidchart, draw.io, OrgChart, Buk y Talana en sus sitios oficiales: criterio por criterio, con la fuente de cada dato.",
+    "enlace": "Ver la comparación"
+  }
+}
