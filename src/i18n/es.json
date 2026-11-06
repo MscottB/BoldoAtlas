@@ -802,7 +802,8 @@
       "borrarCopiaDe": "Borrar la copia {archivo}",
       "borrarCopiaTitulo": "¿Borrar la copia de «{nombre}»?",
       "borrarCopiaTexto": "Se borra del disco la copia {archivo}, del {fecha} ({tamano}). No se puede recuperar. Las organizaciones de tu lista no cambian.",
-      "trabajando": "Trabajando…"
+      "trabajando": "Trabajando…",
+      "copiaNoEsta": "Esa copia ya no está en «Copias de organizaciones eliminadas»: se borró o se movió. La lista ya muestra lo que hay."
     },
     "eliminar": {
       "titulo": "Eliminar «{nombre}»",
@@ -852,7 +853,8 @@
     "error": {
       "desconocido": "Esta organización ya no está en la lista: se quitó, o su archivo se reemplazó por otro. Lo que está en la lista se abre desde Inicio.",
       "esquema_nuevo": "Esta organización se guardó con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para abrirla.",
-      "danado": "El archivo está dañado o no es una base de BoldoAtlas. No se abrió."
+      "danado": "El archivo está dañado o no es una base de BoldoAtlas. No se abrió.",
+      "muy_pesado_total": "Este archivo trae {exceso}, más de lo que BoldoAtlas puede cargar. No se abrió ni se cambió."
     }
   },
   "pestanas": {

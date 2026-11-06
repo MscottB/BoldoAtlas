@@ -85,6 +85,22 @@ describe("mensajeOrganizacion", () => {
     expect(mensajeOrganizacion({ codigo, detalle: "x" })).not.toMatch(/respaldo/i);
   });
 
+  it("un campo muy largo dice cuál, no que el archivo pesa demasiado", () => {
+    const m = mensajeOrganizacion({
+      codigo: "muy_pesado",
+      detalle: "",
+      donde: { tabla: "trabajadores", columna: "notas", nombre: "Ana" },
+    });
+    expect(m).toContain("«Ana»");
+    expect(m).not.toMatch(/pesa/);
+  });
+
+  it("muy_pesado_total dice qué se excedió", () => {
+    const m = mensajeOrganizacion({ codigo: "muy_pesado_total", detalle: "filas" });
+    expect(m).toContain("500.000 filas");
+    expect(m).not.toContain("No se pudo completar");
+  });
+
   it("lo demás es lo de mensajeFallo", () => {
     const e = { codigo: "no_encontrado", detalle: "x" };
     expect(mensajeOrganizacion(e)).toBe(mensajeFallo(e));

@@ -94,9 +94,13 @@ const copiaEn = (i: number) => {
 };
 
 /** Una acción a la vez, con los botones desactivados: al terminar se relee todo, y el foco queda en `foco`. */
-async function correr(accion: () => Promise<Resultado>, foco: () => string | undefined) {
+async function correr(
+  accion: () => Promise<Resultado>,
+  foco: () => string | undefined,
+  fallo: (e: unknown) => ReturnType<typeof falloOrganizacion> = falloOrganizacion,
+) {
   ocupado.value = true;
-  const r = await accion().catch(falloOrganizacion);
+  const r = await accion().catch(fallo);
   if (!r.ok) avisarFallo(r);
   await cargar();
   ocupado.value = false;
@@ -139,12 +143,19 @@ const alCerrarPregunta = (e: Event) => respondida && e.preventDefault();
 function pedirQuitar(o: Organizacion, i: number) {
   preguntar({
     titulo: t("organizaciones.seccion.quitarTitulo", { nombre: nombreDe(o) }),
-    texto: t(o.existe ? "organizaciones.seccion.quitarTexto" : "organizaciones.seccion.quitarTextoSinArchivo", {
-      ruta: o.ruta,
-    }),
+    texto: t(
+      o.existe ? "organizaciones.seccion.quitarTexto" : "organizaciones.seccion.quitarTextoSinArchivo",
+      {
+        ruta: o.ruta,
+      },
+    ),
     si: t("organizaciones.seccion.quitar"),
     destructiva: false,
-    accion: () => correr(() => organizaciones.quitar(o.id), () => filaEn(i)),
+    accion: () =>
+      correr(
+        () => organizaciones.quitar(o.id),
+        () => filaEn(i),
+      ),
   });
 }
 
@@ -166,6 +177,7 @@ function pedirBorrarCopia(c: OrganizacionEliminada, i: number) {
           return { ok: true };
         },
         () => copiaEn(i),
+        falloDeCopia,
       ),
   });
 }
@@ -186,8 +198,15 @@ function pedirRestaurar(c: OrganizacionEliminada) {
         },
         // la nueva, que es lo que se fue a buscar; si falló, la misma copia
         () => (nueva ? idEliminar(nueva) : idBorrarCopia(c.nombre)),
+        falloDeCopia,
       ),
   });
+}
+
+/** Con una copia, `desconocido` es que esa copia ya no está, no una organización de la lista. */
+function falloDeCopia(e: unknown) {
+  const f = falloOrganizacion(e);
+  return f.codigo === "desconocido" ? { ...f, mensaje: t("organizaciones.seccion.copiaNoEsta") } : f;
 }
 
 const elegida = ref<Organizacion | null>(null);

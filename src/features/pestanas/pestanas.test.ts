@@ -80,6 +80,7 @@ describe("sePuedeBuscar", () => {
     ["otro_id", "x"],
     ["contenido_invalido", "red"],
     ["contenido_invalido", "journal"],
+    ["contenido_invalido", "no_esta"],
   ])("%s (%s) ofrece buscar el archivo", (codigo, detalle) => {
     expect(sePuedeBuscar({ codigo, detalle })).toBe(true);
   });

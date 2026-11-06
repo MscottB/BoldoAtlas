@@ -802,7 +802,8 @@
       "borrarCopiaDe": "Delete copy {archivo}",
       "borrarCopiaTitulo": "Delete the copy of “{nombre}”?",
       "borrarCopiaTexto": "Copy {archivo}, of {fecha} ({tamano}), is deleted from disk. It can't be recovered. The organizations on your list don't change.",
-      "trabajando": "Working…"
+      "trabajando": "Working…",
+      "copiaNoEsta": "That copy is no longer in “Copies of deleted organizations”: it was deleted or moved. The list now shows what is there."
     },
     "eliminar": {
       "titulo": "Delete “{nombre}”",
@@ -852,7 +853,8 @@
     "error": {
       "desconocido": "This organization is no longer on the list: it was removed, or its file was replaced by another one. What’s on the list opens from Home.",
       "esquema_nuevo": "This organization was saved with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
-      "danado": "The file is damaged or is not a BoldoAtlas database. It wasn't opened."
+      "danado": "The file is damaged or is not a BoldoAtlas database. It wasn't opened.",
+      "muy_pesado_total": "This file has {exceso}, more than BoldoAtlas can load. It wasn't opened or changed."
     }
   },
   "pestanas": {
