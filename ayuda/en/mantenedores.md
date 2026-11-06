@@ -10,10 +10,11 @@ In **Settings** (at the bottom of the menu) you adjust:
 
 - **Organization name:** saved when you leave the field or press `Enter`.
 - **Logo:** PNG, JPG or WebP up to 1 MB. It is stored as a PNG (and scaled down if it is very large) together with your data. **Remove logo** deletes it.
+- **Organizations:** the ones on this computer, with their path, their color and the space they take; there you remove them from the list or delete them (see [Organizations](organizaciones.md)).
 - **Theme, accent color and interface size:** apply to this computer only. The theme is in plain view; the size, the accent color and **Open the sidebar on mouse hover** are under **More appearance options**, which opens with a click (or `Enter` on it) and stays open or folded as you leave it.
 - **Language:** Español or English. It switches every text in the app at once (you can also do it from the welcome screen and the app menu); the names you typed are not translated.
 
-![Settings screen with the organization name, the logo, the theme, the language and the Manage lists button.](../img/en/mantenedores-config.webp "Settings. 1: organization name. 2: logo. 3: theme. 4: language. 5: open the lists."){width=760 height=590}
+![Settings screen with the organization name, the logo, the list of organizations, the theme, the language and the Manage lists button.](../img/en/mantenedores-config.webp "Settings. 1: organization name. 2: logo. 3: organizations. 4: theme. 5: language. 6: open the lists."){width=760 height=922}
 
 ## Lists
 

@@ -161,6 +161,22 @@ describe("migrarPreferencias", () => {
     expect(datos.get("boldo:vista:A")).toBe('{"nueva":1}');
   });
 
+  it("borra el «Abierto recientemente» de antes, que nombra personas, aunque ya se haya migrado", () => {
+    const datos = simularAlmacen({
+      "boldo:recientes:C:/datos/boldo.db": '[{"ruta":"/directorio?persona=p1","en":1}]',
+      "boldo:recientes:D:/otra/boldo.db": "[]",
+      "boldo:organizaciones:migrado:C:/datos": "true",
+      "boldo:tema": '"oscuro"',
+      "otra:recientes:x": "1",
+    });
+    migrarPreferencias("A", "C:/datos");
+    expect([...datos.keys()].sort()).toEqual([
+      "boldo:organizaciones:migrado:C:/datos",
+      "boldo:tema",
+      "otra:recientes:x",
+    ]);
+  });
+
   it("una segunda copia no copia lo ya copiado a una clave doble", () => {
     const datos = simularAlmacen({ "boldo:vista": "1", "boldo:vista:completo": "2" });
     migrarPreferencias("A", "C:/datos");

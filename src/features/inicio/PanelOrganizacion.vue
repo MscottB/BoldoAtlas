@@ -7,11 +7,14 @@ import { useAvisos } from "@/features/revision/useAvisos";
 import { ultimoRespaldo } from "@/features/respaldos/programa";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 import { totalesInicio } from "./totales";
 
 // «Tu organización» de Inicio (solo con datos): nombre, totales que llevan a su vista, último respaldo y la vuelta al trabajo.
+// Si sus datos no cargaron, lo dice en vez de mostrar ceros; «Volver» lleva a su pestaña, que ofrece reintentar.
 const { t, locale } = useI18n();
 const org = useOrganizacion();
+const organizaciones = useOrganizaciones();
 const pestanas = usePestanas();
 
 // Los totales y los avisos se calculan tras el primer pintado: con una organización muy grande no retrasan la pantalla.
@@ -48,10 +51,11 @@ const cifras = computed(() => [
   <section aria-labelledby="inicio-organizacion" class="flex flex-col gap-4 rounded-lg border bg-card p-4">
     <h2 id="inicio-organizacion" class="text-base font-semibold break-words">
       <span class="block text-sm font-normal text-muted-foreground">{{ t("inicio.organizacion") }}</span>
-      {{ org.org.nombre || t("barra.sinNombre") }}
+      {{ organizaciones.nombreAbierta || t("barra.sinNombre") }}
     </h2>
 
-    <ul class="grid grid-cols-2 gap-2 sm:grid-cols-4" :aria-busy="!listo">
+    <p v-if="!org.cargado" role="status" class="text-sm text-destructive">{{ t("inicio.sinCargar") }}</p>
+    <ul v-else class="grid grid-cols-2 gap-2 sm:grid-cols-4" :aria-busy="!listo">
       <li v-for="c in cifras" :key="c.id">
         <RouterLink
           :to="c.to"
@@ -63,7 +67,7 @@ const cifras = computed(() => [
       </li>
     </ul>
 
-    <p v-if="respaldo !== undefined" class="text-sm text-muted-foreground">
+    <p v-if="org.cargado && respaldo !== undefined" class="text-sm text-muted-foreground">
       {{ respaldo ? t("inicio.ultimoRespaldo", { fecha }) : t("inicio.sinRespaldo") }}
     </p>
 

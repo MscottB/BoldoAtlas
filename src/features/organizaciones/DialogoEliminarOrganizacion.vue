@@ -97,24 +97,30 @@ const nPestanas = computed(() => pestanasDe(pestanas.lista, props.organizacion.i
 const sePuede = computed(() => confirmado.value && !corriendo.value && !organizaciones.listaProtegida);
 // Tras un fallo sin archivo, lo que falta es terminar: ya no hay nada que copiar ni borrar de él.
 const etiqueta = computed(() =>
-  t(error.value && sinArchivo.value ? "organizaciones.eliminar.terminar" : "organizaciones.eliminar.confirmar"),
+  t(
+    error.value && sinArchivo.value
+      ? "organizaciones.eliminar.terminar"
+      : "organizaciones.eliminar.confirmar",
+  ),
 );
 
 // La abierta desmonta la vista mientras se cambia: este diálogo ya no está al terminar, y lo que haya que decir va en un aviso.
 let desmontado = false;
 onBeforeUnmount(() => (desmontado = true));
 
-async function avisarFuera(o: Organizacion, mensaje: string) {
+async function avisarFuera(o: Organizacion, mensaje: string, copia: string | null | undefined) {
   if (!mensaje) return toast(t("organizaciones.eliminar.noSeHizo"));
   const lista = await organizaciones.cargarLista();
   const clave = claveFalloFuera({
     pasoAOtra: o.activa && baseActual() !== o.id,
     sigueEnLaLista: lista.ok ? organizaciones.lista.some((x) => x.id === o.id) : null,
   });
-  if (!clave) return toast.error(mensaje);
+  // con el diálogo ya cerrado, es lo único que dice que esa copia existe
+  const guardada = copia ? t("organizaciones.eliminar.copiaGuardada", { copia }) : "";
+  if (!clave) return toast.error(mensaje, { description: guardada || undefined, duration: Infinity });
   if (clave === "falloSinVuelta") organizaciones.olvidarEliminada(o.id);
   toast.error(t(`organizaciones.eliminar.${clave}`, { nombre: nombre.value }), {
-    description: mensaje,
+    description: guardada ? `${mensaje} ${guardada}` : mensaje,
     duration: Infinity,
   });
 }
@@ -125,7 +131,9 @@ async function confirmar() {
   const pedidas = opciones.value;
   const sinArchivoAlPedir = sinArchivo.value;
   const intentoAlPedir = intento.value;
-  const avisoAuxiliares = auxiliares.value ? t("organizaciones.eliminar.auxiliares", { ruta: o.ruta }) : undefined;
+  const avisoAuxiliares = auxiliares.value
+    ? t("organizaciones.eliminar.auxiliares", { ruta: o.ruta })
+    : undefined;
   corriendo.value = true;
   error.value = "";
   codigo.value = "";
@@ -134,9 +142,14 @@ async function confirmar() {
   corriendo.value = false;
   if (r.ok) {
     organizaciones.intentosEliminar.delete(o.id);
-    toast.success(t(`organizaciones.eliminar.${claveHecha(o, pedidas, sinArchivoAlPedir, intentoAlPedir)}`, { nombre: nombre.value }), {
-      description: avisoAuxiliares,
-    });
+    toast.success(
+      t(`organizaciones.eliminar.${claveHecha(o, pedidas, sinArchivoAlPedir, intentoAlPedir)}`, {
+        nombre: nombre.value,
+      }),
+      {
+        description: avisoAuxiliares,
+      },
+    );
     eliminada = true;
     abierto.value = false;
     emit("terminado", true);
@@ -148,7 +161,7 @@ async function confirmar() {
   const sabido = intentoTrasFallo(organizaciones.intentosEliminar.get(o.id), r.avance);
   if (sabido) organizaciones.intentosEliminar.set(o.id, sabido);
   if (desmontado) {
-    await avisarFuera(o, r.mensaje);
+    await avisarFuera(o, r.mensaje, r.avance?.copia);
     await nextTick();
     return document.getElementById(ID_SECCION)?.focus(); // si sigue en Configuración
   }
@@ -198,7 +211,12 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
         <p v-if="nPestanas">{{ t("organizaciones.eliminar.pestanas", { n: nPestanas }, nPestanas) }}</p>
 
         <label v-if="organizacion.externa && !sinArchivo" class="flex items-start gap-2">
-          <input v-model="archivo" type="checkbox" class="mt-0.5 size-4 shrink-0 accent-primary" :disabled="corriendo" />
+          <input
+            v-model="archivo"
+            type="checkbox"
+            class="mt-0.5 size-4 shrink-0 accent-primary"
+            :disabled="corriendo"
+          />
           <span>
             {{ t("organizaciones.eliminar.borrarArchivo") }}
             <span class="block font-mono text-xs break-all">{{ organizacion.ruta }}</span>
@@ -207,10 +225,17 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
 
         <template v-if="ofreceCopia">
           <label class="flex items-start gap-2">
-            <input v-model="copia" type="checkbox" class="mt-0.5 size-4 shrink-0 accent-primary" :disabled="corriendo" />
+            <input
+              v-model="copia"
+              type="checkbox"
+              class="mt-0.5 size-4 shrink-0 accent-primary"
+              :disabled="corriendo"
+            />
             <span>
               {{ t("organizaciones.eliminar.copia") }}
-              <span class="block text-xs text-muted-foreground">{{ t("organizaciones.eliminar.copiaAyuda") }}</span>
+              <span class="block text-xs text-muted-foreground">{{
+                t("organizaciones.eliminar.copiaAyuda")
+              }}</span>
             </span>
           </label>
           <p v-if="!copia" role="alert" class="text-destructive">
@@ -244,7 +269,9 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
           <p v-else-if="ofreceCopia && copia && aconsejaSinCopia(codigo, detalle)">
             {{ t(`organizaciones.eliminar.${claveConsejoCopia(codigo, detalle)}`) }}
           </p>
-          <p v-if="!escrito && codigo !== 'lista_protegida'">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
+          <p v-if="!escrito && codigo !== 'lista_protegida'">
+            {{ t("organizaciones.eliminar.escribeOtraVez") }}
+          </p>
         </div>
         <p role="status" class="text-muted-foreground">
           {{ corriendo ? t("organizaciones.eliminar.eliminando") : "" }}

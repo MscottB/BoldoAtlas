@@ -176,7 +176,7 @@ const TEXTOS = {
             "Ctrl+K abre la paleta de comandos: escribe y llega a cualquier unidad o persona.",
             "Ordena por persona, cargo o gerencia.",
             "Busca también dentro del diagrama.",
-            "Inicio muestra los totales de tu organización y lo último que abriste.",
+            "Inicio muestra los totales de tu organización y las organizaciones que abriste hace poco.",
           ],
           imagen: {
             nombre: "directorio",
@@ -194,7 +194,8 @@ const TEXTOS = {
             "La versión portable guarda tus datos y respaldos en la carpeta datos/, junto al programa, y no necesita internet para funcionar. En macOS, el sistema guarda además las preferencias de la ventana y sus cachés en ~/Library.",
           puntos: [
             "Respaldo automático cada 24 horas, o con la frecuencia que elijas, y a mano cuando quieras.",
-            "Se conservan los 10 más recientes y se restauran desde la misma pantalla.",
+            "De cada organización se conservan los 10 más recientes, y se restauran desde la misma pantalla.",
+            "Varias organizaciones, cada una con sus datos, fotos y respaldos aparte: pasas de una a otra con sus pestañas.",
             "Antes de cambiar la estructura de la base, BoldoAtlas guarda una copia.",
           ],
           imagen: {
@@ -210,20 +211,21 @@ const TEXTOS = {
           etiqueta: "Exportar e importar",
           titulo: "Lleva la base o una rama a otro computador",
           texto:
-            "Exportar guarda toda la base, o las ramas que marques, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves qué trae, cuánto es nuevo y cuánto ya existe, y eliges cómo aplicarlo:",
+            "Exportar guarda toda la base, o las ramas que marques, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves qué trae y eliges qué hacer con él:",
           puntos: [
+            "Como organización nueva, lo recomendado: queda aparte en tu lista y la que tienes abierta no cambia.",
             "Agregar lo nuevo: entra lo que falta y lo que ya tienes se queda como está.",
             "Revisar y decidir: para dos copias que siguieron cambiando; eliges qué se queda, por registro o campo a campo.",
             "Reemplazar todo: tus datos cambian por los del archivo, solo con un archivo de toda la base.",
-            "Antes de aplicar se hace un respaldo, y si algo falla no se escribe nada.",
+            "Antes de cambiar tus datos se hace un respaldo, y si algo falla no se escribe nada.",
           ],
           imagen: {
             nombre: "importar-revision",
             ancho: 768,
-            alto: 706,
+            alto: 761,
             temas: false,
             ayuda: true,
-            alt: "Importar: lo que trae el archivo en una tabla y las opciones Agregar lo nuevo, Revisar y decidir y Reemplazar todo.",
+            alt: "Importar: lo que trae el archivo en una tabla y las opciones Como organización nueva, Agregar lo nuevo, Revisar y decidir y Reemplazar todo.",
           },
           enlace: { texto: "Leer cómo exportar e importar", href: "/manual/exportar-importar" },
         },
@@ -290,7 +292,7 @@ const TEXTOS = {
         },
         {
           p: "¿Dónde quedan mis datos?",
-          r: "En una base SQLite en tu computador: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas. BoldoAtlas no necesita internet para funcionar y no envía tus datos a ninguna parte.",
+          r: "En tu computador, en una base SQLite por organización: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas; un archivo que abras desde otra carpeta se queda donde está. BoldoAtlas no necesita internet para funcionar y no envía tus datos a ninguna parte.",
         },
         {
           p: "¿Cómo se junta el trabajo de dos copias?",
@@ -470,7 +472,7 @@ const TEXTOS = {
             "Ctrl+K opens the command palette: type and reach any unit or person.",
             "Sort by person, job title or division.",
             "Search inside the diagram too.",
-            "Home shows your organization's totals and what you opened last.",
+            "Home shows your organization's totals and the organizations you opened recently.",
           ],
           imagen: {
             nombre: "directorio",
@@ -488,7 +490,8 @@ const TEXTOS = {
             "The portable version keeps your data and backups in the datos/ folder, next to the program, and doesn't need the internet to work. On macOS, the system also keeps the window preferences and caches in ~/Library.",
           puntos: [
             "Automatic backup every 24 hours, or as often as you choose, and manual backups whenever you like.",
-            "The 10 most recent are kept, and you restore them from the same screen.",
+            "For each organization the 10 most recent are kept, and you restore them from the same screen.",
+            "Several organizations, each with its data, photos and backups apart: you move between them with their tabs.",
             "Before changing the database structure, BoldoAtlas keeps a copy.",
           ],
           imagen: {
@@ -504,20 +507,21 @@ const TEXTOS = {
           etiqueta: "Export and import",
           titulo: "Take the database or a branch to another computer",
           texto:
-            "Export saves the whole database, or the branches you check, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries, how much is new and how much already exists, and you choose how to apply it:",
+            "Export saves the whole database, or the branches you check, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries and choose what to do with it:",
           puntos: [
+            "As a new organization, the recommended one: it stays apart in your list and the one you have open does not change.",
             "Add what is new: what's missing comes in and what you already have stays as it is.",
             "Review and decide: for two copies that kept changing; you choose what stays, record by record or field by field.",
             "Replace everything: your data is swapped for the file's, only with a file of the whole database.",
-            "A backup is made before applying, and if something fails nothing is written.",
+            "A backup is made before your data changes, and if something fails nothing is written.",
           ],
           imagen: {
             nombre: "importar-revision",
             ancho: 768,
-            alto: 706,
+            alto: 781,
             temas: false,
             ayuda: true,
-            alt: "Import: what the file carries in a table and the Add what is new, Review and decide and Replace everything options.",
+            alt: "Import: what the file carries in a table and the As a new organization, Add what is new, Review and decide and Replace everything options.",
           },
           enlace: { texto: "Read how to export and import", href: "/en/manual/exportar-importar" },
         },
@@ -584,7 +588,7 @@ const TEXTOS = {
         },
         {
           p: "Where does my data live?",
-          r: "In a SQLite database on your computer: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it. BoldoAtlas doesn't need the internet to work and sends your data nowhere.",
+          r: "On your computer, in one SQLite database per organization: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it; a file you open from another folder stays where it is. BoldoAtlas doesn't need the internet to work and sends your data nowhere.",
         },
         {
           p: "How do I merge the work of two copies?",

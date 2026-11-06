@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cambiarIdioma, i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
-import { conRespaldoPrevio, mensajeFallo, mensajeOrganizacion } from "./respaldos";
+import { mensajeFallo, mensajeOrganizacion } from "./respaldos";
 
 describe("un archivo que no se deja abrir", () => {
   const de = (detalle: string) => mensajeOrganizacion({ codigo: "contenido_invalido", detalle });
@@ -85,6 +85,22 @@ describe("mensajeOrganizacion", () => {
     expect(mensajeOrganizacion({ codigo, detalle: "x" })).not.toMatch(/respaldo/i);
   });
 
+  it("un campo muy largo dice cuál, no que el archivo pesa demasiado", () => {
+    const m = mensajeOrganizacion({
+      codigo: "muy_pesado",
+      detalle: "",
+      donde: { tabla: "trabajadores", columna: "notas", nombre: "Ana" },
+    });
+    expect(m).toContain("«Ana»");
+    expect(m).not.toMatch(/pesa/);
+  });
+
+  it("muy_pesado_total dice qué se excedió", () => {
+    const m = mensajeOrganizacion({ codigo: "muy_pesado_total", detalle: "filas" });
+    expect(m).toContain("500.000 filas");
+    expect(m).not.toContain("No se pudo completar");
+  });
+
   it("lo demás es lo de mensajeFallo", () => {
     const e = { codigo: "no_encontrado", detalle: "x" };
     expect(mensajeOrganizacion(e)).toBe(mensajeFallo(e));
@@ -100,29 +116,5 @@ describe("mensajeOrganizacion", () => {
   it("un código desconocido o un error sin código muestran el detalle", () => {
     expect(mensajeFallo({ codigo: "raro", detalle: "disco lleno" })).toMatch(/disco lleno$/);
     expect(mensajeFallo("command not found")).toMatch(/command not found$/);
-  });
-});
-
-describe("conRespaldoPrevio", () => {
-  const ok = { ok: true } as const;
-
-  it("respalda y luego ejecuta la acción", async () => {
-    const orden: string[] = [];
-    const r = await conRespaldoPrevio(
-      async () => void orden.push("respaldo"),
-      async () => (orden.push("accion"), ok),
-    );
-    expect(r).toEqual(ok);
-    expect(orden).toEqual(["respaldo", "accion"]);
-  });
-
-  it("si el respaldo falla no ejecuta la acción y devuelve el motivo", async () => {
-    let corrio = false;
-    const r = await conRespaldoPrevio(
-      () => Promise.reject({ codigo: "en_uso", detalle: "x" }),
-      async () => ((corrio = true), ok),
-    );
-    expect(corrio).toBe(false);
-    expect(r).toMatchObject({ ok: false, mensaje: expect.stringMatching(/Otra ventana/) });
   });
 });

@@ -564,12 +564,17 @@ impl Estado {
         borrado
     }
 
-    /// Deja en la lista lo que dice ahora la base abierta, como su nombre. No cuenta como abrirla.
+    /// Deja en la lista lo que dice ahora la base abierta, como su nombre. No cuenta como abrirla. Con la lista tomada (una
+    /// revisión larga) no espera teniendo la base: la lista es un caché, y la próxima vez se pone al día.
     pub fn sincronizar(&self, base_id: &str) -> Result<(), Fallo> {
         let r = self.rutas()?;
         self.con_conexion(base_id, |c| {
             let base = self.base(base_id)?;
-            let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            let _lista = match self.lista.try_lock() {
+                Ok(l) => l,
+                Err(TryLockError::Poisoned(p)) => p.into_inner(),
+                Err(TryLockError::WouldBlock) => return Ok(()),
+            };
             let mut lista = cargar_lista(r);
             if lista.no_escribir {
                 return Err(lista_protegida());
@@ -666,7 +671,7 @@ impl Estado {
     /// Justo antes de `app.restart`, que cortaría `como_nueva` y dejaría una carpeta sin listar: se espera a que termine, y no empieza
     /// otra. Solo `creando`, no `lista`, que también retiene leer un archivo elegido en una unidad que puede colgarse. Con tope: lo ya
     /// hecho (una base restaurada) no se queda sin reiniciar bajo una interfaz vieja. No retiene nada al volver.
-    fn antes_de_reiniciar(&self) {
+    pub(crate) fn antes_de_reiniciar(&self) {
         self.antes_de_reiniciar_con(ESPERA_CREACION);
     }
 
@@ -876,8 +881,9 @@ impl Estado {
     }
 
     /// Vuelve a abrir la base que cerró `cerrar_ordenado` cuando lo que venía después falló (p. ej. el instalador de
-    /// Windows no se pudo lanzar). Con la base abierta no hace nada.
+    /// Windows no se pudo lanzar). Con la base abierta no hace nada. El reinicio no ocurrió: se puede volver a crear.
     pub fn reabrir(&self) -> Result<(), String> {
+        self.reiniciando.store(false, Ordering::SeqCst);
         let mut conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         if conn.is_none() {
             let Some(base) = self.base_abierta() else {
@@ -1124,23 +1130,6 @@ pub async fn listar_respaldos(app: AppHandle, base_id: String) -> Result<Vec<Res
     .map_err(|e| e.to_string())?
 }
 
-/// Como `respaldar_ahora`, pero con un nombre propio que la poda nunca borra: lo usa «reemplazar los datos».
-#[tauri::command]
-pub async fn respaldar_antes_de_reemplazar(
-    app: AppHandle,
-    base_id: String,
-) -> Result<String, Fallo> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let estado = app.state::<Estado>();
-        let dir = estado.base(&base_id)?.respaldos;
-        estado.con_conexion(&base_id, |c| {
-            respaldos::respaldar_antes_de_reemplazar(c, &dir, &respaldos::sello_local(c)?)
-        })
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
 /// Antes de optimizar las fotos: conserva las originales, y de estos quedan los últimos 3.
 #[tauri::command]
 pub async fn respaldar_antes_de_optimizar(
@@ -1227,8 +1216,9 @@ pub fn abrir_carpeta_respaldos(
     abrir_carpeta(&app, estado.rutas()?, &base.respaldos)
 }
 
-/// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust.
-#[tauri::command]
+/// Datos del proyecto abierto (modo, ruta, tamaño, última modificación); la ruta la conoce Rust. Fuera del hilo de la ventana:
+/// mira el archivo, que puede estar en una unidad que no responde.
+#[tauri::command(async)]
 pub fn info_proyecto(estado: State<Estado>, base_id: String) -> Result<InfoProyecto, Fallo> {
     let base = estado.base(&base_id)?;
     Ok(rutas::info_proyecto(estado.rutas()?, &base)?)
@@ -2832,6 +2822,27 @@ mod cambiar_a {
     }
 
     #[test]
+    fn sincronizar_con_la_lista_tomada_se_salta() {
+        let d = dos();
+        let antes = fs::read(d.r.datos.join("organizaciones.json")).unwrap();
+        d.e.con_conexion(&d.a.id, |c| {
+            c.execute(
+                "UPDATE meta SET valor = 'Renombrada' WHERE clave = 'org_nombre'",
+                [],
+            )
+            .map_err(|x| x.to_string())
+        })
+        .unwrap();
+        let _tomada = d.e.lista.lock().unwrap();
+        // con `lock` esperaría para siempre: la prueba no terminaría
+        d.e.sincronizar(&d.a.id).unwrap();
+        assert_eq!(
+            fs::read(d.r.datos.join("organizaciones.json")).unwrap(),
+            antes
+        );
+    }
+
+    #[test]
     fn sincronizar_con_otra_base_no_escribe() {
         let d = dos();
         let antes = fs::read(d.r.datos.join("organizaciones.json")).unwrap();
@@ -4163,6 +4174,15 @@ mod como_nueva {
         assert!(pasado >= Duration::from_millis(300), "{pasado:?}");
         assert!(pasado < Duration::from_secs(2), "{pasado:?}");
         assert!(e.reiniciando.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn reabrir_tras_un_reinicio_fallido_deja_crear_de_nuevo() {
+        let (_exe, r) = rutas();
+        let e = Estado::de_prueba(None, None, Some(r));
+        e.antes_de_reiniciar_con(Duration::ZERO);
+        e.reabrir().unwrap();
+        assert!(!e.reiniciando.load(Ordering::SeqCst));
     }
 
     #[test]

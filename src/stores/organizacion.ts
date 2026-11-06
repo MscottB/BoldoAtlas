@@ -33,7 +33,7 @@ import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
 import { SQL_HISTORICO } from "@/db/repos/historico";
 import { guardarMeta } from "@/db/repos/meta";
-import { TIPOS_SEMILLA, vaciarOrganizacion } from "@/db/repos/reemplazo";
+import { TIPOS_SEMILLA } from "@/db/repos/reemplazo";
 import {
   creaCiclo,
   hijos,
@@ -753,16 +753,6 @@ export const useOrganizacion = defineStore("organizacion", () => {
     };
   }
 
-  /** Primer uso: el nombre de la organización y su unidad raíz (del primer tipo activo), en un solo lote. */
-  async function crearOrganizacion(nombre: string, nombreRaiz: string): Promise<Resultado> {
-    // sin cargar, «vacía» no quiere decir sin datos: los mezclaría con los que hay, sin respaldo
-    if (!cargado.value || !vacia.value) return rechazar(t("store.hayDatos"));
-    if (!nombre.trim() || !nombreRaiz.trim()) return rechazar(t("store.nombreVacio"));
-    const tipo = activos("tipos_unidad")[0];
-    if (!tipo) return rechazar(t("arbol.sinTiposActivos"));
-    return escribir(() => sentenciasRaiz(nombre, nombreRaiz, tipo.id, renombresSemilla()));
-  }
-
   /** Organización ficticia para probar la app (en el idioma de la interfaz). */
   function sentenciasEjemplo(renombres: Sentencia[]): Sentencia[] {
     const x = EJEMPLO[i18n.global.locale.value as Idioma];
@@ -918,36 +908,6 @@ export const useOrganizacion = defineStore("organizacion", () => {
       : sentenciasRaiz(datos!.nombre, datos!.nombreRaiz, TIPO_GERENCIA, renombres).sentencias;
   }
 
-  /** Solo con la base sin unidades: reemplazar datos existentes es `reemplazarCon`. Todo en un solo lote. */
-  function cargarEjemplo(): Promise<Resultado> {
-    if (!cargado.value || !vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
-    return escribir(() => sentenciasEjemplo(renombresSemilla()));
-  }
-
-  /**
-   * Borra todos los datos de la organización y escribe en su lugar una organización vacía o el ejemplo, en un solo lote
-   * (si algo falla no cambia nada). Quien llama debe haber hecho antes un respaldo y pedido confirmación.
-   */
-  function reemplazarCon(
-    tipo: "vacia" | "ejemplo",
-    datos?: { nombre: string; nombreRaiz: string },
-  ): Promise<Resultado> {
-    if (tipo === "vacia" && (!datos?.nombre.trim() || !datos.nombreRaiz.trim()))
-      return Promise.resolve(rechazar(t("store.nombreVacio")));
-    // sin mirar `cargado`: lo que hubiera se reemplaza sin leerlo
-    return aplicar(
-      // Tras vaciar, los tipos de unidad son los sembrados y sin uso.
-      () => [...vaciarOrganizacion(), ...sentenciasNueva(tipo, datos)],
-      () => {
-        // Nada de lo anterior existe ya: ni deshacer, ni la fecha vista, ni el estilo copiado.
-        ultimoBorrado.value = null;
-        fechaVista.value = null;
-        historico.value = null;
-        estiloCopiado.value = undefined;
-      },
-    );
-  }
-
   return {
     unidades,
     trabajadores,
@@ -1023,10 +983,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     eliminarVista,
     guardarOrg,
     deshacer,
-    cargarEjemplo,
-    crearOrganizacion,
     sentenciasNueva,
-    reemplazarCon,
     crearValor,
     renombrarValor,
     moverValor,

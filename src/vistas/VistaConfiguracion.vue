@@ -8,7 +8,6 @@ import BloquePlegable from "@/components/BloquePlegable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
 import SeccionOrganizaciones from "@/features/organizaciones/SeccionOrganizaciones.vue";
 import SeccionFotos from "@/features/configuracion/SeccionFotos.vue";
@@ -35,7 +34,9 @@ const { t, locale } = useI18n();
 const org = useOrganizacion();
 const { tema, acento, escala } = useTema();
 // Sin icono en la bandeja no se ofrece, y lo guardado con esa opción vale como «Preguntar».
-const opcionesAlCerrar = computed(() => OPCIONES_AL_CERRAR.filter((o) => o !== "bandeja" || bandejaLista.value));
+const opcionesAlCerrar = computed(() =>
+  OPCIONES_AL_CERRAR.filter((o) => o !== "bandeja" || bandejaLista.value),
+);
 const alCerrarVigente = computed(() =>
   opcionesAlCerrar.value.includes(alCerrar.value) ? alCerrar.value : "preguntar",
 );
@@ -128,7 +129,7 @@ const quitarLogo = async () => {
       </div>
     </section>
 
-    <SeccionOrganizaciones v-if="ORGANIZACIONES_VISIBLES" />
+    <SeccionOrganizaciones />
 
     <section class="grid gap-4" aria-labelledby="cfg-apariencia">
       <div>

@@ -13,7 +13,6 @@ import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
 import { sePuedeReintentar } from "./features/pestanas/pestanas";
-import { useRecientes } from "./features/inicio/useRecientes";
 import { iniciarRespaldoAutomatico, mensajeOrganizacion } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
 import { crearBandeja } from "./features/actualizaciones/bandeja";
@@ -32,6 +31,7 @@ infoApp()
     if (info.error) return createApp(PantallaError, { info }).use(i18n).mount("#app");
     fijarBase(info.baseId);
     // router.ts importa VistaArbol sin carga diferida: useVista ya se evaluó con la base vacía y se relee aquí.
+    // Migrar antes de soltar: lo que se relee al soltar ya debe estar en las claves de esta organización.
     migrarPreferencias(info.baseId, info.dirDatos);
     soltarDatos();
     const pinia = createPinia();
@@ -43,8 +43,6 @@ infoApp()
     // la que estaba activa.
     const pestanas = usePestanas(pinia);
     pestanas.conectar(router, info.dirDatos, info.rutaBd);
-    // Lo último que se abrió, para Inicio: con clave por base.
-    useRecientes(pinia).conectar(router, info.rutaBd, pestanas.valida);
     const destino = destinoInicial(org.cargado, org.vacia, continuarDondeEstaba.value) ?? pestanas.entrar();
     const app = createApp(App).use(pinia).use(router).use(i18n);
     await router.replace(destino);

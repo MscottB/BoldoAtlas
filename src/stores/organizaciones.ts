@@ -1,7 +1,6 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { defineStore } from "pinia";
 import { toast } from "vue-sonner";
-import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { soltarYEsperarEscrituras } from "@/app/ventana";
 import {
   abrirOrganizacion,
@@ -23,9 +22,9 @@ import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import {
   falloOrganizacion,
-  mensajeFallo,
   mensajeOrganizacion,
   respaldoAutomatico,
+  soloRespaldoAutomatico,
 } from "@/features/respaldos/respaldos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
@@ -54,9 +53,6 @@ const DEL_ARCHIVO = new Set([
   "migracion",
   "muy_pesado",
 ]);
-
-const campo = (e: unknown, nombre: string): string =>
-  typeof e === "object" && e !== null && nombre in e ? String(e[nombre as keyof typeof e]) : "";
 
 const CANCELADO: Resultado = { ok: false, mensaje: "" };
 
@@ -94,11 +90,9 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   const idAbierta = ref(baseActual());
   alSoltarDatos(() => (idAbierta.value = baseActual()));
   const abierta = computed(() => lista.value.find((o) => o.id === idAbierta.value) ?? null);
-  // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama. Sin la bandera, solo el de la base.
-  const nombreAbierta = computed(
-    () => org.org.nombre || (ORGANIZACIONES_VISIBLES && abierta.value?.nombre) || "",
-  );
-  const varias = computed(() => ORGANIZACIONES_VISIBLES && lista.value.length > 1);
+  // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama.
+  const nombreAbierta = computed(() => org.org.nombre || abierta.value?.nombre || "");
+  const varias = computed(() => lista.value.length > 1);
   // Con una sola no se lee el nombre: renombrar no debe despertar a quien nombra un trabajo, como la bandeja.
   registrarAbierta(() => ({
     nombre: varias.value ? nombreAbierta.value || t("barra.sinNombre") : "",
@@ -152,13 +146,25 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     return r;
   }
 
-  /** Pasos 1 y 2. Si la ficha sigue en edición, no hay mensaje: ya se le preguntó a quien lo pidió. */
+  /**
+   * Pasos 1 y 2. Si la ficha sigue en edición, no hay mensaje: ya se le preguntó a quien lo pidió. El respaldo automático no
+   * lo pidió nadie: se espera con «Abriendo la organización…» a la vista, que sigue así si se puede seguir.
+   */
   async function sePuedeSoltar(): Promise<Resultado> {
     if (!(await useFicha().puedeSoltar())) return CANCELADO;
     await soltarYEsperarEscrituras();
-    return trabajos.value.length
-      ? { ok: false, mensaje: mensajeFallo({ codigo: "trabajo_en_curso", detalle: "" }) }
-      : { ok: true };
+    const respaldo = soloRespaldoAutomatico();
+    if (respaldo) {
+      cambiando.value = true;
+      await respaldo;
+    }
+    if (!trabajos.value.length) return { ok: true };
+    cambiando.value = false;
+    const n = trabajos.value.length;
+    return {
+      ok: false,
+      mensaje: t("organizaciones.trabajosEnCurso", { trabajos: trabajos.value.join(", ") }, n),
+    };
   }
 
   /** Paso 3: la vista se desmonta y guarda su estado. Lo que escriba al irse también sale antes de cambiar. */
@@ -199,9 +205,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
         pestanas.marcarActiva(pestana);
         if (r.ok) {
           sinAbrir.value.delete(pestana);
-          // Sus datos ya cargaron: tampoco vale para las otras pestañas de esta organización.
+          // Sus datos ya cargaron, y su archivo está: tampoco vale para las otras pestañas de esta organización.
           for (const [otra, m] of sinAbrir.value)
-            if (m.codigo === "fallo" && pestanas.lista.find((x) => x.id === otra)?.org === id)
+            if (
+              (m.codigo === "fallo" || m.codigo === "no_encontrado") &&
+              pestanas.lista.find((x) => x.id === otra)?.org === id
+            )
               sinAbrir.value.delete(otra);
           pestanas.validarActivada(pestana);
           await pestanas.navegar(pestana);
@@ -232,13 +241,12 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       o = await abrirOrganizacion(id);
     } catch (e) {
       volverSinCambio();
-      const mensaje = mensajeOrganizacion(e);
-      const codigo = campo(e, "codigo");
+      const { mensaje, codigo, detalle } = falloOrganizacion(e);
       const pestanas = usePestanas();
       // si la pestaña se cerró mientras tanto, o se pidió desde Inicio, no hay dónde mostrar el motivo: lo avisa quien pidió
       if (!DEL_ARCHIVO.has(codigo) || !pestanas.existe(pestana) || pestanas.enInicio())
         return { ok: false, mensaje };
-      sinAbrir.value.set(pestana, { codigo, mensaje, detalle: campo(e, "detalle") });
+      sinAbrir.value.set(pestana, { codigo, mensaje, detalle });
       pestanas.marcarActiva(pestana);
       return { ok: true };
     }
@@ -279,6 +287,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       return { ok: false, mensaje: t("pestanas.limite", { n: MAX_PESTANAS }) };
     const listo = await sePuedeSoltar();
     if (!listo.ok) return listo;
+    cambiando.value = false; // si esperó un respaldo: mientras se crea, la vista sigue; `abrir` hace el cambio
     try {
       // sobre un `boldo.db` vacío abierto el id no cambia: un lote en cola entraría en la nueva
       await colaVacia();
@@ -418,6 +427,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     lista,
     recientes,
     abierta,
+    /** El id de la abierta, reactivo: `baseActual()` no lo es. */
+    idAbierta,
     nombreAbierta,
     varias,
     cambiando,

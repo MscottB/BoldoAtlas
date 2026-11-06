@@ -10,10 +10,11 @@ En **Configuración** (abajo en el menú) ajustas:
 
 - **Nombre de la organización:** se guarda al salir del campo o con `Enter`.
 - **Logo:** PNG, JPG o WebP de hasta 1 MB. Se guarda como PNG (y se reduce si es muy grande) junto con tus datos. **Quitar logo** lo borra.
+- **Organizaciones:** las de este equipo, con su ruta, su color y el espacio que ocupan; ahí se quitan de la lista o se eliminan (ver [Organizaciones](organizaciones.md)).
 - **Tema, color de acento y tamaño de la interfaz:** valen solo para este computador. El tema está a la vista; el tamaño, el color de acento y **Abrir la barra lateral al pasar el mouse** están en **Más opciones de apariencia**, que se abre con un clic (o con `Enter` sobre él) y queda abierto o plegado como lo dejes.
 - **Idioma:** Español o English. Cambia al instante todos los textos de la app (también desde la pantalla de bienvenida y el menú de la app); los nombres que escribiste no se traducen.
 
-![Pantalla de Configuración con el nombre de la organización, el logo, el tema, el idioma y el botón Abrir mantenedores.](../img/es/mantenedores-config.webp "Configuración. 1: nombre de la organización. 2: logo. 3: tema. 4: idioma. 5: abrir los mantenedores."){width=760 height=590}
+![Pantalla de Configuración con el nombre de la organización, el logo, la lista de organizaciones, el tema, el idioma y el botón Abrir mantenedores.](../img/es/mantenedores-config.webp "Configuración. 1: nombre de la organización. 2: logo. 3: organizaciones. 4: tema. 5: idioma. 6: abrir los mantenedores."){width=760 height=922}
 
 ## Mantenedores
 

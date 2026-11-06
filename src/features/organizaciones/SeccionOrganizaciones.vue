@@ -35,6 +35,8 @@ const organizaciones = useOrganizaciones();
 
 const idEliminar = (id: string) => `org-eliminar-${id}`;
 const idBorrarCopia = (nombre: string) => `copia-borrar-${nombre}`;
+const idMotivoQuitar = (id: string) => `org-quitar-motivo-${id}`;
+const idColor = (id: string) => `org-color-${id}`;
 
 const copias = ref<OrganizacionEliminada[]>([]);
 const errorCarga = ref("");
@@ -94,9 +96,13 @@ const copiaEn = (i: number) => {
 };
 
 /** Una acción a la vez, con los botones desactivados: al terminar se relee todo, y el foco queda en `foco`. */
-async function correr(accion: () => Promise<Resultado>, foco: () => string | undefined) {
+async function correr(
+  accion: () => Promise<Resultado>,
+  foco: () => string | undefined,
+  fallo: (e: unknown) => ReturnType<typeof falloOrganizacion> = falloOrganizacion,
+) {
   ocupado.value = true;
-  const r = await accion().catch(falloOrganizacion);
+  const r = await accion().catch(fallo);
   if (!r.ok) avisarFallo(r);
   await cargar();
   ocupado.value = false;
@@ -139,12 +145,19 @@ const alCerrarPregunta = (e: Event) => respondida && e.preventDefault();
 function pedirQuitar(o: Organizacion, i: number) {
   preguntar({
     titulo: t("organizaciones.seccion.quitarTitulo", { nombre: nombreDe(o) }),
-    texto: t(o.existe ? "organizaciones.seccion.quitarTexto" : "organizaciones.seccion.quitarTextoSinArchivo", {
-      ruta: o.ruta,
-    }),
+    texto: t(
+      o.existe ? "organizaciones.seccion.quitarTexto" : "organizaciones.seccion.quitarTextoSinArchivo",
+      {
+        ruta: o.ruta,
+      },
+    ),
     si: t("organizaciones.seccion.quitar"),
     destructiva: false,
-    accion: () => correr(() => organizaciones.quitar(o.id), () => filaEn(i)),
+    accion: () =>
+      correr(
+        () => organizaciones.quitar(o.id),
+        () => filaEn(i),
+      ),
   });
 }
 
@@ -166,6 +179,7 @@ function pedirBorrarCopia(c: OrganizacionEliminada, i: number) {
           return { ok: true };
         },
         () => copiaEn(i),
+        falloDeCopia,
       ),
   });
 }
@@ -184,10 +198,17 @@ function pedirRestaurar(c: OrganizacionEliminada) {
           toast.success(t("organizaciones.seccion.restaurada", { nombre: nombreDeCopia(c) }));
           return { ok: true };
         },
-        // la nueva, que es lo que se fue a buscar; si falló, la misma copia
-        () => (nueva ? idEliminar(nueva) : idBorrarCopia(c.nombre)),
+        // la fila de la nueva, que es lo que se fue a buscar, sin caer en un botón que borra; si falló, la misma copia
+        () => (nueva ? idColor(nueva) : idBorrarCopia(c.nombre)),
+        falloDeCopia,
       ),
   });
+}
+
+/** Con una copia, `desconocido` es que esa copia ya no está, no una organización de la lista. */
+function falloDeCopia(e: unknown) {
+  const f = falloOrganizacion(e);
+  return f.codigo === "desconocido" ? { ...f, mensaje: t("organizaciones.seccion.copiaNoEsta") } : f;
 }
 
 const elegida = ref<Organizacion | null>(null);
@@ -262,6 +283,7 @@ async function trasEliminar(eliminada: boolean) {
         </p>
         <div class="flex flex-wrap items-center gap-2">
           <select
+            :id="idColor(o.id)"
             :value="o.color"
             :class="claseSelect"
             :disabled="bloqueado"
@@ -273,12 +295,15 @@ async function trasEliminar(eliminada: boolean) {
             </option>
             <option v-for="p in PALETA" :key="p.color" :value="p.color">{{ t(p.nombre) }}</option>
           </select>
+          <!-- La única no tiene a cuál pasar antes de quitarla: no se ofrece. -->
           <Button
+            v-if="!o.activa || organizaciones.varias"
             type="button"
             variant="outline"
             size="sm"
             :disabled="bloqueado || o.activa"
             :aria-label="t('organizaciones.seccion.quitarDe', { nombre: nombreDe(o) })"
+            :aria-describedby="o.activa ? idMotivoQuitar(o.id) : undefined"
             @click="pedirQuitar(o, i)"
           >
             {{ t("organizaciones.seccion.quitar") }}
@@ -295,7 +320,13 @@ async function trasEliminar(eliminada: boolean) {
             {{ t("organizaciones.seccion.eliminar") }}
           </Button>
         </div>
-        <p v-if="o.activa" class="text-xs text-muted-foreground">{{ t("respaldos.error.abierta") }}</p>
+        <p
+          v-if="o.activa && organizaciones.varias"
+          :id="idMotivoQuitar(o.id)"
+          class="text-xs text-muted-foreground"
+        >
+          {{ t("respaldos.error.abierta") }}
+        </p>
       </li>
     </ul>
 

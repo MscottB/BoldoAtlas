@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import MarkdownIt from "markdown-it";
 import {
   Briefcase,
+  Building,
   ClipboardCheck,
   DatabaseBackup,
   FileText,
@@ -56,6 +57,7 @@ const router = useRouter();
 // Un ícono por tema (el nombre del archivo no cambia con el idioma).
 const ICONOS: Record<string, Component> = {
   inicio: House,
+  organizaciones: Building,
   arbol: Network,
   arboles: ListTree,
   directorio: Users,

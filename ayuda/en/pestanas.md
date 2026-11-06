@@ -31,6 +31,10 @@ Settings, Help and About, when closed, go back to the view of that same tab you 
 
 Only the active tab is loaded: having several open does not slow down the canvas.
 
+## Tabs from several organizations
+
+When the open tabs belong to more than one organization, each one shows its organization's color dot and its name before the title, for example "Demo Company · Tree". Going to a tab of another organization opens it, and only the active tab's one is loaded. See [Organizations](organizaciones.md#open-and-switch).
+
 ## Switching, reordering and closing
 
 - Click a tab to view it, or use `Ctrl` + `Tab` and `Ctrl` + `Shift` + `Tab`.
@@ -38,6 +42,6 @@ Only the active tab is loaded: having several open does not slow down the canvas
 - Close it with its × button, with a middle click on it, with `Del` when it is focused or with `Ctrl` + `W` (the active one). The last tab can't be closed.
 - With the focus on the bar, `←` `→` move between tabs and `Enter` opens the focused one.
 
-Tabs are remembered on this computer, separately for each project. When you open the program, **Home** appears and, with **Back to my organization**, your tabs are as you left them; with **Continue where I left off** (in **Settings › When opening and quitting**) you see them right away. Tabs for units or people that no longer exist close on their own.
+Tabs are remembered on this computer, separately for each copy of BoldoAtlas (the installed one and each portable one), with those of all your organizations. When you open the program, **Home** appears and, with **Back to my organization**, your tabs are as you left them; with **Continue where I left off** (in **Settings › When opening and quitting**) you see them right away. Tabs for units or people that no longer exist close on their own.
 
 **See also:** [Keyboard shortcuts](atajos.md) · [Directory](directorio.md).

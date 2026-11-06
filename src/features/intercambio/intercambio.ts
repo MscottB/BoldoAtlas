@@ -3,7 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "vue-sonner";
 import { intercambioCancelar, type ResumenImportacion } from "@/db/cliente";
 import type { Unidad } from "@/db/tipos";
-import { mensajeFallo } from "@/features/respaldos/respaldos";
+import { dondeDe, excesoDe, mensajeFallo, mensajeTope } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
 import { nuevoId } from "@/lib/ids";
 import { conTrabajo, deLaAbierta, iniciarTrabajo } from "@/lib/trabajos";
@@ -12,9 +12,12 @@ export const RUTA_INTERCAMBIO = "/importar-exportar";
 
 export type ModoImportar = "nueva" | "agregar" | "revisar" | "reemplazar";
 
-/** La opción que viene marcada: como organización nueva, también con un parcial; sin ella, lo que este archivo permite. */
-export const modoInicial = (r: ResumenImportacion, conNueva: boolean): ModoImportar =>
-  conNueva ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
+/**
+ * La opción que viene marcada: como organización nueva, también con un parcial. Con la lista protegida Rust no puede
+ * agregar otra: lo que este archivo permite sobre la abierta.
+ */
+export const modoInicial = (r: ResumenImportacion, listaProtegida = false): ModoImportar =>
+  !listaProtegida ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
 
 /** La que se está creando desde un archivo. Sigue aunque se salga del panel, y al volver hay que decirlo. */
 export const organizacionEnCreacion = ref<string | null>(null);
@@ -25,37 +28,16 @@ export const mensajeComoNueva = (f: { codigo: string; mensaje: string }): string
 
 export type Intento<T> = { ok: true; valor: T } | { ok: false; codigo: string; mensaje: string };
 
-interface Donde {
-  tabla: string;
-  columna: string;
-  nombre: string | null;
-}
-
 const codigoDe = (e: unknown): string =>
   typeof e === "object" && e !== null && "codigo" in e ? String(e.codigo) : "fallo";
 
-/** Dónde está lo que se pasó de un tope, con etiquetas legibles. Una tabla o columna desconocida no se muestra tal cual. */
-function mensajeTope(d: Donde): string {
-  const { t, te } = i18n.global;
-  const tabla = `intercambio.tablas.${d.tabla}`;
-  const columna = `intercambio.columnas.${d.columna}`;
-  const datos = {
-    tabla: te(tabla) ? t(tabla) : t("intercambio.columnas.otra"),
-    columna: te(columna) ? t(columna) : t("intercambio.columnas.otra"),
-    nombre: d.nombre ?? "",
-  };
-  return t(d.nombre ? "intercambio.error.muy_pesado_fila" : "intercambio.error.muy_pesado", datos);
-}
-
 function mensajeDe(e: unknown): string {
   const { t, te } = i18n.global;
-  const donde = typeof e === "object" && e !== null && "donde" in e ? (e.donde as Donde | null) : null;
+  const donde = dondeDe(e);
   if (donde) return mensajeTope(donde);
   const clave = `intercambio.error.${codigoDe(e)}`;
   if (!te(clave)) return mensajeFallo(e);
-  // qué se excedió del total: «filas» o «bytes»
-  const detalle = typeof e === "object" && e !== null && "detalle" in e ? String(e.detalle) : "";
-  return t(clave, { exceso: te(`intercambio.exceso.${detalle}`) ? t(`intercambio.exceso.${detalle}`) : "" });
+  return t(clave, { exceso: excesoDe(e) });
 }
 
 /** Lo mismo que el contrato del store: no lanza, y el fallo ya viene traducido. */

@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import { useI18n } from "vue-i18n";
 import { Plus, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
-import { baseActual } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { RUTA_INICIO, hayVariasOrganizaciones } from "./pestanas";
@@ -19,7 +18,8 @@ const org = useOrganizacion();
 const varias = computed(() => hayVariasOrganizaciones({ lista: pestanas.lista, activa: pestanas.activa }));
 const items = computed(() => {
   const nombreDe = (id: string) =>
-    organizaciones.lista.find((o) => o.id === id)?.nombre || (id === baseActual() ? org.org.nombre : "");
+    organizaciones.lista.find((o) => o.id === id)?.nombre ||
+    (id === organizaciones.idAbierta ? org.org.nombre : "");
   // Las que no tienen nombre, o si la lista no cargó, no deben verse iguales: se numeran.
   const sinNombre = [...new Set(pestanas.lista.map((p) => p.org).filter((id) => !nombreDe(id)))];
   return pestanas.lista.map((p) => {

@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { effect, effectScope, nextTick, ref, stop, watch } from "vue";
+import { effectScope, nextTick, ref, watch } from "vue";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import { enCambio, baseActual, fijarBase, marcarCambio, soltarDatos, alSoltarDatos } from "@/lib/baseActiva";
-import { deLaAbierta, trabajos } from "@/lib/trabajos";
+import { trabajos } from "@/lib/trabajos";
 import { recordarPorArbol, useVista } from "@/features/arbol/useVista";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { useFicha } from "@/features/trabajadores/useFicha";
+import { respaldoAutomatico } from "@/features/respaldos/respaldos";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion } from "./organizacion";
@@ -99,32 +100,6 @@ afterEach(async () => {
 describe("la abierta, para la barra y la bandeja", () => {
   const de = (id: string, nombre: string) => ({ id, nombre, color: `#${id}` });
 
-  it("con la bandera apagada, el nombre es solo el de la base, y los trabajos se nombran como hoy", async () => {
-    c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa"), de("B", "Beta")]);
-    const o = useOrganizaciones();
-    await o.cargarLista();
-    expect(o.varias).toBe(false);
-    expect(o.nombreAbierta).toBe("");
-    expect(deLaAbierta("Respaldo")).toBe("Respaldo");
-  });
-
-  it("con la bandera apagada, renombrar no despierta a quien nombra un trabajo", async () => {
-    const o = useOrganizaciones();
-    const org = useOrganizacion();
-    c.leerMeta.mockResolvedValue({ org_nombre: "Alfa" });
-    await org.cargar();
-    let veces = 0;
-    const e = effect(() => {
-      deLaAbierta("Respaldo");
-      veces++;
-    });
-    c.leerMeta.mockResolvedValue({ org_nombre: "Otro" });
-    await org.cargar();
-    stop(e);
-    expect(o.nombreAbierta).toBe("Otro");
-    expect(veces).toBe(1);
-  });
-
   it("un archivo que no se deja abrir no se da por malo, y se puede reintentar", async () => {
     const { p, o } = await arrancar(null);
     c.abrirOrganizacion.mockRejectedValueOnce(fallo("contenido_invalido", "retenido"));
@@ -155,7 +130,7 @@ describe("la abierta, para la barra y la bandeja", () => {
     // ya es B y sus datos aún no llegan: ni el color ni el nombre siguen siendo los de A
     expect(o.abierta?.color).toBe("#B");
     expect(org.org.nombre).toBe("");
-    expect(o.nombreAbierta).toBe("");
+    expect(o.nombreAbierta).toBe("Beta"); // el de la lista, mientras llegan sus datos
     carga.resolver({ org_nombre: "Beta" });
     await cambio;
     expect(o.nombreAbierta).toBe("Beta");
@@ -219,11 +194,47 @@ describe("el cambio, en orden", () => {
 
   it("con un trabajo en curso avisa y no cambia", async () => {
     const { o } = await arrancar();
-    trabajos.value = ["Respaldo"];
+    trabajos.value = ["Respaldo", "Exportar"];
     const r = await o.activarPestana("b1");
-    expect(r).toMatchObject({ ok: false, mensaje: expect.stringMatching(/trabajo/i) });
+    expect(r).toMatchObject({
+      ok: false,
+      mensaje: expect.stringContaining("trabajos en curso: Respaldo, Exportar."),
+    });
     expect(c.abrirOrganizacion).not.toHaveBeenCalled();
     expect(baseActual()).toBe("A");
+  });
+
+  it("espera el respaldo automático, que nadie pidió, con «Abriendo…», y luego cambia", async () => {
+    const { o } = await arrancar();
+    const fin = pendiente<string>();
+    c.respaldarAhora.mockReturnValue(fin.promesa);
+    const respaldo = respaldoAutomatico();
+    await vi.waitFor(() => expect(trabajos.value).toHaveLength(1));
+    const r = o.activarPestana("b1");
+    await vi.waitFor(() => expect(o.cambiando).toBe(true));
+    expect(c.abrirOrganizacion).not.toHaveBeenCalled();
+    fin.resolver("x");
+    expect(await r).toEqual({ ok: true });
+    await respaldo;
+    expect(baseActual()).toBe("B");
+  });
+
+  it("con el respaldo automático y otro trabajo, no cambia y los nombra", async () => {
+    const { o } = await arrancar();
+    const fin = pendiente<string>();
+    c.respaldarAhora.mockReturnValue(fin.promesa);
+    const respaldo = respaldoAutomatico();
+    await vi.waitFor(() => expect(trabajos.value).toHaveLength(1));
+    trabajos.value.push("Exportar");
+    const r = await o.activarPestana("b1");
+    expect(r).toMatchObject({
+      ok: false,
+      mensaje: expect.stringContaining(`${trabajos.value[0]}, Exportar`),
+    });
+    expect(o.cambiando).toBe(false);
+    expect(c.abrirOrganizacion).not.toHaveBeenCalled();
+    fin.resolver("x");
+    await respaldo;
   });
 
   it("la ficha con cambios y Cancelar no cambia", async () => {
@@ -328,6 +339,18 @@ describe("el cambio, en orden", () => {
     expect(o.sinAbrir.has("b1")).toBe(true);
     await o.activarPestana("b1");
     expect(o.sinAbrir.has("b1")).toBe(false);
+  });
+
+  it("y el de las otras pestañas de esa organización que no encontraban su archivo", async () => {
+    const { o } = await arrancar({
+      lista: [TRES.lista[0], TRES.lista[1], { id: "b2", org: "B", ruta: "/revision" }],
+      activa: "a1",
+    });
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("no_encontrado"));
+    await o.activarPestana("b2");
+    expect(o.sinAbrir.get("b2")?.codigo).toBe("no_encontrado");
+    await o.activarPestana("b1");
+    expect(o.sinAbrir.has("b2")).toBe(false);
   });
 
   it("durante el cambio cambiando y enCambio() son true y la vista se desmonta antes de abrir; con error, ambos vuelven", async () => {

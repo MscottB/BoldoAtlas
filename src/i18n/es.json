@@ -407,7 +407,6 @@
   "store": {
     "nombreVacio": "Escribe un nombre.",
     "sinCargar": "Los datos de esta organización no están cargados, así que no se escribió nada. Reintenta abrirla.",
-    "hayDatos": "Ya hay datos en esta base: para reemplazarlos usa «Nueva organización vacía» o «Explorar el ejemplo» desde el menú de la app.",
     "cicloRama": "No se puede mover una unidad dentro de su propia rama.",
     "unidadInexistente": "La unidad ya no existe.",
     "conexionDuplicada": "Ya existe una conexión entre «{origen}» y «{destino}».",
@@ -738,9 +737,9 @@
   },
   "organizaciones": {
     "cambiando": "Abriendo la organización…",
+    "trabajosEnCurso": "Hay un trabajo en curso: {trabajos}. Espera a que termine e inténtalo de nuevo; no se cambió nada. | Hay trabajos en curso: {trabajos}. Espera a que terminen e inténtalo de nuevo; no se cambió nada.",
     "avisoInicio": "No se pudo abrir «{nombre}». Se abrió otra organización en su lugar.",
     "reabrirDesdeMenu": "Para volver a intentarlo, ábrela desde el menú de la app, en «Abrir otra organización…».",
-    "ejemplo": "Explorar el ejemplo",
     "abrirIgual": "Abrir igual",
     "pideRed": "Este archivo está en una carpeta de red, donde otro equipo podría dañarlo. ¿Copiarlo a este computador y abrir la copia?",
     "pideOtroId": "Este archivo no es el de esta organización: tiene otros datos. ¿Usarlo en su lugar?",
@@ -802,7 +801,8 @@
       "borrarCopiaDe": "Borrar la copia {archivo}",
       "borrarCopiaTitulo": "¿Borrar la copia de «{nombre}»?",
       "borrarCopiaTexto": "Se borra del disco la copia {archivo}, del {fecha} ({tamano}). No se puede recuperar. Las organizaciones de tu lista no cambian.",
-      "trabajando": "Trabajando…"
+      "trabajando": "Trabajando…",
+      "copiaNoEsta": "Esa copia ya no está en «Copias de organizaciones eliminadas»: se borró o se movió. La lista ya muestra lo que hay."
     },
     "eliminar": {
       "titulo": "Eliminar «{nombre}»",
@@ -820,6 +820,7 @@
       "libera": "Libera {tamano}.",
       "liberaConCopia": "La copia ocupa parte de ese espacio.",
       "copiaAnterior": "Un intento anterior ya guardó una copia: {copia}. Está en «Copias de organizaciones eliminadas».",
+      "copiaGuardada": "Antes de fallar se guardó una copia: {copia}. Está en Configuración, en «Copias de organizaciones eliminadas».",
       "abiertaPrincipal": "Es la que tienes abierta: antes se pasa a otra y se vuelve a Inicio. Si no hay otra, se empieza con una vacía.",
       "noSeTocan": "Las demás organizaciones no se tocan.",
       "abierta": "Es la que tienes abierta: antes se pasa a otra (o a la principal, si no hay) y se vuelve a Inicio.",
@@ -850,9 +851,10 @@
       "salioSinArchivo": "«{nombre}» salió de la lista y se borraron sus respaldos. Su archivo no se encontró."
     },
     "error": {
-      "desconocido": "Esta organización ya no está en la lista.",
+      "desconocido": "Esta organización ya no está en la lista: se quitó, o su archivo se reemplazó por otro. Lo que está en la lista se abre desde Inicio.",
       "esquema_nuevo": "Esta organización se guardó con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para abrirla.",
-      "danado": "El archivo está dañado o no es una base de BoldoAtlas. No se abrió."
+      "danado": "El archivo está dañado o no es una base de BoldoAtlas. No se abrió.",
+      "muy_pesado_total": "Este archivo trae {exceso}, más de lo que BoldoAtlas puede cargar. No se abrió ni se cambió."
     }
   },
   "pestanas": {
@@ -875,13 +877,17 @@
       "titulo": "Crear una organización vacía",
       "texto": "Empieza desde cero: nombras la organización y su primera unidad."
     },
+    "archivo": {
+      "titulo": "Abrir un archivo .db",
+      "texto": "Una organización de BoldoAtlas guardada en otra carpeta o en un pendrive."
+    },
     "excel": {
       "titulo": "Cargar desde Excel",
       "texto": "Importa la estructura y las personas desde una planilla."
     },
     "boldo": {
       "titulo": "Abrir un archivo .boldo",
-      "texto": "Continúa con una organización guardada en un archivo."
+      "texto": "Importa una organización exportada desde BoldoAtlas."
     },
     "ejemplo": {
       "titulo": "Explorar un ejemplo",
@@ -893,14 +899,7 @@
     "raizEjemplo": "Por ejemplo: Gerencia General",
     "crear": "Crear organización",
     "cancelar": "Cancelar",
-    "hayDatos": "Esta base ya tiene datos («{nombre}»). Si eliges una organización vacía o el ejemplo, se reemplazan los datos actuales; antes se hace un respaldo automático.",
-    "volver": "Volver a mi organización",
-    "reemplazarTitulo": {
-      "vacia": "¿Reemplazar los datos actuales por una organización vacía?",
-      "ejemplo": "¿Reemplazar los datos actuales por el ejemplo?"
-    },
-    "reemplazarTexto": "Se borrarán las unidades, personas, puestos y demás datos de «{nombre}». Antes se hace un respaldo automático que puedes restaurar desde Configuración › Respaldos.",
-    "reemplazar": "Respaldar y reemplazar"
+    "volver": "Volver a mi organización"
   },
   "config": {
     "inicio": {
@@ -1046,6 +1045,7 @@
     "ahora": "Respaldar ahora",
     "carpeta": "Abrir carpeta",
     "hecho": "Respaldo creado.",
+    "duranteCambio": "No se respaldó: se estaba abriendo otra organización. Inténtalo de nuevo cuando termine.",
     "vacio": "Todavía no hay respaldos.",
     "columnas": {
       "fecha": "Fecha",
@@ -1112,12 +1112,17 @@
     "ultimoRespaldo": "Último respaldo: {fecha}",
     "sinRespaldo": "Todavía no hay respaldos.",
     "recientes": "Abierto recientemente",
-    "borrarRecientes": "Borrar lista",
-    "recientesBorrada": "Lista borrada.",
     "ahora": "hace un momento",
     "accesos": "Accesos rápidos",
     "buscarPersona": "Buscar persona",
-    "empezarDeNuevo": "Crear otra organización o explorar el ejemplo"
+    "otra": "Crear o abrir otra organización",
+    "abrirArchivo": "Abrir archivo…",
+    "ejemplo": "Explorar el ejemplo",
+    "sinArchivo": "No se encuentra su archivo.",
+    "accionesDe": "Más acciones de «{nombre}»",
+    "eliminar": "Eliminar organización",
+    "trabajando": "Un momento…",
+    "sinCargar": "Los datos de esta organización no se pudieron cargar. Vuelve a ella para reintentarlo."
   },
   "menu": {
     "abrir": "Menú de la app",
@@ -1135,7 +1140,6 @@
   },
   "proyecto": {
     "titulo": "Datos del proyecto",
-    "principal": "Principal",
     "abrir": "Datos del proyecto «{nombre}»",
     "archivo": "Archivo de la base",
     "tamano": "Tamaño",
@@ -1295,7 +1299,6 @@
         "existentes": "Ya existe o no entra"
       },
       "queHacer": "¿Qué quieres hacer?",
-      "agregar": "Agregar lo nuevo",
       "agregarAyuda": "Lo que no existe entra. Lo que ya existe se queda como está.",
       "reemplazar": "Reemplazar todo",
       "reemplazarAyuda": "Tus datos actuales se cambian por los del archivo y la app se reinicia.",
@@ -1318,7 +1321,6 @@
       "confirmarTitulo": "¿Reemplazar todo?",
       "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
       "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar.",
-      "revisar": "Revisar y decidir",
       "revisarAyuda": "Compara el archivo con tus datos y decides qué se queda: nuevos, distintos, borrados y lo que choca.",
       "revisarNada": "Comparar no cambia nada: tus datos se escriben solo cuando apliques lo decidido.",
       "lugarDesconocido": "No se pudo saber dónde iban las ramas de este archivo. Las que no estén en tu base entrarán como árboles independientes: después puedes moverlas.",

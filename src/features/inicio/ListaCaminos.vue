@@ -2,10 +2,10 @@
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 
-// Las tarjetas para empezar de Inicio (crear una organización, abrir un archivo, explorar el ejemplo).
-// Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
+// Las tarjetas para empezar de Inicio, sin datos (crear una organización, abrir un archivo, importar, explorar el ejemplo).
+// Mientras `ocupado`, siguen con foco (aria-disabled) y quien las recibe no hace nada. Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
 export interface Camino {
-  id: "vacia" | "excel" | "boldo" | "ejemplo";
+  id: "vacia" | "archivo" | "excel" | "boldo" | "ejemplo";
   icono: Component;
   fase?: string;
 }
@@ -21,11 +21,10 @@ const { t } = useI18n();
       <button
         :id="`bienvenida-camino-${c.id}`"
         type="button"
-        :aria-disabled="c.fase ? 'true' : undefined"
-        :disabled="!c.fase && ocupado"
+        :aria-disabled="c.fase || ocupado ? 'true' : undefined"
         class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring"
         :class="[
-          c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent',
+          c.fase ? 'cursor-not-allowed text-muted-foreground' : 'not-aria-disabled:hover:bg-accent aria-disabled:opacity-50',
           c.id === 'vacia' && 'border-2 border-marca bg-card',
         ]"
         @click="$emit('elegir', c, $event.currentTarget)"

@@ -8,7 +8,8 @@ const c = await import("./cliente");
 const { consultar, lote, alOtraBase, colaVacia, fotosGuardar } = c;
 const { BaseCambiada, fijarBase, marcarCambio } = await import("@/lib/baseActiva");
 
-const orden = (l: unknown[][]) => l.map((c) => (c[1] as { sentencias: { sql: string }[] }).sentencias[0]!.sql);
+const orden = (l: unknown[][]) =>
+  l.map((c) => (c[1] as { sentencias: { sql: string }[] }).sentencias[0]!.sql);
 
 const CASOS: [string, () => Promise<unknown>][] = [
   ["consultar", () => c.consultar("SELECT 1")],
@@ -16,7 +17,6 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["leerMeta", () => c.leerMeta()],
   ["listarRespaldos", () => c.listarRespaldos()],
   ["respaldarAhora", () => c.respaldarAhora()],
-  ["respaldarAntesDeReemplazar", () => c.respaldarAntesDeReemplazar()],
   ["respaldarAntesDeOptimizar", () => c.respaldarAntesDeOptimizar()],
   ["restaurarRespaldo", () => c.restaurarRespaldo("n")],
   ["abrirCarpetaRespaldos", () => c.abrirCarpetaRespaldos()],
@@ -26,7 +26,10 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["importarAgregar", () => c.importarAgregar("t", {})],
   ["importarReemplazar", () => c.importarReemplazar("t")],
   ["importarComparar", () => c.importarComparar("t", {})],
-  ["revisionPagina", () => c.revisionPagina("t", { tipo: null, tabla: null, soloDudosas: false, desde: 0, cuantos: 1 })],
+  [
+    "revisionPagina",
+    () => c.revisionPagina("t", { tipo: null, tabla: null, soloDudosas: false, desde: 0, cuantos: 1 }),
+  ],
   ["revisionDetalle", () => c.revisionDetalle("t", "tabla", "id")],
   ["revisionVerificar", () => c.revisionVerificar("t")],
   ["revisionBloqueos", () => c.revisionBloqueos("t", 0, 1)],

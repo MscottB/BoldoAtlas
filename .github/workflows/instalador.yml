@@ -2,6 +2,8 @@ name: instalador
 
 # Ejecuta el instalador de Windows en el runner cuando cambia su plantilla: compila, instala y actualiza de verdad.
 # El trabajo `actualizar` parte de la última versión publicada y comprueba que la organización de siempre sobrevive.
+# El trabajo `organizaciones` corre el arnés de varias organizaciones con la portable: migrar desde la publicada, el tiempo
+# de cambio entre una organización grande y una chica, y eliminar por la pantalla.
 on:
   pull_request:
     paths:
@@ -14,6 +16,8 @@ on:
       - "scripts/probar-instalador.ps1"
       - "scripts/probar-actualizacion.mjs"
       - "scripts/probar-app.mjs"
+      - "scripts/arnes-organizaciones.mjs"
+      - "scripts/sembrar-grande.mjs"
       - "scripts/release.mjs"
       - ".github/actions/**"
       - ".github/workflows/instalador.yml"
@@ -83,3 +87,47 @@ jobs:
       - run: node scripts/probar-actualizacion.mjs anterior/BoldoAtlas_windows_x64_setup.exe release/*/BoldoAtlas_windows_x64_setup.exe src-tauri/target/prueba/boldo-atlas.exe
         shell: bash
         timeout-minutes: 10
+  # Runner limpio aparte: la portable nueva contra la publicada, cada una en su carpeta temporal.
+  organizaciones:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # etiquetas para calcular la versión
+          persist-credentials: false
+      - uses: ./.github/actions/preparar-node
+      - uses: ./.github/actions/preparar-rust
+        with:
+          cache: boldo-prueba
+      - id: v
+        run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
+        shell: bash
+      - run: node scripts/release.mjs --solo-portable --perfil prueba
+        env:
+          BOLDO_VERSION: ${{ steps.v.outputs.version_prueba }}
+      - name: Descargar la última portable publicada
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          etiqueta=$(gh release list --exclude-drafts --limit 1 --json tagName -q '.[0].tagName')
+          [ -n "$etiqueta" ] || { echo "No hay ninguna versión publicada"; exit 1; }
+          # una versión recién publicada puede no tener aún el archivo: hasta ~2 min
+          for intento in 1 2 3 4 5 6 7 8; do
+            gh release download "$etiqueta" -p BoldoAtlas_windows_x64_portable.zip -D anterior --clobber && break
+            [ "$intento" = 8 ] && { echo "La versión $etiqueta no tiene BoldoAtlas_windows_x64_portable.zip"; exit 1; }
+            sleep 15
+          done
+          echo "Versión anterior: $etiqueta"
+          # v0.1.0-alpha.38 es la base de la migración: la última de antes de las preferencias y pestañas por organización,
+          # con su perfil en datos/. Con los mismos reintentos: una falla pasajera de la descarga no es un fallo del arnés
+          for intento in 1 2 3 4 5 6 7 8; do
+            gh release download v0.1.0-alpha.38 -p BoldoAtlas_windows_x64_portable.zip -D antes-de-organizaciones --clobber && break
+            [ "$intento" = 8 ] && { echo "No se pudo descargar v0.1.0-alpha.38"; exit 1; }
+            sleep 15
+          done
+      - name: Arnés de organizaciones
+        shell: bash # con pipefail: falla si falla el arnés, y si no dijo que terminó
+        run: node scripts/arnes-organizaciones.mjs antes-de-organizaciones/BoldoAtlas_windows_x64_portable.zip anterior/BoldoAtlas_windows_x64_portable.zip | tee arnes.log && grep -q "^Arnés comprobado\.$" arnes.log
+        timeout-minutes: 25

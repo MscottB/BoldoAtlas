@@ -94,7 +94,8 @@ function instalar(exe, args) {
 }
 
 function cerrarTodo() {
-  // solo en un runner de GitHub (enCI): no hay otra BoldoAtlas que cuidar
+  // solo en un runner de GitHub: no hay otra BoldoAtlas que cuidar. Fuera de él, la del autor puede estar abierta
+  if (!enCI(process.env)) return;
   spawnSync("taskkill", ["/IM", "boldo-atlas.exe", "/T", "/F"], { stdio: "ignore", timeout: 30_000 });
 }
 
@@ -317,14 +318,10 @@ export async function principal(argv) {
     console.log("Actualización comprobada.");
   } catch (e) {
     console.error(`\nFALLÓ la prueba de actualización: ${e instanceof Error ? e.message : String(e)}`);
-    cerrarTodoSiCI();
+    cerrarTodo();
     return 1;
   }
   return 0;
-}
-
-function cerrarTodoSiCI() {
-  if (enCI(process.env)) cerrarTodo();
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

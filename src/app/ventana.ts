@@ -93,8 +93,7 @@ export async function alPedirCierre(salida = false): Promise<void> {
     hayBandeja: bandejaLista.value,
     salida,
   });
-  if (accion !== "preguntar" && !salidaAbierta.value)
-    return accion === "cerrar" ? salir() : dejarEnBandeja();
+  if (accion !== "preguntar" && !salidaAbierta.value) return accion === "cerrar" ? salir() : dejarEnBandeja();
   salidaAbierta.value = true;
   await nextTick();
   if (!document.querySelector("[data-dialogo-salir]")) return;
@@ -108,7 +107,7 @@ export async function responderSalida(accion: "bandeja" | "cerrar", recordar: bo
   await (accion === "cerrar" ? salir() : dejarEnBandeja());
 }
 
-export function soltarEdicion(): void {
+function soltarEdicion(): void {
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 }
 // Tauri no lo avisa al salir: las pestañas guardan su estado

@@ -4,18 +4,20 @@
 BoldoAtlas copies your data by itself, in case something goes wrong. Here you see where the backups are kept, how to make one by hand and how to restore it.
 :::
 
-BoldoAtlas keeps copies of your data in the **respaldos** (backups) folder, inside the data folder:
+Each organization has its backups apart. Those of `boldo.db` go in the **respaldos** (backups) folder, inside the data folder:
 
 - **Portable:** `datos/respaldos/`, next to the program.
 - **Installed:** `respaldos` inside your user data folder; on Windows, `%APPDATA%\io.github.mscottb.boldoatlas\respaldos\` (for Linux and macOS, see **Getting started › Portable and installed mode**).
+
+Those of the other organizations go in `organizaciones/<id>/respaldos/`, inside the same data folder (see [Organizations](organizaciones.md#what-is-kept-apart)). **Settings › Backups** shows the open organization's ones.
 
 Each backup is a file `boldo-YYYYMMDD-HHMM.db` with the date and time it was made. If two are made in the same minute, the second one ends in `-2`.
 
 ## Automatic backup
 
-When the app opens and while it stays open, also in the tray, if the last backup is more than 24 hours old a new one is made in the background: you can keep working meanwhile. In **Settings › Backups › View and restore backups** you choose how often: **Never**, **Every time** it opens (only when opening), **Every 24 hours** (the default) or **Every 7 days**. The choice applies to this computer only.
+When the app opens, when you switch to another organization and while it stays open, also in the tray, if the open organization's last backup is more than 24 hours old a new one is made in the background: you can keep working meanwhile. In **Settings › Backups › View and restore backups** you choose how often: **Never**, **Every time** an organization opens (the first time in the session), **Every 24 hours** (the default) or **Every 7 days**. The choice applies to this computer only.
 
-The **10 most recent backups** are kept; making a new one deletes the oldest. Other files in the folder are not touched. If an automatic backup fails, a notice appears.
+For each organization, the **10 most recent backups** are kept; making a new one deletes the oldest. Other files in the folder are not touched. If an automatic backup fails, a notice appears.
 
 ## Backup list
 
@@ -32,12 +34,12 @@ To take a copy elsewhere, press **Open folder** and copy the `.db` file you want
 
 ## Before replacing your data
 
-When you choose **New empty organization** or **Explore the example** with data loaded, or when you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. The ones made before replacing and before restoring are never deleted automatically. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
+When you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. The ones made before replacing and before restoring are never deleted automatically. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
 
 ## Restore
 
 ::: warning Important
-Restoring replaces your current data with the backup's and restarts the app.
+Restoring replaces the open organization's data with the backup's and restarts the app, which opens that organization again.
 :::
 
 1. Under **View and restore backups**, press **Restore** on the row of the backup you want to recover.

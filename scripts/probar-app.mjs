@@ -9,11 +9,11 @@ import { TAR, artefactos } from "./release.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // un id válido: el rechazo debe venir de que es otra base, no de su forma
-const OTRA_BASE = "00000000-0000-4000-8000-000000000000";
+export const OTRA_BASE = "00000000-0000-4000-8000-000000000000";
 const ORGANIZACION = "Organización de humo";
 const PERSONA = { id: "humo-foto", nombre: "Persona de humo" };
 // PNG de 1×1
-const FOTO =
+export const FOTO =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==";
 const PUERTO = 9222;
 // Lo que wry pasa a WebView2 cuando la app no fija sus argumentos (wry/src/webview2/mod.rs).
@@ -106,15 +106,16 @@ const anotar = (linea) => void registro.push(linea);
 /** @type {string[]} */
 const fallos = [];
 /** @param {string} nombre @param {boolean} ok @param {unknown} [detalle] */
-function comprobar(nombre, ok, detalle = "") {
+export function comprobar(nombre, ok, detalle = "") {
   console.log(`${ok ? "ok   " : "FALLA"} ${nombre}${ok ? "" : `: ${JSON.stringify(detalle)}`}`);
   if (!ok) fallos.push(nombre);
 }
+export const fallosHastaAhora = () => fallos.length;
 
 /** @param {number} ms */
-const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
+export const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
 /** @template T @param {() => Promise<T | false | null | undefined>} f @param {string} que @param {number} [ms] @returns {Promise<T>} */
-async function esperar(f, que, ms = 30_000) {
+export async function esperar(f, que, ms = 30_000) {
   const limite = Date.now() + ms;
   let ultimo = "";
   for (;;) {
@@ -193,7 +194,7 @@ async function conectarCdp(url) {
 }
 
 /** La app abierta y lo que se le puede pedir por su página. @param {string} exe */
-async function abrirApp(exe) {
+export async function abrirApp(exe) {
   const proceso = lanzar(exe, ["ignore", "pipe", "pipe"]);
   for (const salida of [proceso.stdout, proceso.stderr]) {
     salida?.on("data", (b) => anotar(`[proceso] ${String(b).trimEnd()}`));
@@ -317,7 +318,7 @@ async function metaDe(app, baseId, clave) {
 }
 
 /** Abre una URL en un `<img>` nuevo: `{ ancho }` si cargó, o `null` si dio error. @param {string} url */
-const cargarImagen = (url) => `new Promise((ok) => {
+export const cargarImagen = (url) => `new Promise((ok) => {
   const img = new Image();
   img.onload = () => ok({ ancho: img.naturalWidth });
   img.onerror = () => ok(null);
@@ -325,7 +326,7 @@ const cargarImagen = (url) => `new Promise((ok) => {
 })`;
 
 /** @param {Awaited<ReturnType<typeof abrirApp>>} app @param {string} carpeta */
-async function revisarBase(app, carpeta) {
+export async function revisarBase(app, carpeta) {
   const r = await app.llamar("info_app");
   if (!r.ok) throw new Error(`info_app falló: ${JSON.stringify(r.error)}`);
   const info = r.valor;
@@ -529,6 +530,11 @@ async function correr() {
   writeFileSync(exe, conPuertoAbierto(readFileSync(exe)));
   const info = await primeraApertura(exe, carpeta);
   await reapertura(exe, carpeta, info);
+  comprobarInstaladaIntacta();
+  exigirSinFallos();
+}
+
+export function comprobarInstaladaIntacta() {
   const { identifier } = JSON.parse(readFileSync(join("src-tauri", "tauri.conf.json"), "utf8"));
   const instalada = join(process.env.APPDATA ?? "", identifier);
   comprobar(
@@ -536,11 +542,21 @@ async function correr() {
     Boolean(process.env.APPDATA) && !existsSync(instalada),
     instalada,
   );
+}
+
+export function exigirSinFallos() {
   if (fallos.length) throw new Error(`${fallos.length} comprobaciones fallaron: ${fallos.join("; ")}`);
 }
 
 /** La prueba completa: la entrada es `probar-app-ci.mjs`. Falla sin lanzar nada si no está en un runner de GitHub. */
-export async function principal() {
+export const principal = () => enCiDeWindows(correr, "App comprobada.", "la prueba de humo");
+
+/**
+ * Corre `correr` solo en un runner de GitHub, con plazo, y detiene lo lanzado pase lo que pase. Si falla, imprime el texto
+ * de la página y el registro. El paso de CI exige la línea `listo`: sin ella no hay verde.
+ * @param {() => Promise<void>} correr @param {string} listo @param {string} que @param {number} [plazoMs]
+ */
+export async function enCiDeWindows(correr, listo, que, plazoMs = PLAZO_MS) {
   /** @type {NodeJS.Timeout | undefined} */
   let plazo;
   try {
@@ -553,14 +569,13 @@ export async function principal() {
     await Promise.race([
       trabajo,
       new Promise((_, mal) => {
-        plazo = setTimeout(() => mal(new Error(`La prueba pasó de ${PLAZO_MS / 1000} s`)), PLAZO_MS);
+        plazo = setTimeout(() => mal(new Error(`La prueba pasó de ${plazoMs / 1000} s`)), plazoMs);
       }),
     ]);
-    // el paso de CI exige esta línea: sin ella no hay verde
-    console.log("App comprobada.");
+    console.log(listo);
   } catch (e) {
     const pagina = await evaluarPagina?.(`document.body.innerText.slice(0, 800)`).catch(() => "(sin página)");
-    console.error(`\nFALLÓ la prueba de humo: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(`\nFALLÓ ${que}: ${e instanceof Error ? e.message : String(e)}`);
     console.error(`\nTexto en la página:\n${pagina ?? "(sin página)"}`);
     console.error(`\nÚltimas líneas del registro:\n${registro.slice(-40).join("\n") || "(vacío)"}`);
     throw e;

@@ -4,7 +4,7 @@
 Para llevar tu organización, o solo una parte, a otro computador: **Exportar** la guarda en un archivo `.boldo` protegido con un código, e **Importar** abre ese archivo en el otro lado. Aquí ves cómo hacerlo sin pisar los datos que ya tienes.
 :::
 
-Ambas acciones están en **Importar/Exportar**, en la barra lateral, y en el menú de la app. Para abrir un archivo también puedes usar **Abrir un archivo .boldo** en la Bienvenida.
+Ambas acciones están en **Importar/Exportar**, en la barra lateral, y en el menú de la app. Para abrir un archivo también puedes usar **Abrir un archivo .boldo** en la Bienvenida o **Abrir archivo .boldo** en el menú de la app.
 
 ## Exportar
 
@@ -25,12 +25,16 @@ El código se muestra una sola vez y no se guarda en ninguna parte. Si se pierde
 
 1. Pulsa **Importar** y luego **Elegir archivo…**.
 2. Escribe el código y pulsa **Abrir**. No importan las mayúsculas ni los guiones.
-3. Revisa lo que trae: cuánto hay en el archivo, cuánto es nuevo y cuánto ya existe. Hasta aquí tu base no cambió, y **Cancelar** borra la copia temporal del archivo.
-4. Elige qué hacer y pulsa **Aplicar**.
+3. Elige qué hacer. **Como organización nueva (recomendado)** viene marcada; con las otras opciones, una tabla muestra cuánto hay en el archivo, cuánto es nuevo y cuánto ya existe en la organización abierta. Hasta aquí nada cambió, y **Cancelar** borra la copia temporal del archivo.
+4. Pulsa **Crear organización**, **Aplicar** o **Continuar**, según lo que elegiste.
 
-![Importar: lo que trae el archivo en una tabla y las opciones Agregar lo nuevo, Revisar y decidir y Reemplazar todo.](../img/es/importar-revision.webp "Importar: revisas lo que trae antes de aplicar nada."){width=768 height=706}
+![Importar: lo que trae el archivo en una tabla y las opciones Como organización nueva, Agregar lo nuevo, Revisar y decidir y Reemplazar todo.](../img/es/importar-revision.webp "Importar: revisas lo que trae antes de aplicar nada."){width=768 height=761}
 
 Si el código no corresponde o el archivo se alteró, verás el mismo aviso: «El código no es correcto o el archivo está dañado». Tu base no se toca.
+
+### Como organización nueva
+
+Lo recomendado. El archivo queda como otra organización en tu lista, aparte, y la que tienes abierta no cambia: no hay nada que comparar ni que pisar. Pulsa **Crear organización**; mientras se crea puedes seguir trabajando, y un aviso dice cuándo terminó. Al final eliges **Abrir la nueva** o **Seguir en la que está abierta**. Una vez empezado no se puede cancelar: si después no la quieres, elimínala (ver [Organizaciones](organizaciones.md)). Importar el mismo archivo dos veces da dos organizaciones.
 
 ### Agregar lo nuevo
 
@@ -86,10 +90,10 @@ Las decisiones duran mientras dura la revisión. **Cancelar** y **Volver a las o
 
 ### Reemplazar todo
 
-Tus datos actuales se cambian por los del archivo y la app se reinicia. Solo se puede con un archivo de **toda la base**: con una parte borrarías el resto. Se pide confirmar.
+Los datos de la organización abierta se cambian por los del archivo y la app se reinicia, de vuelta en esa organización. Solo se puede con un archivo de **toda la base**: con una parte borrarías el resto. Se pide confirmar.
 
 ::: tip Consejo
-Antes de aplicar, BoldoAtlas hace un respaldo: marcado **Antes de importar** al agregar o al revisar y decidir, y **Antes de reemplazar** al reemplazar todo. Si te arrepientes, restáuralo desde [Respaldos](respaldos.md). Si algo falla al aplicar, no se escribe nada.
+Antes de cambiar la organización abierta, BoldoAtlas hace un respaldo: marcado **Antes de importar** al agregar o al revisar y decidir, y **Antes de reemplazar** al reemplazar todo. Si te arrepientes, restáuralo desde [Respaldos](respaldos.md). Si algo falla al aplicar, no se escribe nada.
 :::
 
 ## Si cierras a mitad de camino

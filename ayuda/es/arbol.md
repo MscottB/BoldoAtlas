@@ -183,7 +183,7 @@ En la tarjeta seleccionada, el botón **Abrir como árbol** muestra solo esa uni
 
 ## Personalizar
 
-El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo se dibuja el árbol. Se recuerdan en este computador. A la vista están **Dirección**, **Densidad**, **Colorear por**, **Ver puestos** y, si hay conexiones laterales, **Relaciones laterales**; el resto va en dos bloques plegados, **Qué mostrar en las tarjetas** y **Avanzado**, que se abren con un clic (o `Enter`) y recuerdan en este computador si los dejaste abiertos. **Restablecer** vuelve todo a como venía al comienzo, salvo el resaltado.
+El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo se dibuja el árbol. Se recuerdan en este computador, para cada organización. A la vista están **Dirección**, **Densidad**, **Colorear por**, **Ver puestos** y, si hay conexiones laterales, **Relaciones laterales**; el resto va en dos bloques plegados, **Qué mostrar en las tarjetas** y **Avanzado**, que se abren con un clic (o `Enter`) y recuerdan en este computador si los dejaste abiertos. **Restablecer** vuelve todo a como venía al comienzo, salvo el resaltado.
 
 ![Panel Personalizar con Dirección, Densidad, Colorear por, Ver puestos, Relaciones laterales y los bloques plegados.](../img/es/arbol-personalizar.webp "El panel Personalizar. 1: dirección del árbol. 2: densidad de las tarjetas. 3: colorear por. 4: ver puestos. 5: relaciones laterales."){width=380 height=490}
 
@@ -204,7 +204,7 @@ Además de lo anterior, **Personalizar** permite elegir:
 - **Qué mostrar en las tarjetas** (con cuántos datos están activos): personas en las tarjetas, tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
 - **Personas en las tarjetas** (encendido al comienzo): la jefatura se ve con su cargo y, debajo, las caras del equipo de la unidad. La tarjeta queda un poco más alta. Como la jefatura ya está en la tarjeta, con **Ver puestos** su puesto no se repite debajo, como en un organigrama clásico; los demás puestos sí se ven. La tarjeta compacta y la tarjeta simplificada (al alejarte con muchas tarjetas) no muestran personas. A una fecha pasada se ven las personas de ese día. Las caras abren la pestaña **Personas** con **Incluir subunidades** apagado, para que la lista sea la misma que cuentan. Con **Jefatura** apagada la jefatura no se ve en la tarjeta, pero sigue contada en la cifra del equipo (el nombre del botón de las caras).
 
-Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador la última configuración que usaste en él.
+Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador, para cada organización, la última configuración que usaste en él.
 
 ## Vistas guardadas
 
@@ -257,7 +257,7 @@ La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reempla
 
 Pulsa una persona para ver su **vista previa** en el mismo panel: foto, correo, teléfono, puestos vigentes e historial. **Abrir ficha** abre su ficha completa para editarla; **Volver a la lista** (o `Esc`) vuelve a la lista en el mismo lugar, con el foco en la persona que abriste. Con una fecha elegida, la lista y la vista previa muestran a quienes estaban asignados ese día.
 
-**Lista** y **Árbol** cambian cómo se ven esas mismas personas; la elección se recuerda en este computador. El **árbol** parte de la unidad del panel y muestra lo que tiene debajo, padre e hijo:
+**Lista** y **Árbol** cambian cómo se ven esas mismas personas; la elección se recuerda en este computador, para cada organización. El **árbol** parte de la unidad del panel y muestra lo que tiene debajo, padre e hijo:
 
 - Cada unidad muestra su nombre, su tipo, su jefatura (foto o iniciales, nombre y cargo) y cuántas personas tiene su rama: los titulares, la misma cifra de la tarjeta (los reemplazos se ven, pero no suman). Arriba, **asignaciones** cuenta todas las filas de personas, como la lista. Debajo van sus demás personas (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Con **Incluir subunidades** apagado se ve solo la unidad.
 - Al abrirlo se ve el primer nivel. La flecha de una unidad la abre o la cierra; **Expandir todo** abre todas y **Contraer todo** vuelve al primer nivel.

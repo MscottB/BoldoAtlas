@@ -75,11 +75,12 @@ export function sinOrganizacion(
 /** Con más de una organización, cada pestaña lleva su nombre y su color. */
 export const hayVariasOrganizaciones = (m: Pestanas): boolean => new Set(m.lista.map((p) => p.org)).size > 1;
 
-/** Si el motivo por el que no abrió se arregla buscando el archivo: `red` y `journal` piden hacerlo en su texto. */
+/** Si el motivo por el que no abrió se arregla buscando el archivo: `red` y `journal` piden hacerlo en su texto; `no_esta` es
+ * un archivo que se movió. */
 export const sePuedeBuscar = ({ codigo, detalle }: { codigo: string; detalle: string }): boolean =>
   codigo === "no_encontrado" ||
   codigo === "otro_id" ||
-  (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal"));
+  (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal" || detalle === "no_esta"));
 
 /**
  * Lo que puede pasarse solo: la carga, otra copia de la app, un archivo que otro programa retiene, o uno que no abrió sin que el

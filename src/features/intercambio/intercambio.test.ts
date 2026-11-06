@@ -18,17 +18,17 @@ const resumenDe = (r: Partial<ResumenImportacion>) =>
 const conInforme = { informe: {} } as Partial<ResumenImportacion>;
 
 describe("modoInicial", () => {
-  it("con la bandera, «Como organización nueva» es el primero, también con un parcial", () => {
-    expect(modoInicial(resumenDe({}), true)).toBe("nueva");
-    expect(modoInicial(resumenDe(conInforme), true)).toBe("nueva");
-    expect(modoInicial(resumenDe({ parcial: true }), true)).toBe("nueva");
+  it("«Como organización nueva» es el primero, también con un parcial", () => {
+    expect(modoInicial(resumenDe({}))).toBe("nueva");
+    expect(modoInicial(resumenDe(conInforme))).toBe("nueva");
+    expect(modoInicial(resumenDe({ parcial: true }))).toBe("nueva");
   });
 
-  it("modoInicial(r, false), igual que hoy", () => {
-    expect(modoInicial(resumenDe(conInforme), false)).toBe("agregar");
-    expect(modoInicial(resumenDe({ ...conInforme, parcial: true }), false)).toBe("agregar");
-    expect(modoInicial(resumenDe({ parcial: true }), false)).toBe("revisar");
-    expect(modoInicial(resumenDe({}), false)).toBe("reemplazar");
+  it("con la lista protegida no se ofrece: lo que el archivo permite sobre la abierta", () => {
+    expect(modoInicial(resumenDe(conInforme), true)).toBe("agregar");
+    expect(modoInicial(resumenDe({ ...conInforme, parcial: true }), true)).toBe("agregar");
+    expect(modoInicial(resumenDe({ parcial: true }), true)).toBe("revisar");
+    expect(modoInicial(resumenDe({}), true)).toBe("reemplazar");
   });
 });
 

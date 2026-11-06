@@ -12,7 +12,7 @@ const textos = {
     pre: "prelanzamiento",
     portable: "Portable (recomendado)",
     portableTxt:
-      "Un zip que extraes en cualquier carpeta o pendrive y guarda todo en la carpeta datos/, junto al programa. No instala nada.",
+      "Un zip que extraes en cualquier carpeta o pendrive y guarda tus datos en la carpeta datos/, junto al programa; un archivo que abras desde otra carpeta se queda donde está. No instala nada.",
     instaladores: "Instaladores",
     instaladoresTxt: "Instalan BoldoAtlas en el sistema y guardan los datos en la carpeta de tu usuario.",
     sumas: "Sumas de verificación (SHA256SUMS.txt)",
@@ -25,7 +25,7 @@ const textos = {
     pre: "pre-release",
     portable: "Portable (recommended)",
     portableTxt:
-      "A zip you extract into any folder or USB drive; it keeps everything in the datos/ folder next to the program. Installs nothing.",
+      "A zip you extract into any folder or USB drive; it keeps your data in the datos/ folder next to the program; a file you open from another folder stays where it is. Installs nothing.",
     instaladores: "Installers",
     instaladoresTxt: "They install BoldoAtlas on the system and keep the data in your user folder.",
     sumas: "Checksums (SHA256SUMS.txt)",

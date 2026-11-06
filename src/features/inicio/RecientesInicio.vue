@@ -1,68 +1,293 @@
 <script setup lang="ts">
-import { onMounted, type Component } from "vue";
-import { useRouter } from "vue-router";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { FolderTree, ListChecks, Network, User, Users } from "@lucide/vue";
+import { EllipsisVertical, FileSearch, ListX, Trash2 } from "@lucide/vue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { usePestanas } from "@/features/pestanas/usePestanas";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { Organizacion } from "@/db/cliente";
+import DialogoEliminarOrganizacion from "@/features/organizaciones/DialogoEliminarOrganizacion.vue";
+import PreguntaArchivo from "@/features/organizaciones/PreguntaArchivo.vue";
+import { textoAConfirmar } from "@/features/organizaciones/eliminar";
+import { useOrganizaciones } from "@/stores/organizaciones";
+import { enfocarPrimero, volverAlTerminar } from "./foco";
 import { hace } from "./recientes";
-import { useRecientes } from "./useRecientes";
 
-// «Abierto recientemente» de Inicio: lo último que se abrió en esta organización. Abrirlo usa la navegación de las
-// pestañas: queda en la pestaña activa, o se activa la que ya lo muestra.
+// «Abierto recientemente» de Inicio: las organizaciones de la lista, la última abierta primero. Un clic abre; cada una
+// tiene su menú para quitarla de la lista o eliminarla. Si su archivo no está, lo dice y ofrece buscarlo o quitarla.
+const ID_RECIENTES = "inicio-recientes";
 const { t, locale } = useI18n();
-const router = useRouter();
-const recientes = useRecientes();
-const pestanas = usePestanas();
+const organizaciones = useOrganizaciones();
 
-onMounted(recientes.depurar);
-
-const ICONOS: Record<string, Component> = {
-  arbol: Network,
-  arboles: FolderTree,
-  directorio: Users,
-  revision: ListChecks,
-};
-function icono(ruta: string): Component {
-  const r = router.resolve(ruta);
-  return r.query.persona ? User : (ICONOS[String(r.name)] ?? Network);
-}
+const idEntrada = (id: string) => `inicio-org-${id}`;
+const idProtegida = (id: string) => `inicio-protegida-${id}`;
+// Con la lista protegida, quitar y eliminar se ven desactivados: el motivo va arriba y en cada uno.
+const porProtegida = (id: string) => (organizaciones.listaProtegida ? idProtegida(id) : undefined);
+const idMenu = (id: string) => `inicio-org-menu-${id}`;
+const nombreDe = (o: Pick<Organizacion, "nombre">) => textoAConfirmar(o, t("barra.sinNombre"));
+const inicial = (o: Organizacion) => nombreDe(o).trim().charAt(0).toLocaleUpperCase(locale.value);
 
 const ahora = Date.now();
-const relativo = new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" });
-function cuando(en: number): string {
+const relativo = computed(() => new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" }));
+function cuando(abierta: string): string {
+  const en = Date.parse(abierta);
+  if (Number.isNaN(en)) return "";
   const h = hace(en, ahora);
-  return h ? relativo.format(h.valor, h.unidad) : t("inicio.ahora");
+  return h ? relativo.value.format(h.valor, h.unidad) : t("inicio.ahora");
 }
 
-function borrar() {
-  recientes.vaciar();
-  toast.success(t("inicio.recientesBorrada"));
-  // La sección desaparece: el foco pasa al botón principal de la página, no se pierde.
-  document.getElementById("inicio-volver")?.focus();
+/** Una acción a la vez: un segundo clic mientras corre no hace nada. */
+const ocupado = ref(false);
+const bloqueado = computed(() => ocupado.value || organizaciones.enCurso);
+
+// Si Inicio se desmonta al cambiar y algo falla, vuelve a mostrarse: el foco, a la entrada desde la que se pidió.
+async function abrir(o: Organizacion) {
+  if (bloqueado.value) return;
+  ocupado.value = true;
+  volverAlTerminar(idEntrada(o.id));
+  const r = await organizaciones.abrir(o.id);
+  ocupado.value = false;
+  if (r.ok) volverAlTerminar(null);
+  else toast.error(r.mensaje);
+}
+
+const preguntas = ref<InstanceType<typeof PreguntaArchivo> | null>(null);
+async function buscar(o: Organizacion) {
+  if (bloqueado.value) return;
+  ocupado.value = true;
+  volverAlTerminar(idEntrada(o.id));
+  const r = await organizaciones.agregarArchivo(
+    (p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false),
+    o.id,
+  );
+  ocupado.value = false;
+  if (!r.ok) return void toast.error(r.mensaje);
+  volverAlTerminar(null);
+  for (const a of r.avisos ?? []) toast.warning(t(`organizaciones.avisoArchivo.${a}`));
+}
+
+// Donde estaba la entrada: la que tomó su lugar, la última si era la última, o el título si no queda ninguna. Con una
+// sola, esta lista se va (la cubre el panel de Inicio): el foco, al título de la página.
+async function enfocarEn(i: number) {
+  await nextTick();
+  const o = organizaciones.recientes[Math.min(i, organizaciones.recientes.length - 1)];
+  enfocarPrimero(o ? idEntrada(o.id) : null, ID_RECIENTES);
+}
+
+const aQuitar = ref<Organizacion | null>(null); // no se limpia al cerrar: el texto sigue ahí mientras el diálogo se va
+const quitando = ref(false);
+let quitada = false;
+function pedirQuitar(o: Organizacion) {
+  if (bloqueado.value) return;
+  aQuitar.value = o;
+  quitada = false;
+  quitando.value = true;
+}
+async function quitar() {
+  const o = aQuitar.value;
+  if (!o || quitada || bloqueado.value) return;
+  quitada = true;
+  const i = organizaciones.recientes.findIndex((x) => x.id === o.id);
+  ocupado.value = true;
+  const r = await organizaciones.quitar(o.id);
+  ocupado.value = false;
+  if (!r.ok) {
+    if (r.codigo === "lista_protegida") organizaciones.listaProtegida = true;
+    toast.error(r.mensaje);
+  }
+  await enfocarEn(i);
+}
+// Con un sí, el foco lo deja `quitar`: la entrada ya no está.
+const alCerrarQuitar = (e: Event) => quitada && e.preventDefault();
+
+const elegida = ref<Organizacion | null>(null);
+const eliminando = ref(false);
+let filaElegida = 0;
+function pedirEliminar(o: Organizacion) {
+  elegida.value = o;
+  filaElegida = organizaciones.recientes.findIndex((x) => x.id === o.id);
+  // La abierta desmonta Inicio, y al volver esta lista puede ya no estar (queda una sola): el foco va al título de la página.
+  eliminando.value = true;
+}
+// Lo que dijo Rust tras un fallo, como que su archivo ya no está.
+watch(
+  () => organizaciones.lista,
+  (lista) => {
+    const ahora = lista.find((o) => o.id === elegida.value?.id);
+    if (ahora) elegida.value = ahora;
+  },
+);
+async function trasEliminar(eliminada: boolean) {
+  await organizaciones.cargarLista();
+  if (eliminada) await enfocarEn(filaElegida);
 }
 </script>
 
 <template>
-  <section v-if="recientes.visibles.length" aria-labelledby="inicio-recientes" class="flex flex-col gap-2">
-    <div class="flex items-center justify-between gap-2">
-      <h2 id="inicio-recientes" class="text-base font-semibold">{{ t("inicio.recientes") }}</h2>
-      <Button type="button" variant="ghost" size="sm" @click="borrar">{{
-        t("inicio.borrarRecientes")
-      }}</Button>
-    </div>
+  <section :aria-labelledby="ID_RECIENTES" class="flex flex-col gap-2">
+    <h2 :id="ID_RECIENTES" tabindex="-1" class="text-base font-semibold outline-none">
+      {{ t("inicio.recientes") }}
+    </h2>
     <ul class="flex flex-col rounded-lg border bg-card">
-      <li v-for="r in recientes.visibles" :key="r.ruta" class="border-b last:border-b-0">
-        <RouterLink
-          :to="r.ruta"
-          class="flex items-center gap-3 px-3 py-2 text-sm hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-        >
-          <component :is="icono(r.ruta)" class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span class="min-w-0 flex-1 truncate" :title="pestanas.titulo(r)">{{ pestanas.titulo(r) }}</span>
-          <span class="shrink-0 text-xs text-muted-foreground">{{ cuando(r.en) }}</span>
-        </RouterLink>
+      <li v-for="o in organizaciones.recientes" :key="o.id" class="border-b last:border-b-0">
+        <div class="flex items-center gap-1 pr-2">
+          <button
+            :id="idEntrada(o.id)"
+            type="button"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-left text-sm not-aria-disabled:hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            :aria-disabled="bloqueado || undefined"
+            @click="abrir(o)"
+          >
+            <span
+              class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border-2 bg-muted font-semibold"
+              :style="{ borderColor: o.color }"
+              aria-hidden="true"
+            >
+              <img
+                v-if="o.logo"
+                :src="`data:image/png;base64,${o.logo}`"
+                alt=""
+                class="size-full object-contain"
+              />
+              <template v-else>{{ inicial(o) }}</template>
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-medium" :title="nombreDe(o)">{{ nombreDe(o) }}</span>
+              <span v-if="!o.existe" class="block text-xs text-destructive">{{
+                t("inicio.sinArchivo")
+              }}</span>
+            </span>
+            <Badge v-if="o.activa" variant="outline" class="shrink-0">{{
+              t("organizaciones.seccion.abierta")
+            }}</Badge>
+            <span v-if="cuando(o.abierta)" class="shrink-0 text-xs text-muted-foreground">{{
+              cuando(o.abierta)
+            }}</span>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button
+                :id="idMenu(o.id)"
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                :aria-label="t('inicio.accionesDe', { nombre: nombreDe(o) })"
+                :title="t('inicio.accionesDe', { nombre: nombreDe(o) })"
+              >
+                <EllipsisVertical aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel
+                v-if="organizaciones.listaProtegida"
+                :id="idProtegida(o.id)"
+                class="max-w-72 text-xs font-normal text-muted-foreground"
+              >
+                {{ t("organizaciones.seccion.protegida") }}
+              </DropdownMenuLabel>
+              <!-- Sin su archivo, buscarlo y quitarla están a la vista, bajo el nombre. -->
+              <DropdownMenuItem
+                v-if="o.existe && !o.activa"
+                :disabled="bloqueado || organizaciones.listaProtegida"
+                :aria-describedby="porProtegida(o.id)"
+                @select="pedirQuitar(o)"
+              >
+                <ListX aria-hidden="true" />
+                {{ t("organizaciones.seccion.quitar") }}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                :disabled="bloqueado || organizaciones.listaProtegida"
+                :aria-describedby="porProtegida(o.id)"
+                @select="pedirEliminar(o)"
+              >
+                <Trash2 aria-hidden="true" />
+                {{ t("inicio.eliminar") }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div v-if="!o.existe" class="flex flex-wrap gap-2 px-3 pb-3 pl-15">
+          <!-- aria-disabled y no disabled mientras corre: el botón no pierde el foco, al que vuelve el diálogo. -->
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="aria-disabled:opacity-50"
+            :aria-busy="ocupado"
+            :aria-disabled="bloqueado || undefined"
+            @click="buscar(o)"
+          >
+            <FileSearch aria-hidden="true" />
+            {{ t("organizaciones.buscarArchivo") }}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="aria-disabled:opacity-50"
+            :disabled="organizaciones.listaProtegida"
+            :aria-disabled="bloqueado || undefined"
+            @click="pedirQuitar(o)"
+          >
+            <ListX aria-hidden="true" />
+            {{ t("organizaciones.seccion.quitar") }}
+          </Button>
+        </div>
       </li>
     </ul>
+    <p role="status" class="text-sm text-muted-foreground empty:sr-only">
+      {{ ocupado ? t("inicio.trabajando") : "" }}
+    </p>
+
+    <PreguntaArchivo ref="preguntas" :titulo="t('organizaciones.buscarArchivo')" />
+
+    <AlertDialog v-model:open="quitando">
+      <AlertDialogContent @close-auto-focus="alCerrarQuitar">
+        <AlertDialogHeader>
+          <AlertDialogTitle class="break-words">
+            {{ t("organizaciones.seccion.quitarTitulo", { nombre: aQuitar ? nombreDe(aQuitar) : "" }) }}
+          </AlertDialogTitle>
+          <AlertDialogDescription class="break-words">
+            {{
+              t(
+                aQuitar?.existe
+                  ? "organizaciones.seccion.quitarTexto"
+                  : "organizaciones.seccion.quitarTextoSinArchivo",
+                { ruta: aQuitar?.ruta ?? "" },
+              )
+            }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{{ t("organizaciones.cancelar") }}</AlertDialogCancel>
+          <AlertDialogAction @click="quitar">{{ t("organizaciones.seccion.quitar") }}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <DialogoEliminarOrganizacion
+      v-if="elegida"
+      v-model:open="eliminando"
+      :organizacion="elegida"
+      @terminado="trasEliminar"
+    />
   </section>
 </template>

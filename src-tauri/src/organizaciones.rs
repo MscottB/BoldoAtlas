@@ -254,7 +254,8 @@ pub fn ruta_de(r: &Rutas, e: &Entrada) -> PathBuf {
     if e.externa {
         PathBuf::from(&e.ruta)
     } else {
-        r.datos.join(&e.ruta)
+        // la lista la guarda con `/`: por partes, para no mezclar separadores en Windows
+        r.datos.join(e.ruta.split('/').collect::<PathBuf>())
     }
 }
 
@@ -1604,6 +1605,18 @@ mod tests_lista {
 
     fn ids(l: &Lista) -> Vec<&str> {
         l.organizaciones.iter().map(|e| e.id.as_str()).collect()
+    }
+
+    #[test]
+    fn la_ruta_interna_se_une_por_partes() {
+        let (_exe, r) = rutas();
+        let id = nuevo_id();
+        let e = Entrada {
+            ruta: ruta_interna(&id),
+            ..Entrada::principal(&id)
+        };
+        let esperada = r.datos.join(CARPETA).join(&id).join(ARCHIVO);
+        assert_eq!(ruta_de(&r, &e).as_os_str(), esperada.as_os_str());
     }
 
     #[test]

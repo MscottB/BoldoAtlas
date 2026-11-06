@@ -7,7 +7,6 @@ import { deLaAbierta } from "@/lib/trabajos";
 import { useOrganizacion } from "./organizacion";
 import { useOrganizaciones } from "./organizaciones";
 
-vi.mock("@/app/proximamente", () => ({ MOSTRAR_PROXIMAMENTE: false, ORGANIZACIONES_VISIBLES: true }));
 const c = vi.hoisted(() => ({
   consultar: vi.fn(),
   leerMeta: vi.fn(),
@@ -27,7 +26,7 @@ beforeEach(() => {
   c.sincronizarOrganizacion.mockResolvedValue(undefined);
 });
 
-describe("con la bandera", () => {
+describe("el nombre de la abierta", () => {
   it("con una sola organización, los trabajos se nombran como hoy", async () => {
     c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa")]);
     const o = useOrganizaciones();
