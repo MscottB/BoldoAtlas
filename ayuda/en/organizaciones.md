@@ -19,7 +19,7 @@ None of the three touches the organization you had open: it stays in your list a
 ## Open and switch
 
 - **Home › Recently opened** shows up to 8 organizations, the one you opened last first, with its logo or initial in a box of its color, the **Open** mark on the one you have open and how long ago you opened it. It appears when there is more than one. One click opens it.
-- **Open another organization…**, in the app menu, and **Open another organization: …**, in the command palette (`Ctrl+K`), offer the others.
+- **Open another organization…**, in the app menu, and **Open another organization: …**, in the command palette (`Ctrl+K`), offer the others in **Recently opened**.
 
 When you open an organization, BoldoAtlas goes to one of its tabs or, if it has none, opens a new one on its tree. While it switches you see **Opening the organization…** instead of the view. If a person's record has changes you have not applied, it asks first, and if work is in progress, such as a backup, it does not switch and asks you to wait until it finishes.
 
@@ -31,7 +31,7 @@ To compare two organizations, keep a tab of each one and move between them with 
 
 ## What is kept apart
 
-Each organization has its own file, with its photos and its logo, and its own backups. Its view preferences are its own too: the state of the tree, the Directory's filters and columns, how people show in a unit's panel and the minimap. The theme, the language, the accent color, the interface size, how often backups and updates run, the sidebar and what happens on closing apply to the whole computer.
+Each organization has its own file, with its photos and its logo, and its own backups. Its view preferences are its own too: the state of the tree, the Directory's filters and columns, how people show in a unit's panel and the minimap. The theme, the language, the accent color, the interface size, how often backups and updates run, the sidebar and what happens on closing apply to all your organizations.
 
 | What | Where, inside the data folder |
 |---|---|
@@ -40,7 +40,7 @@ Each organization has its own file, with its photos and its logo, and its own ba
 | An external file | Where it is; its backups, in `organizaciones/<id>/respaldos/` |
 | Copies saved when deleting | `organizaciones-eliminadas/` |
 
-The data folder is the one in **Home › Where your data lives**. **Project data** shows the path of the open organization's file, and its **Open folder** opens the folder where it is.
+The data folder is the one in [Where your data lives](inicio.md#where-your-data-lives). **Project data** shows the path of the open organization's file, and its **Open folder** opens the folder where it is.
 
 The automatic backup is made for the open organization. With the **Every time** frequency, only the first time you open each organization in the session counts: going back to its tab does not back up again. When you open BoldoAtlas, the last organization you used opens.
 
@@ -65,7 +65,7 @@ Opening someone else's file carries the same risks as importing one: open it onl
 **Delete organization** deletes its file and its backups from the disk. It is in the **⋮** menu of each **Recently opened** entry and in **Settings › Organizations**:
 
 1. Press **Delete organization**, on Home, or **Delete**, in Settings.
-2. Read what is deleted and how much space it frees. **Save a copy first** comes checked: it leaves a copy of the database, without the backups, in **Copies of deleted organizations**.
+2. Read what is deleted and how much space it frees. **Save a copy first** comes checked: it leaves a copy of the database, without the backups, in **Copies of deleted organizations**. For an external file it only appears if you check **Also delete the file**.
 3. Type the organization's name to confirm and press **Delete**.
 
 Its tabs close. If it was the open one, BoldoAtlas first switches to another and goes back to Home; if none is left, it starts with an empty one. For an external file, by default it only leaves the list and its backups are deleted: the file is not touched. To delete it too, check **Also delete the file**, which shows its path.

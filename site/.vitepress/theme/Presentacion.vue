@@ -292,7 +292,7 @@ const TEXTOS = {
         },
         {
           p: "¿Dónde quedan mis datos?",
-          r: "En una base SQLite en tu computador: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas. BoldoAtlas no necesita internet para funcionar y no envía tus datos a ninguna parte.",
+          r: "En tu computador, en una base SQLite por organización: en la carpeta datos/, junto al programa, si usas la portable, o en la carpeta de tu usuario si lo instalas; un archivo que abras desde otra carpeta se queda donde está. BoldoAtlas no necesita internet para funcionar y no envía tus datos a ninguna parte.",
         },
         {
           p: "¿Cómo se junta el trabajo de dos copias?",
@@ -588,7 +588,7 @@ const TEXTOS = {
         },
         {
           p: "Where does my data live?",
-          r: "In a SQLite database on your computer: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it. BoldoAtlas doesn't need the internet to work and sends your data nowhere.",
+          r: "On your computer, in one SQLite database per organization: in the datos/ folder next to the program if you use the portable version, or in your user folder if you install it; a file you open from another folder stays where it is. BoldoAtlas doesn't need the internet to work and sends your data nowhere.",
         },
         {
           p: "How do I merge the work of two copies?",

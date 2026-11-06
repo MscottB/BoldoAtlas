@@ -34,7 +34,7 @@ Cuando la base ya tiene datos, Inicio se ordena para que retomes el trabajo:
 - **Tu organización:** el nombre, los totales de **Unidades**, **Personas**, **Vacantes** y **Avisos de Revisión**, la fecha del **último respaldo** y el botón **Volver a mi organización**, que te lleva a la vista que estaba activa. Cada total abre su vista: las unidades, el **Árbol**; las personas, el **Directorio**; las vacantes y los avisos, **Revisión**.
 - **Abierto recientemente:** las organizaciones que abriste hace poco, la última primero y la abierta marcada **Abierta**. Aparece cuando tienes más de una. Un clic abre una, y su menú **⋮** ofrece **Quitar de la lista** y **Eliminar organización** (ver [Organizaciones](organizaciones.md)).
 - **Accesos rápidos:** **Buscar persona** (abre la paleta de comandos), **Importar/Exportar** y **Respaldos**.
-- **Crear o abrir otra organización:** **Crear organización**, **Abrir archivo…** y **Explorar el ejemplo**. Cada uno deja otra organización aparte y la abre en una pestaña nueva: la que tenías no cambia.
+- **Crear o abrir otra organización:** **Crear organización**, **Abrir archivo…** y **Explorar el ejemplo**. Cada uno abre otra organización, aparte, en una pestaña nueva: la que tenías no cambia.
 
 ![Inicio con la organización cargada: sus totales, la lista de organizaciones abiertas recientemente, los accesos rápidos y los botones para crear o abrir otra.](../img/es/inicio-organizacion.webp "Inicio con datos. 1: tu organización y sus totales. 2: abierto recientemente. 3: accesos rápidos. 4: crear o abrir otra organización."){width=784 height=818}
 
@@ -81,7 +81,7 @@ El título de la ventana y la barra superior muestran el nombre de la organizaci
 
 ## Modo portable e instalado
 
-- **Portable:** extraes el zip de tu sistema en cualquier carpeta (o en un pendrive) y abres el programa que trae. Todo (datos, respaldos y preferencias) queda en la carpeta `datos/`, junto al programa, y nada se escribe fuera de ella (salvo en macOS: las preferencias de la ventana, ver más abajo). Funciona porque junto al programa hay un archivo `portable.flag`. Extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos.
+- **Portable:** extraes el zip de tu sistema en cualquier carpeta (o en un pendrive) y abres el programa que trae. Todo (datos, respaldos y preferencias) queda en la carpeta `datos/`, junto al programa, y nada se escribe fuera de ella, salvo en los archivos externos que abras con **Abrir archivo…**, que se quedan donde están (y en macOS, las preferencias de la ventana, ver más abajo). Funciona porque junto al programa hay un archivo `portable.flag`. Extrae el zip antes de ejecutar: abrirlo desde dentro del zip impide guardar los datos.
 - **Instalado:** lo instalas con el instalador de tu sistema y los datos quedan en la carpeta de datos de tu usuario.
 
 | Sistema | Portable | Instalador | Datos del instalado |

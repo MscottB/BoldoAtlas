@@ -47,7 +47,7 @@ It is designed for **large organizations**: very big trees, several independent 
 
 ## Download
 
-Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (it is an alpha version: a test release). Each system has a **portable** version, the main one: a zip you extract into any folder (or onto a USB drive) that keeps everything in `datos/`, next to the program, and writes nothing outside that folder (except on macOS: the window preferences, see below). And an **installer**, which keeps the data in your user folder.
+Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (it is an alpha version: a test release). Each system has a **portable** version, the main one: a zip you extract into any folder (or onto a USB drive) that keeps everything in `datos/`, next to the program, and writes nothing outside that folder, except in external files you open with **Open file…**, which stay where they are (and on macOS, the window preferences, see below). And an **installer**, which keeps the data in your user folder.
 
 | System | Portable | Installer | Installed data |
 |---|---|---|---|
@@ -73,7 +73,7 @@ Opening BoldoAtlas when it's already open brings its window to the front. Instal
 
 BoldoAtlas checks for new versions when opening and every day (portable and installed; change how often in Settings) and shows a notice on Home and in the top bar; you can also use **Check for updates** in About, in the app menu or with Ctrl+K. The update window shows the notes of every version you skipped and never installs without confirmation. Every package is signed and rejected if the signature doesn't match.
 
-- **Windows portable:** replaces `BoldoAtlas.exe` inside its folder (the previous one stays as `BoldoAtlas.old.exe` until the next start) and restarts; `datos/` is not touched and nothing is written outside the folder. One trace stays outside, written by Windows rather than BoldoAtlas: the registry (`HKCU\Control Panel\NotifyIconSettings`) records the path of every program that shows a tray icon.
+- **Windows portable:** replaces `BoldoAtlas.exe` inside its folder (the previous one stays as `BoldoAtlas.old.exe` until the next start) and restarts; `datos/` is not touched and nothing is written outside the folder. Apart from external files you open, one trace stays outside, written by Windows rather than BoldoAtlas: the registry (`HKCU\Control Panel\NotifyIconSettings`) records the path of every program that shows a tray icon.
 - **Linux and macOS portable:** replaces the AppImage or the `.app` in its folder; temporary files go in `datos/`.
 - **Installed:** Windows runs the new installer, macOS replaces the `.app` and the AppImage replaces itself.
 - **`.deb` and `.rpm`:** the system updates them; BoldoAtlas only offers to download the new package.

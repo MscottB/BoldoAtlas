@@ -129,12 +129,12 @@
     "imagen": "exportar-alcance",
     "es": {
       "titulo": "Lleva tu organización a otro computador",
-      "texto": "Guarda toda la base, o solo algunas ramas, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves lo que trae y eliges: abrirlo como una organización nueva, agregar lo nuevo, revisar y decidir, o reemplazar todo. Antes de cambiar tus datos, BoldoAtlas hace un respaldo.",
+      "texto": "Guarda toda la base, o solo algunas ramas, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves lo que trae y eliges: traerlo como una organización nueva, agregar lo nuevo, revisar y decidir, o reemplazar todo. Antes de cambiar tus datos, BoldoAtlas hace un respaldo.",
       "alt": "Exportar con la opción de uno o más árboles o ramas y la lista de unidades con una rama marcada."
     },
     "en": {
       "titulo": "Take your organization to another computer",
-      "texto": "Save the whole database, or just some branches, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries and choose: open it as a new organization, add what is new, review and decide, or replace everything. Before changing your data, BoldoAtlas makes a backup.",
+      "texto": "Save the whole database, or just some branches, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries and choose: bring it in as a new organization, add what is new, review and decide, or replace everything. Before changing your data, BoldoAtlas makes a backup.",
       "alt": "Export with the option of one or more trees or branches and the list of units with one branch checked."
     }
   },

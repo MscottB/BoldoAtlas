@@ -19,7 +19,7 @@ Ninguna de las tres toca la organización que tenías abierta: sigue en tu lista
 ## Abrir y cambiar
 
 - **Inicio › Abierto recientemente** muestra hasta 8 organizaciones, la última que abriste primero, con su logo o su inicial en un recuadro de su color, la marca **Abierta** en la que tienes abierta y hace cuánto la abriste. Aparece cuando hay más de una. Un clic la abre.
-- **Abrir otra organización…**, en el menú de la app, y **Abrir otra organización: …**, en la paleta de comandos (`Ctrl+K`), ofrecen las demás.
+- **Abrir otra organización…**, en el menú de la app, y **Abrir otra organización: …**, en la paleta de comandos (`Ctrl+K`), ofrecen las demás de **Abierto recientemente**.
 
 Al abrir una organización, BoldoAtlas pasa a una de sus pestañas o, si no tiene ninguna, abre una nueva en su árbol. Mientras cambia se ve **Abriendo la organización…** en lugar de la vista. Si tienes una ficha con cambios sin aplicar, pregunta antes, y si hay un trabajo en curso, como un respaldo, no cambia y te pide esperar a que termine.
 
@@ -31,7 +31,7 @@ Para comparar dos organizaciones, deja una pestaña de cada una y pasa de una a 
 
 ## Qué se guarda aparte
 
-Cada organización tiene su propio archivo, con sus fotos y su logo, y sus propios respaldos. Las preferencias de sus vistas también son suyas: el estado del árbol, los filtros y columnas del Directorio, cómo se ven las personas en el panel de una unidad y el minimapa. El tema, el idioma, el color de acento, el tamaño de la interfaz, la frecuencia de los respaldos y de las actualizaciones, la barra lateral y lo que pasa al cerrar valen para todo el computador.
+Cada organización tiene su propio archivo, con sus fotos y su logo, y sus propios respaldos. Las preferencias de sus vistas también son suyas: el estado del árbol, los filtros y columnas del Directorio, cómo se ven las personas en el panel de una unidad y el minimapa. El tema, el idioma, el color de acento, el tamaño de la interfaz, la frecuencia de los respaldos y de las actualizaciones, la barra lateral y lo que pasa al cerrar valen para todas tus organizaciones.
 
 | Qué | Dónde, dentro de la carpeta de datos |
 |---|---|
@@ -40,7 +40,7 @@ Cada organización tiene su propio archivo, con sus fotos y su logo, y sus propi
 | Un archivo externo | Donde está; sus respaldos, en `organizaciones/<id>/respaldos/` |
 | Las copias guardadas al eliminar | `organizaciones-eliminadas/` |
 
-La carpeta de datos es la de **Inicio › Dónde quedan tus datos**. **Datos del proyecto** muestra la ruta del archivo de la organización abierta, y su **Abrir carpeta** abre la carpeta donde está.
+La carpeta de datos es la de [Dónde quedan tus datos](inicio.md#donde-quedan-tus-datos). **Datos del proyecto** muestra la ruta del archivo de la organización abierta, y su **Abrir carpeta** abre la carpeta donde está.
 
 El respaldo automático se hace para la organización abierta. Con la frecuencia **Cada vez**, cuenta solo la primera vez que abres cada organización en la sesión: volver a su pestaña no respalda de nuevo. Al abrir BoldoAtlas se abre la última organización que usaste.
 
@@ -65,7 +65,7 @@ Abrir un archivo de otra persona trae los mismos riesgos que importar uno: ábre
 **Eliminar organización** borra del disco su archivo y sus respaldos. Está en el menú **⋮** de cada entrada de **Abierto recientemente** y en **Configuración › Organizaciones**:
 
 1. Pulsa **Eliminar organización**, en Inicio, o **Eliminar**, en Configuración.
-2. Lee qué se borra y cuánto espacio libera. **Guardar una copia antes** viene marcada: deja una copia de la base, sin los respaldos, en **Copias de organizaciones eliminadas**.
+2. Lee qué se borra y cuánto espacio libera. **Guardar una copia antes** viene marcada: deja una copia de la base, sin los respaldos, en **Copias de organizaciones eliminadas**. En un archivo externo solo aparece si marcas **Borrar también el archivo**.
 3. Escribe el nombre de la organización para confirmar y pulsa **Eliminar**.
 
 Sus pestañas se cierran. Si era la abierta, antes se pasa a otra y se vuelve a Inicio; si no queda ninguna, se empieza con una vacía. De un archivo externo, por defecto solo sale de la lista y se borran sus respaldos: el archivo no se toca. Para borrarlo también, marca **Borrar también el archivo**, que muestra su ruta.

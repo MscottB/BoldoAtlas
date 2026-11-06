@@ -47,7 +47,7 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 
 ## Descarga
 
-Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (es una versión alfa: de prueba). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta (salvo en macOS: las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
+Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (es una versión alfa: de prueba). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta, salvo en los archivos externos que abras con **Abrir archivo…**, que se quedan donde están (y en macOS, las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
 
 | Sistema | Portable | Instalador | Datos del instalado |
 |---|---|---|---|
@@ -73,7 +73,7 @@ Abrir BoldoAtlas cuando ya está abierto trae su ventana al frente. La instalada
 
 BoldoAtlas busca versiones nuevas al abrir y cada día (en la portable y en el instalado; el plazo se cambia en Configuración) y avisa en Inicio y en la barra superior; también con **Buscar actualizaciones** en Acerca de, en el menú de la app o con Ctrl+K. La ventana de actualización muestra las notas de todas las versiones que te saltaste y nunca instala sin confirmar. Cada paquete va firmado y se rechaza si la firma no calza.
 
-- **Portable de Windows:** reemplaza `BoldoAtlas.exe` dentro de su carpeta (el anterior queda como `BoldoAtlas.old.exe` hasta el siguiente arranque) y se reinicia; `datos/` no se toca y nada se escribe fuera de la carpeta. Un solo rastro queda fuera, y no lo escribe BoldoAtlas: Windows anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja.
+- **Portable de Windows:** reemplaza `BoldoAtlas.exe` dentro de su carpeta (el anterior queda como `BoldoAtlas.old.exe` hasta el siguiente arranque) y se reinicia; `datos/` no se toca y nada se escribe fuera de la carpeta. Aparte de los archivos externos que abras, un solo rastro queda fuera, y no lo escribe BoldoAtlas: Windows anota en el registro (`HKCU\Control Panel\NotifyIconSettings`) la ruta de todo programa que muestra un icono en la bandeja.
 - **Portable de Linux y macOS:** reemplaza el AppImage o el `.app` en su carpeta; los temporales van en `datos/`.
 - **Instalado:** Windows corre el instalador nuevo, macOS reemplaza el `.app` y el AppImage se reemplaza a sí mismo.
 - **`.deb` y `.rpm`:** los actualiza el sistema; BoldoAtlas solo ofrece descargar el paquete nuevo.

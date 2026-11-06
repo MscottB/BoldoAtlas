@@ -34,7 +34,7 @@ When the database already has data, Home is arranged so you can pick up your wor
 - **Your organization:** the name, the totals of **Units**, **People**, **Vacancies** and **Review warnings**, the date of the **last backup** and the **Back to my organization** button, which takes you to the view that was active. Each total opens its view: units, the **Tree**; people, the **Directory**; vacancies and warnings, **Review**.
 - **Recently opened:** the organizations you opened lately, the last one first and the open one marked **Open**. It appears when you have more than one. One click opens one, and its **⋮** menu offers **Remove from list** and **Delete organization** (see [Organizations](organizaciones.md)).
 - **Quick access:** **Find a person** (opens the command palette), **Import/Export** and **Backups**.
-- **Create or open another organization:** **Create organization**, **Open file…** and **Explore the example**. Each one leaves another organization apart and opens it in a new tab: the one you had does not change.
+- **Create or open another organization:** **Create organization**, **Open file…** and **Explore the example**. Each one opens another organization, apart, in a new tab: the one you had does not change.
 
 ![Home with the organization loaded: its totals, the list of recently opened organizations, the quick access buttons and the buttons to create or open another one.](../img/en/inicio-organizacion.webp "Home with data. 1: your organization and its totals. 2: recently opened. 3: quick access. 4: create or open another organization."){width=784 height=818}
 
@@ -81,7 +81,7 @@ The window title and the top bar show the name of the open organization; the bar
 
 ## Portable and installed mode
 
-- **Portable:** extract the zip for your system into any folder (or onto a USB drive) and open the program inside. Everything (data, backups and preferences) stays in the `datos/` folder next to the program, and nothing is written outside it (except on macOS: the window preferences, see below). It works because a `portable.flag` file sits next to the program. Extract the zip before running: opening it from inside the zip prevents data from being saved.
+- **Portable:** extract the zip for your system into any folder (or onto a USB drive) and open the program inside. Everything (data, backups and preferences) stays in the `datos/` folder next to the program, and nothing is written outside it, except in external files you open with **Open file…**, which stay where they are (and on macOS, the window preferences, see below). It works because a `portable.flag` file sits next to the program. Extract the zip before running: opening it from inside the zip prevents data from being saved.
 - **Installed:** install it with your system's installer and the data goes to your user's data folder.
 
 | System | Portable | Installer | Installed data |

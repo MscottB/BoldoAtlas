@@ -147,7 +147,7 @@ async function trasEliminar(eliminada: boolean) {
           <button
             :id="idEntrada(o.id)"
             type="button"
-            class="flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-left text-sm not-aria-disabled:hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             :aria-disabled="bloqueado || undefined"
             @click="abrir(o)"
           >
