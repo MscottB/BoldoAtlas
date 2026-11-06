@@ -4,16 +4,25 @@ import { BaseCambiada } from "@/lib/baseActiva";
 import { conRespaldoPrevio, mensajeFallo, mensajeOrganizacion } from "./respaldos";
 
 describe("un archivo que no se deja abrir", () => {
-  it("no se da por malo; uno dañado de verdad no culpa a otro programa", () => {
-    expect(mensajeOrganizacion({ codigo: "contenido_invalido", detalle: "no_abre" })).toContain(
-      "otro programa",
-    );
-    expect(i18n.global.te("respaldos.error.contenido_invalido_no_abre", "en")).toBe(true);
+  const de = (detalle: string) => mensajeOrganizacion({ codigo: "contenido_invalido", detalle });
+
+  it("dice por qué según el sistema; uno dañado de verdad no culpa a otro programa", () => {
+    expect(de("retenido")).toContain("Otro programa está usando");
+    expect(de("sin_causa")).toContain("Puede que otro programa");
+    expect(de("no_se_puede")).toContain("no lo arregla");
+    expect(de("no_esta")).toContain("ya no está");
     expect(mensajeOrganizacion({ codigo: "danado", detalle: "x" })).not.toContain("otro programa");
-    expect(mensajeOrganizacion({ codigo: "contenido_invalido", detalle: "esquema" })).not.toContain(
-      "otro programa",
-    );
+    expect(de("esquema")).not.toContain("otro programa");
   });
+
+  it.each(["retenido", "sin_causa", "no_se_puede", "no_esta"])(
+    "%s: tiene texto en los dos idiomas, que no repite «no se pudo abrir» del título",
+    (detalle) => {
+      for (const idioma of ["es", "en"] as const)
+        expect(i18n.global.te(`respaldos.error.contenido_invalido_${detalle}`, idioma), idioma).toBe(true);
+      expect(de(detalle)).not.toMatch(/no se pudo abrir/i);
+    },
+  );
 });
 
 describe("mensajeFallo", () => {

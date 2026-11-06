@@ -22,6 +22,7 @@ import { useOrganizaciones } from "@/stores/organizaciones";
 import {
   aconsejaSinCopia,
   claveAbierta,
+  claveConsejoCopia,
   claveFalloFuera,
   claveHecha,
   claveQueSeBorra,
@@ -241,7 +242,7 @@ const alCerrar = (e: Event) => eliminada && e.preventDefault();
           <p v-if="codigo === 'no_encontrado'">{{ t("organizaciones.eliminar.noEncontrado") }}</p>
           <p v-else-if="codigo === 'fallo'">{{ t("organizaciones.eliminar.trasFallo") }}</p>
           <p v-else-if="ofreceCopia && copia && aconsejaSinCopia(codigo, detalle)">
-            {{ t("organizaciones.eliminar.sinPoderCopiar") }}
+            {{ t(`organizaciones.eliminar.${claveConsejoCopia(codigo, detalle)}`) }}
           </p>
           <p v-if="!escrito && codigo !== 'lista_protegida'">{{ t("organizaciones.eliminar.escribeOtraVez") }}</p>
         </div>

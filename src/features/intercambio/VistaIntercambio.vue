@@ -28,14 +28,11 @@ const caminos = [
     <header>
       <h1 class="text-lg font-semibold">{{ t("nav.importarExportar") }}</h1>
       <p class="text-sm text-muted-foreground">{{ t("intercambio.ayuda") }}</p>
+      <!-- Siempre presente y visible: un lector de pantalla solo anuncia lo que cambia dentro de una región que ya existía. -->
+      <p role="status" class="text-sm">
+        {{ organizacionEnCreacion ? t("intercambio.importar.nuevaEnCurso", { nombre: organizacionEnCreacion }) : "" }}
+      </p>
     </header>
-
-    <!-- Siempre presente: un lector de pantalla solo anuncia lo que cambia dentro de una región que ya existía. -->
-    <p role="status" class="text-sm empty:hidden">
-      <template v-if="organizacionEnCreacion">
-        {{ t("intercambio.importar.nuevaEnCurso", { nombre: organizacionEnCreacion }) }}
-      </template>
-    </p>
 
     <ul v-if="!accion" class="grid gap-3 sm:grid-cols-2">
       <li v-for="c in caminos" :key="c.id">

@@ -127,10 +127,10 @@ describe("la abierta, para la barra y la bandeja", () => {
 
   it("un archivo que no se deja abrir no se da por malo, y se puede reintentar", async () => {
     const { p, o } = await arrancar(null);
-    c.abrirOrganizacion.mockRejectedValueOnce(fallo("contenido_invalido", "no_abre"));
+    c.abrirOrganizacion.mockRejectedValueOnce(fallo("contenido_invalido", "retenido"));
     expect(await o.abrir("B")).toEqual({ ok: true });
     const motivo = o.sinAbrir.get(p.activa)!;
-    expect(motivo.mensaje).toContain("otro programa");
+    expect(motivo.mensaje).toContain("Otro programa está usando");
     expect(motivo.mensaje).not.toContain("no es una organización válida");
     expect(await o.activarPestana(p.activa)).toEqual({ ok: true });
     expect(baseActual()).toBe("B");

@@ -26,6 +26,8 @@ use tauri_plugin_opener::OpenerExt;
 
 /// Cuánto espera un cambio de organización a que terminen los trabajos en curso.
 const ESPERA_TRABAJOS: Duration = Duration::from_secs(2);
+/// Cuánto espera reiniciar a que termine una organización que se está creando desde un archivo.
+const ESPERA_CREACION: Duration = Duration::from_secs(30);
 
 /// El texto que `errores.ts` reconoce para volver a decirlo en el idioma activo.
 fn motivo_de_apertura(f: Fallo) -> String {
@@ -63,6 +65,8 @@ pub struct Estado {
     aviso_inicio: Mutex<Option<AvisoInicio>>,
     /// Viene `app.restart`: ya no empieza otra organización desde un archivo.
     reiniciando: AtomicBool,
+    /// Lo toma `como_nueva` mientras crea, dentro de `lista`. Lo espera `antes_de_reiniciar`.
+    creando: Mutex<()>,
 }
 
 type ArchivoPendiente = (PathBuf, Option<String>, Vec<&'static str>);
@@ -119,6 +123,7 @@ impl Estado {
             error: Mutex::new(error),
             aviso_inicio: Mutex::new(None),
             reiniciando: AtomicBool::new(false),
+            creando: Mutex::new(()),
         }
     }
 
@@ -139,6 +144,7 @@ impl Estado {
             error: Mutex::new(None),
             aviso_inicio: Mutex::new(None),
             reiniciando: AtomicBool::new(false),
+            creando: Mutex::new(()),
         }
     }
 
@@ -641,6 +647,8 @@ impl Estado {
         let i = sesiones.tomar_importacion(trabajo)?;
         let hecho = {
             let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            // dentro de `lista`, y no toma nada más: no cierra ningún ciclo con `conn`, `lista` o `base`
+            let _creando = self.creando.lock().unwrap_or_else(|p| p.into_inner());
             if self.reiniciando.load(Ordering::SeqCst) {
                 Err(Fallo::de("trabajo_en_curso", ""))
             } else {
@@ -655,11 +663,21 @@ impl Estado {
         hecho
     }
 
-    /// Justo antes de `app.restart`, que cortaría `como_nueva` y dejaría una carpeta sin listar. Esa toma la lista todo el tiempo: se
-    /// espera a que la suelte, y no empieza otra. Se suelta antes de reiniciar: al salir se cierra la base, y que nada dependa de esto.
+    /// Justo antes de `app.restart`, que cortaría `como_nueva` y dejaría una carpeta sin listar: se espera a que termine, y no empieza
+    /// otra. Solo `creando`, no `lista`, que también retiene leer un archivo elegido en una unidad que puede colgarse. Con tope: lo ya
+    /// hecho (una base restaurada) no se queda sin reiniciar bajo una interfaz vieja. No retiene nada al volver.
     fn antes_de_reiniciar(&self) {
+        self.antes_de_reiniciar_con(ESPERA_CREACION);
+    }
+
+    fn antes_de_reiniciar_con(&self, espera: Duration) {
         self.reiniciando.store(true, Ordering::SeqCst);
-        drop(self.lista.lock().unwrap_or_else(|p| p.into_inner()));
+        let limite = Instant::now() + espera;
+        while matches!(self.creando.try_lock(), Err(TryLockError::WouldBlock))
+            && Instant::now() < limite
+        {
+            std::thread::sleep(Duration::from_millis(25));
+        }
     }
 
     /// La carpeta de la base abierta: con `boldo.db`, la de datos.
@@ -1216,8 +1234,9 @@ pub fn info_proyecto(estado: State<Estado>, base_id: String) -> Result<InfoProye
     Ok(rutas::info_proyecto(estado.rutas()?, &base)?)
 }
 
-/// Abre la carpeta de la base abierta, conocida por Rust; la interfaz nunca envía una ruta.
-#[tauri::command]
+/// Abre la carpeta de la base abierta, conocida por Rust; la interfaz nunca envía una ruta. Fuera del hilo de la ventana: una
+/// externa en una unidad quitada no la congela.
+#[tauri::command(async)]
 pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
     let r = estado.rutas()?;
     abrir_carpeta(&app, r, &estado.carpeta_abierta(r))
@@ -4111,7 +4130,7 @@ mod como_nueva {
         let e = Estado::de_prueba(None, None, Some(r.clone()));
         let (listo, hecho) = mpsc::channel();
         std::thread::scope(|hilos| {
-            let creando = e.lista.lock().unwrap();
+            let creando = e.creando.lock().unwrap();
             hilos.spawn(|| {
                 e.antes_de_reiniciar();
                 listo.send(()).unwrap();
@@ -4125,6 +4144,25 @@ mod como_nueva {
         assert!(cargar_lista(&r).organizaciones.is_empty());
         // el archivo sigue abierto en la sesión, como en cualquier otro fallo
         assert!(s.importacion(TRABAJO).is_ok());
+    }
+
+    /// Una creación que no termina, o una lista retenida por una unidad colgada, no dejan sin reiniciar lo ya hecho.
+    #[test]
+    fn reiniciar_no_espera_mas_que_el_tope_ni_a_la_lista() {
+        let (_exe, r) = rutas();
+        let e = Estado::de_prueba(None, None, Some(r));
+        let _lista = e.lista.lock().unwrap();
+        let t = Instant::now();
+        e.antes_de_reiniciar_con(Duration::from_secs(5));
+        assert!(t.elapsed() < Duration::from_secs(1), "{:?}", t.elapsed());
+
+        let _creando = e.creando.lock().unwrap();
+        let t = Instant::now();
+        e.antes_de_reiniciar_con(Duration::from_millis(300));
+        let pasado = t.elapsed();
+        assert!(pasado >= Duration::from_millis(300), "{pasado:?}");
+        assert!(pasado < Duration::from_secs(2), "{pasado:?}");
+        assert!(e.reiniciando.load(Ordering::SeqCst));
     }
 
     #[test]

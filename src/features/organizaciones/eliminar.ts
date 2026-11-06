@@ -1,6 +1,6 @@
 import { computed, ref, watch } from "vue";
 import type { AvanceEliminar, Organizacion } from "@/db/cliente";
-import type { Pestana } from "@/features/pestanas/pestanas";
+import { sePuedeReintentar, type Pestana } from "@/features/pestanas/pestanas";
 
 /** El título de la sección: adonde va el foco si lo que lo tenía ya no está. */
 export const ID_SECCION = "cfg-organizaciones";
@@ -122,6 +122,17 @@ export function claveFalloFuera(f: { pasoAOtra: boolean; sigueEnLaLista: boolean
   if (!f.pasoAOtra) return null;
   if (f.sigueEnLaLista === null) return "falloYaEnOtraSinLista";
   return f.sigueEnLaLista ? "falloYaEnOtra" : "falloSinVuelta";
+}
+
+/**
+ * Qué se aconseja bajo el motivo, sin repetirlo: si ya dice que se cierre el otro programa, solo cómo reintentar; si reintentar
+ * no lo arregla, solo eliminar sin copia.
+ */
+export function claveConsejoCopia(codigo: string, detalle: string): string {
+  if (sePuedeReintentar({ codigo, detalle })) return "sinCopiaSiSigue";
+  if (codigo === "contenido_invalido" && (detalle === "no_se_puede" || detalle === "no_esta"))
+    return "sinCopiaPosible";
+  return "sinPoderCopiar";
 }
 
 /** Si conviene decir que se puede eliminar sin copia. Con un enlace no: lo que falla es borrarlo, no copiarlo. */

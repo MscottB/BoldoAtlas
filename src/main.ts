@@ -12,6 +12,7 @@ import { migrarPreferencias } from "./lib/preferencias";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
+import { sePuedeReintentar } from "./features/pestanas/pestanas";
 import { useRecientes } from "./features/inicio/useRecientes";
 import { iniciarRespaldoAutomatico, mensajeOrganizacion } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
@@ -50,7 +51,10 @@ infoApp()
     app.mount("#app");
     if (info.avisoInicio)
       toast.warning(i18n.global.t("organizaciones.avisoInicio", { nombre: info.avisoInicio.nombre }), {
-        description: mensajeOrganizacion(info.avisoInicio),
+        // aquí no hay botón para reintentar: se dice dónde
+        description: sePuedeReintentar(info.avisoInicio)
+          ? `${mensajeOrganizacion(info.avisoInicio)} ${i18n.global.t("organizaciones.reabrirDesdeMenu")}`
+          : mensajeOrganizacion(info.avisoInicio),
         duration: Infinity,
       });
     iniciarRespaldoAutomatico();

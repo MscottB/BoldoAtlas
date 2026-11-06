@@ -3248,7 +3248,7 @@ mod tests_archivo {
             .unwrap();
         assert_eq!(
             (f.codigo, f.detalle.as_str()),
-            ("contenido_invalido", "no_abre")
+            ("contenido_invalido", "retenido")
         );
         drop(retenida);
         assert!(abrir_entrada(&r, &i, ESPERA_CAMBIO, MIGRACIONES).is_ok());

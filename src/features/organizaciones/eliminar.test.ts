@@ -4,6 +4,7 @@ import type { Organizacion } from "@/db/cliente";
 import {
   aconsejaSinCopia,
   claveAbierta,
+  claveConsejoCopia,
   claveFalloFuera,
   claveHecha,
   claveQueSeBorra,
@@ -331,5 +332,18 @@ describe("aconsejaSinCopia", () => {
     ["no_encontrado", "x", false],
   ])("%s (%s): %s", (codigo, detalle, si) => {
     expect(aconsejaSinCopia(codigo, detalle)).toBe(si);
+  });
+});
+
+describe("claveConsejoCopia", () => {
+  it.each([
+    ["contenido_invalido", "retenido", "sinCopiaSiSigue"], // el motivo ya dice que se cierre el otro programa
+    ["contenido_invalido", "sin_causa", "sinCopiaSiSigue"],
+    ["contenido_invalido", "no_se_puede", "sinCopiaPosible"], // reintentar no lo arregla
+    ["contenido_invalido", "no_esta", "sinCopiaPosible"],
+    ["contenido_invalido", "journal", "sinPoderCopiar"],
+    ["danado", "x", "sinPoderCopiar"],
+  ])("%s (%s): %s", (codigo, detalle, clave) => {
+    expect(claveConsejoCopia(codigo, detalle)).toBe(clave);
   });
 });

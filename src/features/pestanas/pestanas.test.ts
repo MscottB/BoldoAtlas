@@ -47,13 +47,16 @@ describe("sePuedeReintentar", () => {
   it.each([
     ["fallo", ""],
     ["abierta_en_otra_copia", "x"],
-    ["contenido_invalido", "no_abre"],
+    ["contenido_invalido", "retenido"],
+    ["contenido_invalido", "sin_causa"],
   ])("%s %s: lo que puede pasar solo se reintenta", (codigo, detalle) => {
     expect(sePuedeReintentar({ codigo, detalle })).toBe(true);
   });
 
   it.each([
     ["danado", "file is not a database"],
+    ["contenido_invalido", "no_se_puede"],
+    ["contenido_invalido", "no_esta"],
     ["contenido_invalido", ""],
     ["contenido_invalido", "red"],
     ["contenido_invalido", "journal"],
