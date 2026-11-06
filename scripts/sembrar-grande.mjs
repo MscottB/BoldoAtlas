@@ -1,11 +1,12 @@
 // Solo desarrollo (la app no lo importa): crea una base de prueba grande para medir el rendimiento en una copia portable.
 // 2.000 unidades de varios tipos, 3.000 puestos, 10.000 personas con asignaciones (reemplazos e historial), leyendas,
-// marcas y vistas guardadas para la medición. Uso:
-//   node scripts/sembrar-grande.mjs <carpeta del exe portable>/datos/boldo.db
+// marcas y vistas guardadas para la medición. Con --fotos N, las primeras N personas tienen foto. Uso:
+//   node scripts/sembrar-grande.mjs <carpeta del exe portable>/datos/boldo.db [--fotos N]
 // La base no debe existir: así nunca se escribe sobre datos reales.
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
+import { crc32, deflateSync, inflateSync } from "node:zlib";
 import { v7 } from "uuid";
 
 const UNIDADES = 2000;
@@ -19,8 +20,46 @@ const TIPO = {
 };
 
 const ruta = process.argv[2];
-if (!ruta) throw new Error("Falta la ruta de la base: node scripts/sembrar-grande.mjs <ruta>/boldo.db");
+if (!ruta || ruta.startsWith("--"))
+  throw new Error("Falta la ruta de la base: node scripts/sembrar-grande.mjs <ruta>/boldo.db [--fotos N]");
 if (existsSync(ruta)) throw new Error(`${ruta} ya existe: este script solo crea bases nuevas.`);
+const conFotos = process.argv.indexOf("--fotos");
+const FOTOS = conFotos > 0 ? Number(process.argv[conFotos + 1]) : 0;
+if (!Number.isInteger(FOTOS) || FOTOS < 0 || FOTOS > PERSONAS)
+  throw new Error(`--fotos espera un entero de 0 a ${PERSONAS}`);
+
+// Como una foto que optimizó la app (256 px, de 11 a 24 KB): PNG gris con 3 bits de ruido, distinta por persona. Sin
+// `azar`: el resto de la base es el mismo con o sin --fotos.
+const LADO_FOTO = 256;
+function fotoPng(n) {
+  const filas = Buffer.alloc(LADO_FOTO * (LADO_FOTO + 1)); // cada fila empieza con su filtro: 0, ninguno
+  let x = (n + 1) * 2654435761;
+  for (let f = 0; f < LADO_FOTO; f++)
+    for (let c = 0; c < LADO_FOTO; c++) {
+      x ^= x << 13; // xorshift32
+      x ^= x >>> 17;
+      x ^= x << 5;
+      filas[f * (LADO_FOTO + 1) + 1 + c] = 32 + (f >> 6) * 56 + (x & 3); // cuatro franjas y 2 bits de ruido
+    }
+  const trozo = (tipo, datos) => {
+    const cuerpo = Buffer.concat([Buffer.from(tipo, "ascii"), datos]);
+    const largo = Buffer.alloc(4);
+    largo.writeUInt32BE(datos.length);
+    const control = Buffer.alloc(4);
+    control.writeUInt32BE(crc32(cuerpo));
+    return Buffer.concat([largo, cuerpo, control]);
+  };
+  const cabecera = Buffer.alloc(13); // ancho, alto, 8 bits, gris, sin entrelazar
+  cabecera.writeUInt32BE(LADO_FOTO, 0);
+  cabecera.writeUInt32BE(LADO_FOTO, 4);
+  cabecera[8] = 8;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    trozo("IHDR", cabecera),
+    trozo("IDAT", deflateSync(filas)),
+    trozo("IEND", Buffer.alloc(0)),
+  ]);
+}
 
 // mulberry32: la misma base en cada corrida
 let semilla = 20261028;
@@ -193,6 +232,7 @@ const personas = Array.from({ length: PERSONAS }, (_, i) => {
     tipo_contrato_id: elegir(contratos),
     sede_id: elegir(sedes),
     jornada_id: elegir(jornadas),
+    ...(i < FOTOS && { foto_png: fotoPng(i).toString("base64") }),
   });
   return id;
 });
@@ -259,8 +299,16 @@ assert.equal(contar("SELECT count(*) FROM trabajadores"), PERSONAS);
 assert.ok(siguiente <= PERSONAS, "faltaron personas para las asignaciones");
 assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
 assert.equal(contar("PRAGMA integrity_check"), "ok");
+assert.equal(contar("SELECT count(*) FROM trabajadores WHERE foto_png IS NOT NULL"), FOTOS);
+// una foto que la app sirva: firma de PNG, 256 × 256 y todas sus filas
+const foto = fotoPng(FOTOS);
+assert.equal(foto.readUInt32BE(16), LADO_FOTO);
+assert.equal(foto.readUInt32BE(20), LADO_FOTO);
+assert.equal(inflateSync(foto.subarray(41, foto.length - 16)).length, LADO_FOTO * (LADO_FOTO + 1));
+assert.notDeepEqual(fotoPng(0), fotoPng(1));
 console.log(
-  `Lista ${ruta}: ${UNIDADES} unidades, ${PUESTOS} puestos, ${PERSONAS} personas, ` +
+  `Lista ${ruta}: ${UNIDADES} unidades, ${PUESTOS} puestos, ${PERSONAS} personas ` +
+    `(${FOTOS} con foto${FOTOS ? `, de ${Math.round(foto.length / 1024)} KB cada una` : ""}), ` +
     `${contar("SELECT count(*) FROM asignaciones")} asignaciones ` +
     `(${contar("SELECT count(*) FROM asignaciones WHERE hasta IS NULL AND tipo = 'titular'")} titulares vigentes, ` +
     `${contar("SELECT count(*) FROM asignaciones WHERE hasta IS NULL AND tipo = 'reemplazo'")} reemplazos, ` +
