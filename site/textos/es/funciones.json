@@ -50,7 +50,7 @@
       "puntos": [
         "Una línea punteada por el espacio libre entre las tarjetas, con una flecha hacia la unidad de destino.",
         "Se crea con «Conectar con…» desde la tarjeta o el panel de la unidad; si la otra está en una rama plegada, la rama se abre sola.",
-        "Cambia una de las unidades, invierte el sentido o elimínala, con 8 segundos para deshacer.",
+        "Cambia una de las unidades o invierte el sentido; si la eliminas, tienes 8 segundos para deshacer.",
         "Al pasar por una tarjeta se resaltan sus conexiones y las demás líneas se atenúan."
       ],
       "imagen": {
@@ -74,8 +74,8 @@
       "puntos": [
         "Varias organizaciones, cada una con sus datos, fotos y respaldos aparte: pasas de una a otra con sus pestañas.",
         "Crea una, abre un archivo .db o explora el ejemplo, sin tocar la que tienes abierta.",
-        "Inicio muestra hasta 8 organizaciones abiertas hace poco, y un clic abre la que quieras.",
-        "Cada pestaña lleva el punto de color y el nombre de su organización.",
+        "Con más de una, Inicio muestra hasta 8 abiertas hace poco, y un clic abre la que quieras.",
+        "Cuando abres más de una organización, cada pestaña lleva el punto de color y el nombre de la suya.",
         "Eliminar una pide escribir su nombre, y puede dejar antes una copia."
       ],
       "imagen": {
@@ -167,8 +167,7 @@
       "puntos": [
         "Ctrl+K abre la paleta de comandos: escribe y llega a cualquier unidad o persona.",
         "Ordena por persona, cargo o gerencia.",
-        "Busca también dentro del diagrama.",
-        "Inicio muestra los totales de tu organización y las organizaciones que abriste hace poco."
+        "Busca también dentro del diagrama."
       ],
       "imagen": {
         "nombre": "directorio",

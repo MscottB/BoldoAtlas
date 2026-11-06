@@ -31,7 +31,7 @@ const f = computed(() => t.value.funciones);
       </div>
     </header>
 
-    <section class="lista" :aria-label="f.titulo">
+    <section class="lista">
       <div class="pieza-contenedor">
         <BloqueFuncion
           v-for="(fn, i) in f.items"

@@ -50,7 +50,7 @@
       "puntos": [
         "A dotted line through the free space between cards, with an arrow pointing at the destination unit.",
         "Create it with “Connect to…” from the card or the unit panel; if the other unit is in a collapsed branch, the branch opens by itself.",
-        "Change one of the units, reverse the direction or delete it, with 8 seconds to undo.",
+        "Change one of the units or reverse the direction; if you delete it, you have 8 seconds to undo.",
         "Hover over a card and its connections stand out while the other lines fade."
       ],
       "imagen": {
@@ -74,8 +74,8 @@
       "puntos": [
         "Several organizations, each with its data, photos and backups apart: you move between them with their tabs.",
         "Create one, open a .db file or explore the example, without touching the one you have open.",
-        "Home shows up to 8 recently opened organizations, and one click opens the one you want.",
-        "Each tab carries the color dot and the name of its organization.",
+        "With more than one, Home shows up to 8 recently opened, and one click opens the one you want.",
+        "When you open more than one organization, each tab carries the color dot and the name of its own.",
         "Deleting one asks you to type its name, and can keep a copy first."
       ],
       "imagen": {
@@ -167,8 +167,7 @@
       "puntos": [
         "Ctrl+K opens the command palette: type and reach any unit or person.",
         "Sort by person, job title or division.",
-        "Search inside the diagram too.",
-        "Home shows your organization's totals and the organizations you opened recently."
+        "Search inside the diagram too."
       ],
       "imagen": {
         "nombre": "directorio",
