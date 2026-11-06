@@ -31,5 +31,6 @@ export interface Seccion {
   titulo: string;
   parrafos: string[];
   puntos?: string[];
-  enlace?: Enlace;
+  // varios cuando la sección tiene más de un lugar para comprobarla (el código y el reporte privado)
+  enlace?: Enlace | Enlace[];
 }

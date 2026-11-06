@@ -10,7 +10,7 @@
         "Each organization is stored in its own local SQLite database, in the data folder. There are no accounts and no servers of ours, and BoldoAtlas does not need the internet to work."
       ],
       "puntos": [
-        "Portable: your data and backups stay in the datos/ folder next to the program. To move them to another computer, copy the whole folder.",
+        "Portable: your data and backups stay in the datos/ folder next to the program, except external files you open with Open file…, which stay where they are. To move your data to another computer, copy the whole folder; an external file, opened from another folder, does not go with it.",
         "Installed: they live in your user data folder. On Linux and macOS, only your user can open it; on Windows, it is inside your user's %APPDATA%.",
         "Before upgrading a database's structure, BoldoAtlas saves a copy among its backups."
       ],
@@ -60,7 +60,7 @@
       "id": "verificar",
       "titulo": "Downloads and updates you can verify",
       "parrafos": [
-        "Each release includes SHA256SUMS.txt, with the checksum of every file, and the list of its components (SBOM, in CycloneDX format). Download it next to the program and compare. Known vulnerabilities in dependencies are checked every week.",
+        "Each release includes SHA256SUMS.txt, with the checksum of every file, and the list of its components (SBOM, in CycloneDX format). Download SHA256SUMS.txt next to the program and compare. Known vulnerabilities in dependencies are checked every week.",
         "Updates are signed: the app installs a package only if its signature matches the public key built into the app and the signature covers the announced version. It never downloads or installs anything without your confirmation, and it does not offer older versions.",
         "The first time, your system may ask you to confirm that you want to open BoldoAtlas. Downloads explains what to do on Windows, macOS and Linux, and how to verify each file."
       ],
@@ -68,15 +68,18 @@
     },
     {
       "id": "reportar",
-      "titulo": "Open source, and how to report a problem",
+      "titulo": "Open source and how to report a problem",
       "parrafos": [
         "BoldoAtlas has an AGPL-3.0 license: all the code is on GitHub for anyone to review.",
         "If you find a vulnerability, report it privately through GitHub. Do not open a public issue, and do not include real personal data in the report."
       ],
-      "enlace": {
-        "texto": "Open a private report",
-        "href": "https://github.com/MscottB/BoldoAtlas/security/advisories/new"
-      }
+      "enlace": [
+        { "texto": "See the code on GitHub", "href": "https://github.com/MscottB/BoldoAtlas" },
+        {
+          "texto": "Open a private report",
+          "href": "https://github.com/MscottB/BoldoAtlas/security/advisories/new"
+        }
+      ]
     },
     {
       "id": "cumplir",

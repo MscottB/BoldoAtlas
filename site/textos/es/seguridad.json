@@ -10,7 +10,7 @@
         "Cada organización se guarda en su propia base de datos SQLite local, en la carpeta de datos. No hay cuentas ni servidores nuestros, y BoldoAtlas no necesita internet para funcionar."
       ],
       "puntos": [
-        "Portable: tus datos y respaldos quedan en la carpeta datos/, junto al programa. Para llevarlos a otro computador, copia la carpeta completa.",
+        "Portable: tus datos y respaldos quedan en la carpeta datos/, junto al programa, salvo los archivos externos que abras con Abrir archivo…, que se quedan donde están. Para llevarte tus datos a otro computador, copia la carpeta completa; un archivo externo, abierto desde otra carpeta, no va con ella.",
         "Instalado: quedan en la carpeta de datos de tu usuario. En Linux y macOS, solo tu usuario puede abrirla; en Windows, está dentro del %APPDATA% de tu usuario.",
         "Antes de actualizar la estructura de una base, BoldoAtlas guarda una copia entre sus respaldos."
       ],
@@ -60,7 +60,7 @@
       "id": "verificar",
       "titulo": "Descargas y actualizaciones que puedes verificar",
       "parrafos": [
-        "Cada versión publicada trae SHA256SUMS.txt, con la suma de verificación de cada archivo, y la lista de sus componentes (SBOM, en formato CycloneDX). Descárgalo junto al programa y compara. Las vulnerabilidades conocidas de las dependencias se revisan cada semana.",
+        "Cada versión publicada trae SHA256SUMS.txt, con la suma de verificación de cada archivo, y la lista de sus componentes (SBOM, en formato CycloneDX). Descarga SHA256SUMS.txt junto al programa y compara. Las vulnerabilidades conocidas de las dependencias se revisan cada semana.",
         "Las actualizaciones van firmadas: la app instala un paquete solo si su firma coincide con la clave pública que trae dentro y si la firma cubre la versión anunciada. Nunca descarga ni instala nada sin que lo confirmes, y no ofrece versiones más antiguas.",
         "La primera vez, tu sistema puede pedir que confirmes que quieres abrir BoldoAtlas. En Descargas está qué hacer en Windows, macOS y Linux, y cómo verificar cada archivo."
       ],
@@ -68,15 +68,18 @@
     },
     {
       "id": "reportar",
-      "titulo": "Código abierto, y cómo reportar un problema",
+      "titulo": "Código abierto y cómo reportar un problema",
       "parrafos": [
         "BoldoAtlas tiene licencia AGPL-3.0: todo el código está en GitHub para que cualquiera lo revise.",
         "Si encuentras una vulnerabilidad, repórtala en privado por GitHub. No abras un issue público ni incluyas datos personales reales en el reporte."
       ],
-      "enlace": {
-        "texto": "Abrir un reporte privado",
-        "href": "https://github.com/MscottB/BoldoAtlas/security/advisories/new"
-      }
+      "enlace": [
+        { "texto": "Ver el código en GitHub", "href": "https://github.com/MscottB/BoldoAtlas" },
+        {
+          "texto": "Abrir un reporte privado",
+          "href": "https://github.com/MscottB/BoldoAtlas/security/advisories/new"
+        }
+      ]
     },
     {
       "id": "cumplir",

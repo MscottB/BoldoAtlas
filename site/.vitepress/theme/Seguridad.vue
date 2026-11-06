@@ -4,13 +4,15 @@ import { ICONOS } from "./iconos";
 import { enlace } from "./imagenes";
 import LlamadaDescarga from "./LlamadaDescarga.vue";
 import { textos } from "./textos";
-import type { Lang } from "./tipos";
+import type { Enlace, Lang } from "./tipos";
 
 // Página Seguridad y privacidad: cabecera y una sección por tema. Su id es el ancla (las garantías de Inicio
-// apuntan a ellas). Cada frase sale de SECURITY.md («Qué protege hoy la app», «Cómo reportar») o del manual.
+// apuntan a ellas). Cada frase sale de SECURITY.md (solo «Qué protege hoy la app» y «Cómo reportar»), del
+// manual (ayuda/<idioma>/*.md), de site/descargas.md o de los textos de confianza ya aprobados del sitio.
 const props = defineProps<{ lang: Lang }>();
 
 const s = computed(() => textos(props.lang).seguridad);
+const enlaces = (e?: Enlace | Enlace[]) => (e ? [e].flat() : []);
 </script>
 
 <template>
@@ -33,7 +35,11 @@ const s = computed(() => textos(props.lang).seguridad);
               <svg class="trazo" viewBox="0 0 24 24" aria-hidden="true" v-html="ICONOS.si" />{{ p }}
             </li>
           </ul>
-          <a v-if="sec.enlace" class="pieza-mas" :href="enlace(sec.enlace.href)">{{ sec.enlace.texto }} →</a>
+          <p v-if="sec.enlace" class="enlaces">
+            <a v-for="e in enlaces(sec.enlace)" :key="e.href" class="pieza-mas" :href="enlace(e.href)"
+              >{{ e.texto }} →</a
+            >
+          </p>
         </div>
       </section>
     </div>
@@ -87,7 +93,6 @@ h1 {
     gap: 48px;
   }
 }
-/* el menú fijo no tapa el título al llegar por un ancla */
 h2 {
   margin: 0;
   padding: 0;
@@ -97,7 +102,7 @@ h2 {
   line-height: 1.25;
   font-weight: 700;
   text-wrap: balance;
-  scroll-margin-top: 88px;
+  scroll-margin-top: 88px; /* el menú fijo no tapa el título al llegar por un ancla */
 }
 .cuerpo {
   max-width: 68ch;
@@ -124,7 +129,10 @@ h2 {
   margin-top: 0.25em;
   color: var(--vp-c-brand-1);
 }
-.pieza-mas {
-  margin-top: 4px;
+.cuerpo .enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 4px 0 0;
 }
 </style>

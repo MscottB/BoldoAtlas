@@ -249,15 +249,28 @@ test("seguridad.json trae sus 7 secciones, en orden y con estos id", () => {
     );
 });
 
+// Los ### que están dentro de la sección `titulo`, hasta el siguiente ## (0 si la sección no está).
+const preguntasEn = (texto, titulo) => {
+  const lineas = texto.split(/\r?\n/);
+  const inicio = lineas.indexOf(titulo);
+  if (inicio < 0) return 0;
+  const fin = lineas.findIndex((l, i) => i > inicio && l.startsWith("## "));
+  return lineas.slice(inicio + 1, fin < 0 ? undefined : fin).filter((l) => l.startsWith("### ")).length;
+};
+
 test("Acerca de trae las preguntas frecuentes en los dos idiomas", () => {
   for (const [md, titulo] of [
     ["acerca.md", "## Preguntas frecuentes {#preguntas}"],
     ["en/acerca.md", "## Frequently asked questions {#preguntas}"],
-  ]) {
-    const texto = readFileSync(new URL(md, sitio), "utf8");
-    assert.ok(texto.split(/\r?\n/).includes(titulo), `${md}: falta «${titulo}»`);
-    assert.ok((texto.match(/^### /gm) ?? []).length >= 6, `${md}: menos de 6 preguntas`);
-  }
+  ])
+    assert.ok(
+      preguntasEn(readFileSync(new URL(md, sitio), "utf8"), titulo) >= 6,
+      `${md}: falta «${titulo}» o tiene menos de 6 preguntas`,
+    );
+  const t = "## P {#preguntas}";
+  // los ### de otra sección no cuentan, ni antes ni después
+  assert.equal(preguntasEn(`## A\n### x\n### y\n${t}\n### p1\n### p2\n## B\n### z`, t), 2);
+  assert.equal(preguntasEn("## A\n### x", t), 0);
 });
 
 test("las garantías de Inicio enlazan a Seguridad", () => {
