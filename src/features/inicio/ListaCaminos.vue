@@ -24,7 +24,7 @@ const { t } = useI18n();
         :aria-disabled="c.fase || ocupado ? 'true' : undefined"
         class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left focus-visible:outline-2 focus-visible:outline-ring"
         :class="[
-          c.fase ? 'cursor-not-allowed text-muted-foreground' : 'hover:bg-accent aria-disabled:opacity-50',
+          c.fase ? 'cursor-not-allowed text-muted-foreground' : 'not-aria-disabled:hover:bg-accent aria-disabled:opacity-50',
           c.id === 'vacia' && 'border-2 border-marca bg-card',
         ]"
         @click="$emit('elegir', c, $event.currentTarget)"
