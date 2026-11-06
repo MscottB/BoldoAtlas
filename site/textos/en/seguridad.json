@@ -1,0 +1,97 @@
+{
+  "etiqueta": "Security and privacy",
+  "titulo": "Your data stays on your computer",
+  "bajada": "BoldoAtlas stores personal data about workers on your own computer. Here you can see where it lives, what the app protects and how to report a problem.",
+  "secciones": [
+    {
+      "id": "donde-quedan",
+      "titulo": "Where your data lives",
+      "parrafos": [
+        "Each organization is stored in its own local SQLite database, in the data folder. There are no accounts and no servers of ours, and BoldoAtlas does not need the internet to work."
+      ],
+      "puntos": [
+        "Portable: your data and backups stay in the datos/ folder next to the program, except external files you open with Open file…, which stay where they are. To move your data to another computer, copy the whole folder; an external file, opened from another folder, does not go with it.",
+        "Installed: they live in your user data folder. On Linux and macOS, only your user can open it; on Windows, it is inside your user's %APPDATA%.",
+        "Before upgrading a database's structure, BoldoAtlas saves a copy among its backups."
+      ],
+      "enlace": {
+        "texto": "Where your data lives, in the manual",
+        "href": "/en/manual/inicio#where-your-data-lives"
+      }
+    },
+    {
+      "id": "conexion",
+      "titulo": "A single automatic connection, and you can turn it off",
+      "parrafos": [
+        "The only thing BoldoAtlas does on its own is look for new versions: it reads the public list of releases on GitHub and the new version's notes. It sends no organization data or identifiers.",
+        "It checks when it opens and, by default, every day. In Settings › Updates › Check automatically you choose another frequency or Never: with Never, BoldoAtlas connects to nothing on its own.",
+        "The app has no analytics and no telemetry. Its interface allows only the app's own scripts and styles and blocks loading anything from the internet. Release notes and help pages are shown with HTML turned off, and links open in your browser only if they are http, https or mailto.",
+        "This site uses no cookies or analytics either; the Downloads page asks GitHub for the latest version number."
+      ],
+      "enlace": {
+        "texto": "How to turn checking off",
+        "href": "/en/manual/actualizaciones#turning-it-off-and-privacy"
+      }
+    },
+    {
+      "id": "cifrado",
+      "titulo": ".boldo files are encrypted",
+      "parrafos": [
+        "To take your organization, or just one branch, to another computer, you export it to a .boldo file. It is encrypted with XChaCha20-Poly1305 and a key derived from a one-time code (Argon2id), which is shown only once and is not saved anywhere.",
+        "The file carries personal data: send the file and the code through different channels, for example the file by email and the code by phone. Of people who are no longer there, a branch carries only the name and email.",
+        "When importing, the content is not trusted even if the code is correct: it is opened read-only and checked against the expected schema before anything is applied. If the code does not match or the file was altered, your database is not touched."
+      ],
+      "enlace": { "texto": "How to export and import", "href": "/en/manual/exportar-importar" }
+    },
+    {
+      "id": "archivos-externos",
+      "titulo": "The .db files you open from another folder",
+      "parrafos": [
+        "With Open file… you open a BoldoAtlas .db file that is in another folder or on a USB drive. Before it is added, it goes through the same check as a .boldo: it is opened read-only and compared with the expected schema.",
+        "After that, BoldoAtlas works on the file where it is and writes to it: open it only if you trust whoever sent it. In a network folder it does not work directly: it asks whether to copy the file to this computer and opens the copy.",
+        "An external file keeps the permissions of its folder, and its backups go in the BoldoAtlas data folder."
+      ],
+      "enlace": {
+        "texto": "External files, in the manual",
+        "href": "/en/manual/organizaciones#external-files"
+      }
+    },
+    {
+      "id": "verificar",
+      "titulo": "Downloads and updates you can verify",
+      "parrafos": [
+        "Each release includes SHA256SUMS.txt, with the checksum of every file, and the list of its components (SBOM, in CycloneDX format). Download SHA256SUMS.txt next to the program and compare. Known vulnerabilities in dependencies are checked every week.",
+        "Updates are signed: the app installs a package only if its signature matches the public key built into the app and the signature covers the announced version. It never downloads or installs anything without your confirmation, and it does not offer older versions.",
+        "The first time, your system may ask you to confirm that you want to open BoldoAtlas. Downloads explains what to do on Windows, macOS and Linux, and how to verify each file."
+      ],
+      "enlace": { "texto": "How to open and verify it", "href": "/en/descargas#sin-firma" }
+    },
+    {
+      "id": "reportar",
+      "titulo": "Open source and how to report a problem",
+      "parrafos": [
+        "BoldoAtlas has an AGPL-3.0 license: all the code is on GitHub for anyone to review.",
+        "If you find a vulnerability, report it privately through GitHub. Do not open a public issue, and do not include real personal data in the report."
+      ],
+      "enlace": [
+        { "texto": "See the code on GitHub", "href": "https://github.com/MscottB/BoldoAtlas" },
+        {
+          "texto": "Open a private report",
+          "href": "https://github.com/MscottB/BoldoAtlas/security/advisories/new"
+        }
+      ]
+    },
+    {
+      "id": "cumplir",
+      "titulo": "It helps you meet personal-data rules",
+      "parrafos": [
+        "The data stays on your computer and the files you share are encrypted: that helps you meet the personal-data rules that apply to you.",
+        "Handling it lawfully is the responsibility of whoever uses the app."
+      ],
+      "enlace": {
+        "texto": "Security policy",
+        "href": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md"
+      }
+    }
+  ]
+}

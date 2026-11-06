@@ -51,3 +51,189 @@
   line-height: 1.5;
   color: var(--vp-c-text-2);
 }
+
+/* Páginas de producto (todo menos el manual): fondo cálido, azul noche y cuerpo de 17 px.
+   Layout.vue pone .es-producto o .es-manual en la raíz de la página. */
+:root {
+  --producto-fondo: #f6f3ef;
+  --producto-fondo-alt: #ffffff;
+  --producto-titulo: #1e2a38;
+  --producto-franja: #1e2a38;
+  --producto-franja-titulo: #ffffff;
+  --producto-franja-texto: #c5ccd6;
+  --producto-franja-enlace: #e8a27a;
+}
+.dark {
+  --producto-fondo: #1c1916;
+  --producto-fondo-alt: #24201c;
+  --producto-titulo: var(--vp-c-text-1);
+  --producto-franja: #151c25;
+}
+.es-producto {
+  --vp-nav-bg-color: var(--producto-fondo);
+  --vp-nav-screen-bg-color: var(--producto-fondo);
+  --vp-local-nav-bg-color: var(--producto-fondo);
+  background: var(--producto-fondo);
+  font-size: 17px;
+}
+.es-producto.Layout .VPFooter {
+  background: transparent;
+}
+.es-producto.Layout .VPDoc .aside-curtain {
+  background: linear-gradient(transparent, var(--producto-fondo) 70%);
+}
+
+/* Menú. En producto no va el buscador (solo busca en el manual); en el manual no va el menú de producto. */
+.es-producto .VPNavBar .VPNavBarSearch,
+.es-manual .VPNavBar .VPNavBarMenu,
+.es-manual .VPNavScreen .VPNavScreenMenu,
+.es-manual .VPNavBarTitle .title > span:not(.titulo-manual) {
+  display: none;
+}
+.volver-sitio {
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.25s;
+}
+.volver-sitio:hover {
+  color: var(--vp-c-brand-1);
+}
+.VPNavBar .volver-sitio {
+  display: none;
+  padding: 0 12px;
+}
+@media (min-width: 768px) {
+  .VPNavBar .volver-sitio {
+    display: block;
+  }
+}
+.VPNavScreen .volver-sitio {
+  display: block;
+  padding: 12px 0 11px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  line-height: 24px;
+}
+/* «Descargar»: botón cobre con texto oscuro (5,1:1), en la barra y en el menú del celular. */
+.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"],
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
+  margin: auto 0 auto 8px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--vp-button-brand-bg);
+  color: var(--vp-button-brand-text);
+  line-height: 36px;
+  font-weight: 600;
+  transition: background-color 0.25s;
+}
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
+  margin: 16px 0 0;
+  border-bottom: 0;
+  line-height: 44px;
+  text-align: center;
+}
+.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"]:hover,
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"]:hover {
+  background: var(--vp-button-brand-hover-bg);
+  color: var(--vp-button-brand-hover-text);
+}
+.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"]:focus-visible,
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"]:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .volver-sitio,
+  .VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"],
+  .VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
+    transition: none;
+  }
+}
+
+/* Piezas comunes de producto: contenedor, etiqueta, enlace «→», botones, iconos de trazo y capturas por tema. */
+.pieza-contenedor {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+@media (min-width: 640px) {
+  .pieza-contenedor {
+    padding: 0 48px;
+  }
+}
+@media (min-width: 960px) {
+  .pieza-contenedor {
+    padding: 0 64px;
+  }
+}
+.pieza-etiqueta {
+  margin: 0 0 8px;
+  color: var(--vp-c-brand-1);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pieza-mas {
+  display: inline-block;
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pieza-mas:hover {
+  text-decoration: underline;
+}
+.pieza-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+.pieza-boton.marca {
+  background: var(--vp-button-brand-bg);
+  color: var(--vp-button-brand-text);
+}
+.pieza-boton.marca:hover {
+  background: var(--vp-button-brand-hover-bg);
+}
+.pieza-boton.alt {
+  background: var(--vp-button-alt-bg);
+  color: var(--vp-button-alt-text);
+  border-color: var(--vp-button-alt-border);
+}
+.pieza-boton.alt:hover {
+  background: var(--vp-button-alt-hover-bg);
+}
+.pieza-mas:focus-visible,
+.pieza-boton:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.pieza-boton:focus-visible {
+  border-radius: 999px;
+}
+.trazo {
+  flex: none;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dark .solo-claro,
+:root:not(.dark) .solo-oscuro {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pieza-boton {
+    transition: none;
+  }
+}

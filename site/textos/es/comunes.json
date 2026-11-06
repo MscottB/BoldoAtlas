@@ -1,0 +1,29 @@
+{
+  "garantias": [
+    "Gratis y de código abierto",
+    "Sin cuentas",
+    "No necesita internet",
+    "Windows · Linux · macOS"
+  ],
+  "llamada": {
+    "titulo": "Pruébalo con la organización de ejemplo",
+    "texto": "Descarga la portable, extrae el zip y abre el ejemplo que trae: lo recorres en un par de minutos, y cuando quieras creas la tuya.",
+    "descargar": "Descargar portable",
+    "recomendada": "recomendada",
+    "manual": "Ver el manual",
+    "para": "ver las descargas",
+    "nota": "Gratis · AGPL-3.0 · Sin cuentas"
+  },
+  "verMas": "Ver más",
+  "manual": { "titulo": "BoldoAtlas · Manual", "volver": "Volver al sitio" },
+  "rutas": {
+    "inicio": "/",
+    "funciones": "/funciones",
+    "seguridad": "/seguridad",
+    "comparar": "/comparar",
+    "novedades": "/novedades",
+    "descargas": "/descargas",
+    "acerca": "/acerca",
+    "manual": "/manual/inicio"
+  }
+}

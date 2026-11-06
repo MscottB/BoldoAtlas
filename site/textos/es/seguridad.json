@@ -1,0 +1,97 @@
+{
+  "etiqueta": "Seguridad y privacidad",
+  "titulo": "Tus datos se quedan en tu computador",
+  "bajada": "BoldoAtlas guarda datos personales de trabajadores en tu propio computador. Aquí ves dónde quedan, qué protege la app y cómo reportar un problema.",
+  "secciones": [
+    {
+      "id": "donde-quedan",
+      "titulo": "Dónde quedan tus datos",
+      "parrafos": [
+        "Cada organización se guarda en su propia base de datos SQLite local, en la carpeta de datos. No hay cuentas ni servidores nuestros, y BoldoAtlas no necesita internet para funcionar."
+      ],
+      "puntos": [
+        "Portable: tus datos y respaldos quedan en la carpeta datos/, junto al programa, salvo los archivos externos que abras con Abrir archivo…, que se quedan donde están. Para llevarte tus datos a otro computador, copia la carpeta completa; un archivo externo, abierto desde otra carpeta, no va con ella.",
+        "Instalado: quedan en la carpeta de datos de tu usuario. En Linux y macOS, solo tu usuario puede abrirla; en Windows, está dentro del %APPDATA% de tu usuario.",
+        "Antes de actualizar la estructura de una base, BoldoAtlas guarda una copia entre sus respaldos."
+      ],
+      "enlace": {
+        "texto": "Dónde quedan tus datos, en el manual",
+        "href": "/manual/inicio#donde-quedan-tus-datos"
+      }
+    },
+    {
+      "id": "conexion",
+      "titulo": "Una sola conexión automática, y se puede apagar",
+      "parrafos": [
+        "Lo único que BoldoAtlas hace por su cuenta es buscar versiones nuevas: lee la lista pública de versiones en GitHub y las notas de la versión nueva. No envía datos de tu organización ni identificadores.",
+        "Busca al abrirse y, por defecto, cada día. En Configuración › Actualizaciones › Buscar automáticamente eliges otra frecuencia o Nunca: con Nunca, BoldoAtlas no se conecta a nada por su cuenta.",
+        "La app no tiene analítica ni telemetría. Su interfaz permite solo los scripts y estilos de la propia app y bloquea cargar cualquier cosa desde internet. Las notas de versión y la ayuda se muestran con el HTML desactivado, y los enlaces se abren en tu navegador solo si son http, https o mailto.",
+        "Este sitio tampoco usa cookies ni análisis; la página de Descargas consulta a GitHub el número de la última versión."
+      ],
+      "enlace": {
+        "texto": "Cómo apagar la búsqueda",
+        "href": "/manual/actualizaciones#apagarlo-y-privacidad"
+      }
+    },
+    {
+      "id": "cifrado",
+      "titulo": "Los archivos .boldo van cifrados",
+      "parrafos": [
+        "Para llevar tu organización, o solo una rama, a otro computador, la exportas a un archivo .boldo. Va cifrado con XChaCha20-Poly1305 y una clave derivada de un código de un solo uso (Argon2id), que se muestra una sola vez y no se guarda en ninguna parte.",
+        "El archivo lleva datos personales: envía el archivo y el código por canales distintos, por ejemplo el archivo por correo y el código por teléfono. De quienes ya no están, una rama lleva solo el nombre y el correo.",
+        "Al importar, el contenido no se da por seguro aunque el código sea correcto: se abre de solo lectura y se compara con el esquema esperado antes de aplicar nada. Si el código no corresponde o el archivo se alteró, tu base no se toca."
+      ],
+      "enlace": { "texto": "Cómo exportar e importar", "href": "/manual/exportar-importar" }
+    },
+    {
+      "id": "archivos-externos",
+      "titulo": "Las bases .db que abres desde otra carpeta",
+      "parrafos": [
+        "Con Abrir archivo… abres un .db de BoldoAtlas que está en otra carpeta o en un pendrive. Antes de agregarlo se revisa con la misma comprobación que un .boldo: se abre de solo lectura y se compara con el esquema esperado.",
+        "Después BoldoAtlas trabaja en el archivo donde está y escribe en él: ábrelo solo si confías en quien lo envió. En una carpeta de red no trabaja directo: pregunta si copiarlo a este computador y abre la copia.",
+        "Un archivo externo conserva los permisos de su carpeta, y sus respaldos quedan en la carpeta de datos de BoldoAtlas."
+      ],
+      "enlace": {
+        "texto": "Archivos externos, en el manual",
+        "href": "/manual/organizaciones#archivos-externos"
+      }
+    },
+    {
+      "id": "verificar",
+      "titulo": "Descargas y actualizaciones que puedes verificar",
+      "parrafos": [
+        "Cada versión publicada trae SHA256SUMS.txt, con la suma de verificación de cada archivo, y la lista de sus componentes (SBOM, en formato CycloneDX). Descarga SHA256SUMS.txt junto al programa y compara. Las vulnerabilidades conocidas de las dependencias se revisan cada semana.",
+        "Las actualizaciones van firmadas: la app instala un paquete solo si su firma coincide con la clave pública que trae dentro y si la firma cubre la versión anunciada. Nunca descarga ni instala nada sin que lo confirmes, y no ofrece versiones más antiguas.",
+        "La primera vez, tu sistema puede pedir que confirmes que quieres abrir BoldoAtlas. En Descargas está qué hacer en Windows, macOS y Linux, y cómo verificar cada archivo."
+      ],
+      "enlace": { "texto": "Cómo abrirlo y verificarlo", "href": "/descargas#sin-firma" }
+    },
+    {
+      "id": "reportar",
+      "titulo": "Código abierto y cómo reportar un problema",
+      "parrafos": [
+        "BoldoAtlas tiene licencia AGPL-3.0: todo el código está en GitHub para que cualquiera lo revise.",
+        "Si encuentras una vulnerabilidad, repórtala en privado por GitHub. No abras un issue público ni incluyas datos personales reales en el reporte."
+      ],
+      "enlace": [
+        { "texto": "Ver el código en GitHub", "href": "https://github.com/MscottB/BoldoAtlas" },
+        {
+          "texto": "Abrir un reporte privado",
+          "href": "https://github.com/MscottB/BoldoAtlas/security/advisories/new"
+        }
+      ]
+    },
+    {
+      "id": "cumplir",
+      "titulo": "Te ayuda a cumplir con los datos personales",
+      "parrafos": [
+        "Los datos quedan en tu computador y los archivos que compartes van cifrados: eso te ayuda a cumplir las reglas sobre datos personales que te apliquen.",
+        "Tratarlos conforme a la ley es responsabilidad de quien usa la app."
+      ],
+      "enlace": {
+        "texto": "Política de seguridad",
+        "href": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md#política-de-seguridad"
+      }
+    }
+  ]
+}
