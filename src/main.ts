@@ -65,6 +65,13 @@ infoApp()
     void conectarCierre();
   })
   .catch((e: unknown) => {
-    const info = { baseId: "", dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
+    const info = {
+      baseId: "",
+      dirDatos: "",
+      rutaBd: "",
+      portable: false,
+      versionEsquema: 0,
+      error: String(e),
+    };
     createApp(PantallaError, { info }).use(i18n).mount("#app");
   });

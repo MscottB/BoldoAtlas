@@ -165,7 +165,11 @@ describe("useConfirmacion: lo escrito confirma las opciones de ese momento", () 
   const preparar = () => {
     const sinArchivo = ref(false);
     const confirmar = vi.fn();
-    const c = useConfirmacion(() => "Acme", () => sinArchivo.value, confirmar);
+    const c = useConfirmacion(
+      () => "Acme",
+      () => sinArchivo.value,
+      confirmar,
+    );
     c.escrito.value = "Acme";
     return { sinArchivo, confirmar, ...c };
   };
@@ -277,7 +281,9 @@ describe("lo que Rust dijo que hizo un intento que falló", () => {
     expect(claveHecha(org({ externa: true }), sinPedir, false, borro)).toBe("salio");
     expect(claveHecha(org({ externa: true }), sinPedir, false, ambas)).toBe("salio");
     // si la borra otra vez con su casilla, sí
-    expect(claveHecha(org({ externa: true }), { guardarCopia: false, borrarArchivo: true }, false, borro)).toBe("hecha");
+    expect(
+      claveHecha(org({ externa: true }), { guardarCopia: false, borrarArchivo: true }, false, borro),
+    ).toBe("hecha");
   });
 
   it("solo una externa cuyo archivo borró la app puede dejar archivos auxiliares", () => {
@@ -297,7 +303,9 @@ describe("lo que Rust dijo que hizo un intento que falló", () => {
   });
 
   it("externa que no está aunque la lista diga que sí: tampoco dice que no se tocó", () => {
-    expect(claveHecha(org({ externa: true }), { guardarCopia: false, borrarArchivo: false }, true)).toBe("salioSinArchivo");
+    expect(claveHecha(org({ externa: true }), { guardarCopia: false, borrarArchivo: false }, true)).toBe(
+      "salioSinArchivo",
+    );
   });
 });
 
