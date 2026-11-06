@@ -21,6 +21,25 @@ export function iniciarTrabajo(nombre: string): (fallo?: boolean) => void {
   };
 }
 
+/** El nombre de un trabajo o un aviso: con varias organizaciones dice de cuál, igual que las pestañas. */
+export const conOrganizacion = (nombreTrabajo: string, organizacion: string, varias: boolean): string =>
+  varias && organizacion ? `${organizacion} · ${nombreTrabajo}` : nombreTrabajo;
+
+let abierta = (): { nombre: string; varias: boolean } => ({ nombre: "", varias: false });
+/** Lo registra el store de organizaciones: quien nombra un trabajo no depende de Pinia. */
+export const registrarAbierta = (f: typeof abierta): void => {
+  abierta = f;
+};
+
+/** Para nombrarla después, si puede haber cambiado cuando llegue el aviso. */
+export const abiertaAhora = (): { nombre: string; varias: boolean } => abierta();
+
+/** `conOrganizacion` con la organización abierta ahora. */
+export function deLaAbierta(nombreTrabajo: string): string {
+  const { nombre, varias } = abierta();
+  return conOrganizacion(nombreTrabajo, nombre, varias);
+}
+
 /** Anota el trabajo mientras dura la promesa, y si falló. */
 export async function conTrabajo<T>(nombre: string, accion: () => Promise<T>): Promise<T> {
   const terminar = iniciarTrabajo(nombre);

@@ -2,6 +2,7 @@ import { computed, ref, shallowRef, watch, type ComputedRef } from "vue";
 import { toast } from "vue-sonner";
 import type { Puesto, Trabajador, Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
+import { alSoltarDatos } from "@/lib/baseActiva";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { creaCiclo, hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
@@ -176,6 +177,24 @@ export interface AvisoExpansion {
   revertir?: () => void;
 }
 const avisoExpansion = shallowRef<AvisoExpansion | null>(null);
+
+/** Sus ids son de la base anterior. `pedidoEliminar` es un contador: no nombra nada. */
+export function reiniciarLienzo(): void {
+  colapsados.value = new Set();
+  seleccion.value = null;
+  multi.value = new Set();
+  editando.value = null;
+  centrarEn.value = null;
+  pedidoZoom.value = null;
+  pestanaPanel.value = null;
+  ramaPersonas.value = null;
+  puestoUbicado.value = null;
+  enfocar.value = null;
+  avisoExpansion.value = null;
+  ventanaConexion.value = null;
+  verConexion.value = null;
+}
+alSoltarDatos(reiniciarLienzo);
 
 function expandir(id: string) {
   if (!colapsados.value.has(id)) return;

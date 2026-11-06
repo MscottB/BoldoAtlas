@@ -3,7 +3,56 @@ import { indiceHijos } from "@/features/arbol/jerarquia";
 import type { Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { trabajos, ultimoFin } from "@/lib/trabajos";
-import { filasVisibles, intentar, intentarTrabajo, revisionConDecisiones } from "./intercambio";
+import type { ResumenImportacion } from "@/db/cliente";
+import {
+  filasVisibles,
+  intentar,
+  intentarTrabajo,
+  mensajeComoNueva,
+  modoInicial,
+  revisionConDecisiones,
+} from "./intercambio";
+
+const resumenDe = (r: Partial<ResumenImportacion>) =>
+  ({ parcial: false, informe: null, ...r }) as ResumenImportacion;
+const conInforme = { informe: {} } as Partial<ResumenImportacion>;
+
+describe("modoInicial", () => {
+  it("con la bandera, «Como organización nueva» es el primero, también con un parcial", () => {
+    expect(modoInicial(resumenDe({}), true)).toBe("nueva");
+    expect(modoInicial(resumenDe(conInforme), true)).toBe("nueva");
+    expect(modoInicial(resumenDe({ parcial: true }), true)).toBe("nueva");
+  });
+
+  it("modoInicial(r, false), igual que hoy", () => {
+    expect(modoInicial(resumenDe(conInforme), false)).toBe("agregar");
+    expect(modoInicial(resumenDe({ ...conInforme, parcial: true }), false)).toBe("agregar");
+    expect(modoInicial(resumenDe({ parcial: true }), false)).toBe("revisar");
+    expect(modoInicial(resumenDe({}), false)).toBe("reemplazar");
+  });
+});
+
+describe("importar como nueva", () => {
+  it("contenido_invalido no culpa al archivo, que ya pasó la revisión al abrirlo", () => {
+    expect(
+      mensajeComoNueva({ codigo: "contenido_invalido", mensaje: "El archivo no es una copia válida" }),
+    ).toBe(
+      "No se pudo crear. Puede que otro programa esté usando el archivo. Inténtalo de nuevo. No se cambió nada.",
+    );
+    expect(i18n.global.te("intercambio.importar.nuevaNoSeCreo", "en")).toBe(true);
+    expect(mensajeComoNueva({ codigo: "sin_espacio", mensaje: "Sin espacio" })).toBe("Sin espacio");
+  });
+
+  it.each(["lista_protegida", "sin_espacio", "contenido_invalido", "desconocido", "cancelado", "raro"])(
+    "%s da un texto, nunca el código ni un aviso vacío",
+    async (codigo) => {
+      const r = await intentar(() => Promise.reject({ codigo, detalle: "" }));
+      if (r.ok) throw new Error("debía fallar");
+      expect(r.mensaje).not.toBe("");
+      expect(r.mensaje).not.toContain(codigo);
+    },
+  );
+});
 
 const unidad = (id: string, parent_id: string | null) => ({ id, parent_id, nombre: id, orden: 0 }) as Unidad;
 const indice = indiceHijos([unidad("r", null), unidad("a", "r"), unidad("b", "a"), unidad("c", "r")]);
@@ -106,7 +155,14 @@ describe("revisión con decisiones", () => {
         expect(te(`intercambio.revisar.grupo.${tipo}.titulo`, locale), tipo).toBe(true);
         expect(te(`intercambio.revisar.grupo.${tipo}.ayuda`, locale), tipo).toBe(true);
       }
-      for (const a of ["todo_mio", "todo_archivo", "agregar_todo", "omitir_todo", "mantener_todo", "borrar_todo"])
+      for (const a of [
+        "todo_mio",
+        "todo_archivo",
+        "agregar_todo",
+        "omitir_todo",
+        "mantener_todo",
+        "borrar_todo",
+      ])
         expect(te(`intercambio.revisar.masivo.${a}`, locale), a).toBe(true);
       for (const b of ["unica", "regla", "referencia", "ciclo"])
         expect(te(`intercambio.revisar.bloqueo.${b}`, locale), b).toBe(true);

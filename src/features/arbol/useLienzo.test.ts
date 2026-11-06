@@ -9,13 +9,57 @@ import {
   destinoAlSoltar,
   estadoMover,
   puestoUbicado,
+  reiniciarLienzo,
   unidadesQueCumplen,
   useLienzo,
+  ventanaConexion,
+  verConexion,
 } from "./useLienzo";
 import { useVista } from "./useVista";
 import { VISTA_POR_DEFECTO } from "./vista";
 
 const mantencion = unidades.find((x) => x.id === "mantencion")!;
+
+describe("reiniciarLienzo", () => {
+  it("deja vacío cada ref con ids", () => {
+    setActivePinia(createPinia());
+    const l = useLienzo();
+    l.colapsados.value = new Set(["u1"]);
+    l.sumarVarias(["u1", "u2"]);
+    l.editando.value = "u1";
+    l.centrarEn.value = "u1";
+    l.pedidoZoom.value = "acercar";
+    l.pestanaPanel.value = "personas";
+    l.ramaPersonas.value = true;
+    l.enfocar.value = "u1";
+    l.avisoExpansion.value = { tarjetas: 1, nivel: null, todo: new Set(["u1"]), hasta: null };
+    puestoUbicado.value = "p1";
+    verConexion.value = "x1";
+    ventanaConexion.value = { id: "x1", ancla: {} as DOMRect, foco: null };
+    reiniciarLienzo();
+    expect(l.colapsados.value.size).toBe(0);
+    expect(l.seleccion.value).toBeNull();
+    expect(l.seleccionadas.value.size).toBe(0);
+    expect(l.editando.value).toBeNull();
+    expect(l.centrarEn.value).toBeNull();
+    expect(l.pedidoZoom.value).toBeNull();
+    expect(l.pestanaPanel.value).toBeNull();
+    expect(l.ramaPersonas.value).toBeNull();
+    expect(l.enfocar.value).toBeNull();
+    expect(l.avisoExpansion.value).toBeNull();
+    expect(puestoUbicado.value).toBeNull();
+    expect(verConexion.value).toBeNull();
+    expect(ventanaConexion.value).toBeNull();
+  });
+
+  it("no toca el contador de Supr", () => {
+    setActivePinia(createPinia());
+    const l = useLienzo();
+    l.pedidoEliminar.value = 3;
+    reiniciarLienzo();
+    expect(l.pedidoEliminar.value).toBe(3);
+  });
+});
 
 describe("lógica del lienzo", () => {
   it("coincideFiltro: sin filtros todo coincide", () => {

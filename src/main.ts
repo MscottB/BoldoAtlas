@@ -1,17 +1,20 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
+import { toast } from "vue-sonner";
 import App from "./App.vue";
 import PantallaError from "./vistas/PantallaError.vue";
 import { router } from "./router";
 import { i18n } from "./i18n";
 import { infoApp } from "./db/cliente";
+import { callarAvisosVacios } from "./lib/avisos";
 import { fijarBase, soltarDatos } from "./lib/baseActiva";
 import { migrarPreferencias } from "./lib/preferencias";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
+import { sePuedeReintentar } from "./features/pestanas/pestanas";
 import { useRecientes } from "./features/inicio/useRecientes";
-import { iniciarRespaldoAutomatico } from "./features/respaldos/respaldos";
+import { iniciarRespaldoAutomatico, mensajeOrganizacion } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
 import { crearBandeja } from "./features/actualizaciones/bandeja";
 import { destinoInicial, infoSiFalloCarga } from "./app/estructura";
@@ -20,6 +23,7 @@ import "./styles/main.css";
 
 // Antes de montar: el tema ya está aplicado en el primer pintado, sin parpadeo.
 useTema().aplicar();
+callarAvisosVacios();
 
 /* eslint-disable vue/one-component-per-file -- son dos raíces alternativas de createApp, no dos componentes */
 // Si Rust no pudo abrir la base (o ni siquiera responde), se muestra el motivo en vez de una ventana en blanco.
@@ -45,6 +49,14 @@ infoApp()
     const app = createApp(App).use(pinia).use(router).use(i18n);
     await router.replace(destino);
     app.mount("#app");
+    if (info.avisoInicio)
+      toast.warning(i18n.global.t("organizaciones.avisoInicio", { nombre: info.avisoInicio.nombre }), {
+        // aquí no hay botón para reintentar: se dice dónde
+        description: sePuedeReintentar(info.avisoInicio)
+          ? `${mensajeOrganizacion(info.avisoInicio)} ${i18n.global.t("organizaciones.reabrirDesdeMenu")}`
+          : mensajeOrganizacion(info.avisoInicio),
+        duration: Infinity,
+      });
     iniciarRespaldoAutomatico();
     // «Novedades» tras actualizar y la consulta periódica de versiones nuevas (la única conexión automática)
     useActualizaciones(pinia).iniciar();
@@ -53,6 +65,13 @@ infoApp()
     void conectarCierre();
   })
   .catch((e: unknown) => {
-    const info = { baseId: "", dirDatos: "", rutaBd: "", portable: false, versionEsquema: 0, error: String(e) };
+    const info = {
+      baseId: "",
+      dirDatos: "",
+      rutaBd: "",
+      portable: false,
+      versionEsquema: 0,
+      error: String(e),
+    };
     createApp(PantallaError, { info }).use(i18n).mount("#app");
   });

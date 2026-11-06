@@ -9,6 +9,7 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 import { dentroDelPanel, destinoNavegacion, resolverAtajo, type Atajo, type Navegacion } from "./atajos";
 
 /** Si la paleta de comandos (Ctrl+K) está abierta. La abren el atajo y el botón de la barra superior. */
@@ -34,6 +35,7 @@ export function useAtajos() {
   const org = useOrganizacion();
   const cerrarVista = useCerrarVista();
   const pestanas = usePestanas();
+  const organizaciones = useOrganizaciones();
   const { config } = useVista();
   const {
     seleccion,
@@ -94,10 +96,12 @@ export function useAtajos() {
       e.preventDefault();
       if (atajo === "nuevaPestana") abrirEnPestanaNueva(RUTA_INICIO);
       else if (atajo === "cerrarPestana")
-        pestanas.cerrar(pestanas.activa); // con una sola pestaña no hace nada
+        pestanas.cerrar(pestanas.activa); // la última no se cierra, salvo si no abrió
       else pestanas.siguiente(atajo === "pestanaSiguiente" ? 1 : -1);
       return;
     }
+    // La pantalla del motivo tapa la vista: la ruta sigue siendo de la abierta, y lo demás escribiría en ella sin verse.
+    if (organizaciones.sinAbrir.has(pestanas.activa)) return;
     // Esc en Configuración, Ayuda o Acerca de las cierra (salvo que se esté escribiendo; los diálogos ya mandaron arriba).
     if (atajo === "cerrar" && esVistaCerrable(route.name)) {
       if (!destino?.closest(CAMPO)) {

@@ -34,13 +34,21 @@ import DialogoNovedades from "@/features/actualizaciones/DialogoNovedades.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { alOtraBase } from "@/db/cliente";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 import { ANCHO_COLAPSO, barraColapsada } from "@/app/estructura";
 import { useBarraFlotante } from "@/app/barraLateral";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
-import { ID_AREA, clicNuevaPestana, idPestana, usePestanas } from "@/features/pestanas/usePestanas";
+import PestanaSinAbrir from "@/features/pestanas/PestanaSinAbrir.vue";
+import {
+  ID_AREA,
+  abrirEnPestanaNueva,
+  clicNuevaPestana,
+  idPestana,
+  usePestanas,
+} from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: solo con MOSTRAR_PROXIMAMENTE se muestra, deshabilitada y con el aviso de la fase en que llega.
@@ -92,12 +100,23 @@ const org = useOrganizacion();
 watch(() => org.org.nombre, ponerTitulo, { immediate: true });
 const cerrarVista = useCerrarVista();
 const pestanas = usePestanas();
+const organizaciones = useOrganizaciones();
+// Nombre y color en las pestañas; las recientes del menú y la paleta.
+void organizaciones.cargarLista().then((r) => {
+  if (!r.ok) console.warn("No se pudo leer la lista de organizaciones:", r.mensaje);
+});
+const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);
 // Ctrl+clic: la entrada se abre en una pestaña nueva. Un segundo clic en la entrada de la vista que ya se está viendo la
 // cierra (en captura: antes de que el enlace navegue).
 function alPulsar(e: MouseEvent, item: Entrada) {
   if (item.to && clicNuevaPestana(e, item.to)) return;
+  // La pantalla del motivo tapa la vista: en la misma ruta, sin esto, el clic no haría nada (el resto lo ve `usePestanas`).
+  if (item.to && sinAbrirActiva.value) {
+    e.preventDefault();
+    return abrirEnPestanaNueva(item.to);
+  }
   if (!item.cierra || route.name !== item.cierra) return;
   e.preventDefault();
   cerrarVista();
@@ -134,7 +153,10 @@ function escEnBarra(e: KeyboardEvent) {
 <template>
   <TooltipProvider>
     <div v-if="route.meta.sinMarco" class="h-screen overflow-auto bg-background text-foreground">
-      <RouterView />
+      <p v-if="organizaciones.cambiando" role="status" class="p-6 text-sm text-muted-foreground">
+        {{ t("organizaciones.cambiando") }}
+      </p>
+      <RouterView v-else />
     </div>
     <div v-else class="flex h-screen bg-background text-foreground">
       <!-- El hueco guarda el ancho de la barra fija; desplegada sobre el contenido, la barra lo excede sin correr nada. -->
@@ -229,7 +251,17 @@ function escEnBarra(e: KeyboardEvent) {
           :role="conPestanas ? 'tabpanel' : undefined"
           :aria-labelledby="conPestanas ? idPestana(pestanas.activa) : undefined"
         >
-          <RouterView v-slot="{ Component: vista }">
+          <!-- Sin la vista mientras se cambia: se desmonta y guarda su estado antes de que la base cambie. -->
+          <p v-if="organizaciones.cambiando" role="status" class="p-6 text-sm text-muted-foreground">
+            {{ t("organizaciones.cambiando") }}
+          </p>
+          <PestanaSinAbrir
+            v-else-if="sinAbrirActiva"
+            :id="pestanas.activa"
+            :key="pestanas.activa"
+            :motivo="sinAbrirActiva"
+          />
+          <RouterView v-else v-slot="{ Component: vista }">
             <component :is="vista" :key="pestanas.activa" />
           </RouterView>
         </main>

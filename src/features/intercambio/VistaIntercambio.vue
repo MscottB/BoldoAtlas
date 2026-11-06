@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { Download, Upload } from "@lucide/vue";
 import PanelExportar from "./PanelExportar.vue";
 import PanelImportar from "./PanelImportar.vue";
+import { organizacionEnCreacion } from "./intercambio";
 
 const { t } = useI18n();
 const route = useRoute();
@@ -27,6 +28,10 @@ const caminos = [
     <header>
       <h1 class="text-lg font-semibold">{{ t("nav.importarExportar") }}</h1>
       <p class="text-sm text-muted-foreground">{{ t("intercambio.ayuda") }}</p>
+      <!-- Siempre presente y visible: un lector de pantalla solo anuncia lo que cambia dentro de una región que ya existía. -->
+      <p role="status" class="text-sm">
+        {{ organizacionEnCreacion ? t("intercambio.importar.nuevaEnCurso", { nombre: organizacionEnCreacion }) : "" }}
+      </p>
     </header>
 
     <ul v-if="!accion" class="grid gap-3 sm:grid-cols-2">

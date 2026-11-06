@@ -8,7 +8,9 @@ import BloquePlegable from "@/components/BloquePlegable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
+import SeccionOrganizaciones from "@/features/organizaciones/SeccionOrganizaciones.vue";
 import SeccionFotos from "@/features/configuracion/SeccionFotos.vue";
 import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
 import SeccionActualizaciones from "@/features/actualizaciones/SeccionActualizaciones.vue";
@@ -125,6 +127,8 @@ const quitarLogo = async () => {
         <p v-if="errorLogo" role="alert" class="text-sm text-destructive">{{ errorLogo }}</p>
       </div>
     </section>
+
+    <SeccionOrganizaciones v-if="ORGANIZACIONES_VISIBLES" />
 
     <section class="grid gap-4" aria-labelledby="cfg-apariencia">
       <div>

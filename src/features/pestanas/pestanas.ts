@@ -54,6 +54,50 @@ export function cerrar(m: Pestanas, id: string): Pestanas {
   return { lista, activa: nueva.id };
 }
 
+/**
+ * Sin las pestañas de `org`, que ya no existe. La activa debe ser de la abierta: si era de `org`, pasa a una suya y, sin
+ * ninguna, a una nueva en el inicio. Aquí no rige «la última no se cierra», y como se quitó la activa hay lugar para ella.
+ */
+export function sinOrganizacion(
+  m: Pestanas,
+  org: string,
+  nuevoId: () => string,
+  orgAbierta: string,
+): Pestanas {
+  const lista = m.lista.filter((p) => p.org !== org);
+  if (lista.some((p) => p.id === m.activa)) return { lista, activa: m.activa };
+  const suya = lista.find((p) => p.org === orgAbierta);
+  if (suya) return { lista, activa: suya.id };
+  const id = nuevoId();
+  return { lista: [...lista, { id, org: orgAbierta, ruta: RUTA_INICIO }], activa: id };
+}
+
+/** Con más de una organización, cada pestaña lleva su nombre y su color. */
+export const hayVariasOrganizaciones = (m: Pestanas): boolean => new Set(m.lista.map((p) => p.org)).size > 1;
+
+/** Si el motivo por el que no abrió se arregla buscando el archivo: `red` y `journal` piden hacerlo en su texto. */
+export const sePuedeBuscar = ({ codigo, detalle }: { codigo: string; detalle: string }): boolean =>
+  codigo === "no_encontrado" ||
+  codigo === "otro_id" ||
+  (codigo === "contenido_invalido" && (detalle === "red" || detalle === "journal"));
+
+/**
+ * Lo que puede pasarse solo: la carga, otra copia de la app, un archivo que otro programa retiene, o uno que no abrió sin que el
+ * sistema diga por qué. Nunca uno dañado, sin permiso o que ya no está.
+ */
+export const sePuedeReintentar = ({ codigo, detalle }: { codigo: string; detalle: string }): boolean =>
+  codigo === "fallo" ||
+  codigo === "abierta_en_otra_copia" ||
+  (codigo === "contenido_invalido" && (detalle === "retenido" || detalle === "sin_causa"));
+
+/** Con datos que no cargaron y una sola pestaña, cerrar deja otra igual con el mismo motivo: parece no hacer nada. */
+export const sePuedeCerrar = (codigo: string, pestanas: number): boolean =>
+  codigo !== "fallo" || pestanas > 1;
+
+/** El detalle de un motivo solo se muestra si aporta: un código o un id sueltos no dicen nada, y el mensaje ya se ve. */
+export const detalleUtil = ({ detalle, mensaje }: { detalle: string; mensaje: string }): boolean =>
+  !!detalle && detalle !== mensaje && !/^[\w-]+$/.test(detalle);
+
 /** La pestaña a `paso` de la activa, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab). */
 export function vecina(m: Pestanas, paso: 1 | -1): string {
   const n = m.lista.length;

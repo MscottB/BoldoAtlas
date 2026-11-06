@@ -21,6 +21,7 @@ const nuevoRouter = (lenta = false) => {
       { path: "/configuracion", name: "configuracion", component: vacio },
       { path: "/ayuda/:pagina?", name: "ayuda", component: vacio },
       { path: "/acerca", name: "acerca", component: vacio },
+      { path: "/importar-exportar", name: "importarExportar", component: vacio },
       { path: "/bienvenida", name: "bienvenida", component: vacio, meta: { sinMarco: true } },
     ],
   });
@@ -43,6 +44,7 @@ beforeEach(async () => {
   fijarBase("A");
   setActivePinia(createPinia());
   useOrganizacion().unidades = [{ id: "u1", nombre: "Finanzas", parent_id: null } as Unidad];
+  useOrganizacion().cargado = true;
   router = nuevoRouter();
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -58,6 +60,23 @@ const esperar = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 const rutaActual = () => router.currentRoute.value.fullPath;
 
 describe("usePestanas", () => {
+  it("volver con Ctrl+Tab no toca la ruta de la pestaña", async () => {
+    const p = await arrancar();
+    p.abrirNueva("/importar-exportar");
+    await esperar();
+    p.abrirNueva("/?raiz=u1");
+    await esperar();
+    useOrganizacion().unidades = []; // se eliminó, y Ctrl+Z aún la puede recuperar
+    expect(rutaActual()).toBe("/?raiz=u1");
+    p.siguiente(-1);
+    await esperar();
+    expect(rutaActual()).toBe("/importar-exportar");
+    p.siguiente(1);
+    await esperar();
+    expect(rutaActual()).toBe("/?raiz=u1");
+    expect(rutas()).toEqual(["/", "/importar-exportar", "/?raiz=u1"]);
+  });
+
   it("al entrar descarta lo que ya no existe y abre en la activa guardada", async () => {
     const p = await arrancar({
       lista: [

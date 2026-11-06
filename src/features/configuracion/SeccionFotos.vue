@@ -1,5 +1,6 @@
 <script lang="ts">
 import { ref, shallowRef } from "vue";
+import { alSoltarDatos } from "@/lib/baseActiva";
 import type { Candidata, ResultadoFinal } from "./optimizarFotos";
 
 // A nivel de módulo: el trabajo sigue si se sale de Configuración, y al volver se ve cómo va.
@@ -11,6 +12,14 @@ const hechas = ref(0);
 const cancelando = ref(false);
 const resultado = shallowRef<ResultadoFinal | null>(null);
 const sinNada = ref(false);
+// El resultado nombra personas de la organización anterior. Un trabajo en curso impide cambiar, así que no se pierde ninguno.
+alSoltarDatos(() => {
+  etapa.value = "reposo";
+  candidatas.value = [];
+  estimacion.value = null;
+  resultado.value = null;
+  sinNada.value = false;
+});
 </script>
 
 <script setup lang="ts">
@@ -32,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { infoProyecto, respaldarAntesDeOptimizar } from "@/db/cliente";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { tamano } from "@/lib/formato";
-import { conTrabajo } from "@/lib/trabajos";
+import { conTrabajo, deLaAbierta } from "@/lib/trabajos";
 import { bytesEnFotos, estimar, leerCandidatas, optimizarTodas, PASOS, terminar } from "./optimizarFotos";
 
 const { t, locale } = useI18n();
@@ -71,7 +80,7 @@ async function optimizar() {
   cancelando.value = false;
   etapa.value = "respaldo";
   try {
-    await conTrabajo(t("trabajos.optimizarFotos"), async () => {
+    await conTrabajo(deLaAbierta(t("trabajos.optimizarFotos")), async () => {
       await respaldarAntesDeOptimizar(); // sin respaldo no se toca ninguna foto
       etapa.value = "optimizando";
       const antes = await bytesEnFotos();

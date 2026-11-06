@@ -33,6 +33,18 @@ pub struct Fallo {
     /// Para un archivo o una base que se pasa de un tope: en qué fila y campo, para poder corregirlo.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub donde: Option<Donde>,
+    /// Solo al eliminar: lo que alcanzó a hacer antes de fallar. En una caja para que `Fallo` siga siendo chico en cada `Result`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avance: Option<Box<AvanceEliminar>>,
+}
+
+/// Lo que un `eliminar` que falló ya hizo y no se deshace: el diálogo lo dice tal cual, en vez de deducirlo.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AvanceEliminar {
+    pub archivo_borrado: bool,
+    /// El nombre de la copia en `organizaciones-eliminadas/`.
+    pub copia: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -48,6 +60,7 @@ impl Fallo {
             codigo,
             detalle: detalle.to_string(),
             donde: None,
+            avance: None,
         }
     }
 }
@@ -384,6 +397,40 @@ pub fn borrar_bd(ruta: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Si se puede afirmar que el archivo no está. `exists` da false ante cualquier error al mirar, y Windows da `NotFound` con una
+/// letra de unidad retirada: por eso también debe estar su carpeta.
+pub fn ya_no_esta(ruta: &Path) -> bool {
+    matches!(ruta.try_exists(), Ok(false))
+        && ruta
+            .parent()
+            .is_some_and(|p| matches!(p.try_exists(), Ok(true)))
+}
+
+/// Lo que `borrar_respaldos` considera suyo: un `notas.txt` del usuario no.
+fn es_propio(nombre: &str) -> bool {
+    entrada(nombre).is_some() || nombre.starts_with(PREFIJO_MIGRACION)
+}
+
+/// Lo que ocupan los archivos de `dir`, o solo los que `borrar_respaldos` borraría. `None` si no se pudo leer: no es lo mismo que no
+/// tener nada.
+pub fn bytes_en(dir: &Path, solo_propios: bool) -> Option<u64> {
+    let archivos = match fs::read_dir(dir) {
+        Err(e) if e.kind() == ErrorKind::NotFound => return Some(0),
+        otro => otro.ok()?,
+    };
+    let mut total = 0;
+    for f in archivos {
+        let f = f.ok()?;
+        if !solo_propios || f.file_name().to_str().is_some_and(es_propio) {
+            let m = f.metadata().ok()?;
+            if m.is_file() {
+                total += m.len();
+            }
+        }
+    }
+    Some(total)
+}
+
 /// Los respaldos de una organización que se elimina. Solo los nombres propios: lo demás de la carpeta es del usuario.
 pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
     limpiar_parciales(dir, None);
@@ -393,10 +440,7 @@ pub fn borrar_respaldos(dir: &Path) -> Result<(), Fallo> {
     };
     for f in archivos {
         let f = f?;
-        let propio = f
-            .file_name()
-            .to_str()
-            .is_some_and(|n| entrada(n).is_some() || n.starts_with(PREFIJO_MIGRACION));
+        let propio = f.file_name().to_str().is_some_and(es_propio);
         if propio && f.file_type()?.is_file() {
             fs::remove_file(f.path())?;
         }
@@ -581,6 +625,48 @@ mod tests {
             .collect();
         v.sort();
         v
+    }
+
+    #[test]
+    fn bytes_en_cuenta_lo_que_se_borraria_y_no_inventa_un_cero() {
+        let d = tempfile::tempdir().unwrap();
+        assert_eq!(bytes_en(&d.path().join("no_existe"), true), Some(0));
+        fs::write(d.path().join("boldo-20200101-0000.db"), "12345").unwrap();
+        fs::write(d.path().join("notas.txt"), "1234567").unwrap();
+        assert_eq!(bytes_en(d.path(), true), Some(5));
+        assert_eq!(bytes_en(d.path(), false), Some(12));
+        // un archivo donde debería haber una carpeta: no se pudo leer, y no es lo mismo que vacío
+        assert_eq!(bytes_en(&d.path().join("notas.txt"), true), None);
+    }
+
+    #[test]
+    fn ya_no_esta_solo_si_se_puede_afirmar() {
+        let d = tempfile::tempdir().unwrap();
+        let bd = d.path().join("x.db");
+        assert!(ya_no_esta(&bd));
+        fs::write(&bd, "x").unwrap();
+        assert!(!ya_no_esta(&bd));
+        // sin carpeta: como una letra de unidad retirada en Windows, que también da `NotFound`
+        assert!(!ya_no_esta(&d.path().join("no_existe").join("x.db")));
+        // un error al mirar no es que no esté
+        assert!(!ya_no_esta(Path::new("con\0nulo")));
+    }
+
+    #[test]
+    fn solo_eliminar_lleva_avance_en_lo_que_se_serializa() {
+        let f = Fallo::de("fallo", "x");
+        assert!(serde_json::to_value(&f).unwrap().get("avance").is_none());
+        let f = Fallo {
+            avance: Some(Box::new(AvanceEliminar {
+                archivo_borrado: true,
+                copia: Some("c.db".into()),
+            })),
+            ..f
+        };
+        assert_eq!(
+            serde_json::to_value(&f).unwrap()["avance"],
+            serde_json::json!({"archivoBorrado": true, "copia": "c.db"})
+        );
     }
 
     #[test]

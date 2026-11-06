@@ -24,6 +24,7 @@ import {
   type TipoCaso,
 } from "@/db/cliente";
 import { toast } from "vue-sonner";
+import { deLaAbierta } from "@/lib/trabajos";
 import GrupoCasos from "./GrupoCasos.vue";
 import ListaBloqueos from "./ListaBloqueos.vue";
 import { intentar, intentarTrabajo, revisionConDecisiones } from "./intercambio";
@@ -156,7 +157,7 @@ const comparando = ref(false);
 async function compararDeNuevo() {
   errorAplicar.value = "";
   comparando.value = true;
-  const r = await intentarTrabajo(t("trabajos.importarComparar"), () =>
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarComparar")), () =>
     importarComparar(props.trabajo, props.lugares),
   );
   comparando.value = false;

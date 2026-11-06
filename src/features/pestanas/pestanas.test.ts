@@ -4,11 +4,17 @@ import {
   abrir,
   cambiar,
   cerrar,
+  detalleUtil,
   estadoDe,
+  hayVariasOrganizaciones,
   leerEstadoArbol,
   leerPestanas,
   mover,
   rutaValida,
+  sePuedeBuscar,
+  sePuedeReintentar,
+  sePuedeCerrar,
+  sinOrganizacion,
   unaPestana,
   vecina,
   type Pestanas,
@@ -23,6 +29,120 @@ const tres = (activa = "b"): Pestanas => ({
   activa,
 });
 const ids = (m: Pestanas) => m.lista.map((p) => p.id).join("");
+
+describe("hayVariasOrganizaciones", () => {
+  it("con todas de la misma organización no hay etiqueta", () => {
+    expect(hayVariasOrganizaciones(tres())).toBe(false);
+  });
+
+  it("con dos, sí", () => {
+    const m = tres();
+    expect(hayVariasOrganizaciones({ ...m, lista: [...m.lista, { id: "d", org: "B", ruta: "/" }] })).toBe(
+      true,
+    );
+  });
+});
+
+describe("sePuedeReintentar", () => {
+  it.each([
+    ["fallo", ""],
+    ["abierta_en_otra_copia", "x"],
+    ["contenido_invalido", "retenido"],
+    ["contenido_invalido", "sin_causa"],
+  ])("%s %s: lo que puede pasar solo se reintenta", (codigo, detalle) => {
+    expect(sePuedeReintentar({ codigo, detalle })).toBe(true);
+  });
+
+  it.each([
+    ["danado", "file is not a database"],
+    ["contenido_invalido", "no_se_puede"],
+    ["contenido_invalido", "no_esta"],
+    ["contenido_invalido", ""],
+    ["contenido_invalido", "red"],
+    ["contenido_invalido", "journal"],
+    ["esquema_nuevo", "9"],
+  ])("%s %s: lo que es del archivo, no", (codigo, detalle) => {
+    expect(sePuedeReintentar({ codigo, detalle })).toBe(false);
+  });
+});
+
+describe("sePuedeCerrar", () => {
+  it("con datos que no cargaron y una sola pestaña no se ofrece: dejaría otra con el mismo motivo", () => {
+    expect(sePuedeCerrar("fallo", 1)).toBe(false);
+    expect(sePuedeCerrar("fallo", 2)).toBe(true);
+    expect(sePuedeCerrar("no_encontrado", 1)).toBe(true);
+  });
+});
+
+describe("sePuedeBuscar", () => {
+  it.each([
+    ["no_encontrado", "x"],
+    ["otro_id", "x"],
+    ["contenido_invalido", "red"],
+    ["contenido_invalido", "journal"],
+  ])("%s (%s) ofrece buscar el archivo", (codigo, detalle) => {
+    expect(sePuedeBuscar({ codigo, detalle })).toBe(true);
+  });
+
+  it.each([
+    ["contenido_invalido", "wal"],
+    ["contenido_invalido", "otro"],
+    ["esquema_nuevo", "x"],
+    ["desconocido", "x"],
+    ["fallo", "red"],
+  ])("%s (%s) no lo ofrece", (codigo, detalle) => {
+    expect(sePuedeBuscar({ codigo, detalle })).toBe(false);
+  });
+});
+
+describe("detalleUtil", () => {
+  const m = (detalle: string, mensaje = "No se abrió") => ({ detalle, mensaje });
+
+  it.each([
+    ["", "vacío"],
+    ["red", "un código"],
+    ["journal", "un código"],
+    ["0b5e7f6a-1234-4000-8000-000000000000", "un id"],
+    ["No se abrió", "lo mismo que el mensaje"],
+  ])("«%s» no aporta: %s", (detalle) => {
+    expect(detalleUtil(m(detalle))).toBe(false);
+  });
+
+  it.each(["D:/usb/org.db", "C:\\datos\\org.db", "disk I/O error"])("«%s» sí", (detalle) => {
+    expect(detalleUtil(m(detalle))).toBe(true);
+  });
+});
+
+describe("sinOrganizacion", () => {
+  const dos: Pestanas = {
+    lista: [
+      { id: "a", org: "A", ruta: "/" },
+      { id: "b", org: "B", ruta: "/directorio" },
+      { id: "c", org: "B", ruta: "/revision" },
+    ],
+    activa: "a",
+  };
+
+  it("quita las suyas y deja la activa", () => {
+    expect(sinOrganizacion(dos, "B", () => "n", "A")).toEqual({ lista: [dos.lista[0]], activa: "a" });
+  });
+
+  it("si la activa era suya, pasa a una de la abierta", () => {
+    const m = sinOrganizacion({ ...dos, activa: "b" }, "B", () => "n", "A");
+    expect(m).toEqual({ lista: [dos.lista[0]], activa: "a" });
+  });
+
+  it("si no queda ninguna, deja una de la abierta en /", () => {
+    const m = sinOrganizacion({ lista: [dos.lista[1]!], activa: "b" }, "B", () => "n", "A");
+    expect(m).toEqual({ lista: [{ id: "n", org: "A", ruta: "/" }], activa: "n" });
+  });
+
+  it("si solo quedan de otras, también abre una de la abierta", () => {
+    const m = sinOrganizacion(dos, "A", () => "n", "Z");
+    expect(ids(m)).toBe("bcn");
+    expect(m.activa).toBe("n");
+  });
+});
 
 describe("abrir", () => {
   it("inserta a la derecha de la activa y la activa", () => {

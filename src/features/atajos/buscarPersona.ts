@@ -11,7 +11,10 @@ import { paletaAbierta } from "./useAtajos";
  */
 export async function buscarPersona(router: Router): Promise<void> {
   if (router.currentRoute.value.meta.sinMarco) {
-    if (useOrganizacion().vacia) return void toast.info(i18n.global.t("bandeja.sinPersonas"));
+    const org = useOrganizacion();
+    // sin datos cargados no hay a quién buscar: la pestaña dice por qué, y la paleta la taparía
+    if (!org.cargado) return usePestanas().volverAlProyecto();
+    if (org.vacia) return void toast.info(i18n.global.t("bandeja.sinPersonas"));
     await usePestanas().volverAlProyecto();
   }
   paletaAbierta.value = true;

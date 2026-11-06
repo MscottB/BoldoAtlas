@@ -13,6 +13,10 @@ import { asignarTitular, registrarReemplazo, terminarAsignacion } from "@/db/rep
 import { TIPO_GERENCIA } from "@/db/tipos";
 
 describe("traducirError", () => {
+  it("otra_base no llega a la pantalla como código", () => {
+    expect(traducirError("otra_base")).toMatch(/Recarga la ventana/);
+  });
+
   it.each([
     ["UNIQUE constraint failed: index 'ux_trabajadores_correo'", "Ya existe una persona con ese correo."],
     ["UNIQUE constraint failed: index 'ux_etiquetas_nombre'", "Ya existe una etiqueta con ese nombre."],

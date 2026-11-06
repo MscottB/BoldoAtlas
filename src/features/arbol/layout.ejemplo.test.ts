@@ -32,6 +32,7 @@ beforeAll(async () => {
   h.bd = abrirBasePrueba();
   setActivePinia(createPinia());
   org = useOrganizacion();
+  await org.cargar();
   expect((await org.cargarEjemplo()).ok).toBe(true);
   g = subgrafoVisible(org.enFecha.unidades, org.conexiones, new Set(), org.enFecha.puestos);
 });

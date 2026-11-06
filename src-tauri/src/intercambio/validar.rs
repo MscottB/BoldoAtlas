@@ -1,7 +1,7 @@
 //! La base descifrada no es confiable, aunque el código sea correcto: quien la envía puede ser cualquiera.
 use crate::respaldos::{Donde, Fallo, con_sufijo};
 use rusqlite::config::DbConfig;
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use rusqlite::{Connection, ErrorCode, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -12,8 +12,22 @@ fn invalido(detalle: impl ToString) -> Fallo {
 
 /// `flags` de solo lectura para revisar y leer; de escritura solo para trabajar sobre la copia temporal.
 pub fn abrir_no_confiable(ruta: &Path, flags: OpenFlags) -> Result<Connection, Fallo> {
-    let c = Connection::open_with_flags(ruta, flags | OpenFlags::SQLITE_OPEN_NO_MUTEX)
-        .map_err(invalido)?;
+    abrir_no_confiable_en(ruta, ruta, flags)
+}
+
+/// `archivo` es el que está detrás de `ruta`, que puede ser una URI.
+fn abrir_no_confiable_en(
+    ruta: &Path,
+    archivo: &Path,
+    flags: OpenFlags,
+) -> Result<Connection, Fallo> {
+    let c = Connection::open_with_flags(ruta, flags | OpenFlags::SQLITE_OPEN_NO_MUTEX).map_err(
+        |e| match e.sqlite_error_code() {
+            // no dice nada de lo que tiene: uno dañado sí abre, y falla al leerlo
+            Some(ErrorCode::CannotOpen) => por_que_no_abre(archivo),
+            _ => invalido(e),
+        },
+    )?;
     for (opcion, valor) in [
         (DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true),
         (DbConfig::SQLITE_DBCONFIG_TRUSTED_SCHEMA, false),
@@ -26,6 +40,23 @@ pub fn abrir_no_confiable(ruta: &Path, flags: OpenFlags) -> Result<Connection, F
     c.pragma_update(None, "temp_store", "MEMORY")
         .map_err(invalido)?;
     Ok(c)
+}
+
+/// SQLite no dice por qué no abrió: lo dice el sistema. Retenido se reintenta; sin permiso, una carpeta o una ruta demasiado
+/// larga, no sirve reintentar. Si se abre aquí y no allá, no se sabe.
+fn por_que_no_abre(archivo: &Path) -> Fallo {
+    if archivo.is_dir() {
+        return invalido("no_se_puede");
+    }
+    match std::fs::File::open(archivo) {
+        // ERROR_SHARING_VIOLATION y ERROR_LOCK_VIOLATION
+        Err(e) if cfg!(windows) && matches!(e.raw_os_error(), Some(32 | 33)) => {
+            invalido("retenido")
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => invalido("no_esta"),
+        Err(_) => invalido("no_se_puede"),
+        Ok(_) => invalido("sin_causa"),
+    }
 }
 
 pub fn solo_lectura(ruta: &Path) -> Result<Connection, Fallo> {
@@ -63,8 +94,9 @@ pub fn solo_lectura_cerrada(ruta: &Path) -> Result<Connection, Fallo> {
     if con_sufijo(ruta, "-wal").exists() {
         return solo_lectura(ruta);
     }
-    abrir_no_confiable(
+    abrir_no_confiable_en(
         Path::new(&uri_inmutable(ruta)?),
+        ruta,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
     )
 }
@@ -505,6 +537,33 @@ mod tests {
 
     fn codigo(ruta: &Path) -> &'static str {
         revisar(ruta, MIGRACIONES).unwrap_err().codigo
+    }
+
+    #[test]
+    fn lo_que_no_se_deja_abrir_lo_dice_con_su_detalle() {
+        let d = tempfile::tempdir().unwrap();
+        let detalle = |ruta: &Path| {
+            let f = solo_lectura_cerrada(ruta).err().unwrap();
+            assert_eq!(f.codigo, "contenido_invalido");
+            f.detalle
+        };
+        // por lo que dice el sistema, también por la URI de `solo_lectura_cerrada`
+        assert_eq!(detalle(&d.path().join("no_esta.db")), "no_esta");
+        assert_eq!(por_que_no_abre(d.path()).detalle, "no_se_puede");
+        let hay = d.path().join("hay.db");
+        std::fs::write(&hay, "").unwrap();
+        assert_eq!(por_que_no_abre(&hay).detalle, "sin_causa");
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            let retenido = std::fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&hay)
+                .unwrap();
+            assert_eq!(detalle(&hay), "retenido");
+            drop(retenido);
+        }
     }
 
     /// Una base como las de la app, en WAL, con su conexión abierta.

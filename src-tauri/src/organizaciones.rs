@@ -6,7 +6,7 @@ use crate::intercambio::validar::{
 };
 use crate::intercambio::{Temporal, nombre_limpio};
 use crate::respaldos::{
-    Fallo, borrar_bd, borrar_respaldos, cerrar_copia, con_sufijo, copia_de_base,
+    Fallo, borrar_bd, borrar_respaldos, bytes_en, cerrar_copia, con_sufijo, copia_de_base,
     fecha_de_eliminada, limpiar_parciales, sello_local, volcar,
 };
 use crate::rutas::Rutas;
@@ -244,8 +244,9 @@ pub struct OrganizacionVista {
     pub existe: bool,
     pub activa: bool,
     pub logo: Option<String>,
-    pub bytes_base: u64,
-    pub bytes_respaldos: u64,
+    /// `None`: no se pudo leer.
+    pub bytes_base: Option<u64>,
+    pub bytes_respaldos: Option<u64>,
     pub ejemplo: bool,
 }
 
@@ -621,7 +622,7 @@ fn abrir_entrada_con(
 #[derive(Debug, PartialEq, Serialize)]
 pub struct ArchivoAgregado {
     pub id: Option<String>,
-    /// `"red"`, `"otro_id"` o `"tope"`.
+    /// `"red"`, `"otro_id"`, `"tope"` o `"journal"`.
     pub pide: Option<&'static str>,
     /// `"copia"` o `"fuera_de_portable"`.
     pub avisos: Vec<&'static str>,
@@ -640,8 +641,7 @@ fn es_db(ruta: &Path) -> bool {
 }
 
 /// Dónde está lo que se eligió: la ruta absoluta, para guardar, y la canónica, para comparar. El filtro del diálogo no basta: un
-/// `x.restaurando` sería su propia copia al restaurar. `immutable` no ve un `-journal`, que al abrir para escribir cambiaría lo
-/// ya revisado; la app trabaja en WAL, así que no es de ella.
+/// `x.restaurando` sería su propia copia al restaurar.
 fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
     let invalido = |detalle| Err(Fallo::de("contenido_invalido", detalle));
     if !es_db(ruta) {
@@ -662,10 +662,23 @@ fn ubicar(ruta: &Path) -> Result<(PathBuf, PathBuf), Fallo> {
     if !canonica.is_file() {
         return invalido("archivo");
     }
-    if con_sufijo(&canonica, "-journal").exists() {
-        return invalido("journal");
-    }
     Ok((absoluta, canonica))
+}
+
+/// Un corte durante el primer paso a WAL de un archivo en modo DELETE deja un `-journal` legítimo, sin el que la base queda
+/// corrupta. Leer el esquema lo aplica. Sin pasar a WAL: el archivo aún no se revisó. Con el bloqueo: otra copia de la app puede
+/// tenerlo abierto. Por un enlace, SQLite busca el diario junto al enlace o junto al archivo, según el sistema: se abre por
+/// donde está.
+fn aplicar_diario(bd: &Path, canonica: &Path) -> Result<(), Fallo> {
+    let _bloqueo = bloquear(bd, ESPERA_CAMBIO)?;
+    let junto_al_real = !con_sufijo(bd, "-journal").exists();
+    let c = Connection::open(if junto_al_real { canonica } else { bd })?;
+    c.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))?;
+    c.close().map_err(|(_, e)| e)?;
+    if tiene_diario(bd) {
+        return Err(Fallo::de("contenido_invalido", "journal"));
+    }
+    Ok(())
 }
 
 /// Si `e` apunta al archivo de `canonica`, por el camino que sea. `false` si su unidad no responde.
@@ -787,6 +800,17 @@ pub(crate) fn agregar_con_red(
     let datos = fs::canonicalize(&r.datos)?;
     let relativa = canonica.strip_prefix(&datos).ok();
     let de_red = relativa.is_none() && es_red(&canonica);
+    // `immutable` no ve un `-journal`, que al abrir para escribir cambiaría lo ya revisado: se aplica antes de revisar, y solo si
+    // se busca una organización propia que así lo dejó un corte, porque escribe en el archivo.
+    if tiene_diario(&absoluta) {
+        if de_red || buscando.is_none() {
+            return Err(Fallo::de("contenido_invalido", "journal"));
+        }
+        if !confirmados.contains(&"journal") {
+            return preguntar("journal");
+        }
+        aplicar_diario(&absoluta, &canonica)?;
+    }
     // con un `-wal`, leerlo usa memoria compartida y deja un `-shm` en la carpeta compartida
     if de_red && con_sufijo(&absoluta, "-wal").exists() {
         return Err(Fallo::de("contenido_invalido", "wal"));
@@ -1007,15 +1031,13 @@ pub fn anotar_creada(l: &mut Lista, e: Entrada, conn: &Connection, ejemplo: bool
     });
 }
 
-fn bytes_de_archivos(carpeta: &Path) -> u64 {
-    fs::read_dir(carpeta)
-        .into_iter()
-        .flatten()
-        .flatten()
-        .filter_map(|f| f.metadata().ok())
-        .filter(|m| m.is_file())
-        .map(|m| m.len())
-        .sum()
+/// `None` si no se pudo leer. Un archivo que no está no ocupa nada.
+fn tam(ruta: &Path) -> Option<u64> {
+    match fs::metadata(ruta) {
+        Ok(m) => Some(m.len()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Some(0),
+        Err(_) => None,
+    }
 }
 
 /// El logo sale del archivo: la lista no guarda imágenes.
@@ -1028,7 +1050,6 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
         .iter()
         .map(|e| {
             let base = base_de(r, e);
-            let tam = |p: &Path| fs::metadata(p).map(|m| m.len()).unwrap_or(0);
             OrganizacionVista {
                 id: e.id.clone(),
                 nombre: e.nombre.clone(),
@@ -1039,8 +1060,11 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
                 existe: base.bd.is_file(),
                 activa: activa == Some(e.id.as_str()),
                 logo: logo_de(&base.bd),
-                bytes_base: tam(&base.bd) + tam(&con_sufijo(&base.bd, "-wal")),
-                bytes_respaldos: bytes_de_archivos(&base.respaldos),
+                bytes_base: tam(&base.bd)
+                    .zip(tam(&con_sufijo(&base.bd, "-wal")))
+                    .map(|(bd, wal)| bd + wal),
+                // lo que libera: de una interna se borra toda su carpeta, y de las demás solo los nombres propios
+                bytes_respaldos: bytes_en(&base.respaldos, e.externa || e.es_principal()),
                 ejemplo: e.ejemplo,
             }
         })
@@ -1867,6 +1891,27 @@ mod tests_lista {
     }
 
     #[test]
+    fn lo_que_no_se_puede_leer_no_se_ve_como_cero() {
+        let d = tempfile::tempdir().unwrap();
+        let ausente = d.path().join("ausente");
+        assert_eq!(tam(&ausente), Some(0));
+        assert_eq!(tam(Path::new("con\0nulo")), None);
+        let archivo = d.path().join("archivo");
+        fs::write(&archivo, "123").unwrap();
+        assert_eq!(tam(&archivo), Some(3));
+    }
+
+    #[test]
+    fn paleta_de_ts_coincide() {
+        let ts = include_str!("../../src/features/organizaciones/paleta.ts");
+        for color in PALETA {
+            assert!(ts.contains(color), "{color}");
+        }
+        assert_eq!(ts.matches("color: \"#").count(), PALETA.len());
+        assert_eq!(PALETA.len(), 8);
+    }
+
+    #[test]
     fn externa_ausente_aparece_como_no_existe() {
         let (_exe, r) = rutas();
         let afuera = tempfile::tempdir().unwrap();
@@ -1878,7 +1923,7 @@ mod tests_lista {
         };
         let v = &vistas(&r, &l, None)[0];
         assert!(!v.existe && !v.activa);
-        assert_eq!((v.bytes_base, v.bytes_respaldos), (0, 0));
+        assert_eq!((v.bytes_base, v.bytes_respaldos), (Some(0), Some(0)));
         assert_eq!(v.logo, None);
         assert_eq!(v.ruta, bd.display().to_string());
         // mirarla no crea nada
@@ -2214,6 +2259,131 @@ mod tests_archivo {
         assert_eq!(agregar(&r, &bd).unwrap_err().codigo, "contenido_invalido");
         assert_eq!(fs::read(&bd).unwrap(), antes);
         assert!(cargar_lista(&r).organizaciones.is_empty());
+    }
+
+    /// Lo que deja un corte con una transacción a medias en modo DELETE: páginas ya escritas y el diario que las deshace.
+    fn deja_un_diario_de_verdad(bd: &Path) {
+        let carpeta = tempfile::tempdir().unwrap();
+        let viva = carpeta.path().join("viva.db");
+        fs::copy(bd, &viva).unwrap();
+        let c = Connection::open(&viva).unwrap();
+        c.execute_batch(
+            "PRAGMA journal_mode = DELETE; PRAGMA cache_size = 2; BEGIN; CREATE TABLE a_medias (x);",
+        )
+        .unwrap();
+        for _ in 0..30 {
+            c.execute("INSERT INTO a_medias VALUES (zeroblob(100000))", [])
+                .unwrap();
+        }
+        fs::copy(&viva, bd).unwrap();
+        fs::copy(con_sufijo(&viva, "-journal"), con_sufijo(bd, "-journal")).unwrap();
+        drop(c);
+    }
+
+    fn no_es_red(_: &Path) -> bool {
+        false
+    }
+
+    #[test]
+    fn buscar_con_un_diario_pregunta_y_con_un_si_lo_aplica() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("x.db");
+        agregar(&r, &bd).unwrap();
+        deja_un_diario_de_verdad(&bd);
+        let diario = con_sufijo(&bd, "-journal");
+        let antes = fs::read(&bd).unwrap();
+        let buscar = |confirmados: &[&str]| {
+            agregar_con_red(
+                &r,
+                &bd,
+                Some(&id),
+                confirmados,
+                MIGRACIONES,
+                i64::MAX,
+                no_es_red,
+            )
+        };
+
+        assert_eq!(buscar(&[]).unwrap().pide, Some("journal"));
+        assert_eq!(fs::read(&bd).unwrap(), antes);
+        assert!(diario.exists());
+
+        let hecho = buscar(&["journal"]).unwrap();
+        assert_eq!((hecho.id.as_deref(), hecho.pide), (Some(id.as_str()), None));
+        assert!(!diario.exists());
+        assert_eq!(id_en(&bd).as_deref(), Some(id.as_str()));
+        let c = solo_lectura_cerrada(&bd).unwrap();
+        let a_medias: i64 = c
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE name = 'a_medias'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(a_medias, 0, "el diario deshizo la transacción cortada");
+    }
+
+    /// Por un enlace, el diario puede estar junto al archivo de verdad, y en Windows SQLite no lo buscaría allí si abre el enlace.
+    #[test]
+    fn buscar_por_un_enlace_aplica_el_diario_del_archivo_real() {
+        let (_exe, r) = con_lista_vacia();
+        let (d, real, id) = afuera("x.db");
+        agregar(&r, &real).unwrap();
+        deja_un_diario_de_verdad(&real);
+        let enlace = d.path().join("enlace.db");
+        if !crear_enlace(&real, &enlace) {
+            return;
+        }
+        let buscar = |confirmados: &[&str]| {
+            agregar_con_red(
+                &r,
+                &enlace,
+                Some(&id),
+                confirmados,
+                MIGRACIONES,
+                i64::MAX,
+                no_es_red,
+            )
+        };
+        assert_eq!(buscar(&[]).unwrap().pide, Some("journal"));
+        buscar(&["journal"]).unwrap();
+        assert!(!con_sufijo(&real, "-journal").exists());
+        let c = solo_lectura_cerrada(&real).unwrap();
+        let a_medias: i64 = c
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE name = 'a_medias'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(a_medias, 0);
+    }
+
+    #[test]
+    fn buscar_en_red_con_un_diario_no_lo_toca() {
+        for confirmados in [&["journal"][..], &["journal", "red"]] {
+            let (_exe, r) = con_lista_vacia();
+            let (_d, bd, id) = afuera("x.db");
+            agregar(&r, &bd).unwrap();
+            deja_un_diario_de_verdad(&bd);
+            let antes = fs::read(&bd).unwrap();
+            let f = agregar_con_red(
+                &r,
+                &bd,
+                Some(&id),
+                confirmados,
+                MIGRACIONES,
+                i64::MAX,
+                de_red,
+            )
+            .unwrap_err();
+            assert_eq!(
+                (f.codigo, f.detalle.as_str()),
+                ("contenido_invalido", "journal")
+            );
+            assert_eq!(fs::read(&bd).unwrap(), antes);
+            assert!(con_sufijo(&bd, "-journal").exists());
+        }
     }
 
     #[test]
@@ -3060,6 +3230,50 @@ mod tests_archivo {
         assert_ne!(f.codigo, "otro_id");
         drop(retenida);
         assert!(revisar_para_eliminar(&r, &i, false, false, false).unwrap());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn abrir_una_interna_retenida_lo_dice_y_se_puede_reintentar() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (_exe, r) = rutas();
+        let i = interna(&r, "2020");
+        let retenida = OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(ruta_de(&r, &i))
+            .unwrap();
+        let f = abrir_entrada(&r, &i, ESPERA_CAMBIO, MIGRACIONES)
+            .err()
+            .unwrap();
+        assert_eq!(
+            (f.codigo, f.detalle.as_str()),
+            ("contenido_invalido", "retenido")
+        );
+        drop(retenida);
+        assert!(abrir_entrada(&r, &i, ESPERA_CAMBIO, MIGRACIONES).is_ok());
+    }
+
+    /// Una dañada abre y falla al leerla: nunca dice lo mismo que una que otro programa retiene.
+    #[test]
+    fn abrir_una_interna_danada_no_se_confunde_con_una_retenida() {
+        let (_exe, r) = rutas();
+        let basura = interna(&r, "2020");
+        fs::write(ruta_de(&r, &basura), "no soy sqlite").unwrap();
+        let cortada = interna(&r, "2021");
+        OpenOptions::new()
+            .write(true)
+            .open(ruta_de(&r, &cortada))
+            .unwrap()
+            .set_len(4096)
+            .unwrap();
+        let de = |e| {
+            abrir_entrada(&r, e, ESPERA_CAMBIO, MIGRACIONES)
+                .err()
+                .unwrap()
+        };
+        assert_eq!(de(&basura).codigo, "danado");
+        assert_eq!(de(&cortada).codigo, "danado");
     }
 
     /// Otra conexión con la base tomada en exclusiva: `SQLITE_BUSY` de verdad, sin la espera de 5 s de cada conexión.

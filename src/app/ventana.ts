@@ -108,7 +108,7 @@ export async function responderSalida(accion: "bandeja" | "cerrar", recordar: bo
   await (accion === "cerrar" ? salir() : dejarEnBandeja());
 }
 
-function soltarEdicion(): void {
+export function soltarEdicion(): void {
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 }
 // Tauri no lo avisa al salir: las pestañas guardan su estado
@@ -125,13 +125,18 @@ async function dejarEnBandeja(): Promise<void> {
 
 const ESPERA_ESCRITURAS_MS = 2000;
 
-/** Termina la app. El campo en edición se guarda al perder el foco; hasta 2 s para que se escriba lo que quede en curso. */
-export async function salir(): Promise<void> {
+/** El campo en edición se guarda al perder el foco; hasta 2 s para que se escriba lo que quede en curso. */
+export async function soltarYEsperarEscrituras(): Promise<void> {
   soltarEdicion();
   const org = useOrganizacion();
   const tope = Date.now() + ESPERA_ESCRITURAS_MS;
   do await new Promise((r) => setTimeout(r, 20));
   while (org.guardando && Date.now() < tope);
+}
+
+/** Termina la app. */
+export async function salir(): Promise<void> {
+  await soltarYEsperarEscrituras();
   guardarPestanas();
   await invoke("salir_app");
 }

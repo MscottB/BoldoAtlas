@@ -9,7 +9,7 @@ use crate::organizaciones::{
     es_id_valido, escribir_lista, guardar_eliminada, identidad_nueva, lista_protegida,
     principal_libre, revisar_para_eliminar, vista_de, vistas,
 };
-use crate::respaldos::{self, Fallo, Respaldo};
+use crate::respaldos::{self, AvanceEliminar, Fallo, Respaldo};
 use crate::rutas::{self, InfoProyecto, Rutas};
 use rusqlite::Connection;
 use serde::Serialize;
@@ -17,7 +17,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Mutex, MutexGuard, RwLock, TryLockError};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -26,6 +26,8 @@ use tauri_plugin_opener::OpenerExt;
 
 /// Cuánto espera un cambio de organización a que terminen los trabajos en curso.
 const ESPERA_TRABAJOS: Duration = Duration::from_secs(2);
+/// Cuánto espera reiniciar a que termine una organización que se está creando desde un archivo.
+const ESPERA_CREACION: Duration = Duration::from_secs(30);
 
 /// El texto que `errores.ts` reconoce para volver a decirlo en el idioma activo.
 fn motivo_de_apertura(f: Fallo) -> String {
@@ -43,6 +45,7 @@ fn motivo_de_apertura(f: Fallo) -> String {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AvisoInicio {
     codigo: &'static str,
+    detalle: String,
     nombre: String,
 }
 
@@ -60,6 +63,10 @@ pub struct Estado {
     version_esquema: AtomicI64,
     error: Mutex<Option<String>>,
     aviso_inicio: Mutex<Option<AvisoInicio>>,
+    /// Viene `app.restart`: ya no empieza otra organización desde un archivo.
+    reiniciando: AtomicBool,
+    /// Lo toma `como_nueva` mientras crea, dentro de `lista`. Lo espera `antes_de_reiniciar`.
+    creando: Mutex<()>,
 }
 
 type ArchivoPendiente = (PathBuf, Option<String>, Vec<&'static str>);
@@ -115,6 +122,8 @@ impl Estado {
             version_esquema: AtomicI64::new(0),
             error: Mutex::new(error),
             aviso_inicio: Mutex::new(None),
+            reiniciando: AtomicBool::new(false),
+            creando: Mutex::new(()),
         }
     }
 
@@ -134,6 +143,8 @@ impl Estado {
             version_esquema: AtomicI64::new(0),
             error: Mutex::new(None),
             aviso_inicio: Mutex::new(None),
+            reiniciando: AtomicBool::new(false),
+            creando: Mutex::new(()),
         }
     }
 
@@ -175,6 +186,7 @@ impl Estado {
                     es_la_ultima = e.es_principal();
                     aviso = Some(AvisoInicio {
                         codigo: f.codigo,
+                        detalle: f.detalle,
                         nombre: e.nombre,
                     })
                 }
@@ -372,6 +384,30 @@ impl Estado {
         ocupada: &dyn Fn() -> bool,
         migraciones: &[&str],
     ) -> Result<Option<OrganizacionVista>, Fallo> {
+        let mut avance = AvanceEliminar::default();
+        self.eliminar_anotando(
+            id,
+            guardar_copia,
+            borrar_archivo,
+            ocupada,
+            migraciones,
+            &mut avance,
+        )
+        .map_err(|mut f| {
+            f.avance = Some(Box::new(avance));
+            f
+        })
+    }
+
+    fn eliminar_anotando(
+        &self,
+        id: &str,
+        guardar_copia: bool,
+        borrar_archivo: bool,
+        ocupada: &dyn Fn() -> bool,
+        migraciones: &[&str],
+        avance: &mut AvanceEliminar,
+    ) -> Result<Option<OrganizacionVista>, Fallo> {
         let r = self.rutas()?;
         if !es_id_valido(id) {
             return Err(Fallo::de("desconocido", id));
@@ -408,10 +444,10 @@ impl Estado {
         if abierta {
             let c = conn.as_ref().ok_or_else(|| self.motivo_sin_base())?;
             if guardar_copia {
-                guardar_eliminada(r, &e, c)?;
+                avance.copia = Some(guardar_eliminada(r, &e, c)?);
             }
             if !self.pasar_a_otra(&mut conn, &lista, &e, migraciones)? {
-                self.vaciar_principal(&mut conn, &base, migraciones)?;
+                self.vaciar_principal(&mut conn, &base, existe, migraciones, avance)?;
                 ya_borrado = true;
             }
         } else {
@@ -419,7 +455,7 @@ impl Estado {
                 bloqueo = Some(bloquear(&base.bd, ESPERA_CAMBIO)?);
             }
             if guardar_copia {
-                guardar_eliminada(r, &e, &solo_lectura_cerrada(&base.bd)?)?;
+                avance.copia = Some(guardar_eliminada(r, &e, &solo_lectura_cerrada(&base.bd)?)?);
             }
         }
         if borra_archivo && !ya_borrado {
@@ -427,7 +463,10 @@ impl Estado {
             if bloqueo.is_none() && existe {
                 bloqueo = Some(bloquear(&base.bd, ESPERA_CAMBIO)?);
             }
-            borrar_archivo_de(&base, bloqueo)?;
+            let borrado = borrar_archivo_de(&base, bloqueo);
+            // quita primero el archivo: si falla lo de al lado, igual ya no está
+            avance.archivo_borrado = existe && respaldos::ya_no_esta(&base.bd);
+            borrado?;
         }
         borrar_respaldos_de(r, &e)?;
         // al final: si algo de lo anterior falla sigue en la lista. Eliminarla de nuevo termina lo que faltó; si el archivo ya no
@@ -492,7 +531,9 @@ impl Estado {
         &self,
         conn: &mut Option<Connection>,
         base: &Base,
+        existe: bool,
         migraciones: &[&str],
+        avance: &mut AvanceEliminar,
     ) -> Result<(), Fallo> {
         if let Some(c) = conn.take() {
             let _ = c.close();
@@ -503,8 +544,11 @@ impl Estado {
             .unwrap_or_else(|p| p.into_inner())
             .take();
         let mut borrado = borrar_archivo_de(base, bloqueo);
+        // aquí y no después: lo que abre a continuación crea uno nuevo con el mismo nombre
+        let ya_no_esta = respaldos::ya_no_esta(&base.bd);
+        avance.archivo_borrado = existe && ya_no_esta;
         // aunque haya fallado lo de al lado: lo que abra ahora es otra organización, y ya no se puede reintentar
-        if !base.bd.exists() {
+        if ya_no_esta {
             borrado = borrado.and(respaldos::borrar_respaldos(&base.respaldos));
         }
         let abierta = abrir_base(&base.bd, &base.respaldos, None, ESPERA_CAMBIO, migraciones)
@@ -518,6 +562,27 @@ impl Estado {
             return Err(f);
         }
         borrado
+    }
+
+    /// Deja en la lista lo que dice ahora la base abierta, como su nombre. No cuenta como abrirla.
+    pub fn sincronizar(&self, base_id: &str) -> Result<(), Fallo> {
+        let r = self.rutas()?;
+        self.con_conexion(base_id, |c| {
+            let base = self.base(base_id)?;
+            let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            let mut lista = cargar_lista(r);
+            if lista.no_escribir {
+                return Err(lista_protegida());
+            }
+            let e = lista
+                .organizaciones
+                .iter()
+                .find(|o| o.id == base_id)
+                .cloned()
+                .unwrap_or_else(|| entrada_de_base(r, &base));
+            anotar_abierta(&mut lista, &e, c, false)?;
+            escribir_lista(r, &lista)
+        })
     }
 
     /// Solo la saca de la lista. La abierta no: su archivo está en uso, y la lista es de donde arranca.
@@ -582,7 +647,13 @@ impl Estado {
         let i = sesiones.tomar_importacion(trabajo)?;
         let hecho = {
             let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
-            intercambio::como_nueva(&i, r)
+            // dentro de `lista`, y no toma nada más: no cierra ningún ciclo con `conn`, `lista` o `base`
+            let _creando = self.creando.lock().unwrap_or_else(|p| p.into_inner());
+            if self.reiniciando.load(Ordering::SeqCst) {
+                Err(Fallo::de("trabajo_en_curso", ""))
+            } else {
+                intercambio::como_nueva(&i, r)
+            }
         };
         if hecho.is_ok() {
             sesiones.cancelar(trabajo);
@@ -590,6 +661,30 @@ impl Estado {
             let _ = sesiones.guardar_importacion(trabajo, i);
         }
         hecho
+    }
+
+    /// Justo antes de `app.restart`, que cortaría `como_nueva` y dejaría una carpeta sin listar: se espera a que termine, y no empieza
+    /// otra. Solo `creando`, no `lista`, que también retiene leer un archivo elegido en una unidad que puede colgarse. Con tope: lo ya
+    /// hecho (una base restaurada) no se queda sin reiniciar bajo una interfaz vieja. No retiene nada al volver.
+    fn antes_de_reiniciar(&self) {
+        self.antes_de_reiniciar_con(ESPERA_CREACION);
+    }
+
+    fn antes_de_reiniciar_con(&self, espera: Duration) {
+        self.reiniciando.store(true, Ordering::SeqCst);
+        let limite = Instant::now() + espera;
+        while matches!(self.creando.try_lock(), Err(TryLockError::WouldBlock))
+            && Instant::now() < limite
+        {
+            std::thread::sleep(Duration::from_millis(25));
+        }
+    }
+
+    /// La carpeta de la base abierta: con `boldo.db`, la de datos.
+    fn carpeta_abierta(&self, r: &Rutas) -> PathBuf {
+        self.base_abierta()
+            .and_then(|b| b.bd.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| r.datos.clone())
     }
 
     /// Crea una organización y devuelve su id. No cambia de base: la abre `abrir_organizacion`. Usa `boldo.db` si está libre,
@@ -897,6 +992,14 @@ pub async fn color_organizacion(app: AppHandle, id: String, color: String) -> Re
         .map_err(|e| e.to_string())?
 }
 
+/// En un hilo aparte: espera `conn` y `lista`.
+#[tauri::command]
+pub async fn sincronizar_organizacion(app: AppHandle, base_id: String) -> Result<(), Fallo> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<Estado>().sincronizar(&base_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// En un hilo aparte: mira cada copia.
 #[tauri::command]
 pub async fn listar_eliminadas(app: AppHandle) -> Result<Vec<EliminadaVista>, Fallo> {
@@ -1078,9 +1181,12 @@ pub async fn restaurar_respaldo(
 ) -> Result<(), Fallo> {
     let app2 = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        app2.state::<Estado>().con_ranura(&base_id, |conexion, b| {
+        let estado = app2.state::<Estado>();
+        estado.con_ranura(&base_id, |conexion, b| {
             respaldos::restaurar(conexion, b, &nombre, db::MIGRACIONES)
-        })
+        })?;
+        estado.antes_de_reiniciar();
+        Ok::<(), Fallo>(())
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -1128,11 +1234,12 @@ pub fn info_proyecto(estado: State<Estado>, base_id: String) -> Result<InfoProye
     Ok(rutas::info_proyecto(estado.rutas()?, &base)?)
 }
 
-/// Abre la carpeta de datos conocida por Rust; la interfaz nunca envía una ruta.
-#[tauri::command]
+/// Abre la carpeta de la base abierta, conocida por Rust; la interfaz nunca envía una ruta. Fuera del hilo de la ventana: una
+/// externa en una unidad quitada no la congela.
+#[tauri::command(async)]
 pub fn abrir_carpeta_datos(app: AppHandle, estado: State<Estado>) -> Result<(), Fallo> {
     let r = estado.rutas()?;
-    abrir_carpeta(&app, r, &r.datos)
+    abrir_carpeta(&app, r, &estado.carpeta_abierta(r))
 }
 
 #[derive(Clone, Serialize)]
@@ -1357,6 +1464,8 @@ pub async fn importar_reemplazar(
         });
         if hecho.is_err() {
             let _ = sesiones.guardar_importacion(&trabajo, i);
+        } else {
+            estado.antes_de_reiniciar();
         }
         hecho
     })
@@ -2090,6 +2199,8 @@ mod arranque_organizaciones {
         let e = arrancar(&r);
         assert_eq!(abrio_boldo_db(&e, &r).id, id);
         assert_eq!(aviso(&e), ("no_encontrado", ausente.nombre.clone()));
+        let detalle = e.aviso_inicio.lock().unwrap().clone().unwrap().detalle;
+        assert!(detalle.contains(&ausente.ruta), "{detalle}");
         assert!(!pendrive.exists());
 
         // la ausente sigue, igual que estaba, para cuando vuelva el pendrive
@@ -2536,8 +2647,8 @@ mod arranque_organizaciones {
         let v = &vista[0];
         assert_eq!(v.logo.as_deref(), Some("QUJD"));
         assert!(v.existe && !v.activa);
-        assert_eq!(v.bytes_base, antes.len() as u64);
-        assert_eq!(v.bytes_respaldos, 5);
+        assert_eq!(v.bytes_base, Some(antes.len() as u64));
+        assert_eq!(v.bytes_respaldos, Some(5));
         assert_eq!(v.nombre, o.nombre);
         sin_rastros(&bd);
         assert_eq!(fs::read(&bd).unwrap(), antes);
@@ -2625,6 +2736,30 @@ mod cambiar_a {
         serde_json::from_slice(&fs::read(r.datos.join("organizaciones.json")).unwrap()).unwrap()
     }
 
+    #[test]
+    fn la_carpeta_es_la_de_la_base_abierta() {
+        let (_exe, r) = rutas();
+        let solo_boldo = arrancar(&r);
+        assert_eq!(solo_boldo.base_abierta().unwrap().bd, r.bd);
+        assert_eq!(solo_boldo.carpeta_abierta(&r), r.datos);
+        drop(solo_boldo);
+
+        let d = dos();
+        assert_eq!(
+            d.e.carpeta_abierta(&d.r),
+            ruta_de(&d.r, &d.a).parent().unwrap()
+        );
+        assert_ne!(d.e.carpeta_abierta(&d.r), d.r.datos);
+
+        let afuera = tempfile::tempdir().unwrap();
+        let bd = afuera.path().join("externa.db");
+        let id = crear(&bd, "Externa", db::MIGRACIONES);
+        let o = entrada(&id, bd.to_str().unwrap(), true, "2020");
+        escribir(&d.r, vec![d.a.clone(), d.b.clone(), o]);
+        cambiar(&d.e, &id).unwrap();
+        assert_eq!(d.e.carpeta_abierta(&d.r), afuera.path());
+    }
+
     fn fija_meta(bd: &Path, clave: &str, valor: &str) {
         let c = db::abrir(bd).unwrap();
         c.execute(
@@ -2670,6 +2805,41 @@ mod cambiar_a {
         let bd = ruta_de(&d.r, &d.b);
         drop(bloquear(&bd, YA).unwrap());
         sin_rastros(&bd);
+    }
+
+    #[test]
+    fn sincronizar_deja_el_nombre_en_la_lista_sin_tocar_la_fecha() {
+        let d = dos();
+        let antes = lista_del_json(&d.r);
+        let fecha = |l: &Lista| {
+            l.organizaciones
+                .iter()
+                .find(|o| o.id == d.a.id)
+                .map(|o| (o.abierta.clone(), o.nombre.clone()))
+                .unwrap()
+        };
+        d.e.con_conexion(&d.a.id, |c| {
+            c.execute(
+                "UPDATE meta SET valor = 'Renombrada' WHERE clave = 'org_nombre'",
+                [],
+            )
+            .map_err(|x| x.to_string())
+        })
+        .unwrap();
+        d.e.sincronizar(&d.a.id).unwrap();
+        let despues = lista_del_json(&d.r);
+        assert_eq!(fecha(&despues), (fecha(&antes).0, "Renombrada".to_string()));
+    }
+
+    #[test]
+    fn sincronizar_con_otra_base_no_escribe() {
+        let d = dos();
+        let antes = fs::read(d.r.datos.join("organizaciones.json")).unwrap();
+        assert_eq!(d.e.sincronizar(&d.b.id).unwrap_err().codigo, "otra_base");
+        assert_eq!(
+            fs::read(d.r.datos.join("organizaciones.json")).unwrap(),
+            antes
+        );
     }
 
     #[test]
@@ -2955,6 +3125,7 @@ mod cambiar_a {
             *d.e.error.lock().unwrap() = Some("motivo".into());
             *d.e.aviso_inicio.lock().unwrap() = Some(AvisoInicio {
                 codigo: "no_encontrado",
+                detalle: String::new(),
                 nombre: "Otra".into(),
             });
         };
@@ -3952,6 +4123,49 @@ mod como_nueva {
     }
 
     #[test]
+    fn reiniciar_espera_a_que_termine_y_no_deja_empezar_otra() {
+        let (d, origen) = base_con_datos();
+        let (_exe, r) = rutas();
+        let s = sesion_con_archivo(&r, &origen, d.path());
+        let e = Estado::de_prueba(None, None, Some(r.clone()));
+        let (listo, hecho) = mpsc::channel();
+        std::thread::scope(|hilos| {
+            let creando = e.creando.lock().unwrap();
+            hilos.spawn(|| {
+                e.antes_de_reiniciar();
+                listo.send(()).unwrap();
+            });
+            assert!(hecho.recv_timeout(Duration::from_millis(200)).is_err());
+            drop(creando);
+            hecho.recv().unwrap();
+        });
+        let f = e.como_nueva(&s, TRABAJO).unwrap_err();
+        assert_eq!(f.codigo, "trabajo_en_curso");
+        assert!(cargar_lista(&r).organizaciones.is_empty());
+        // el archivo sigue abierto en la sesión, como en cualquier otro fallo
+        assert!(s.importacion(TRABAJO).is_ok());
+    }
+
+    /// Una creación que no termina, o una lista retenida por una unidad colgada, no dejan sin reiniciar lo ya hecho.
+    #[test]
+    fn reiniciar_no_espera_mas_que_el_tope_ni_a_la_lista() {
+        let (_exe, r) = rutas();
+        let e = Estado::de_prueba(None, None, Some(r));
+        let _lista = e.lista.lock().unwrap();
+        let t = Instant::now();
+        e.antes_de_reiniciar_con(Duration::from_secs(5));
+        assert!(t.elapsed() < Duration::from_secs(1), "{:?}", t.elapsed());
+
+        let _creando = e.creando.lock().unwrap();
+        let t = Instant::now();
+        e.antes_de_reiniciar_con(Duration::from_millis(300));
+        let pasado = t.elapsed();
+        assert!(pasado >= Duration::from_millis(300), "{pasado:?}");
+        assert!(pasado < Duration::from_secs(2), "{pasado:?}");
+        assert!(e.reiniciando.load(Ordering::SeqCst));
+    }
+
+    #[test]
     fn espera_a_que_se_suelte_la_lista() {
         let (d, origen) = base_con_datos();
         let (_exe, r) = rutas();
@@ -3992,7 +4206,7 @@ mod eliminar {
     use crate::intercambio::validar::solo_lectura_cerrada;
     use crate::organizaciones::prueba::{crear, crear_enlace, entrada, escribir, interna, rutas};
     use crate::organizaciones::{agregar_archivo, esta_vacia, ruta_de};
-    use crate::respaldos::con_sufijo;
+    use crate::respaldos::{con_sufijo, copia_de_base};
     use serde_json::json;
     use std::fs;
 
@@ -4562,6 +4776,135 @@ mod eliminar {
         }
     }
 
+    /// Un fallo al borrar lo de al lado de su archivo, en cualquier sistema: ya no está, y queda lo demás por hacer.
+    fn retiene_lo_de_al_lado(r: &Rutas, o: &Entrada) -> PathBuf {
+        let retenida = copia_de_base(&base_de(r, o));
+        fs::create_dir(&retenida).unwrap();
+        fs::write(retenida.join("x"), "x").unwrap();
+        retenida
+    }
+
+    fn avance_de(f: &Fallo) -> (bool, Option<&str>) {
+        let a = f.avance.as_ref().expect("eliminar dice qué hizo");
+        (a.archivo_borrado, a.copia.as_deref())
+    }
+
+    #[test]
+    fn falla_antes_de_tocar_nada_y_lo_dice() {
+        let d = cuatro();
+        let bd = ruta_de(&d.r, &d.x);
+        fija_meta(&bd, "db_id", &uuid::Uuid::now_v7().to_string());
+        for (copia, archivo) in [(true, true), (false, true), (true, false)] {
+            let f = eliminar(&d.e, &d.x.id, copia, archivo).err().unwrap();
+            assert_eq!(f.codigo, "otro_id");
+            assert_eq!(avance_de(&f), (false, None));
+        }
+        let f = eliminar(&d.e, "no-es-un-id", true, false).err().unwrap();
+        assert_eq!(avance_de(&f), (false, None));
+        assert!(bd.exists());
+        assert!(eliminadas(&d.r).is_empty());
+    }
+
+    #[test]
+    fn falla_tras_copiar_y_nombra_la_copia() {
+        let (_exe, r) = rutas();
+        let a = interna(&r, "2026");
+        fs::write(&r.bd, "no soy sqlite").unwrap();
+        escribir(&r, vec![a.clone()]);
+        let e = arrancar(&r);
+
+        let f = eliminar(&e, &a.id, true, false).err().unwrap();
+
+        let (borrado, copia) = avance_de(&f);
+        assert!(!borrado);
+        assert_eq!(eliminadas(&r), [copia.unwrap().to_string()]);
+        assert!(ruta_de(&r, &a).exists());
+    }
+
+    #[test]
+    fn falla_tras_borrar_con_copia_y_sin_ella() {
+        for copia in [true, false] {
+            let d = cuatro();
+            let retenida = retiene_lo_de_al_lado(&d.r, &d.i);
+
+            let f = eliminar(&d.e, &d.i.id, copia, false).err().unwrap();
+
+            let (borrado, nombre) = avance_de(&f);
+            assert!(borrado);
+            assert!(!ruta_de(&d.r, &d.i).exists());
+            assert_eq!(nombre.is_some(), copia);
+            if let Some(n) = nombre {
+                assert_eq!(eliminadas(&d.r), [n.to_string()]);
+            }
+            assert!(ids(&d.r).contains(&d.i.id));
+
+            // el reintento no borró nada más: lo dice, y es quien llama el que recuerda lo anterior
+            let f = eliminar(&d.e, &d.i.id, false, false).err().unwrap();
+            assert_eq!(avance_de(&f), (false, None));
+            fs::remove_dir_all(retenida).unwrap();
+            eliminar(&d.e, &d.i.id, false, false).unwrap();
+            assert!(!ids(&d.r).contains(&d.i.id));
+        }
+    }
+
+    #[test]
+    fn falla_tras_borrar_una_externa_solo_si_se_pidio_borrarla() {
+        let d = cuatro();
+        let bd = ruta_de(&d.r, &d.x);
+        retiene_lo_de_al_lado(&d.r, &d.x);
+        let f = eliminar(&d.e, &d.x.id, false, true).err().unwrap();
+        assert_eq!(avance_de(&f), (true, None));
+        assert!(!bd.exists());
+    }
+
+    #[test]
+    fn falla_tras_borrar_la_abierta_que_ya_paso_a_otra() {
+        let d = cuatro();
+        retiene_lo_de_al_lado(&d.r, &d.a);
+        let f = eliminar(&d.e, &d.a.id, true, false).err().unwrap();
+        let (borrado, copia) = avance_de(&f);
+        assert!(borrado && copia.is_some());
+        assert_ne!(d.e.base_abierta().unwrap().id, d.a.id);
+    }
+
+    #[test]
+    fn boldo_db_ultima_dice_que_borro_aunque_haya_otro_en_su_lugar() {
+        let (_exe, r) = rutas();
+        let id = crear(&r.bd, "La mía", db::MIGRACIONES);
+        escribir(&r, vec![entrada(&id, "boldo.db", false, "2020")]);
+        let e = arrancar(&r);
+        let retenida = r.datos.join("boldo.restaurando");
+        fs::create_dir(&retenida).unwrap();
+        fs::write(retenida.join("x"), "x").unwrap();
+
+        let f = eliminar(&e, &id, false, false).err().unwrap();
+
+        assert_eq!(avance_de(&f), (true, None));
+        assert!(r.bd.exists(), "el vacío nuevo");
+    }
+
+    #[test]
+    fn sin_poder_pasar_a_otra_no_dice_que_la_borro() {
+        let (_exe, r) = rutas();
+        let a = interna(&r, "2026");
+        fs::write(&r.bd, "no soy sqlite").unwrap();
+        escribir(&r, vec![a.clone()]);
+        let e = arrancar(&r);
+        let f = eliminar(&e, &a.id, false, false).err().unwrap();
+        assert_eq!(avance_de(&f), (false, None));
+    }
+
+    #[test]
+    fn lo_que_libera_una_interna_es_toda_su_carpeta_y_boldo_db_solo_lo_suyo() {
+        let d = cuatro();
+        let vistas = d.e.listar_organizaciones().unwrap();
+        let de = |id: &str| vistas.iter().find(|v| v.id == id).unwrap().bytes_respaldos;
+        let (respaldo, notas) = ("respaldo".len() as u64, "del usuario".len() as u64);
+        assert_eq!(de(&d.i.id), Some(respaldo + notas));
+        assert_eq!(de(&d.p.id), Some(respaldo));
+        assert_eq!(de(&d.x.id), Some(respaldo));
+    }
+
     #[test]
     fn si_tampoco_boldo_db_abre_no_borra_nada() {
         let (_exe, r) = rutas();
@@ -4782,13 +5125,28 @@ mod eliminar {
         let d = cuatro();
         let bd = ruta_de(&d.r, &d.i);
         let otro = db::abrir(&bd).unwrap();
-        assert!(eliminar(&d.e, &d.i.id, false, false).is_err());
+        let f = eliminar(&d.e, &d.i.id, false, false).err().unwrap();
+        assert_eq!(avance_de(&f), (false, None));
         assert!(bd.exists());
         assert!(ids(&d.r).contains(&d.i.id));
         otro.close().unwrap();
         eliminar(&d.e, &d.i.id, false, false).unwrap();
         assert!(!bd.exists());
         assert!(!ids(&d.r).contains(&d.i.id));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn si_no_se_puede_borrar_tras_copiar_dice_la_copia_y_no_el_borrado() {
+        let d = cuatro();
+        let bd = ruta_de(&d.r, &d.i);
+        let otro = db::abrir(&bd).unwrap();
+        let f = eliminar(&d.e, &d.i.id, true, false).err().unwrap();
+        let (borrado, copia) = avance_de(&f);
+        assert!(!borrado);
+        assert_eq!(eliminadas(&d.r), [copia.unwrap().to_string()]);
+        assert!(bd.exists());
+        otro.close().unwrap();
     }
 
     #[cfg(windows)]
@@ -4802,8 +5160,9 @@ mod eliminar {
         let e = arrancar(&r);
         let otro = db::abrir(&r.bd).unwrap();
 
-        assert!(eliminar(&e, &id, false, false).is_err());
+        let f = eliminar(&e, &id, false, false).err().unwrap();
 
+        assert_eq!(avance_de(&f), (false, None));
         assert_eq!(e.base_abierta().unwrap().id, id);
         e.con_conexion(&id, |c| db::lote(c, &[], "t")).unwrap();
         assert_eq!(ids(&r), [id.as_str()]);

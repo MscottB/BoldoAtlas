@@ -12,7 +12,7 @@ import { abrirCarpetaDatos } from "@/db/cliente";
 import { buscarPersona } from "@/features/atajos/buscarPersona";
 import { mensajeFallo, respaldar as hacerRespaldo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
-import { trabajos, ultimoFin } from "@/lib/trabajos";
+import { abiertaAhora, conOrganizacion, deLaAbierta, trabajos, ultimoFin } from "@/lib/trabajos";
 import { useActualizaciones } from "@/stores/actualizaciones";
 import { buscarActualizaciones } from "./acciones";
 
@@ -24,6 +24,8 @@ import { buscarActualizaciones } from "./acciones";
  * con la interfaz colgada; «Salir» nunca deja la app en la bandeja y termina en el cierre ordenado de SQLite.
  * Con una versión nueva, el texto del icono (tooltip) también lo avisa, y lo mismo un trabajo en curso o que termina bien
  * con la ventana oculta; si falla, la ventana vuelve al frente para que se vea el error.
+ * Se crea una vez y sigue valiendo tras cambiar de organización: nada aquí guarda datos de una, y sus textos la nombran
+ * según la abierta de ahora. «Abrir carpeta de datos» abre la de la base abierta: la decide Rust.
  * shortcut: el aviso de que terminó solo se ve al pasar el mouse sobre el icono; si no basta, una notificación del
  * sistema, que pide un plugin más.
  * En Linux, crear el icono sin libayatana-appindicator3 haría entrar en pánico a tray-icon y, con panic = "abort",
@@ -42,7 +44,9 @@ export async function crearBandeja(router: Router): Promise<void> {
   const tooltip = () => {
     if (trabajos.value.length) return t("bandeja.trabajoEnCurso", { trabajo: trabajos.value.join(", ") });
     if (terminado.value) return t("bandeja.trabajoTerminado", { trabajo: terminado.value });
-    return a.disponible ? t("bandeja.versionNueva", { version: a.disponible.version }) : "BoldoAtlas";
+    return a.disponible
+      ? t("bandeja.versionNueva", { version: a.disponible.version })
+      : deLaAbierta("BoldoAtlas");
   };
   // en el idioma de la interfaz; la entrada del actualizador cambia si hay versión nueva
   const textos = () => ({
@@ -55,7 +59,7 @@ export async function crearBandeja(router: Router): Promise<void> {
       : t("actualizar.buscar"),
     configuracion: t("nav.configuracion"),
     ayuda: t("nav.ayuda"),
-    respaldar: t("respaldos.ahora"),
+    respaldar: deLaAbierta(t("respaldos.ahora")),
     carpeta: t("bandeja.carpeta"),
     salir: t("bandeja.salir"),
   });
@@ -91,11 +95,16 @@ export async function crearBandeja(router: Router): Promise<void> {
     const respaldar = await MenuItem.new({
       id: "respaldar",
       text: x.respaldar,
-      action: () =>
-        hacerRespaldo().then(
-          () => toast.success(t("respaldos.hecho")),
-          (e: unknown) => toast.error(mensajeFallo(e)),
-        ),
+      action: () => {
+        const { nombre, varias } = abiertaAhora(); // la que se respalda, aunque al terminar sea otra
+        return hacerRespaldo().then(
+          () => toast.success(conOrganizacion(t("respaldos.hecho"), nombre, varias)),
+          (e: unknown) => {
+            const mensaje = mensajeFallo(e);
+            if (mensaje) toast.error(conOrganizacion(mensaje, nombre, varias));
+          },
+        );
+      },
     });
     const carpeta = await MenuItem.new({
       id: "carpeta",

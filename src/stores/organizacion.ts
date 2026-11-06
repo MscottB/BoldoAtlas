@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
-import { leerMeta, lote, consultar, type Sentencia } from "@/db/cliente";
+import { leerMeta, lote, consultar, type AvanceEliminar, type Sentencia } from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import {
   TABLAS_CATALOGO,
@@ -48,9 +48,13 @@ import { excluidasParaConexion } from "@/features/unidades/panel";
 import { normalizarTexto } from "@/lib/texto";
 import { tiposARenombrar } from "@/features/configuracion/semillas";
 import { i18n, type Idioma } from "@/i18n";
+import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 
-export type Resultado = { ok: true; id?: string } | { ok: false; mensaje: string };
+/** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
+export type Resultado =
+  | { ok: true; id?: string }
+  | { ok: false; mensaje: string; codigo?: string; detalle?: string; avance?: AvanceEliminar };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
 export type ResultadoEliminar =
@@ -155,6 +159,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
           : trabajadores.value.filter((t) => t[COLUMNA_CATALOGO[tabla]] === id).length;
 
   function fallo(e: unknown): { ok: false; mensaje: string } {
+    if (e instanceof BaseCambiada) return { ok: false, mensaje: "" }; // de la base anterior: no hay nada que mostrar
     const mensaje = traducirError(e);
     error.value = mensaje;
     return { ok: false, mensaje };
@@ -247,9 +252,36 @@ export const useOrganizacion = defineStore("organizacion", () => {
     }
   }
 
+  /** Se pasó a otra base: nada de la anterior queda a la vista, tampoco una foto (`urlFoto` lleva la base y no es reactiva). */
+  function soltar(): void {
+    ultimaCarga++;
+    unidades.value = [];
+    trabajadores.value = [];
+    puestos.value = [];
+    asignaciones.value = [];
+    etiquetas.value = [];
+    unidadEtiquetas.value = [];
+    zonas.value = [];
+    zonaUnidades.value = [];
+    conexiones.value = [];
+    subarboles.value = [];
+    vistas.value = [];
+    leyendas.value = [];
+    catalogos.value = catalogosVacios();
+    org.value = { nombre: "", logo: null };
+    cargado.value = false;
+    error.value = null;
+    ultimoBorrado.value = null;
+    fechaVista.value = null;
+    historico.value = null;
+    estiloCopiado.value = undefined;
+    cambios.value = null;
+  }
+  alSoltarDatos(soltar);
+
   // shortcut: recarga todo tras cada escritura; si una org de 2.000 unidades se siente lenta, aplicar el cambio en memoria.
-  /** Única vía de escritura: un lote (una transacción) y recarga. Si falla, recarga igual para no mostrar datos viejos. */
-  async function escribir(
+  /** Un lote (una transacción) y recarga. Si falla, recarga igual para no mostrar datos viejos. */
+  async function aplicar(
     hacer: () => Sentencia[] | { id: string; sentencias: Sentencia[] },
     alExito?: () => void,
   ): Promise<Resultado> {
@@ -260,9 +292,15 @@ export const useOrganizacion = defineStore("organizacion", () => {
       await lote(sentencias);
       alExito?.();
       const r = await cargar();
-      return r.ok ? { ok: true, id: Array.isArray(plan) ? undefined : plan.id } : r;
+      // sin mensaje: la recarga llegó con otra base, y el lote ya se guardó
+      return r.ok || !r.mensaje ? { ok: true, id: Array.isArray(plan) ? undefined : plan.id } : r;
     } catch (e) {
       const r = fallo(e);
+      // recargar aquí le quitaría su turno a la carga del cambio, que es la que dice cuándo están los datos
+      if (e instanceof BaseCambiada) {
+        console.warn("Escritura rechazada: se está cambiando de organización", e);
+        return r;
+      }
       await cargar();
       error.value = r.mensaje;
       return r;
@@ -275,6 +313,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
     error.value = mensaje;
     return { ok: false, mensaje };
   };
+
+  /** Única vía de escritura. Sin los datos cargados no: lo escrito se calcularía sobre lo que no se leyó. */
+  const escribir = async (...args: Parameters<typeof aplicar>): Promise<Resultado> =>
+    cargado.value ? aplicar(...args) : rechazar(t("store.sinCargar"));
 
   const crearUnidad = (datos: Parameters<typeof U.crearUnidad>[0]) => escribir(() => U.crearUnidad(datos));
   const crearArbol = (nombre: string, tipo_id: string) => crearUnidad({ tipo_id, nombre });
@@ -713,7 +755,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Primer uso: el nombre de la organización y su unidad raíz (del primer tipo activo), en un solo lote. */
   async function crearOrganizacion(nombre: string, nombreRaiz: string): Promise<Resultado> {
-    if (!vacia.value) return rechazar(t("store.hayDatos"));
+    // sin cargar, «vacía» no quiere decir sin datos: los mezclaría con los que hay, sin respaldo
+    if (!cargado.value || !vacia.value) return rechazar(t("store.hayDatos"));
     if (!nombre.trim() || !nombreRaiz.trim()) return rechazar(t("store.nombreVacio"));
     const tipo = activos("tipos_unidad")[0];
     if (!tipo) return rechazar(t("arbol.sinTiposActivos"));
@@ -877,7 +920,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Solo con la base sin unidades: reemplazar datos existentes es `reemplazarCon`. Todo en un solo lote. */
   function cargarEjemplo(): Promise<Resultado> {
-    if (!vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
+    if (!cargado.value || !vacia.value) return Promise.resolve(rechazar(t("store.hayDatos")));
     return escribir(() => sentenciasEjemplo(renombresSemilla()));
   }
 
@@ -891,7 +934,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   ): Promise<Resultado> {
     if (tipo === "vacia" && (!datos?.nombre.trim() || !datos.nombreRaiz.trim()))
       return Promise.resolve(rechazar(t("store.nombreVacio")));
-    return escribir(
+    // sin mirar `cargado`: lo que hubiera se reemplaza sin leerlo
+    return aplicar(
       // Tras vaciar, los tipos de unidad son los sembrados y sin uso.
       () => [...vaciarOrganizacion(), ...sentenciasNueva(tipo, datos)],
       () => {
@@ -937,6 +981,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     activos,
     usos,
     cargar,
+    soltar,
     crearUnidad,
     crearArbol,
     editarUnidad,

@@ -10,12 +10,12 @@ export interface InfoApp {
   versionEsquema: number;
   error: string | null;
   /** La organización que no abrió al arrancar, y por qué: se abrió `boldo.db` en su lugar. */
-  avisoInicio?: { codigo: string; nombre: string } | null;
+  avisoInicio?: { codigo: string; detalle: string; nombre: string } | null;
 }
 
 export interface ArchivoAgregado {
   id: string | null;
-  pide: "red" | "otro_id" | "tope" | null;
+  pide: "red" | "otro_id" | "tope" | "journal" | null;
   avisos: ("copia" | "fuera_de_portable")[];
 }
 
@@ -29,8 +29,9 @@ export interface Organizacion {
   existe: boolean;
   activa: boolean;
   logo: string | null;
-  bytesBase: number;
-  bytesRespaldos: number;
+  /** null: no se pudo leer. */
+  bytesBase: number | null;
+  bytesRespaldos: number | null;
   ejemplo: boolean;
 }
 
@@ -66,7 +67,10 @@ function vigilar<T>(base: string, hecho: Promise<T>): Promise<T> {
       return r;
     },
     (e: unknown) => {
-      if (baseActual() !== base || (esOtraBase(e) && enCambio())) throw new BaseCambiada();
+      if (baseActual() !== base || (esOtraBase(e) && enCambio())) {
+        if (!esOtraBase(e)) console.error(e); // nadie lo va a mostrar: que quede rastro
+        throw new BaseCambiada();
+      }
       if (esOtraBase(e)) alOtra.forEach((f) => f());
       throw e;
     },
@@ -132,6 +136,11 @@ export function eliminarOrganizacion(
 
 export function colorOrganizacion(id: string, color: string): Promise<void> {
   return invoke<void>("color_organizacion", { id, color });
+}
+
+/** Deja en la lista el nombre que tiene ahora la base abierta. */
+export function sincronizarOrganizacion(): Promise<void> {
+  return conBase<void>("sincronizar_organizacion");
 }
 
 export function listarEliminadas(): Promise<OrganizacionEliminada[]> {
@@ -204,6 +213,14 @@ export interface Respaldo {
 export interface FalloRespaldo {
   codigo: string;
   detalle: string;
+  avance?: AvanceEliminar;
+}
+
+/** Lo que un eliminar que falló ya hizo y no se deshace. */
+export interface AvanceEliminar {
+  archivoBorrado: boolean;
+  /** El nombre de la copia en `organizaciones-eliminadas/`. */
+  copia: string | null;
 }
 
 export function listarRespaldos(): Promise<Respaldo[]> {

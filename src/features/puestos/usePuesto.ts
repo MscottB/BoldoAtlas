@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { alSoltarDatos } from "@/lib/baseActiva";
 
 export interface AperturaPuesto {
   /** null = puesto nuevo (se crea al elegir su cargo y confirmar). */
@@ -13,6 +14,7 @@ export interface AperturaPuesto {
 
 // Estado compartido: <DialogoPuesto/> (montado una vez en App.vue) lo lee; las vistas solo llaman a abrir/nuevo.
 const abierta = ref<AperturaPuesto | null>(null);
+alSoltarDatos(() => (abierta.value = null)); // el puesto era de la base anterior
 
 export function usePuesto() {
   return {

@@ -17,9 +17,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import {
   importarAbrir,
   importarAgregar,
+  importarComoNueva,
   importarComparar,
   importarElegir,
   importarReemplazar,
@@ -33,8 +35,10 @@ import {
 } from "@/db/cliente";
 import { rutaTexto } from "@/features/arbol/jerarquia";
 import { tamano } from "@/lib/formato";
+import { deLaAbierta } from "@/lib/trabajos";
 import { claseSelect } from "@/lib/utils";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 import BarraAvance from "./BarraAvance.vue";
 import ListaDetalle from "./ListaDetalle.vue";
 import RevisarDecidir from "./RevisarDecidir.vue";
@@ -42,20 +46,41 @@ import {
   conFilas,
   intentar,
   intentarTrabajo,
+  mensajeComoNueva,
+  modoInicial,
+  organizacionEnCreacion,
   revisionConDecisiones,
   revisionDejada,
   useAvance,
   useTrabajo,
+  type ModoImportar,
 } from "./intercambio";
 
 const emit = defineEmits<{ terminar: [] }>();
 const { t, te, locale } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
+const organizaciones = useOrganizaciones();
 const trabajo = useTrabajo();
 const avance = useAvance(() => trabajo.actual.value);
 
-type Paso = "elegir" | "abriendo" | "revision" | "comparando" | "decidir" | "aplicando" | "hecho" | "hechoRevision";
+// Con la lista protegida, Rust no puede agregar otra: no se ofrece.
+const conNueva = computed(() => ORGANIZACIONES_VISIBLES && !organizaciones.listaProtegida);
+const nombreAbierta = computed(() => organizaciones.nombreAbierta || t("barra.sinNombre"));
+/** Lo que se aplica sobre la abierta dice sobre cuál. */
+const sobreLaAbierta = (clave: string) =>
+  ORGANIZACIONES_VISIBLES ? t(`${clave}En`, { nombre: nombreAbierta.value }) : t(clave);
+
+type Paso =
+  | "elegir"
+  | "abriendo"
+  | "revision"
+  | "comparando"
+  | "decidir"
+  | "aplicando"
+  | "hecho"
+  | "hechoRevision"
+  | "hechoNueva";
 const paso = ref<Paso>("elegir");
 const archivo = ref<{ nombre: string; bytes: number } | null>(null);
 const codigo = ref("");
@@ -81,7 +106,7 @@ async function abrir() {
   error.value = "";
   paso.value = "abriendo";
   avance.value = null;
-  const r = await intentarTrabajo(t("trabajos.importarAbrir"), () => importarAbrir(propio, codigo.value));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAbrir")), () => importarAbrir(propio, codigo.value));
   if (trabajo.actual.value !== propio) return; // se canceló: lo que llega tarde no cambia nada
   if (!r.ok) {
     paso.value = "elegir";
@@ -90,14 +115,14 @@ async function abrir() {
   }
   codigo.value = ""; // ya cumplió: no se queda en memoria de la interfaz
   resumen.value = r.valor;
-  modo.value = r.valor.informe ? "agregar" : r.valor.parcial ? "revisar" : "reemplazar";
+  modo.value = modoInicial(r.valor, conNueva.value);
   lugares.value = Object.fromEntries(
     (r.valor.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
   );
   paso.value = "revision";
 }
 
-const modo = ref<"agregar" | "revisar" | "reemplazar">("agregar");
+const modo = ref<ModoImportar>("agregar");
 // "" = como árbol independiente
 const lugares = ref<Record<string, string>>({});
 const filas = computed(() => conFilas(resumen.value?.informe?.tablas ?? [], (f) => f.trae));
@@ -130,7 +155,7 @@ async function agregar() {
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   const destino = Object.fromEntries(Object.entries(lugares.value).map(([k, v]) => [k, v || null]));
-  const r = await intentarTrabajo(t("trabajos.importarAgregar"), () => importarAgregar(propio, destino));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAgregar")), () => importarAgregar(propio, destino));
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -143,9 +168,60 @@ async function agregar() {
   paso.value = "hecho";
 }
 
+// Cancelar no detendría a Rust y la organización aparecería igual: mientras corre no se ofrece, salir del panel no la cancela,
+// y el resultado se recoge siempre. No cambia la abierta: eso lo decide quien mira, después.
+const creandoNueva = ref(false);
+const nueva = ref<{ id: string; nombre: string } | null>(null);
+async function comoNueva() {
+  const propio = trabajo.actual.value;
+  if (!propio || creandoNueva.value) return;
+  const nombre = resumen.value?.organizacion || t("barra.sinNombre");
+  creandoNueva.value = true;
+  organizacionEnCreacion.value = nombre;
+  paso.value = "aplicando";
+  avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
+  const r = await intentarTrabajo(t("trabajos.importarNueva", { nombre }), () => importarComoNueva(propio));
+  creandoNueva.value = false;
+  organizacionEnCreacion.value = null;
+  if (!r.ok) {
+    toast.error(mensajeComoNueva(r));
+    if (r.codigo === "lista_protegida") organizaciones.listaProtegida = true;
+    if (!conNueva.value && resumen.value) modo.value = modoInicial(resumen.value, false);
+    if (fuera) void trabajo.soltar();
+    else paso.value = "revision"; // el archivo sigue abierto en Rust: se puede reintentar
+    return;
+  }
+  trabajo.actual.value = null; // Rust ya lo cerró
+  void organizaciones.cargarLista();
+  if (fuera) {
+    toast.success(t("intercambio.importar.nuevaFuera", { nombre }));
+    return;
+  }
+  nueva.value = { id: r.valor, nombre };
+  paso.value = "hechoNueva";
+}
+
+const abriendoNueva = ref(false);
+const errorNueva = ref("");
+async function abrirNueva() {
+  if (!nueva.value || abriendoNueva.value) return;
+  abriendoNueva.value = true;
+  errorNueva.value = "";
+  const r = await organizaciones.abrir(nueva.value.id);
+  abriendoNueva.value = false;
+  if (r.ok || !r.mensaje) return; // sin mensaje: se quedó donde estaba, y ya se le preguntó
+  if (fuera) {
+    toast.error(r.mensaje); // el cambio desmontó este panel antes de fallar
+    return;
+  }
+  errorNueva.value = r.mensaje;
+  titulo.value?.focus(); // el botón que tenía el foco estuvo desactivado
+}
+
 const confirmando = ref(false);
 function aplicar() {
-  if (modo.value === "reemplazar") confirmando.value = true;
+  if (modo.value === "nueva") void comoNueva();
+  else if (modo.value === "reemplazar") confirmando.value = true;
   else if (modo.value === "revisar") void comparar();
   else void agregar();
 }
@@ -161,7 +237,9 @@ async function comparar() {
   falloAplicar.value = null;
   paso.value = "comparando";
   avance.value = { etapa: "comparando", hecho: 0, total: 0 };
-  const r = await intentarTrabajo(t("trabajos.importarComparar"), () => importarComparar(propio, destinos.value));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarComparar")), () =>
+    importarComparar(propio, destinos.value),
+  );
   if (trabajo.actual.value !== propio) return;
   if (!r.ok) {
     paso.value = "revision";
@@ -193,7 +271,7 @@ async function aplicarRevision(version: number, confirmado: boolean) {
   aplicandoRevision = true;
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
-  const r = await intentarTrabajo(t("trabajos.importarAplicarRevision"), () =>
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarAplicarRevision")), () =>
     revisionAplicar(propio, version, confirmado),
   );
   aplicandoRevision = false;
@@ -245,7 +323,7 @@ async function reemplazar() {
   paso.value = "aplicando";
   avance.value = { etapa: "aplicando", hecho: 0, total: 0 };
   // si sale bien, la app se reinicia: `app.restart` no pasa por «¿Seguro que quieres salir?» (src-tauri/src/salida.rs)
-  const r = await intentarTrabajo(t("trabajos.importarReemplazar"), () => importarReemplazar(propio));
+  const r = await intentarTrabajo(deLaAbierta(t("trabajos.importarReemplazar")), () => importarReemplazar(propio));
   if (!r.ok) {
     paso.value = "revision";
     toast.error(r.mensaje);
@@ -293,7 +371,7 @@ onMounted(async () => {
 onUnmounted(() => {
   codigo.value = "";
   fuera = true;
-  if (aplicandoRevision) return;
+  if (aplicandoRevision || creandoNueva.value) return;
   const propio = trabajo.actual.value;
   if (paso.value === "decidir" && propio) {
     dejarRevision(propio);
@@ -310,7 +388,7 @@ onUnmounted(() => {
 
     <form v-if="paso === 'elegir'" class="grid gap-4" @submit.prevent="abrir">
       <div class="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" @click="elegir">
+        <Button type="button" variant="outline" :disabled="!!organizacionEnCreacion" @click="elegir">
           <FolderOpen aria-hidden="true" />
           {{ t("intercambio.importar.elegir") }}
         </Button>
@@ -335,14 +413,21 @@ onUnmounted(() => {
       </div>
       <p v-if="error" id="importar-error" role="alert" class="text-sm text-destructive">{{ error }}</p>
       <div class="flex gap-2">
-        <Button type="submit" :disabled="!archivo || !codigo.trim()">{{ t("intercambio.importar.abrir") }}</Button>
+        <Button type="submit" :disabled="!archivo || !codigo.trim() || !!organizacionEnCreacion">
+          {{ t("intercambio.importar.abrir") }}
+        </Button>
         <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
       </div>
     </form>
 
     <BarraAvance v-else-if="paso === 'abriendo'" :avance="avance" cancelable @cancelar="cancelar" />
     <BarraAvance v-else-if="paso === 'comparando'" :avance="avance" cancelable @cancelar="salirDeComparar" />
-    <BarraAvance v-else-if="paso === 'aplicando'" :avance="avance" :cancelable="false" />
+    <template v-else-if="paso === 'aplicando'">
+      <BarraAvance :avance="avance" :cancelable="false" />
+      <p v-if="modo === 'nueva'" class="text-sm text-muted-foreground">
+        {{ t("intercambio.importar.nuevaSinCancelar") }}
+      </p>
+    </template>
 
     <template v-else-if="paso === 'revision' && resumen">
       <p class="text-sm">
@@ -352,10 +437,11 @@ onUnmounted(() => {
           })
         }}
       </p>
-      <p v-if="resumen.informe?.nombreHeredado" class="text-sm">
+      <!-- Comparan el archivo con la abierta: como nueva no entra en ella. -->
+      <p v-if="modo !== 'nueva' && resumen.informe?.nombreHeredado" class="text-sm">
         {{ t("intercambio.importar.tomaraNombre", { nombre: resumen.informe.nombreHeredado }) }}
       </p>
-      <div v-if="resumen.informe" class="overflow-x-auto">
+      <div v-if="modo !== 'nueva' && resumen.informe" class="overflow-x-auto">
         <table class="text-sm">
           <thead>
             <tr class="border-b text-left text-xs text-muted-foreground">
@@ -380,10 +466,19 @@ onUnmounted(() => {
 
       <fieldset class="grid gap-3">
         <legend class="mb-1 text-sm font-medium">{{ t("intercambio.importar.queHacer") }}</legend>
+        <label v-if="conNueva" class="flex items-start gap-2 text-sm">
+          <input v-model="modo" type="radio" value="nueva" class="mt-1" />
+          <span>
+            <span class="font-medium">{{ t("intercambio.importar.nueva") }}</span>
+            <span class="block text-muted-foreground">
+              {{ t("intercambio.importar.nuevaAyuda", { nombre: nombreAbierta }) }}
+            </span>
+          </span>
+        </label>
         <label class="flex items-start gap-2 text-sm" :class="!resumen.informe && 'text-muted-foreground'">
           <input v-model="modo" type="radio" value="agregar" class="mt-1" :disabled="!resumen.informe" />
           <span>
-            <span class="font-medium">{{ t("intercambio.importar.agregar") }}</span>
+            <span class="font-medium">{{ sobreLaAbierta("intercambio.importar.agregar") }}</span>
             <span class="block text-muted-foreground">
               {{ resumen.informe ? t("intercambio.importar.agregarAyuda") : porQueNoAgregar }}
             </span>
@@ -392,14 +487,14 @@ onUnmounted(() => {
         <label class="flex items-start gap-2 text-sm">
           <input v-model="modo" type="radio" value="revisar" class="mt-1" />
           <span>
-            <span class="font-medium">{{ t("intercambio.importar.revisar") }}</span>
+            <span class="font-medium">{{ sobreLaAbierta("intercambio.importar.revisar") }}</span>
             <span class="block text-muted-foreground">{{ t("intercambio.importar.revisarAyuda") }}</span>
           </span>
         </label>
         <label class="flex items-start gap-2 text-sm" :class="resumen.parcial && 'text-muted-foreground'">
           <input v-model="modo" type="radio" value="reemplazar" class="mt-1" :disabled="resumen.parcial" />
           <span>
-            <span class="font-medium">{{ t("intercambio.importar.reemplazar") }}</span>
+            <span class="font-medium">{{ sobreLaAbierta("intercambio.importar.reemplazar") }}</span>
             <span class="block text-muted-foreground">
               {{ t(resumen.parcial ? "intercambio.importar.soloCompleta" : "intercambio.importar.reemplazarAyuda") }}
             </span>
@@ -407,7 +502,7 @@ onUnmounted(() => {
         </label>
       </fieldset>
 
-      <template v-if="modo !== 'reemplazar'">
+      <template v-if="modo === 'agregar' || modo === 'revisar'">
         <p v-if="resumen.parcial && !resumen.ramas" role="status" class="text-sm">
           {{ t("intercambio.importar.lugarDesconocido") }}
         </p>
@@ -439,11 +534,22 @@ onUnmounted(() => {
       </template>
 
       <p class="text-sm text-muted-foreground">
-        {{ t(modo === "revisar" ? "intercambio.importar.revisarNada" : "intercambio.importar.respaldo") }}
+        <template v-if="modo === 'nueva'">{{ t("intercambio.importar.nuevaNada", { nombre: nombreAbierta }) }}</template>
+        <template v-else>
+          {{ t(modo === "revisar" ? "intercambio.importar.revisarNada" : "intercambio.importar.respaldo") }}
+        </template>
       </p>
       <div class="flex gap-2">
-        <Button type="button" :disabled="modo === 'agregar' && !resumen.informe" @click="aplicar">
-          {{ t(modo === "revisar" ? "intercambio.continuar" : "intercambio.importar.aplicar") }}
+        <Button type="button" :disabled="creandoNueva || (modo === 'agregar' && !resumen.informe)" @click="aplicar">
+          {{
+            t(
+              modo === "nueva"
+                ? "intercambio.importar.nuevaAplicar"
+                : modo === "revisar"
+                  ? "intercambio.continuar"
+                  : "intercambio.importar.aplicar",
+            )
+          }}
         </Button>
         <Button type="button" variant="outline" @click="salir">{{ t("intercambio.cancelar") }}</Button>
       </div>
@@ -460,6 +566,20 @@ onUnmounted(() => {
       @salir="salir"
       @aplicar="aplicarRevision"
     />
+
+    <template v-else-if="paso === 'hechoNueva' && nueva">
+      <p role="status" class="text-sm">{{ t("intercambio.importar.nuevaHecha", { nombre: nueva.nombre }) }}</p>
+      <p class="text-sm text-muted-foreground">{{ t("intercambio.importar.nuevaSigue", { nombre: nombreAbierta }) }}</p>
+      <p v-if="errorNueva" role="alert" class="text-sm text-destructive">{{ errorNueva }}</p>
+      <div class="flex flex-wrap gap-2">
+        <Button type="button" :disabled="abriendoNueva" @click="abrirNueva">
+          {{ t("intercambio.importar.nuevaAbrir") }}
+        </Button>
+        <Button type="button" variant="outline" :disabled="abriendoNueva" @click="salir">
+          {{ t("intercambio.importar.nuevaQuedarse") }}
+        </Button>
+      </div>
+    </template>
 
     <template v-else-if="paso === 'hechoRevision' && informeRevision">
       <p role="status" class="text-sm">

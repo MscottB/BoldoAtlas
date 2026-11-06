@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { alSoltarDatos } from "@/lib/baseActiva";
 
 export interface AperturaFicha {
   /** null = ficha nueva (se crea al guardar por primera vez). */
@@ -17,6 +18,13 @@ const abierta = ref<AperturaFicha | null>(null);
 /** Ficha que se quiere abrir y espera la confirmación de descartar los cambios de la actual. */
 const pendiente = ref<string | null>(null);
 let hayCambios: () => Promise<boolean> = async () => false; // lo registra <FichaTrabajador/>
+let preguntarSoltar: () => Promise<boolean> = async () => true; // lo registra <FichaTrabajador/>
+
+// La persona era de la base anterior.
+alSoltarDatos(() => {
+  abierta.value = null;
+  pendiente.value = null;
+});
 
 export function useFicha() {
   return {
@@ -26,6 +34,9 @@ export function useFicha() {
     nueva: () => (abierta.value = { id: null }),
     cerrar: () => (abierta.value = null),
     registrarGuardia: (f: () => Promise<boolean>) => (hayCambios = f),
+    registrarSoltar: (f: () => Promise<boolean>) => (preguntarSoltar = f),
+    /** Antes de dejar la organización: false si la ficha tiene cambios y se eligió seguir editando. */
+    puedeSoltar: () => preguntarSoltar(),
     /** Abre la ficha de `id`; si la abierta tiene cambios sin guardar, pide confirmar primero. */
     async intentarAbrir(id: string) {
       if (decidirApertura(abierta.value, id, await hayCambios()) === "confirmar") pendiente.value = id;

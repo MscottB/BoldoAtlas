@@ -6,9 +6,22 @@ import type { Unidad } from "@/db/tipos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
 import { nuevoId } from "@/lib/ids";
-import { conTrabajo, iniciarTrabajo } from "@/lib/trabajos";
+import { conTrabajo, deLaAbierta, iniciarTrabajo } from "@/lib/trabajos";
 
 export const RUTA_INTERCAMBIO = "/importar-exportar";
+
+export type ModoImportar = "nueva" | "agregar" | "revisar" | "reemplazar";
+
+/** La opción que viene marcada: como organización nueva, también con un parcial; sin ella, lo que este archivo permite. */
+export const modoInicial = (r: ResumenImportacion, conNueva: boolean): ModoImportar =>
+  conNueva ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
+
+/** La que se está creando desde un archivo. Sigue aunque se salga del panel, y al volver hay que decirlo. */
+export const organizacionEnCreacion = ref<string | null>(null);
+
+/** El archivo ya pasó la revisión al abrirlo: si su copia no se deja leer, no es que el archivo no sirva. */
+export const mensajeComoNueva = (f: { codigo: string; mensaje: string }): string =>
+  f.codigo === "contenido_invalido" ? i18n.global.t("intercambio.importar.nuevaNoSeCreo") : f.mensaje;
 
 export type Intento<T> = { ok: true; valor: T } | { ok: false; codigo: string; mensaje: string };
 
@@ -174,7 +187,8 @@ let terminarRevision: (() => void) | null = null;
 
 /** Mientras haya decisiones sin aplicar, cerrar la app pregunta: se perderían. */
 export function revisionConDecisiones(hay: boolean) {
-  if (hay && !terminarRevision) terminarRevision = iniciarTrabajo(i18n.global.t("trabajos.revisionAbierta"));
+  if (hay && !terminarRevision)
+    terminarRevision = iniciarTrabajo(deLaAbierta(i18n.global.t("trabajos.revisionAbierta")));
   if (!hay && terminarRevision) {
     terminarRevision();
     terminarRevision = null;

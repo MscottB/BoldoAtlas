@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, LogOut } from "@lucide/vue";
+import { ChevronDown, FolderOpen, LogOut } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,17 +12,25 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import icono from "../../../assets/brand/icono.png";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { pedirSalir } from "@/app/ventana";
 import { IDIOMAS, cambiarIdioma, type Idioma } from "@/i18n";
-import { GRUPOS_MENU, irAEntrada } from "./menuApp";
+import { baseActual } from "@/lib/baseActiva";
+import { useOrganizaciones } from "@/stores/organizaciones";
+import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "./menuApp";
 
 // Menú de la app: el logo en la barra superior. Cada entrada lleva a una ruta o hace una acción (p. ej. buscar
 // actualizaciones); las de fases futuras solo salen (deshabilitadas) con MOSTRAR_PROXIMAMENTE.
 const { t, locale } = useI18n();
 const router = useRouter();
+const organizaciones = useOrganizaciones();
+const otras = computed(() => entradasAbrirOtra(organizaciones.recientes, baseActual()));
 </script>
 
 <template>
@@ -40,6 +49,20 @@ const router = useRouter();
           {{ t(`menu.${e.id}`) }}
           <span v-if="e.fase" class="ml-auto text-xs">{{ t(e.fase) }}</span>
         </DropdownMenuItem>
+      </template>
+      <template v-if="ORGANIZACIONES_VISIBLES && otras.length">
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <FolderOpen aria-hidden="true" />
+            {{ t("menu.abrirOtra") }}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem v-for="o in otras" :key="o.id" @select="abrirOtra(o.id)">
+              {{ o.nombre || t("barra.sinNombre") }}
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
       </template>
       <DropdownMenuSeparator />
       <DropdownMenuLabel id="menu-idioma">{{ t("idioma.etiqueta") }}</DropdownMenuLabel>

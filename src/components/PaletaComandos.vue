@@ -4,6 +4,7 @@ import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
   CircleHelp,
+  FolderOpen,
   ListChecks,
   LocateFixed,
   Network,
@@ -20,13 +21,22 @@ import { CommandDialog, CommandGroup, CommandItem, CommandList } from "@/compone
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { rutaPuesto, useUbicar } from "@/features/arbol/useUbicar";
-import { buscarEnPaleta, indexarPaleta, type Accion, type Grupo } from "@/features/atajos/paleta";
+import {
+  buscarEnPaleta,
+  indexarPaleta,
+  type Accion,
+  type Grupo,
+  type IndicePaleta,
+} from "@/features/atajos/paleta";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
-import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
+import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
-import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
+import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
+import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
+import { baseActual } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 
 // Ctrl+K: unidades, personas, puestos vacantes y acciones. El filtro es propio (sin tildes ni mayúsculas): el de Command
 // compara contra `value`, que aquí es un id con prefijo de grupo.
@@ -35,6 +45,8 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const org = useOrganizacion();
+const organizaciones = useOrganizaciones();
+const pestanas = usePestanas();
 const { revelar, nuevaHija } = useLienzo();
 const { tema } = useTema();
 const ficha = useFicha();
@@ -63,7 +75,11 @@ interface AccionPaleta extends Accion {
   /** Si lleva a una vista: la que se abre en una pestaña nueva con Ctrl+Enter, Ctrl+clic o clic central. */
   ruta?: RouteLocationRaw;
 }
-const enArbol = computed(() => route.name === "arbol");
+// La pantalla del motivo tapa la vista: lo que hay detrás es de la organización abierta, no de esta pestaña. Nada de sus
+// datos (una ficha o un puesto escribirían en ella), y lo que lleva a una vista va a una pestaña nueva.
+const conMotivo = computed(() => organizaciones.sinAbrir.has(pestanas.activa));
+const SIN_DATOS: IndicePaleta = { unidades: [], personas: [], vacantes: [] };
+const enArbol = computed(() => route.name === "arbol" && !conMotivo.value);
 const acciones = computed<AccionPaleta[]>(() => [
   // Crear solo tiene sentido sobre el árbol y con la fecha de hoy.
   ...(enArbol.value && !org.fechaVista
@@ -106,6 +122,14 @@ const acciones = computed<AccionPaleta[]>(() => [
     ejecutar: () => irAEntrada(e, router),
     ruta: e.destino && !router.resolve(e.destino).meta.sinMarco ? e.destino : undefined,
   })),
+  ...(ORGANIZACIONES_VISIBLES
+    ? entradasAbrirOtra(organizaciones.recientes, baseActual()).map((o) => ({
+        id: `abrir:${o.id}`,
+        etiqueta: t("paleta.acciones.abrirOtra", { nombre: o.nombre || t("barra.sinNombre") }),
+        icono: FolderOpen,
+        ejecutar: () => abrirOtra(o.id),
+      }))
+    : []),
   {
     id: "ayuda",
     etiqueta: t("paleta.acciones.ayuda"),
@@ -115,7 +139,9 @@ const acciones = computed<AccionPaleta[]>(() => [
   },
 ]);
 
-const r = computed(() => buscarEnPaleta(indice.value, busqueda.value, acciones.value));
+const r = computed(() =>
+  buscarEnPaleta(conMotivo.value ? SIN_DATOS : indice.value, busqueda.value, acciones.value),
+);
 const total = computed(
   () => r.value.unidades.total + r.value.personas.total + r.value.vacantes.total + r.value.acciones.total,
 );
@@ -155,7 +181,7 @@ function alTeclear(e: KeyboardEvent) {
 // Se cierra primero: lo elegido (ficha, diálogo del puesto) toma el foco sin pelearlo con la paleta.
 function elegir(accion: () => unknown, ev?: CustomEvent<{ originalEvent: Event }>, ruta?: RouteLocationRaw) {
   const clic = ev?.detail?.originalEvent;
-  const nueva = conCtrl || (clic instanceof MouseEvent && (clic.ctrlKey || clic.metaKey));
+  const nueva = conMotivo.value || conCtrl || (clic instanceof MouseEvent && (clic.ctrlKey || clic.metaKey));
   conCtrl = false;
   abierto.value = false;
   if (ruta && nueva) abrirEnPestanaNueva(ruta);
