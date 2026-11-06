@@ -239,3 +239,31 @@ test("funciones.json trae las 10 funciones, en orden y con estos id", () => {
       idioma,
     );
 });
+
+test("seguridad.json trae sus 7 secciones, en orden y con estos id", () => {
+  for (const idioma of IDIOMAS)
+    assert.deepEqual(
+      json(idioma, "seguridad.json").secciones.map((s) => s.id),
+      ["donde-quedan", "conexion", "cifrado", "archivos-externos", "verificar", "reportar", "cumplir"],
+      idioma,
+    );
+});
+
+test("Acerca de trae las preguntas frecuentes en los dos idiomas", () => {
+  for (const [md, titulo] of [
+    ["acerca.md", "## Preguntas frecuentes {#preguntas}"],
+    ["en/acerca.md", "## Frequently asked questions {#preguntas}"],
+  ]) {
+    const texto = readFileSync(new URL(md, sitio), "utf8");
+    assert.ok(texto.split(/\r?\n/).includes(titulo), `${md}: falta «${titulo}»`);
+    assert.ok((texto.match(/^### /gm) ?? []).length >= 6, `${md}: menos de 6 preguntas`);
+  }
+});
+
+test("las garantías de Inicio enlazan a Seguridad", () => {
+  for (const idioma of IDIOMAS) {
+    const { seguridad } = json(idioma, "comunes.json").rutas;
+    for (const g of json(idioma, "inicio.json").garantias.items)
+      assert.ok(g.enlace?.href.startsWith(`${seguridad}#`), `${idioma}: «${g.titulo}» → ${g.enlace?.href}`);
+  }
+});

@@ -5,7 +5,7 @@ import Descargas from "./Descargas.vue";
 import Funciones from "./Funciones.vue";
 import Inicio from "./Inicio.vue";
 import Novedades from "./Novedades.vue";
-import Presentacion from "./Presentacion.vue";
+import Seguridad from "./Seguridad.vue";
 import "./custom.css";
 
 export default {
@@ -16,6 +16,6 @@ export default {
     app.component("Funciones", Funciones);
     app.component("Inicio", Inicio);
     app.component("Novedades", Novedades);
-    app.component("Presentacion", Presentacion);
+    app.component("Seguridad", Seguridad);
   },
 } satisfies Theme;

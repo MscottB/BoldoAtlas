@@ -54,27 +54,25 @@
         "icono": "codigo",
         "titulo": "Open source",
         "texto": "AGPL-3.0 license. All the code is on GitHub for anyone to review.",
-        "enlace": { "texto": "See it on GitHub", "href": "https://github.com/MscottB/BoldoAtlas" }
+        "enlace": { "texto": "How to report a problem", "href": "/en/seguridad#reportar" }
       },
       {
         "icono": "escudo",
         "titulo": "Verifiable downloads and updates",
         "texto": "Every release publishes SHA256SUMS.txt and the list of its components. The app rejects an update if its signature doesn't match.",
-        "enlace": { "texto": "How to verify", "href": "/en/descargas#verify-the-download" }
+        "enlace": { "texto": "How to verify", "href": "/en/seguridad#verificar" }
       },
       {
         "icono": "sinRastreo",
         "titulo": "No tracking in the app",
-        "texto": "The app has no analytics and no telemetry, and it sends your data nowhere."
+        "texto": "The app has no analytics and no telemetry, and it sends your data nowhere.",
+        "enlace": { "texto": "Its single automatic connection", "href": "/en/seguridad#conexion" }
       },
       {
         "icono": "candado",
         "titulo": "It helps you meet personal-data rules",
         "texto": "The data stays on your computer and the files you share are encrypted: that helps you meet the rules that apply to you. Handling it lawfully is the responsibility of whoever uses the app.",
-        "enlace": {
-          "texto": "Security policy",
-          "href": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md"
-        }
+        "enlace": { "texto": "Security and privacy", "href": "/en/seguridad#cumplir" }
       }
     ]
   }

@@ -84,6 +84,8 @@ test("la portada enlaza a todas las novedades solo si hay más de 3", () => {
   const vue = leer(".vitepress/theme/Inicio.vue");
   assert.match(vue, /v-if="hayMas"[^>]*:href="enlace\(t\.comunes\.rutas\.novedades\)"/);
   assert.match(vue, /const hayMas = novedades\.length > PORTADA/);
+  assert.equal(JSON.parse(leer("textos/es/comunes.json")).rutas.novedades, "/novedades");
+  assert.equal(JSON.parse(leer("textos/en/comunes.json")).rutas.novedades, "/en/novedades");
 });
 
 test("cada novedad trae título y texto en es y en, y una página de la ayuda", () => {
@@ -124,18 +126,18 @@ test("la imagen, si hay, existe en la ayuda de los dos idiomas y lleva texto alt
 test("ningún texto de la portada tiene versiones, «Próximamente», fases ni «cumple»", () => {
   const fuentes = {
     "novedades.json": textos(novedades),
-    "Presentacion.vue": [leer(".vitepress/theme/Presentacion.vue")],
     "Novedades.vue": [leer(".vitepress/theme/Novedades.vue")],
     ...Object.fromEntries(
-      ["Inicio", "Funciones", "Portada", "BloqueFuncion", "Garantias", "LlamadaDescarga"].map((c) => [
-        `${c}.vue`,
-        [leer(`.vitepress/theme/${c}.vue`)],
-      ]),
+      ["Inicio", "Funciones", "Seguridad", "Portada", "BloqueFuncion", "Garantias", "LlamadaDescarga"].map(
+        (c) => [`${c}.vue`, [leer(`.vitepress/theme/${c}.vue`)]],
+      ),
     ),
     "index.md": [leer("index.md")],
     "en/index.md": [leer("en/index.md")],
     "funciones.md": [leer("funciones.md")],
     "en/funciones.md": [leer("en/funciones.md")],
+    "seguridad.md": [leer("seguridad.md")],
+    "en/seguridad.md": [leer("en/seguridad.md")],
     "novedades.md": [leer("novedades.md")],
     "en/novedades.md": [leer("en/novedades.md")],
     "descargas.md": [leer("descargas.md")],

@@ -124,6 +124,6 @@ test("la página existe en los dos idiomas, sin logos ajenos, con aviso legal y 
   // sin todas las funciones de cada producto, la tabla engañaría por omisión si no lo dice
   assert.match(vue, /Compara una selección de criterios; no es una lista completa de funciones\./);
   assert.match(vue, /Compares a selection of criteria; it isn't a complete feature list\./);
-  assert.match(leer(".vitepress/theme/Presentacion.vue"), /comparar: "\/comparar"/);
-  assert.match(leer(".vitepress/theme/Presentacion.vue"), /comparar: "\/en\/comparar"/);
+  assert.equal(JSON.parse(leer("textos/es/comunes.json")).rutas.comparar, "/comparar");
+  assert.equal(JSON.parse(leer("textos/en/comunes.json")).rutas.comparar, "/en/comparar");
 });

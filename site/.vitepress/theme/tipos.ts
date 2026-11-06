@@ -25,3 +25,11 @@ export interface Funcion {
   imagen: Imagen;
   enlace?: Enlace;
 }
+
+export interface Seccion {
+  id: string;
+  titulo: string;
+  parrafos: string[];
+  puntos?: string[];
+  enlace?: Enlace;
+}

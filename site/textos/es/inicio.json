@@ -54,27 +54,25 @@
         "icono": "codigo",
         "titulo": "Código abierto",
         "texto": "Licencia AGPL-3.0. Todo el código está en GitHub para que cualquiera lo revise.",
-        "enlace": { "texto": "Ver en GitHub", "href": "https://github.com/MscottB/BoldoAtlas" }
+        "enlace": { "texto": "Cómo reportar un problema", "href": "/seguridad#reportar" }
       },
       {
         "icono": "escudo",
         "titulo": "Descargas y actualizaciones verificables",
         "texto": "Cada versión publica SHA256SUMS.txt y la lista de sus componentes. La app rechaza una actualización si su firma no coincide.",
-        "enlace": { "texto": "Cómo verificar", "href": "/descargas#verificar-la-descarga" }
+        "enlace": { "texto": "Cómo verificar", "href": "/seguridad#verificar" }
       },
       {
         "icono": "sinRastreo",
         "titulo": "Sin rastreo en la app",
-        "texto": "La app no tiene analítica ni telemetría, y no envía tus datos a ninguna parte."
+        "texto": "La app no tiene analítica ni telemetría, y no envía tus datos a ninguna parte.",
+        "enlace": { "texto": "Su única conexión automática", "href": "/seguridad#conexion" }
       },
       {
         "icono": "candado",
         "titulo": "Te ayuda a cumplir con los datos personales",
         "texto": "Los datos quedan en tu computador y los archivos que compartes van cifrados: eso te ayuda a cumplir las reglas que te apliquen. Tratarlos conforme a la ley es responsabilidad de quien usa la app.",
-        "enlace": {
-          "texto": "Política de seguridad",
-          "href": "https://github.com/MscottB/BoldoAtlas/blob/main/SECURITY.md#política-de-seguridad"
-        }
+        "enlace": { "texto": "Seguridad y privacidad", "href": "/seguridad#cumplir" }
       }
     ]
   }
