@@ -219,3 +219,23 @@ test("cada página del sitio tiene su par en inglés", () => {
   assert.ok(paginas.length > 0);
   for (const p of paginas) assert.ok(existsSync(new URL(`en/${p}`, sitio)), `falta site/en/${p}`);
 });
+
+test("funciones.json trae las 10 funciones, en orden y con estos id", () => {
+  for (const idioma of IDIOMAS)
+    assert.deepEqual(
+      json(idioma, "funciones.json").items.map((f) => f.id),
+      [
+        "arboles",
+        "conexiones",
+        "organizaciones",
+        "personas",
+        "fechas",
+        "revision",
+        "directorio",
+        "compartir",
+        "portable",
+        "sistemas",
+      ],
+      idioma,
+    );
+});

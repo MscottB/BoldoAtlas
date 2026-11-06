@@ -3,9 +3,18 @@
   "titulo": "Así funciona",
   "bajada": "En una organización grande, la planilla tiene los datos pero no el organigrama, el dibujo queda atrás al primer cambio, y un servicio en la nube deja las fichas de tu gente en los servidores de otra empresa. BoldoAtlas junta el árbol, los puestos y las fichas en una base que está en tu computador.",
   "cifras": [
-    { "valor": "10.000", "texto": "personas, 1.000 de ellas con foto" },
-    { "valor": "2.000", "texto": "unidades y 3.000 puestos" },
-    { "valor": "< 1 s", "texto": "para abrir todo eso" }
+    {
+      "valor": "10.000",
+      "texto": "personas, 1.000 de ellas con foto"
+    },
+    {
+      "valor": "2.000",
+      "texto": "unidades y 3.000 puestos"
+    },
+    {
+      "valor": "< 1 s",
+      "texto": "para abrir todo eso"
+    }
   ],
   "nota": "Medido en Windows 11, desde abrir la app hasta ver los totales en Inicio, con una organización de prueba y retratos generados: de 0,6 a 0,9 s con fotos optimizadas o de 300 KB. La primera apertura de cada carpeta tarda más porque hace un respaldo.",
   "items": [
@@ -13,12 +22,11 @@
       "id": "arboles",
       "etiqueta": "Árboles muy grandes",
       "titulo": "Toda la estructura en un solo lienzo",
-      "texto": "Cada tarjeta muestra la jefatura, las caras del equipo, la dotación y las vacantes de la unidad.",
+      "texto": "Cada tarjeta muestra la jefatura, las caras del equipo, la dotación y las vacantes de la unidad. Las zonas, con nombre y color, agrupan unidades de cualquier rama sin cambiar quién depende de quién.",
       "puntos": [
         "Ramas que se pliegan, y botones 1, 2, 3 y Todo para elegir cuántos niveles ver.",
         "Relaciones laterales entre unidades: líneas punteadas con su descripción, por el espacio libre entre tarjetas.",
         "Varios árboles en la misma base, y cualquier rama se abre como árbol propio.",
-        "Zonas con nombre y color que agrupan unidades de cualquier rama, sin cambiar quién depende de quién.",
         "Vistas guardadas y resaltado por etiqueta o por texto."
       ],
       "imagen": {
@@ -29,7 +37,59 @@
         "leyenda": "Organización de ejemplo que trae la app (16 personas)",
         "alt": "Organigrama de ejemplo: Gerencia General con Operaciones, Finanzas y Personas; Operaciones abierta hasta Mantención, Producción, Mecánica y Eléctrica, con jefaturas, dotación y vacantes."
       },
-      "enlace": { "texto": "Leer cómo funciona el árbol", "href": "/manual/arbol" }
+      "enlace": {
+        "texto": "Leer cómo funciona el árbol",
+        "href": "/manual/arbol"
+      }
+    },
+    {
+      "id": "conexiones",
+      "etiqueta": "Conexiones entre unidades",
+      "titulo": "Une las unidades que trabajan juntas",
+      "texto": "Una conexión va de una unidad a otra, con una descripción si quieres, y no cambia de quién dependen.",
+      "puntos": [
+        "Una línea punteada por el espacio libre entre las tarjetas, con una flecha hacia la unidad de destino.",
+        "Se crea con «Conectar con…» desde la tarjeta o el panel de la unidad; si la otra está en una rama plegada, la rama se abre sola.",
+        "Cambia una de las unidades, invierte el sentido o elimínala, con 8 segundos para deshacer.",
+        "Al pasar por una tarjeta se resaltan sus conexiones y las demás líneas se atenúan."
+      ],
+      "imagen": {
+        "nombre": "arbol-conexion",
+        "ancho": 320,
+        "alto": 298,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Ventanita de la conexión Mantención → Compras, sobre su línea punteada: la descripción, Cambiar unidad, Invertir y Eliminar conexión."
+      },
+      "enlace": {
+        "texto": "Leer sobre las conexiones",
+        "href": "/manual/arbol#conexiones"
+      }
+    },
+    {
+      "id": "organizaciones",
+      "etiqueta": "Varias organizaciones",
+      "titulo": "Cada organización, aparte de las demás",
+      "texto": "Una organización es un archivo con su organigrama, sus personas y sus listas: sirve para llevar clientes distintos, las empresas de un grupo o una copia de prueba.",
+      "puntos": [
+        "Varias organizaciones, cada una con sus datos, fotos y respaldos aparte: pasas de una a otra con sus pestañas.",
+        "Crea una, abre un archivo .db o explora el ejemplo, sin tocar la que tienes abierta.",
+        "Inicio muestra hasta 8 organizaciones abiertas hace poco, y un clic abre la que quieras.",
+        "Cada pestaña lleva el punto de color y el nombre de su organización.",
+        "Eliminar una pide escribir su nombre, y puede dejar antes una copia."
+      ],
+      "imagen": {
+        "nombre": "inicio-organizacion",
+        "ancho": 784,
+        "alto": 818,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Inicio de Compañía Demo con sus totales, la lista de organizaciones abiertas recientemente, los accesos rápidos y los botones para crear o abrir otra organización."
+      },
+      "enlace": {
+        "texto": "Leer sobre las organizaciones",
+        "href": "/manual/organizaciones"
+      }
     },
     {
       "id": "personas",
@@ -48,7 +108,10 @@
         "temas": true,
         "alt": "Ficha de persona de Andrés Soto: nombre, correo, la unidad que encabeza, su puesto de Gerente con el historial, tipo de contrato, sede y jornada."
       },
-      "enlace": { "texto": "Leer sobre las fichas", "href": "/manual/fichas" }
+      "enlace": {
+        "texto": "Leer sobre las fichas",
+        "href": "/manual/fichas"
+      }
     },
     {
       "id": "fechas",
@@ -67,7 +130,119 @@
         "temas": true,
         "alt": "El organigrama visto al 1 de septiembre de 2026, en solo lectura, con el calendario abierto y el cambio de ese día."
       },
-      "enlace": { "texto": "Leer cómo ver a una fecha", "href": "/manual/arbol#ver-a-una-fecha" }
+      "enlace": {
+        "texto": "Leer cómo ver a una fecha",
+        "href": "/manual/arbol#ver-a-una-fecha"
+      }
+    },
+    {
+      "id": "revision",
+      "etiqueta": "Revisión",
+      "titulo": "Lo que conviene corregir, en una sola pantalla",
+      "texto": "Revisión junta puestos vacantes, correos repetidos, personas sin puesto y más; cada fila abre lo que hay que arreglar.",
+      "puntos": [
+        "Unidades sin jefatura, puestos vacantes (con los días que llevan así) y personas sin puesto vigente.",
+        "Correos repetidos y nombres parecidos, como posibles duplicados.",
+        "Unidades vacías y valores de las listas que nada usa.",
+        "El número junto a Revisión, en el menú, es el total de avisos pendientes y se actualiza solo."
+      ],
+      "imagen": {
+        "nombre": "revision-lista",
+        "ancho": 888,
+        "alto": 440,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Pantalla Revisión de datos con las listas Puestos vacantes, Reemplazos vigentes y Valores sin uso."
+      },
+      "enlace": {
+        "texto": "Leer sobre la Revisión",
+        "href": "/manual/revision"
+      }
+    },
+    {
+      "id": "directorio",
+      "etiqueta": "Directorio y búsqueda",
+      "titulo": "Encuentra a cualquiera en segundos",
+      "texto": "Un directorio con todas las personas y vacantes, con búsqueda, filtros y las columnas que quieras.",
+      "puntos": [
+        "Ctrl+K abre la paleta de comandos: escribe y llega a cualquier unidad o persona.",
+        "Ordena por persona, cargo o gerencia.",
+        "Busca también dentro del diagrama.",
+        "Inicio muestra los totales de tu organización y las organizaciones que abriste hace poco."
+      ],
+      "imagen": {
+        "nombre": "directorio",
+        "ancho": 1100,
+        "alto": 533,
+        "temas": true,
+        "alt": "Directorio con 18 filas: persona, cargo, gerencia, área y correo, con búsqueda, filtro por unidad y selector de columnas."
+      }
+    },
+    {
+      "id": "compartir",
+      "etiqueta": "Exportar e importar",
+      "titulo": "Lleva la base o una rama a otro computador",
+      "texto": "Exportar guarda toda la base, o las ramas que marques, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves qué trae y eliges qué hacer con él:",
+      "puntos": [
+        "Como organización nueva, lo recomendado: queda aparte en tu lista y la que tienes abierta no cambia.",
+        "Agregar lo nuevo: entra lo que falta y lo que ya tienes se queda como está.",
+        "Revisar y decidir: para dos copias que siguieron cambiando; eliges qué se queda, por registro o campo a campo.",
+        "Reemplazar todo: tus datos cambian por los del archivo, solo con un archivo de toda la base.",
+        "Antes de cambiar tus datos se hace un respaldo, y si algo falla no se escribe nada."
+      ],
+      "imagen": {
+        "nombre": "importar-revision",
+        "ancho": 768,
+        "alto": 761,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Importar: lo que trae el archivo en una tabla y las opciones Como organización nueva, Agregar lo nuevo, Revisar y decidir y Reemplazar todo."
+      },
+      "enlace": {
+        "texto": "Leer cómo exportar e importar",
+        "href": "/manual/exportar-importar"
+      }
+    },
+    {
+      "id": "portable",
+      "etiqueta": "100 % local y portable",
+      "titulo": "Llévalo en un pendrive, con tus datos y respaldos",
+      "texto": "La versión portable guarda tus datos y respaldos en la carpeta datos/, junto al programa, y no necesita internet para funcionar. En macOS, el sistema guarda además las preferencias de la ventana y sus cachés en ~/Library.",
+      "puntos": [
+        "Respaldo automático cada 24 horas, o con la frecuencia que elijas, y a mano cuando quieras.",
+        "De cada organización se conservan los 10 más recientes, y se restauran desde la misma pantalla.",
+        "Antes de cambiar la estructura de la base, BoldoAtlas guarda una copia."
+      ],
+      "imagen": {
+        "nombre": "respaldos",
+        "ancho": 1100,
+        "alto": 622,
+        "temas": true,
+        "alt": "Sección Respaldos de la configuración: último respaldo, botón Respaldar ahora, respaldo automático cada 24 horas y la lista de respaldos para restaurar."
+      }
+    },
+    {
+      "id": "sistemas",
+      "etiqueta": "Windows, Linux y macOS",
+      "titulo": "En tu sistema y en tu idioma",
+      "texto": "La misma app en Windows, Linux y macOS, con la interfaz en español o en inglés.",
+      "puntos": [
+        "Windows 10 y 11, Linux (AppImage, .deb y .rpm) y macOS 11 o más nuevo, en Intel y Apple Silicon.",
+        "El idioma se cambia al instante; tema claro, oscuro o según el sistema.",
+        "Un manual con capturas numeradas y buscador dentro de la app, el mismo que está en este sitio.",
+        "Al cerrar la ventana puedes dejar BoldoAtlas en la bandeja y volver al instante."
+      ],
+      "imagen": {
+        "nombre": "idioma-en-oscuro",
+        "ancho": 1100,
+        "alto": 481,
+        "temas": false,
+        "alt": "La app en inglés y en tema oscuro: el menú con Tree, Trees, Directory y Review, y el organigrama de ejemplo."
+      },
+      "enlace": {
+        "texto": "Leer el manual",
+        "href": "/manual/inicio"
+      }
     }
   ],
   "comparar": {

@@ -3,9 +3,18 @@
   "titulo": "How it works",
   "bajada": "In a large organization, the spreadsheet has the data but not the org chart, the drawing falls behind at the first change, and a cloud service leaves your people's records on another company's servers. BoldoAtlas brings the tree, the positions and the records together in a database on your computer.",
   "cifras": [
-    { "valor": "10,000", "texto": "people, 1,000 of them with a photo" },
-    { "valor": "2,000", "texto": "units and 3,000 positions" },
-    { "valor": "< 1 s", "texto": "to open all of that" }
+    {
+      "valor": "10,000",
+      "texto": "people, 1,000 of them with a photo"
+    },
+    {
+      "valor": "2,000",
+      "texto": "units and 3,000 positions"
+    },
+    {
+      "valor": "< 1 s",
+      "texto": "to open all of that"
+    }
   ],
   "nota": "Measured on Windows 11, from opening the app to seeing the totals on Home, with a test organization and generated portraits: 0.6 to 0.9 s with optimized or 300 KB photos. The first opening of each folder takes longer because it makes a backup.",
   "items": [
@@ -13,12 +22,11 @@
       "id": "arboles",
       "etiqueta": "Very large trees",
       "titulo": "The whole structure on one canvas",
-      "texto": "Each card shows the unit's head, the team's faces, the headcount and the vacancies.",
+      "texto": "Each card shows the unit's head, the team's faces, the headcount and the vacancies. Zones, with a name and a color, group units from any branch without changing who reports to whom.",
       "puntos": [
         "Branches fold away, and the 1, 2, 3 and All buttons choose how many levels you see.",
         "Lateral connections between units: dotted lines with their description, through the free space between cards.",
         "Several trees in one database, and any branch opens as a tree of its own.",
-        "Zones with a name and a color that group units from any branch, without changing who reports to whom.",
         "Saved views, and highlighting by tag or by text."
       ],
       "imagen": {
@@ -29,7 +37,59 @@
         "leyenda": "The sample organization that comes with the app (16 people)",
         "alt": "Sample org chart: General Management with Operations, Finance and People; Operations open down to Maintenance, Production, Mechanical and Electrical, with heads, headcount and vacancies."
       },
-      "enlace": { "texto": "Read how the tree works", "href": "/en/manual/arbol" }
+      "enlace": {
+        "texto": "Read how the tree works",
+        "href": "/en/manual/arbol"
+      }
+    },
+    {
+      "id": "conexiones",
+      "etiqueta": "Connections between units",
+      "titulo": "Link the units that work together",
+      "texto": "A connection goes from one unit to another, with a description if you want, and does not change who they report to.",
+      "puntos": [
+        "A dotted line through the free space between cards, with an arrow pointing at the destination unit.",
+        "Create it with “Connect to…” from the card or the unit panel; if the other unit is in a collapsed branch, the branch opens by itself.",
+        "Change one of the units, reverse the direction or delete it, with 8 seconds to undo.",
+        "Hover over a card and its connections stand out while the other lines fade."
+      ],
+      "imagen": {
+        "nombre": "arbol-conexion",
+        "ancho": 320,
+        "alto": 298,
+        "temas": false,
+        "ayuda": true,
+        "alt": "The window of the Maintenance → Purchasing connection, above its dotted line: the description, Change unit, Reverse and Delete connection."
+      },
+      "enlace": {
+        "texto": "Read about connections",
+        "href": "/en/manual/arbol#connections"
+      }
+    },
+    {
+      "id": "organizaciones",
+      "etiqueta": "Several organizations",
+      "titulo": "Each organization, apart from the others",
+      "texto": "An organization is a file with its org chart, its people and its lists: it lets you keep different clients, the companies in a group or a test copy.",
+      "puntos": [
+        "Several organizations, each with its data, photos and backups apart: you move between them with their tabs.",
+        "Create one, open a .db file or explore the example, without touching the one you have open.",
+        "Home shows up to 8 recently opened organizations, and one click opens the one you want.",
+        "Each tab carries the color dot and the name of its organization.",
+        "Deleting one asks you to type its name, and can keep a copy first."
+      ],
+      "imagen": {
+        "nombre": "inicio-organizacion",
+        "ancho": 784,
+        "alto": 818,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Home of Demo Company with its totals, the list of recently opened organizations, the quick access buttons and the buttons to create or open another organization."
+      },
+      "enlace": {
+        "texto": "Read about organizations",
+        "href": "/en/manual/organizaciones"
+      }
     },
     {
       "id": "personas",
@@ -48,7 +108,10 @@
         "temas": true,
         "alt": "Person record for Andrés Soto: name, email, the unit he heads, his Manager position with its history, contract type, site and shift."
       },
-      "enlace": { "texto": "Read about records", "href": "/en/manual/fichas" }
+      "enlace": {
+        "texto": "Read about records",
+        "href": "/en/manual/fichas"
+      }
     },
     {
       "id": "fechas",
@@ -67,7 +130,119 @@
         "temas": true,
         "alt": "The org chart as of September 1, 2026, read-only, with the calendar open and that day's change."
       },
-      "enlace": { "texto": "Read how to view a past date", "href": "/en/manual/arbol#viewing-a-past-date" }
+      "enlace": {
+        "texto": "Read how to view a past date",
+        "href": "/en/manual/arbol#viewing-a-past-date"
+      }
+    },
+    {
+      "id": "revision",
+      "etiqueta": "Review",
+      "titulo": "What is worth fixing, on a single screen",
+      "texto": "Review gathers vacant positions, repeated emails, people without a position and more; each row opens what needs fixing.",
+      "puntos": [
+        "Units without a head, vacant positions (with the days they have been so) and people without a current position.",
+        "Repeated emails and similar names, as possible duplicates.",
+        "Empty units and list values that nothing uses.",
+        "The number next to Review in the menu is the total of pending warnings and updates by itself."
+      ],
+      "imagen": {
+        "nombre": "revision-lista",
+        "ancho": 888,
+        "alto": 440,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Data review screen with the Vacant positions, Current replacements and Unused values lists."
+      },
+      "enlace": {
+        "texto": "Read about Review",
+        "href": "/en/manual/revision"
+      }
+    },
+    {
+      "id": "directorio",
+      "etiqueta": "Directory and search",
+      "titulo": "Find anyone in seconds",
+      "texto": "A directory with every person and vacancy, with search, filters and the columns you want.",
+      "puntos": [
+        "Ctrl+K opens the command palette: type and reach any unit or person.",
+        "Sort by person, job title or division.",
+        "Search inside the diagram too.",
+        "Home shows your organization's totals and the organizations you opened recently."
+      ],
+      "imagen": {
+        "nombre": "directorio",
+        "ancho": 1100,
+        "alto": 533,
+        "temas": true,
+        "alt": "Directory with 18 rows: person, job title, management, area and email, with search, a unit filter and a column picker."
+      }
+    },
+    {
+      "id": "compartir",
+      "etiqueta": "Export and import",
+      "titulo": "Take the database or a branch to another computer",
+      "texto": "Export saves the whole database, or the branches you check, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries and choose what to do with it:",
+      "puntos": [
+        "As a new organization, the recommended one: it stays apart in your list and the one you have open does not change.",
+        "Add what is new: what's missing comes in and what you already have stays as it is.",
+        "Review and decide: for two copies that kept changing; you choose what stays, record by record or field by field.",
+        "Replace everything: your data is swapped for the file's, only with a file of the whole database.",
+        "A backup is made before your data changes, and if something fails nothing is written."
+      ],
+      "imagen": {
+        "nombre": "importar-revision",
+        "ancho": 768,
+        "alto": 781,
+        "temas": false,
+        "ayuda": true,
+        "alt": "Import: what the file carries in a table and the As a new organization, Add what is new, Review and decide and Replace everything options."
+      },
+      "enlace": {
+        "texto": "Read how to export and import",
+        "href": "/en/manual/exportar-importar"
+      }
+    },
+    {
+      "id": "portable",
+      "etiqueta": "100% local and portable",
+      "titulo": "Carry it on a USB drive, with your data and backups",
+      "texto": "The portable version keeps your data and backups in the datos/ folder, next to the program, and doesn't need the internet to work. On macOS, the system also keeps the window preferences and caches in ~/Library.",
+      "puntos": [
+        "Automatic backup every 24 hours, or as often as you choose, and manual backups whenever you like.",
+        "For each organization the 10 most recent are kept, and you restore them from the same screen.",
+        "Before changing the database structure, BoldoAtlas keeps a copy."
+      ],
+      "imagen": {
+        "nombre": "respaldos",
+        "ancho": 1100,
+        "alto": 622,
+        "temas": true,
+        "alt": "Backups section of the settings: last backup, a Back up now button, automatic backup every 24 hours and the list of backups to restore."
+      }
+    },
+    {
+      "id": "sistemas",
+      "etiqueta": "Windows, Linux and macOS",
+      "titulo": "On your system, in your language",
+      "texto": "The same app on Windows, Linux and macOS, with the interface in English or Spanish.",
+      "puntos": [
+        "Windows 10 and 11, Linux (AppImage, .deb and .rpm) and macOS 11 or newer, on Intel and Apple Silicon.",
+        "The language changes instantly; light theme, dark theme or follow the system.",
+        "A manual with numbered screenshots and search inside the app, the same one that is on this site.",
+        "When you close the window you can keep BoldoAtlas in the tray and come back instantly."
+      ],
+      "imagen": {
+        "nombre": "idioma-es-oscuro",
+        "ancho": 1100,
+        "alto": 481,
+        "temas": false,
+        "alt": "The app in Spanish and in dark theme: the menu with Árbol, Árboles, Directorio and Revisión, and the sample org chart."
+      },
+      "enlace": {
+        "texto": "Read the manual",
+        "href": "/en/manual/inicio"
+      }
     }
   ],
   "comparar": {

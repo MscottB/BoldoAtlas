@@ -127,13 +127,15 @@ test("ningún texto de la portada tiene versiones, «Próximamente», fases ni �
     "Presentacion.vue": [leer(".vitepress/theme/Presentacion.vue")],
     "Novedades.vue": [leer(".vitepress/theme/Novedades.vue")],
     ...Object.fromEntries(
-      ["Inicio", "Portada", "BloqueFuncion", "Garantias", "LlamadaDescarga"].map((c) => [
+      ["Inicio", "Funciones", "Portada", "BloqueFuncion", "Garantias", "LlamadaDescarga"].map((c) => [
         `${c}.vue`,
         [leer(`.vitepress/theme/${c}.vue`)],
       ]),
     ),
     "index.md": [leer("index.md")],
     "en/index.md": [leer("en/index.md")],
+    "funciones.md": [leer("funciones.md")],
+    "en/funciones.md": [leer("en/funciones.md")],
     "novedades.md": [leer("novedades.md")],
     "en/novedades.md": [leer("en/novedades.md")],
     "descargas.md": [leer("descargas.md")],
