@@ -737,6 +737,7 @@
   },
   "organizaciones": {
     "cambiando": "Abriendo la organización…",
+    "trabajosEnCurso": "Hay un trabajo en curso: {trabajos}. Espera a que termine e inténtalo de nuevo; no se cambió nada. | Hay trabajos en curso: {trabajos}. Espera a que terminen e inténtalo de nuevo; no se cambió nada.",
     "avisoInicio": "No se pudo abrir «{nombre}». Se abrió otra organización en su lugar.",
     "reabrirDesdeMenu": "Para volver a intentarlo, ábrela desde el menú de la app, en «Abrir otra organización…».",
     "ejemplo": "Explorar el ejemplo",

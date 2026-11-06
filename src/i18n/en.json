@@ -737,6 +737,7 @@
   },
   "organizaciones": {
     "cambiando": "Opening the organization…",
+    "trabajosEnCurso": "A task is in progress: {trabajos}. Wait for it to finish and try again; nothing was changed. | Tasks are in progress: {trabajos}. Wait for them to finish and try again; nothing was changed.",
     "avisoInicio": "“{nombre}” could not be opened. Another organization was opened instead.",
     "reabrirDesdeMenu": "To try again, open it from the app menu, in “Open another organization…”.",
     "ejemplo": "Explore the example",

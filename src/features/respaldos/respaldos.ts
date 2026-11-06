@@ -53,6 +53,12 @@ export const respaldar = (): Promise<string> =>
   conTrabajo(deLaAbierta(i18n.global.t("trabajos.respaldar")), respaldarAhora);
 
 let noAntesDe = 0;
+/** El respaldo automático que corre: lo empezó la app, no quien pide un cambio de organización, que lo espera. */
+let automatico: Promise<unknown> | null = null;
+
+/** Lo que falta del respaldo automático si es el único trabajo en curso; si hay otro, null. */
+export const soloRespaldoAutomatico = (): Promise<unknown> | null =>
+  automatico && trabajos.value.length === 1 ? automatico.catch(() => undefined) : null;
 
 /**
  * Respalda en segundo plano si toca. Si falla, un aviso discreto y un día sin reintentar: con la ventana oculta, un fallo
@@ -62,8 +68,15 @@ export async function respaldoAutomatico(alAbrir = true): Promise<void> {
   const aviso = deLaAbierta(i18n.global.t("respaldos.automaticoFallo"));
   try {
     const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
-    if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir))
-      await respaldar();
+    if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir)) {
+      const este = respaldar();
+      automatico = este;
+      try {
+        await este;
+      } finally {
+        if (automatico === este) automatico = null;
+      }
+    }
   } catch (e) {
     if (e instanceof BaseCambiada) return; // se pasó a otra organización: no falló nada
     noAntesDe = Date.now() + ESPERA_TRAS_FALLO;

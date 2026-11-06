@@ -8,6 +8,7 @@ import { recordarPorArbol, useVista } from "@/features/arbol/useVista";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { useFicha } from "@/features/trabajadores/useFicha";
+import { respaldoAutomatico } from "@/features/respaldos/respaldos";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion } from "./organizacion";
@@ -193,11 +194,47 @@ describe("el cambio, en orden", () => {
 
   it("con un trabajo en curso avisa y no cambia", async () => {
     const { o } = await arrancar();
-    trabajos.value = ["Respaldo"];
+    trabajos.value = ["Respaldo", "Exportar"];
     const r = await o.activarPestana("b1");
-    expect(r).toMatchObject({ ok: false, mensaje: expect.stringMatching(/trabajo/i) });
+    expect(r).toMatchObject({
+      ok: false,
+      mensaje: expect.stringContaining("trabajos en curso: Respaldo, Exportar."),
+    });
     expect(c.abrirOrganizacion).not.toHaveBeenCalled();
     expect(baseActual()).toBe("A");
+  });
+
+  it("espera el respaldo automático, que nadie pidió, con «Abriendo…», y luego cambia", async () => {
+    const { o } = await arrancar();
+    const fin = pendiente<string>();
+    c.respaldarAhora.mockReturnValue(fin.promesa);
+    const respaldo = respaldoAutomatico();
+    await vi.waitFor(() => expect(trabajos.value).toHaveLength(1));
+    const r = o.activarPestana("b1");
+    await vi.waitFor(() => expect(o.cambiando).toBe(true));
+    expect(c.abrirOrganizacion).not.toHaveBeenCalled();
+    fin.resolver("x");
+    expect(await r).toEqual({ ok: true });
+    await respaldo;
+    expect(baseActual()).toBe("B");
+  });
+
+  it("con el respaldo automático y otro trabajo, no cambia y los nombra", async () => {
+    const { o } = await arrancar();
+    const fin = pendiente<string>();
+    c.respaldarAhora.mockReturnValue(fin.promesa);
+    const respaldo = respaldoAutomatico();
+    await vi.waitFor(() => expect(trabajos.value).toHaveLength(1));
+    trabajos.value.push("Exportar");
+    const r = await o.activarPestana("b1");
+    expect(r).toMatchObject({
+      ok: false,
+      mensaje: expect.stringContaining(`${trabajos.value[0]}, Exportar`),
+    });
+    expect(o.cambiando).toBe(false);
+    expect(c.abrirOrganizacion).not.toHaveBeenCalled();
+    fin.resolver("x");
+    await respaldo;
   });
 
   it("la ficha con cambios y Cancelar no cambia", async () => {

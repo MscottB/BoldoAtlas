@@ -22,9 +22,9 @@ import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import {
   falloOrganizacion,
-  mensajeFallo,
   mensajeOrganizacion,
   respaldoAutomatico,
+  soloRespaldoAutomatico,
 } from "@/features/respaldos/respaldos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
@@ -149,13 +149,25 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     return r;
   }
 
-  /** Pasos 1 y 2. Si la ficha sigue en edición, no hay mensaje: ya se le preguntó a quien lo pidió. */
+  /**
+   * Pasos 1 y 2. Si la ficha sigue en edición, no hay mensaje: ya se le preguntó a quien lo pidió. El respaldo automático no
+   * lo pidió nadie: se espera con «Abriendo la organización…» a la vista, que sigue así si se puede seguir.
+   */
   async function sePuedeSoltar(): Promise<Resultado> {
     if (!(await useFicha().puedeSoltar())) return CANCELADO;
     await soltarYEsperarEscrituras();
-    return trabajos.value.length
-      ? { ok: false, mensaje: mensajeFallo({ codigo: "trabajo_en_curso", detalle: "" }) }
-      : { ok: true };
+    const respaldo = soloRespaldoAutomatico();
+    if (respaldo) {
+      cambiando.value = true;
+      await respaldo;
+    }
+    if (!trabajos.value.length) return { ok: true };
+    cambiando.value = false;
+    const n = trabajos.value.length;
+    return {
+      ok: false,
+      mensaje: t("organizaciones.trabajosEnCurso", { trabajos: trabajos.value.join(", ") }, n),
+    };
   }
 
   /** Paso 3: la vista se desmonta y guarda su estado. Lo que escriba al irse también sale antes de cambiar. */
@@ -276,6 +288,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       return { ok: false, mensaje: t("pestanas.limite", { n: MAX_PESTANAS }) };
     const listo = await sePuedeSoltar();
     if (!listo.ok) return listo;
+    cambiando.value = false; // si esperó un respaldo: mientras se crea, la vista sigue; `abrir` hace el cambio
     try {
       // sobre un `boldo.db` vacío abierto el id no cambia: un lote en cola entraría en la nueva
       await colaVacia();
