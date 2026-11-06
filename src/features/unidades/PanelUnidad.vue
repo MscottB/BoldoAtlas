@@ -151,11 +151,12 @@ const filas = computed(() =>
     org.leyendas,
   ),
 );
-const jefe = computed(() => jefeVisible(props.unidad, vigentes.value));
-const nota = computed(() => notaJefatura(jefe.value, filas.value.length > 0));
-const nombreReemplazo = computed(
-  () => org.enFecha.trabajadores.find((w) => w.id === jefe.value?.trabajador_id)?.nombre,
-);
+const jefe = computed(() => {
+  const a = jefeVisible(props.unidad, vigentes.value);
+  const nombre = org.enFecha.trabajadores.find((w) => w.id === a?.trabajador_id)?.nombre;
+  return a && nombre ? { tipo: a.tipo, nombre } : null;
+});
+const nota = computed(() => notaJefatura(jefe.value, filas.value.length > 0, !!props.unidad.jefe_puesto_id));
 const personal = computed(() =>
   dotacion(
     org.enFecha.unidades,
@@ -314,11 +315,11 @@ async function eliminar() {
               <option v-if="!soloLectura" :value="NUEVO_PUESTO">{{ t("unidad.nuevoPuestoJefatura") }}</option>
             </select>
             <p v-if="nota === 'reemplazo'" class="text-sm">
-              {{ t("arbol.reemplazo", { nombre: nombreReemplazo }) }}
+              {{ t("arbol.reemplazo", { nombre: jefe?.nombre }) }}
             </p>
             <p v-else-if="nota" class="text-sm text-amber-800 dark:text-amber-400">
               {{
-                nota === "sinJefatura"
+                nota === "vacante"
                   ? t("arbol.sinJefatura")
                   : t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura")
               }}

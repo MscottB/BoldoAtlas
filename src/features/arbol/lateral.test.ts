@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   acotarPista,
+  anchoEtiqueta,
   caminoSvg,
   encuadreDeLinea,
   escalaPunta,
@@ -339,7 +340,8 @@ describe("trazado de las conexiones laterales", () => {
     const t = trazarLaterales([lat("a", "b", "Una descripción bien larga", "x")], cajas, "vertical").get(
       "x",
     )!;
-    if (t.conTexto) expect(tapa(t.etiqueta, cajas, 26 * 6.5 + 14, 20)).toBe(false);
+    expect(t.conTexto).toBe(true); // por fuera de la fila hay lugar
+    expect(tapa(t.etiqueta, cajas, anchoEtiqueta("Una descripción bien larga"), 20)).toBe(false);
   });
 
   it("los puntos de dos líneas por la misma franja no quedan uno sobre otro", () => {
@@ -432,9 +434,7 @@ describe("trazado de las conexiones laterales", () => {
     const [t1, t2, t3] = ls.map((l) => r.get(l.id)!) as [Trazado, Trazado, Trazado];
     expect(t1.conTexto && t2.conTexto).toBe(true);
     expect(Math.abs(t1.etiqueta.y - t2.etiqueta.y)).toBeGreaterThanOrEqual(20);
-    if (t3.conTexto)
-      for (const otra of [t1, t2])
-        expect(Math.abs(otra.etiqueta.y - t3.etiqueta.y)).toBeGreaterThanOrEqual(20);
+    expect(t3.conTexto).toBe(false);
     for (const l of ls) expect(r.get(l.id)!.cruces).toBe(0);
   });
 
@@ -486,7 +486,7 @@ describe("trazado de las conexiones laterales", () => {
   describe("en reposo nada se pisa", () => {
     /** La caja de una etiqueta, con el ancho que reserva el trazado. */
     const cajaTexto = (l: Lateral, e: Punto, escala: number) => {
-      const [w, h] = [Math.min(192, l.etiqueta!.length * 6.5 + 14) * escala, 20 * escala];
+      const [w, h] = [anchoEtiqueta(l.etiqueta!) * escala, 20 * escala];
       return caja(e.x - w / 2, e.y - h / 2, w, h);
     };
     const tocan = (a: Caja, b: Caja, margen: number) =>
@@ -510,7 +510,7 @@ describe("trazado de las conexiones laterales", () => {
               lat(
                 `${"ab"[i % 2]}${i}`,
                 `${"bc"[k % 2]}${k}`,
-                `Descripción larga número ${i}-${k}`,
+                k % 3 ? `Descripción larga número ${i}-${k}` : `COMPRAS Y CONTRATOS ${i}-${k}`,
                 `l${i}-${k}`,
               ),
             );
@@ -549,7 +549,7 @@ describe("trazado de las conexiones laterales", () => {
         .filter((l) => t.get(l.id)?.conTexto)
         .map((l) => {
           const e = t.get(l.id)!.etiqueta;
-          const [w, h] = [Math.min(192, l.etiqueta!.length * 6.5 + 14) * 1.3, 20 * 1.3];
+          const [w, h] = [anchoEtiqueta(l.etiqueta!) * 1.3, 20 * 1.3];
           return caja(e.x - w / 2, e.y - h / 2, w, h);
         });
       expect(textos.length).toBeGreaterThan(0);
@@ -557,6 +557,12 @@ describe("trazado de las conexiones laterales", () => {
         for (const tarjeta of giradas.values()) expect(tocan(c, tarjeta, 0)).toBe(false);
         for (const otra of textos.slice(k + 1)) expect(tocan(c, otra, 0)).toBe(false);
       }
+    });
+
+    it("reserva lo que de verdad mide: las mayúsculas son más anchas, con el mismo tope", () => {
+      expect(anchoEtiqueta("COMPRAS Y CONTRATOS")).toBeGreaterThanOrEqual(164);
+      expect(anchoEtiqueta("compras y contratos")).toBe(19 * 6.5 + 14);
+      expect(anchoEtiqueta("Ñ".repeat(100))).toBe(192);
     });
 
     it("el texto se queda con el primer lugar libre: el centro del tramo a lo ancho más largo", () => {

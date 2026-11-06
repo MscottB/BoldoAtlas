@@ -69,7 +69,7 @@ const cajaBoton = ref<Caja | null>(null);
 const botonALaVista = ref(true);
 const origenLienzo = ref<Punto>({ x: 0, y: 0 });
 watch(
-  [activa, texto, viewport],
+  () => activa.value && [texto.value, viewport.value],
   () => {
     if (!activa.value || !boton.value) return;
     const b = boton.value.getBoundingClientRect();
@@ -107,8 +107,17 @@ const lugarPista = computed(() => {
 });
 
 const abrir = (ancla: DOMRect) => (ventanaConexion.value = { id: props.id, ancla, foco: boton.value });
+// Abierta con el puntero, el foco que vuelve al cerrar no activa la etiqueta, aunque Esc lo haga contar como :focus-visible: quedaría
+// desplegada con el puntero lejos. El que llega desde otro elemento sí, porque es Tab.
+let abiertaConPuntero = false;
+function alEnfocar(e: FocusEvent) {
+  const desdeOtro = e.relatedTarget instanceof Element && !e.relatedTarget.closest("[role='dialog']");
+  enfocada.value = (!abiertaConPuntero || desdeOtro) && (e.target as Element).matches(":focus-visible");
+  abiertaConPuntero = false;
+}
 // `detail` 0: pulsado con el teclado, que no tiene punto donde abrir. Se fija el lugar: el botón puede rehacerse mientras tanto.
 function alPulsar(e: MouseEvent) {
+  abiertaConPuntero = !!e.detail;
   abrir(e.detail ? new DOMRect(e.clientX, e.clientY, 0, 0) : boton.value!.getBoundingClientRect());
 }
 // Vue Flow marca sus aristas `nopan`. Alejado, las franjas de clic cubrirían buena parte del lienzo y no se podría arrastrar desde
@@ -131,7 +140,10 @@ function alMover(e: PointerEvent) {
   presion = { x: e.clientX, y: e.clientY };
 }
 function alSoltar(e: PointerEvent) {
-  if (presion && !arrastrando) abrir(new DOMRect(e.clientX, e.clientY, 0, 0));
+  if (presion && !arrastrando) {
+    abiertaConPuntero = true;
+    abrir(new DOMRect(e.clientX, e.clientY, 0, 0));
+  }
   presion = null;
 }
 </script>
@@ -141,18 +153,18 @@ function alSoltar(e: PointerEvent) {
     v-if="d"
     :d="d"
     class="vue-flow__edge-path pointer-events-none"
-    :class="atenuada && 'opacity-20'"
+    :class="atenuada && '[stroke-opacity:.2]'"
     :style="{
       stroke: 'var(--marca)',
       strokeWidth: resaltada ? 2.5 : 1.25,
-      strokeDasharray: ligera ? undefined : '6 4',
+      strokeDasharray: ligera || activa ? undefined : '6 4',
     }"
   />
   <path
     v-if="d && !ligera"
     ref="punta"
     class="pointer-events-none fill-marca"
-    :class="atenuada && 'opacity-20'"
+    :class="atenuada && '[fill-opacity:.2]'"
   />
   <!-- La zona de clic: un trazo invisible, más ancho que la línea. También responde en ligero. -->
   <path
@@ -184,7 +196,6 @@ function alSoltar(e: PointerEvent) {
         texto && activa && 'w-max max-w-80 text-left shadow-md ring-1 ring-marca',
         texto && (resaltada ? 'border-marca font-medium' : 'border-border'),
         activa && 'z-10',
-        atenuada && 'opacity-30',
       ]"
       :style="{
         transform: `translate(${trazado.etiqueta.x}px, ${trazado.etiqueta.y}px) translate(-50%, -50%) scale(${escalaBoton})`,
@@ -193,7 +204,7 @@ function alSoltar(e: PointerEvent) {
       aria-haspopup="dialog"
       @pointerenter="sobreBoton = true"
       @pointerleave="sobreBoton = false"
-      @focus="enfocada = ($event.target as Element).matches(':focus-visible')"
+      @focus="alEnfocar"
       @blur="enfocada = false"
       @click.stop="alPulsar"
     >

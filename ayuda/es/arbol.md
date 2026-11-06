@@ -101,7 +101,7 @@ Una conexión une dos unidades que trabajan juntas: por ejemplo, de Mantención 
 
 En el lienzo es una línea punteada que va por el espacio libre entre las tarjetas, con una flecha que apunta a la unidad de destino y su descripción encima o, si no tiene, un punto. Las descripciones no se pisan entre ellas ni con las tarjetas: la que no cabe queda como un punto en su línea. Muy alejado, con muchas tarjetas, solo se ven los puntos y la línea se simplifica, sin flecha. La franja **Líneas**, bajo el lienzo, recuerda qué significa.
 
-Lo que está bajo el puntero queda encima y se resalta. Al pasar por una línea, por su descripción o por su punto, o al llegar a ellos con `Tab`, la descripción se ve completa sobre todo lo demás, y una pista dice de qué unidad a cuál va, por ejemplo «Mantención → Compras». Al pasar por una tarjeta o enfocarla, sus conexiones se resaltan y las demás se atenúan.
+Lo que está bajo el puntero queda encima y se resalta. Al pasar por una línea, por su descripción o por su punto, o al llegar a ellos con `Tab`, la descripción se ve completa sobre todo lo demás, y una pista dice de qué unidad a cuál va, por ejemplo «Mantención → Compras». Al pasar por una tarjeta, se resalta con un contorno. Al pasar por ella o enfocarla, sus conexiones se resaltan y las demás líneas se atenúan. Muy alejado, con muchas tarjetas, la tarjeta no se resalta, para que el lienzo siga ágil.
 
 **Crear una conexión:**
 
@@ -238,7 +238,7 @@ La pestaña **Resumen** reúne, en este orden:
 - **Nombre**: se guarda al terminar de escribir (`Enter`, `Tab` o al salir del campo).
 - **Tipo**: se elige de la lista de tipos de unidad, igual que en las fichas: escribe para filtrar y, si no existe, **Agregar «texto» a la lista** lo crea y lo deja elegido, sin ir a los mantenedores.
 - **Depende de**: un buscador de unidades para cambiar de lugar la unidad sin arrastrarla (es la vía por teclado). No ofrece la unidad ni lo que cuelga de ella; **Sin superior (raíz)** la deja como raíz.
-- **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefatura**); la lista muestra el cargo y la persona titular. Con **Nuevo puesto…**, al final de la lista, se abre el puesto nuevo: eliges su cargo, pulsas **Crear puesto** y queda como jefatura de la unidad. Debajo se ve **Reemplazo: nombre** si la ejerce un reemplazo. Si nadie la ejerce, un aviso en ámbar: **Sin jefe asignado**, o que la unidad no tiene puestos.
+- **Jefatura**: elige cuál de los puestos de la unidad es la jefatura (o **Sin jefe asignado**); la lista muestra el cargo y la persona titular. Con **Nuevo puesto…**, al final de la lista, se abre el puesto nuevo: eliges su cargo, pulsas **Crear puesto** y queda como jefatura de la unidad. Debajo se ve **Reemplazo: nombre** si la ejerce un reemplazo. Un aviso en ámbar dice **Sin jefe asignado** si el puesto elegido está vacante y sin reemplazo, u otro si la unidad no tiene puestos.
 - **Descripción**: un texto para explicar qué hace la unidad. Se guarda como el nombre.
 - **Etiquetas**: quita una con la X, agrega una existente o elige **Nueva etiqueta…** para crearla con su color. Si el nombre ya existe, se usa esa etiqueta en vez de duplicarla.
 - **Conexiones**, con cuántas tiene y el sentido de cada una: **Conectar con…** agrega otra; en cada fila, el lápiz la edita y la X la quita. Si la línea no se ve porque la otra unidad está plegada o fuera de la vista, la fila lo dice (ver «Conexiones»).

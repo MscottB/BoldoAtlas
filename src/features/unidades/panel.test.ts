@@ -178,13 +178,17 @@ describe("conexiones", () => {
 
 describe("notaJefatura", () => {
   it("con titular la lista ya lo dice; un reemplazo se agrega", () => {
-    expect(notaJefatura({ tipo: "titular" }, true)).toBeNull();
-    expect(notaJefatura({ tipo: "reemplazo" }, true)).toBe("reemplazo");
+    expect(notaJefatura({ tipo: "titular" }, true, true)).toBeNull();
+    expect(notaJefatura({ tipo: "reemplazo" }, true, true)).toBe("reemplazo");
   });
 
-  it("sin nadie que la ejerza avisa: con puestos, sin jefatura; sin ellos, que no hay", () => {
-    expect(notaJefatura(null, true)).toBe("sinJefatura");
-    expect(notaJefatura(null, false)).toBe("sinPuestos");
+  it("sin nadie que la ejerza avisa si el puesto elegido está vacante o si no hay puestos", () => {
+    expect(notaJefatura(null, true, true)).toBe("vacante");
+    expect(notaJefatura(null, false, false)).toBe("sinPuestos");
+  });
+
+  it("con puestos y sin elegir no repite lo que ya dice la lista", () => {
+    expect(notaJefatura(null, true, false)).toBeNull();
   });
 });
 

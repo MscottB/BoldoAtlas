@@ -1013,27 +1013,23 @@ function verCompleto() {
 .lienzo :deep(.vue-flow__pane.selection [data-zona-conexion]) {
   pointer-events: none;
 }
-/* `.vue-flow__nodes` no crea contexto de apilado: cada tarjeta compite directo con la capa de etiquetas. En reposo no se tocan (lo
-   asegura trazarLaterales), salvo con los botones que flotan sobre la seleccionada. De menor a mayor: la tarjeta con sus botones (999),
-   las del recuadro (1000, de Vue Flow), las etiquetas, la tarjeta bajo el puntero o con el foco del teclado, y la capa de etiquetas entera
-   si una está activa: lo que está bajo el puntero o con el foco queda encima. */
+/* `.vue-flow__nodes` no crea contexto de apilado: cada tarjeta compite directo con la capa de etiquetas. En reposo no tocan el cuerpo de
+   una tarjeta (lo asegura trazarLaterales), pero sí la franja donde flotan sus botones, que deben poder pulsarse. De menor a mayor: las
+   tarjetas del recuadro (1000, de Vue Flow), las etiquetas, la tarjeta con sus botones o bajo el puntero, y la capa de etiquetas entera si
+   una está activa: lo que está bajo el puntero o con el foco queda encima. En ligero, la tarjeta bajo el puntero no cambia nada: hasta
+   un contorno vuelve a pintar todas las tarjetas de un árbol grande en cada paso del puntero (medido: 2,5 ms más por paso con 943). */
 .lienzo :deep(.vue-flow__edge-labels) {
   z-index: 1001;
 }
 .lienzo :deep(.vue-flow__edge-labels:has([data-activa])) {
   z-index: 1004;
 }
-.lienzo :deep(.vue-flow__edge-labels:has([data-activa]) [data-conexion]:not([data-activa])) {
-  opacity: 0.35;
-}
 .lienzo :deep(.vue-flow__node:has([data-acciones-tarjeta])) {
-  z-index: 999 !important;
-}
-.lienzo :deep(.vue-flow__node:is(:hover, :has(:focus-visible))) {
   z-index: 1002 !important;
 }
 /* Resalta sin confundirse con la selección, que es un borde de marca pegado a la tarjeta: este va separado y en el color del texto. */
-.lienzo :deep(.vue-flow__node:hover) {
+.lienzo:not(.lienzo-ligero) :deep(.vue-flow__node:hover) {
+  z-index: 1002 !important;
   border-radius: var(--radius-lg);
   outline: 2px solid color-mix(in oklab, var(--foreground) 60%, transparent);
   outline-offset: 3px;

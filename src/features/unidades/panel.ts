@@ -157,10 +157,14 @@ export function validarMarca(color: string | null, codigo: string): ResultadoMar
   return { ok: true, color: c, codigo: k || null };
 }
 
-/** Qué agrega el panel bajo la lista de jefatura, que ya dice cargo y titular: quién la ejerce si es un reemplazo o, si nadie, un aviso. */
-export function notaJefatura(visible: { tipo: string } | null, hayPuestos: boolean) {
+/**
+ * Qué agrega el panel bajo la lista de jefatura, que ya dice cargo y titular: quién la ejerce si es un reemplazo, o un aviso si el puesto
+ * elegido está vacante o si no hay puestos. Sin elegir, la lista ya lo dice.
+ */
+export function notaJefatura(visible: { tipo: string } | null, hayPuestos: boolean, elegida: boolean) {
   if (visible) return visible.tipo === "reemplazo" ? "reemplazo" : null;
-  return hayPuestos ? "sinJefatura" : "sinPuestos";
+  if (!hayPuestos) return "sinPuestos";
+  return elegida ? "vacante" : null;
 }
 
 export interface FilaPuesto {

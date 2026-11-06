@@ -41,6 +41,7 @@ const LADO_FILA = 20; // carril por fuera del extremo de una fila
 const VECINDAD = 3; // cuántas tarjetas a cada lado de los extremos se miran para cruzar una fila
 const ALTO_ETIQUETA = 20;
 const ANCHO_LETRA = 6.5;
+const ANCHO_MAYUSCULA = 8.4;
 const ANCHO_ETIQUETA = 192; // el texto más largo se abrevia a esto (max-w-48 en AristaLateral.vue)
 const AJUSTES_ETIQUETA = [0, 4, -4, 8, -8]; // cuánto puede correrse fuera de su línea (la sigue tocando: mide 20 de alto)
 // Lo que debe quedar libre alrededor de una etiqueta. Por arriba y abajo, poco: a la escala mayor mide 26 y el hueco entre hermanas, 28.
@@ -381,7 +382,11 @@ function ubicarEtiqueta(
 }
 
 /** Ancho que ocupará la etiqueta en el lienzo (sin medir el DOM): el texto largo se abrevia. */
-const anchoEtiqueta = (texto: string) => Math.min(ANCHO_ETIQUETA, texto.length * ANCHO_LETRA + 14);
+export const anchoEtiqueta = (texto: string) =>
+  Math.min(
+    ANCHO_ETIQUETA,
+    [...texto].reduce((n, c) => n + (c !== c.toLowerCase() ? ANCHO_MAYUSCULA : ANCHO_LETRA), 14),
+  );
 
 /**
  * El trazado de cada lateral cuyas dos tarjetas están en `cajas`. Si no hay un camino sin cruzar tarjetas (una unidad rodeada
