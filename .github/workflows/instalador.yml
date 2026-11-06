@@ -120,7 +120,9 @@ jobs:
             sleep 15
           done
           echo "Versión anterior: $etiqueta"
+          # la última de antes de las preferencias y pestañas por organización, con su perfil en datos/
+          gh release download v0.1.0-alpha.38 -p BoldoAtlas_windows_x64_portable.zip -D antes-de-organizaciones --clobber
       - name: Arnés de organizaciones
         shell: bash # con pipefail: falla si falla el arnés, y si no dijo que terminó
-        run: node scripts/arnes-organizaciones.mjs anterior/BoldoAtlas_windows_x64_portable.zip | tee arnes.log && grep -q "^Arnés comprobado\.$" arnes.log
-        timeout-minutes: 20
+        run: node scripts/arnes-organizaciones.mjs antes-de-organizaciones/BoldoAtlas_windows_x64_portable.zip anterior/BoldoAtlas_windows_x64_portable.zip | tee arnes.log && grep -q "^Arnés comprobado\.$" arnes.log
+        timeout-minutes: 25

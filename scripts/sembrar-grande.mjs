@@ -28,7 +28,7 @@ const FOTOS = conFotos > 0 ? Number(process.argv[conFotos + 1]) : 0;
 if (!Number.isInteger(FOTOS) || FOTOS < 0 || FOTOS > PERSONAS)
   throw new Error(`--fotos espera un entero de 0 a ${PERSONAS}`);
 
-// Como una foto que optimizó la app (256 px, de 11 a 24 KB): PNG gris con 3 bits de ruido, distinta por persona. Sin
+// Como una foto que optimizó la app (256 px, de 11 a 24 KB): PNG gris con 2 bits de ruido, distinta por persona. Sin
 // `azar`: el resto de la base es el mismo con o sin --fotos.
 const LADO_FOTO = 256;
 function fotoPng(n) {
@@ -300,12 +300,19 @@ assert.ok(siguiente <= PERSONAS, "faltaron personas para las asignaciones");
 assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
 assert.equal(contar("PRAGMA integrity_check"), "ok");
 assert.equal(contar("SELECT count(*) FROM trabajadores WHERE foto_png IS NOT NULL"), FOTOS);
-// una foto que la app sirva: firma de PNG, 256 × 256 y todas sus filas
-const foto = fotoPng(FOTOS);
-assert.equal(foto.readUInt32BE(16), LADO_FOTO);
-assert.equal(foto.readUInt32BE(20), LADO_FOTO);
-assert.equal(inflateSync(foto.subarray(41, foto.length - 16)).length, LADO_FOTO * (LADO_FOTO + 1));
-assert.notDeepEqual(fotoPng(0), fotoPng(1));
+// cada foto guardada, como la leerá la app: firma de PNG, 256 × 256, todas sus filas y distinta de las demás
+const guardadas = db
+  .prepare("SELECT foto_png FROM trabajadores WHERE foto_png IS NOT NULL")
+  .all()
+  .map((f) => Buffer.from(String(f.foto_png), "base64"));
+for (const foto of guardadas) {
+  assert.deepEqual(foto.subarray(0, 8), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  assert.equal(foto.readUInt32BE(16), LADO_FOTO);
+  assert.equal(foto.readUInt32BE(20), LADO_FOTO);
+  assert.equal(inflateSync(foto.subarray(41, foto.length - 16)).length, LADO_FOTO * (LADO_FOTO + 1));
+}
+assert.equal(new Set(guardadas.map((f) => f.toString("base64"))).size, FOTOS);
+const foto = guardadas[0] ?? Buffer.alloc(0);
 console.log(
   `Lista ${ruta}: ${UNIDADES} unidades, ${PUESTOS} puestos, ${PERSONAS} personas ` +
     `(${FOTOS} con foto${FOTOS ? `, de ${Math.round(foto.length / 1024)} KB cada una` : ""}), ` +
