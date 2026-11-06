@@ -51,12 +51,17 @@ const OTRA_PESTANA = `document.querySelector('[role="tab"][id^="pestana-"][aria-
 const RAIZ_GRANDE = "Gerencia General";
 const RAIZ_CHICA = "Raíz de la chica";
 
-/** Lo que una persona dejó por PC en una versión de antes de varias organizaciones. */
+/**
+ * Lo que una persona dejó por PC en una versión de antes de varias organizaciones. Elegir la horizontal en el árbol completo
+ * guarda la general y la de ese árbol (`vista:completo`, que manda al volver a él): las dos, o la vieja misma no la mostraría.
+ */
 export const PREFERENCIAS_VIEJAS = {
   "boldo:vista": JSON.stringify({ direccion: "horizontal" }),
+  "boldo:vista:completo": JSON.stringify({ direccion: "horizontal" }),
   "boldo:directorio": JSON.stringify({ filtros: { texto: "arnés" } }),
   "boldo:plegado:x": "true",
 };
+const VISTAS_VIEJAS = ["boldo:vista", "boldo:vista:completo"];
 /** La de la publicada: la general vertical y la de la organización horizontal y compacta. */
 export const VISTA_GENERAL = JSON.stringify({ direccion: "vertical" });
 export const VISTA_DE_LA_ORGANIZACION = { direccion: "horizontal", densidad: "compacta" };
@@ -75,20 +80,26 @@ const recientesQueQuedan = (ahora) => Object.keys(ahora).filter((k) => k.startsW
 
 /**
  * Qué no quedó como debe tras abrir la nueva sobre una de antes de varias organizaciones. `ahora` es todo el localStorage;
- * `pestanas`, los ids de las que guardó la vieja.
- * @param {Record<string, string>} ahora @param {{ id: string, dirDatos: string, rutaBd: string, pestanas: string[] }} base
+ * `viejas`, las claves de PREFERENCIAS_VIEJAS como las dejó la vieja al cerrarse (las vistas, ya completas); `pestanas`,
+ * los ids de las que guardó.
+ * @param {Record<string, string>} ahora
+ * @param {{ id: string, dirDatos: string, rutaBd: string, pestanas: string[], viejas: Record<string, string> }} base
  */
-export function problemasDeMigracion(ahora, { id, dirDatos, rutaBd, pestanas }) {
+export function problemasDeMigracion(ahora, { id, dirDatos, rutaBd, pestanas, viejas }) {
   /** @type {string[]} */
   const mal = [];
-  for (const [k, v] of Object.entries(PREFERENCIAS_VIEJAS))
-    if (ahora[k] !== v) mal.push(`${k} cambió: ${ahora[k]}`);
-  // la app la reescribe completa al leerla: basta con que lleve lo sembrado; si la leyó antes de migrar, es la de fábrica
-  const vista = `boldo:vista:${id}`;
-  if (leerJson(ahora, vista)?.direccion !== "horizontal")
-    mal.push(`${vista} no es la sembrada: ${ahora[vista]}`);
+  for (const k of Object.keys(PREFERENCIAS_VIEJAS))
+    if (ahora[k] !== viejas[k]) mal.push(`${k} cambió: ${viejas[k]} -> ${ahora[k]}`);
+  for (const k of VISTAS_VIEJAS) {
+    if (leerJson(viejas, k)?.direccion !== "horizontal")
+      mal.push(`la vieja no dejó ${k} en horizontal: ${viejas[k]}`);
+    // la app la reescribe completa al leerla: basta con que lleve lo sembrado; si la leyó antes de migrar, es la de fábrica
+    const suya = `${k}:${id}`;
+    if (leerJson(ahora, suya)?.direccion !== "horizontal")
+      mal.push(`${suya} no es la sembrada: ${ahora[suya]}`);
+  }
   const directorio = `boldo:directorio:${id}`;
-  if (ahora[directorio] !== PREFERENCIAS_VIEJAS["boldo:directorio"])
+  if (ahora[directorio] !== viejas["boldo:directorio"])
     mal.push(`${directorio} no se copió: ${ahora[directorio]}`);
   if (`boldo:plegado:x:${id}` in ahora) mal.push("boldo:plegado:x se copió, y es por PC");
   if (!(`boldo:pestanas:${rutaBd}` in ahora)) mal.push(`la clave vieja boldo:pestanas:${rutaBd} se borró`);
@@ -303,6 +314,10 @@ async function verArbolYFoto(app, baseId, que) {
     await app.evaluar(
       `Boolean(document.querySelector(".vue-flow__node .vue-flow__handle-right")) && !document.querySelector(".vue-flow__node .vue-flow__handle-bottom")`,
     ),
+    // si falla, de dónde salió la vista: las claves guardadas
+    await app.evaluar(
+      `Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith("boldo:vista")))`,
+    ),
   );
   const url = await urlFoto(app, baseId, PERSONA);
   const conSuBase = await app.evaluar(cargarImagen(url));
@@ -336,14 +351,27 @@ async function desdeAntesDeOrganizaciones(zip, exeNuevo) {
   await pausa(500);
   await vieja.evaluar(`${OTRA_PESTANA}.click()`);
   await vieja.hasta(`location.hash === "#/"`, "de vuelta al árbol en la primera");
-  // Con el árbol a la vista y sin cambiar nada de él: la vieja no las vuelve a escribir.
+  // Las preferencias, y se recarga para que la vieja las tenga en memoria: con la de fábrica, al volver a una pestaña
+  // reescribe `vista` y `vista:completo` (VistaArbol.vue de alpha.38). Que la vieja misma muestre el árbol en horizontal
+  // prueba que el estado es uno que una persona puede dejar.
   const claveRecientes = `boldo:recientes:${antes.rutaBd}`;
   await vieja.evaluar(
     `for (const [k, v] of Object.entries(${JSON.stringify({ ...PREFERENCIAS_VIEJAS, [claveRecientes]: "[]" })})) localStorage.setItem(k, v)`,
   );
+  await recargar(vieja);
+  await verInicio(vieja, "Inicio de la vieja tras recargar");
+  await vieja.evaluar(`location.hash = "#/"`);
+  await vieja.hasta(
+    `Boolean(document.querySelector(".vue-flow__node .vue-flow__handle-right"))`,
+    "el árbol de la vieja en horizontal",
+  );
   /** @type {string[]} */
   const pestanas = await vieja.evaluar(
     `JSON.parse(localStorage.getItem(${JSON.stringify(`boldo:pestanas:${antes.rutaBd}`)}))?.lista?.map((p) => p.id) ?? []`,
+  );
+  /** @type {Record<string, string>} */
+  const viejas = await vieja.evaluar(
+    `Object.fromEntries(${JSON.stringify(Object.keys(PREFERENCIAS_VIEJAS))}.map((k) => [k, localStorage.getItem(k)]))`,
   );
   const { app, despues, almacen } = await abrirLaNueva(vieja, portable, antes, exeNuevo, "migración");
   const mal = problemasDeMigracion(almacen, {
@@ -351,6 +379,7 @@ async function desdeAntesDeOrganizaciones(zip, exeNuevo) {
     dirDatos: despues.dirDatos,
     rutaBd: antes.rutaBd,
     pestanas,
+    viejas,
   });
   comprobar(
     "migración: cada preferencia en …:<db_id>, la vieja igual, plegado sin copia, sus dos pestañas con org, sin recientes",
@@ -470,7 +499,7 @@ function informar(sentido, ms) {
   const pantalla = mediana(ms.map((x) => x.pantalla));
   console.log(
     `cambio ${sentido}: ${app} ms según la app, ${pantalla} ms hasta verla dibujada ` +
-      `(medianas de ${ms.length}: ${ms.map((x) => `${x.app}/${x.pantalla}`).join(", ")} ms)`,
+      `(${ms.length} cambios, app/pantalla:${ms.map((x) => `${x.app}/${x.pantalla}`).join(", ")} ms)`,
   );
   return { app, pantalla };
 }

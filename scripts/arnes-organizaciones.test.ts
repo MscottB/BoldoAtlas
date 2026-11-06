@@ -20,6 +20,7 @@ function migradas(): Record<string, string> {
     [`boldo:pestanas:${RUTA_BD}`]: JSON.stringify({ lista: PESTANAS.map((id) => ({ id, ruta: "/" })) }),
     // la app reescribe la vista completa al leerla
     [`boldo:vista:${ID}`]: JSON.stringify({ direccion: "horizontal", densidad: "normal" }),
+    [`boldo:vista:completo:${ID}`]: JSON.stringify({ direccion: "horizontal", densidad: "normal" }),
     [`boldo:directorio:${ID}`]: PREFERENCIAS_VIEJAS["boldo:directorio"],
     [`boldo:organizaciones:migrado:${DIR}`]: "true",
     [`boldo:pestanas:${DIR}`]: JSON.stringify({
@@ -30,11 +31,28 @@ function migradas(): Record<string, string> {
 }
 
 describe("problemasDeMigracion", () => {
-  const revisar = (ahora: Record<string, string>) =>
-    problemasDeMigracion(ahora, { id: ID, dirDatos: DIR, rutaBd: RUTA_BD, pestanas: PESTANAS });
+  const base = { id: ID, dirDatos: DIR, rutaBd: RUTA_BD, pestanas: PESTANAS, viejas: PREFERENCIAS_VIEJAS };
+  const revisar = (ahora: Record<string, string>) => problemasDeMigracion(ahora, base);
 
   it("una migración correcta no tiene problemas", () => {
     expect(revisar(migradas())).toEqual([]);
+  });
+
+  it("la vista del árbol completo se copió con la de fábrica: el árbol se vería vertical", () => {
+    const ahora = migradas();
+    ahora[`boldo:vista:completo:${ID}`] = JSON.stringify({ direccion: "vertical" });
+    expect(revisar(ahora)).toEqual([expect.stringContaining(`boldo:vista:completo:${ID}`)]);
+  });
+
+  it("si la vieja no dejó las vistas en horizontal, la prueba no pasa", () => {
+    const viejas = {
+      ...PREFERENCIAS_VIEJAS,
+      "boldo:vista:completo": JSON.stringify({ direccion: "vertical" }),
+    };
+    const ahora = { ...migradas(), ...viejas };
+    expect(problemasDeMigracion(ahora, { ...base, viejas })).toEqual([
+      expect.stringContaining("la vieja no dejó boldo:vista:completo"),
+    ]);
   });
 
   it("una clave vieja que cambió o se borró", () => {
@@ -88,12 +106,7 @@ describe("problemasDeMigracion", () => {
   });
 
   it("si la vieja no guardó dos pestañas, la prueba no pasa", () => {
-    const una = problemasDeMigracion(migradas(), {
-      id: ID,
-      dirDatos: DIR,
-      rutaBd: RUTA_BD,
-      pestanas: ["p-1"],
-    });
+    const una = problemasDeMigracion(migradas(), { ...base, pestanas: ["p-1"] });
     expect(una).toHaveLength(1);
   });
 });
