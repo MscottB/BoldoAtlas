@@ -31,7 +31,7 @@ BoldoAtlas is maintained by one person, so there is no guaranteed response time.
 
 - **The database and the backups are not encrypted.** Anyone who can open your user account, your disk or your USB drive can read them. Use disk encryption (BitLocker, FileVault, LUKS) and keep the folder out of shared locations.
 - **The app has no login, users or permissions.** Everyone who can open it sees and changes everything, and it does not record who changed what.
-- **The portable version keeps its data next to the program.** The protection of that data is the protection of the folder or USB drive you put it in, and the external files you open with Open file… stay, and are protected, where they are.
+- **The portable version keeps its data next to the program.** The protection of that data is the protection of the folder or USB drive you put it in, and the external files you open with Open file… stay, and are protected, where they are; their backups go in `datos/`.
 - **It does not defend against malware or against someone with access to your user account.** Such a program could read or replace the files, including the program itself.
 - **The programs are not signed with a Windows or Apple certificate,** so the system may warn when you open them. Check them against `SHA256SUMS.txt`, downloaded from the official releases page.
 - **Automatic updates depend on GitHub and on the author's signing key.** The app cannot detect a release signed with a stolen key.
@@ -73,7 +73,7 @@ A BoldoAtlas lo mantiene una sola persona, así que no hay un plazo de respuesta
 
 - **La base de datos y los respaldos no están cifrados.** Quien pueda abrir tu cuenta de usuario, tu disco o tu pendrive puede leerlos. Usa cifrado de disco (BitLocker, FileVault, LUKS) y no dejes la carpeta en lugares compartidos.
 - **La app no tiene inicio de sesión, usuarios ni permisos.** Quien pueda abrirla ve y cambia todo, y no queda registro de quién cambió qué.
-- **La portable guarda sus datos junto al programa.** Esos datos están tan protegidos como la carpeta o el pendrive donde los pongas, y los archivos externos que abras con Abrir archivo… se quedan, y se protegen, donde están.
+- **La portable guarda sus datos junto al programa.** Esos datos están tan protegidos como la carpeta o el pendrive donde los pongas, y los archivos externos que abras con Abrir archivo… se quedan, y se protegen, donde están; sus respaldos van en `datos/`.
 - **No defiende contra programas maliciosos ni contra quien tenga acceso a tu cuenta de usuario.** Ese programa podría leer o reemplazar los archivos, incluido el propio programa.
 - **Los programas no van firmados con un certificado de Windows o de Apple,** así que el sistema puede avisar al abrirlos. Compruébalos con `SHA256SUMS.txt`, descargado de la página oficial de releases.
 - **Las actualizaciones automáticas dependen de GitHub y de la clave de firma del autor.** La app no puede detectar una versión firmada con una clave robada.

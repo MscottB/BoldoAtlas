@@ -21,7 +21,7 @@ Ninguna de las tres toca la organización que tenías abierta: sigue en tu lista
 - **Inicio › Abierto recientemente** muestra hasta 8 organizaciones, la última que abriste primero, con su logo o su inicial en un recuadro de su color, la marca **Abierta** en la que tienes abierta y hace cuánto la abriste. Aparece cuando hay más de una. Un clic la abre.
 - **Abrir otra organización…**, en el menú de la app, y **Abrir otra organización: …**, en la paleta de comandos (`Ctrl+K`), ofrecen las demás de **Abierto recientemente**.
 
-Al abrir una organización, BoldoAtlas pasa a una de sus pestañas o, si no tiene ninguna, abre una nueva en su árbol. Mientras cambia se ve **Abriendo la organización…** en lugar de la vista. Si tienes una ficha con cambios sin aplicar, pregunta antes, y si hay un trabajo en curso, como un respaldo, no cambia y te pide esperar a que termine.
+Al abrir una organización, BoldoAtlas pasa a una de sus pestañas o, si no tiene ninguna, abre una nueva en su árbol. Mientras cambia se ve **Abriendo la organización…** en lugar de la vista. Si tienes una ficha con cambios sin aplicar, pregunta antes, y si hay un trabajo en curso, como exportar o un respaldo que pediste, no cambia y te pide esperar a que termine. Si es el respaldo automático, lo espera con **Abriendo la organización…** a la vista.
 
 Cuando las pestañas abiertas son de más de una organización, cada pestaña muestra el punto de color de la suya y su nombre antes del título, por ejemplo «Compañía Demo · Árbol». Pasar a una pestaña de otra organización la abre. Solo la organización de la pestaña activa está cargada, y entre todas puedes tener hasta 12 pestañas abiertas. La barra superior muestra el nombre y el color de la organización abierta.
 

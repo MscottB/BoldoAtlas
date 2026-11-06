@@ -21,7 +21,7 @@ None of the three touches the organization you had open: it stays in your list a
 - **Home › Recently opened** shows up to 8 organizations, the one you opened last first, with its logo or initial in a box of its color, the **Open** mark on the one you have open and how long ago you opened it. It appears when there is more than one. One click opens it.
 - **Open another organization…**, in the app menu, and **Open another organization: …**, in the command palette (`Ctrl+K`), offer the others in **Recently opened**.
 
-When you open an organization, BoldoAtlas goes to one of its tabs or, if it has none, opens a new one on its tree. While it switches you see **Opening the organization…** instead of the view. If a person's record has changes you have not applied, it asks first, and if work is in progress, such as a backup, it does not switch and asks you to wait until it finishes.
+When you open an organization, BoldoAtlas goes to one of its tabs or, if it has none, opens a new one on its tree. While it switches you see **Opening the organization…** instead of the view. If a person's record has changes you have not applied, it asks first, and if work is in progress, such as an export or a backup you asked for, it does not switch and asks you to wait until it finishes. If it is the automatic backup, it waits for it with **Opening the organization…** in view.
 
 When the open tabs belong to more than one organization, each tab shows its organization's color dot and its name before the title, for example "Demo Company · Tree". Going to a tab of another organization opens it. Only the active tab's organization is loaded, and across all of them you can have up to 12 tabs open. The top bar shows the name and color of the open organization.
 
