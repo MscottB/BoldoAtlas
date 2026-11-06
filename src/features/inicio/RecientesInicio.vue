@@ -240,7 +240,7 @@ async function trasEliminar(eliminada: boolean) {
         </div>
       </li>
     </ul>
-    <p role="status" class="text-sm text-muted-foreground empty:hidden">
+    <p role="status" class="text-sm text-muted-foreground empty:sr-only">
       {{ ocupado ? t("inicio.trabajando") : "" }}
     </p>
 

@@ -210,7 +210,7 @@ onMounted(async () => {
       <ListaCaminos :caminos="caminos" :ocupado="ocupado" @elegir="elegir" />
       <RecientesInicio v-if="verRecientes" />
     </template>
-    <p role="status" class="text-sm text-muted-foreground empty:hidden">
+    <p role="status" class="text-sm text-muted-foreground empty:sr-only">
       {{ ocupado ? t("inicio.trabajando") : "" }}
     </p>
 
