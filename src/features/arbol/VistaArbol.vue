@@ -580,6 +580,7 @@ provide(CONTEXTO_LIENZO, {
   zonas: computed(() => zonas.value?.marcas ?? null),
   ligera,
   trazados,
+  cajas: computed(() => vista.value?.cajas),
   tarjetaActiva,
   tarjetaEnfocada,
   relacionesActivas,
@@ -645,11 +646,14 @@ const aristas = computed<Edge[]>(() => {
     ...(config.value.relacionesLaterales ? g.laterales : [])
       .filter((c) => entre(c.origen_id, c.destino_id))
       .map((c) => {
-        const descripcion = t(c.etiqueta ? "arbol.lateral.conEtiqueta" : "arbol.lateral.sinEtiqueta", {
+        const nombres = {
           origen: org.enFecha.porId.get(c.origen_id)?.nombre,
           destino: org.enFecha.porId.get(c.destino_id)?.nombre,
-          etiqueta: c.etiqueta,
-        });
+        };
+        const sentido = t("arbol.lateral.sinEtiqueta", nombres);
+        const descripcion = c.etiqueta
+          ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta })
+          : sentido;
         return {
           id: c.id,
           source: c.origen_id,
@@ -659,7 +663,7 @@ const aristas = computed<Edge[]>(() => {
           selectable: false,
           focusable: false,
           ariaLabel: descripcion,
-          data: { descripcion },
+          data: { descripcion, sentido },
         };
       }),
   ];
@@ -897,7 +901,12 @@ function verCompleto() {
               <NodoPuesto :id="p.id" :data="p.data" />
             </template>
             <template #edge-lateral="p">
-              <AristaLateral :id="p.id" :etiqueta="p.label as string" :descripcion="p.data.descripcion" />
+              <AristaLateral
+                :id="p.id"
+                :etiqueta="p.label as string"
+                :descripcion="p.data.descripcion"
+                :sentido="p.data.sentido"
+              />
             </template>
             <template #zoom-pane>
               <ZonasLienzo v-if="zonas" :recuadros="zonas.recuadros" :ligera="ligera" />
@@ -1004,16 +1013,31 @@ function verCompleto() {
 .lienzo :deep(.vue-flow__pane.selection [data-zona-conexion]) {
   pointer-events: none;
 }
-/* Las etiquetas de las laterales van sobre las tarjetas; la tarjeta con sus acciones, sobre las etiquetas y las vecinas. */
+/* `.vue-flow__nodes` no crea contexto de apilado: cada tarjeta compite directo con la capa de etiquetas. En reposo no tocan el cuerpo de
+   una tarjeta (lo asegura trazarLaterales), pero sí la franja donde flotan sus botones, que deben poder pulsarse. De menor a mayor: las
+   tarjetas del recuadro (1000, de Vue Flow), las etiquetas, la tarjeta con sus botones o bajo el puntero, y la capa de etiquetas entera si
+   una está activa: lo que está bajo el puntero o con el foco queda encima. En ligero, la tarjeta bajo el puntero no cambia nada: hasta
+   un contorno vuelve a pintar todas las tarjetas de un árbol grande en cada paso del puntero (medido: 2,5 ms más por paso con 943). */
 .lienzo :deep(.vue-flow__edge-labels) {
-  z-index: 1;
+  z-index: 1001;
+}
+.lienzo :deep(.vue-flow__edge-labels:has([data-activa])) {
+  z-index: 1004;
 }
 .lienzo :deep(.vue-flow__node:has([data-acciones-tarjeta])) {
-  z-index: 999 !important;
+  z-index: 1002 !important;
+}
+/* Resalta sin confundirse con la selección, que es un borde de marca pegado a la tarjeta: este va separado y en el color del texto. */
+.lienzo:not(.lienzo-ligero) :deep(.vue-flow__node:hover) {
+  z-index: 1002 !important;
+  border-radius: var(--radius-lg);
+  outline: 2px solid color-mix(in oklab, var(--foreground) 60%, transparent);
+  outline-offset: 3px;
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--foreground) 22%, transparent);
 }
 /* La tarjeta que se arrastra va sobre todo lo demás, también sobre su destino. */
 .lienzo :deep(.vue-flow__node.dragging) {
-  z-index: 1000 !important;
+  z-index: 1003 !important;
 }
 .lienzo :deep(.vue-flow__minimap) {
   background: var(--card);

@@ -2,7 +2,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Trash2 } from "@lucide/vue";
+import { ArrowLeftRight, Trash2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { conexionOculta, excluidasParaConexion, ultimoEnviado } from "./panel";
 import EliminarConexion from "./EliminarConexion.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
 
-// La ventanita de una conexión: descripción, cambiar una de sus unidades (`fija`: la que no se ofrece cambiar) y eliminar.
+// La ventanita de una conexión: descripción, cambiar una de sus unidades (`fija`: la que no se ofrece cambiar), invertir y eliminar.
 // A una fecha pasada, solo de lectura.
 const props = defineProps<{ id: string; fija?: string }>();
 const emit = defineEmits<{ cerrar: [] }>();
@@ -53,6 +53,13 @@ async function cambiar(campo: "origen_id" | "destino_id", unidad: string | null)
     verConexion.value = props.id; // si quedó hacia una rama plegada, la abre y muestra la línea
   else toast.error(r.mensaje);
 }
+// Mismas unidades, sentido contrario: no cambia lo que se ve ni hay rama que abrir.
+async function invertir() {
+  const c = conexion.value;
+  if (!c) return;
+  const r = await org.actualizarConexion(props.id, { origen_id: c.destino_id, destino_id: c.origen_id });
+  if (!r.ok) toast.error(r.mensaje);
+}
 
 // Por qué no se ve. Rama plegada: se puede abrir (Ver en el diagrama). Lo demás no se resuelve desde aquí: solo se dice.
 const oculta = computed(() => {
@@ -90,7 +97,7 @@ const quitando = ref<string | null>(null);
 
 <template>
   <div v-if="conexion" ref="raiz" tabindex="-1" class="grid gap-3 outline-hidden">
-    <h2 class="text-sm font-semibold break-words">{{ titulo }}</h2>
+    <h2 class="text-sm font-semibold break-words" aria-live="polite">{{ titulo }}</h2>
 
     <template v-if="soloLectura">
       <p class="text-sm" :class="!conexion.etiqueta && 'text-muted-foreground'">
@@ -121,11 +128,18 @@ const quitando = ref<string | null>(null);
           @elegir="cambiar(e.campo, $event)"
         />
       </div>
-      <Button type="button" variant="destructive" size="sm" class="justify-self-start" @click="quitando = id">
+    </template>
+
+    <div class="flex flex-wrap gap-2">
+      <Button type="button" variant="outline" size="sm" :disabled="soloLectura" @click="invertir">
+        <ArrowLeftRight aria-hidden="true" />
+        {{ t("conexion.invertir") }}
+      </Button>
+      <Button v-if="!soloLectura" type="button" variant="destructive" size="sm" @click="quitando = id">
         <Trash2 aria-hidden="true" />
         {{ t("conexion.eliminar") }}
       </Button>
-    </template>
+    </div>
 
     <template v-if="oculta">
       <p class="text-xs text-muted-foreground">{{ oculta.texto }}</p>

@@ -1,7 +1,7 @@
 import type { ComputedRef, InjectionKey } from "vue";
 import type { Leyenda, Unidad, Zona } from "@/db/tipos";
 import type { Marca } from "./jerarquia";
-import type { Trazado } from "./lateral";
+import type { Caja, Trazado } from "./lateral";
 
 /**
  * Lo que cada tarjeta lee por su cuenta (lo provee VistaArbol). Así cambiar «Colorear por», la ruta, la leyenda o el nivel
@@ -20,6 +20,8 @@ export interface ContextoLienzo {
   ligera: ComputedRef<boolean>;
   /** Por dónde va cada conexión lateral; se calcula al llegar un layout. */
   trazados: ComputedRef<ReadonlyMap<string, Trazado>>;
+  /** Dónde está cada tarjeta dibujada, en coordenadas del lienzo: la pista de una línea no las cubre si puede. */
+  cajas: ComputedRef<ReadonlyMap<string, Caja> | undefined>;
   /** La tarjeta bajo el puntero o con el foco del teclado (null si ninguna, en ligero o al arrastrar). */
   tarjetaActiva: ComputedRef<string | null>;
   /** La tarjeta con el foco del teclado: también muestra sus acciones, aunque el puntero esté en otra. */

@@ -738,6 +738,14 @@ describe("conexiones: crear y editar", () => {
     expect(revision()).toBe(antes + 1);
   });
 
+  it("invierte el sentido con un solo escribir, sin chocar consigo misma ni perder la descripción", async () => {
+    const { s, id, a, b } = await tres();
+    const antes = revision();
+    expect(await s.actualizarConexion(id, { origen_id: b, destino_id: a })).toEqual({ ok: true });
+    expect(s.conexiones[0]).toMatchObject({ origen_id: b, destino_id: a, etiqueta: "Repuestos" });
+    expect(revision()).toBe(antes + 1);
+  });
+
   it("sin cambios no escribe: updated_at decide en los .boldo", async () => {
     const { s, id, b } = await tres();
     const antes = revision();

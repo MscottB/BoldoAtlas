@@ -30,7 +30,14 @@ import EditorEtiquetas from "./EditorEtiquetas.vue";
 import PersonasUnidad from "./PersonasUnidad.vue";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import SelectorUnidad from "./SelectorUnidad.vue";
-import { decisionEliminar, excluidasComoSuperior, filasDePuestos, migas, validarMarca } from "./panel";
+import {
+  decisionEliminar,
+  excluidasComoSuperior,
+  filasDePuestos,
+  migas,
+  notaJefatura,
+  validarMarca,
+} from "./panel";
 import { claseSelect } from "@/lib/utils";
 
 // Panel lateral de la unidad seleccionada: junto al lienzo (no lo tapa). Esc lo cierra y guarda lo que se estaba escribiendo.
@@ -49,7 +56,7 @@ const raiz = ref<HTMLElement | null>(null);
 onMounted(() => {
   if (!editando.value) raiz.value?.focus();
 });
-// La miga pulsada pasa a ser la última, que no es botón: el foco va donde va al abrir el panel, no a <body>.
+// La miga pulsada desaparece, porque ahora es la unidad del panel: el foco va donde va al abrir el panel, no a <body>.
 async function irA(id: string) {
   seleccionar(id);
   await nextTick();
@@ -147,8 +154,9 @@ const filas = computed(() =>
 const jefe = computed(() => {
   const a = jefeVisible(props.unidad, vigentes.value);
   const nombre = org.enFecha.trabajadores.find((w) => w.id === a?.trabajador_id)?.nombre;
-  return a && nombre ? (a.tipo === "reemplazo" ? t("arbol.reemplazo", { nombre }) : nombre) : null;
+  return a && nombre ? { tipo: a.tipo, nombre } : null;
 });
+const nota = computed(() => notaJefatura(jefe.value, filas.value.length > 0, !!props.unidad.jefe_puesto_id));
 const personal = computed(() =>
   dotacion(
     org.enFecha.unidades,
@@ -204,17 +212,13 @@ async function eliminar() {
     :aria-label="t('unidad.panel')"
     @keydown.esc="cerrar"
   >
-    <header class="grid gap-1 border-b p-3">
-      <div class="flex items-start gap-2">
-        <nav :aria-label="t('unidad.migas')" class="min-w-0 flex-1">
+    <header class="flex items-start gap-2 border-b p-3">
+      <div class="grid min-w-0 flex-1 gap-1">
+        <nav v-if="migasRuta.length" :aria-label="t('unidad.migas')">
           <ol class="flex flex-wrap items-center gap-x-1 text-xs">
             <li v-for="(m, i) in migasRuta" :key="m.id" class="flex items-center gap-1">
               <span v-if="i" aria-hidden="true" class="text-muted-foreground">›</span>
-              <span v-if="i === migasRuta.length - 1" aria-current="location" class="font-semibold">
-                {{ m.nombre }}
-              </span>
               <button
-                v-else
                 type="button"
                 class="rounded hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                 @click="irA(m.id)"
@@ -225,17 +229,17 @@ async function eliminar() {
             </li>
           </ol>
         </nav>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          :aria-label="t('unidad.cerrar')"
-          :title="t('unidad.cerrar')"
-          @click="cerrar"
-        >
-          <X aria-hidden="true" />
-        </Button>
+        <h2 class="truncate text-base font-semibold" :title="unidad.nombre">{{ unidad.nombre }}</h2>
       </div>
-      <h2 class="truncate text-base font-semibold">{{ unidad.nombre }}</h2>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :aria-label="t('unidad.cerrar')"
+        :title="t('unidad.cerrar')"
+        @click="cerrar"
+      >
+        <X aria-hidden="true" />
+      </Button>
     </header>
 
     <p v-if="soloLectura" class="border-b bg-muted px-3 py-1.5 text-xs text-foreground">
@@ -254,43 +258,6 @@ async function eliminar() {
       <TabsContent value="resumen">
         <!-- fieldset disabled: deshabilita de una vez todos los campos y botones del resumen. -->
         <fieldset :key="unidad.id" :disabled="soloLectura" class="grid min-w-0 gap-4 pt-2">
-          <div class="grid gap-1.5">
-            <Label :for="`${uid}-tipo`">{{ t("unidad.tipo") }}</Label>
-            <!-- Combobox sobre el mantenedor: también agrega un tipo nuevo sin ir a Mantenedores. -->
-            <SelectorCatalogo
-              :id="`${uid}-tipo`"
-              tabla="tipos_unidad"
-              requerido
-              :model-value="unidad.tipo_id"
-              @update:model-value="cambiarTipo"
-            />
-          </div>
-          <div class="grid gap-1.5">
-            <Label :for="`${uid}-nombre`">{{ t("arbol.nombre") }}</Label>
-            <Input :id="`${uid}-nombre`" v-model="nombre" autocomplete="off" @change="guardarNombre" />
-          </div>
-          <div class="grid gap-1.5">
-            <Label :for="`${uid}-jefatura`">{{ t("unidad.jefatura") }}</Label>
-            <select
-              :id="`${uid}-jefatura`"
-              :class="claseSelect"
-              :value="unidad.jefe_puesto_id ?? ''"
-              @change="cambiarJefatura"
-            >
-              <option value="">{{ t("arbol.sinJefatura") }}</option>
-              <option v-for="f in filas" :key="f.id" :value="f.id">{{ textoPuesto(f) }}</option>
-              <option v-if="!soloLectura" :value="NUEVO_PUESTO">{{ t("unidad.nuevoPuestoJefatura") }}</option>
-            </select>
-            <p v-if="jefe" class="text-sm">{{ jefe }}</p>
-            <p v-else class="text-sm text-amber-800 dark:text-amber-400">
-              {{
-                filas.length
-                  ? t("arbol.sinJefatura")
-                  : t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura")
-              }}
-            </p>
-          </div>
-
           <dl class="grid grid-cols-3 gap-2 text-center">
             <div class="rounded-lg border p-2">
               <dt class="text-xs text-muted-foreground">{{ t("unidad.dotacionDirecta") }}</dt>
@@ -306,71 +273,107 @@ async function eliminar() {
             </div>
           </dl>
 
+          <div class="grid gap-1.5">
+            <Label :for="`${uid}-nombre`">{{ t("arbol.nombre") }}</Label>
+            <Input :id="`${uid}-nombre`" v-model="nombre" autocomplete="off" @change="guardarNombre" />
+          </div>
+          <div class="grid gap-1.5">
+            <Label :for="`${uid}-tipo`">{{ t("unidad.tipo") }}</Label>
+            <!-- Combobox sobre el mantenedor: también agrega un tipo nuevo sin ir a Mantenedores. -->
+            <SelectorCatalogo
+              :id="`${uid}-tipo`"
+              tabla="tipos_unidad"
+              requerido
+              :model-value="unidad.tipo_id"
+              @update:model-value="cambiarTipo"
+            />
+          </div>
+          <div class="grid gap-1.5">
+            <Label :for="`${uid}-superior`">{{ t("unidad.superior") }}</Label>
+            <p :id="`${uid}-superior-ayuda`" class="text-xs text-muted-foreground">
+              {{ t("unidad.superiorAyuda") }}
+            </p>
+            <SelectorUnidad
+              :id="`${uid}-superior`"
+              :aria-describedby="`${uid}-superior-ayuda`"
+              :excluidas="excluidas"
+              :texto="textoSuperior"
+              :ninguna="t('unidad.sinSuperior')"
+              @elegir="cambiarSuperior"
+            />
+          </div>
+          <div class="grid gap-1.5">
+            <Label :for="`${uid}-jefatura`">{{ t("unidad.jefatura") }}</Label>
+            <select
+              :id="`${uid}-jefatura`"
+              :class="claseSelect"
+              :value="unidad.jefe_puesto_id ?? ''"
+              @change="cambiarJefatura"
+            >
+              <option value="">{{ t("arbol.sinJefatura") }}</option>
+              <option v-for="f in filas" :key="f.id" :value="f.id">{{ textoPuesto(f) }}</option>
+              <option v-if="!soloLectura" :value="NUEVO_PUESTO">{{ t("unidad.nuevoPuestoJefatura") }}</option>
+            </select>
+            <p v-if="nota === 'reemplazo'" class="text-sm">
+              {{ t("arbol.reemplazo", { nombre: jefe?.nombre }) }}
+            </p>
+            <p v-else-if="nota" class="text-sm text-amber-800 dark:text-amber-400">
+              {{
+                nota === "vacante"
+                  ? t("arbol.sinJefatura")
+                  : t(soloLectura ? "unidad.sinPuestosJefaturaSoloLectura" : "unidad.sinPuestosJefatura")
+              }}
+            </p>
+          </div>
+          <div class="grid gap-1.5">
+            <Label :for="`${uid}-descripcion`">{{ t("puesto.descripcion") }}</Label>
+            <p :id="`${uid}-descripcion-ayuda`" class="text-xs text-muted-foreground">
+              {{ t("unidad.descripcionAyuda") }}
+            </p>
+            <Textarea
+              :id="`${uid}-descripcion`"
+              v-model="descripcion"
+              :aria-describedby="`${uid}-descripcion-ayuda`"
+              @change="guardarDescripcion"
+            />
+          </div>
+
           <section class="grid gap-1.5" :aria-labelledby="`${uid}-etiquetas`">
             <h3 :id="`${uid}-etiquetas`" class="text-sm font-medium">{{ t("unidad.etiquetas") }}</h3>
             <EditorEtiquetas :unidad-id="unidad.id" />
           </section>
           <EditorConexiones :unidad-id="unidad.id" />
-          <BloquePlegable clave="unidad.avanzado" :titulo="t('unidad.avanzado')" class="text-sm">
-            <div class="grid gap-4 pt-2">
-              <div class="grid gap-1.5">
-                <Label :for="`${uid}-descripcion`">{{ t("puesto.descripcion") }}</Label>
-                <p :id="`${uid}-descripcion-ayuda`" class="text-xs text-muted-foreground">
-                  {{ t("unidad.descripcionAyuda") }}
-                </p>
-                <Textarea
-                  :id="`${uid}-descripcion`"
-                  v-model="descripcion"
-                  :aria-describedby="`${uid}-descripcion-ayuda`"
-                  @change="guardarDescripcion"
+          <BloquePlegable clave="unidad.apariencia" :titulo="t('unidad.apariencia')" class="text-sm">
+            <fieldset class="mt-2 grid gap-1.5" :aria-describedby="`${uid}-marca-ayuda`">
+              <legend class="mb-1.5 text-sm font-medium">{{ t("unidad.marca") }}</legend>
+              <p :id="`${uid}-marca-ayuda`" class="text-xs text-muted-foreground">
+                {{ t("unidad.marcaAyuda") }}
+              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <input
+                  type="color"
+                  class="h-8 w-12 cursor-pointer rounded-lg border bg-transparent p-0.5 focus-visible:outline-2 focus-visible:outline-ring"
+                  :value="unidad.marca_color ?? '#808080'"
+                  :aria-label="t('unidad.marcaColor')"
+                  @change="(e) => guardarMarca((e.target as HTMLInputElement).value)"
                 />
-              </div>
-              <div class="grid gap-1.5">
-                <Label :for="`${uid}-superior`">{{ t("unidad.superior") }}</Label>
-                <p :id="`${uid}-superior-ayuda`" class="text-xs text-muted-foreground">
-                  {{ t("unidad.superiorAyuda") }}
-                </p>
-                <SelectorUnidad
-                  :id="`${uid}-superior`"
-                  :aria-describedby="`${uid}-superior-ayuda`"
-                  :excluidas="excluidas"
-                  :texto="textoSuperior"
-                  :ninguna="t('unidad.sinSuperior')"
-                  @elegir="cambiarSuperior"
+                <Input
+                  v-model="codigo"
+                  class="w-28"
+                  maxlength="4"
+                  autocomplete="off"
+                  :aria-label="t('unidad.marcaCodigo')"
+                  :placeholder="t('unidad.marcaCodigo')"
+                  @change="guardarMarca(unidad.marca_color)"
                 />
+                <Button type="button" variant="outline" size="sm" :disabled="sinMarca" @click="quitarMarca">
+                  {{ t("unidad.quitarMarca") }}
+                </Button>
               </div>
-
-              <fieldset class="grid gap-1.5" :aria-describedby="`${uid}-marca-ayuda`">
-                <legend class="mb-1.5 text-sm font-medium">{{ t("unidad.marca") }}</legend>
-                <p :id="`${uid}-marca-ayuda`" class="text-xs text-muted-foreground">
-                  {{ t("unidad.marcaAyuda") }}
-                </p>
-                <div class="flex flex-wrap items-center gap-2">
-                  <input
-                    type="color"
-                    class="h-8 w-12 cursor-pointer rounded-lg border bg-transparent p-0.5 focus-visible:outline-2 focus-visible:outline-ring"
-                    :value="unidad.marca_color ?? '#808080'"
-                    :aria-label="t('unidad.marcaColor')"
-                    @change="(e) => guardarMarca((e.target as HTMLInputElement).value)"
-                  />
-                  <Input
-                    v-model="codigo"
-                    class="w-28"
-                    maxlength="4"
-                    autocomplete="off"
-                    :aria-label="t('unidad.marcaCodigo')"
-                    :placeholder="t('unidad.marcaCodigo')"
-                    @change="guardarMarca(unidad.marca_color)"
-                  />
-                  <Button type="button" variant="outline" size="sm" :disabled="sinMarca" @click="quitarMarca">
-                    {{ t("unidad.quitarMarca") }}
-                  </Button>
-                </div>
-                <p v-if="!unidad.marca_color" class="text-xs text-muted-foreground">
-                  {{ t("unidad.sinColor") }}
-                </p>
-              </fieldset>
-            </div>
+              <p v-if="!unidad.marca_color" class="text-xs text-muted-foreground">
+                {{ t("unidad.sinColor") }}
+              </p>
+            </fieldset>
           </BloquePlegable>
 
           <div class="flex flex-wrap items-center gap-2 border-t pt-3">
