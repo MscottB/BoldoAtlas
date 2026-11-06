@@ -4,18 +4,20 @@
 BoldoAtlas copia tus datos solo, por si algo sale mal. Aquí ves dónde quedan los respaldos, cómo hacer uno a mano y cómo restaurarlo.
 :::
 
-BoldoAtlas guarda copias de tus datos en la carpeta **respaldos**, dentro de la carpeta de datos:
+Cada organización tiene sus respaldos aparte. Los de `boldo.db` quedan en la carpeta **respaldos**, dentro de la carpeta de datos:
 
 - **Portable:** `datos/respaldos/`, junto al programa.
 - **Instalado:** `respaldos` dentro de la carpeta de datos de tu usuario; en Windows, `%APPDATA%\io.github.mscottb.boldoatlas\respaldos\` (en Linux y macOS, ver **Inicio › Modo portable e instalado**).
+
+Los de las demás organizaciones quedan en `organizaciones/<id>/respaldos/`, dentro de la misma carpeta de datos (ver [Organizaciones](organizaciones.md#que-se-guarda-aparte)). **Configuración › Respaldos** muestra los de la organización abierta.
 
 Cada respaldo es un archivo `boldo-AAAAMMDD-HHMM.db` con la fecha y hora en que se hizo. Si se hacen dos en el mismo minuto, el segundo termina en `-2`.
 
 ## Respaldo automático
 
-Al abrir la app y mientras sigue abierta, también en la bandeja, si el último respaldo tiene más de 24 horas se hace uno nuevo en segundo plano: puedes seguir trabajando mientras tanto. En **Configuración › Respaldos › Ver respaldos y restaurar** eliges cada cuánto: **Nunca**, **Cada vez** que se abre (solo al abrirla), **Cada 24 horas** (lo normal) o **Cada 7 días**. La elección vale solo para este computador.
+Al abrir la app, al pasar a otra organización y mientras sigue abierta, también en la bandeja, si el último respaldo de la organización abierta tiene más de 24 horas se hace uno nuevo en segundo plano: puedes seguir trabajando mientras tanto. En **Configuración › Respaldos › Ver respaldos y restaurar** eliges cada cuánto: **Nunca**, **Cada vez** que se abre una organización (la primera vez en la sesión), **Cada 24 horas** (lo normal) o **Cada 7 días**. La elección vale solo para este computador.
 
-Se conservan los **10 respaldos más recientes**; al hacer uno nuevo se borran los más viejos. Los demás archivos de la carpeta no se tocan. Si un respaldo automático falla, aparece un aviso.
+De cada organización se conservan los **10 respaldos más recientes**; al hacer uno nuevo se borran los más viejos. Los demás archivos de la carpeta no se tocan. Si un respaldo automático falla, aparece un aviso.
 
 ## Lista de respaldos
 
@@ -32,12 +34,12 @@ Para llevarte una copia a otro lugar, pulsa **Abrir carpeta** y copia el archivo
 
 ## Antes de reemplazar los datos
 
-Al elegir **Nueva organización vacía** o **Explorar el ejemplo** con datos cargados, o al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. El de reemplazar y el de restaurar nunca se borran solos. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
+Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. El de reemplazar y el de restaurar nunca se borran solos. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
 
 ## Restaurar
 
 ::: warning Importante
-Restaurar reemplaza tus datos actuales por los del respaldo y reinicia la app.
+Restaurar reemplaza los datos de la organización abierta por los del respaldo y reinicia la app, que vuelve a abrir esa organización.
 :::
 
 1. En **Ver respaldos y restaurar**, pulsa **Restaurar** en la fila del respaldo que quieres recuperar.

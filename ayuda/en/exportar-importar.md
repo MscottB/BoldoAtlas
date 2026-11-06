@@ -4,7 +4,7 @@
 To take your organization, or just part of it, to another computer: **Export** saves it to a `.boldo` file protected with a code, and **Import** opens that file on the other side. Here you see how to do it without overwriting the data you already have.
 :::
 
-Both actions are in **Import/Export**, in the sidebar, and in the app menu. To open a file you can also use **Open a .boldo file** on the Welcome screen.
+Both actions are in **Import/Export**, in the sidebar, and in the app menu. To open a file you can also use **Open a .boldo file** on the Welcome screen or **Open .boldo file** in the app menu.
 
 ## Export
 
@@ -25,12 +25,16 @@ The code is shown only once and is not saved anywhere. If it is lost, the file c
 
 1. Press **Import** and then **Choose file…**.
 2. Type the code and press **Open**. Capitals and dashes do not matter.
-3. Review what it carries: how much is in the file, how much is new and how much already exists. Up to here your database has not changed, and **Cancel** deletes the temporary copy of the file.
-4. Choose what to do and press **Apply**.
+3. Choose what to do. **As a new organization (recommended)** comes checked; with the other options, a table shows how much is in the file, how much is new and how much already exists in the open organization. Up to here nothing has changed, and **Cancel** deletes the temporary copy of the file.
+4. Press **Create organization**, **Apply** or **Continue**, depending on what you chose.
 
-![Import: what the file carries in a table and the Add what is new, Review and decide and Replace everything options.](../img/en/importar-revision.webp "Import: you review what it carries before applying anything."){width=768 height=706}
+![Import: what the file carries in a table and the As a new organization, Add what is new, Review and decide and Replace everything options.](../img/en/importar-revision.webp "Import: you review what it carries before applying anything."){width=768 height=781}
 
 If the code does not match or the file was altered, you see the same notice: “The code is not correct or the file is damaged”. Your database is not touched.
+
+### As a new organization
+
+The recommended one. The file becomes another organization in your list, apart, and the one you have open does not change: there is nothing to compare or overwrite. Press **Create organization**; while it is created you can keep working, and a notice says when it finished. At the end you choose **Open the new one** or **Stay in the open one**. Once started it cannot be canceled: if you do not want it afterwards, delete it (see [Organizations](organizaciones.md)). Importing the same file twice gives two organizations.
 
 ### Add what is new
 
@@ -86,10 +90,10 @@ Decisions last as long as the review. **Cancel** and **Back to the options** war
 
 ### Replace everything
 
-Your current data is swapped for the file's and the app restarts. It only works with a file of **the whole database**: with a part you would erase the rest. You are asked to confirm.
+The open organization's data is swapped for the file's and the app restarts, back in that organization. It only works with a file of **the whole database**: with a part you would erase the rest. You are asked to confirm.
 
 ::: tip Tip
-Before applying, BoldoAtlas makes a backup: marked **Before importing** when adding or reviewing and deciding, and **Before replacing** when replacing everything. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
+Before changing the open organization, BoldoAtlas makes a backup: marked **Before importing** when adding or reviewing and deciding, and **Before replacing** when replacing everything. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
 :::
 
 ## If you close halfway

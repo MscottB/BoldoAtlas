@@ -11,19 +11,19 @@ const leer = (ruta, base = sitio) => readFileSync(new URL(ruta, base), "utf8");
 const novedades = JSON.parse(leer("novedades.json"));
 const comparador = JSON.parse(leer("comparador.json"));
 
-// Lo que la portada no puede decir: versiones, fechas de versión, «Próximamente», «por ahora», fases, «cumple» ni varias organizaciones.
+// Lo que la portada no puede decir: versiones, fechas de versión, «Próximamente», «por ahora», fases ni «cumple».
 const PROHIBIDO =
-  /\b(alpha|alfa|beta)\b|\bv\d+\.\d+|\bversi[oó]n\s+\d|\bversion\s+\d|\d{4}-\d{2}-\d{2}|pr[oó]ximamente|coming soon|por ahora|\bfor now\b|\bfase\s+\d|\bphase\s+\d|cumpl[ea]|compl(y|ies)\b|varias organizaciones|(several|multiple) organizations/i;
+  /\b(alpha|alfa|beta)\b|\bv\d+\.\d+|\bversi[oó]n\s+\d|\bversion\s+\d|\d{4}-\d{2}-\d{2}|pr[oó]ximamente|coming soon|por ahora|\bfor now\b|\bfase\s+\d|\bphase\s+\d|cumpl[ea]|compl(y|ies)\b/i;
 
 test("la prueba de palabras prohibidas detecta cada una", () => {
-  for (const p of ["alpha", "beta", "v0.1", "versión 0", "Próximamente", "Coming soon", "Por ahora", "for now", "Fase 3", "cumple", "comply", "varias organizaciones"])
+  for (const p of ["alpha", "beta", "v0.1", "versión 0", "Próximamente", "Coming soon", "Por ahora", "for now", "Fase 3", "cumple", "comply"])
     assert.match(p, PROHIBIDO, p);
   assert.doesNotMatch("te ayuda a cumplir", PROHIBIDO);
 });
 
 test("ninguna novedad se quita: novedades.json acumula", () => {
   const ids = novedades.map((n) => n.id);
-  for (const id of ["zonas", "version-a-la-vista", "fotos-livianas", "lineas-e-interaccion", "revisar-y-decidir", "inicio-con-resumen", "exportar-importar", "bandeja", "actualizaciones", "ayuda-visual"])
+  for (const id of ["varias-organizaciones", "zonas", "version-a-la-vista", "fotos-livianas", "lineas-e-interaccion", "revisar-y-decidir", "inicio-con-resumen", "exportar-importar", "bandeja", "actualizaciones", "ayuda-visual"])
     assert.ok(ids.includes(id), `falta ${id}`);
 });
 

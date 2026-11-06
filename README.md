@@ -39,7 +39,8 @@ It is designed for **large organizations**: very big trees, several independent 
 - The org chart on any date, read-only: who held each position and what changed
 - Review: units without a head, vacancies, people without a position, repeated emails and similar names
 - Directory with filters, `Ctrl+K` search, light or dark theme with accent color
-- Export the whole database or a branch to an encrypted `.boldo` file, and import choosing what stays
+- Several organizations, each with its data, photos, backups and preferences apart, and tabs to move between them
+- Export the whole database or a branch to an encrypted `.boldo` file, and import it as a new organization or choosing what stays
 - 100 % local SQLite database and portable mode (runs from a USB drive), with an automatic backup every 24 hours (you can change that) and before importing, restoring or migrating
 - Tells you about new versions and never installs without confirmation; it can stay in the tray when closed
 - English and Spanish interface, with an illustrated manual inside the app

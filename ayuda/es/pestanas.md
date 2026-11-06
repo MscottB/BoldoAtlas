@@ -31,6 +31,10 @@ Configuración, Ayuda y Acerca de, al cerrarlas, vuelven a la vista de esa misma
 
 Solo la pestaña activa está cargada: tener varias abiertas no hace más lento el lienzo.
 
+## Pestañas de varias organizaciones
+
+Cuando las pestañas abiertas son de más de una organización, cada una muestra el punto de color de la suya y su nombre antes del título, por ejemplo «Compañía Demo · Árbol». Pasar a una pestaña de otra organización la abre, y solo está cargada la de la pestaña activa. Ver [Organizaciones](organizaciones.md#abrir-y-cambiar).
+
 ## Cambiar, ordenar y cerrar
 
 - Pulsa una pestaña para verla, o usa `Ctrl` + `Tab` y `Ctrl` + `Mayús` + `Tab`.
@@ -38,6 +42,6 @@ Solo la pestaña activa está cargada: tener varias abiertas no hace más lento 
 - Ciérrala con su botón ×, con clic central sobre ella, con `Supr` si está enfocada o con `Ctrl` + `W` (la activa). La última pestaña no se cierra.
 - Con el foco en la barra, `←` `→` recorren las pestañas y `Enter` abre la enfocada.
 
-Las pestañas se recuerdan en este computador, aparte para cada proyecto. Al abrir el programa aparece **Inicio** y, con **Volver a mi organización**, las pestañas están como las dejaste; con **Continuar donde estaba** (en **Configuración › Al abrir y al salir**) se ven directo. Las de unidades o personas que ya no existen se cierran solas.
+Las pestañas se recuerdan en este computador, aparte para cada copia de BoldoAtlas (la instalada y cada portable), con las de todas tus organizaciones. Al abrir el programa aparece **Inicio** y, con **Volver a mi organización**, las pestañas están como las dejaste; con **Continuar donde estaba** (en **Configuración › Al abrir y al salir**) se ven directo. Las de unidades o personas que ya no existen se cierran solas.
 
 **Ver también:** [Atajos de teclado](atajos.md) · [Directorio](directorio.md).

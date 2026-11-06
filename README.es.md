@@ -39,7 +39,8 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 - El organigrama a cualquier fecha, en solo lectura: quién ocupaba cada puesto y qué cambió
 - Revisión: unidades sin jefatura, vacantes, personas sin puesto, correos repetidos y nombres parecidos
 - Directorio con filtros, búsqueda con `Ctrl+K`, tema claro u oscuro con color de acento
-- Exportar toda la base o una rama a un archivo `.boldo` cifrado, e importar eligiendo qué se queda
+- Varias organizaciones, cada una con sus datos, fotos, respaldos y preferencias aparte, y pestañas para pasar de una a otra
+- Exportar toda la base o una rama a un archivo `.boldo` cifrado, e importarlo como una organización nueva o eligiendo qué se queda
 - Base SQLite 100 % local y modo portable (funciona desde un pendrive), con respaldo automático cada 24 horas (se puede cambiar) y antes de importar, restaurar o migrar
 - Avisa de versiones nuevas y nunca instala sin confirmar; al cerrar puede quedar en la bandeja
 - Interfaz en español e inglés, con un manual con capturas dentro de la app

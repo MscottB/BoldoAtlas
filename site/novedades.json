@@ -1,5 +1,19 @@
 [
   {
+    "id": "varias-organizaciones",
+    "pagina": "organizaciones",
+    "es": {
+      "titulo": "Varias organizaciones, cada una en lo suyo",
+      "texto": "Abre varias organizaciones y pasa de una a otra con sus pestañas. Cada una guarda aparte sus datos, fotos, respaldos y preferencias: nada de una llega a otra. Inicio muestra las que abriste hace poco, y crear una nueva no toca las demás.",
+      "ancla": "abrir-y-cambiar"
+    },
+    "en": {
+      "titulo": "Several organizations, each on its own",
+      "texto": "Open several organizations and move between them with their tabs. Each keeps its data, photos, backups and preferences apart: nothing from one reaches another. Home shows the ones you opened recently, and creating a new one does not touch the others.",
+      "ancla": "open-and-switch"
+    }
+  },
+  {
     "id": "conexiones-editables",
     "pagina": "arbol",
     "imagen": "arbol-conexion",
@@ -98,15 +112,15 @@
     "imagen": "inicio-organizacion",
     "es": {
       "titulo": "Retoma justo donde lo dejaste",
-      "texto": "Inicio muestra los totales de unidades, personas, vacantes y avisos de Revisión, la fecha de tu último respaldo y lo último que abriste, a un clic de volver.",
+      "texto": "Inicio muestra los totales de unidades, personas, vacantes y avisos de Revisión, la fecha de tu último respaldo y el botón para volver a tu organización en un clic.",
       "ancla": "inicio-con-tu-organizacion-cargada",
-      "alt": "Inicio con la organización cargada: sus totales, la lista de lo abierto recientemente y los accesos rápidos."
+      "alt": "Inicio con la organización cargada: sus totales, la lista de organizaciones abiertas recientemente, los accesos rápidos y los botones para crear o abrir otra."
     },
     "en": {
       "titulo": "Pick up right where you left off",
-      "texto": "Home shows the totals of units, people, vacancies and Review alerts, the date of your latest backup and what you opened last, one click away.",
+      "texto": "Home shows the totals of units, people, vacancies and Review alerts, the date of your latest backup and the button to go back to your organization in one click.",
       "ancla": "home-with-your-organization-loaded",
-      "alt": "Home with the organization loaded: its totals, the list of recently opened items and the quick links."
+      "alt": "Home with the organization loaded: its totals, the list of recently opened organizations, the quick links and the buttons to create or open another one."
     }
   },
   {
@@ -115,12 +129,12 @@
     "imagen": "exportar-alcance",
     "es": {
       "titulo": "Lleva tu organización a otro computador",
-      "texto": "Guarda toda la base, o solo algunas ramas, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves lo que trae y eliges: agregar lo nuevo, revisar y decidir, o reemplazar todo. Antes de aplicar, BoldoAtlas hace un respaldo.",
+      "texto": "Guarda toda la base, o solo algunas ramas, en un archivo .boldo cifrado con un código que se muestra una sola vez. Al importar ves lo que trae y eliges: abrirlo como una organización nueva, agregar lo nuevo, revisar y decidir, o reemplazar todo. Antes de cambiar tus datos, BoldoAtlas hace un respaldo.",
       "alt": "Exportar con la opción de uno o más árboles o ramas y la lista de unidades con una rama marcada."
     },
     "en": {
       "titulo": "Take your organization to another computer",
-      "texto": "Save the whole database, or just some branches, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries and choose: add what is new, review and decide, or replace everything. Before applying, BoldoAtlas makes a backup.",
+      "texto": "Save the whole database, or just some branches, in a .boldo file encrypted with a code shown only once. When you import, you see what it carries and choose: open it as a new organization, add what is new, review and decide, or replace everything. Before changing your data, BoldoAtlas makes a backup.",
       "alt": "Export with the option of one or more trees or branches and the list of units with one branch checked."
     }
   },
