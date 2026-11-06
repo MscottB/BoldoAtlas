@@ -1,21 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { FilePlus, FileSpreadsheet, FolderOpen, Sparkles } from "@lucide/vue";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { FilePlus, FileSpreadsheet, FolderOpen, Import, Sparkles } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
-import BloquePlegable from "@/components/BloquePlegable.vue";
 import BotonTema from "@/components/BotonTema.vue";
 import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
@@ -32,14 +21,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SelectorIdioma from "@/components/SelectorIdioma.vue";
-import { respaldarAntesDeReemplazar } from "@/db/cliente";
 import AccesosRapidos from "@/features/inicio/AccesosRapidos.vue";
+import { enfocarAlVolver, volverAlTerminar } from "@/features/inicio/foco";
 import ListaCaminos, { type Camino } from "@/features/inicio/ListaCaminos.vue";
 import PanelOrganizacion from "@/features/inicio/PanelOrganizacion.vue";
 import RecientesInicio from "@/features/inicio/RecientesInicio.vue";
-import { useRecientes } from "@/features/inicio/useRecientes";
-import { conRespaldoPrevio } from "@/features/respaldos/respaldos";
+import PreguntaArchivo from "@/features/organizaciones/PreguntaArchivo.vue";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { useOrganizaciones } from "@/stores/organizaciones";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import icono from "../../assets/brand/icono.png";
 
@@ -47,88 +36,97 @@ const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const org = useOrganizacion();
-const recientes = useRecientes();
+const organizaciones = useOrganizaciones();
 const actualizaciones = useActualizaciones();
+
+const ID_TITULO = "bienvenida-titulo";
 
 const todos: Camino[] = [
   { id: "vacia", icono: FilePlus },
+  { id: "archivo", icono: FolderOpen },
   { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
-  { id: "boldo", icono: FolderOpen },
+  { id: "boldo", icono: Import },
   { id: "ejemplo", icono: Sparkles },
 ];
 const caminos = todos.filter((c) => MOSTRAR_PROXIMAMENTE || !c.fase);
 
-async function entrar(r: Resultado) {
-  if (!r.ok) return void toast.error(r.mensaje);
-  // Es otra organización: lo que se abrió en la anterior no vale (y la lista nombra personas).
-  recientes.vaciar();
-  await router.replace("/");
-}
+// Rust no lista un `boldo.db` sin nada que perder (`esta_vacia`): sin la abierta en la lista, Inicio es el de una instalación
+// nueva. Si la lista no se pudo leer, se mira lo cargado: solo cambia lo que se muestra, porque crear ya no reemplaza nada.
+const conDatos = computed(
+  () => org.cargado && (organizaciones.listaAlDia ? !!organizaciones.abierta : !org.vacia),
+);
+// Con una sola, ya es la del panel: la lista empieza a servir con otra.
+const verRecientes = computed(
+  () => organizaciones.recientes.length > 0 && (organizaciones.varias || !conDatos.value),
+);
 
-// Con datos en la base, empezar de nuevo los reemplaza: pide confirmación y hace antes un respaldo.
-const hayDatos = computed(() => !org.cargado || !org.vacia);
-const confirmando = ref(false);
-// No se limpia al cerrar el diálogo: la acción lo necesita después de que el diálogo se cierra.
-const reemplazo = ref<"vacia" | "ejemplo">("vacia");
+/** Una acción a la vez: crear o abrir cambian de organización, y la vista se va. */
 const ocupado = ref(false);
-
-// Con datos, las tarjetas de empezar de nuevo van plegadas; se abren solas si llega una acción o hay un diálogo abierto.
-const accionPedida = typeof route.query.accion === "string";
+async function hacer(desde: string, accion: () => Promise<Resultado & { avisos?: string[] }>) {
+  if (ocupado.value || organizaciones.enCurso) return;
+  ocupado.value = true;
+  // Si algo falla tras desmontarse Inicio, vuelve a mostrarse: el foco, al botón desde el que se pidió.
+  volverAlTerminar(desde);
+  const r = await accion();
+  ocupado.value = false;
+  if (!r.ok) return void toast.error(r.mensaje);
+  volverAlTerminar(null);
+  for (const a of r.avisos ?? []) toast.warning(t(`organizaciones.avisoArchivo.${a}`));
+}
 
 const creando = ref(false);
 const nombreOrg = ref("");
 const nombreRaiz = ref("");
-// El foco entra al primer campo (no al botón de cerrar) y, al cerrar, vuelve a la tarjeta que abrió el diálogo; si no hubo
-// clic (menú de la app, ?accion=vacia), a la tarjeta «vacía». No depende de dónde estuviera el foco antes.
+// El foco entra al primer campo (no al botón de cerrar) y, al cerrar, vuelve al botón que abrió el diálogo; si no hubo
+// clic (menú de la app, ?accion=vacia), al de crear. No depende de dónde estuviera el foco antes.
 let origen: HTMLElement | null = null;
+const idCrear = () => (conDatos.value ? "inicio-crear" : "bienvenida-camino-vacia");
 function alAbrir(e: Event) {
   e.preventDefault();
   document.getElementById("bienvenida-org")?.focus();
 }
 function alCerrar(e: Event) {
   e.preventDefault();
-  (origen?.isConnected ? origen : document.getElementById("bienvenida-camino-vacia"))?.focus();
+  (origen?.isConnected ? origen : document.getElementById(idCrear()))?.focus();
 }
-async function elegir(c: Camino, desde: EventTarget | null = null) {
-  if (c.fase) return;
+function pedirNombres(desde: EventTarget | null = null) {
   origen = desde instanceof HTMLElement ? desde : null;
-  if (c.id === "boldo") return router.push({ path: "/importar-exportar", query: { accion: "importar" } });
-  if (c.id === "ejemplo") {
-    if (!hayDatos.value) return entrar(await org.cargarEjemplo());
-    reemplazo.value = "ejemplo";
-    confirmando.value = true;
-    return;
-  }
   creando.value = true;
 }
 async function crear() {
-  if (!nombreOrg.value.trim() || !nombreRaiz.value.trim() || org.guardando || ocupado.value) return;
-  if (hayDatos.value) {
-    reemplazo.value = "vacia";
-    confirmando.value = true;
-    return;
-  }
-  await entrar(await org.crearOrganizacion(nombreOrg.value, nombreRaiz.value));
-}
-async function reemplazar() {
-  ocupado.value = true;
-  const datos =
-    reemplazo.value === "vacia" ? { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value } : undefined;
-  try {
-    await entrar(
-      await conRespaldoPrevio(respaldarAntesDeReemplazar, () => org.reemplazarCon(reemplazo.value, datos)),
-    );
-  } finally {
-    ocupado.value = false;
-  }
+  if (!nombreOrg.value.trim() || !nombreRaiz.value.trim()) return;
+  await hacer(idCrear(), () =>
+    organizaciones.crear("vacia", { nombre: nombreOrg.value, nombreRaiz: nombreRaiz.value }),
+  );
 }
 
-// El menú de la app y la paleta llegan aquí con ?accion=vacia|ejemplo.
-onMounted(() => {
-  const c = caminos.find((x) => x.id === route.query.accion);
-  if (!c) return;
-  void router.replace({ path: route.path }); // la acción es de una sola vez: no se repite al volver atrás
-  void elegir(c);
+const preguntas = ref<InstanceType<typeof PreguntaArchivo> | null>(null);
+const abrirArchivo = (desde: string) =>
+  hacer(desde, () => organizaciones.agregarArchivo((p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false)));
+const explorar = (desde: string) => hacer(desde, organizaciones.explorarEjemplo);
+
+function elegir(c: Camino, desde: EventTarget | null = null) {
+  if (c.fase) return;
+  if (c.id === "boldo") return router.push({ path: "/importar-exportar", query: { accion: "importar" } });
+  if (c.id === "archivo") return abrirArchivo("bienvenida-camino-archivo");
+  if (c.id === "ejemplo") return explorar("bienvenida-camino-ejemplo");
+  pedirNombres(desde);
+}
+
+onMounted(async () => {
+  // El menú de la app y la paleta llegan aquí con ?accion=vacia|ejemplo.
+  const accion = route.query.accion;
+  if (accion === "vacia" || accion === "ejemplo") {
+    void router.replace({ path: route.path }); // la acción es de una sola vez: no se repite al volver atrás
+    if (accion === "vacia") pedirNombres();
+    else void explorar(ID_TITULO);
+  }
+  // Las fechas, y si cada archivo sigue en su lugar (un pendrive que se conectó), al día.
+  await organizaciones.cargarLista();
+  // Con la lista ya leída, que decide qué se muestra: tras eliminar la abierta, o si falló algo pedido desde aquí, el
+  // foco no queda en <body>.
+  await nextTick();
+  enfocarAlVolver(ID_TITULO);
 });
 </script>
 
@@ -143,8 +141,8 @@ onMounted(() => {
           <BotonTema />
         </div>
       </div>
-      <h1 class="text-xl font-semibold">{{ t("bienvenida.titulo") }}</h1>
-      <p v-if="!hayDatos" class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
+      <h1 :id="ID_TITULO" tabindex="-1" class="text-xl font-semibold outline-none">{{ t("bienvenida.titulo") }}</h1>
+      <p v-if="!conDatos" class="text-muted-foreground">{{ t("bienvenida.subtitulo") }}</p>
       <p class="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
         <span>{{ versionVisible() }}</span>
         <RouterLink to="/acerca" class="underline underline-offset-4 hover:text-foreground">{{
@@ -161,24 +159,37 @@ onMounted(() => {
       </p>
     </header>
 
-    <template v-if="hayDatos">
+    <template v-if="conDatos">
       <PanelOrganizacion />
-      <RecientesInicio />
+      <RecientesInicio v-if="verRecientes" />
       <AccesosRapidos />
-      <BloquePlegable
-        clave="inicio-empezar"
-        :titulo="t('inicio.empezarDeNuevo')"
-        :abrir="accionPedida || creando || confirmando"
-      >
-        <div class="flex flex-col gap-3 pt-2">
-          <p class="text-sm text-muted-foreground">
-            {{ t("bienvenida.hayDatos", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
-          </p>
-          <ListaCaminos :caminos="caminos" :ocupado="org.guardando || ocupado" @elegir="elegir" />
+      <section aria-labelledby="inicio-otra" class="flex flex-col gap-2">
+        <h2 id="inicio-otra" class="text-base font-semibold">{{ t("inicio.otra") }}</h2>
+        <div class="flex flex-wrap gap-2">
+          <Button id="inicio-crear" type="button" variant="outline" :disabled="ocupado" @click="pedirNombres($event.currentTarget)">
+            <FilePlus aria-hidden="true" />
+            {{ t("bienvenida.crear") }}
+          </Button>
+          <Button id="inicio-archivo" type="button" variant="outline" :disabled="ocupado" @click="abrirArchivo('inicio-archivo')">
+            <FolderOpen aria-hidden="true" />
+            {{ t("inicio.abrirArchivo") }}
+          </Button>
+          <Button id="inicio-ejemplo" type="button" variant="outline" :disabled="ocupado" @click="explorar('inicio-ejemplo')">
+            <Sparkles aria-hidden="true" />
+            {{ t("inicio.ejemplo") }}
+          </Button>
         </div>
-      </BloquePlegable>
+      </section>
     </template>
-    <ListaCaminos v-else :caminos="caminos" :ocupado="org.guardando || ocupado" @elegir="elegir" />
+    <template v-else>
+      <ListaCaminos :caminos="caminos" :ocupado="ocupado" @elegir="elegir" />
+      <RecientesInicio v-if="verRecientes" />
+    </template>
+    <p role="status" class="text-sm text-muted-foreground empty:hidden">
+      {{ ocupado ? t("inicio.trabajando") : "" }}
+    </p>
+
+    <PreguntaArchivo ref="preguntas" :titulo="t('inicio.abrirArchivo')" />
 
     <Dialog v-model:open="creando">
       <DialogContent @open-auto-focus="alAbrir" @close-auto-focus="alCerrar">
@@ -204,31 +215,12 @@ onMounted(() => {
             <Button type="button" variant="outline" @click="creando = false">{{
               t("bienvenida.cancelar")
             }}</Button>
-            <Button
-              type="submit"
-              :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || org.guardando || ocupado"
-            >
+            <Button type="submit" :disabled="!nombreOrg.trim() || !nombreRaiz.trim() || ocupado" :aria-busy="ocupado">
               {{ t("bienvenida.crear") }}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-
-    <AlertDialog v-model:open="confirmando">
-      <!-- Con el formulario abierto, Cancelar devuelve el foco a él (no a la tarjeta). -->
-      <AlertDialogContent @close-auto-focus="creando || alCerrar($event)">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{{ t(`bienvenida.reemplazarTitulo.${reemplazo}`) }}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {{ t("bienvenida.reemplazarTexto", { nombre: org.org.nombre || t("barra.sinNombre") }) }}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{{ t("bienvenida.cancelar") }}</AlertDialogCancel>
-          <AlertDialogAction @click="reemplazar">{{ t("bienvenida.reemplazar") }}</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   </section>
 </template>

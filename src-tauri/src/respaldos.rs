@@ -270,15 +270,6 @@ pub fn respaldar(conn: &Connection, dir: &Path, sello: &str) -> Result<String, F
     Ok(nombre)
 }
 
-/// Respaldo previo a reemplazar los datos: va aparte de los automáticos y no se poda.
-pub fn respaldar_antes_de_reemplazar(
-    conn: &Connection,
-    dir: &Path,
-    sello: &str,
-) -> Result<String, Fallo> {
-    volcar(conn, dir, PREFIJO_REEMPLAZO, sello)
-}
-
 /// Respaldo previo a agregar o fusionar un archivo importado: va aparte de los automáticos, y de estos quedan los últimos
 /// `CONSERVAR_IMPORTAR`. Los demás tipos no se tocan.
 pub fn respaldar_antes_de_importar(
@@ -778,7 +769,7 @@ mod tests {
     fn el_respaldo_previo_a_reemplazar_se_lista_aparte_y_no_se_poda() {
         let dir = tempfile::tempdir().unwrap();
         let (_, respaldos, conn) = base(dir.path());
-        let previo = respaldar_antes_de_reemplazar(&conn, &respaldos, "20200101-0000").unwrap();
+        let previo = volcar(&conn, &respaldos, PREFIJO_REEMPLAZO, "20200101-0000").unwrap();
         assert_eq!(previo, "boldo-antes-de-reemplazar-20200101-0000.db");
         for d in 1..=CONSERVAR + 5 {
             respaldar(&conn, &respaldos, &format!("202002{d:02}-0000")).unwrap();
@@ -1184,7 +1175,7 @@ mod tests {
             .unwrap();
         let carpeta = dir.path().join("respaldos");
         fs::create_dir(&carpeta).unwrap();
-        let reemplazo = respaldar_antes_de_reemplazar(&conn, &carpeta, "20200101-0000").unwrap();
+        let reemplazo = volcar(&conn, &carpeta, PREFIJO_REEMPLAZO, "20200101-0000").unwrap();
         let importar = respaldar_antes_de_importar(&conn, &carpeta, "20200101-0000").unwrap();
         let comun = respaldar(&conn, &carpeta, "20200101-0000").unwrap();
         let hechos: Vec<_> = (0..CONSERVAR_OPTIMIZAR + 2)
@@ -1270,7 +1261,7 @@ mod tests {
             .unwrap();
         let carpeta = dir.path().join("respaldos");
         fs::create_dir(&carpeta).unwrap();
-        let reemplazo = respaldar_antes_de_reemplazar(&conn, &carpeta, "20200101-0000").unwrap();
+        let reemplazo = volcar(&conn, &carpeta, PREFIJO_REEMPLAZO, "20200101-0000").unwrap();
         let comun = respaldar(&conn, &carpeta, "20200101-0001").unwrap();
         let mut hechos = Vec::new();
         for n in 0..CONSERVAR_IMPORTAR + 3 {

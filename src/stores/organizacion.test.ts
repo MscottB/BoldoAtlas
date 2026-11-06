@@ -332,14 +332,11 @@ describe("puestos y asignaciones", () => {
   });
 });
 
-describe("cargarEjemplo", () => {
-  it("crea una organización de muestra en un solo lote", async () => {
+describe("el ejemplo", () => {
+  it("es una organización de muestra completa", async () => {
     const s = nuevo();
+    h.bd!.aplicar(s.sentenciasNueva("ejemplo"));
     await s.cargar();
-    const antes = revision();
-    const r = await s.cargarEjemplo();
-    expect(r).toEqual({ ok: true });
-    expect(revision()).toBe(antes + 1);
     expect(s.unidades.length).toBeGreaterThanOrEqual(10);
     expect(s.conexiones.length).toBeGreaterThanOrEqual(1);
     const titulares = s.asignaciones.filter((a) => a.tipo === "titular");
@@ -1222,66 +1219,14 @@ describe("mantenedores: usos por tabla, orden y último tipo", () => {
   });
 });
 
-describe("crearOrganizacion", () => {
-  afterEach(() => cambiarIdioma("es"));
-
-  it("guarda el nombre y crea la raíz con el primer tipo activo, en un solo lote", async () => {
-    const s = nuevo();
-    await s.cargar();
-    const antes = revision();
-    const r = await s.crearOrganizacion("  Acme ", " Gerencia General ");
-    expect(r.ok).toBe(true);
-    expect(revision()).toBe(antes + 1);
-    expect(s.org.nombre).toBe("Acme");
-    expect(s.unidades).toHaveLength(1);
-    expect(s.unidades[0]).toMatchObject({
-      nombre: "Gerencia General",
-      tipo_id: TIPO_GERENCIA,
-      parent_id: null,
-    });
-    expect(s.activos("tipos_unidad")[0].nombre).toBe("Gerencia");
-  });
-
-  it("el tipo de la raíz es el primero del orden, no el sembrado", async () => {
-    const s = nuevo();
-    const t = await s.crearValor("tipos_unidad", "Holding");
-    if (!t.ok) throw new Error("no se creó");
-    await s.ordenar("tipos_unidad", [t.id, TIPO_GERENCIA, TIPO_AREA, TIPO_SUBAREA, TIPO_OTRA]);
-    await s.crearOrganizacion("Acme", "Matriz");
-    expect(s.unidades[0].tipo_id).toBe(t.id);
-  });
-
-  it("rechaza nombres vacíos sin escribir", async () => {
-    const s = nuevo();
-    await s.cargar();
-    const antes = revision();
-    expect((await s.crearOrganizacion(" ", "Raíz")).ok).toBe(false);
-    expect((await s.crearOrganizacion("Acme", " ")).ok).toBe(false);
-    expect(revision()).toBe(antes);
-  });
-
-  it("con la interfaz en inglés renombra los tipos sembrados sin uso", async () => {
-    cambiarIdioma("en");
-    const s = nuevo();
-    await s.cargar();
-    await s.crearOrganizacion("Acme", "Head office");
-    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual([
-      "Management",
-      "Area",
-      "Sub-area",
-      "Other",
-    ]);
-  });
-});
-
-describe("cargarEjemplo en inglés", () => {
+describe("el ejemplo en inglés", () => {
   afterEach(() => cambiarIdioma("es"));
 
   it("escribe los textos de la demostración en inglés, con los tipos sembrados renombrados", async () => {
     cambiarIdioma("en");
     const s = nuevo();
-    await s.cargar(); // la app carga la base al abrir; de ahí salen los tipos sembrados
-    expect((await s.cargarEjemplo()).ok).toBe(true);
+    h.bd!.aplicar(s.sentenciasNueva("ejemplo"));
+    await s.cargar();
     expect(s.org.nombre).toBe("Demo Company");
     expect(s.unidades.map((u) => u.nombre)).toContain("General Management");
     expect(s.unidades.some((u) => u.nombre === "Gerencia General")).toBe(false);
@@ -1615,15 +1560,6 @@ describe("zonas", () => {
     expect(revision()).toBe(antes);
     expect(fijas(s, z)).toEqual([a]);
   });
-
-  it("reemplazar la organización borra las zonas", async () => {
-    const s = nuevo();
-    const [a] = await dos(s);
-    await zona(s, "Norte", [a]);
-    expect((await s.reemplazarCon("vacia", { nombre: "N", nombreRaiz: "R" })).ok).toBe(true);
-    expect(s.zonas).toEqual([]);
-    expect(h.bd!.consultar("SELECT 1 FROM zona_unidades")).toEqual([]);
-  });
 });
 
 describe("duplicar rama", () => {
@@ -1693,164 +1629,6 @@ describe("escribir sin los datos cargados", () => {
     expect(revision()).toBe(antes);
     expect(s.error).toMatch(/no están cargados/);
   });
-
-  it("reemplazarCon sí escribe: reemplaza lo que haya, con respaldo y confirmación de quien llama", async () => {
-    const s = nuevo();
-    s.cargado = false;
-    const r = await s.reemplazarCon("vacia", { nombre: "Acme", nombreRaiz: "Raíz" });
-    expect(r.ok).toBe(true);
-    expect(s.unidades.map((u) => u.nombre)).toEqual(["Raíz"]);
-  });
-});
-
-describe("guarda de datos existentes", () => {
-  it("crearOrganizacion y cargarEjemplo se niegan si los datos no cargaron: vacía no quiere decir sin datos", async () => {
-    const s = nuevo();
-    await s.cargar();
-    // catálogos a mano: la negativa no puede venir de que falte un tipo de unidad
-    expect(s.activos("tipos_unidad").length).toBeGreaterThan(0);
-    s.cargado = false;
-    expect(s.vacia).toBe(true);
-    const antes = revision();
-    expect(await s.crearOrganizacion("Acme", "Raíz")).toMatchObject({ ok: false, mensaje: expect.stringMatching(/Ya hay datos/) });
-    expect(await s.cargarEjemplo()).toMatchObject({ ok: false, mensaje: expect.stringMatching(/Ya hay datos/) });
-    expect(revision()).toBe(antes);
-  });
-
-  it("crearOrganizacion y cargarEjemplo se niegan si ya hay unidades y no escriben", async () => {
-    const s = nuevo();
-    await unidad(s, "Existente");
-    const antes = revision();
-    const a = await s.crearOrganizacion("Acme", "Raíz");
-    const b = await s.cargarEjemplo();
-    expect(a.ok).toBe(false);
-    expect(b.ok).toBe(false);
-    expect(revision()).toBe(antes);
-    expect(s.unidades.map((u) => u.nombre)).toEqual(["Existente"]);
-  });
-});
-
-describe("reemplazarCon", () => {
-  // Todas las tablas de la base (menos meta), no una lista a mano: así una tabla nueva también se comprueba.
-  const filas = () =>
-    Object.fromEntries(
-      h
-        .bd!.consultar<{ name: string }>(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'meta' AND name NOT LIKE 'sqlite_%'",
-        )
-        .map(({ name }) => [name, h.bd!.consultar<{ n: number }>(`SELECT count(*) AS n FROM ${name}`)[0].n]),
-    );
-  afterEach(() => cambiarIdioma("es"));
-
-  /** Una organización con de todo, incluidas una vista y un subárbol guardados y un valor borrado en forma lógica. */
-  async function conDatos() {
-    const s = nuevo();
-    await s.cargar();
-    await s.cargarEjemplo();
-    const rama = s.unidades.find((u) => u.parent_id !== null)!;
-    await s.guardarSubarbol(rama.id);
-    await s.guardarVista(null, "Mi vista", {});
-    await s.guardarOrg("Vieja", "bG9nbw==");
-    return s;
-  }
-
-  it("con 'vacia' deja solo la raíz nueva, sin rastro de lo anterior y en un solo lote", async () => {
-    const s = await conDatos();
-    const idBase = h.bd!.consultar<{ valor: string }>("SELECT valor FROM meta WHERE clave = 'db_id'");
-    const antes = revision();
-    const r = await s.reemplazarCon("vacia", { nombre: " Nueva ", nombreRaiz: " Matriz " });
-    expect(r.ok).toBe(true);
-    expect(revision()).toBe(antes + 1);
-    expect(s.org).toEqual({ nombre: "Nueva", logo: null });
-    expect(s.unidades.map((u) => u.nombre)).toEqual(["Matriz"]);
-    expect(s.unidades[0].tipo_id).toBe(TIPO_GERENCIA);
-    expect(filas()).toEqual({
-      actividad_roles: 0,
-      actividades: 0,
-      procesos: 0,
-      unidades: 1,
-      puestos: 0,
-      asignaciones: 0,
-      trabajadores: 0,
-      leyendas: 0,
-      etiquetas: 0,
-      unidad_etiquetas: 0,
-      zonas: 0,
-      zona_unidades: 0,
-      conexiones: 0,
-      cargos: 0,
-      tipos_contrato: 0,
-      sedes: 0,
-      jornadas: 0,
-      tipos_unidad: 4,
-      subarboles_guardados: 0,
-      vistas: 0,
-    });
-    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual(["Gerencia", "Área", "Subárea", "Otra"]);
-    expect(h.bd!.consultar("SELECT valor FROM meta WHERE clave = 'db_id'")).toEqual(idBase);
-  });
-
-  it("olvida el deshacer, la fecha vista y el estilo copiado de la organización anterior", async () => {
-    const s = await conDatos();
-    const u = s.unidades.find((x) => x.parent_id !== null)!;
-    await s.eliminarUnidad(u.id);
-    await s.verAFecha("2020-01-01");
-    expect(s.ultimoBorrado).not.toBeNull();
-    await s.reemplazarCon("ejemplo");
-    expect(s.ultimoBorrado).toBeNull();
-    expect(s.fechaVista).toBeNull();
-  });
-
-  it("con 'ejemplo' queda exactamente lo que da el ejemplo sobre una base nueva", async () => {
-    const limpia = nuevo();
-    await limpia.cargar();
-    await limpia.cargarEjemplo();
-    const esperado = filas();
-    h.bd = abrirBasePrueba(); // otra base, para partir de datos propios
-
-    const s = await conDatos();
-    await s.crearValor("cargos", "Cargo suelto"); // lo que el usuario había agregado no sobrevive
-    const r = await s.reemplazarCon("ejemplo");
-    expect(r.ok).toBe(true);
-    expect(filas()).toEqual(esperado);
-    expect(s.org.nombre).toBe("Compañía Demo");
-    expect(s.org.logo).toBeNull();
-    expect(s.activos("cargos").map((c) => c.nombre)).not.toContain("Cargo suelto");
-  });
-
-  it("con la interfaz en inglés renombra los tipos sembrados que vuelve a crear", async () => {
-    const s = await conDatos();
-    cambiarIdioma("en");
-    await s.reemplazarCon("vacia", { nombre: "Acme", nombreRaiz: "Head office" });
-    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual([
-      "Management",
-      "Area",
-      "Sub-area",
-      "Other",
-    ]);
-  });
-
-  it("si algo falla no cambia nada (todo o nada)", async () => {
-    const s = await conDatos();
-    const antes = filas();
-    const rev = revision();
-    h.bd!.db.exec(
-      "CREATE TRIGGER falla BEFORE INSERT ON unidades BEGIN SELECT RAISE(ABORT, 'falla de prueba'); END",
-    );
-    const r = await s.reemplazarCon("vacia", { nombre: "Nueva", nombreRaiz: "Matriz" });
-    expect(r.ok).toBe(false);
-    expect(revision()).toBe(rev);
-    expect(filas()).toEqual(antes);
-    expect(s.org.nombre).toBe("Vieja");
-  });
-
-  it("'vacia' rechaza nombres vacíos sin escribir", async () => {
-    const s = await conDatos();
-    const rev = revision();
-    expect((await s.reemplazarCon("vacia", { nombre: " ", nombreRaiz: "X" })).ok).toBe(false);
-    expect((await s.reemplazarCon("vacia")).ok).toBe(false);
-    expect(revision()).toBe(rev);
-  });
 });
 
 describe("sentenciasNueva", () => {
@@ -1864,19 +1642,17 @@ describe("sentenciasNueva", () => {
     expect(s.unidades.map((u) => [u.nombre, u.tipo_id])).toEqual([["Matriz", TIPO_GERENCIA]]);
   });
 
-  it("'ejemplo' aplicado deja el nombre de hoy y escribe lo mismo que cargarEjemplo", async () => {
+  it("'vacia' con la interfaz en inglés renombra los tipos sembrados sin uso", async () => {
+    cambiarIdioma("en");
     const s = nuevo();
-    h.bd!.aplicar(s.sentenciasNueva("ejemplo"));
+    h.bd!.aplicar(s.sentenciasNueva("vacia", { nombre: "Acme", nombreRaiz: "Head office" }));
     await s.cargar();
-    expect(s.org.nombre).toBe("Compañía Demo");
-    const unidades = s.unidades.map((u) => u.nombre).sort();
-    expect(unidades.length).toBeGreaterThanOrEqual(10);
-
-    h.bd = abrirBasePrueba();
-    const otra = nuevo();
-    await otra.cargar();
-    await otra.cargarEjemplo();
-    expect(otra.unidades.map((u) => u.nombre).sort()).toEqual(unidades);
+    expect(s.activos("tipos_unidad").map((v) => v.nombre)).toEqual([
+      "Management",
+      "Area",
+      "Sub-area",
+      "Other",
+    ]);
   });
 
   it("BaseCambiada no pone error y no recarga con la base nueva", async () => {

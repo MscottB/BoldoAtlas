@@ -1,21 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { TriangleAlert } from "@lucide/vue";
 import { toast } from "vue-sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { ArchivoAgregado } from "@/db/cliente";
 import { buscarActualizaciones } from "@/features/actualizaciones/acciones";
+import PreguntaArchivo from "@/features/organizaciones/PreguntaArchivo.vue";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { detalleUtil, sePuedeBuscar, sePuedeCerrar, sePuedeReintentar } from "./pestanas";
 import { ID_AREA, usePestanas } from "./usePestanas";
@@ -37,40 +27,14 @@ async function copiar() {
   }
 }
 
-type Pregunta = NonNullable<ArchivoAgregado["pide"]>;
-const PREGUNTAS: Record<Pregunta, { texto: string; si: string }> = {
-  red: { texto: "organizaciones.pideRed", si: "organizaciones.copiarYAbrir" },
-  otro_id: { texto: "organizaciones.pideOtroId", si: "organizaciones.usarEste" },
-  tope: { texto: "organizaciones.pideTope", si: "organizaciones.abrirIgual" },
-  journal: { texto: "organizaciones.pideJournal", si: "organizaciones.recuperarYAbrir" },
-};
-const pregunta = ref<Pregunta>("red"); // no se limpia al cerrar: el texto sigue ahí mientras el diálogo se va
-const preguntando = ref(false);
-let responder: ((si: boolean) => void) | null = null;
-let desmontado = false;
-function preguntar(p: Pregunta) {
-  if (desmontado) return Promise.resolve(false); // la siguiente pregunta de Rust, ya sin nadie que la responda
-  pregunta.value = p;
-  preguntando.value = true;
-  return new Promise<boolean>((r) => (responder = r));
-}
-function responderCon(si: boolean) {
-  responder?.(si);
-  responder = null;
-}
-// Cancelar, Esc: no se sigue. El sí ya respondió: su clic corre antes que este watcher.
-watch(preguntando, (abierto) => abierto || responderCon(false));
-onBeforeUnmount(() => {
-  desmontado = true;
-  responderCon(false); // Ctrl+Tab con la pregunta abierta: Rust espera la respuesta
-});
+const preguntas = ref<InstanceType<typeof PreguntaArchivo> | null>(null);
 
 const buscando = ref(false); // sin `disabled`: el botón no pierde el foco, al que vuelve el diálogo
 async function buscar() {
   const org = pestanas.lista.find((p) => p.id === props.id)?.org;
   if (!org || buscando.value) return;
   buscando.value = true;
-  const r = await organizaciones.agregarArchivo(preguntar, org);
+  const r = await organizaciones.agregarArchivo((p) => preguntas.value?.preguntar(p) ?? Promise.resolve(false), org);
   buscando.value = false;
   if (r.ok) for (const a of r.avisos ?? []) toast.warning(t(`organizaciones.avisoArchivo.${a}`));
   else if (r.mensaje) toast.error(r.mensaje);
@@ -128,18 +92,6 @@ function cerrar() {
     <p role="status" class="text-sm text-muted-foreground">
       {{ buscando ? t("organizaciones.buscandoArchivo") : "" }}
     </p>
-
-    <AlertDialog v-model:open="preguntando">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{{ t("organizaciones.buscarArchivo") }}</AlertDialogTitle>
-          <AlertDialogDescription>{{ t(PREGUNTAS[pregunta].texto) }}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{{ t("organizaciones.cancelar") }}</AlertDialogCancel>
-          <AlertDialogAction @click="responderCon(true)">{{ t(PREGUNTAS[pregunta].si) }}</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <PreguntaArchivo ref="preguntas" :titulo="t('organizaciones.buscarArchivo')" />
   </section>
 </template>

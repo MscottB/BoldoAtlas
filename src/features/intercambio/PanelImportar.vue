@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import {
   importarAbrir,
   importarAgregar,
@@ -65,11 +64,10 @@ const trabajo = useTrabajo();
 const avance = useAvance(() => trabajo.actual.value);
 
 // Con la lista protegida, Rust no puede agregar otra: no se ofrece.
-const conNueva = computed(() => ORGANIZACIONES_VISIBLES && !organizaciones.listaProtegida);
+const conNueva = computed(() => !organizaciones.listaProtegida);
 const nombreAbierta = computed(() => organizaciones.nombreAbierta || t("barra.sinNombre"));
 /** Lo que se aplica sobre la abierta dice sobre cuál. */
-const sobreLaAbierta = (clave: string) =>
-  ORGANIZACIONES_VISIBLES ? t(`${clave}En`, { nombre: nombreAbierta.value }) : t(clave);
+const sobreLaAbierta = (clave: string) => t(`${clave}En`, { nombre: nombreAbierta.value });
 
 type Paso =
   | "elegir"
@@ -115,7 +113,7 @@ async function abrir() {
   }
   codigo.value = ""; // ya cumplió: no se queda en memoria de la interfaz
   resumen.value = r.valor;
-  modo.value = modoInicial(r.valor, conNueva.value);
+  modo.value = modoInicial(r.valor, organizaciones.listaProtegida);
   lugares.value = Object.fromEntries(
     (r.valor.ramas ?? []).filter((x) => x.pideLugar).map((x) => [x.id, ""]),
   );
@@ -186,7 +184,7 @@ async function comoNueva() {
   if (!r.ok) {
     toast.error(mensajeComoNueva(r));
     if (r.codigo === "lista_protegida") organizaciones.listaProtegida = true;
-    if (!conNueva.value && resumen.value) modo.value = modoInicial(resumen.value, false);
+    if (!conNueva.value && resumen.value) modo.value = modoInicial(resumen.value, true);
     if (fuera) void trabajo.soltar();
     else paso.value = "revision"; // el archivo sigue abierto en Rust: se puede reintentar
     return;

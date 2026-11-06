@@ -2,10 +2,10 @@
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 
-// Las tarjetas para empezar de Inicio (crear una organización, abrir un archivo, explorar el ejemplo).
+// Las tarjetas para empezar de Inicio, sin datos (crear una organización, abrir un archivo, importar, explorar el ejemplo).
 // Sin `fase`, el camino está disponible; con ella (solo con MOSTRAR_PROXIMAMENTE) se muestra deshabilitado con la fase en que llega.
 export interface Camino {
-  id: "vacia" | "excel" | "boldo" | "ejemplo";
+  id: "vacia" | "archivo" | "excel" | "boldo" | "ejemplo";
   icono: Component;
   fase?: string;
 }

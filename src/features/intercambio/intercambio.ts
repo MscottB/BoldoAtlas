@@ -12,9 +12,12 @@ export const RUTA_INTERCAMBIO = "/importar-exportar";
 
 export type ModoImportar = "nueva" | "agregar" | "revisar" | "reemplazar";
 
-/** La opción que viene marcada: como organización nueva, también con un parcial; sin ella, lo que este archivo permite. */
-export const modoInicial = (r: ResumenImportacion, conNueva: boolean): ModoImportar =>
-  conNueva ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
+/**
+ * La opción que viene marcada: como organización nueva, también con un parcial. Con la lista protegida Rust no puede
+ * agregar otra: lo que este archivo permite sobre la abierta.
+ */
+export const modoInicial = (r: ResumenImportacion, listaProtegida = false): ModoImportar =>
+  !listaProtegida ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
 
 /** La que se está creando desde un archivo. Sigue aunque se salga del panel, y al volver hay que decirlo. */
 export const organizacionEnCreacion = ref<string | null>(null);

@@ -1,7 +1,6 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { defineStore } from "pinia";
 import { toast } from "vue-sonner";
-import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { soltarYEsperarEscrituras } from "@/app/ventana";
 import {
   abrirOrganizacion,
@@ -94,11 +93,9 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   const idAbierta = ref(baseActual());
   alSoltarDatos(() => (idAbierta.value = baseActual()));
   const abierta = computed(() => lista.value.find((o) => o.id === idAbierta.value) ?? null);
-  // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama. Sin la bandera, solo el de la base.
-  const nombreAbierta = computed(
-    () => org.org.nombre || (ORGANIZACIONES_VISIBLES && abierta.value?.nombre) || "",
-  );
-  const varias = computed(() => ORGANIZACIONES_VISIBLES && lista.value.length > 1);
+  // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama.
+  const nombreAbierta = computed(() => org.org.nombre || abierta.value?.nombre || "");
+  const varias = computed(() => lista.value.length > 1);
   // Con una sola no se lee el nombre: renombrar no debe despertar a quien nombra un trabajo, como la bandeja.
   registrarAbierta(() => ({
     nombre: varias.value ? nombreAbierta.value || t("barra.sinNombre") : "",

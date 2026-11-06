@@ -16,7 +16,6 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["leerMeta", () => c.leerMeta()],
   ["listarRespaldos", () => c.listarRespaldos()],
   ["respaldarAhora", () => c.respaldarAhora()],
-  ["respaldarAntesDeReemplazar", () => c.respaldarAntesDeReemplazar()],
   ["respaldarAntesDeOptimizar", () => c.respaldarAntesDeOptimizar()],
   ["restaurarRespaldo", () => c.restaurarRespaldo("n")],
   ["abrirCarpetaRespaldos", () => c.abrirCarpetaRespaldos()],

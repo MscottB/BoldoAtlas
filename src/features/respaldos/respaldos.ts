@@ -4,7 +4,6 @@ import { i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
 import { leerPreferencia } from "@/lib/preferencias";
 import { conTrabajo, deLaAbierta, trabajos } from "@/lib/trabajos";
-import type { Resultado } from "@/stores/organizacion";
 import { FRECUENCIA_POR_DEFECTO, tocaRespaldar, ultimoRespaldo } from "./programa";
 
 export const PREFERENCIA = "respaldos";
@@ -85,17 +84,4 @@ export function iniciarRespaldoAutomatico(): void {
   temporizador = setInterval(() => {
     if (!trabajos.value.length && Date.now() >= noAntesDe) void respaldoAutomatico(false);
   }, REVISION);
-}
-
-/** Hace un respaldo y solo si sale bien ejecuta `accion` (que reemplaza datos): sin respaldo no se reemplaza nada. */
-export async function conRespaldoPrevio(
-  hacerRespaldo: () => Promise<unknown>,
-  accion: () => Promise<Resultado>,
-): Promise<Resultado> {
-  try {
-    await conTrabajo(deLaAbierta(i18n.global.t("trabajos.respaldar")), hacerRespaldo);
-  } catch (e) {
-    return { ok: false, mensaje: mensajeFallo(e) };
-  }
-  return accion();
 }

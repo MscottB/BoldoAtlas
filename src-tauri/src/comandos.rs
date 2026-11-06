@@ -1124,23 +1124,6 @@ pub async fn listar_respaldos(app: AppHandle, base_id: String) -> Result<Vec<Res
     .map_err(|e| e.to_string())?
 }
 
-/// Como `respaldar_ahora`, pero con un nombre propio que la poda nunca borra: lo usa «reemplazar los datos».
-#[tauri::command]
-pub async fn respaldar_antes_de_reemplazar(
-    app: AppHandle,
-    base_id: String,
-) -> Result<String, Fallo> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let estado = app.state::<Estado>();
-        let dir = estado.base(&base_id)?.respaldos;
-        estado.con_conexion(&base_id, |c| {
-            respaldos::respaldar_antes_de_reemplazar(c, &dir, &respaldos::sello_local(c)?)
-        })
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
 /// Antes de optimizar las fotos: conserva las originales, y de estos quedan los últimos 3.
 #[tauri::command]
 pub async fn respaldar_antes_de_optimizar(

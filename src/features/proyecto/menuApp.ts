@@ -52,14 +52,22 @@ export async function abrirOtra(id: string) {
   if (!r.ok) toast.error(r.mensaje);
 }
 
-// «Nueva organización vacía» y «Explorar el ejemplo» se resuelven en la Bienvenida (ahí está la confirmación).
+// «Nueva organización vacía» y «Explorar el ejemplo» se resuelven en Inicio (ahí se piden los nombres).
 export const GRUPOS_MENU: EntradaMenu[][] = [
   [{ id: "inicio", icono: House, destino: RUTA_BIENVENIDA }],
   [
     { id: "vacia", icono: FilePlus, destino: { path: RUTA_BIENVENIDA, query: { accion: "vacia" } } },
     { id: "ejemplo", icono: Sparkles, destino: { path: RUTA_BIENVENIDA, query: { accion: "ejemplo" } } },
-    { id: "boldo", icono: FolderOpen, destino: { path: "/importar-exportar", query: { accion: "importar" } } },
-    { id: "exportar", icono: Download, destino: { path: "/importar-exportar", query: { accion: "exportar" } } },
+    {
+      id: "boldo",
+      icono: FolderOpen,
+      destino: { path: "/importar-exportar", query: { accion: "importar" } },
+    },
+    {
+      id: "exportar",
+      icono: Download,
+      destino: { path: "/importar-exportar", query: { accion: "exportar" } },
+    },
     { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
   ].filter((e) => MOSTRAR_PROXIMAMENTE || !e.fase),
   [

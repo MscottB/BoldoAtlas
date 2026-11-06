@@ -407,7 +407,6 @@
   "store": {
     "nombreVacio": "Enter a name.",
     "sinCargar": "This organization's data isn't loaded, so nothing was written. Try opening it again.",
-    "hayDatos": "This database already has data: to replace it use “New empty organization” or “Explore the example” from the app menu.",
     "cicloRama": "A unit cannot be moved inside its own branch.",
     "unidadInexistente": "The unit no longer exists.",
     "conexionDuplicada": "A connection between “{origen}” and “{destino}” already exists.",
@@ -846,7 +845,7 @@
       "salioSinArchivo": "“{nombre}” left the list and its backups were deleted. Its file wasn't found."
     },
     "error": {
-      "desconocido": "This organization is no longer on the list.",
+      "desconocido": "This organization is no longer on the list: it was removed, or its file was replaced by another one. What’s on the list opens from Home.",
       "esquema_nuevo": "This organization was saved with a newer version of BoldoAtlas. Update BoldoAtlas to open it.",
       "danado": "The file is damaged or is not a BoldoAtlas database. It wasn't opened."
     }
@@ -871,13 +870,17 @@
       "titulo": "Create an empty organization",
       "texto": "Start from scratch: you name the organization and its first unit."
     },
+    "archivo": {
+      "titulo": "Open a .db file",
+      "texto": "A BoldoAtlas organization saved in another folder or on a USB drive."
+    },
     "excel": {
       "titulo": "Load from Excel",
       "texto": "Import the structure and the people from a spreadsheet."
     },
     "boldo": {
       "titulo": "Open a .boldo file",
-      "texto": "Continue with an organization saved in a file."
+      "texto": "Import an organization exported from BoldoAtlas."
     },
     "ejemplo": {
       "titulo": "Explore an example",
@@ -889,14 +892,7 @@
     "raizEjemplo": "For example: General Management",
     "crear": "Create organization",
     "cancelar": "Cancel",
-    "hayDatos": "This database already has data (“{nombre}”). Choosing an empty organization or the example replaces the current data; an automatic backup is made first.",
-    "volver": "Back to my organization",
-    "reemplazarTitulo": {
-      "vacia": "Replace the current data with an empty organization?",
-      "ejemplo": "Replace the current data with the example?"
-    },
-    "reemplazarTexto": "The units, people, positions and other data of “{nombre}” will be deleted. An automatic backup is made first, and you can restore it from Settings › Backups.",
-    "reemplazar": "Back up and replace"
+    "volver": "Back to my organization"
   },
   "config": {
     "inicio": {
@@ -1108,12 +1104,16 @@
     "ultimoRespaldo": "Last backup: {fecha}",
     "sinRespaldo": "There are no backups yet.",
     "recientes": "Recently opened",
-    "borrarRecientes": "Clear list",
-    "recientesBorrada": "List cleared.",
     "ahora": "just now",
     "accesos": "Quick access",
     "buscarPersona": "Find a person",
-    "empezarDeNuevo": "Create another organization or explore the example"
+    "otra": "Create or open another organization",
+    "abrirArchivo": "Open file…",
+    "ejemplo": "Explore the example",
+    "sinArchivo": "Its file can’t be found.",
+    "accionesDe": "More actions for “{nombre}”",
+    "eliminar": "Delete organization",
+    "trabajando": "Opening…"
   },
   "menu": {
     "abrir": "App menu",
@@ -1131,7 +1131,6 @@
   },
   "proyecto": {
     "titulo": "Project data",
-    "principal": "Main",
     "abrir": "Project data for “{nombre}”",
     "archivo": "Database file",
     "tamano": "Size",
@@ -1291,7 +1290,6 @@
         "existentes": "Already exists or stays out"
       },
       "queHacer": "What do you want to do?",
-      "agregar": "Add what is new",
       "agregarAyuda": "What does not exist comes in. What already exists stays as it is.",
       "reemplazar": "Replace everything",
       "reemplazarAyuda": "Your current data is swapped for the file's and the app restarts.",
@@ -1314,7 +1312,6 @@
       "confirmarTitulo": "Replace everything?",
       "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings.",
       "nadaDisponible": "Not available: {motivo}. Since this file carries only a part, it cannot replace your data either.",
-      "revisar": "Review and decide",
       "revisarAyuda": "Compares the file with your data and you decide what stays: new, different, deleted and what clashes.",
       "revisarNada": "Comparing changes nothing: your data is written only when you apply what you decided.",
       "lugarDesconocido": "We could not tell where this file's branches go. Those not in your database will come in as independent trees: you can move them afterwards.",

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { effect, effectScope, nextTick, ref, stop, watch } from "vue";
+import { effectScope, nextTick, ref, watch } from "vue";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import { enCambio, baseActual, fijarBase, marcarCambio, soltarDatos, alSoltarDatos } from "@/lib/baseActiva";
-import { deLaAbierta, trabajos } from "@/lib/trabajos";
+import { trabajos } from "@/lib/trabajos";
 import { recordarPorArbol, useVista } from "@/features/arbol/useVista";
 import { MAX_PESTANAS } from "@/features/pestanas/pestanas";
 import { usePestanas } from "@/features/pestanas/usePestanas";
@@ -99,32 +99,6 @@ afterEach(async () => {
 describe("la abierta, para la barra y la bandeja", () => {
   const de = (id: string, nombre: string) => ({ id, nombre, color: `#${id}` });
 
-  it("con la bandera apagada, el nombre es solo el de la base, y los trabajos se nombran como hoy", async () => {
-    c.listarOrganizaciones.mockResolvedValue([de("A", "Alfa"), de("B", "Beta")]);
-    const o = useOrganizaciones();
-    await o.cargarLista();
-    expect(o.varias).toBe(false);
-    expect(o.nombreAbierta).toBe("");
-    expect(deLaAbierta("Respaldo")).toBe("Respaldo");
-  });
-
-  it("con la bandera apagada, renombrar no despierta a quien nombra un trabajo", async () => {
-    const o = useOrganizaciones();
-    const org = useOrganizacion();
-    c.leerMeta.mockResolvedValue({ org_nombre: "Alfa" });
-    await org.cargar();
-    let veces = 0;
-    const e = effect(() => {
-      deLaAbierta("Respaldo");
-      veces++;
-    });
-    c.leerMeta.mockResolvedValue({ org_nombre: "Otro" });
-    await org.cargar();
-    stop(e);
-    expect(o.nombreAbierta).toBe("Otro");
-    expect(veces).toBe(1);
-  });
-
   it("un archivo que no se deja abrir no se da por malo, y se puede reintentar", async () => {
     const { p, o } = await arrancar(null);
     c.abrirOrganizacion.mockRejectedValueOnce(fallo("contenido_invalido", "retenido"));
@@ -155,7 +129,7 @@ describe("la abierta, para la barra y la bandeja", () => {
     // ya es B y sus datos aún no llegan: ni el color ni el nombre siguen siendo los de A
     expect(o.abierta?.color).toBe("#B");
     expect(org.org.nombre).toBe("");
-    expect(o.nombreAbierta).toBe("");
+    expect(o.nombreAbierta).toBe("Beta"); // el de la lista, mientras llegan sus datos
     carga.resolver({ org_nombre: "Beta" });
     await cambio;
     expect(o.nombreAbierta).toBe("Beta");

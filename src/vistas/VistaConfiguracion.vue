@@ -8,7 +8,6 @@ import BloquePlegable from "@/components/BloquePlegable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
 import { logoComoPng, validarLogo } from "@/features/configuracion/logo";
 import SeccionOrganizaciones from "@/features/organizaciones/SeccionOrganizaciones.vue";
 import SeccionFotos from "@/features/configuracion/SeccionFotos.vue";
@@ -128,7 +127,7 @@ const quitarLogo = async () => {
       </div>
     </section>
 
-    <SeccionOrganizaciones v-if="ORGANIZACIONES_VISIBLES" />
+    <SeccionOrganizaciones />
 
     <section class="grid gap-4" aria-labelledby="cfg-apariencia">
       <div>

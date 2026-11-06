@@ -2,7 +2,6 @@
 import { useI18n } from "vue-i18n";
 import { Download, Search } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import BotonTema from "@/components/BotonTema.vue";
 import IndicadorGuardado from "@/components/IndicadorGuardado.vue";
@@ -10,7 +9,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
-import { MOSTRAR_PROXIMAMENTE, ORGANIZACIONES_VISIBLES } from "@/app/proximamente";
+import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
 
 // "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, al pie de ella.
@@ -32,13 +31,12 @@ const organizaciones = useOrganizaciones();
       @click="datosProyectoAbierto = true"
     >
       <span
-        v-if="ORGANIZACIONES_VISIBLES"
+        v-if="organizaciones.abierta"
         class="size-2.5 shrink-0 rounded-full"
-        :style="{ backgroundColor: organizaciones.abierta?.color || 'currentColor' }"
+        :style="{ backgroundColor: organizaciones.abierta.color }"
         aria-hidden="true"
       />
       <span class="min-w-0 truncate text-sm font-semibold">{{ organizaciones.nombreAbierta || t("barra.sinNombre") }}</span>
-      <Badge v-if="!ORGANIZACIONES_VISIBLES" variant="outline" class="shrink-0">{{ t("proyecto.principal") }}</Badge>
     </button>
 
     <div class="ml-auto flex items-center gap-2">

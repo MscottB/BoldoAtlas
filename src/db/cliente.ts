@@ -47,11 +47,6 @@ export interface Sentencia {
   params?: unknown[];
 }
 
-const alReemplazar = new Set<() => void>();
-/** Lo que la app guarda atado a los datos de ahora (p. ej. «Abierto recientemente») se suelta aquí cuando la base se reemplaza. */
-export const alReemplazarBase = (f: () => void): void => void alReemplazar.add(f);
-const vaciarRecientes = () => alReemplazar.forEach((f) => f());
-
 const alOtra = new Set<() => void>();
 /** Rust rechazó una llamada por venir con otra base, sin que hubiera un cambio: es un error de la app. */
 export const alOtraBase = (f: () => void): void => void alOtra.add(f);
@@ -231,11 +226,6 @@ export function respaldarAhora(): Promise<string> {
   return conBase<string>("respaldar_ahora");
 }
 
-/** Respaldo previo a reemplazar los datos: no entra en la poda de los últimos 10. */
-export function respaldarAntesDeReemplazar(): Promise<string> {
-  return conBase<string>("respaldar_antes_de_reemplazar");
-}
-
 /** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
 export function respaldarAntesDeOptimizar(): Promise<string> {
   return conBase<string>("respaldar_antes_de_optimizar");
@@ -243,7 +233,6 @@ export function respaldarAntesDeOptimizar(): Promise<string> {
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function restaurarRespaldo(nombre: string): Promise<void> {
-  vaciarRecientes();
   return conBase("restaurar_respaldo", { nombre });
 }
 
@@ -352,7 +341,6 @@ export function importarAgregar(
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
 export function importarReemplazar(trabajo: string): Promise<void> {
-  vaciarRecientes();
   return conBase("importar_reemplazar", { trabajo });
 }
 

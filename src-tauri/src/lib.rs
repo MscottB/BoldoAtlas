@@ -152,7 +152,6 @@ pub fn run() {
             fotos::fotos_compactar,
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
-            comandos::respaldar_antes_de_reemplazar,
             comandos::respaldar_antes_de_optimizar,
             comandos::restaurar_respaldo,
             comandos::abrir_carpeta_respaldos,
