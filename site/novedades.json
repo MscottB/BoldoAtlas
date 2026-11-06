@@ -14,6 +14,20 @@
     }
   },
   {
+    "id": "conexiones-con-sentido",
+    "pagina": "arbol",
+    "es": {
+      "titulo": "Conexiones con sentido y un panel sin repeticiones",
+      "texto": "Conectar con… muestra las conexiones que la unidad ya tiene, para ver si falta alguna, y es la misma ventanita en la tarjeta y en el panel. Cada conexión dice de qué unidad a cuál va: la línea lleva una flecha y se invierte con un botón. Las descripciones ya no se pisan: la que no cabe queda como un punto, y lo que está bajo el puntero sube y se resalta. El panel de la unidad muestra primero las cifras, y de quién depende y su descripción quedan a la vista.",
+      "ancla": "conexiones"
+    },
+    "en": {
+      "titulo": "Connections with a direction and a panel without repeats",
+      "texto": "Connect to… shows the connections the unit already has, so you can see if one is missing, and it is the same window on the card and in the panel. Each connection says which unit it goes from and to: the line has an arrow and a button reverses it. Descriptions no longer overlap: one that does not fit stays as a dot, and whatever is under the pointer comes to the front and stands out. The unit panel shows its figures first, and who it reports to and its description stay in view.",
+      "ancla": "connections"
+    }
+  },
+  {
     "id": "conexiones-editables",
     "pagina": "arbol",
     "imagen": "arbol-conexion",

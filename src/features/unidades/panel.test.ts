@@ -8,8 +8,10 @@ import {
   decisionEliminar,
   excluidasComoSuperior,
   excluidasParaConexion,
+  filasDeConexiones,
   filasDePuestos,
   migas,
+  notaJefatura,
   porQueNoSeVe,
   ultimoEnviado,
   validarMarca,
@@ -73,19 +75,22 @@ describe("porQueNoSeVe", () => {
 });
 
 describe("migas", () => {
-  it("da la ruta completa desde la raíz con el nombre del tipo de cada unidad", () => {
+  it("da los superiores desde la raíz, sin la propia unidad, con el nombre del tipo de cada uno", () => {
     expect(migas(unidades, tipos, "mecanica")).toEqual([
       { id: "gg", nombre: "Gerencia General", tipo: "Otra" },
       { id: "operaciones", nombre: "Operaciones", tipo: "Gerencia" },
       { id: "mantencion", nombre: "Mantención", tipo: "Área" },
-      { id: "mecanica", nombre: "Mecánica", tipo: "Subárea" },
     ]);
+  });
+
+  it("una raíz no tiene migas", () => {
+    expect(migas(unidades, tipos, "gg")).toEqual([]);
   });
 
   it("muestra el tipo aunque esté desactivado, y vacío si ya no existe", () => {
     const desactivado = tipos.map((t) => (t.nombre === "Área" ? { ...t, deleted_at: "x" } : t));
-    expect(migas(unidades, desactivado, "mantencion")[2].tipo).toBe("Área");
-    expect(migas(unidades, [], "gg")).toEqual([{ id: "gg", nombre: "Gerencia General", tipo: "" }]);
+    expect(migas(unidades, desactivado, "mecanica")[2].tipo).toBe("Área");
+    expect(migas(unidades, [], "operaciones")).toEqual([{ id: "gg", nombre: "Gerencia General", tipo: "" }]);
   });
 });
 
@@ -130,6 +135,60 @@ describe("conexiones", () => {
       "mantencion",
     );
     expect([...excl].sort()).toEqual(["finanzas", "gg", "mantencion"]);
+  });
+
+  describe("filasDeConexiones", () => {
+    const porId = new Map(viva.map((u) => [u.id, u]));
+    const filas = (...c: Conexion[]) => filasDeConexiones(c, porId, "mantencion");
+
+    it("el sentido sale de quién es el origen: hacia la otra si es ella, desde la otra si no", () => {
+      expect(
+        filas(cx("c1", "mantencion", "finanzas"), cx("c2", "gg", "mantencion")).map((f) => [
+          f.id,
+          f.sentido,
+          f.otro.id,
+        ]),
+      ).toEqual([
+        ["c1", "hacia", "finanzas"],
+        ["c2", "desde", "gg"],
+      ]);
+    });
+
+    it("salen por nombre de la otra unidad, para ver si falta alguna", () => {
+      const nombres = filas(
+        cx("c1", "mantencion", "operaciones"),
+        cx("c2", "gg", "mantencion"),
+        cx("c3", "mantencion", "finanzas"),
+      ).map((f) => f.otro.nombre);
+      expect(nombres).toEqual([...nombres].sort((x, y) => x.localeCompare(y, "es")));
+      expect(new Set(nombres).size).toBe(3);
+    });
+
+    it("trae la descripción tal cual", () => {
+      const c = { ...cx("c1", "mantencion", "finanzas"), etiqueta: "Compras" };
+      expect(filas(c)[0]!.etiqueta).toBe("Compras");
+      expect(filas(cx("c2", "gg", "mantencion"))[0]!.etiqueta).toBeNull();
+    });
+
+    it("omite las de otras unidades y las hacia una unidad que ya no está", () => {
+      expect(filas(cx("c1", "gg", "finanzas"), cx("c2", "mantencion", "borrada"))).toEqual([]);
+    });
+  });
+});
+
+describe("notaJefatura", () => {
+  it("con titular la lista ya lo dice; un reemplazo se agrega", () => {
+    expect(notaJefatura({ tipo: "titular" }, true, true)).toBeNull();
+    expect(notaJefatura({ tipo: "reemplazo" }, true, true)).toBe("reemplazo");
+  });
+
+  it("sin nadie que la ejerza avisa si el puesto elegido está vacante o si no hay puestos", () => {
+    expect(notaJefatura(null, true, true)).toBe("vacante");
+    expect(notaJefatura(null, false, false)).toBe("sinPuestos");
+  });
+
+  it("con puestos y sin elegir no repite lo que ya dice la lista", () => {
+    expect(notaJefatura(null, true, false)).toBeNull();
   });
 });
 

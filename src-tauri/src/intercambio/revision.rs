@@ -2444,6 +2444,40 @@ mod tests {
     }
 
     #[test]
+    fn una_conexion_invertida_es_diferente_y_un_solo_extremo_queda_por_resolver() {
+        let mut b = banco();
+        b.archivo(&format!(
+            "UPDATE conexiones SET origen_id = 'hija', destino_id = 'rama', updated_at = '{F2}' WHERE id = 'x-dentro';"
+        ));
+        let mut r = b.abrir();
+        let c = caso(&r, "conexiones", "x-dentro");
+        assert_eq!(c.caso.tipo, TipoCaso::Diferente);
+        assert_eq!(
+            r.nombres_mascara("conexiones", c.caso.columnas),
+            ["origen_id", "destino_id"]
+        );
+
+        // un solo extremo la dejaría unida consigo misma: no se rompe, se pide resolver
+        r.decidir("conexiones", "x-dentro", eleccion_campos(&["origen_id"]))
+            .unwrap();
+        b.verificar(&mut r);
+        assert_eq!(r.resumen().bloqueos.regla, 1);
+
+        r.decidir(
+            "conexiones",
+            "x-dentro",
+            eleccion_campos(&["origen_id", "destino_id"]),
+        )
+        .unwrap();
+        b.aplicar(&mut r);
+        assert_eq!(
+            b.uno("SELECT origen_id || '>' || destino_id FROM conexiones WHERE id = 'x-dentro'")
+                .unwrap(),
+            "hija>rama"
+        );
+    }
+
+    #[test]
     fn aceptar_los_mas_recientes_y_las_decisiones_en_bloque() {
         let mut b = banco();
         b.archivo(&format!(
