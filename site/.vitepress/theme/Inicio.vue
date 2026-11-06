@@ -78,10 +78,6 @@ const hayMas = novedades.length > PORTADA;
 </template>
 
 <style scoped>
-.inicio {
-  background: var(--producto-fondo);
-  font-size: 17px;
-}
 .seccion {
   padding: 64px 0;
 }

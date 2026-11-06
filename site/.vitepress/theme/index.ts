@@ -4,12 +4,14 @@ import Comparador from "./Comparador.vue";
 import Descargas from "./Descargas.vue";
 import Funciones from "./Funciones.vue";
 import Inicio from "./Inicio.vue";
+import Layout from "./Layout.vue";
 import Novedades from "./Novedades.vue";
 import Seguridad from "./Seguridad.vue";
 import "./custom.css";
 
 export default {
   extends: DefaultTheme,
+  Layout,
   enhanceApp({ app }) {
     app.component("Comparador", Comparador);
     app.component("Descargas", Descargas);

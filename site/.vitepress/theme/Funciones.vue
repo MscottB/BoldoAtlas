@@ -56,10 +56,6 @@ const f = computed(() => t.value.funciones);
 </template>
 
 <style scoped>
-.funciones {
-  background: var(--producto-fondo);
-  font-size: 17px;
-}
 .cabecera {
   padding: 64px 0 48px;
 }

@@ -11,7 +11,9 @@
 
 <p align="center">
   <a href="README.es.md">Español</a> ·
-  <a href="https://mscottb.github.io/BoldoAtlas/">Website</a> ·
+  <a href="https://mscottb.github.io/BoldoAtlas/en/">Website</a> ·
+  <a href="https://mscottb.github.io/BoldoAtlas/en/funciones">Features</a> ·
+  <a href="https://mscottb.github.io/BoldoAtlas/en/seguridad">Security and privacy</a> ·
   <a href="https://github.com/MscottB/BoldoAtlas/releases/latest">Download</a>
 </p>
 

@@ -49,10 +49,6 @@ const enlaces = (e?: Enlace | Enlace[]) => (e ? [e].flat() : []);
 </template>
 
 <style scoped>
-.seguridad {
-  background: var(--producto-fondo);
-  font-size: 17px;
-}
 .cabecera {
   padding: 64px 0 32px;
 }

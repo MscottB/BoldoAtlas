@@ -52,8 +52,8 @@
   color: var(--vp-c-text-2);
 }
 
-/* Páginas de producto (Inicio y las que siguen): fondo cálido, azul noche y cuerpo de 17 px.
-   La clase .es-producto la pone el diseño de la página; mientras tanto, Inicio usa los mismos colores. */
+/* Páginas de producto (todo menos el manual): fondo cálido, azul noche y cuerpo de 17 px.
+   Layout.vue pone .es-producto o .es-manual en la raíz de la página. */
 :root {
   --producto-fondo: #f6f3ef;
   --producto-fondo-alt: #ffffff;
@@ -70,8 +70,84 @@
   --producto-franja: #151c25;
 }
 .es-producto {
+  --vp-nav-bg-color: var(--producto-fondo);
+  --vp-nav-screen-bg-color: var(--producto-fondo);
+  --vp-local-nav-bg-color: var(--producto-fondo);
   background: var(--producto-fondo);
   font-size: 17px;
+}
+.es-producto.Layout .VPFooter {
+  background: transparent;
+}
+.es-producto.Layout .VPDoc .aside-curtain {
+  background: linear-gradient(transparent, var(--producto-fondo) 70%);
+}
+
+/* Menú. En producto no va el buscador (solo busca en el manual); en el manual no va el menú de producto. */
+.es-producto .VPNavBar .VPNavBarSearch,
+.es-manual .VPNavBar .VPNavBarMenu,
+.es-manual .VPNavScreen .VPNavScreenMenu,
+.es-manual .VPNavBarTitle .title > span:not(.titulo-manual) {
+  display: none;
+}
+.volver-sitio {
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.25s;
+}
+.volver-sitio:hover {
+  color: var(--vp-c-brand-1);
+}
+.VPNavBar .volver-sitio {
+  display: none;
+  padding: 0 12px;
+}
+@media (min-width: 768px) {
+  .VPNavBar .volver-sitio {
+    display: block;
+  }
+}
+.VPNavScreen .volver-sitio {
+  display: block;
+  padding: 12px 0 11px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  line-height: 24px;
+}
+/* «Descargar»: botón cobre con texto oscuro (5,1:1), en la barra y en el menú del celular. */
+.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"],
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
+  margin: auto 0 auto 8px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--vp-button-brand-bg);
+  color: var(--vp-button-brand-text);
+  line-height: 36px;
+  font-weight: 600;
+  transition: background-color 0.25s;
+}
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
+  margin: 16px 0 0;
+  border-bottom: 0;
+  line-height: 44px;
+  text-align: center;
+}
+.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"]:hover,
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"]:hover {
+  background: var(--vp-button-brand-hover-bg);
+  color: var(--vp-button-brand-hover-text);
+}
+.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"]:focus-visible,
+.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"]:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .volver-sitio,
+  .VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"],
+  .VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
+    transition: none;
+  }
 }
 
 /* Piezas comunes de producto: contenedor, etiqueta, enlace «→», botones, iconos de trazo y capturas por tema. */
