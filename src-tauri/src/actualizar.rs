@@ -408,9 +408,9 @@ pub async fn buscar_actualizacion(
             .version_comparator(move |_, r| r.version == nueva)
             // el instalador de Windows cierra la app sin pasar por RunEvent::Exit: se cierra SQLite antes
             .on_before_exit(move || {
-                al_salir
-                    .state::<Estado>()
-                    .cerrar_ordenado(Duration::from_secs(3));
+                let estado = al_salir.state::<Estado>();
+                estado.antes_de_reiniciar();
+                estado.cerrar_ordenado(Duration::from_secs(3));
             })
             .build()
             .map_err(|e| fallo(codigo_plugin(&e), e))?
@@ -481,6 +481,7 @@ fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Resul
         // se abre la ruta de siempre (ahora el exe nuevo); el proceso actual sigue siendo el .old.exe
         terminar_tras_reemplazo(
             || {
+                estado.antes_de_reiniciar();
                 estado.cerrar_ordenado(Duration::from_secs(3));
             },
             || {
@@ -510,6 +511,8 @@ fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Resul
         };
         return Err(fallo(codigo, e));
     }
+    // una organización a medio crear quedaría sin listar
+    estado.antes_de_reiniciar();
     estado.cerrar_ordenado(Duration::from_secs(3));
     app.restart()
 }
