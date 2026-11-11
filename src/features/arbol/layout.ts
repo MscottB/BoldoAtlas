@@ -1,7 +1,7 @@
 import type { ElkNode } from "elkjs/lib/elk.bundled.js";
 import type { Conexion, Puesto, Unidad, ValorCatalogo } from "../../db/tipos";
 import { descendientes, indiceHijos, porOrden } from "./jerarquia";
-import type { Caja } from "./lateral";
+import type { Caja, Lateral } from "./lateral";
 import {
   VISTA_POR_DEFECTO,
   opcionesElk,
@@ -20,7 +20,15 @@ export interface Subgrafo {
   puestos: Puesto[];
   jerarquicas: [string, string][];
   laterales: Conexion[];
+  /** Conexiones con un extremo en una rama plegada, agrupadas por par de tarjetas visibles (ver lateralesHaciaPlegadas). */
+  plegadas: LateralPlegada[];
 }
+
+/** Comienzo del id de una línea hacia una rama plegada (las conexiones tienen ids propios, sin este prefijo). */
+export const PLEGADA = "plegada:";
+
+/** Una línea hacia una rama plegada: `etiqueta` es cuántas conexiones lleva; `ambos`, si van en los dos sentidos. */
+export type LateralPlegada = Lateral & { etiqueta: string; conexiones: string[]; ambos: boolean };
 
 // Se ven los primeros `nivel` niveles (1 = solo las raíces): todo lo de profundidad >= nivel - 1 con hijos queda colapsado.
 // Por defecto, las raíces y su primer nivel.
@@ -100,8 +108,52 @@ export function subgrafoVisible(
   };
   (indice.get(null) ?? []).forEach(visitar);
   const laterales = conexiones.filter((c) => vistos.has(c.origen_id) && vistos.has(c.destino_id));
-  return { nodos, puestos: delGrafo, jerarquicas, laterales };
+  const plegadas = conexiones.length ? lateralesHaciaPlegadas(nodos, indice, conexiones, colapsados) : [];
+  return { nodos, puestos: delGrafo, jerarquicas, laterales, plegadas };
 }
+
+/**
+ * El extremo que queda dentro de una rama plegada va a la tarjeta visible que la encabeza (con plegadas dentro de otras, la
+ * más externa). Las de un mismo par de tarjetas, en cualquier sentido, son una sola línea; bajo la misma plegada, ninguna. Las
+ * que ya se ven enteras (laterales) o con un extremo fuera de lo que se dibuja (otra rama enfocada, otra fecha), tampoco.
+ */
+function lateralesHaciaPlegadas(
+  nodos: Unidad[],
+  indice: Map<string | null, Unidad[]>,
+  conexiones: Conexion[],
+  colapsados: Set<string>,
+): LateralPlegada[] {
+  const cabeza = new Map(nodos.map((x) => [x.id, x.id]));
+  const bajar = (id: string, c: string) => {
+    for (const h of indice.get(id) ?? [])
+      if (!cabeza.has(h.id)) {
+        cabeza.set(h.id, c);
+        bajar(h.id, c);
+      }
+  };
+  for (const x of nodos) if (colapsados.has(x.id)) bajar(x.id, x.id);
+  const grupos = new Map<string, LateralPlegada>();
+  for (const c of conexiones) {
+    const [a, b] = [cabeza.get(c.origen_id), cabeza.get(c.destino_id)];
+    if (!a || !b || a === b || (a === c.origen_id && b === c.destino_id)) continue;
+    const id = `${PLEGADA}${a < b ? `${a}|${b}` : `${b}|${a}`}`;
+    const g = grupos.get(id);
+    if (!g) grupos.set(id, { id, origen_id: a, destino_id: b, etiqueta: "1", conexiones: [c.id], ambos: false });
+    else {
+      g.conexiones.push(c.id);
+      g.etiqueta = String(g.conexiones.length);
+      g.ambos ||= g.origen_id !== a;
+    }
+  }
+  return [...grupos.values()];
+}
+
+/** Las líneas laterales que se dibujan según «Relaciones laterales» y «Hacia ramas plegadas» de Personalizar. */
+export const lateralesADibujar = (
+  g: Subgrafo,
+  c: Pick<ConfigVista, "relacionesLaterales" | "lateralesPlegadas">,
+): (Conexion | LateralPlegada)[] =>
+  c.relacionesLaterales ? [...g.laterales, ...(c.lateralesPlegadas ? g.plegadas : [])] : [];
 
 /**
  * Fila de cada unidad al alinear por tipo (0 = la primera). Cada tipo de las unidades que se dibujan tiene su fila, en

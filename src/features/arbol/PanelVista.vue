@@ -155,6 +155,19 @@ const restablecer = () => (config.value = { ...leerVista(null), resaltar: config
             <input v-model="config.alinearPorTipo" type="checkbox" class="size-4 accent-primary" />
             {{ t("arbol.vista.alinearPorTipo") }}
           </label>
+          <label
+            v-if="org.conexiones.length || !config.lateralesPlegadas"
+            class="flex items-center gap-2"
+            :class="!config.relacionesLaterales && 'opacity-50'"
+          >
+            <input
+              v-model="config.lateralesPlegadas"
+              type="checkbox"
+              class="size-4 accent-primary"
+              :disabled="!config.relacionesLaterales"
+            />
+            {{ t("arbol.vista.lateralesPlegadas") }}
+          </label>
           <fieldset
             class="grid gap-1.5"
             :disabled="!config.verPuestos"

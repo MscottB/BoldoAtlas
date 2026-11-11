@@ -12,7 +12,7 @@ export interface EntradaLeyenda {
   codigo?: string | null;
   nombre: string;
   descripcion?: string | null;
-  trazo?: "punteado" | "continuo";
+  trazo?: "punteado" | "puntos" | "continuo";
 }
 
 defineProps<{ titulo: string; entradas: EntradaLeyenda[] }>();
@@ -53,7 +53,7 @@ const { oscuro } = useTema();
         <span
           v-if="e.trazo"
           class="w-6 border-t-2 border-marca"
-          :class="e.trazo === 'punteado' && 'border-dashed'"
+          :class="{ 'border-dashed': e.trazo === 'punteado', 'border-dotted': e.trazo === 'puntos' }"
           aria-hidden="true"
         />
         <span

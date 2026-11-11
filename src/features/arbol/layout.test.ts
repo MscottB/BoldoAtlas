@@ -9,12 +9,15 @@ import {
   contraerRama,
   expandirRama,
   filasPorTipo,
+  lateralesADibujar,
   lugarPrevisto,
   subgrafoVisible,
   unidadesDeRama,
   type Subgrafo,
 } from "./layout";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, type ValorCatalogo } from "@/db/tipos";
+import { generarArbolFalso } from "@/dev/arbolFalso";
+import { trazarLaterales } from "./lateral";
 import { VISTA_POR_DEFECTO, separaciones, tamPuesto, tamUnidad, type ConfigVista } from "./vista";
 
 const lateral: Conexion = { id: "c1", origen_id: "mecanica", destino_id: "finanzas", etiqueta: null };
@@ -357,5 +360,95 @@ describe("expandir y contraer", () => {
     expect(contraerRama(new Set(), unidades, "mecanica")).toEqual(new Set());
     const g = subgrafoVisible(unidades, [], contraerRama(new Set(), unidades, "gg"));
     expect(ids(g.nodos)).toEqual(["gg"]);
+  });
+});
+
+describe("conexiones hacia ramas plegadas", () => {
+  const con = (id: string, origen_id: string, destino_id: string): Conexion => ({
+    id,
+    origen_id,
+    destino_id,
+    etiqueta: null,
+  });
+  // Finanzas con una hija, para tener dos ramas que plegar.
+  const conContab = [...unidades, u("contab", TIPO_AREA, "Contabilidad", "finanzas")];
+  const plegadas = (cs: Conexion[], colapsados: string[], us = conContab) =>
+    subgrafoVisible(us, cs, new Set(colapsados)).plegadas;
+
+  it("un extremo plegado: la línea va a la tarjeta visible que encabeza esa rama", () => {
+    expect(plegadas([lateral], ["operaciones"])).toEqual([
+      {
+        id: "plegada:finanzas|operaciones",
+        origen_id: "operaciones",
+        destino_id: "finanzas",
+        etiqueta: "1",
+        conexiones: ["c1"],
+        ambos: false,
+      },
+    ]);
+  });
+
+  it("los dos extremos plegados en ramas distintas: entre las dos tarjetas que las encabezan", () => {
+    const [l] = plegadas([con("c2", "mecanica", "contab")], ["operaciones", "finanzas"]);
+    expect([l!.origen_id, l!.destino_id]).toEqual(["operaciones", "finanzas"]);
+  });
+
+  it("los dos extremos bajo la misma rama plegada: no hay línea", () => {
+    expect(plegadas([con("c3", "mecanica", "electrica")], ["operaciones"])).toEqual([]);
+    expect(plegadas([con("c4", "operaciones", "mecanica")], ["operaciones"])).toEqual([]);
+  });
+
+  it("ramas plegadas dentro de otras: va a la plegada más externa, la que se ve", () => {
+    const [l] = plegadas([lateral], ["operaciones", "mantencion"]);
+    expect(l!.origen_id).toBe("operaciones");
+    const [abierta] = plegadas([lateral], ["mantencion"]);
+    expect(abierta!.origen_id).toBe("mantencion");
+  });
+
+  it("varias entre el mismo par, en cualquier sentido, son una sola línea con su cantidad", () => {
+    const cs = [lateral, con("c5", "electrica", "finanzas"), con("c6", "finanzas", "mantencion")];
+    const r = plegadas(cs, ["operaciones"]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ etiqueta: "3", conexiones: ["c1", "c5", "c6"], ambos: true });
+  });
+
+  it("la que se ve entera sigue siendo lateral y la que sale de lo que se ve no se dibuja", () => {
+    const g = subgrafoVisible(conContab, [lateral], new Set(["mantencion"]));
+    expect(g.laterales).toEqual([]);
+    expect(subgrafoVisible(conContab, [lateral], new Set()).plegadas).toEqual([]);
+    expect(plegadas([lateral], ["mantencion"], unidadesDeRama(conContab, "operaciones"))).toEqual([]);
+  });
+
+  it("organización grande: 2.000 unidades y 600 conexiones se pliegan y agrupan en poco tiempo", async () => {
+    const { nodos } = generarArbolFalso(2000, 6, 1);
+    const us = nodos.map((n) => u(n.id, TIPO_AREA, n.nombre, n.padre));
+    const cs = Array.from({ length: 600 }, (_, i) =>
+      con(`k${i}`, nodos[(i * 37) % 2000]!.id, nodos[(i * 91 + 7) % 2000]!.id),
+    );
+    const colapsados = colapsadosIniciales(us, 3);
+    const inicio = performance.now();
+    const g = subgrafoVisible(us, cs, colapsados);
+    const ms = performance.now() - inicio;
+    const lleva = g.plegadas.reduce((n, l) => n + l.conexiones.length, 0);
+    expect(g.plegadas.length).toBeLessThan(lleva); // se agruparon
+    expect(new Set(g.plegadas.map((l) => l.id)).size).toBe(g.plegadas.length);
+    const vistos = new Set(g.nodos.map((x) => x.id));
+    for (const l of g.plegadas) expect(vistos.has(l.origen_id) && vistos.has(l.destino_id)).toBe(true);
+    const pos = await calcularLayout(g);
+    const cajas = new Map([...pos].map(([id, p]) => [id, { ...p, ancho: 220, alto: 112 }]));
+    const t0 = performance.now();
+    const trazados = trazarLaterales(lateralesADibujar(g, VISTA_POR_DEFECTO), cajas, "vertical");
+    const msTrazar = performance.now() - t0;
+    expect(trazados.size).toBe(g.laterales.length + g.plegadas.length);
+    console.info(`${g.nodos.length} tarjetas, ${g.plegadas.length} líneas a plegadas (${lleva} conexiones): ${ms.toFixed(1)} ms; trazar: ${msTrazar.toFixed(1)} ms`);
+    expect(ms + msTrazar).toBeLessThan(5000); // solo atrapa algo desbocado; lo medido va en el informe
+  });
+
+  it("lateralesADibujar: apagar «Relaciones laterales» o «Hacia ramas plegadas»", () => {
+    const g = subgrafoVisible(conContab, [lateral, con("c7", "gg", "finanzas")], new Set(["operaciones"]));
+    const c = VISTA_POR_DEFECTO;
+    expect(lateralesADibujar(g, c).map((l) => l.id)).toEqual(["c7", "plegada:finanzas|operaciones"]);
+    expect(lateralesADibujar(g, { ...c, lateralesPlegadas: false }).map((l) => l.id)).toEqual(["c7"]);
+    expect(lateralesADibujar(g, { ...c, relacionesLaterales: false })).toEqual([]);
   });
 });

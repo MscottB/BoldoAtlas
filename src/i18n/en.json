@@ -133,6 +133,7 @@
       "titulo": "Customize",
       "verPuestos": "Show positions",
       "relacionesLaterales": "Lateral connections",
+      "lateralesPlegadas": "Into collapsed branches",
       "zonas": "Zones",
       "mostrarCargo": "Show the job title",
       "mostrarPersona": "Show the person",
@@ -221,9 +222,12 @@
       "sinEtiqueta": "{origen} → {destino}",
       "clicEditar": "Click to edit",
       "clicVer": "Click to view",
+      "clicAbrirRama": "Click to open the branch",
+      "haciaPlegada": "One connection between {origen} and {destino} (collapsed branch) | {n} connections between {origen} and {destino} (collapsed branch)",
       "leyendaTitulo": "Lines",
       "leyendaPunteada": "Dotted line with an arrow: connection from one unit to another",
-      "leyendaContinua": "Colored line: connection between units"
+      "leyendaContinua": "Colored line: connection between units",
+      "leyendaPlegada": "Dotted line with a number: connections into a collapsed branch"
     },
     "acciones": {
       "titulo": "Actions for {unidad}",

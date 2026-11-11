@@ -38,7 +38,9 @@ import {
   aristasDibujadas,
   cajasDibujadas,
   grafoElk,
+  lateralesADibujar,
   lugarPrevisto,
+  PLEGADA,
   posiciones,
   reubicar,
   subgrafoVisible,
@@ -227,6 +229,7 @@ const forma = (g: Subgrafo) =>
     g.puestos.map((p) => p.id),
     g.jerarquicas,
     g.laterales.map((c) => [c.id, c.origen_id, c.destino_id, c.etiqueta]),
+    g.plegadas.map((c) => [c.id, c.origen_id, c.destino_id, c.conexiones, c.ambos]),
   ]);
 let worker: Worker;
 const cola = colaDeUltimo<ReturnType<typeof grafoElk>, NodoUbicado[]>((id, grafo) =>
@@ -502,9 +505,9 @@ const MINIMAPA = { ancho: 160, alto: 100 };
 const conMapa = computed(() => minimapa.value && conMinimapa(nodos.value.length));
 // Solo cambia con un layout: mover el puntero no vuelve a trazar nada.
 const trazados = computed(() =>
-  vista.value && config.value.relacionesLaterales
+  vista.value
     ? trazarLaterales(
-        vista.value.g.laterales,
+        lateralesADibujar(vista.value.g, config.value),
         vista.value.cajas,
         vista.value.direccion,
         escalaMaxEtiqueta(vista.value.densidad),
@@ -564,9 +567,12 @@ const tarjetaActiva = computed(() =>
 const tarjetaEnfocada = computed(() => (ligera.value || arrastrando.value ? null : conFoco.value));
 const relacionesActivas = computed(() => {
   const id = tarjetaActiva.value;
-  const propias = id
-    ? vista.value?.g.laterales.filter((c) => c.origen_id === id || c.destino_id === id).map((c) => c.id)
-    : null;
+  const propias =
+    id && vista.value
+      ? lateralesADibujar(vista.value.g, config.value)
+          .filter((c) => c.origen_id === id || c.destino_id === id)
+          .map((c) => c.id)
+      : null;
   return propias?.length ? new Set(propias) : null;
 });
 const encuadrarTodo = () =>
@@ -612,18 +618,32 @@ const tituloLeyenda = computed(() =>
     : t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
 );
 // `trazados` ya viene vacío con «Relaciones laterales» apagado. En ligero la línea es continua (ver AristaLateral).
-const leyendaLineas = computed<EntradaLeyenda[]>(() =>
-  trazados.value.size
-    ? [
-        {
-          clave: "lateral",
-          color: null,
-          trazo: ligera.value ? "continuo" : "punteado",
-          nombre: t(ligera.value ? "arbol.lateral.leyendaContinua" : "arbol.lateral.leyendaPunteada"),
-        },
-      ]
-    : [],
-);
+const leyendaLineas = computed<EntradaLeyenda[]>(() => {
+  const ids = [...trazados.value.keys()];
+  // En ligero las dos se ven igual: una sola entrada.
+  return [
+    ...(ids.some((id) => ligera.value || !id.startsWith(PLEGADA))
+      ? [
+          {
+            clave: "lateral",
+            color: null,
+            trazo: ligera.value ? ("continuo" as const) : ("punteado" as const),
+            nombre: t(ligera.value ? "arbol.lateral.leyendaContinua" : "arbol.lateral.leyendaPunteada"),
+          },
+        ]
+      : []),
+    ...(!ligera.value && ids.some((id) => id.startsWith(PLEGADA))
+      ? [
+          {
+            clave: "plegada",
+            color: null,
+            trazo: "puntos" as const,
+            nombre: t("arbol.lateral.leyendaPlegada"),
+          },
+        ]
+      : []),
+  ];
+});
 
 // Solo entre tarjetas que están en `nodos` (una recién eliminada se omite hasta el próximo layout).
 const aristas = computed<Edge[]>(() => {
@@ -643,17 +663,19 @@ const aristas = computed<Edge[]>(() => {
         type: ligera.value ? "step" : tipoArista(config.value.lineas),
         interactionWidth: ligera.value ? 0 : undefined,
       })),
-    ...(config.value.relacionesLaterales ? g.laterales : [])
+    ...lateralesADibujar(g, config.value)
       .filter((c) => entre(c.origen_id, c.destino_id))
       .map((c) => {
         const nombres = {
           origen: org.enFecha.porId.get(c.origen_id)?.nombre,
           destino: org.enFecha.porId.get(c.destino_id)?.nombre,
         };
-        const sentido = t("arbol.lateral.sinEtiqueta", nombres);
-        const descripcion = c.etiqueta
-          ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta })
-          : sentido;
+        const grupo = "conexiones" in c ? c : undefined;
+        const sentido = grupo
+          ? t("arbol.lateral.haciaPlegada", { ...nombres, n: grupo.conexiones.length }, grupo.conexiones.length)
+          : t("arbol.lateral.sinEtiqueta", nombres);
+        const descripcion =
+          c.etiqueta && !grupo ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta }) : sentido;
         return {
           id: c.id,
           source: c.origen_id,
@@ -663,7 +685,7 @@ const aristas = computed<Edge[]>(() => {
           selectable: false,
           focusable: false,
           ariaLabel: descripcion,
-          data: { descripcion, sentido },
+          data: { descripcion, sentido, grupo: grupo?.conexiones, ambos: grupo?.ambos },
         };
       }),
   ];
@@ -906,6 +928,8 @@ function verCompleto() {
                 :etiqueta="p.label as string"
                 :descripcion="p.data.descripcion"
                 :sentido="p.data.sentido"
+                :grupo="p.data.grupo"
+                :ambos="p.data.ambos"
               />
             </template>
             <template #zoom-pane>
