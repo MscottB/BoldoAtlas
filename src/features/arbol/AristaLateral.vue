@@ -20,8 +20,8 @@ import { useVista } from "./useVista";
 // descripción, abreviada si es larga, o un punto si no tiene o si el trazado no le halló lugar. Al pasar por la línea o por el
 // botón, o al enfocarlo, se ve completa y encima de todo. La punta de flecha marca el destino. En ligero: la línea continua y solo
 // el punto, sin flecha (el sentido lo dice la pista). Clic en la línea o en el botón: la ventanita de la conexión.
-// Con `grupo`, la línea va hacia una rama plegada y lleva varias: de puntos, con su cantidad siempre a la vista y sin flecha si van
-// en los dos sentidos (`ambos`). Su clic abre las ramas y muestra la primera.
+// Con `grupo`, la línea va hacia una rama plegada y lleva varias: de puntos, con su cantidad como descripción y sin flecha si van
+// en los dos sentidos (`ambos`). Su clic abre la ruta de la primera y la muestra, como «Ver en el diagrama».
 const props = defineProps<{
   id: string;
   etiqueta?: string;
@@ -67,7 +67,7 @@ const escalaBoton = computed(() =>
   activa.value ? Math.max(escala.value, 1 / viewport.value.zoom) : escala.value,
 );
 const texto = computed(() =>
-  activa.value || props.grupo || (!ligera.value && trazado.value?.conTexto) ? props.etiqueta : undefined,
+  activa.value || (!ligera.value && trazado.value?.conTexto) ? props.etiqueta : undefined,
 );
 const accion = computed(() =>
   t(props.grupo ? "arbol.lateral.clicAbrirRama" : org.fechaVista ? "arbol.lateral.clicVer" : "arbol.lateral.clicEditar"),
@@ -119,7 +119,7 @@ const lugarPista = computed(() => {
 
 const abrir = (ancla: DOMRect) =>
   props.grupo
-    ? (verConexion.value = props.grupo)
+    ? (verConexion.value = props.grupo[0]!)
     : (ventanaConexion.value = { id: props.id, ancla, foco: boton.value });
 // Abierta con el puntero, el foco que vuelve al cerrar no activa la etiqueta, aunque Esc lo haga contar como :focus-visible: quedaría
 // desplegada con el puntero lejos. El que llega desde otro elemento sí, porque es Tab.

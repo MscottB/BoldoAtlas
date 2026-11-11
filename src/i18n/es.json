@@ -223,7 +223,7 @@
       "clicEditar": "Clic para editar",
       "clicVer": "Clic para ver",
       "clicAbrirRama": "Clic para abrir la rama",
-      "haciaPlegada": "Una conexión entre {origen} y {destino}, en una rama plegada | {n} conexiones entre {origen} y {destino}, en ramas plegadas",
+      "haciaPlegada": "Una conexión entre {origen} y {destino} (rama plegada) | {n} conexiones entre {origen} y {destino} (rama plegada)",
       "leyendaTitulo": "Líneas",
       "leyendaPunteada": "Línea punteada con flecha: conexión de una unidad hacia otra",
       "leyendaContinua": "Línea de color: conexión entre unidades",

@@ -130,7 +130,7 @@ La línea se dibuja cuando las dos unidades están a la vista y **Relaciones lat
 
 Una conexión que apunta a una unidad que está más allá de lo que entra en la pantalla sí está dibujada: aleja o encuadra el lienzo para verla.
 
-**Hacia una rama plegada:** si una de las unidades queda dentro de una rama plegada, la línea llega a la tarjeta visible que encabeza esa rama. Es una línea de puntos con un número: cuántas conexiones lleva. Varias conexiones entre las mismas dos tarjetas se ven como una sola línea; si van en los dos sentidos, no lleva flecha. Si las dos unidades quedan dentro de la misma rama plegada, no se dibuja. Pulsa la línea o su número (o llega con `Tab` y pulsa `Enter`) para abrir esas ramas y ver las conexiones. Para no dibujar estas líneas, apaga **Hacia ramas plegadas** en **Personalizar**.
+**Hacia una rama plegada:** si una de las unidades queda dentro de una rama plegada, la línea llega a la tarjeta visible que encabeza esa rama. Es una línea de puntos con un número: cuántas conexiones lleva (si no cabe, se ve al pasar por ella). Varias conexiones entre las mismas dos tarjetas se ven como una sola línea; si van en los dos sentidos, no lleva flecha. Si las dos unidades quedan dentro de la misma rama plegada, no se dibuja. Pulsa la línea o su número (o llega con `Tab` y pulsa `Enter`) para abrir la rama y ver la primera; las demás siguen llegando a la tarjeta que encabeza su rama. Para no dibujar estas líneas, apaga **Hacia ramas plegadas** en **Personalizar**.
 
 Viendo el organigrama a una fecha, la ventanita es solo de lectura.
 

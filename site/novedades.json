@@ -4,12 +4,12 @@
     "pagina": "arbol",
     "es": {
       "titulo": "Conexiones que se ven aunque la rama esté plegada",
-      "texto": "Si una conexión llega a una unidad dentro de una rama plegada, la línea va a la tarjeta que encabeza esa rama, con un número que dice cuántas conexiones lleva. Las que van entre las mismas dos tarjetas se juntan en una sola línea. Pulsa la línea para abrir la rama y verlas. Se apaga en Personalizar y se guarda con la vista.",
+      "texto": "Si una conexión llega a una unidad dentro de una rama plegada, la línea va a la tarjeta que encabeza esa rama, con un número que dice cuántas conexiones lleva. Las que van entre las mismas dos tarjetas se juntan en una sola línea. Pulsa la línea para abrir la rama. Se apaga en Personalizar y se guarda con la vista.",
       "ancla": "conexiones"
     },
     "en": {
       "titulo": "Connections you can see even when the branch is collapsed",
-      "texto": "If a connection reaches a unit inside a collapsed branch, the line goes to the card that heads that branch, with a number that says how many connections it carries. Those between the same two cards are joined into a single line. Press the line to open the branch and see them. It can be turned off in Customize and is saved with the view.",
+      "texto": "If a connection reaches a unit inside a collapsed branch, the line goes to the card that heads that branch, with a number that says how many connections it carries. Those between the same two cards are joined into a single line. Press the line to open the branch. It can be turned off in Customize and is saved with the view.",
       "ancla": "connections"
     }
   },

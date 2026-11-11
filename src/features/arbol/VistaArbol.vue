@@ -229,7 +229,7 @@ const forma = (g: Subgrafo) =>
     g.puestos.map((p) => p.id),
     g.jerarquicas,
     g.laterales.map((c) => [c.id, c.origen_id, c.destino_id, c.etiqueta]),
-    g.plegadas.map((c) => [c.id, c.etiqueta, c.ambos]),
+    g.plegadas.map((c) => [c.id, c.origen_id, c.destino_id, c.conexiones, c.ambos]),
   ]);
 let worker: Worker;
 const cola = colaDeUltimo<ReturnType<typeof grafoElk>, NodoUbicado[]>((id, grafo) =>
@@ -620,8 +620,9 @@ const tituloLeyenda = computed(() =>
 // `trazados` ya viene vacío con «Relaciones laterales» apagado. En ligero la línea es continua (ver AristaLateral).
 const leyendaLineas = computed<EntradaLeyenda[]>(() => {
   const ids = [...trazados.value.keys()];
+  // En ligero las dos se ven igual: una sola entrada.
   return [
-    ...(ids.some((id) => !id.startsWith(PLEGADA))
+    ...(ids.some((id) => ligera.value || !id.startsWith(PLEGADA))
       ? [
           {
             clave: "lateral",
@@ -631,12 +632,12 @@ const leyendaLineas = computed<EntradaLeyenda[]>(() => {
           },
         ]
       : []),
-    ...(ids.some((id) => id.startsWith(PLEGADA))
+    ...(!ligera.value && ids.some((id) => id.startsWith(PLEGADA))
       ? [
           {
             clave: "plegada",
             color: null,
-            trazo: ligera.value ? ("continuo" as const) : ("puntos" as const),
+            trazo: "puntos" as const,
             nombre: t("arbol.lateral.leyendaPlegada"),
           },
         ]

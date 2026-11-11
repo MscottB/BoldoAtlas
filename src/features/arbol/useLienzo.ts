@@ -112,11 +112,8 @@ export type VentanaConexion = { ancla: DOMRect; foco: HTMLElement | null } & (
   | { origen: string }
 );
 export const ventanaConexion = shallowRef<VentanaConexion | null>(null);
-/**
- * Conexión (o varias: las de una línea hacia una rama plegada) que debe mostrarse si está en una rama plegada: ConexionLienzo
- * abre las ramas, mueve el lienzo hasta la primera y lo deja en null.
- */
-export const verConexion = ref<string | string[] | null>(null);
+/** Conexión que debe mostrarse si está en una rama plegada: ConexionLienzo abre la rama, mueve el lienzo y lo deja en null. */
+export const verConexion = ref<string | null>(null);
 
 /** «Conectar con…» de la tarjeta y de su menú contextual. */
 export function conectarDesde(origen: string) {

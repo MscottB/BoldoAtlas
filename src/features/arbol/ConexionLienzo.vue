@@ -99,25 +99,19 @@ async function mostrarLinea(id: string, trazado: Trazado) {
   else boton?.focus();
 }
 
-// Solo actúa con las que tienen una unidad en una rama plegada; con ninguna así, no se abre nada por sí solo.
-watch(verConexion, async (pedidas) => {
-  if (!pedidas) return;
+// Solo actúa si una de sus unidades está en una rama plegada; en cualquier otro caso no se abre nada por sí solo.
+watch(verConexion, async (id) => {
+  if (!id) return;
   verConexion.value = null;
-  if (!config.value.relacionesLaterales) return;
-  const ids = new Set([pedidas].flat());
-  const cs = org.conexiones.filter((c) => {
-    if (!ids.has(c.id)) return false;
-    const motivos = [c.origen_id, c.destino_id].map((u) => porQueNoSeVe(mostradas.value, colapsados.value, u));
-    return motivos.includes("plegada") && !motivos.includes("fuera");
-  });
-  if (!cs.length) return;
-  const viene = proximoTrazado(cs[0]!.id);
-  for (const c of cs) {
-    abrirRuta(c.origen_id);
-    abrirRuta(c.destino_id);
-  }
+  const c = org.conexiones.find((x) => x.id === id);
+  if (!c || !config.value.relacionesLaterales) return;
+  const motivos = [c.origen_id, c.destino_id].map((u) => porQueNoSeVe(mostradas.value, colapsados.value, u));
+  if (!motivos.includes("plegada") || motivos.includes("fuera")) return;
+  const viene = proximoTrazado(id);
+  abrirRuta(c.origen_id);
+  abrirRuta(c.destino_id);
   const trazado = await viene;
-  if (trazado) await mostrarLinea(cs[0]!.id, trazado);
+  if (trazado) await mostrarLinea(id, trazado);
 });
 
 // El foco vuelve a quien abrió; si ya no está (la barra de la tarjeta, una conexión eliminada), a su línea, al panel o a la

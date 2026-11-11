@@ -130,7 +130,7 @@ The line is drawn when both units are in view and **Lateral connections** is on 
 
 A connection to a unit beyond what fits on the screen is drawn: zoom out or fit the canvas to see it.
 
-**Into a collapsed branch:** if one of the units is inside a collapsed branch, the line reaches the visible card that heads that branch. It is a dotted line with a number: how many connections it carries. Several connections between the same two cards show as a single line; if they go both ways, it has no arrow. If both units are inside the same collapsed branch, nothing is drawn. Press the line or its number (or reach it with `Tab` and press `Enter`) to open those branches and see the connections. To stop drawing these lines, turn off **Into collapsed branches** in **Customize**.
+**Into a collapsed branch:** if one of the units is inside a collapsed branch, the line reaches the visible card that heads that branch. It is a dotted line with a number: how many connections it carries (if it does not fit, it shows when you point at it). Several connections between the same two cards show as a single line; if they go both ways, it has no arrow. If both units are inside the same collapsed branch, nothing is drawn. Press the line or its number (or reach it with `Tab` and press `Enter`) to open the branch and see the first one; the others keep reaching the card that heads their branch. To stop drawing these lines, turn off **Into collapsed branches** in **Customize**.
 
 While viewing the chart at a past date, the window is read only.
 

@@ -223,7 +223,7 @@
       "clicEditar": "Click to edit",
       "clicVer": "Click to view",
       "clicAbrirRama": "Click to open the branch",
-      "haciaPlegada": "One connection between {origen} and {destino}, in a collapsed branch | {n} connections between {origen} and {destino}, in collapsed branches",
+      "haciaPlegada": "One connection between {origen} and {destino} (collapsed branch) | {n} connections between {origen} and {destino} (collapsed branch)",
       "leyendaTitulo": "Lines",
       "leyendaPunteada": "Dotted line with an arrow: connection from one unit to another",
       "leyendaContinua": "Colored line: connection between units",
