@@ -72,6 +72,22 @@ export function sinOrganizacion(
   return { lista: [...lista, { id, org: orgAbierta, ruta: RUTA_INICIO }], activa: id };
 }
 
+/**
+ * Al volver a la organización desde Inicio se empieza en el Árbol: si la activa no es del Árbol, pasa a serlo su primera
+ * pestaña del Árbol y, si no tiene, se abre una a la derecha de la activa. Las demás pestañas no cambian. Con el máximo lleno queda como estaba.
+ */
+export function alArbol(
+  m: Pestanas,
+  org: string,
+  esArbol: (ruta: string) => boolean,
+  nuevoId: () => string,
+): Pestanas {
+  const suya =
+    [m.lista.find((p) => p.id === m.activa), ...m.lista].find((p) => p?.org === org && esArbol(p.ruta));
+  if (suya) return { ...m, activa: suya.id };
+  return abrir(m, nuevoId(), RUTA_INICIO, org) ?? m;
+}
+
 /** Con más de una organización, cada pestaña lleva su nombre y su color. */
 export const hayVariasOrganizaciones = (m: Pestanas): boolean => new Set(m.lista.map((p) => p.org)).size > 1;
 

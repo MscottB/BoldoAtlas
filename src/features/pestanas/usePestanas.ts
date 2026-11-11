@@ -89,9 +89,17 @@ export const usePestanas = defineStore("pestanas", () => {
     cargadas = true;
   }
 
-  /** Carga las pestañas guardadas del proyecto (validadas) y devuelve la ruta de la activa. */
-  function entrar(): string {
+  /** Carga las pestañas guardadas del proyecto (validadas) y devuelve la ruta de la activa; con `enArbol`, la del Árbol. */
+  function entrar(enArbol = false): string {
     cargarGuardadas();
+    // La pestaña de una organización que no abrió muestra el motivo: no se cambia por un Árbol vacío.
+    if (enArbol && !useOrganizaciones().sinAbrir.has(modelo.value.activa))
+      modelo.value = P.alArbol(
+        modelo.value,
+        baseActual(),
+        (ruta) => router?.resolve(ruta).name === "arbol",
+        nuevoId,
+      );
     enProyecto = true;
     const p = modelo.value.lista.find((x) => x.id === modelo.value.activa)!;
     // Configuración, Ayuda y Acerca de son de paso: al entrar se llega a la vista de trabajo de la pestaña.
@@ -300,9 +308,9 @@ export const usePestanas = defineStore("pestanas", () => {
     activa,
     conectar,
     entrar,
-    /** Desde la Bienvenida, a la vista que estaba activa. */
+    /** Desde la Bienvenida, al Árbol (las demás pestañas quedan como estaban). */
     async volverAlProyecto() {
-      const ruta = entrar();
+      const ruta = entrar(true);
       enProyecto = false; // la llegada la trata como vuelta de la Bienvenida (ver `conectar`)
       await router?.push(ruta);
     },

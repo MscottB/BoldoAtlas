@@ -31,7 +31,7 @@ Afterwards you can adjust the name, logo, theme and language in **Settings**, an
 
 When the database already has data, Home is arranged so you can pick up your work:
 
-- **Your organization:** the name, the totals of **Units**, **People**, **Vacancies** and **Review warnings**, the date of the **last backup** and the **Back to my organization** button, which takes you to the view that was active. Each total opens its view: units, the **Tree**; people, the **Directory**; vacancies and warnings, **Review**.
+- **Your organization:** the name, the totals of **Units**, **People**, **Vacancies** and **Review warnings**, the date of the **last backup** and the **Back to my organization** button, which takes you to the **Tree** (your other tabs stay open). Each total opens its view: units, the **Tree**; people, the **Directory**; vacancies and warnings, **Review**.
 - **Recently opened:** the organizations you opened lately, the last one first and the open one marked **Open**. It appears when you have more than one. One click opens one, and its **⋮** menu offers **Remove from list** and **Delete organization** (see [Organizations](organizaciones.md)).
 - **Quick access:** **Find a person** (opens the command palette), **Import/Export** and **Backups**.
 - **Create or open another organization:** **Create organization**, **Open file…** and **Explore the example**. Each one opens another organization, apart, in a new tab: the one you had does not change.

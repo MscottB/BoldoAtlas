@@ -42,6 +42,6 @@ Cuando las pestañas abiertas son de más de una organización, cada una muestra
 - Ciérrala con su botón ×, con clic central sobre ella, con `Supr` si está enfocada o con `Ctrl` + `W` (la activa). La última pestaña no se cierra.
 - Con el foco en la barra, `←` `→` recorren las pestañas y `Enter` abre la enfocada.
 
-Las pestañas se recuerdan en este computador, aparte para cada copia de BoldoAtlas (la instalada y cada portable), con las de todas tus organizaciones. Al abrir el programa aparece **Inicio** y, con **Volver a mi organización**, las pestañas están como las dejaste; con **Continuar donde estaba** (en **Configuración › Al abrir y al salir**) se ven directo. Las de unidades o personas que ya no existen se cierran solas.
+Las pestañas se recuerdan en este computador, aparte para cada copia de BoldoAtlas (la instalada y cada portable), con las de todas tus organizaciones. Al abrir el programa aparece **Inicio** y, con **Volver a mi organización**, las pestañas están como las dejaste y se ve la del **Árbol** (si no había una, se abre). Con **Continuar donde estaba** (en **Configuración › Al abrir y al salir**) se abre directo en la última vista. Las de unidades o personas que ya no existen se cierran solas.
 
 **Ver también:** [Atajos de teclado](atajos.md) · [Directorio](directorio.md).

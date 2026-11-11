@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_PESTANAS,
   abrir,
+  alArbol,
   cambiar,
   cerrar,
   detalleUtil,
@@ -236,6 +237,52 @@ describe("cambiar y estadoDe", () => {
     expect(estadoDe(m, "a", "/?raiz=u1")).toBeUndefined();
     expect(estadoDe(m, "b", "/")).toBeUndefined();
     expect(cambiar(m, "zz", { ruta: "/x" })).toBe(m);
+  });
+});
+
+describe("alArbol: al volver a la organización se empieza en el Árbol", () => {
+  const esArbol = (ruta: string) => ruta === "/" || ruta.startsWith("/?");
+  const nuevo = () => "n";
+
+  it("activa su primera pestaña del Árbol sin tocar las demás", () => {
+    expect(alArbol(tres("b"), "A", esArbol, nuevo)).toEqual(tres("a"));
+  });
+
+  it("sin pestaña del Árbol abre una a la derecha de la activa", () => {
+    const m: Pestanas = {
+      lista: [
+        { id: "r", org: "A", ruta: "/revision" },
+        { id: "d", org: "A", ruta: "/directorio" },
+      ],
+      activa: "r",
+    };
+    expect(alArbol(m, "A", esArbol, nuevo)).toEqual({
+      lista: [m.lista[0], { id: "n", org: "A", ruta: "/" }, m.lista[1]],
+      activa: "n",
+    });
+  });
+
+  it("no toma la pestaña del Árbol de otra organización", () => {
+    const m: Pestanas = {
+      lista: [
+        { id: "x", org: "B", ruta: "/" },
+        { id: "r", org: "A", ruta: "/revision" },
+      ],
+      activa: "r",
+    };
+    expect(alArbol(m, "A", esArbol, nuevo).activa).toBe("n");
+  });
+
+  it("si la activa ya es del Árbol (o de una rama) se queda en ella", () => {
+    expect(alArbol(tres("c"), "A", esArbol, nuevo)).toEqual(tres("c"));
+  });
+
+  it("con el máximo lleno y sin Árbol queda como estaba", () => {
+    const lleno: Pestanas = {
+      lista: Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `p${i}`, org: "A", ruta: "/revision" })),
+      activa: "p0",
+    };
+    expect(alArbol(lleno, "A", esArbol, nuevo)).toBe(lleno);
   });
 });
 
