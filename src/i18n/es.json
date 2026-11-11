@@ -133,6 +133,7 @@
       "titulo": "Personalizar",
       "verPuestos": "Ver puestos",
       "relacionesLaterales": "Relaciones laterales",
+      "lateralesPlegadas": "Hacia ramas plegadas",
       "zonas": "Zonas",
       "mostrarCargo": "Mostrar el cargo",
       "mostrarPersona": "Mostrar la persona",
@@ -221,9 +222,12 @@
       "sinEtiqueta": "{origen} → {destino}",
       "clicEditar": "Clic para editar",
       "clicVer": "Clic para ver",
+      "clicAbrirRama": "Clic para abrir la rama",
+      "haciaPlegada": "Una conexión entre {origen} y {destino}, en una rama plegada | {n} conexiones entre {origen} y {destino}, en ramas plegadas",
       "leyendaTitulo": "Líneas",
       "leyendaPunteada": "Línea punteada con flecha: conexión de una unidad hacia otra",
-      "leyendaContinua": "Línea de color: conexión entre unidades"
+      "leyendaContinua": "Línea de color: conexión entre unidades",
+      "leyendaPlegada": "Línea de puntos con número: conexiones hacia una rama plegada"
     },
     "acciones": {
       "titulo": "Acciones de {unidad}",

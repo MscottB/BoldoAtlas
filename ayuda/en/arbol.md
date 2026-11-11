@@ -124,11 +124,13 @@ A unit cannot be connected to itself, and if two units are already connected you
 
 The line is drawn when both units are in view and **Lateral connections** is on in **Customize**. If it is not visible, the panel row and the window say why:
 
-- **Collapsed branch**: the **Show in the diagram** button opens the branch and moves the canvas to show the line. Collapsing a branch does not draw a line towards it.
+- **Collapsed branch**: the **Show in the diagram** button opens the branch and moves the canvas to show the line.
 - **Outside the view**: the other unit is not in the branch you opened as a tree, or did not exist on the date you are viewing. Go back to the full tree or to today to see it.
 - **Lateral connections off**: turn it on in **Customize**.
 
 A connection to a unit beyond what fits on the screen is drawn: zoom out or fit the canvas to see it.
+
+**Into a collapsed branch:** if one of the units is inside a collapsed branch, the line reaches the visible card that heads that branch. It is a dotted line with a number: how many connections it carries. Several connections between the same two cards show as a single line; if they go both ways, it has no arrow. If both units are inside the same collapsed branch, nothing is drawn. Press the line or its number (or reach it with `Tab` and press `Enter`) to open those branches and see the connections. To stop drawing these lines, turn off **Into collapsed branches** in **Customize**.
 
 While viewing the chart at a past date, the window is read only.
 
@@ -190,6 +192,7 @@ The **Customize** button, in the canvas bar, opens the options for how the tree 
 - **Show positions** (off at first): under each visible unit there is one card per position, with the job title, the holder or **Vacant**, and **Replacement: name** when a replacement is current. Press a position card, or focus it and press `Enter`, to open its record. In **Advanced** you can hide the job title or the person. With many units expanded, positions add cards: collapse the branches you don't need.
 - **Show on cards the parent unit of type** (in **Advanced**): tick the types (for example, Division or Area) whose nearest parent you want to read on each unit card. Only the types some unit uses are listed.
 - **Lateral connections** (on at first, if there are any): draws the lateral connections. Off, they are hidden without being deleted. It is saved with the view.
+  - **Into collapsed branches** (on at first): a connection with a unit inside a collapsed branch reaches the card that heads that branch (see “Connections”). Off, those lines are not drawn until you open the branch. It is saved with the view.
 - **Zones** (on at first, if there are any): draws the zones. Off, they are hidden without being deleted. It is saved with the view.
 - **Color by**: **None**, the **mark** of a type, or **Position legend**. With the mark of a type, each unit takes the mark (a color and a code of up to 4 letters) of its nearest parent of that type, itself included; it shows as a colored stripe on the left and the code on the card. With **Position legend**, position cards take the color of their legend (turn on **Show positions**; see "Legends and position colors"). Only one criterion applies at a time.
 
@@ -208,7 +211,7 @@ Each tree (the full one or a subtree saved in Trees) remembers on this computer,
 
 ## Saved views
 
-The **Saved views** button saves the current configuration (direction, density, lines, lateral connections, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
+The **Saved views** button saves the current configuration (direction, density, lines, lateral connections and into collapsed branches, card details, color by, highlighting and collapsed branches) by name for the tree you are looking at. Type a name and press **Save current view**; a name cannot be repeated within the same tree. Press a view's name to apply it; the pencil renames it and the trash can deletes it (with **Undo** for 8 seconds). Views belong to the full tree or to a saved subtree: a branch that is not saved in Trees has no views of its own. They are stored in the database, so they travel with it.
 
 ## Viewing a past date
 

@@ -124,11 +124,13 @@ Una unidad no se puede conectar consigo misma, y si dos unidades ya están conec
 
 La línea se dibuja cuando las dos unidades están a la vista y **Relaciones laterales** está encendido en **Personalizar**. Si no se ve, la fila del panel y la ventanita dicen por qué:
 
-- **Rama plegada**: el botón **Ver en el diagrama** abre la rama y mueve el lienzo para mostrar la línea. Al plegar una rama no se dibuja una línea hacia ella.
+- **Rama plegada**: el botón **Ver en el diagrama** abre la rama y mueve el lienzo para mostrar la línea.
 - **Fuera de la vista**: la otra unidad no está en la rama que abriste como árbol o no existía a la fecha que ves. Vuelve al árbol completo o a hoy para verla.
 - **Relaciones laterales apagado**: enciéndelo en **Personalizar**.
 
 Una conexión que apunta a una unidad que está más allá de lo que entra en la pantalla sí está dibujada: aleja o encuadra el lienzo para verla.
+
+**Hacia una rama plegada:** si una de las unidades queda dentro de una rama plegada, la línea llega a la tarjeta visible que encabeza esa rama. Es una línea de puntos con un número: cuántas conexiones lleva. Varias conexiones entre las mismas dos tarjetas se ven como una sola línea; si van en los dos sentidos, no lleva flecha. Si las dos unidades quedan dentro de la misma rama plegada, no se dibuja. Pulsa la línea o su número (o llega con `Tab` y pulsa `Enter`) para abrir esas ramas y ver las conexiones. Para no dibujar estas líneas, apaga **Hacia ramas plegadas** en **Personalizar**.
 
 Viendo el organigrama a una fecha, la ventanita es solo de lectura.
 
@@ -190,6 +192,7 @@ El botón **Personalizar**, en la barra del lienzo, abre las opciones de cómo s
 - **Ver puestos** (apagado al comienzo): bajo cada unidad visible aparece una tarjeta por cada puesto, con el cargo, la persona titular o **Vacante**, y **Reemplazo: nombre** si hay un reemplazo vigente. Pulsa una tarjeta de puesto, o enfócala y presiona `Enter`, para abrir su ficha. En **Avanzado** se puede ocultar el cargo o la persona. Con muchas unidades desplegadas, los puestos suman tarjetas: pliega las ramas que no necesitas.
 - **Mostrar en las tarjetas el superior de tipo** (en **Avanzado**): marca los tipos (por ejemplo, Gerencia o Área) cuyo superior más cercano quieres leer en cada tarjeta de unidad. Solo aparecen los tipos que alguna unidad usa.
 - **Relaciones laterales** (encendido al comienzo, si hay conexiones): dibuja las conexiones laterales. Apagado, se ocultan sin borrarlas. Se guarda con la vista.
+  - **Hacia ramas plegadas** (encendido al comienzo): la conexión con una unidad dentro de una rama plegada llega a la tarjeta que encabeza esa rama (ver «Conexiones»). Apagado, esas líneas no se dibujan hasta que abras la rama. Se guarda con la vista.
 - **Zonas** (encendido al comienzo, si hay zonas): dibuja las zonas. Apagado, se ocultan sin borrarlas. Se guarda con la vista.
 - **Colorear por**: **Ninguno**, **Marca de** un tipo o **Leyenda del puesto**. Con **Marca de** un tipo, cada unidad toma la marca (color y código de hasta 4 letras) de su superior más cercano de ese tipo, incluida ella misma; se ve como una franja de color a la izquierda y el código en la tarjeta. Con **Leyenda del puesto**, las tarjetas de puesto toman el color de su leyenda (hay que activar **Ver puestos**; ver «Leyendas y colores de puestos»). Solo se aplica un criterio a la vez.
 
@@ -208,7 +211,7 @@ Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este c
 
 ## Vistas guardadas
 
-El botón **Vistas guardadas** guarda con nombre la configuración actual (dirección, densidad, líneas, relaciones laterales, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.
+El botón **Vistas guardadas** guarda con nombre la configuración actual (dirección, densidad, líneas, relaciones laterales y hacia ramas plegadas, datos de la tarjeta, colorear por, resaltado y ramas plegadas) para el árbol que estás viendo. Escribe un nombre y pulsa **Guardar vista actual**; no se puede repetir el nombre dentro del mismo árbol. Pulsa el nombre de una vista para aplicarla; el lápiz la renombra y la papelera la elimina (con **Deshacer** durante 8 segundos). Las vistas son del árbol completo o de un subárbol guardado: una rama que no está guardada en Árboles no tiene vistas propias. Se guardan en la base de datos, así que viajan con ella.
 
 ## Ver a una fecha
 

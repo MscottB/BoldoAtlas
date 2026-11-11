@@ -30,6 +30,8 @@ export interface ConfigVista {
   verPuestos: boolean;
   /** Las conexiones laterales se dibujan (se ocultan sin borrarlas). */
   relacionesLaterales: boolean;
+  /** La conexión con un extremo en una rama plegada va a la tarjeta que la encabeza (ver lateralesHaciaPlegadas). */
+  lateralesPlegadas: boolean;
   /** Las zonas se dibujan (se ocultan sin borrarlas). */
   zonas: boolean;
   /** Cada unidad en la fila (o columna) de su tipo, en el orden del catálogo de tipos (ver filasPorTipo). */
@@ -58,6 +60,7 @@ export const VISTA_POR_DEFECTO: ConfigVista = {
   personasEnTarjetas: true,
   verPuestos: false,
   relacionesLaterales: true,
+  lateralesPlegadas: true,
   zonas: true,
   alinearPorTipo: false,
   mostrarCargo: true,
@@ -163,6 +166,7 @@ export function leerVista(crudo: unknown): ConfigVista {
     personasEnTarjetas: bool(c, d, "personasEnTarjetas"),
     verPuestos: bool(c, d, "verPuestos"),
     relacionesLaterales: bool(c, d, "relacionesLaterales"),
+    lateralesPlegadas: bool(c, d, "lateralesPlegadas"),
     zonas: bool(c, d, "zonas"),
     // Antes se llamaba nivelesEstrictos: se acepta en preferencias y vistas guardadas con ese nombre.
     alinearPorTipo:

@@ -13,14 +13,23 @@ import {
   type Caja,
   type Punto,
 } from "./lateral";
-import { ventanaConexion } from "./useLienzo";
+import { ventanaConexion, verConexion } from "./useLienzo";
 import { useVista } from "./useVista";
 
 // Conexión lateral: la línea va por donde dijo trazarLaterales, no de una tarjeta a otra. Sobre la línea hay un botón: su
 // descripción, abreviada si es larga, o un punto si no tiene o si el trazado no le halló lugar. Al pasar por la línea o por el
 // botón, o al enfocarlo, se ve completa y encima de todo. La punta de flecha marca el destino. En ligero: la línea continua y solo
 // el punto, sin flecha (el sentido lo dice la pista). Clic en la línea o en el botón: la ventanita de la conexión.
-const props = defineProps<{ id: string; etiqueta?: string; descripcion?: string; sentido?: string }>();
+// Con `grupo`, la línea va hacia una rama plegada y lleva varias: de puntos, con su cantidad siempre a la vista y sin flecha si van
+// en los dos sentidos (`ambos`). Su clic abre las ramas y muestra la primera.
+const props = defineProps<{
+  id: string;
+  etiqueta?: string;
+  descripcion?: string;
+  sentido?: string;
+  grupo?: string[];
+  ambos?: boolean;
+}>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { trazados, cajas, relacionesActivas, ligera } = inject(CONTEXTO_LIENZO)!;
@@ -58,9 +67,11 @@ const escalaBoton = computed(() =>
   activa.value ? Math.max(escala.value, 1 / viewport.value.zoom) : escala.value,
 );
 const texto = computed(() =>
-  activa.value || (!ligera.value && trazado.value?.conTexto) ? props.etiqueta : undefined,
+  activa.value || props.grupo || (!ligera.value && trazado.value?.conTexto) ? props.etiqueta : undefined,
 );
-const accion = computed(() => t(org.fechaVista ? "arbol.lateral.clicVer" : "arbol.lateral.clicEditar"));
+const accion = computed(() =>
+  t(props.grupo ? "arbol.lateral.clicAbrirRama" : org.fechaVista ? "arbol.lateral.clicVer" : "arbol.lateral.clicEditar"),
+);
 // La pista va fuera del lienzo, sobre tarjetas y paneles. Junto al puntero o, con el teclado, junto al botón, sin cubrirlo. Dice el
 // sentido; la descripción, solo si no está a la vista. El botón se lee después de pintar: al activarse cambia de tamaño.
 const pista = ref<HTMLElement | null>(null);
@@ -106,7 +117,10 @@ const lugarPista = computed(() => {
   return `translate(${x}px, ${y}px)`;
 });
 
-const abrir = (ancla: DOMRect) => (ventanaConexion.value = { id: props.id, ancla, foco: boton.value });
+const abrir = (ancla: DOMRect) =>
+  props.grupo
+    ? (verConexion.value = props.grupo)
+    : (ventanaConexion.value = { id: props.id, ancla, foco: boton.value });
 // Abierta con el puntero, el foco que vuelve al cerrar no activa la etiqueta, aunque Esc lo haga contar como :focus-visible: quedaría
 // desplegada con el puntero lejos. El que llega desde otro elemento sí, porque es Tab.
 let abiertaConPuntero = false;
@@ -157,11 +171,12 @@ function alSoltar(e: PointerEvent) {
     :style="{
       stroke: 'var(--marca)',
       strokeWidth: resaltada ? 2.5 : 1.25,
-      strokeDasharray: ligera || activa ? undefined : '6 4',
+      strokeDasharray: ligera || activa ? undefined : grupo ? '2 4' : '6 4',
+      strokeLinecap: grupo ? 'round' : undefined,
     }"
   />
   <path
-    v-if="d && !ligera"
+    v-if="d && !ligera && !ambos"
     ref="punta"
     class="pointer-events-none fill-marca"
     :class="atenuada && '[fill-opacity:.2]'"
@@ -201,7 +216,7 @@ function alSoltar(e: PointerEvent) {
         transform: `translate(${trazado.etiqueta.x}px, ${trazado.etiqueta.y}px) translate(-50%, -50%) scale(${escalaBoton})`,
       }"
       :aria-label="`${descripcion}. ${accion}`"
-      aria-haspopup="dialog"
+      :aria-haspopup="grupo ? undefined : 'dialog'"
       @pointerenter="sobreBoton = true"
       @pointerleave="sobreBoton = false"
       @focus="alEnfocar"
