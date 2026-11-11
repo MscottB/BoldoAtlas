@@ -116,7 +116,7 @@ describe("usePestanas", () => {
     expect(p.lista).toHaveLength(MAX_PESTANAS);
   });
 
-  it("«Volver» desde la Bienvenida vuelve a la vista activa sin cambiar sus pestañas", async () => {
+  it("«Volver» desde la Bienvenida va al Árbol sin cambiar sus pestañas", async () => {
     const guardado = {
       lista: [
         { id: "a", ruta: "/" },
@@ -129,8 +129,8 @@ describe("usePestanas", () => {
     p.conectar(router, "C:/datos", "C:/datos/boldo.db");
     await router.replace("/bienvenida"); // al abrir en Inicio aún no se leyeron las pestañas
     await p.volverAlProyecto();
-    expect(rutaActual()).toBe("/directorio");
-    expect(p.activa).toBe("b");
+    expect(rutaActual()).toBe("/");
+    expect(p.activa).toBe("a");
     expect(rutas()).toEqual(["/", "/directorio"]);
   });
 
@@ -235,21 +235,21 @@ describe("usePestanas", () => {
     expect(p.activa).toBe(p.lista[0]!.id);
   });
 
-  it("volver al proyecto con una vista de paso abierta llega a donde estaba antes de abrirla, o al árbol", async () => {
+  it("volver al proyecto con una vista de paso abierta va al Árbol y no cierra la de paso", async () => {
     const p = await arrancar();
     await router.push("/directorio");
     await router.push("/ayuda");
     await router.push("/bienvenida");
     await p.volverAlProyecto();
-    expect(rutaActual()).toBe("/directorio");
-    expect(rutas()).toEqual(["/directorio"]);
+    expect(rutaActual()).toBe("/");
+    expect(rutas()).toEqual(["/ayuda", "/"]);
 
     p.abrirNueva("/ayuda"); // sin vista anterior en esa pestaña
     await esperar();
     await router.push("/bienvenida");
     await p.volverAlProyecto();
-    expect(rutaActual()).toBe("/");
-    expect(rutas()).toEqual(["/directorio", "/"]);
+    expect(rutaActual()).toBe("/"); // ya hay una del Árbol: no abre otra
+    expect(rutas()).toEqual(["/ayuda", "/", "/ayuda"]);
   });
 
   it("cerrar Ayuda abierta en una pestaña nueva vuelve al inicio de esa pestaña, nunca a una ruta de otra", async () => {

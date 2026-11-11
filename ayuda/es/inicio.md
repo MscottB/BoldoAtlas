@@ -31,7 +31,7 @@ Después puedes ajustar el nombre, el logo, el tema y el idioma en **Configuraci
 
 Cuando la base ya tiene datos, Inicio se ordena para que retomes el trabajo:
 
-- **Tu organización:** el nombre, los totales de **Unidades**, **Personas**, **Vacantes** y **Avisos de Revisión**, la fecha del **último respaldo** y el botón **Volver a mi organización**, que te lleva a la vista que estaba activa. Cada total abre su vista: las unidades, el **Árbol**; las personas, el **Directorio**; las vacantes y los avisos, **Revisión**.
+- **Tu organización:** el nombre, los totales de **Unidades**, **Personas**, **Vacantes** y **Avisos de Revisión**, la fecha del **último respaldo** y el botón **Volver a mi organización**, que te lleva al **Árbol** (tus otras pestañas siguen abiertas). Cada total abre su vista: las unidades, el **Árbol**; las personas, el **Directorio**; las vacantes y los avisos, **Revisión**.
 - **Abierto recientemente:** las organizaciones que abriste hace poco, la última primero y la abierta marcada **Abierta**. Aparece cuando tienes más de una. Un clic abre una, y su menú **⋮** ofrece **Quitar de la lista** y **Eliminar organización** (ver [Organizaciones](organizaciones.md)).
 - **Accesos rápidos:** **Buscar persona** (abre la paleta de comandos), **Importar/Exportar** y **Respaldos**.
 - **Crear o abrir otra organización:** **Crear organización**, **Abrir archivo…** y **Explorar el ejemplo**. Cada uno abre otra organización, aparte, en una pestaña nueva: la que tenías no cambia.
