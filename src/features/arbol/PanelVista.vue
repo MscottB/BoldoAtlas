@@ -118,13 +118,6 @@ const restablecer = () => (config.value = { ...leerVista(null), resaltar: config
         <input v-model="config.relacionesLaterales" type="checkbox" class="size-4 accent-primary" />
         {{ t("arbol.vista.relacionesLaterales") }}
       </label>
-      <label
-        v-if="config.relacionesLaterales && (org.conexiones.length || !config.lateralesPlegadas)"
-        class="flex items-center gap-2 pl-6"
-      >
-        <input v-model="config.lateralesPlegadas" type="checkbox" class="size-4 accent-primary" />
-        {{ t("arbol.vista.lateralesPlegadas") }}
-      </label>
       <label v-if="org.zonas.length || !config.zonas" class="flex items-center gap-2">
         <input v-model="config.zonas" type="checkbox" class="size-4 accent-primary" />
         {{ t("arbol.vista.zonas") }}
@@ -161,6 +154,19 @@ const restablecer = () => (config.value = { ...leerVista(null), resaltar: config
           <label class="flex items-center gap-2">
             <input v-model="config.alinearPorTipo" type="checkbox" class="size-4 accent-primary" />
             {{ t("arbol.vista.alinearPorTipo") }}
+          </label>
+          <label
+            v-if="org.conexiones.length || !config.lateralesPlegadas"
+            class="flex items-center gap-2"
+            :class="!config.relacionesLaterales && 'opacity-50'"
+          >
+            <input
+              v-model="config.lateralesPlegadas"
+              type="checkbox"
+              class="size-4 accent-primary"
+              :disabled="!config.relacionesLaterales"
+            />
+            {{ t("arbol.vista.lateralesPlegadas") }}
           </label>
           <fieldset
             class="grid gap-1.5"
