@@ -1,5 +1,6 @@
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { i18n } from "@/i18n";
+import { usePanel } from "@/features/pestanas/panel";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { unidadesDeRama } from "./layout";
@@ -18,6 +19,7 @@ export function useUbicar() {
   const router = useRouter();
   const org = useOrganizacion();
   const { revelarPuesto, puestosDePersona } = useLienzo();
+  const panel = usePanel();
 
   /**
    * En la pestaña activa (o en una nueva con `nueva`, como Ctrl+clic). Ya en el árbol y con la unidad dentro de la rama
@@ -40,8 +42,7 @@ export function useUbicar() {
     if (route.name === "arbol" && dentro) return revelarPuesto(p.id);
     // La pestaña restaura su estado guardado si vuelve a la misma ruta (viniendo de una vista que no guarda el suyo): esto
     // es saltar, no volver.
-    const pestanas = usePestanas();
-    pestanas.guardarEstado(pestanas.activa, "", null);
+    usePestanas().guardarEstado(panel.pestana(), "", null);
     void router.push(rutaPuesto(p));
     return { ok: true };
   }

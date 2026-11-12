@@ -16,6 +16,7 @@ import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { useOrganizaciones, type Motivo } from "@/stores/organizaciones";
+import { usePanel } from "./panel";
 import * as P from "./pestanas";
 
 /** Id del área central (el panel de las pestañas): recibe el foco si al cerrar una pestaña no queda barra. */
@@ -47,8 +48,20 @@ export const usePestanas = defineStore("pestanas", () => {
 
   const lista = computed(() => modelo.value.lista);
   const activa = computed(() => modelo.value.activa);
+  const lado = computed(() => modelo.value.lado);
+  const division = computed(() => modelo.value.division);
+  /** El panel del último clic o foco: ahí actúan la barra de pestañas y sus atajos. No se guarda. */
+  const conFoco = ref<P.Panel>("principal");
+  watch(lado, (l) => l || (conFoco.value = "principal"), { flush: "sync" });
   // sync: el estado que una vista guarda al cerrar la ventana alcanza a escribirse.
   watch(modelo, (m) => clave && guardarPreferencia(clave, m), { flush: "sync" });
+
+  const deLaAbierta = (id: string) => modelo.value.lista.find((x) => x.id === id)?.org === baseActual();
+  /** `id` al panel principal (ver `P.enPanel`); la activa de antes va al lado solo si sigue en la lista. */
+  function aPrincipal(m: P.Pestanas, id: string): P.Pestanas {
+    const n = P.enPanel(m, "principal", id);
+    return n.lado && !n.lista.some((x) => x.id === n.lado) ? P.sinLado(n) : n;
+  }
 
   /** Para otra organización solo mira la vista: sus unidades y personas no están cargadas. */
   function valida(ruta: string, org = baseActual()): boolean {
@@ -67,8 +80,9 @@ export const usePestanas = defineStore("pestanas", () => {
     // la activa puede no estar en la lista: se cerró mientras se llegaba a otra
     const de = (x?: P.Pestana) => x?.org === org;
     if (de(m.lista.find((x) => x.id === m.activa))) return m;
-    const suya = m.lista.find(de);
-    if (suya) return { ...m, activa: suya.id };
+    // Mejor una que no esté al lado; si es la única, deja de estarlo: la activa de antes no es de la abierta.
+    const suya = m.lista.find((x) => de(x) && x.id !== m.lado) ?? m.lista.find(de);
+    if (suya) return { ...m, activa: suya.id, lado: suya.id === m.lado ? null : m.lado };
     const id = nuevoId();
     // Con el tope lleno de otras se pasa por una, que `leerPestanas` admite. `abrir` de otra organización avisa en vez de
     // pasarse. shortcut: al arrancar con esa de más, en una tercera sin pestañas porque la última no abrió, habría 14 y al
@@ -154,11 +168,11 @@ export const usePestanas = defineStore("pestanas", () => {
         const ya =
           lista.find((p) => p.org === org && p.id === activa && p.ruta === to.fullPath) ??
           lista.find((p) => p.org === org && p.ruta === to.fullPath);
-        if (ya) modelo.value = { ...modelo.value, activa: ya.id };
+        if (ya) modelo.value = aPrincipal(modelo.value, ya.id);
         else if (esVistaCerrable(to.name) && !esVistaCerrable(r.resolve(anterior).name))
           cambios.volver = anterior;
       } else if (destino?.ruta === to.fullPath) {
-        modelo.value = { ...modelo.value, activa: destino.id };
+        modelo.value = aPrincipal(modelo.value, destino.id);
       } else if (!esVistaCerrable(to.name)) {
         cambios.volver = undefined;
       } else if (!esVistaCerrable(from.name)) {
@@ -223,7 +237,12 @@ export const usePestanas = defineStore("pestanas", () => {
     await enfocar(siempre);
   }
 
+  /** Muestra `id` en el panel con foco. Al lado solo va una de la abierta; con otra, el foco vuelve al principal. */
   function activar(id: string): Resultado {
+    if (conFoco.value === "lado") {
+      if (deLaAbierta(id)) return abrirAlLado(id);
+      conFoco.value = "principal";
+    }
     // Se compara con adónde se va, no con la activa de ahora. Un `abrir` o `eliminar` en curso o en espera no dice adónde: a la cola.
     const organizaciones = useOrganizaciones();
     const sinSaberAdonde = organizaciones.enCurso && (!pedida || organizaciones.hayEspera());
@@ -249,7 +268,41 @@ export const usePestanas = defineStore("pestanas", () => {
     const r = router.resolve(destino);
     if (!r.matched.length || r.meta.sinMarco) return { ok: false, mensaje: t("pestanas.noAbre") };
     const nueva = agregarNueva(r.fullPath);
-    if (nueva.ok) void ir(nueva.id!);
+    if (nueva.ok) {
+      if (conFoco.value === "lado") modelo.value = P.alLado(modelo.value, nueva.id!);
+      else void ir(nueva.id!);
+    }
+    return nueva;
+  }
+
+  /**
+   * Pone `id` al lado. Si es la activa, el panel principal primero llega a la que deja `alLado` (la de al lado, si hay),
+   * y la activa cambia al llegar. En esta entrega una de otra organización no va al lado.
+   */
+  function abrirAlLado(id: string): Resultado {
+    const noAbre = { ok: false as const, mensaje: t("pestanas.noAbre") };
+    if (!deLaAbierta(id)) return noAbre;
+    if (id !== activa.value) {
+      modelo.value = P.alLado(modelo.value, id);
+      return { ok: true };
+    }
+    const otra = P.alLado(modelo.value, id).activa;
+    // Con una sola pestaña no hay otra para el principal; con una de otra organización, el principal cambiaría de organización.
+    if (otra === id || !deLaAbierta(otra)) return noAbre;
+    void ir(otra).then(() => {
+      if (activa.value !== id && deLaAbierta(id)) modelo.value = P.alLado(modelo.value, id);
+    });
+    return { ok: true };
+  }
+
+  /** Abre al lado una pestaña nueva con la ruta de la activa; con la vista ya dividida, la cierra. */
+  function dividir(): Resultado {
+    if (modelo.value.lado) {
+      modelo.value = P.sinLado(modelo.value);
+      return { ok: true };
+    }
+    const nueva = agregarNueva(modelo.value.lista.find((x) => x.id === activa.value)?.ruta ?? P.RUTA_INICIO);
+    if (nueva.ok) modelo.value = P.alLado(modelo.value, nueva.id!);
     return nueva;
   }
 
@@ -262,7 +315,7 @@ export const usePestanas = defineStore("pestanas", () => {
       if (activa.value !== id) modelo.value = P.cerrar(modelo.value, id);
     } else {
       // el motivo queda en la vecina, para cuando se vaya a ella
-      modelo.value = { ...modelo.value, activa: id };
+      modelo.value = aPrincipal(modelo.value, id);
       const mensaje = r.ok ? motivo?.mensaje : r.mensaje;
       if (mensaje) toast.error(mensaje);
     }
@@ -286,7 +339,8 @@ export const usePestanas = defineStore("pestanas", () => {
     return { ok: true };
   }
 
-  function cerrar(id: string): Resultado {
+  /** Sin `id` (Ctrl+W), la del panel con foco; la X de una pestaña la nombra. */
+  function cerrar(id = (conFoco.value === "lado" && modelo.value.lado) || activa.value): Resultado {
     const motivo = useOrganizaciones().sinAbrir.get(id);
     if (motivo && id === activa.value) return cerrarSinAbrir(id, motivo);
     if (modelo.value.lista.length <= 1) return { ok: false, mensaje: t("pestanas.ultima") };
@@ -307,6 +361,9 @@ export const usePestanas = defineStore("pestanas", () => {
   return {
     lista,
     activa,
+    lado,
+    division,
+    conFoco,
     conectar,
     entrar,
     /** Desde la Bienvenida, al Árbol (las demás pestañas quedan como estaban). */
@@ -320,9 +377,36 @@ export const usePestanas = defineStore("pestanas", () => {
     activar,
     abrirNueva,
     cerrar,
-    /** Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1); con un cambio aún en curso, cuenta desde la pestaña a la que se va. */
+    abrirAlLado,
+    dividir,
+    /** Deja la pestaña de al lado en la barra como una más. */
+    cerrarDivision() {
+      modelo.value = P.sinLado(modelo.value);
+    },
+    orientar(o: P.Division["orientacion"]) {
+      modelo.value = { ...modelo.value, division: { ...modelo.value.division, orientacion: o } };
+    },
+    proporcion(p: number) {
+      modelo.value = P.conProporcion(modelo.value, p);
+    },
+    /** Sin vista dividida, el foco no pasa al lado. */
+    enfocarPanel(p: P.Panel) {
+      if (p === "principal" || modelo.value.lado) conFoco.value = p;
+    },
+    /** La escribe el router del panel de al lado al navegar. */
+    rutaDelLado(ruta: string) {
+      if (modelo.value.lado) modelo.value = P.cambiar(modelo.value, modelo.value.lado, { ruta });
+    },
+    /**
+     * Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1) en el panel con foco, saltando la del otro. En el principal, con un cambio aún
+     * en curso, cuenta desde la pestaña a la que se va.
+     */
     siguiente: (paso: 1 | -1) =>
-      activar(P.vecina({ ...modelo.value, activa: pedida ?? destino?.id ?? modelo.value.activa }, paso)),
+      activar(
+        conFoco.value === "lado"
+          ? P.vecina(modelo.value, paso, "lado")
+          : P.vecina({ ...modelo.value, activa: pedida ?? destino?.id ?? modelo.value.activa }, paso),
+      ),
     /** Las guardadas, si aún no se leyeron: lo que sigue parte de ellas y no de la pestaña inicial. */
     asegurarCargadas() {
       if (!cargadas) cargarGuardadas();
@@ -341,7 +425,7 @@ export const usePestanas = defineStore("pestanas", () => {
     },
     /** Activa sin navegar: la pestaña de una organización que no abrió, que muestra el motivo, o la del cambio en curso. */
     marcarActiva(id: string) {
-      modelo.value = { ...modelo.value, activa: id };
+      modelo.value = aPrincipal(modelo.value, id);
     },
     /** Ya cargada su organización: lo que nombra su ruta se puede comprobar. Si no existe, vuelve al inicio. */
     validarActivada(id: string) {
@@ -456,20 +540,21 @@ export function clicNuevaPestana(e: MouseEvent, destino: RouteLocationRaw): bool
 }
 
 /**
- * Para una vista: devuelve lo que guardó antes en esta pestaña para esta misma ruta (undefined si nada) y, al
- * desmontarse o cerrarse la ventana, guarda `leer()` en la pestaña donde se montó.
+ * Para una vista: devuelve lo que guardó antes en la pestaña de su panel para esta misma ruta (undefined si nada) y,
+ * al desmontarse o cerrarse la ventana, guarda `leer()` en la pestaña donde se montó.
  */
 export function useEstadoPestana(leer: () => unknown): unknown {
   const pestanas = usePestanas();
   const route = useRoute();
-  const id = pestanas.activa;
+  const panel = usePanel();
+  const id = panel.pestana();
   const nombre = route.name;
   // La ruta que esta vista muestra: al desmontarse, `route` ya es la siguiente (de esta u otra pestaña).
   let ruta = route.fullPath;
   watch(
     () => route.fullPath,
     (r) => {
-      if (route.name === nombre && pestanas.activa === id) ruta = r;
+      if (route.name === nombre && panel.pestana() === id) ruta = r;
     },
   );
   const guardar = () => pestanas.guardarEstado(id, ruta, leer());

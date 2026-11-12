@@ -96,7 +96,7 @@ export function useAtajos() {
       e.preventDefault();
       if (atajo === "nuevaPestana") abrirEnPestanaNueva(RUTA_INICIO);
       else if (atajo === "cerrarPestana")
-        pestanas.cerrar(pestanas.activa); // la última no se cierra, salvo si no abrió
+        pestanas.cerrar(); // la del panel con foco; la última no se cierra, salvo si no abrió
       else pestanas.siguiente(atajo === "pestanaSiguiente" ? 1 : -1);
       return;
     }
