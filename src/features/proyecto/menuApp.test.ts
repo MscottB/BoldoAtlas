@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Organizacion } from "@/db/cliente";
 import { entradasAbrirOtra, entradasComparar, rutaComparar } from "./menuApp";
+
+// localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
+vi.hoisted(() =>
+  vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }),
+);
 
 const org = (id: string): Organizacion =>
   ({ id, nombre: `Org ${id}`, color: "#112233", abierta: "2026-11-03" }) as Organizacion;

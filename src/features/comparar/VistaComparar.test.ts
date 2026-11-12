@@ -17,14 +17,27 @@ import DetalleComparado from "./DetalleComparado.vue";
 import VistaComparar from "./VistaComparar.vue";
 
 // localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
-vi.hoisted(() => vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }));
+vi.hoisted(() =>
+  vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }),
+);
 // Sin DOM: se renderiza en el servidor con el estado ya puesto. Lo que hace cada acción lo cubre comparar.test.ts.
 vi.mock("@/db/cliente", () => ({ listarOrganizaciones: vi.fn() }));
 // El diálogo de reka solo se abre en el navegador: aquí cada pieza deja ver lo que lleva dentro.
 vi.mock("@/components/ui/dialog", async () => {
   const { h: hh } = await import("vue");
-  const pasa = { setup: (_: unknown, { slots }: { slots: Slots }) => () => hh("div", slots.default?.()) };
-  return { Dialog: pasa, DialogContent: pasa, DialogDescription: pasa, DialogHeader: pasa, DialogTitle: pasa };
+  const pasa = {
+    setup:
+      (_: unknown, { slots }: { slots: Slots }) =>
+      () =>
+        hh("div", slots.default?.()),
+  };
+  return {
+    Dialog: pasa,
+    DialogContent: pasa,
+    DialogDescription: pasa,
+    DialogHeader: pasa,
+    DialogTitle: pasa,
+  };
 });
 const estado = vi.hoisted(() => ({ actual: null as unknown }));
 vi.mock("./comparar", async (original) => ({
@@ -135,8 +148,22 @@ describe("VistaComparar", () => {
     e.pagina.value = {
       total: 2,
       filas: [
-        { tabla: "unidades", id: "u1", nombre: "Finanzas", presencia: "solo_aqui", columnas: [], aproximada: false },
-        { tabla: "unidades", id: "u2", nombre: "Ventas", presencia: "difieren", columnas: ["nombre"], aproximada: true },
+        {
+          tabla: "unidades",
+          id: "u1",
+          nombre: "Finanzas",
+          presencia: "solo_aqui",
+          columnas: [],
+          aproximada: false,
+        },
+        {
+          tabla: "unidades",
+          id: "u2",
+          nombre: "Ventas",
+          presencia: "difieren",
+          columnas: ["nombre"],
+          aproximada: true,
+        },
       ],
     };
     const t = texto(await html(VistaComparar));

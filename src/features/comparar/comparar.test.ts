@@ -8,7 +8,9 @@ import { useOrganizaciones } from "@/stores/organizaciones";
 import { useComparar } from "./comparar";
 
 // localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
-vi.hoisted(() => vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }));
+vi.hoisted(() =>
+  vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }),
+);
 const c = vi.hoisted(() => ({
   compararOrganizaciones: vi.fn(),
   comparacionPagina: vi.fn(),
@@ -58,7 +60,11 @@ describe("useComparar", () => {
   it("con una organización que ya no está en la lista lo dice y no llama a Rust", async () => {
     const { cmp } = montar();
     const r = await cmp.comparar("Z");
-    expect(r).toEqual({ ok: false, codigo: "desconocido", mensaje: "Esa organización ya no está en la lista." });
+    expect(r).toEqual({
+      ok: false,
+      codigo: "desconocido",
+      mensaje: "Esa organización ya no está en la lista.",
+    });
     expect(c.compararOrganizaciones).not.toHaveBeenCalled();
   });
 
@@ -120,13 +126,21 @@ describe("useComparar", () => {
 
   it("verPagina y verDetalle dejan lo que dio Rust", async () => {
     const pagina = { filas: [], total: 0 };
-    const detalle = { campos: [], puestosAqui: [], puestosAlla: [], actualizadaAqui: null, actualizadaAlla: null };
+    const detalle = {
+      campos: [],
+      puestosAqui: [],
+      puestosAlla: [],
+      actualizadaAqui: null,
+      actualizadaAlla: null,
+    };
     c.comparacionPagina.mockResolvedValue(pagina);
     c.comparacionDetalle.mockResolvedValue(detalle);
     const { cmp } = montar();
-    expect(await cmp.verPagina({ tabla: "unidades", presencia: "difieren", desde: 50, cuantos: 50 })).toEqual({
-      ok: true,
-    });
+    expect(await cmp.verPagina({ tabla: "unidades", presencia: "difieren", desde: 50, cuantos: 50 })).toEqual(
+      {
+        ok: true,
+      },
+    );
     expect(cmp.pagina.value).toEqual(pagina);
     expect(await cmp.verDetalle("unidades", "u1")).toEqual({ ok: true });
     expect(c.comparacionDetalle).toHaveBeenCalledWith("unidades", "u1");

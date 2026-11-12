@@ -115,5 +115,17 @@ export function useComparar() {
   }
   onScopeDispose(() => void cerrar());
 
-  return { resumen, pagina, detalle, cargando, vencida, trabajo, comparar, cancelar, verPagina, verDetalle, cerrar };
+  return {
+    resumen,
+    pagina,
+    detalle,
+    cargando,
+    vencida,
+    trabajo,
+    comparar,
+    cancelar,
+    verPagina,
+    verDetalle,
+    cerrar,
+  };
 }
