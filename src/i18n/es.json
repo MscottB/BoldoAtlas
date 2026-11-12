@@ -1091,6 +1091,8 @@
       "contenido_invalido_journal": "El archivo tiene una transacción sin terminar (un archivo -journal a su lado) y no se abrió. Mantén los dos juntos: hacen falta para recuperar los datos. Si esta organización ya está en tu lista, búscalo de nuevo para recuperarlo.",
       "contenido_invalido_enlace": "Este archivo es un enlace a otro. No se borró nada: desmarca «Borrar también el archivo» para sacarlo de la lista.",
       "muy_pesado": "El archivo pesa más de lo que BoldoAtlas admite. No se cambió nada.",
+      "misma": "No puedes comparar una organización consigo misma.",
+      "comparacion_vencida": "Esta comparación ya no vale. Compara de nuevo.",
       "fallo": "No se pudo completar la operación: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",

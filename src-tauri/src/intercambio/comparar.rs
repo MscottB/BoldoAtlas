@@ -88,6 +88,8 @@ pub struct Comparacion {
     pub rivales: HashMap<String, String>,
     /// Filas iguales en los dos lados.
     pub iguales: u64,
+    /// De esas, las vivas, por tabla: lo borrado en los dos no se ve en ningún lado.
+    pub iguales_vivas: HashMap<&'static str, u64>,
     /// Personas de una copia parcial que viajan resumidas: ver `resumidas_de`.
     pub resumidas: HashSet<String>,
     /// Filas vivas de esta base, para saber qué parte de ella se borraría.
@@ -506,6 +508,9 @@ impl Contexto<'_> {
         );
         let Some(clase) = clase else {
             s.iguales += 1;
+            if mia[i_borr] == Value::Null {
+                *s.iguales_vivas.entry(tabla).or_default() += 1;
+            }
             return Ok(());
         };
         s.casos.push(Caso {
@@ -534,8 +539,6 @@ pub fn comparar(
 }
 
 /// Como `comparar`, y además lista lo vivo que solo está en `local` (`solo_aqui`).
-// Aún sin quien la llame: la usa Comparar organizaciones en las tareas siguientes; quitar el allow entonces.
-#[allow(dead_code)]
 pub fn comparar_con_locales(
     local: &Connection,
     imp: &Connection,

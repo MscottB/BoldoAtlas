@@ -6,6 +6,8 @@ const esCheck = (t: string) => t.includes("CHECK constraint failed");
 const reglas: [(texto: string) => boolean, string][] = [
   [(t) => t === "sin_espacio", "errores.sinEspacio"],
   [(t) => t === "otra_base", "respaldos.error.otra_base"],
+  [(t) => t === "misma", "respaldos.error.misma"],
+  [(t) => t === "comparacion_vencida", "respaldos.error.comparacion_vencida"],
   [(t) => t.includes("ux_trabajadores_correo"), "errores.correoDuplicado"],
   [(t) => t.includes("ux_etiquetas_nombre"), "errores.etiquetaDuplicada"],
   [(t) => t.includes("ux_zonas_nombre"), "errores.zonaDuplicada"],

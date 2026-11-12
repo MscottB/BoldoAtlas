@@ -1091,6 +1091,8 @@
       "contenido_invalido_journal": "The file has an unfinished transaction (a -journal file next to it) and wasn't opened. Keep the two together: both are needed to recover the data. If this organization is already on your list, locate it again to recover it.",
       "contenido_invalido_enlace": "This file is a link to another one. Nothing was deleted: clear “Also delete the file” to take it off the list.",
       "muy_pesado": "The file is larger than BoldoAtlas allows. Nothing was changed.",
+      "misma": "You can't compare an organization with itself.",
+      "comparacion_vencida": "This comparison is out of date. Compare again.",
       "fallo": "The operation could not be completed: {detalle}"
     },
     "ultimo": "Last backup: {fecha}",

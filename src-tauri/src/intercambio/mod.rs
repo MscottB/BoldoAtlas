@@ -70,7 +70,7 @@ struct EstadoSesion {
 }
 
 /// Cancelados que se recuerdan, por si su comando aún no empieza.
-const CANCELADOS_RECORDADOS: usize = 16;
+pub(crate) const CANCELADOS_RECORDADOS: usize = 16;
 
 /// Lo que hay entre un paso y el siguiente del asistente, de un solo trabajo a la vez. El identificador lo pone la
 /// interfaz: «Guardar» y «Aplicar» solo valen para lo que se revisó, y lo que termina tarde, ya cancelado o reemplazado

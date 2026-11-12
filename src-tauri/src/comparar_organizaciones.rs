@@ -1,19 +1,22 @@
 //! La otra organización de una comparación, en un temporal: lo que se reescriba después nunca toca su archivo.
-// Lo usa el comando de comparar (tarea 4 del plan).
-#![cfg_attr(not(test), expect(dead_code))]
 use crate::intercambio::{
-    Temporal,
-    comparar::tablas,
-    fusion::{describir, normalizar_nombre},
+    CANCELADOS_RECORDADOS, Temporal, ahora,
+    comparar::{TipoCaso, comparable, comparar_con_locales, iguales, leer_fila, posicion, tablas},
+    fusion::{Tabla, describir, normalizar_nombre},
+    revision::{CampoDetalle, MAX_PAGINA, fecha_mostrable, nombre_en, valor_campo},
     validar::{
-        abrir_no_confiable, migrar_temporal, solo_lectura, solo_lectura_cerrada, version_y_esquema,
+        MetaArchivo, abrir_no_confiable, migrar_temporal, solo_lectura, solo_lectura_cerrada,
+        version_y_esquema,
     },
 };
 use crate::organizaciones::{Entrada, base_de, esta_su_archivo, id_del_archivo};
 use crate::respaldos::Fallo;
 use crate::rutas::Rutas;
+use rusqlite::types::Value;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
-use std::collections::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::sync::{Mutex, MutexGuard};
 
 #[derive(Debug)]
 pub struct Copia {
@@ -187,15 +190,17 @@ pub fn emparejar(abierta: &Connection, copia: &Copia) -> Result<Emparejadas, Fal
         &aqui,
         &alla,
         |f| {
+            // con el mismo separador: `normalizar_nombre` deja la `/`, y una raíz «Gerencia/Finanzas» no es Gerencia → Finanzas
             f.b.as_deref().map(|r| {
                 r.split('\u{1f}')
                     .map(normalizar_nombre)
                     .collect::<Vec<_>>()
-                    .join("/")
+                    .join("\u{1f}")
             })
         },
         &mut unidades,
     );
+    // único entre todas las vivas de cada lado, no solo entre las que sobran: así nunca se cruzan gerencias por azar
     por_clave(
         &aqui,
         &alla,
@@ -297,6 +302,403 @@ fn reescribir(c: &mut Connection, mapa: &[(&str, String, String)]) -> Result<(),
     }
     tx.commit()?;
     Ok(())
+}
+
+/// Lo único que se muestra (decisión 6): los catálogos se comparan para unir por nombre, y el resto conserva ids al azar
+/// en modo aproximado, así que dos organizaciones iguales se verían distintas.
+const RESUMIDAS: [&str; 3] = ["unidades", "trabajadores", "puestos"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Presencia {
+    SoloAqui,
+    SoloAlla,
+    Difieren,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Grupo {
+    pub tabla: &'static str,
+    pub solo_aqui: u64,
+    pub solo_alla: u64,
+    pub difieren: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResumenComparacion {
+    /// El id de la otra organización.
+    pub otra: String,
+    pub aproximada: bool,
+    pub sin_correo: u64,
+    pub grupos: Vec<Grupo>,
+    pub iguales: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FiltroComparacion {
+    pub tabla: Option<String>,
+    pub presencia: Option<Presencia>,
+    pub desde: usize,
+    pub cuantos: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FilaComparada {
+    pub tabla: &'static str,
+    pub id: String,
+    /// Se calcula solo para la página que se pide.
+    pub nombre: String,
+    pub presencia: Presencia,
+    pub columnas: Vec<String>,
+    /// Emparejada por nombre o correo, no por `id`.
+    pub aproximada: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PaginaComparada {
+    pub filas: Vec<FilaComparada>,
+    pub total: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DetalleComparado {
+    /// `mio` es la abierta y `archivo` la otra.
+    pub campos: Vec<CampoDetalle>,
+    pub puestos_aqui: Vec<String>,
+    pub puestos_alla: Vec<String>,
+    pub actualizada_aqui: Option<String>,
+    pub actualizada_alla: Option<String>,
+}
+
+/// Una comparación lista: su temporal vive lo que vive ella.
+pub struct Activa {
+    base: String,
+    copia: Copia,
+    filas: Vec<FilaComparada>,
+    resumen: ResumenComparacion,
+}
+
+/// Los puestos vigentes de cada persona viva. Vigente como en `comparar::resumidas_de`: ya empezó, y sin fin o con un fin que
+/// aún no llega.
+fn vigentes(
+    c: &Connection,
+    persona: Option<&str>,
+) -> Result<HashMap<String, BTreeSet<String>>, Fallo> {
+    let mut consulta = c.prepare(
+        "SELECT t.id, a.puesto_id FROM trabajadores t
+         LEFT JOIN asignaciones a ON a.trabajador_id = t.id AND a.deleted_at IS NULL
+           AND a.desde <= date('now', 'localtime') AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime'))
+           AND a.puesto_id IN (SELECT id FROM puestos WHERE deleted_at IS NULL)
+         WHERE t.deleted_at IS NULL AND (?1 IS NULL OR t.id = ?1)",
+    )?;
+    let mut filas = consulta.query([persona])?;
+    let mut m: HashMap<String, BTreeSet<String>> = HashMap::new();
+    while let Some(f) = filas.next()? {
+        let puestos = m.entry(f.get(0)?).or_default();
+        puestos.extend(f.get::<_, Option<String>>(1)?);
+    }
+    Ok(m)
+}
+
+/// Compara la abierta con la copia, por `id` o, si no se relacionan, tras emparejar. No escribe en la abierta.
+pub fn comparar(
+    abierta: &Connection,
+    base: &str,
+    copia: Copia,
+    seguir: impl FnMut(u64, u64) -> bool,
+) -> Result<Activa, Fallo> {
+    let aproximada = !relacionadas(abierta, &copia)?;
+    let emparejadas = if aproximada {
+        emparejar(abierta, &copia)?
+    } else {
+        Emparejadas::default()
+    };
+    let otra = leer(&copia)?;
+    let meta = MetaArchivo {
+        parcial: false,
+        ramas: vec![],
+        organizacion: String::new(),
+        origen: copia.origen.clone(),
+    };
+    let c = comparar_con_locales(abierta, &otra, &meta, &ahora(abierta)?, seguir)?;
+    let mut esquema = HashMap::new();
+    for tabla in RESUMIDAS {
+        esquema.insert(tabla, describir(&otra, tabla)?);
+    }
+
+    // decisión 5: quien está en los dos con otros puestos vigentes también difiere
+    let alla = vigentes(&otra, None)?;
+    let mut en_otro_puesto: HashSet<String> = vigentes(abierta, None)?
+        .into_iter()
+        .filter(|(id, p)| alla.get(id).is_some_and(|q| q != p))
+        .map(|(id, _)| id)
+        .collect();
+
+    let mut filas = Vec::new();
+    let mut fila = |tabla, id: String, presencia, columnas| {
+        filas.push(FilaComparada {
+            tabla,
+            aproximada: emparejadas.ids.contains(&id),
+            id,
+            nombre: String::new(),
+            presencia,
+            columnas,
+        })
+    };
+    for (tabla, id) in c.solo_aqui {
+        if RESUMIDAS.contains(&tabla) {
+            fila(tabla, id, Presencia::SoloAqui, Vec::new());
+        }
+    }
+    for k in c.casos.into_iter().filter(|k| RESUMIDAS.contains(&k.tabla)) {
+        // borrada en un lado y viva en el otro es «solo en» la que la tiene viva (decisión 6)
+        let presencia = match k.tipo {
+            TipoCaso::Diferente => Presencia::Difieren,
+            TipoCaso::BorradoVsEditado | TipoCaso::BorradoSinConflicto if !k.borrado_aqui => {
+                Presencia::SoloAqui
+            }
+            TipoCaso::Nuevo
+            | TipoCaso::DuplicadoPersona
+            | TipoCaso::BorradoVsEditado
+            | TipoCaso::BorradoSinConflicto => Presencia::SoloAlla,
+            TipoCaso::Union | TipoCaso::Desactivado => continue,
+        };
+        let mut columnas = Vec::new();
+        if presencia == Presencia::Difieren {
+            let d = esquema.get(k.tabla).ok_or("tabla")?;
+            columnas = d
+                .columnas
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| k.columnas & (1 << i) != 0)
+                .map(|(_, c)| c.clone())
+                .collect();
+            if k.tabla == "trabajadores" && en_otro_puesto.remove(&k.id) {
+                columnas.push("puestos".into());
+            }
+        }
+        fila(k.tabla, k.id, presencia, columnas);
+    }
+    // el resto tenía los mismos datos: `comparar` las contó como iguales
+    let solo_de_puesto = en_otro_puesto.len() as u64;
+    for id in en_otro_puesto {
+        fila(
+            "trabajadores",
+            id,
+            Presencia::Difieren,
+            vec!["puestos".into()],
+        );
+    }
+    filas.sort_by(|a, b| (posicion(a.tabla), &a.id).cmp(&(posicion(b.tabla), &b.id)));
+
+    let grupos = RESUMIDAS
+        .into_iter()
+        .map(|tabla| {
+            let n = |p| {
+                filas
+                    .iter()
+                    .filter(|f| f.tabla == tabla && f.presencia == p)
+                    .count() as u64
+            };
+            Grupo {
+                tabla,
+                solo_aqui: n(Presencia::SoloAqui),
+                solo_alla: n(Presencia::SoloAlla),
+                difieren: n(Presencia::Difieren),
+            }
+        })
+        .collect();
+    let iguales = RESUMIDAS
+        .iter()
+        .filter_map(|t| c.iguales_vivas.get(t))
+        .sum::<u64>()
+        - solo_de_puesto;
+    let resumen = ResumenComparacion {
+        otra: copia.id.clone(),
+        aproximada,
+        sin_correo: emparejadas.sin_correo,
+        grupos,
+        iguales,
+    };
+    Ok(Activa {
+        base: base.to_string(),
+        copia,
+        filas,
+        resumen,
+    })
+}
+
+/// Una comparación a la vez (decisión 7), aparte de `Sesiones`: empezar una no suelta una importación en curso.
+#[derive(Default)]
+pub struct Comparaciones {
+    activa: Mutex<Option<Activa>>,
+    /// Como en `Sesiones`: el cancelar puede llegar antes que su comando, y gana.
+    cancelados: Mutex<VecDeque<String>>,
+}
+
+fn vencida() -> Fallo {
+    Fallo::de("comparacion_vencida", "")
+}
+
+impl Comparaciones {
+    fn activa(&self) -> MutexGuard<'_, Option<Activa>> {
+        self.activa.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    fn cancelados(&self) -> MutexGuard<'_, VecDeque<String>> {
+        self.cancelados.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    pub fn sigue(&self, trabajo: &str) -> bool {
+        !self.cancelados().iter().any(|c| c == trabajo)
+    }
+
+    pub fn cancelar(&self, trabajo: &str) {
+        let mut c = self.cancelados();
+        if c.len() == CANCELADOS_RECORDADOS {
+            c.pop_front();
+        }
+        c.push_back(trabajo.to_string());
+    }
+
+    /// Suelta la comparación y borra su temporal.
+    pub fn cerrar(&self) {
+        *self.activa() = None;
+    }
+
+    /// La suelta si su base ya no es la abierta o si `eliminada` es la otra.
+    pub fn soltar_vencida(&self, abierta: Option<&str>, eliminada: Option<&str>) {
+        let mut g = self.activa();
+        if g.as_ref().is_some_and(|a| {
+            abierta != Some(a.base.as_str()) || eliminada == Some(a.copia.id.as_str())
+        }) {
+            *g = None;
+        }
+    }
+
+    /// Reemplaza la anterior, salvo que este trabajo se haya cancelado.
+    pub fn guardar(&self, trabajo: &str, a: Activa) -> Result<ResumenComparacion, Fallo> {
+        if !self.sigue(trabajo) {
+            return Err(Fallo::de("cancelado", ""));
+        }
+        let resumen = a.resumen.clone();
+        *self.activa() = Some(a);
+        Ok(resumen)
+    }
+
+    pub fn pagina(
+        &self,
+        abierta: &Connection,
+        base: &str,
+        f: &FiltroComparacion,
+    ) -> Result<PaginaComparada, Fallo> {
+        let g = self.activa();
+        let a = g.as_ref().filter(|a| a.base == base).ok_or_else(vencida)?;
+        let otra = leer(&a.copia)?;
+        let vale = |x: &&FilaComparada| {
+            f.tabla.as_deref().is_none_or(|t| t == x.tabla)
+                && f.presencia.is_none_or(|p| p == x.presencia)
+        };
+        let total = a.filas.iter().filter(vale).count();
+        let filas = a
+            .filas
+            .iter()
+            .filter(vale)
+            .skip(f.desde)
+            .take(f.cuantos.min(MAX_PAGINA))
+            .map(|x| {
+                let (primero, si_no) = if x.presencia == Presencia::SoloAlla {
+                    (&otra, abierta)
+                } else {
+                    (abierta, &otra)
+                };
+                let nombre = match nombre_en(primero, x.tabla, &x.id)? {
+                    Some(n) => n,
+                    None => nombre_en(si_no, x.tabla, &x.id)?.unwrap_or_default(),
+                };
+                Ok(FilaComparada {
+                    nombre,
+                    ..x.clone()
+                })
+            })
+            .collect::<Result<_, Fallo>>()?;
+        Ok(PaginaComparada { filas, total })
+    }
+
+    pub fn detalle(
+        &self,
+        abierta: &Connection,
+        base: &str,
+        tabla: &str,
+        id: &str,
+    ) -> Result<DetalleComparado, Fallo> {
+        let g = self.activa();
+        let a = g.as_ref().filter(|a| a.base == base).ok_or_else(vencida)?;
+        let x = a
+            .filas
+            .iter()
+            .find(|x| x.tabla == tabla && x.id == id)
+            .ok_or_else(|| Fallo::de("desconocido", ""))?;
+        let otra = leer(&a.copia)?;
+        let d: Tabla = describir(&otra, x.tabla)?;
+        let i_baja = d
+            .columnas
+            .iter()
+            .position(|c| c == "deleted_at")
+            .ok_or("deleted_at")?;
+        // lo borrado en un lado no está ahí
+        let viva = |c: &Connection| -> Result<Option<Vec<Value>>, Fallo> {
+            Ok(leer_fila(c, x.tabla, &d, id)?.filter(|f| f[i_baja] == Value::Null))
+        };
+        let (aqui, alla) = (viva(abierta)?, viva(&otra)?);
+        let vacia = vec![Value::Null; d.columnas.len()];
+        let (m, o) = (
+            aqui.as_deref().unwrap_or(&vacia),
+            alla.as_deref().unwrap_or(&vacia),
+        );
+        let mut campos = Vec::new();
+        for (i, col) in d.columnas.iter().enumerate() {
+            // de una que difiere, lo que vio `comparar`: un catálogo con otro id y el mismo nombre no es una diferencia
+            let distinto = if x.presencia == Presencia::Difieren {
+                x.columnas.contains(col)
+            } else {
+                comparable(col) && !iguales(&m[i], &o[i])
+            };
+            if distinto {
+                campos.push(CampoDetalle {
+                    columna: col.clone(),
+                    mio: valor_campo(abierta, &otra, &d, i, m)?,
+                    archivo: valor_campo(&otra, abierta, &d, i, o)?,
+                    distinto,
+                    del_archivo: false,
+                });
+            }
+        }
+        let puestos = |c: &Connection| -> Result<Vec<String>, Fallo> {
+            if x.tabla != "trabajadores" {
+                return Ok(Vec::new());
+            }
+            let mut nombres = vigentes(c, Some(id))?
+                .into_values()
+                .flatten()
+                .map(|p| Ok(nombre_en(c, "puestos", &p)?.unwrap_or_default()))
+                .collect::<Result<Vec<_>, Fallo>>()?;
+            nombres.sort();
+            Ok(nombres)
+        };
+        Ok(DetalleComparado {
+            campos,
+            puestos_aqui: puestos(abierta)?,
+            puestos_alla: puestos(&otra)?,
+            actualizada_aqui: fecha_mostrable(&d, aqui.as_deref(), "updated_at"),
+            actualizada_alla: fecha_mostrable(&d, alla.as_deref(), "updated_at"),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -484,12 +886,26 @@ mod tests {
 
     /// La abierta, con las filas de `aqui`, y la copia de otra con las de `alla`.
     fn par(r: &Rutas, aqui: &str, alla: &str) -> (Connection, Copia) {
+        par_con(r, aqui, alla, false)
+    }
+
+    /// Como `par`; `por_id`: la otra es una importación de la abierta, y se comparan por `id`.
+    fn par_con(r: &Rutas, aqui: &str, alla: &str, por_id: bool) -> (Connection, Copia) {
         let bd = r.datos.join("abierta.db");
         crear(&bd, "Abierta", MIGRACIONES);
         let abierta = db::abrir(&bd).unwrap();
         abierta.execute_batch(aqui).unwrap();
         let (e, bd_otra) = otra(r, MIGRACIONES);
-        db::abrir(&bd_otra).unwrap().execute_batch(alla).unwrap();
+        let c = db::abrir(&bd_otra).unwrap();
+        c.execute_batch(alla).unwrap();
+        if por_id {
+            c.execute(
+                "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('origen_db_id', ?1)",
+                [id_del_archivo(&abierta).unwrap().unwrap()],
+            )
+            .unwrap();
+        }
+        drop(c);
         (abierta, copiar(r, &e).unwrap())
     }
 
@@ -828,5 +1244,290 @@ mod tests {
             .collect();
         assert!(solo.is_empty(), "{solo:?}");
         assert!(c.iguales >= 7 + 8 + 9, "{}", c.iguales);
+    }
+
+    #[test]
+    fn una_barra_en_el_nombre_no_es_una_ruta() {
+        let aqui = unidad("a-gf", "Gerencia/Finanzas", None);
+        let alla = [
+            unidad("b-ger", "Gerencia", None),
+            unidad("b-fin", "Finanzas", Some("b-ger")),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par(&r, &aqui, &alla);
+        assert!(emparejar(&abierta, &copia).unwrap().ids.is_empty());
+    }
+
+    const BASE: &str = "la-abierta";
+
+    fn todo() -> FiltroComparacion {
+        FiltroComparacion {
+            tabla: None,
+            presencia: None,
+            desde: 0,
+            cuantos: MAX_PAGINA,
+        }
+    }
+
+    /// Compara el par y deja el resultado guardado, como el comando.
+    fn comparada(abierta: &Connection, copia: Copia) -> (Comparaciones, ResumenComparacion) {
+        let k = Comparaciones::default();
+        let resumen = k
+            .guardar("t", comparar(abierta, BASE, copia, |_, _| true).unwrap())
+            .unwrap();
+        (k, resumen)
+    }
+
+    fn filas_de(k: &Comparaciones, abierta: &Connection) -> Vec<FilaComparada> {
+        k.pagina(abierta, BASE, &todo()).unwrap().filas
+    }
+
+    #[test]
+    fn resumen_cuenta_por_tabla_y_estado() {
+        let comun = [
+            unidad("u-fin", "Finanzas", None),
+            cargo("c-ana", "Analista"),
+        ]
+        .concat();
+        let aqui = [
+            comun.clone(),
+            unidad("u-sola", "Legal", None),
+            puesto("p1", "u-fin", "c-ana"),
+        ]
+        .concat();
+        let alla = [
+            comun,
+            persona("t-1", "Ana", None),
+            persona("t-2", "Beto", None),
+            puesto("p1", "u-fin", "c-ana"),
+            "UPDATE puestos SET descripcion = 'otra' WHERE id = 'p1';".into(),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par_con(&r, &aqui, &alla, true);
+        let (k, resumen) = comparada(&abierta, copia);
+        assert!(!resumen.aproximada);
+        assert_eq!(resumen.sin_correo, 0);
+        let grupo = |tabla, solo_aqui, solo_alla, difieren| Grupo {
+            tabla,
+            solo_aqui,
+            solo_alla,
+            difieren,
+        };
+        assert_eq!(
+            resumen.grupos,
+            [
+                grupo("unidades", 1, 0, 0),
+                grupo("trabajadores", 0, 2, 0),
+                grupo("puestos", 0, 0, 1),
+            ]
+        );
+        // solo `u-fin`: el cargo y los tipos sembrados también son iguales, pero son catálogos
+        assert_eq!(resumen.iguales, 1);
+        let filas = filas_de(&k, &abierta);
+        let p = filas.iter().find(|f| f.tabla == "puestos").unwrap();
+        assert_eq!(
+            (p.presencia, p.columnas.as_slice(), p.nombre.as_str()),
+            (
+                Presencia::Difieren,
+                ["descripcion".to_string()].as_slice(),
+                "Analista · Finanzas"
+            )
+        );
+    }
+
+    #[test]
+    fn borrada_en_un_lado_cuenta_solo_en_el_otro() {
+        let borrar = |id: &str| {
+            format!(
+                "UPDATE unidades SET deleted_at = '2026-11-02T12:00:00.000Z' WHERE id = '{id}';"
+            )
+        };
+        let aqui = [
+            unidad("u-a", "Legal", None),
+            borrar("u-a"),
+            unidad("u-b", "Ventas", None),
+        ]
+        .concat();
+        let alla = [
+            unidad("u-a", "Legal", None),
+            unidad("u-b", "Ventas", None),
+            borrar("u-b"),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par_con(&r, &aqui, &alla, true);
+        let (k, _) = comparada(&abierta, copia);
+        let presencias: Vec<_> = filas_de(&k, &abierta)
+            .into_iter()
+            .map(|f| (f.id, f.presencia))
+            .collect();
+        assert_eq!(
+            presencias,
+            [
+                ("u-a".to_string(), Presencia::SoloAlla),
+                ("u-b".to_string(), Presencia::SoloAqui)
+            ]
+        );
+    }
+
+    #[test]
+    fn persona_en_otro_puesto_difiere() {
+        let comun = [
+            unidad("u-fin", "Finanzas", None),
+            cargo("c-ana", "Analista"),
+            cargo("c-jef", "Jefe"),
+            puesto("p-ana", "u-fin", "c-ana"),
+            puesto("p-jef", "u-fin", "c-jef"),
+            puesto("p-beto", "u-fin", "c-ana"),
+            persona("t-ana", "Ana", Some("ana@x.cl")),
+            persona("t-beto", "Beto", Some("beto@x.cl")),
+        ]
+        .concat();
+        // Beto difiere en un campo y también de puesto: es una sola fila
+        let aqui = [
+            comun.clone(),
+            asignacion("s-1", "p-ana", "t-ana"),
+            asignacion("s-3", "p-beto", "t-beto"),
+        ]
+        .concat();
+        let alla = [
+            comun,
+            asignacion("s-2", "p-jef", "t-ana"),
+            "UPDATE trabajadores SET telefono = '123' WHERE id = 't-beto';".into(),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par_con(&r, &aqui, &alla, true);
+        let (k, resumen) = comparada(&abierta, copia);
+        let personas: Vec<_> = filas_de(&k, &abierta)
+            .into_iter()
+            .filter(|f| f.tabla == "trabajadores")
+            .map(|f| (f.id, f.presencia, f.columnas))
+            .collect();
+        let s = |v: &[&str]| v.iter().map(|c| c.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            personas,
+            [
+                ("t-ana".to_string(), Presencia::Difieren, s(&["puestos"])),
+                (
+                    "t-beto".to_string(),
+                    Presencia::Difieren,
+                    s(&["telefono", "puestos"])
+                ),
+            ]
+        );
+        // la unidad y los tres puestos; ninguna persona
+        assert_eq!(resumen.iguales, 4);
+        let d = k.detalle(&abierta, BASE, "trabajadores", "t-ana").unwrap();
+        assert!(d.campos.is_empty());
+        assert_eq!(d.puestos_aqui, ["Analista · Finanzas"]);
+        assert_eq!(d.puestos_alla, ["Jefe · Finanzas"]);
+    }
+
+    #[test]
+    fn detalle_muestra_referencias_por_nombre() {
+        let aqui = unidad("u-fin", "Finanzas", None);
+        let alla = [
+            unidad("u-fin", "Finanzas", None),
+            "UPDATE unidades SET tipo_id = '00000000-0000-7000-8000-000000000002' WHERE id = 'u-fin';"
+                .into(),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par_con(&r, &aqui, &alla, true);
+        let (k, _) = comparada(&abierta, copia);
+        let d = k.detalle(&abierta, BASE, "unidades", "u-fin").unwrap();
+        let campos: Vec<_> = d
+            .campos
+            .iter()
+            .map(|c| {
+                (
+                    c.columna.as_str(),
+                    c.mio.texto.as_deref(),
+                    c.archivo.texto.as_deref(),
+                )
+            })
+            .collect();
+        assert_eq!(campos, [("tipo_id", Some("Gerencia"), Some("Área"))]);
+        assert_eq!(d.actualizada_aqui.as_deref(), Some(FECHA));
+        assert_eq!(d.actualizada_alla.as_deref(), Some(FECHA));
+        assert!(d.puestos_aqui.is_empty() && d.puestos_alla.is_empty());
+    }
+
+    #[test]
+    fn filas_aproximadas_se_marcan() {
+        let aqui = [
+            unidad("a-fin", "Finanzas", None),
+            unidad("comun", "Legal", None),
+            unidad("a-sola", "Ventas", None),
+        ]
+        .concat();
+        let alla = [
+            unidad("b-fin", "Finanzas", None),
+            unidad("comun", "Legal", None),
+            "UPDATE unidades SET descripcion = 'otra';".into(),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par(&r, &aqui, &alla);
+        let (k, resumen) = comparada(&abierta, copia);
+        assert!(resumen.aproximada);
+        let marcas: Vec<_> = filas_de(&k, &abierta)
+            .into_iter()
+            .map(|f| (f.id, f.presencia, f.aproximada))
+            .collect();
+        assert_eq!(
+            marcas,
+            [
+                ("a-fin".to_string(), Presencia::Difieren, true),
+                ("a-sola".to_string(), Presencia::SoloAqui, false),
+                ("comun".to_string(), Presencia::Difieren, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn pagina_respeta_el_tope() {
+        let aqui: String = (0..250)
+            .map(|i| unidad(&format!("u-{i:03}"), &format!("U{i}"), None))
+            .collect();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par_con(&r, &aqui, "", true);
+        let (k, _) = comparada(&abierta, copia);
+        let pedir = |desde, presencia| {
+            k.pagina(
+                &abierta,
+                BASE,
+                &FiltroComparacion {
+                    tabla: Some("unidades".into()),
+                    presencia: Some(presencia),
+                    desde,
+                    cuantos: 10_000,
+                },
+            )
+            .unwrap()
+        };
+        let p = pedir(0, Presencia::SoloAqui);
+        assert_eq!((p.filas.len(), p.total), (MAX_PAGINA, 250));
+        assert_eq!(p.filas[0].nombre, "U0");
+        assert_eq!(pedir(200, Presencia::SoloAqui).filas.len(), 50);
+        assert_eq!(pedir(0, Presencia::SoloAlla).total, 0);
+    }
+
+    #[test]
+    fn deja_de_valer_con_otra_base_o_sin_la_otra() {
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par(&r, &unidad("u", "Legal", None), "");
+        let (otra_id, temporal) = (copia.id.clone(), copia.temporal.ruta().to_path_buf());
+        let (k, _) = comparada(&abierta, copia);
+        let vencida = |base| k.pagina(&abierta, base, &todo()).unwrap_err().codigo;
+        assert_eq!(vencida("otra"), "comparacion_vencida");
+        k.soltar_vencida(Some(BASE), Some("una-cualquiera"));
+        assert_eq!(filas_de(&k, &abierta).len(), 1);
+        k.soltar_vencida(Some(BASE), Some(&otra_id));
+        assert_eq!(vencida(BASE), "comparacion_vencida");
+        assert!(!temporal.exists());
     }
 }

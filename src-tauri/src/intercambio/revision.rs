@@ -19,7 +19,7 @@ use std::path::Path;
 
 /// Tope de lo que se muestra de un texto y de una página: un archivo puede traer campos enormes dentro de sus topes.
 const MAX_TEXTO: usize = 1000;
-const MAX_PAGINA: usize = 200;
+pub(crate) const MAX_PAGINA: usize = 200;
 const MAX_OPCIONES: usize = 50;
 /// Se comparan sin mostrarlos.
 const OPACAS: &[&str] = &["foto_png", "config"];
@@ -449,7 +449,7 @@ fn expresion_nombre(tabla: &str) -> &'static str {
     }
 }
 
-fn nombre_en(c: &Connection, tabla: &str, id: &str) -> Result<Option<String>, Fallo> {
+pub(crate) fn nombre_en(c: &Connection, tabla: &str, id: &str) -> Result<Option<String>, Fallo> {
     let expresion = expresion_nombre(tabla);
     let sql = format!("SELECT substr({expresion}, 1, 200) FROM {tabla} t WHERE t.id = ?1");
     Ok(c.prepare_cached(&sql)?
@@ -466,7 +466,7 @@ fn nombre_de(local: &Connection, imp: &Connection, tabla: &str, id: &str) -> Res
     })
 }
 
-fn valor_campo(
+pub(crate) fn valor_campo(
     c: &Connection,
     otra: &Connection,
     d: &Tabla,
@@ -513,7 +513,7 @@ fn valor_campo(
 }
 
 /// Fechas de una fila que se pueden mostrar: lo que no es una fecha no llega a la interfaz.
-fn fecha_mostrable(d: &Tabla, fila: Option<&[Value]>, columna: &str) -> Option<String> {
+pub(crate) fn fecha_mostrable(d: &Tabla, fila: Option<&[Value]>, columna: &str) -> Option<String> {
     let i = d.columnas.iter().position(|c| c == columna)?;
     match fila?.get(i)? {
         Value::Text(t) if fecha_valida(t) => Some(t.clone()),
