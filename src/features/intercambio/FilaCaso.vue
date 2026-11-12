@@ -4,13 +4,12 @@ import { useI18n } from "vue-i18n";
 import { TriangleAlert } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { revisionDetalle, type DetalleCaso, type Eleccion, type FilaCaso, type ValorCampo } from "@/db/cliente";
-import { tamano } from "@/lib/formato";
-import { intentar } from "./intercambio";
+import { revisionDetalle, type DetalleCaso, type Eleccion, type FilaCaso } from "@/db/cliente";
+import { intentar, nombreColumna, textoValor } from "./intercambio";
 
 const props = defineProps<{ trabajo: string; fila: FilaCaso }>();
 const emit = defineEmits<{ decidir: [e: Eleccion] }>();
-const { t, te, locale } = useI18n();
+const { t, locale } = useI18n();
 const grupo = useId();
 
 const abierto = ref(false);
@@ -24,8 +23,6 @@ async function verDetalle() {
   else error.value = r.mensaje;
 }
 
-const nombreColumna = (c: string) =>
-  te(`intercambio.columnas.${c}`) ? t(`intercambio.columnas.${c}`) : t("intercambio.columnas.otra");
 const nombre = computed(() => props.fila.nombre || t("intercambio.revisar.sinNombre"));
 
 // Diferente: qué columnas se toman del archivo
@@ -57,14 +54,6 @@ function fecha(f: string | null): string {
   if (!f) return t("intercambio.revisar.fechaNoValida");
   const d = new Date(f);
   return Number.isNaN(d.getTime()) ? t("intercambio.revisar.fechaNoValida") : d.toLocaleString(locale.value);
-}
-function textoValor(columna: string, v: ValorCampo): string {
-  if (v.oculto !== null && v.oculto !== undefined)
-    return t("intercambio.revisar.valorOculto", { tamano: tamano(v.oculto, locale.value) });
-  if (v.texto === null || v.texto === undefined) return t("intercambio.revisar.vacio");
-  if (columna === "orden") return t("intercambio.revisar.posicion", { n: Number(v.texto) + 1 });
-  const clave = `intercambio.valores.${columna}.${v.texto}`;
-  return te(clave) ? t(clave) : v.texto;
 }
 const explicacion = computed(() => {
   const f = props.fila;

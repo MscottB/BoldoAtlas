@@ -12,7 +12,8 @@
     "ayuda": "Ayuda",
     "acerca": "Acerca de",
     "llegaFase3": "Llega en la Fase 3",
-    "llegaFase5": "Llega en la Fase 5"
+    "llegaFase5": "Llega en la Fase 5",
+    "comparar": "Comparar"
   },
   "barra": {
     "mostrarBarra": "Mostrar barra lateral",
@@ -736,7 +737,8 @@
       "revision": "Ir a Revisión",
       "tema": "Cambiar tema",
       "ayuda": "Ayuda",
-      "abrirOtra": "Abrir otra organización: {nombre}"
+      "abrirOtra": "Abrir otra organización: {nombre}",
+      "comparar": "Comparar con «{nombre}»"
     }
   },
   "organizaciones": {
@@ -1091,6 +1093,8 @@
       "contenido_invalido_journal": "El archivo tiene una transacción sin terminar (un archivo -journal a su lado) y no se abrió. Mantén los dos juntos: hacen falta para recuperar los datos. Si esta organización ya está en tu lista, búscalo de nuevo para recuperarlo.",
       "contenido_invalido_enlace": "Este archivo es un enlace a otro. No se borró nada: desmarca «Borrar también el archivo» para sacarlo de la lista.",
       "muy_pesado": "El archivo pesa más de lo que BoldoAtlas admite. No se cambió nada.",
+      "misma": "No puedes comparar una organización consigo misma.",
+      "comparacion_vencida": "Esta comparación ya no vale. Compara de nuevo.",
       "fallo": "No se pudo completar la operación: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",
@@ -1126,7 +1130,8 @@
     "accionesDe": "Más acciones de «{nombre}»",
     "eliminar": "Eliminar organización",
     "trabajando": "Un momento…",
-    "sinCargar": "Los datos de esta organización no se pudieron cargar. Vuelve a ella para reintentarlo."
+    "sinCargar": "Los datos de esta organización no se pudieron cargar. Vuelve a ella para reintentarlo.",
+    "compararConAbierta": "Comparar con la abierta"
   },
   "menu": {
     "abrir": "Menú de la app",
@@ -1239,7 +1244,8 @@
     "importarComparar": "Comparar el archivo con tus datos",
     "importarAplicarRevision": "Aplicar lo decidido en la revisión",
     "revisionAbierta": "Revisión de una importación con decisiones sin aplicar",
-    "optimizarFotos": "Optimizar las fotos"
+    "optimizarFotos": "Optimizar las fotos",
+    "comparar": "Comparar con otra organización"
   },
   "salida": {
     "titulo": "¿Seguro que quieres salir?",
@@ -1670,5 +1676,26 @@
         "obsoleto": "Obsoleto"
       }
     }
+  },
+  "comparar": {
+    "titulo": "Comparar organizaciones",
+    "ayuda": "Qué unidades, personas y puestos están solo en una de las dos o difieren. Comparar no cambia nada en ninguna.",
+    "soloEn": "Solo en {nombre}",
+    "difieren": "Difieren",
+    "aproximada": "Coincidencia aproximada",
+    "aproximadaTexto": "Estas organizaciones no vienen una de la otra: las unidades se emparejaron por su nombre y las personas por su correo.",
+    "sinCorreo": "Todas las personas tienen correo. | Entre las dos, 1 persona no tiene correo y no se pudo emparejar. | Entre las dos, {n} personas no tienen correo y no se pudieron emparejar.",
+    "comparando": "Comparando con «{nombre}»…",
+    "compararDeNuevo": "Comparar de nuevo",
+    "cancelada": "Se canceló la comparación.",
+    "yaNoEsta": "Esa organización ya no está en la lista.",
+    "resumen": "Diferencias por tipo",
+    "tipo": "Tipo",
+    "iguales": "Iguales en las dos: {n}",
+    "sinDiferencias": "No hay diferencias en unidades, personas ni puestos.",
+    "todas": "Todas las diferencias",
+    "verTodas": "Ver todas",
+    "cargando": "Cargando…",
+    "editadaEn": "Última edición en {nombre}"
   }
 }

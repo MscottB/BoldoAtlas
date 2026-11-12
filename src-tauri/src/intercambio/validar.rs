@@ -477,8 +477,9 @@ fn revisar_con_tope(ruta: &Path, migraciones: &[&str], max_bytes: i64) -> Result
     Ok(r.version)
 }
 
-/// Lleva la copia temporal al esquema de esta app y la vuelve a revisar.
-pub fn migrar_copia(ruta: &Path, version: usize, migraciones: &[&str]) -> Result<(), Fallo> {
+/// Lleva un temporal al esquema de esta app y revisa solo el esquema: sirve a quien no lo trata como un archivo de Boldo
+/// (sin `alcance` ni `raices`).
+pub fn migrar_temporal(ruta: &Path, version: usize, migraciones: &[&str]) -> Result<(), Fallo> {
     if version < migraciones.len() {
         let mut c = abrir_no_confiable(ruta, OpenFlags::SQLITE_OPEN_READ_WRITE)?;
         let tx = c.transaction()?;
@@ -488,6 +489,15 @@ pub fn migrar_copia(ruta: &Path, version: usize, migraciones: &[&str]) -> Result
         tx.pragma_update(None, "user_version", migraciones.len() as i64)?;
         tx.commit()?;
         c.close().map_err(|(_, e)| e)?;
+        revisar_solo_esquema(ruta, migraciones.len(), migraciones)?;
+    }
+    Ok(())
+}
+
+/// Lleva la copia temporal al esquema de esta app y la vuelve a revisar.
+pub fn migrar_copia(ruta: &Path, version: usize, migraciones: &[&str]) -> Result<(), Fallo> {
+    migrar_temporal(ruta, version, migraciones)?;
+    if version < migraciones.len() {
         revisar(ruta, migraciones)?;
     }
     Ok(())
@@ -942,6 +952,17 @@ mod tests {
         assert_eq!(zonas, 0);
         // con el esquema de la app no hace nada
         migrar_copia(&ruta, 2, MIGRACIONES).unwrap();
+    }
+
+    #[test]
+    fn migrar_temporal_no_revisa_como_un_boldo() {
+        let (_d, ruta) = copia_del_esquema_1();
+        alterar(&ruta, "DELETE FROM meta WHERE clave = 'data_revision'");
+        migrar_temporal(&ruta, 1, MIGRACIONES).unwrap();
+        let (_d2, ruta2) = copia_del_esquema_1();
+        alterar(&ruta2, "DELETE FROM meta WHERE clave = 'data_revision'");
+        let e = migrar_copia(&ruta2, 1, MIGRACIONES).unwrap_err();
+        assert_eq!(e.codigo, "contenido_invalido");
     }
 
     #[test]

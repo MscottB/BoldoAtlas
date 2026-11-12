@@ -26,8 +26,28 @@ When you open an organization, BoldoAtlas goes to one of its tabs or, if it has 
 When the open tabs belong to more than one organization, each tab shows its organization's color dot and its name before the title, for example "Demo Company · Tree". Going to a tab of another organization opens it. Only the active tab's organization is loaded, and across all of them you can have up to 12 tabs open. The top bar shows the name and color of the open organization.
 
 ::: tip Tip
-To compare two organizations, keep a tab of each one and move between them with `Ctrl` + `Tab`.
+To work on two organizations at once, keep a tab of each one and move between them with `Ctrl` + `Tab`.
 :::
+
+## Compare
+
+Compare shows which units, people and positions are only in one of two organizations or have different data. You always compare with the open organization:
+
+- In **Home › Recently opened**, open the **⋮** menu of another organization and press **Compare with the open one**.
+- In the command palette (`Ctrl+K`), choose **Compare with “name”**.
+
+At the top, a table with **Units**, **People** and **Positions** says how many are only in one, only in the other, or **Differ**. Press a number to see those rows in the list below, 50 at a time; **Show all** goes back to the full list. Press a row to see its detail, with the data on each side.
+
+- A person who holds another current position counts as different.
+- Something deleted in one and current in the other counts as only in the one where it is current.
+
+The other organization is not modified: BoldoAtlas copies it to a temporary file and compares with that copy. There is one comparison at a time: comparing again, switching organization or leaving the view releases it. If you switch organization and come back to that tab, it compares again. **Compare again** is also always at hand to refresh the comparison, for example after editing.
+
+### Approximate match
+
+If one organization does not come from the other, for example because they were created separately, they are matched by what they have in common: units by their name and the names of the units above them, people by their email, and positions by their unit and their name. The **Approximate match** notice says so, along with how many people have no email.
+
+People without an email, or with an email that is repeated, are not matched: they count as only in their organization.
 
 ## What is kept apart
 

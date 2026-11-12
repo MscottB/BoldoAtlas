@@ -3,6 +3,7 @@ import { computed, ref, watch, type Component } from "vue";
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
+  ArrowLeftRight,
   CircleHelp,
   FolderOpen,
   ListChecks,
@@ -30,7 +31,14 @@ import {
 } from "@/features/atajos/paleta";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
-import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "@/features/proyecto/menuApp";
+import {
+  GRUPOS_MENU,
+  abrirOtra,
+  entradasAbrirOtra,
+  entradasComparar,
+  irAEntrada,
+  rutaComparar,
+} from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -125,6 +133,13 @@ const acciones = computed<AccionPaleta[]>(() => [
     etiqueta: t("paleta.acciones.abrirOtra", { nombre: o.nombre || t("barra.sinNombre") }),
     icono: FolderOpen,
     ejecutar: () => abrirOtra(o.id),
+  })),
+  ...entradasComparar(organizaciones.lista, organizaciones.idAbierta).map((o) => ({
+    id: `comparar:${o.id}`,
+    etiqueta: t("paleta.acciones.comparar", { nombre: o.nombre || t("barra.sinNombre") }),
+    icono: ArrowLeftRight,
+    ejecutar: () => router.push(rutaComparar(o.id, organizaciones.idAbierta)),
+    ruta: rutaComparar(o.id, organizaciones.idAbierta),
   })),
   {
     id: "ayuda",

@@ -1,3 +1,6 @@
+use crate::comparar_organizaciones::{
+    self, Comparaciones, DetalleComparado, FiltroComparacion, PaginaComparada, ResumenComparacion,
+};
 use crate::db::{self, Sentencia};
 use crate::intercambio::validar::solo_lectura_cerrada;
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
@@ -937,8 +940,13 @@ pub async fn listar_organizaciones(app: AppHandle) -> Result<Vec<OrganizacionVis
 pub async fn abrir_organizacion(app: AppHandle, id: String) -> Result<OrganizacionVista, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let sesiones = app.state::<Sesiones>();
-        app.state::<Estado>()
-            .cambiar_a(&id, &|| sesiones.ocupada(), db::MIGRACIONES)
+        abrir_en(
+            &app.state::<Estado>(),
+            &app.state::<Comparaciones>(),
+            &id,
+            &|| sesiones.ocupada(),
+            db::MIGRACIONES,
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -969,6 +977,22 @@ pub async fn quitar_organizacion(app: AppHandle, id: String) -> Result<(), Fallo
         .map_err(|e| e.to_string())?
 }
 
+/// Sin la otra, o sin su base, la comparación ya no vale.
+fn eliminar_en(
+    estado: &Estado,
+    k: &Comparaciones,
+    id: &str,
+    guardar_copia: bool,
+    borrar_archivo: bool,
+    ocupada: &dyn Fn() -> bool,
+    migraciones: &[&str],
+) -> Result<Option<OrganizacionVista>, Fallo> {
+    let hecho = estado.eliminar(id, guardar_copia, borrar_archivo, ocupada, migraciones)?;
+    let abierta = estado.base_abierta().map(|b| b.id);
+    k.soltar_vencida(abierta.as_deref(), Some(id));
+    Ok(hecho)
+}
+
 /// En un hilo aparte: la copia lee el archivo entero, y pasar a otra puede migrarla. Sin `base_id`: no es un dato de la abierta.
 #[tauri::command]
 pub async fn eliminar_organizacion(
@@ -979,7 +1003,9 @@ pub async fn eliminar_organizacion(
 ) -> Result<Option<OrganizacionVista>, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let sesiones = app.state::<Sesiones>();
-        app.state::<Estado>().eliminar(
+        eliminar_en(
+            &app.state::<Estado>(),
+            &app.state::<Comparaciones>(),
             &id,
             guardar_copia,
             borrar_archivo,
@@ -1715,6 +1741,132 @@ pub async fn revision_aplicar(
 #[tauri::command]
 pub fn intercambio_cancelar(sesiones: State<Sesiones>, trabajo: String) {
     sesiones.cancelar(&trabajo);
+}
+
+/// «Comparar con…» sin la ventana: `avisar` recibe el avance. La otra nunca pasa a ser la abierta ni se escribe.
+fn comparar_en(
+    estado: &Estado,
+    k: &Comparaciones,
+    base_id: &str,
+    otra_id: &str,
+    trabajo: &str,
+    mut avisar: impl FnMut(u64, u64),
+    migraciones: &[&str],
+) -> Result<ResumenComparacion, Fallo> {
+    let r = estado.rutas()?;
+    estado.base(base_id)?;
+    // una a la vez: la anterior y su temporal se sueltan ya, no cuando esta termine
+    k.cerrar();
+    if !k.sigue(trabajo) {
+        return Err(Fallo::de("cancelado", ""));
+    }
+    let e = {
+        let _lista = estado.lista.lock().unwrap_or_else(|p| p.into_inner());
+        cargar_lista(r)
+    }
+    .organizaciones
+    .into_iter()
+    .find(|o| o.id == otra_id)
+    .ok_or_else(|| Fallo::de("desconocido", otra_id))?;
+    let copia = comparar_organizaciones::copiar_otra(r, &e, base_id, migraciones)?;
+    // con `conn` tomado hasta guardarla: un cambio de organización espera, y nunca queda una de otra base
+    estado.con_conexion(base_id, |c| {
+        let a = comparar_organizaciones::comparar(c, base_id, copia, |hecho, total| {
+            avisar(hecho, total);
+            k.sigue(trabajo)
+        })?;
+        k.guardar(trabajo, a)
+    })
+}
+
+fn pagina_en(
+    estado: &Estado,
+    k: &Comparaciones,
+    base_id: &str,
+    filtro: &FiltroComparacion,
+) -> Result<PaginaComparada, Fallo> {
+    estado.con_conexion(base_id, |c| k.pagina(c, base_id, filtro))
+}
+
+/// Pasar a otra organización suelta la comparación de la anterior, y su temporal.
+fn abrir_en(
+    estado: &Estado,
+    k: &Comparaciones,
+    id: &str,
+    ocupada: &dyn Fn() -> bool,
+    migraciones: &[&str],
+) -> Result<OrganizacionVista, Fallo> {
+    let v = estado.cambiar_a(id, ocupada, migraciones)?;
+    k.soltar_vencida(Some(&v.id), None);
+    Ok(v)
+}
+
+/// En un hilo aparte, como `importar_comparar`: copia y recorre las dos organizaciones.
+#[tauri::command]
+pub async fn comparar_organizaciones(
+    app: AppHandle,
+    base_id: String,
+    otra_id: String,
+    trabajo: String,
+) -> Result<ResumenComparacion, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        comparar_en(
+            &app.state::<Estado>(),
+            &app.state::<Comparaciones>(),
+            &base_id,
+            &otra_id,
+            &trabajo,
+            |hecho, total| avisar(&app, &trabajo, "comparando", hecho, total),
+            db::MIGRACIONES,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn comparacion_pagina(
+    app: AppHandle,
+    base_id: String,
+    filtro: FiltroComparacion,
+) -> Result<PaginaComparada, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        pagina_en(
+            &app.state::<Estado>(),
+            &app.state::<Comparaciones>(),
+            &base_id,
+            &filtro,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn comparacion_detalle(
+    app: AppHandle,
+    base_id: String,
+    tabla: String,
+    id: String,
+) -> Result<DetalleComparado, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let k = app.state::<Comparaciones>();
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| k.detalle(c, &base_id, &tabla, &id))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub fn comparacion_cancelar(k: State<Comparaciones>, trabajo: String) {
+    k.cancelar(&trabajo);
+}
+
+/// Al cerrar la vista: borra el temporal.
+#[tauri::command]
+pub fn comparacion_cerrar(k: State<Comparaciones>) {
+    k.cerrar();
 }
 
 #[cfg(test)]
@@ -5708,5 +5860,154 @@ mod eliminar {
                 .codigo,
             "desconocido"
         );
+    }
+}
+
+#[cfg(test)]
+mod comparar {
+    use super::*;
+    use crate::comparar_organizaciones::FiltroComparacion;
+    use crate::organizaciones::prueba::{escribir, interna, rutas};
+    use crate::organizaciones::ruta_de;
+    use std::fs;
+
+    /// Dos organizaciones en una carpeta temporal, con A abierta.
+    struct Dos {
+        _exe: tempfile::TempDir,
+        r: Rutas,
+        e: Estado,
+        k: Comparaciones,
+        a: Entrada,
+        b: Entrada,
+    }
+
+    fn dos() -> Dos {
+        let (_exe, r) = rutas();
+        let (a, b) = (interna(&r, "2026"), interna(&r, "2020"));
+        escribir(&r, vec![a.clone(), b.clone()]);
+        let e = Estado::de_prueba(None, None, Some(r.clone()));
+        e.abrir_inicial_con(Duration::ZERO, db::MIGRACIONES);
+        let k = Comparaciones::default();
+        Dos {
+            _exe,
+            r,
+            e,
+            k,
+            a,
+            b,
+        }
+    }
+
+    fn comparar(
+        d: &Dos,
+        base_id: &str,
+        trabajo: &str,
+        avisar: impl FnMut(u64, u64),
+    ) -> Result<ResumenComparacion, Fallo> {
+        comparar_en(
+            &d.e,
+            &d.k,
+            base_id,
+            &d.b.id,
+            trabajo,
+            avisar,
+            db::MIGRACIONES,
+        )
+    }
+
+    fn pagina(d: &Dos, base_id: &str) -> Result<PaginaComparada, Fallo> {
+        let filtro = FiltroComparacion {
+            tabla: None,
+            presencia: None,
+            desde: 0,
+            cuantos: 10,
+        };
+        pagina_en(&d.e, &d.k, base_id, &filtro)
+    }
+
+    fn temporales(r: &Rutas) -> Vec<String> {
+        fs::read_dir(&r.datos)
+            .unwrap()
+            .map(|x| x.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("boldo-comparar-"))
+            .collect()
+    }
+
+    #[test]
+    fn comparar_no_cambia_la_base_abierta() {
+        let d = dos();
+        let json = d.r.datos.join("organizaciones.json");
+        let (lista, otra) = (
+            fs::read(&json).unwrap(),
+            fs::read(ruta_de(&d.r, &d.b)).unwrap(),
+        );
+        let resumen = comparar(&d, &d.a.id, "t", |_, _| {}).unwrap();
+        assert_eq!(resumen.otra, d.b.id);
+        assert_eq!(d.e.base_abierta(), Some(base_de(&d.r, &d.a)));
+        assert_eq!(fs::read(&json).unwrap(), lista);
+        assert_eq!(fs::read(ruta_de(&d.r, &d.b)).unwrap(), otra);
+        assert_eq!(temporales(&d.r).len(), 1);
+        assert!(pagina(&d, &d.a.id).is_ok());
+    }
+
+    #[test]
+    fn otra_base_no_ve_la_comparacion() {
+        let d = dos();
+        comparar(&d, &d.a.id, "t", |_, _| {}).unwrap();
+        assert_eq!(pagina(&d, &d.b.id).unwrap_err().codigo, "otra_base");
+        assert_eq!(
+            comparar(&d, &d.b.id, "u", |_, _| {}).unwrap_err().codigo,
+            "otra_base"
+        );
+        // la de A sigue ahí: un pedido con otra base no la suelta
+        assert!(pagina(&d, &d.a.id).is_ok());
+    }
+
+    #[test]
+    fn cambiar_de_organizacion_suelta_la_comparacion() {
+        let d = dos();
+        comparar(&d, &d.a.id, "t", |_, _| {}).unwrap();
+        abrir_en(&d.e, &d.k, &d.b.id, &|| false, db::MIGRACIONES).unwrap();
+        assert!(temporales(&d.r).is_empty());
+        assert_eq!(
+            pagina(&d, &d.b.id).unwrap_err().codigo,
+            "comparacion_vencida"
+        );
+    }
+
+    #[test]
+    fn eliminar_la_otra_suelta_la_comparacion() {
+        let d = dos();
+        comparar(&d, &d.a.id, "t", |_, _| {}).unwrap();
+        assert_eq!(temporales(&d.r).len(), 1);
+        eliminar_en(
+            &d.e,
+            &d.k,
+            &d.b.id,
+            false,
+            false,
+            &|| false,
+            db::MIGRACIONES,
+        )
+        .unwrap();
+        assert!(temporales(&d.r).is_empty());
+        assert_eq!(
+            pagina(&d, &d.a.id).unwrap_err().codigo,
+            "comparacion_vencida"
+        );
+    }
+
+    #[test]
+    fn cancelar_detiene_y_no_guarda() {
+        let d = dos();
+        comparar(&d, &d.a.id, "anterior", |_, _| {}).unwrap();
+        let k = &d.k;
+        let r = comparar(&d, &d.a.id, "t", |_, _| k.cancelar("t"));
+        assert_eq!(r.unwrap_err().codigo, "cancelado");
+        assert_eq!(
+            pagina(&d, &d.a.id).unwrap_err().codigo,
+            "comparacion_vencida"
+        );
+        assert!(temporales(&d.r).is_empty());
     }
 }

@@ -566,6 +566,81 @@ export function intercambioCancelar(trabajo: string): Promise<void> {
   return invoke("intercambio_cancelar", { trabajo });
 }
 
+// «Comparar con…»: la abierta con otra de la lista. Solo unidades, personas y puestos.
+export type Presencia = "solo_aqui" | "solo_alla" | "difieren";
+
+export interface GrupoComparacion {
+  tabla: string;
+  soloAqui: number;
+  soloAlla: number;
+  difieren: number;
+}
+
+export interface ResumenComparacion {
+  /** El id de la otra organización. */
+  otra: string;
+  /** No comparten origen: se emparejaron por nombre de unidad y correo. */
+  aproximada: boolean;
+  /** Personas vivas sin correo, de las dos: nunca se emparejan. */
+  sinCorreo: number;
+  grupos: GrupoComparacion[];
+  iguales: number;
+}
+
+export interface FiltroComparacion {
+  tabla: string | null;
+  presencia: Presencia | null;
+  desde: number;
+  cuantos: number;
+}
+
+export interface FilaComparada {
+  tabla: string;
+  id: string;
+  nombre: string;
+  presencia: Presencia;
+  /** De las que difieren: las columnas distintas, y «puestos» si cambian sus puestos vigentes. */
+  columnas: string[];
+  /** Emparejada por nombre o correo, no por `id`. */
+  aproximada: boolean;
+}
+
+export interface PaginaComparada {
+  filas: FilaComparada[];
+  total: number;
+}
+
+export interface DetalleComparado {
+  /** `mio` es la abierta y `archivo` la otra. */
+  campos: DetalleCaso["campos"];
+  puestosAqui: string[];
+  puestosAlla: string[];
+  actualizadaAqui: string | null;
+  actualizadaAlla: string | null;
+}
+
+/** Copia y compara en Rust; reemplaza la comparación anterior. El avance llega por `intercambio-avance`, etapa «comparando». */
+export function compararOrganizaciones(otraId: string, trabajo: string): Promise<ResumenComparacion> {
+  return conBase("comparar_organizaciones", { otraId, trabajo });
+}
+
+export function comparacionPagina(filtro: FiltroComparacion): Promise<PaginaComparada> {
+  return conBase("comparacion_pagina", { filtro });
+}
+
+export function comparacionDetalle(tabla: string, id: string): Promise<DetalleComparado> {
+  return conBase("comparacion_detalle", { tabla, id });
+}
+
+export function comparacionCancelar(trabajo: string): Promise<void> {
+  return invoke("comparacion_cancelar", { trabajo });
+}
+
+/** Suelta la comparación y borra su copia. */
+export function comparacionCerrar(): Promise<void> {
+  return invoke("comparacion_cerrar");
+}
+
 // Fotos, en binario: no pasan por JSON.
 export function fotoBytes(id: string): Promise<ArrayBuffer> {
   return conBase<ArrayBuffer>("foto_bytes", { id });

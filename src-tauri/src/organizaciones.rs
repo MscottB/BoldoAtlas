@@ -525,7 +525,7 @@ pub fn escribir_lista(r: &Rutas, l: &Lista) -> Result<(), Fallo> {
 
 /// El `db_id` que tiene el archivo. A diferencia de `leer_meta`, separa que no lo tenga (sin tabla, sin fila, nulo o que no es
 /// texto: `Ok(None)`) de que la consulta falle (`Err`).
-fn id_del_archivo(conn: &Connection) -> rusqlite::Result<Option<String>> {
+pub(crate) fn id_del_archivo(conn: &Connection) -> rusqlite::Result<Option<String>> {
     let hay_meta: bool = conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta')",
         [],
@@ -557,7 +557,7 @@ fn tiene_diario(bd: &Path) -> bool {
 }
 
 /// Una unidad que no responde cuelga hasta esto, y el arranque ocurre antes de crear la ventana.
-fn esta_su_archivo(e: &Entrada, bd: &Path) -> bool {
+pub(crate) fn esta_su_archivo(e: &Entrada, bd: &Path) -> bool {
     if e.externa {
         let bd = bd.to_path_buf();
         con_limite(LIMITE_UNIDAD, move || bd.is_file())

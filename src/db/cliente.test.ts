@@ -7,6 +7,8 @@ vi.stubGlobal("__APP_VERSION__", "prueba");
 const c = await import("./cliente");
 const { consultar, lote, alOtraBase, colaVacia, fotosGuardar } = c;
 const { BaseCambiada, fijarBase, marcarCambio } = await import("@/lib/baseActiva");
+const { mensajeFallo } = await import("@/features/respaldos/respaldos");
+const { traducirError } = await import("./errores");
 
 const orden = (l: unknown[][]) =>
   l.map((c) => (c[1] as { sentencias: { sql: string }[] }).sentencias[0]!.sql);
@@ -37,6 +39,9 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["revisionAplicar", () => c.revisionAplicar("t", 1, false)],
   ["fotoBytes", () => c.fotoBytes("id")],
   ["fotosCompactar", () => c.fotosCompactar()],
+  ["compararOrganizaciones", () => c.compararOrganizaciones("otra", "t")],
+  ["comparacionPagina", () => c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })],
+  ["comparacionDetalle", () => c.comparacionDetalle("tabla", "id")],
 ];
 
 beforeEach(() => {
@@ -57,6 +62,10 @@ describe("baseId", () => {
     expect(invoke.mock.lastCall?.[1]).toBeUndefined();
     await c.revisionResumen("t");
     expect(invoke.mock.lastCall?.[1]).toEqual({ trabajo: "t" });
+    await c.comparacionCancelar("t");
+    expect(invoke).toHaveBeenLastCalledWith("comparacion_cancelar", { trabajo: "t" });
+    await c.comparacionCerrar();
+    expect(invoke).toHaveBeenLastCalledWith("comparacion_cerrar");
   });
 
   it("fotosGuardar arma el cuerpo con la base con que se pidió y lo manda tal cual", async () => {
@@ -179,6 +188,19 @@ describe("otra_base", () => {
     invoke.mockRejectedValue("malo");
     await expect(consultar("SELECT 1")).rejects.toBe("malo");
     expect(manejador).not.toHaveBeenCalled();
+  });
+});
+
+describe("comparación", () => {
+  it("una comparación vencida, o consigo misma, se dice en palabras", async () => {
+    const vencida = { codigo: "comparacion_vencida", detalle: "" };
+    invoke.mockRejectedValue(vencida);
+    const e: unknown = await c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 }).catch((x) => x);
+    expect(e).toBe(vencida);
+    expect(mensajeFallo(e)).toBe("Esta comparación ya no vale. Compara de nuevo.");
+    expect(traducirError("comparacion_vencida")).toBe("Esta comparación ya no vale. Compara de nuevo.");
+    expect(mensajeFallo({ codigo: "misma", detalle: "x" })).toBe("No puedes comparar una organización consigo misma.");
+    expect(traducirError("misma")).toBe("No puedes comparar una organización consigo misma.");
   });
 });
 

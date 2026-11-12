@@ -12,7 +12,8 @@
     "ayuda": "Help",
     "acerca": "About",
     "llegaFase3": "Coming in Phase 3",
-    "llegaFase5": "Coming in Phase 5"
+    "llegaFase5": "Coming in Phase 5",
+    "comparar": "Compare"
   },
   "barra": {
     "mostrarBarra": "Show sidebar",
@@ -736,7 +737,8 @@
       "revision": "Go to Review",
       "tema": "Change theme",
       "ayuda": "Help",
-      "abrirOtra": "Open another organization: {nombre}"
+      "abrirOtra": "Open another organization: {nombre}",
+      "comparar": "Compare with “{nombre}”"
     }
   },
   "organizaciones": {
@@ -1091,6 +1093,8 @@
       "contenido_invalido_journal": "The file has an unfinished transaction (a -journal file next to it) and wasn't opened. Keep the two together: both are needed to recover the data. If this organization is already on your list, locate it again to recover it.",
       "contenido_invalido_enlace": "This file is a link to another one. Nothing was deleted: clear “Also delete the file” to take it off the list.",
       "muy_pesado": "The file is larger than BoldoAtlas allows. Nothing was changed.",
+      "misma": "You can't compare an organization with itself.",
+      "comparacion_vencida": "This comparison is out of date. Compare again.",
       "fallo": "The operation could not be completed: {detalle}"
     },
     "ultimo": "Last backup: {fecha}",
@@ -1126,7 +1130,8 @@
     "accionesDe": "More actions for “{nombre}”",
     "eliminar": "Delete organization",
     "trabajando": "One moment…",
-    "sinCargar": "This organization's data couldn't be loaded. Go back to it to try again."
+    "sinCargar": "This organization's data couldn't be loaded. Go back to it to try again.",
+    "compararConAbierta": "Compare with the open one"
   },
   "menu": {
     "abrir": "App menu",
@@ -1239,7 +1244,8 @@
     "importarComparar": "Compare the file with your data",
     "importarAplicarRevision": "Apply what you decided in the review",
     "revisionAbierta": "Import review with unapplied decisions",
-    "optimizarFotos": "Optimize photos"
+    "optimizarFotos": "Optimize photos",
+    "comparar": "Compare with another organization"
   },
   "salida": {
     "titulo": "Are you sure you want to quit?",
@@ -1670,5 +1676,26 @@
         "obsoleto": "Obsolete"
       }
     }
+  },
+  "comparar": {
+    "titulo": "Compare organizations",
+    "ayuda": "Which units, people and positions are only in one of the two, or differ. Comparing changes nothing in either one.",
+    "soloEn": "Only in {nombre}",
+    "difieren": "Differ",
+    "aproximada": "Approximate match",
+    "aproximadaTexto": "These organizations don't come from one another: units were matched by name and people by email.",
+    "sinCorreo": "Everyone has an email. | Between the two, 1 person has no email and couldn't be matched. | Between the two, {n} people have no email and couldn't be matched.",
+    "comparando": "Comparing with “{nombre}”…",
+    "compararDeNuevo": "Compare again",
+    "cancelada": "The comparison was canceled.",
+    "yaNoEsta": "That organization is no longer on the list.",
+    "resumen": "Differences by type",
+    "tipo": "Type",
+    "iguales": "Same in both: {n}",
+    "sinDiferencias": "No differences in units, people or positions.",
+    "todas": "All differences",
+    "verTodas": "Show all",
+    "cargando": "Loading…",
+    "editadaEn": "Last edited in {nombre}"
   }
 }

@@ -4,7 +4,12 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import type { Avance } from "./intercambio";
 
-const props = defineProps<{ avance: Avance | null; cancelable: boolean }>();
+const props = defineProps<{
+  avance: Avance | null;
+  cancelable: boolean;
+  /** En vez del texto de la etapa: la de comparar organizaciones se llama igual que la del archivo. */
+  texto?: string;
+}>();
 defineEmits<{ cancelar: [] }>();
 
 const { t, te } = useI18n();
@@ -13,6 +18,7 @@ const porcentaje = computed(() =>
   props.avance?.total ? Math.round((props.avance.hecho / props.avance.total) * 100) : null,
 );
 const etiqueta = computed(() => {
+  if (props.texto) return props.texto;
   const clave = `intercambio.etapa.${props.avance?.etapa}`;
   return te(clave) ? t(clave) : t("intercambio.etapa.copiando");
 });

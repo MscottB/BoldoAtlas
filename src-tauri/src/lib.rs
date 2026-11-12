@@ -1,5 +1,6 @@
 mod actualizar;
 mod comandos;
+mod comparar_organizaciones;
 mod db;
 mod fotos;
 mod inicio;
@@ -42,6 +43,7 @@ pub fn run() {
         .manage(actualizar::Actualizador::default())
         .manage(salida::Cierre::default())
         .manage(intercambio::Sesiones::default())
+        .manage(comparar_organizaciones::Comparaciones::default())
         .register_asynchronous_uri_scheme_protocol(fotos::ESQUEMA, |ctx, pedido, responder| {
             fotos::atender(ctx.app_handle().clone(), pedido, responder)
         })
@@ -49,6 +51,12 @@ pub fn run() {
             ventana
                 .state::<intercambio::Sesiones>()
                 .al_cargar_pagina(carga.event());
+            // recargar la página suelta la comparación y su temporal, como a las sesiones
+            if carga.event() == tauri::webview::PageLoadEvent::Started {
+                ventana
+                    .state::<comparar_organizaciones::Comparaciones>()
+                    .cerrar();
+            }
             if carga.event() == tauri::webview::PageLoadEvent::Finished {
                 salida::mostrar_al_arrancar(ventana.app_handle());
             }
@@ -177,6 +185,11 @@ pub fn run() {
             comandos::revision_opciones,
             comandos::revision_aplicar,
             comandos::intercambio_cancelar,
+            comandos::comparar_organizaciones,
+            comandos::comparacion_pagina,
+            comandos::comparacion_detalle,
+            comandos::comparacion_cancelar,
+            comandos::comparacion_cerrar,
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
             actualizar::cancelar_actualizacion,
@@ -198,6 +211,8 @@ pub fn run() {
                     .cerrar_ordenado(std::time::Duration::from_secs(3));
                 // las copias en claro de un exportar o importar sin terminar no se quedan
                 app.state::<intercambio::Sesiones>().cancelar_todo();
+                app.state::<comparar_organizaciones::Comparaciones>()
+                    .cerrar();
             }
             // el Dock de macOS: abrir la app ya abierta no pasa por la instancia única
             #[cfg(target_os = "macos")]
