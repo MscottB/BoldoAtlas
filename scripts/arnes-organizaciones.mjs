@@ -844,7 +844,7 @@ async function capturarComparacion(app, carpeta) {
  * La grande de nuevo en `boldo.db`, con dos internas: `relacionada`, su copia con otro id que viene de ella y 100 teléfonos
  * cambiados (se compara por id), y `aparte`, otra sembrada con otros ids (se empareja por nombre y correo). Compara la grande
  * 3 veces con cada una por la paleta y lee lo que midió la app. Pasar de 5000 ms no falla: se pregunta al autor; pasar de
- * PLAZO_COMPARAR_MS sí. Deja en RUNNER_TEMP/capturas la primera aproximada y su detalle, para mirarlas.
+ * PLAZO_COMPARAR_MS sí. Deja en RUNNER_TEMP/capturas la primera (por id) y el detalle de su primera fila, para mirarlas.
  * @param {Portable} portable
  */
 async function medirComparacion({ carpeta, exe, datos }) {
@@ -932,8 +932,8 @@ async function medirComparacion({ carpeta, exe, datos }) {
     }
     tiempos.push(r.ms);
     if (r.aproximada !== (otra === aparte)) mal.push(`comparación ${i}: aproximada ${r.aproximada}`);
-    // la primera aproximada, para mirarla: el panel de detalle es lo que más cambia a ojo
-    if (i === 2) await capturarComparacion(app, join(process.env.RUNNER_TEMP ?? "", "capturas"));
+    // la primera, por id: la aparte coincide entera y sin diferencias no hay filas; con 100 personas distintas, sí
+    if (i === 1) await capturarComparacion(app, join(process.env.RUNNER_TEMP ?? "", "capturas"));
     if (otra !== relacionada) continue;
     const difieren = await app.llamar("comparacion_pagina", {
       baseId: info.baseId,
