@@ -253,7 +253,12 @@ async function sembrar(app, baseId, preferencias) {
     `for (const [k, v] of Object.entries(${JSON.stringify(preferencias)})) localStorage.setItem(k, v)`,
   );
   await recargar(app);
-  await verInicio(app, "Inicio con los datos sembrados");
+  // Una publicada con varias organizaciones no lista un boldo.db que abrió vacío hasta volver a abrirlo: tras cargar su
+  // lista muestra Bienvenida sin él. Basta con que haya cargado; la nueva lo abre otra vez y ahí sí lo lista.
+  await app.hasta(
+    `Boolean(document.getElementById("inicio-organizacion") || document.getElementById("bienvenida-camino-vacia"))`,
+    "Inicio (o Bienvenida) cargado con los datos sembrados",
+  );
 }
 
 /**
@@ -430,7 +435,9 @@ async function desdeLaPublicada(zip, exeNuevo) {
   // Desde la 0.1.0 la publicada ya borra los recientes al abrir: el borrado de la nueva lo prueba la migración desde
   // alpha.38, y aquí solo se comprueba que no vuelvan.
   if ((await vieja.evaluar(`localStorage.getItem(${JSON.stringify(claveRecientes)})`)) === null)
-    console.log("nota  actualización: la publicada ya borra los recientes; su borrado lo prueba la migración");
+    console.log(
+      "nota  actualización: la publicada ya borra los recientes; su borrado lo prueba la migración",
+    );
   const { app, despues, almacen } = await abrirLaNueva(vieja, portable, antes, exeNuevo, "actualización");
   const mal = problemasDeActualizacion(almacen, { id: despues.baseId });
   comprobar(
