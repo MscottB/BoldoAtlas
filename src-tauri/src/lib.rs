@@ -1,5 +1,6 @@
 mod actualizar;
 mod comandos;
+mod comparar_organizaciones;
 mod db;
 mod fotos;
 mod inicio;
