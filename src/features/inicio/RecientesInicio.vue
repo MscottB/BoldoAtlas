@@ -201,7 +201,7 @@ async function trasEliminar(eliminada: boolean) {
               <DropdownMenuItem
                 v-if="!o.activa"
                 :disabled="bloqueado || !o.existe"
-                @select="router.push(rutaComparar(o.id))"
+                @select="router.push(rutaComparar(o.id, organizaciones.idAbierta))"
               >
                 <ArrowLeftRight aria-hidden="true" />
                 {{ t("inicio.compararConAbierta") }}

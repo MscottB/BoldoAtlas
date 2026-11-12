@@ -51,7 +51,11 @@ export const entradasAbrirOtra = (
 export const entradasComparar = (lista: Organizacion[], activa: string): { id: string; nombre: string }[] =>
   entradasAbrirOtra(lista, activa);
 
-export const rutaComparar = (id: string): RouteLocationRaw => ({ name: "comparar", query: { con: id } });
+/** `de` es la abierta al pedirla: si al volver a la vista ya es otra, la comparación no vale y no se rehace sola. */
+export const rutaComparar = (id: string, de: string): RouteLocationRaw => ({
+  name: "comparar",
+  query: { con: id, de },
+});
 
 export async function abrirOtra(id: string) {
   const r = await useOrganizaciones().abrir(id);

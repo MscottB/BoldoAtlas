@@ -138,8 +138,8 @@ const acciones = computed<AccionPaleta[]>(() => [
     id: `comparar:${o.id}`,
     etiqueta: t("paleta.acciones.comparar", { nombre: o.nombre || t("barra.sinNombre") }),
     icono: ArrowLeftRight,
-    ejecutar: () => router.push(rutaComparar(o.id)),
-    ruta: rutaComparar(o.id),
+    ejecutar: () => router.push(rutaComparar(o.id, organizaciones.idAbierta)),
+    ruta: rutaComparar(o.id, organizaciones.idAbierta),
   })),
   {
     id: "ayuda",

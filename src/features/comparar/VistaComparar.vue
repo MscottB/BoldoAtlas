@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { ArrowLeftRight } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { FilaComparada, Presencia } from "@/db/cliente";
 import BarraAvance from "@/features/intercambio/BarraAvance.vue";
 import { nombreColumna, useAvance } from "@/features/intercambio/intercambio";
+import { rutaComparar } from "@/features/proyecto/menuApp";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import DetalleComparado from "./DetalleComparado.vue";
 import { POR_PAGINA, textoPresencia, useComparar } from "./comparar";
@@ -15,6 +16,7 @@ import { POR_PAGINA, textoPresencia, useComparar } from "./comparar";
 // La abierta con la de `?con=`: cuántas unidades, personas y puestos están solo en una o difieren, y cuáles son.
 const { t, locale } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const organizaciones = useOrganizaciones();
 const comparacion = useComparar();
 const { resumen, pagina, detalle, cargando, vencida } = comparacion;
@@ -22,7 +24,11 @@ const avance = useAvance(() => comparacion.trabajo.value);
 const idLista = useId();
 
 const con = computed(() => (typeof route.query.con === "string" ? route.query.con : ""));
+// Sin `de` (una ruta guardada antes de que existiera), la abierta.
+const de = computed(() => (typeof route.query.de === "string" ? route.query.de : organizaciones.idAbierta));
 const alla = computed(() => organizaciones.lista.find((o) => o.id === con.value) ?? null);
+// Con la otra ya abierta no hay nada que comparar.
+const puedeDeNuevo = computed(() => !!alla.value && con.value !== organizaciones.idAbierta);
 const nombreAqui = computed(() => organizaciones.nombreAbierta || t("barra.sinNombre"));
 const nombreAlla = computed(() => alla.value?.nombre || t("barra.sinNombre"));
 const presencia = (p: Presencia) => textoPresencia(p, nombreAqui.value, nombreAlla.value);
@@ -77,13 +83,18 @@ async function comparar() {
   filtro.value = { tabla: null, presencia: null };
   desde.value = 0;
   detalleAbierto.value = false;
-  const r = await comparacion.comparar(con.value);
+  const r = await comparacion.comparar(con.value, de.value);
   if (propia !== pedida) return; // se pidió otra: esta ya no se muestra
   if (r.ok) return void cargarPagina();
   cancelada.value = r.codigo === "cancelado";
   error.value = cancelada.value ? t("comparar.cancelada") : r.mensaje;
 }
 onMounted(comparar);
+// Contra la que está abierta ahora: la ruta lo anota, para que volver a esta pestaña no la dé por vencida.
+async function compararDeNuevo() {
+  await router.replace(rutaComparar(con.value, organizaciones.idAbierta));
+  await comparar();
+}
 // La paleta puede pedir otra con la vista abierta. Al salir de la vista `con` también cambia: eso no compara.
 watch(con, () => {
   if (route.name === "comparar") void comparar();
@@ -151,8 +162,8 @@ async function abrirDetalle(f: FilaComparada) {
       :class="!cancelada && 'border-destructive'"
     >
       <p>{{ aviso }}</p>
-      <div v-if="alla">
-        <Button type="button" size="sm" @click="comparar">{{ t("comparar.compararDeNuevo") }}</Button>
+      <div v-if="puedeDeNuevo">
+        <Button type="button" size="sm" @click="compararDeNuevo">{{ t("comparar.compararDeNuevo") }}</Button>
       </div>
     </div>
 

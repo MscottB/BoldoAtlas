@@ -49,10 +49,23 @@ export function useComparar() {
     return { ok: false, codigo: r.codigo, mensaje: r.mensaje };
   };
 
-  async function comparar(otraId: string): Promise<Resultado> {
+  // La vista ya se fue: nada de lo que siga esperando puede empezar en Rust, o quedaría una comparación sin soltar.
+  let soltado = false;
+
+  /** `de`: la abierta cuando se pidió (`?de=` de la ruta). Si ya es otra, la comparación no vale y no se rehace sola. */
+  async function comparar(otraId: string, de = organizaciones.idAbierta): Promise<Resultado> {
     await cancelar();
+    if (de !== organizaciones.idAbierta || otraId === organizaciones.idAbierta) {
+      resumen.value = null;
+      pagina.value = null;
+      detalle.value = null;
+      vencida.value = true;
+      return { ok: false, codigo: "comparacion_vencida", mensaje: t("respaldos.error.comparacion_vencida") };
+    }
     await soltando;
+    if (soltado) return CANCELADO;
     if (!organizaciones.listaAlDia) await organizaciones.cargarLista();
+    if (soltado) return CANCELADO;
     if (!organizaciones.lista.some((o) => o.id === otraId))
       return { ok: false, codigo: "desconocido", mensaje: t("comparar.yaNoEsta") };
     const propio = nuevoId();
@@ -113,7 +126,10 @@ export function useComparar() {
     const r = await hecho;
     return r.ok ? { ok: true } : fallo(r);
   }
-  onScopeDispose(() => void cerrar());
+  onScopeDispose(() => {
+    soltado = true;
+    void cerrar();
+  });
 
   return {
     resumen,

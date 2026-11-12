@@ -76,12 +76,12 @@ function nuevoEstado() {
 }
 
 let pinia: Pinia;
-async function html(componente: Component, props: Record<string, unknown> = {}) {
+async function html(componente: Component, props: Record<string, unknown> = {}, ruta = "/comparar?con=B&de=A") {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: "/comparar", name: "comparar", component: { render: () => null } }],
   });
-  await router.push("/comparar?con=B");
+  await router.push(ruta);
   const app = createSSRApp({ render: () => h(componente, props) });
   app.use(pinia).use(router).use(i18n);
   const ctx: SSRContext = {};
@@ -133,6 +133,20 @@ describe("VistaComparar", () => {
     const t = texto(await html(VistaComparar));
     expect(t).toContain("Esta comparación ya no vale.");
     expect(t).toContain("Comparar de nuevo");
+  });
+
+  it("pedida con otra abierta: avisa que ya no vale y ofrece Comparar de nuevo", async () => {
+    e.vencida.value = true;
+    const t = texto(await html(VistaComparar, {}, "/comparar?con=B&de=Z"));
+    expect(t).toContain("Esta comparación ya no vale.");
+    expect(t).toContain("Comparar de nuevo");
+  });
+
+  it("la otra es ahora la abierta: avisa que ya no vale, sin Comparar de nuevo", async () => {
+    e.vencida.value = true;
+    const t = texto(await html(VistaComparar, {}, "/comparar?con=A&de=B"));
+    expect(t).toContain("Esta comparación ya no vale.");
+    expect(t).not.toContain("Comparar de nuevo");
   });
 
   it("mientras compara muestra el avance con Cancelar", async () => {

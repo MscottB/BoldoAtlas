@@ -31,7 +31,7 @@ describe("entradasComparar", () => {
     ]);
   });
 
-  it("lleva a la vista Comparar con la otra en `con`", () => {
-    expect(rutaComparar("B")).toEqual({ name: "comparar", query: { con: "B" } });
+  it("lleva a la vista Comparar con la otra en `con` y la abierta en `de`", () => {
+    expect(rutaComparar("B", "A")).toEqual({ name: "comparar", query: { con: "B", de: "A" } });
   });
 });

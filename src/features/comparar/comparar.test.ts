@@ -176,6 +176,39 @@ describe("useComparar", () => {
     expect(c.comparacionCancelar).toHaveBeenCalledWith(c.compararOrganizaciones.mock.calls[0]![1]);
   });
 
+  it("si la vista se va mientras espera para empezar, no llega a comparar en Rust", async () => {
+    const cierre = pendiente<void>();
+    c.comparacionCerrar.mockReturnValue(cierre.promesa);
+    montar().salir();
+    const { cmp, salir } = montar();
+    const hecho = cmp.comparar("B");
+    await Promise.resolve();
+    salir();
+    cierre.resolver();
+    expect(await hecho).toMatchObject({ ok: false, codigo: "cancelado" });
+    expect(c.compararOrganizaciones).not.toHaveBeenCalled();
+    expect(trabajos.value).toEqual([]);
+  });
+
+  it("pedida con otra organización abierta: ya no vale, y no se rehace sola", async () => {
+    const { cmp } = montar();
+    expect(await cmp.comparar("B", "Z")).toEqual({
+      ok: false,
+      codigo: "comparacion_vencida",
+      mensaje: "Esta comparación ya no vale. Compara de nuevo.",
+    });
+    expect(cmp.vencida.value).toBe(true);
+    expect(c.compararOrganizaciones).not.toHaveBeenCalled();
+  });
+
+  it("la otra pasó a ser la abierta: ya no vale, sin llamar a Rust", async () => {
+    const { cmp } = montar();
+    expect(await cmp.comparar("A", "B")).toMatchObject({ ok: false, codigo: "comparacion_vencida" });
+    expect(await cmp.comparar("A")).toMatchObject({ ok: false, codigo: "comparacion_vencida" });
+    expect(cmp.vencida.value).toBe(true);
+    expect(c.compararOrganizaciones).not.toHaveBeenCalled();
+  });
+
   it("la siguiente comparación espera a que la anterior se suelte", async () => {
     const cierre = pendiente<void>();
     c.comparacionCerrar.mockReturnValue(cierre.promesa);
