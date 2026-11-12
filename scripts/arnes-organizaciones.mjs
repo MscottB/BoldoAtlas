@@ -427,10 +427,10 @@ async function desdeLaPublicada(zip, exeNuevo) {
     [`boldo:vista:${antes.baseId}`]: JSON.stringify(VISTA_DE_LA_ORGANIZACION),
     [claveRecientes]: "[]",
   });
+  // Desde la 0.1.0 la publicada ya borra los recientes al abrir: el borrado de la nueva lo prueba la migración desde
+  // alpha.38, y aquí solo se comprueba que no vuelvan.
   if ((await vieja.evaluar(`localStorage.getItem(${JSON.stringify(claveRecientes)})`)) === null)
-    throw new Error(
-      "La publicada borró los recientes sembrados: la prueba de que la nueva los borra no diría nada",
-    );
+    console.log("nota  actualización: la publicada ya borra los recientes; su borrado lo prueba la migración");
   const { app, despues, almacen } = await abrirLaNueva(vieja, portable, antes, exeNuevo, "actualización");
   const mal = problemasDeActualizacion(almacen, { id: despues.baseId });
   comprobar(
