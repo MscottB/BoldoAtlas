@@ -24,11 +24,11 @@ const avance = useAvance(() => comparacion.trabajo.value);
 const idLista = useId();
 
 const con = computed(() => (typeof route.query.con === "string" ? route.query.con : ""));
-// Sin `de` (una ruta guardada antes de que existiera), la abierta.
-const de = computed(() => (typeof route.query.de === "string" ? route.query.de : organizaciones.idAbierta));
-const alla = computed(() => organizaciones.lista.find((o) => o.id === con.value) ?? null);
-// Con la otra ya abierta no hay nada que comparar.
-const puedeDeNuevo = computed(() => !!alla.value && con.value !== organizaciones.idAbierta);
+// Con la otra ya abierta no hay nada que comparar: ni se muestra dos veces arriba ni se ofrece comparar de nuevo.
+const alla = computed(
+  () => organizaciones.lista.find((o) => o.id === con.value && o.id !== organizaciones.idAbierta) ?? null,
+);
+const puedeDeNuevo = computed(() => !!alla.value);
 const nombreAqui = computed(() => organizaciones.nombreAbierta || t("barra.sinNombre"));
 const nombreAlla = computed(() => alla.value?.nombre || t("barra.sinNombre"));
 const presencia = (p: Presencia) => textoPresencia(p, nombreAqui.value, nombreAlla.value);
@@ -44,8 +44,8 @@ const sinDiferencias = computed(
 const n = (x: number) => x.toLocaleString(locale.value);
 
 const error = ref("");
-// Cancelar es una decisión, no un fallo: se dice sin alarma.
-const cancelada = ref(false);
+// Cancelar es una decisión, no un fallo, y sin `?con=` solo falta elegir: se dice sin alarma.
+const sinAlarma = ref(false);
 const aviso = computed(() => (vencida.value ? t("respaldos.error.comparacion_vencida") : error.value));
 
 const filtro = ref<{ tabla: string | null; presencia: Presencia | null }>({ tabla: null, presencia: null });
@@ -79,26 +79,29 @@ let pedida = 0;
 async function comparar() {
   const propia = ++pedida;
   error.value = "";
-  cancelada.value = false;
+  sinAlarma.value = false;
   filtro.value = { tabla: null, presencia: null };
   desde.value = 0;
   detalleAbierto.value = false;
-  const r = await comparacion.comparar(con.value, de.value);
+  const r = await comparacion.comparar(con.value, route.query.de);
   if (propia !== pedida) return; // se pidió otra: esta ya no se muestra
   if (r.ok) return void cargarPagina();
-  cancelada.value = r.codigo === "cancelado";
-  error.value = cancelada.value ? t("comparar.cancelada") : r.mensaje;
+  sinAlarma.value = r.codigo === "cancelado" || r.codigo === "sin_con";
+  error.value = r.codigo === "cancelado" ? t("comparar.cancelada") : r.mensaje;
 }
 onMounted(comparar);
-// Contra la que está abierta ahora: la ruta lo anota, para que volver a esta pestaña no la dé por vencida.
+// Contra la que está abierta ahora: la ruta lo anota, para que volver a esta pestaña no la dé por vencida. Compara el watch.
 async function compararDeNuevo() {
   await router.replace(rutaComparar(con.value, organizaciones.idAbierta));
-  await comparar();
 }
-// La paleta puede pedir otra con la vista abierta. Al salir de la vista `con` también cambia: eso no compara.
-watch(con, () => {
-  if (route.name === "comparar") void comparar();
-});
+// Cada navegación a la vista abierta compara: la paleta puede pedir otra, o la misma otra vez (`rutaComparar` fuerza la
+// navegación aunque la ruta sea igual, y trae una `query` nueva). Al salir de la vista la `query` también cambia: eso no compara.
+watch(
+  () => route.query,
+  () => {
+    if (route.name === "comparar") void comparar();
+  },
+);
 
 // Al terminar o cancelar, la barra de avance (con su botón) desaparece: el foco no se pierde, va al título.
 const titulo = ref<HTMLElement | null>(null);
@@ -124,7 +127,9 @@ async function abrirDetalle(f: FilaComparada) {
   <section class="mx-auto flex max-w-4xl flex-col gap-6 p-6">
     <header class="grid gap-3">
       <div>
-        <h1 ref="titulo" tabindex="-1" class="text-lg font-semibold outline-none">{{ t("comparar.titulo") }}</h1>
+        <h1 ref="titulo" tabindex="-1" class="text-lg font-semibold outline-none">
+          {{ t("comparar.titulo") }}
+        </h1>
         <p class="text-sm text-muted-foreground">{{ t("comparar.ayuda") }}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -140,7 +145,11 @@ async function abrirDetalle(f: FilaComparada) {
         <template v-if="alla">
           <ArrowLeftRight class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span class="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-1.5">
-            <span class="size-3 shrink-0 rounded-full" :style="{ backgroundColor: alla.color }" aria-hidden="true" />
+            <span
+              class="size-3 shrink-0 rounded-full"
+              :style="{ backgroundColor: alla.color }"
+              aria-hidden="true"
+            />
             <span class="truncate font-medium">{{ nombreAlla }}</span>
           </span>
         </template>
@@ -157,9 +166,9 @@ async function abrirDetalle(f: FilaComparada) {
 
     <div
       v-if="aviso"
-      :role="cancelada ? 'status' : 'alert'"
+      :role="sinAlarma ? 'status' : 'alert'"
       class="grid gap-2 rounded-lg border p-3 text-sm"
-      :class="!cancelada && 'border-destructive'"
+      :class="!sinAlarma && 'border-destructive'"
     >
       <p>{{ aviso }}</p>
       <div v-if="puedeDeNuevo">
@@ -184,13 +193,22 @@ async function abrirDetalle(f: FilaComparada) {
       <p v-if="sinDiferencias" class="text-sm">{{ t("comparar.sinDiferencias") }}</p>
       <div v-else class="overflow-x-auto rounded-lg border">
         <table class="w-full text-left text-sm">
-          <caption class="sr-only">{{ t("comparar.resumen") }}</caption>
+          <caption class="sr-only">
+            {{
+              t("comparar.resumen")
+            }}
+          </caption>
           <thead>
             <tr class="border-b text-xs text-muted-foreground">
               <th scope="col" class="px-3 py-2 font-medium">
                 <span class="sr-only">{{ t("comparar.tipo") }}</span>
               </th>
-              <th v-for="col in COLUMNAS" :key="col.presencia" scope="col" class="px-3 py-2 text-right font-medium">
+              <th
+                v-for="col in COLUMNAS"
+                :key="col.presencia"
+                scope="col"
+                class="px-3 py-2 text-right font-medium"
+              >
                 {{ presencia(col.presencia) }}
               </th>
             </tr>
@@ -235,7 +253,9 @@ async function abrirDetalle(f: FilaComparada) {
               class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
               @click="abrirDetalle(f)"
             >
-              <span class="min-w-0 font-medium break-words">{{ f.nombre || t("intercambio.revisar.sinNombre") }}</span>
+              <span class="min-w-0 font-medium break-words">{{
+                f.nombre || t("intercambio.revisar.sinNombre")
+              }}</span>
               <span class="text-xs text-muted-foreground">{{ t(`intercambio.tablas.${f.tabla}`) }}</span>
               <Badge variant="outline">{{ presencia(f.presencia) }}</Badge>
               <Badge v-if="f.aproximada" variant="secondary">{{ t("comparar.aproximada") }}</Badge>

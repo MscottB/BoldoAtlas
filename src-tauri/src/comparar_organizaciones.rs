@@ -10,7 +10,7 @@ use crate::intercambio::{
     },
 };
 use crate::organizaciones::{Entrada, base_de, esta_su_archivo, id_del_archivo};
-use crate::respaldos::Fallo;
+use crate::respaldos::{Fallo, con_sufijo};
 use crate::rutas::Rutas;
 use rusqlite::types::Value;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -39,11 +39,20 @@ pub fn copiar_otra(
     if !esta_su_archivo(e, &bd) {
         return Err(Fallo::de("no_encontrado", bd.display()));
     }
-    let version = version_y_esquema(&bd, migraciones)?;
+    // con `-wal` y sin `-shm` (tras un corte, o copiado sin él) SQLite crearía el `-shm` al lado, aun en solo lectura y sin
+    // modo exclusivo posible: se lee de una copia del par
+    let par = Temporal::nuevo(&r.datos, "comparar");
+    let leida = if con_sufijo(&bd, "-wal").exists() && !con_sufijo(&bd, "-shm").exists() {
+        std::fs::copy(&bd, par.ruta())?;
+        std::fs::copy(con_sufijo(&bd, "-wal"), con_sufijo(par.ruta(), "-wal"))?;
+        par.ruta()
+    } else {
+        &bd
+    };
     let temporal = Temporal::nuevo(&r.datos, "comparar");
     // sin bloqueo ni escritura: `solo_lectura_cerrada` no deja `-wal` al lado y, si lo hay, lee lo que tiene sin volcar
     let origen = {
-        let c = solo_lectura_cerrada(&bd)?;
+        let c = solo_lectura_cerrada(leida)?;
         // sin `query_only`: SQLite rechaza `VACUUM INTO` con él. La conexión es `READ_ONLY` y escribe solo en el temporal
         if id_del_archivo(&c)?.as_deref() != Some(e.id.as_str()) {
             return Err(Fallo::de("otro_id", bd.display()));
@@ -58,6 +67,9 @@ pub fn copiar_otra(
         c.execute("VACUUM INTO ?1", [temporal.ruta().to_string_lossy()])?;
         origen
     };
+    drop(par);
+    // de la copia, no del original: otra copia de la app pudo migrarlo entre medio
+    let version = version_y_esquema(temporal.ruta(), migraciones)?;
     migrar_temporal(temporal.ruta(), version, migraciones)?;
     Ok(Copia {
         temporal,
@@ -268,7 +280,8 @@ pub fn emparejar(abierta: &Connection, copia: &Copia) -> Result<Emparejadas, Fal
     })
 }
 
-/// En una transacción: el `id` de cada fila emparejada y cada columna que la referencia, una sentencia por columna.
+/// En una transacción: el `id` de cada fila emparejada y cada columna que la referencia, una sentencia por columna. Los ids de
+/// unidad dentro de `vistas.config` (JSON, sin referencia declarada) quedan como estaban: la comparación no lee las vistas.
 fn reescribir(c: &mut Connection, mapa: &[(&str, String, String)]) -> Result<(), Fallo> {
     let tx = c.transaction()?;
     tx.execute_batch(
@@ -389,13 +402,19 @@ fn vigentes(
     c: &Connection,
     persona: Option<&str>,
 ) -> Result<HashMap<String, BTreeSet<String>>, Fallo> {
-    let mut consulta = c.prepare(
+    // dos consultas y no `?1 IS NULL OR t.id = ?1`: con ese OR, SQLite recorre a todas las personas aunque se pida una
+    let filtro = if persona.is_some() {
+        "t.id = ?1"
+    } else {
+        "?1 IS NULL"
+    };
+    let mut consulta = c.prepare(&format!(
         "SELECT t.id, a.puesto_id FROM trabajadores t
          LEFT JOIN asignaciones a ON a.trabajador_id = t.id AND a.deleted_at IS NULL
            AND a.desde <= date('now', 'localtime') AND (a.hasta IS NULL OR a.hasta > date('now', 'localtime'))
            AND a.puesto_id IN (SELECT id FROM puestos WHERE deleted_at IS NULL)
-         WHERE t.deleted_at IS NULL AND (?1 IS NULL OR t.id = ?1)",
-    )?;
+         WHERE t.deleted_at IS NULL AND {filtro}"
+    ))?;
     let mut filas = consulta.query([persona])?;
     let mut m: HashMap<String, BTreeSet<String>> = HashMap::new();
     while let Some(f) = filas.next()? {
@@ -710,7 +729,6 @@ mod tests {
         ESPERA_CAMBIO, bloquear,
         prueba::{crear, entrada, escribir, rutas, sin_rastros},
     };
-    use crate::respaldos::con_sufijo;
     use std::path::PathBuf;
 
     /// Otra organización en una carpeta externa del temporal, con ese esquema.
@@ -745,6 +763,7 @@ mod tests {
         let (_exe, r) = rutas();
         let (e, bd) = otra(&r, MIGRACIONES);
         let c = db::abrir(&bd).unwrap();
+        // sin volcado automático: lo insertado queda solo en el `-wal`, que es lo que se prueba
         c.pragma_update(None, "wal_autocheckpoint", 0).unwrap();
         c.execute(
             "INSERT INTO meta (clave, valor) VALUES ('sin_volcar', 'si')",
@@ -763,6 +782,46 @@ mod tests {
             )
             .unwrap();
         assert_eq!(visto, "si");
+    }
+
+    #[test]
+    fn wal_sin_shm_no_deja_nada_al_lado() {
+        let (_exe, r) = rutas();
+        let (e, bd) = otra(&r, MIGRACIONES);
+        let c = db::abrir(&bd).unwrap();
+        // sin volcado automático: lo insertado queda solo en el `-wal`, que es lo que se prueba
+        c.pragma_update(None, "wal_autocheckpoint", 0).unwrap();
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('sin_volcar', 'si')",
+            [],
+        )
+        .unwrap();
+        // como tras un corte: la base y su `-wal`, sin `-shm`
+        let quedo = r.datos.join("quedo").join("otra.db");
+        std::fs::create_dir_all(quedo.parent().unwrap()).unwrap();
+        std::fs::copy(&bd, &quedo).unwrap();
+        std::fs::copy(con_sufijo(&bd, "-wal"), con_sufijo(&quedo, "-wal")).unwrap();
+        drop(c);
+        let e = Entrada {
+            ruta: quedo.to_string_lossy().into_owned(),
+            ..e
+        };
+        let antes = std::fs::read(&quedo).unwrap();
+        let wal = std::fs::read(con_sufijo(&quedo, "-wal")).unwrap();
+        let copia = copiar(&r, &e).unwrap();
+        let visto: String = leer(&copia)
+            .unwrap()
+            .query_row(
+                "SELECT valor FROM meta WHERE clave = 'sin_volcar'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(visto, "si");
+        drop(copia);
+        assert!(!con_sufijo(&quedo, "-shm").exists());
+        assert_eq!(std::fs::read(&quedo).unwrap(), antes);
+        assert_eq!(std::fs::read(con_sufijo(&quedo, "-wal")).unwrap(), wal);
     }
 
     #[test]
@@ -827,6 +886,10 @@ mod tests {
         let (e, _) = otra(&r, MIGRACIONES);
         let copia = copiar(&r, &e).unwrap();
         let c = leer(&copia).unwrap();
+        let solo_consulta: i64 = c
+            .pragma_query_value(None, "query_only", |f| f.get(0))
+            .unwrap();
+        assert_eq!(solo_consulta, 1);
         assert!(
             c.execute("INSERT INTO meta (clave, valor) VALUES ('x', 'y')", [])
                 .is_err()
@@ -1259,6 +1322,84 @@ mod tests {
         assert!(emparejar(&abierta, &copia).unwrap().ids.is_empty());
     }
 
+    #[test]
+    fn lo_borrado_no_se_empareja_ni_hace_repetido() {
+        let borrar = |tabla: &str, id: &str| {
+            format!("UPDATE {tabla} SET deleted_at = '{FECHA}' WHERE id = '{id}';")
+        };
+        let aqui = [
+            unidad("a-vieja", "Finanzas", None),
+            borrar("unidades", "a-vieja"),
+            unidad("a-fin", "Finanzas", None),
+            persona("a-ana", "Ana", Some("ana@x.cl")),
+            borrar("trabajadores", "a-ana"),
+            unidad("a-leg", "Legal", None),
+        ]
+        .concat();
+        let alla = [
+            unidad("b-fin", "Finanzas", None),
+            unidad("b-leg", "Legal", None),
+            borrar("unidades", "b-leg"),
+            persona("b-ana", "Ana", Some("ana@x.cl")),
+        ]
+        .concat();
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par(&r, &aqui, &alla);
+        let e = emparejar(&abierta, &copia).unwrap();
+        assert_eq!(e.ids, conjunto(&["a-fin"]));
+        let otra = leer(&copia).unwrap();
+        assert_eq!(
+            lista(&otra, "SELECT id FROM unidades ORDER BY id"),
+            ["a-fin", "b-leg"]
+        );
+        assert_eq!(lista(&otra, "SELECT id FROM trabajadores"), ["b-ana"]);
+    }
+
+    #[test]
+    fn un_ciclo_de_unidades_termina_y_se_empareja_por_nombre() {
+        let ciclo = |p: &str| {
+            let id = |s: &str| format!("{p}-{s}");
+            [
+                unidad(&id("x"), "X", None),
+                unidad(&id("y"), "Y", Some(&id("x"))),
+                format!(
+                    "UPDATE unidades SET parent_id = '{}' WHERE id = '{}';",
+                    id("y"),
+                    id("x")
+                ),
+            ]
+            .concat()
+        };
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par(&r, &ciclo("a"), &ciclo("b"));
+        let (k, resumen) = comparada(&abierta, copia);
+        assert!(resumen.aproximada);
+        let marcas: Vec<_> = filas_de(&k, &abierta)
+            .into_iter()
+            .map(|f| (f.id, f.presencia))
+            .collect();
+        assert!(marcas.is_empty(), "{marcas:?}");
+        assert_eq!(resumen.iguales, 2);
+    }
+
+    #[test]
+    fn correo_repetido_en_la_abierta_no_se_empareja() {
+        // como en la otra: el tabulador pasa el índice único
+        let aqui = [
+            persona("a-beto", "Beto", Some("beto@x.cl")),
+            persona("a-beto-2", "Beto bis", Some("\tbeto@x.cl")),
+        ]
+        .concat();
+        let alla = persona("b-beto", "Beto", Some("beto@x.cl"));
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par(&r, &aqui, &alla);
+        assert!(emparejar(&abierta, &copia).unwrap().ids.is_empty());
+        assert_eq!(
+            lista(&leer(&copia).unwrap(), "SELECT id FROM trabajadores"),
+            ["b-beto"]
+        );
+    }
+
     const BASE: &str = "la-abierta";
 
     fn todo() -> FiltroComparacion {
@@ -1424,6 +1565,31 @@ mod tests {
         assert!(d.campos.is_empty());
         assert_eq!(d.puestos_aqui, ["Analista · Finanzas"]);
         assert_eq!(d.puestos_alla, ["Jefe · Finanzas"]);
+    }
+
+    #[test]
+    fn mismo_correo_con_otro_id_son_dos_filas() {
+        let aqui = persona("t-1", "Ana", Some("ana@x.cl"));
+        let alla = persona("t-2", "Ana", Some("ana@x.cl"));
+        let (_exe, r) = rutas();
+        let (abierta, copia) = par_con(&r, &aqui, &alla, true);
+        let (k, resumen) = comparada(&abierta, copia);
+        let filas: Vec<_> = filas_de(&k, &abierta)
+            .into_iter()
+            .map(|f| (f.id, f.presencia, f.nombre))
+            .collect();
+        assert_eq!(
+            filas,
+            [
+                ("t-1".to_string(), Presencia::SoloAqui, "Ana".to_string()),
+                ("t-2".to_string(), Presencia::SoloAlla, "Ana".to_string()),
+            ]
+        );
+        assert_eq!(resumen.grupos[1].tabla, "trabajadores");
+        assert_eq!(
+            (resumen.grupos[1].solo_aqui, resumen.grupos[1].solo_alla),
+            (1, 1)
+        );
     }
 
     #[test]

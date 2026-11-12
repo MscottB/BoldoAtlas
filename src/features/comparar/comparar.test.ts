@@ -5,7 +5,7 @@ import type { Organizacion, ResumenComparacion } from "@/db/cliente";
 import { fijarBase } from "@/lib/baseActiva";
 import { trabajos } from "@/lib/trabajos";
 import { useOrganizaciones } from "@/stores/organizaciones";
-import { useComparar } from "./comparar";
+import { decidir, useComparar } from "./comparar";
 
 // localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
 vi.hoisted(() =>
@@ -58,7 +58,80 @@ beforeEach(() => {
 // los spyOn de performance no pasan a otra prueba aunque una falle
 afterEach(() => vi.restoreAllMocks());
 
+describe("decidir", () => {
+  it("sin `con` no hay con qué comparar", () => {
+    expect(decidir("", "A", "A")).toBe("sin-con");
+  });
+
+  it("con la otra ya abierta no hay nada que comparar, venga o no `de`", () => {
+    expect(decidir("A", "B", "A")).toBe("misma");
+    expect(decidir("A", undefined, "A")).toBe("misma");
+  });
+
+  it("pedida con otra abierta (un `de` válido y distinto): ya no vale", () => {
+    expect(decidir("B", "Z", "A")).toBe("vencida");
+  });
+
+  it("pedida con la abierta, o sin `de` que sirva: compara", () => {
+    expect(decidir("B", "A", "A")).toBe("comparar");
+    for (const de of [undefined, null, "", ["Z"], ["Z", "Y"]]) expect(decidir("B", de, "A")).toBe("comparar");
+  });
+});
+
 describe("useComparar", () => {
+  it("sin `con` pide elegir con cuál, sin dar por vencida nada ni llamar a Rust", async () => {
+    const { cmp } = montar();
+    expect(await cmp.comparar("")).toEqual({
+      ok: false,
+      codigo: "sin_con",
+      mensaje:
+        "Elige con qué organización comparar: en Inicio, desde el menú ⋮ de una organización, o en la paleta de comandos (Ctrl+K).",
+    });
+    expect(cmp.vencida.value).toBe(false);
+    expect(c.compararOrganizaciones).not.toHaveBeenCalled();
+  });
+
+  it("un `de` vacío o repetido en la ruta no la da por vencida: compara", async () => {
+    c.compararOrganizaciones.mockResolvedValue(RESUMEN);
+    const { cmp } = montar();
+    expect(await cmp.comparar("B", "")).toEqual({ ok: true });
+    expect(await cmp.comparar("B", ["Z", "A"])).toEqual({ ok: true });
+    expect(c.compararOrganizaciones).toHaveBeenCalledTimes(2);
+  });
+
+  it("si Rust no puede cancelar o soltar, queda rastro en la consola", async () => {
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    c.compararOrganizaciones.mockReturnValue(pendiente<ResumenComparacion>().promesa);
+    c.comparacionCancelar.mockRejectedValue({ codigo: "x", detalle: "" });
+    c.comparacionCerrar.mockRejectedValue({ codigo: "x", detalle: "" });
+    const { cmp, salir } = montar();
+    void cmp.comparar("B");
+    await vi.waitFor(() => expect(c.compararOrganizaciones).toHaveBeenCalled());
+    await cmp.cancelar();
+    expect(aviso).toHaveBeenCalledWith("No se pudo cancelar la comparación:", expect.any(String));
+    salir();
+    await vi.waitFor(() =>
+      expect(aviso).toHaveBeenCalledWith("No se pudo soltar la comparación:", expect.any(String)),
+    );
+  });
+
+  it("una página que vence mientras se cancela la comparación anterior no marca vencida la nueva", async () => {
+    c.compararOrganizaciones.mockReturnValue(pendiente<ResumenComparacion>().promesa);
+    const cancelando = pendiente<void>();
+    c.comparacionCancelar.mockReturnValue(cancelando.promesa);
+    const vieja = pendiente<unknown>();
+    c.comparacionPagina.mockReturnValue(vieja.promesa);
+    const { cmp } = montar();
+    void cmp.comparar("B");
+    await vi.waitFor(() => expect(c.compararOrganizaciones).toHaveBeenCalled());
+    const enCurso = cmp.verPagina({ tabla: null, presencia: null, desde: 0, cuantos: 50 });
+    void cmp.comparar("B"); // espera a que Rust cancele la anterior
+    vieja.rechazar({ codigo: "comparacion_vencida", detalle: "" });
+    expect(await enCurso).toMatchObject({ ok: false, codigo: "cancelado" });
+    expect(cmp.vencida.value).toBe(false);
+    cancelando.resolver();
+  });
+
   it("con una organización que ya no está en la lista lo dice y no llama a Rust", async () => {
     const { cmp } = montar();
     const r = await cmp.comparar("Z");

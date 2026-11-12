@@ -1689,6 +1689,7 @@
     "compararDeNuevo": "Comparar de nuevo",
     "cancelada": "Se canceló la comparación.",
     "yaNoEsta": "Esa organización ya no está en la lista.",
+    "elige": "Elige con qué organización comparar: en Inicio, desde el menú ⋮ de una organización, o en la paleta de comandos (Ctrl+K).",
     "resumen": "Diferencias por tipo",
     "tipo": "Tipo",
     "iguales": "Iguales en las dos: {n}",

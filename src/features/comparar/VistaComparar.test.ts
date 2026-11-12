@@ -76,7 +76,11 @@ function nuevoEstado() {
 }
 
 let pinia: Pinia;
-async function html(componente: Component, props: Record<string, unknown> = {}, ruta = "/comparar?con=B&de=A") {
+async function html(
+  componente: Component,
+  props: Record<string, unknown> = {},
+  ruta = "/comparar?con=B&de=A",
+) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: "/comparar", name: "comparar", component: { render: () => null } }],
@@ -149,11 +153,20 @@ describe("VistaComparar", () => {
     expect(t).toContain("Comparar de nuevo");
   });
 
-  it("la otra es ahora la abierta: avisa que ya no vale, sin Comparar de nuevo", async () => {
+  it("la otra es ahora la abierta: avisa que ya no vale, sin Comparar de nuevo ni mostrarla dos veces", async () => {
     e.vencida.value = true;
     const t = texto(await html(VistaComparar, {}, "/comparar?con=A&de=B"));
     expect(t).toContain("Esta comparación ya no vale.");
     expect(t).not.toContain("Comparar de nuevo");
+    expect(t.match(/Org A/g)).toHaveLength(1);
+  });
+
+  it("la otra ya no está en la lista: no ofrece Comparar de nuevo", async () => {
+    e.vencida.value = true;
+    expect(texto(await html(VistaComparar, {}, "/comparar?con=Z&de=A"))).not.toContain("Comparar de nuevo");
+    e.vencida.value = false;
+    e.resumen.value = resumen(false);
+    expect(texto(await html(VistaComparar, {}, "/comparar?con=Z&de=A"))).not.toContain("Comparar de nuevo");
   });
 
   it("mientras compara muestra el avance con Cancelar", async () => {

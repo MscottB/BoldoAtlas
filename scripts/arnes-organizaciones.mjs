@@ -52,6 +52,8 @@ const ID_AREA = "area-central";
 const COMPARAR = `performance.getEntriesByName("comparar-organizaciones")`;
 const VECES_COMPARAR = 3;
 const META_COMPARAR_MS = 5000;
+// una comparación que pasa de esto se anota como fallida y no se sigue comparando
+const PLAZO_COMPARAR_MS = 120_000;
 // personas de la relacionada con el teléfono cambiado
 const CAMBIADAS = 100;
 const OTRA_PESTANA = `document.querySelector('[role="tab"][id^="pestana-"][aria-selected="false"]')`;
@@ -146,6 +148,37 @@ export function mediana(xs) {
   const m = o.length >> 1;
   return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
 }
+
+/**
+ * Un texto de la app en español, desde es.json por su clave con puntos: si cambia el texto, el arnés lo sigue.
+ * @param {string} clave
+ */
+export function textoEs(clave) {
+  const texto = clave
+    .split(".")
+    .reduce((o, k) => o?.[k], JSON.parse(readFileSync(join("src", "i18n", "es.json"), "utf8")));
+  if (typeof texto !== "string") throw new Error(`es.json sin el texto ${clave}: ${JSON.stringify(texto)}`);
+  return texto;
+}
+
+/**
+ * «Comparar con «nombre»» como lo muestra la paleta en español. La opción no tiene un atributo propio (el `value` de
+ * reka-ui no llega al DOM).
+ * @param {string} nombre
+ */
+export function etiquetaComparar(nombre) {
+  const plantilla = textoEs("paleta.acciones.comparar");
+  if (!plantilla.includes("{nombre}"))
+    throw new Error(`es.json: paleta.acciones.comparar sin {nombre}: ${plantilla}`);
+  return plantilla.replace("{nombre}", nombre);
+}
+
+/** Una mediana para el registro: una comparación que pasó del plazo cuenta como infinita. @param {number[]} xs */
+const textoMediana = (xs) => {
+  if (!xs.length) return "sin medir";
+  const m = mediana(xs);
+  return Number.isFinite(m) ? `${m} ms` : `más de ${PLAZO_COMPARAR_MS} ms`;
+};
 
 /** @param {string} bd @param {(c: import("node:sqlite").DatabaseSync) => any} f @param {boolean} [soloLectura] */
 async function enBase(bd, f, soloLectura = false) {
@@ -595,12 +628,17 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
 
   // La primera apertura respalda la grande; con «nunca» no frena el cambio (como trabajo en curso). Se fija y se reabre.
   let app = await abrirApp(exe);
-  let info = await revisarBase(app, carpeta);
-  comprobar("medición: abre boldo.db, la grande", info.baseId === grande.id, info);
+  const primera = await revisarBase(app, carpeta);
+  comprobar("medición: abre boldo.db, la grande", primera.baseId === grande.id, primera);
   await app.evaluar(`localStorage.setItem("boldo:respaldos", JSON.stringify("nunca"))`);
-  await app.cerrar();
+  comprobar("medición: la primera apertura cierra con código 0", (await app.cerrar()) === 0);
   app = await abrirApp(exe);
-  info = await revisarBase(app, carpeta);
+  const info = await revisarBase(app, carpeta);
+  comprobar(
+    "medición: reabre boldo.db, la grande (mismo db_id y rutaBd)",
+    info.baseId === grande.id && info.rutaBd === primera.rutaBd,
+    { primera, info },
+  );
 
   const conFoto = await app.llamar("db_consultar", {
     baseId: info.baseId,
@@ -725,9 +763,10 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
 
 /**
  * Por la paleta, como una persona: desde Acerca, Ctrl+K, escribe el nombre y elige «Comparar con «nombre»». Espera la
- * comparación número `n` y su resumen dibujado. Devuelve lo que midió la app y si la vista avisó coincidencia aproximada.
- * La paleta en español: la etiqueta se busca por su texto.
+ * comparación número `n` y su resumen dibujado. Devuelve lo que midió la app y si la vista avisó coincidencia aproximada, o
+ * `{ tarde }` si pasó de PLAZO_COMPARAR_MS. La paleta en español: la etiqueta sale de es.json.
  * @param {App} app @param {{ nombre: string }} o @param {number} n
+ * @returns {Promise<{ ms: number, aproximada: boolean } | { tarde: string }>}
  */
 async function compararPorPaleta(app, o, n) {
   // Acerca: liviana y con marco (Inicio es `sinMarco`: ahí no hay paleta ni atajos). Salir de la vista suelta la
@@ -738,7 +777,7 @@ async function compararPorPaleta(app, o, n) {
       !document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')`,
     `Acerca, sin diálogos, antes de la comparación ${n}`,
   );
-  const etiqueta = `Comparar con «${o.nombre}»`;
+  const etiqueta = etiquetaComparar(o.nombre);
   await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
   const campo = `document.querySelector('[role="dialog"] input')`;
   await app.hasta(`Boolean(${campo})`, "la paleta abierta");
@@ -748,7 +787,8 @@ async function compararPorPaleta(app, o, n) {
   const opcion = `[...document.querySelectorAll('[role="dialog"] [role="option"]')].find((x) => x.innerText.trim() === ${JSON.stringify(etiqueta)})`;
   await app.hasta(`Boolean(${opcion})`, `«${etiqueta}» en la paleta`);
   await app.evaluar(`${opcion}.click()`);
-  /** @type {{ ms: number, aproximada: boolean } | { error: string }} */
+  // esperar solo lanza al vencer el plazo: es un tiempo que se anota, no un error de la página
+  /** @type {{ ms: number, aproximada: boolean } | { error: string } | { tarde: string }} */
   const r = await esperar(
     () =>
       app.evaluar(`(() => {
@@ -760,20 +800,51 @@ async function compararPorPaleta(app, o, n) {
         // el resumen se dibuja tras la medida: dos cuadros
         return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok({
           ms: Math.round(hechas.at(-1).duration),
-          aproximada: document.body.innerText.includes("Coincidencia aproximada"),
+          aproximada: document.body.innerText.includes(${JSON.stringify(textoEs("comparar.aproximada"))}),
         }))));
       })()`),
     `la comparación ${n}, con «${o.nombre}»`,
-    120_000,
-  );
+    PLAZO_COMPARAR_MS,
+  ).catch((/** @type {Error} */ e) => ({ tarde: e.message }));
   if ("error" in r) throw new Error(`La comparación con «${o.nombre}» falló: ${r.error}`);
   return r;
+}
+
+/** La ventana en PNG por CDP, en `carpeta`. @param {App} app @param {string} carpeta @param {string} nombre */
+async function capturar(app, carpeta, nombre) {
+  const { data } = await app.enviar("Page.captureScreenshot", { format: "png" });
+  writeFileSync(join(carpeta, `${nombre}.png`), Buffer.from(data, "base64"));
+}
+
+/**
+ * Para mirarlas a ojo (el trabajo las sube como `capturas-comparar`): la comparación ya dibujada y el detalle de su primera
+ * fila en el panel lateral. Lo cierra después, para que la paleta tenga el teclado.
+ * @param {App} app @param {string} carpeta
+ */
+async function capturarComparacion(app, carpeta) {
+  mkdirSync(carpeta, { recursive: true });
+  const fila = `document.querySelector('#${ID_AREA} li > button[aria-haspopup="dialog"]')`;
+  await app.hasta(`Boolean(${fila})`, "la primera fila de la comparación");
+  await capturar(app, carpeta, "1-comparacion");
+  await app.evaluar(`${fila}.click()`);
+  const panel = `document.querySelector('[role="dialog"][data-state="open"]')`;
+  await app.hasta(
+    `Boolean(${panel}?.querySelector('table, [role="alert"]'))`,
+    "el detalle de la fila en el panel",
+  );
+  await pausa(500); // que termine de entrar deslizándose
+  await capturar(app, carpeta, "2-detalle");
+  const conError = await app.evaluar(`${panel}.querySelector('[role="alert"]')?.innerText ?? null`);
+  comprobar("comparar: el detalle de la primera fila se abre sin error", conError === null, conError);
+  await app.evaluar(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
+  await app.hasta(`!${panel}`, "el panel de detalle cerrado");
 }
 
 /**
  * La grande de nuevo en `boldo.db`, con dos internas: `relacionada`, su copia con otro id que viene de ella y 100 teléfonos
  * cambiados (se compara por id), y `aparte`, otra sembrada con otros ids (se empareja por nombre y correo). Compara la grande
- * 3 veces con cada una por la paleta y lee lo que midió la app. Pasar de 5000 ms no falla: se pregunta al autor.
+ * 3 veces con cada una por la paleta y lee lo que midió la app. Pasar de 5000 ms no falla: se pregunta al autor; pasar de
+ * PLAZO_COMPARAR_MS sí. Deja en RUNNER_TEMP/capturas la primera aproximada y su detalle, para mirarlas.
  * @param {Portable} portable
  */
 async function medirComparacion({ carpeta, exe, datos }) {
@@ -820,14 +891,19 @@ async function medirComparacion({ carpeta, exe, datos }) {
   // Como en la medición: la primera apertura respalda la grande; con «nunca» no frena la comparación. Y en español, por la
   // etiqueta de la paleta. Se fija y se reabre.
   let app = await abrirApp(exe);
-  let info = await revisarBase(app, carpeta);
-  comprobar("comparar: abre boldo.db, la grande", info.baseId === grande.id, info);
+  const primera = await revisarBase(app, carpeta);
+  comprobar("comparar: abre boldo.db, la grande", primera.baseId === grande.id, primera);
   await app.evaluar(
     `localStorage.setItem("boldo:respaldos", JSON.stringify("nunca")); localStorage.setItem("boldo:idioma", JSON.stringify("es"))`,
   );
-  await app.cerrar();
+  comprobar("comparar: la primera apertura cierra con código 0", (await app.cerrar()) === 0);
   app = await abrirApp(exe);
-  info = await revisarBase(app, carpeta);
+  const info = await revisarBase(app, carpeta);
+  comprobar(
+    "comparar: reabre boldo.db, la grande (mismo db_id y rutaBd)",
+    info.baseId === grande.id && info.rutaBd === primera.rutaBd,
+    { primera, info },
+  );
   comprobar("comparar: la app en español", (await app.evaluar(`document.documentElement.lang`)) === "es");
   // Al cargar, la app se va sola a Inicio: navegar antes de eso lo pisa.
   await verInicio(app, "Inicio de la grande, antes de comparar");
@@ -838,11 +914,26 @@ async function medirComparacion({ carpeta, exe, datos }) {
   const aproximado = [];
   /** @type {string[]} */
   const mal = [];
+  let tarde = false;
   for (let i = 1; i <= 2 * VECES_COMPARAR; i++) {
     const otra = i % 2 ? relacionada : aparte;
     const r = await compararPorPaleta(app, otra, i);
-    (otra === relacionada ? porId : aproximado).push(r.ms);
+    const tiempos = otra === relacionada ? porId : aproximado;
+    if ("tarde" in r) {
+      // Sigue en curso y descuadraría la cuenta de medidas: no se compara más. El cierre y el archivo se revisan igual.
+      tiempos.push(Infinity);
+      comprobar(
+        `comparar: la comparación ${i}, con «${otra.nombre}», termina antes de ${PLAZO_COMPARAR_MS / 1000} s`,
+        false,
+        r.tarde,
+      );
+      tarde = true;
+      break;
+    }
+    tiempos.push(r.ms);
     if (r.aproximada !== (otra === aparte)) mal.push(`comparación ${i}: aproximada ${r.aproximada}`);
+    // la primera aproximada, para mirarla: el panel de detalle es lo que más cambia a ojo
+    if (i === 2) await capturarComparacion(app, join(process.env.RUNNER_TEMP ?? "", "capturas"));
     if (otra !== relacionada) continue;
     const difieren = await app.llamar("comparacion_pagina", {
       baseId: info.baseId,
@@ -851,7 +942,7 @@ async function medirComparacion({ carpeta, exe, datos }) {
     if (difieren.valor?.total !== CAMBIADAS) mal.push(`comparación ${i}: ${JSON.stringify(difieren)}`);
   }
   const medidas = await app.evaluar(`${COMPARAR}.length`);
-  if (medidas !== 2 * VECES_COMPARAR) mal.push(`${medidas} medidas, una por comparación`);
+  if (!tarde && medidas !== 2 * VECES_COMPARAR) mal.push(`${medidas} medidas, una por comparación`);
   comprobar(
     `comparar: con la relacionada, por id y difieren ${CAMBIADAS} personas; con la aparte, coincidencia aproximada`,
     !mal.length,
@@ -867,13 +958,14 @@ async function medirComparacion({ carpeta, exe, datos }) {
     { antes, despues },
   );
 
-  const medianaPorId = mediana(porId);
-  const medianaAproximado = mediana(aproximado);
-  console.log(`comparar por id: ${medianaPorId} ms`);
-  console.log(`comparar aproximado: ${medianaAproximado} ms`);
-  console.log(`comparar, cada vez: por id ${porId.join(", ")} ms; aproximado ${aproximado.join(", ")} ms`);
-  // decisión 10: no falla; con los números en el PR se pregunta al autor
-  if (Math.max(medianaPorId, medianaAproximado) >= META_COMPARAR_MS)
+  console.log(`comparar por id: ${textoMediana(porId)}`);
+  console.log(`comparar aproximado: ${textoMediana(aproximado)}`);
+  /** @param {number[]} xs */
+  const cadaVez = (xs) =>
+    xs.map((ms) => (Number.isFinite(ms) ? ms : `más de ${PLAZO_COMPARAR_MS}`)).join(", ");
+  console.log(`comparar, cada vez: por id ${cadaVez(porId)} ms; aproximado ${cadaVez(aproximado)} ms`);
+  // decisión 10: no falla; con los números en el PR se pregunta al autor (pasar del plazo sí falla, arriba)
+  if (!tarde && Math.max(mediana(porId), mediana(aproximado)) >= META_COMPARAR_MS)
     console.log(`comparar: una mediana llega a ${META_COMPARAR_MS} ms; se pregunta al autor`);
   console.log(`comparar: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
 }

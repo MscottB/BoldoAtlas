@@ -12,6 +12,7 @@
 //!   en uso pasa a `BoldoAtlas.old.exe`, que se borra al siguiente arranque). Las portables de Linux (AppImage)
 //!   y macOS (`.app`) usan el plugin: sus temporales caen en `datos/temporales` (ver `rutas::entorno_portable`).
 use crate::comandos::Estado;
+use crate::comparar_organizaciones::Comparaciones;
 use futures_util::future::{AbortHandle, Abortable};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -407,11 +408,7 @@ pub async fn buscar_actualizacion(
             // la versión del binario no sirve (ver arriba): se compara con la elegida, que ya es mayor
             .version_comparator(move |_, r| r.version == nueva)
             // el instalador de Windows cierra la app sin pasar por RunEvent::Exit: se cierra SQLite antes
-            .on_before_exit(move || {
-                let estado = al_salir.state::<Estado>();
-                estado.antes_de_reiniciar();
-                estado.cerrar_ordenado(Duration::from_secs(3));
-            })
+            .on_before_exit(move || cerrar_para_reiniciar(&al_salir))
             .build()
             .map_err(|e| fallo(codigo_plugin(&e), e))?
             .check()
@@ -480,10 +477,7 @@ fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Resul
         reemplazar(&exe, &exe_del_zip(bytes)?, &dir_temporal(&datos))?;
         // se abre la ruta de siempre (ahora el exe nuevo); el proceso actual sigue siendo el .old.exe
         terminar_tras_reemplazo(
-            || {
-                estado.antes_de_reiniciar();
-                estado.cerrar_ordenado(Duration::from_secs(3));
-            },
+            || cerrar_para_reiniciar(app),
             || {
                 // antes de abrirla: esta copia aún tarda en salir y, si no, la nueva se toma por segunda instancia y
                 // se cierra, y no queda nada abierto. Desde este hilo basta: al cerrar el mutex se libera el nombre
@@ -512,9 +506,16 @@ fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Resul
         return Err(fallo(codigo, e));
     }
     // una organización a medio crear quedaría sin listar
+    cerrar_para_reiniciar(app);
+    app.restart()
+}
+
+/// Lo de `RunEvent::Exit`, por el que el instalador de Windows no pasa: SQLite en orden y el temporal de una comparación borrado.
+fn cerrar_para_reiniciar(app: &AppHandle) {
+    let estado = app.state::<Estado>();
     estado.antes_de_reiniciar();
     estado.cerrar_ordenado(Duration::from_secs(3));
-    app.restart()
+    app.state::<Comparaciones>().cerrar();
 }
 
 #[tauri::command]

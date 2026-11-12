@@ -1689,6 +1689,7 @@
     "compararDeNuevo": "Compare again",
     "cancelada": "The comparison was canceled.",
     "yaNoEsta": "That organization is no longer on the list.",
+    "elige": "Choose an organization to compare with: in Home, from an organization's ⋮ menu, or in the command palette (Ctrl+K).",
     "resumen": "Differences by type",
     "tipo": "Type",
     "iguales": "Same in both: {n}",

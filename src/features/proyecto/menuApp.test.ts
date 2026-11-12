@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createMemoryHistory, createRouter } from "vue-router";
 import type { Organizacion } from "@/db/cliente";
 import { entradasAbrirOtra, entradasComparar, rutaComparar } from "./menuApp";
 
@@ -7,8 +8,8 @@ vi.hoisted(() =>
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }),
 );
 
-const org = (id: string): Organizacion =>
-  ({ id, nombre: `Org ${id}`, color: "#112233", abierta: "2026-11-03" }) as Organizacion;
+const org = (id: string, existe = true): Organizacion =>
+  ({ id, nombre: `Org ${id}`, color: "#112233", abierta: "2026-11-03", existe }) as Organizacion;
 
 describe("entradasAbrirOtra", () => {
   it("no ofrece la abierta y respeta el orden", () => {
@@ -31,7 +32,26 @@ describe("entradasComparar", () => {
     ]);
   });
 
+  it("no ofrece las que perdieron su archivo", () => {
+    expect(entradasComparar([org("A"), org("B", false), org("C")], "A")).toEqual([
+      { id: "C", nombre: "Org C" },
+    ]);
+  });
+
   it("lleva a la vista Comparar con la otra en `con` y la abierta en `de`", () => {
-    expect(rutaComparar("B", "A")).toEqual({ name: "comparar", query: { con: "B", de: "A" } });
+    expect(rutaComparar("B", "A")).toMatchObject({ name: "comparar", query: { con: "B", de: "A" } });
+  });
+
+  it("pedir la misma comparación que se está viendo vuelve a navegar, para comparar de nuevo", async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/comparar", name: "comparar", component: { render: () => null } }],
+    });
+    const vistas: unknown[] = [];
+    router.afterEach((to, _de, fallo) => void (fallo ? null : vistas.push(to.query)));
+    await router.push(rutaComparar("B", "A"));
+    expect(await router.push(rutaComparar("B", "A"))).toBeUndefined();
+    expect(vistas).toHaveLength(2);
+    expect(vistas[1]).not.toBe(vistas[0]); // la vista mira la `query`: llega una nueva
   });
 });
