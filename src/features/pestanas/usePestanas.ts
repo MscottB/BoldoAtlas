@@ -75,6 +75,7 @@ export const usePestanas = defineStore("pestanas", () => {
     // releer se recorta la última; cerrar pestañas de más si alguien llega a eso.
     return (
       P.abrir(m, id, P.RUTA_INICIO, org) ?? {
+        ...m,
         lista: [...m.lista, { id, org, ruta: P.RUTA_INICIO }],
         activa: id,
       }

@@ -19,9 +19,23 @@ export interface Pestana {
   /** En Configuración, Ayuda o Acerca de: la ruta de esta pestaña a la que vuelve «Cerrar». */
   volver?: string;
 }
+/** Cómo se reparte la ventana con dos pestañas a la vista: `horizontal` es lado a lado; `proporcion`, lo que ocupa la principal. */
+export interface Division {
+  orientacion: "horizontal" | "vertical";
+  proporcion: number;
+}
+export const DIVISION_INICIAL: Division = { orientacion: "horizontal", proporcion: 0.5 };
+export const PROPORCION_MIN = 0.2;
+export const PROPORCION_MAX = 0.8;
+export type Panel = "principal" | "lado";
+
 export interface Pestanas {
   lista: Pestana[];
+  /** La del panel principal. */
   activa: string;
+  /** La que se ve al lado, junto a la activa; null sin vista dividida. Nunca es la activa. */
+  lado: string | null;
+  division: Division;
 }
 
 const indice = (m: Pestanas, id: string) => m.lista.findIndex((p) => p.id === id);
@@ -29,6 +43,8 @@ const indice = (m: Pestanas, id: string) => m.lista.findIndex((p) => p.id === id
 export const unaPestana = (id: string, org: string, ruta = RUTA_INICIO): Pestanas => ({
   lista: [{ id, org, ruta }],
   activa: id,
+  lado: null,
+  division: DIVISION_INICIAL,
 });
 
 /** Abre `ruta` en una pestaña nueva, a la derecha de la activa, y la deja activa; null si ya hay el máximo. */
@@ -36,23 +52,60 @@ export function abrir(m: Pestanas, id: string, ruta: string, org: string): Pesta
   if (m.lista.length >= MAX_PESTANAS) return null;
   const lista = [...m.lista];
   lista.splice(indice(m, m.activa) + 1, 0, { id, org, ruta });
-  return { lista, activa: id };
+  return { ...m, lista, activa: id };
 }
 
 /**
  * Cierra la pestaña; si era la activa, se activa la más cercana de su organización (primero a la derecha) y, si no hay,
- * la de su derecha (o la de su izquierda). La última no se cierra.
+ * la de su derecha (o la de su izquierda), nunca la de al lado: esa sigue donde estaba. Cerrar la de al lado quita la
+ * división, y si la de al lado es la única que queda pasa a ser la activa. La última no se cierra.
  */
 export function cerrar(m: Pestanas, id: string): Pestanas {
   const i = indice(m, id);
   if (i < 0 || m.lista.length <= 1) return m;
   const lista = m.lista.filter((p) => p.id !== id);
-  if (m.activa !== id) return { lista, activa: m.activa };
+  const lado = m.lado === id ? null : m.lado;
+  if (m.activa !== id) return { ...m, lista, lado };
+  // Entre las candidatas no va la de al lado; `j` es el lugar que ocupaba la cerrada entre ellas.
+  const candidatas = lista.filter((p) => p.id !== lado);
+  if (!candidatas.length) return { ...m, lista, activa: lado!, lado: null };
+  const j = m.lista.slice(0, i).filter((p) => p.id !== lado).length;
   const deSuOrg = (p: Pestana) => p.org === m.lista[i]!.org;
   const nueva =
-    lista.slice(i).find(deSuOrg) ?? lista.slice(0, i).reverse().find(deSuOrg) ?? lista[i] ?? lista[i - 1]!;
-  return { lista, activa: nueva.id };
+    candidatas.slice(j).find(deSuOrg) ??
+    candidatas.slice(0, j).reverse().find(deSuOrg) ??
+    candidatas[j] ??
+    candidatas[j - 1]!;
+  return { ...m, lista, activa: nueva.id, lado };
 }
+
+/**
+ * Pone `id` al lado. Si es la activa, intercambia con la de al lado; sin pestaña al lado, la activa pasa a la que
+ * activaría `cerrar`. Con una sola pestaña no hay otra que activar y nada cambia.
+ */
+export function alLado(m: Pestanas, id: string): Pestanas {
+  if (indice(m, id) < 0 || m.lado === id) return m;
+  if (id !== m.activa) return { ...m, lado: id };
+  if (m.lista.length <= 1) return m;
+  return { ...m, activa: m.lado ?? cerrar(m, id).activa, lado: id };
+}
+
+/** Quita la vista dividida. */
+export const sinLado = (m: Pestanas): Pestanas => ({ ...m, lado: null });
+
+/** Muestra `id` en `panel`; si ya estaba en el otro, los dos paneles intercambian sus pestañas. */
+export function enPanel(m: Pestanas, panel: Panel, id: string): Pestanas {
+  if (indice(m, id) < 0) return m;
+  if (panel === "lado") return alLado(m, id);
+  if (id === m.activa) return m;
+  return { ...m, activa: id, lado: id === m.lado ? m.activa : m.lado };
+}
+
+/** Cambia lo que ocupa el panel principal, acotado para que ninguno de los dos desaparezca. */
+export const conProporcion = (m: Pestanas, p: number): Pestanas =>
+  Number.isFinite(p)
+    ? { ...m, division: { ...m.division, proporcion: Math.min(Math.max(p, PROPORCION_MIN), PROPORCION_MAX) } }
+    : m;
 
 /**
  * Sin las pestañas de `org`, que ya no existe. La activa debe ser de la abierta: si era de `org`, pasa a una suya y, sin
@@ -65,11 +118,18 @@ export function sinOrganizacion(
   orgAbierta: string,
 ): Pestanas {
   const lista = m.lista.filter((p) => p.org !== org);
-  if (lista.some((p) => p.id === m.activa)) return { lista, activa: m.activa };
+  // La de al lado se queda solo si sigue en la lista y no pasa a ser la activa.
+  const con = (l: Pestana[], activa: string): Pestanas => ({
+    ...m,
+    lista: l,
+    activa,
+    lado: l.some((p) => p.id === m.lado) && m.lado !== activa ? m.lado : null,
+  });
+  if (lista.some((p) => p.id === m.activa)) return con(lista, m.activa);
   const suya = lista.find((p) => p.org === orgAbierta);
-  if (suya) return { lista, activa: suya.id };
+  if (suya) return con(lista, suya.id);
   const id = nuevoId();
-  return { lista: [...lista, { id, org: orgAbierta, ruta: RUTA_INICIO }], activa: id };
+  return con([...lista, { id, org: orgAbierta, ruta: RUTA_INICIO }], id);
 }
 
 /**
@@ -82,14 +142,16 @@ export function alArbol(
   esArbol: (ruta: string) => boolean,
   nuevoId: () => string,
 ): Pestanas {
-  const suya =
-    [m.lista.find((p) => p.id === m.activa), ...m.lista].find((p) => p?.org === org && esArbol(p.ruta));
-  if (suya) return { ...m, activa: suya.id };
+  const suya = [m.lista.find((p) => p.id === m.activa), ...m.lista].find(
+    (p) => p?.org === org && esArbol(p.ruta),
+  );
+  if (suya) return enPanel(m, "principal", suya.id);
   return abrir(m, nuevoId(), RUTA_INICIO, org) ?? m;
 }
 
 /** Con más de una organización, cada pestaña lleva su nombre y su color. */
-export const hayVariasOrganizaciones = (m: Pestanas): boolean => new Set(m.lista.map((p) => p.org)).size > 1;
+export const hayVariasOrganizaciones = (m: Pick<Pestanas, "lista" | "activa">): boolean =>
+  new Set(m.lista.map((p) => p.org)).size > 1;
 
 /** Si el motivo por el que no abrió se arregla buscando el archivo: `red` y `journal` piden hacerlo en su texto; `no_esta` es
  * un archivo que se movió. */
@@ -115,11 +177,16 @@ export const sePuedeCerrar = (codigo: string, pestanas: number): boolean =>
 export const detalleUtil = ({ detalle, mensaje }: { detalle: string; mensaje: string }): boolean =>
   !!detalle && detalle !== mensaje && !/^[\w-]+$/.test(detalle);
 
-/** La pestaña a `paso` de la activa, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab). */
-export function vecina(m: Pestanas, paso: 1 | -1): string {
+/** La pestaña a `paso` de la que muestra `panel`, dando la vuelta (Ctrl+Tab / Ctrl+Mayús+Tab) y saltando la del otro panel. */
+export function vecina(m: Pestanas, paso: 1 | -1, panel: Panel = "principal"): string {
   const n = m.lista.length;
-  const i = Math.max(0, indice(m, m.activa));
-  return m.lista[(i + paso + n) % n]!.id;
+  const otro = panel === "principal" ? m.lado : m.activa;
+  let i = Math.max(0, indice(m, panel === "principal" ? m.activa : (m.lado ?? m.activa)));
+  for (let k = 0; k < n; k++) {
+    i = (i + paso + n) % n;
+    if (m.lista[i]!.id !== otro) break;
+  }
+  return m.lista[i]!.id;
 }
 
 /** Lleva la pestaña a la posición `destino` (acotada a la lista). */
@@ -181,7 +248,21 @@ export function leerPestanas(
     lista.push(pestana);
   }
   if (!lista.length) return unaPestana(nuevoId(), orgActual);
-  return { lista, activa: lista.some((p) => p.id === c.activa) ? (c.activa as string) : lista[0]!.id };
+  const activa = lista.some((p) => p.id === c.activa) ? (c.activa as string) : lista[0]!.id;
+  const lado =
+    typeof c.lado === "string" && c.lado !== activa && lista.some((p) => p.id === c.lado) ? c.lado : null;
+  const d = (typeof c.division === "object" && c.division !== null ? c.division : {}) as Record<
+    string,
+    unknown
+  >;
+  const division: Division =
+    (d.orientacion === "horizontal" || d.orientacion === "vertical") &&
+    typeof d.proporcion === "number" &&
+    d.proporcion >= PROPORCION_MIN &&
+    d.proporcion <= PROPORCION_MAX
+      ? { orientacion: d.orientacion, proporcion: d.proporcion }
+      : DIVISION_INICIAL;
+  return { lista, activa, lado, division };
 }
 
 /** Lo que identifica la vista de una ruta (de `router.resolve`). */
