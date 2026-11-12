@@ -75,6 +75,7 @@ export function useComparar() {
     resumen.value = null;
     pagina.value = null;
     detalle.value = null;
+    const inicio = performance.now();
     const r = await intentarTrabajo(deLaAbierta(t("trabajos.comparar")), () =>
       compararOrganizaciones(otraId, propio),
     );
@@ -82,6 +83,8 @@ export function useComparar() {
     trabajo.value = null;
     cargando.value = false;
     if (!r.ok) return fallo(r);
+    // la lee el arnés de organizaciones: solo una comparación que terminó
+    performance.measure("comparar-organizaciones", { start: inicio });
     resumen.value = r.valor;
     return { ok: true };
   }

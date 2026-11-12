@@ -1,5 +1,19 @@
 [
   {
+    "id": "comparar-organizaciones",
+    "pagina": "organizaciones",
+    "es": {
+      "titulo": "Compara dos organizaciones",
+      "texto": "Desde Inicio o la paleta, compara la organización abierta con otra. Verás qué unidades, personas y puestos están solo en una o tienen datos distintos, y el detalle de cada lado. La otra no se modifica. Si no vienen de la misma organización, se emparejan por nombre de unidad y correo de persona, y se avisa.",
+      "ancla": "comparar"
+    },
+    "en": {
+      "titulo": "Compare two organizations",
+      "texto": "From Home or the palette, compare the open organization with another one. You will see which units, people and positions are only in one or have different data, with the detail of each side. The other one is not modified. If they do not come from the same organization, they are matched by unit name and person email, and you are told so.",
+      "ancla": "compare"
+    }
+  },
+  {
     "id": "conexiones-ramas-plegadas",
     "pagina": "arbol",
     "es": {

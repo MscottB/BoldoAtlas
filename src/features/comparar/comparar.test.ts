@@ -98,6 +98,30 @@ describe("useComparar", () => {
     expect(cmp.resumen.value).toBeNull();
   });
 
+  it("mide solo la comparación que terminó, desde antes de llamar a Rust", async () => {
+    let paso = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => paso);
+    const medida = vi.spyOn(performance, "measure").mockImplementation(() => ({}) as never);
+    c.compararOrganizaciones.mockImplementation(async () => ((paso = 2), RESUMEN));
+    const { cmp } = montar();
+    paso = 1;
+    await cmp.comparar("B");
+    expect(medida).toHaveBeenCalledExactlyOnceWith("comparar-organizaciones", { start: 1 });
+
+    medida.mockClear();
+    c.compararOrganizaciones.mockRejectedValue({ codigo: "misma", detalle: "" });
+    await cmp.comparar("B");
+    const p = pendiente<ResumenComparacion>();
+    c.compararOrganizaciones.mockReturnValue(p.promesa);
+    const hecho = cmp.comparar("B");
+    await vi.waitFor(() => expect(c.compararOrganizaciones).toHaveBeenCalledTimes(3));
+    await cmp.cancelar();
+    p.resolver(RESUMEN);
+    await hecho;
+    expect(medida).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
   it("un fallo de Rust vuelve traducido, sin lanzar", async () => {
     c.compararOrganizaciones.mockRejectedValue({ codigo: "misma", detalle: "" });
     const { cmp } = montar();

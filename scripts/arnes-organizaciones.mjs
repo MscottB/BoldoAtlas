@@ -1,8 +1,8 @@
 // Arnés de «varias organizaciones» con el programa real: la migración desde una versión de antes de varias organizaciones y
-// la actualización desde la publicada, el tiempo de cambio entre una organización grande y una chica, y eliminar por la
-// pantalla con el Rust de verdad. Solo desarrollo: la app no lo importa. Solo en CI de Windows, como la prueba de humo, de
-// la que toma cómo abrir la app y leer su página: abre BoldoAtlas en una ventana, siempre una portable con sus datos en una
-// carpeta temporal.
+// la actualización desde la publicada, el tiempo de cambio entre una organización grande y una chica, eliminar por la
+// pantalla con el Rust de verdad y el tiempo de comparar la grande con otra. Solo desarrollo: la app no lo importa. Solo en
+// CI de Windows, como la prueba de humo, de la que toma cómo abrir la app y leer su página: abre BoldoAtlas en una ventana,
+// siempre una portable con sus datos en una carpeta temporal.
 // Uso: node scripts/arnes-organizaciones.mjs <portable .zip de antes de varias organizaciones> <portable .zip publicada>
 // La nueva es la de release/*/, de `node scripts/release.mjs --solo-portable --perfil prueba`.
 import { createHash, randomUUID } from "node:crypto";
@@ -15,6 +15,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
@@ -46,6 +47,11 @@ const PERSONA = "arnes-foto";
 const ORG_MIGRADA = "Organización migrada";
 const RESPALDO = "boldo-20200101-0000.db";
 const CAMBIO = `performance.getEntriesByName("cambio-organizacion")`;
+const COMPARAR = `performance.getEntriesByName("comparar-organizaciones")`;
+const VECES_COMPARAR = 3;
+const META_COMPARAR_MS = 5000;
+// personas de la relacionada con el teléfono cambiado
+const CAMBIADAS = 100;
 const OTRA_PESTANA = `document.querySelector('[role="tab"][id^="pestana-"][aria-selected="false"]')`;
 // la raíz de la grande, de sembrar-grande.mjs
 const RAIZ_GRANDE = "Gerencia General";
@@ -520,21 +526,40 @@ function informar(sentido, ms) {
 const verArchivo = (ruta, existe, que) => comprobar(que, existsSync(ruta) === existe, ruta);
 
 /**
+ * La grande de sembrar-grande.mjs (10.000 personas y 1.000 fotos) en `bd`, que no debe existir, con el id dado (y el
+ * nombre, si se da). Devuelve su nombre.
+ * @param {string} bd @param {string} id @param {string} [nombre]
+ */
+async function sembrarGrande(bd, id, nombre) {
+  execFileSync(process.execPath, [join("scripts", "sembrar-grande.mjs"), bd, "--fotos", String(FOTOS)], {
+    stdio: "inherit",
+    timeout: 300_000,
+  });
+  return enBase(bd, (c) => {
+    ponerMeta(c, id, nombre);
+    return String(c.prepare("SELECT valor FROM meta WHERE clave = 'org_nombre'").get()?.valor);
+  });
+}
+
+/** Una entrada de organizaciones.json. @param {{ id: string, nombre: string }} o @param {string} ruta @param {boolean} externa @param {string} color @param {string} abierta */
+const entrada = (o, ruta, externa, color, abierta) => ({
+  id: o.id,
+  nombre: o.nombre,
+  ruta,
+  externa,
+  color,
+  abierta,
+});
+
+/**
  * Una grande (10.000 personas y 1.000 fotos) en `boldo.db`, una chica interna y dos externas: alterna entre la grande y la
  * chica y después las elimina todas por la pantalla, `boldo.db` al final.
  * @param {Portable} portable
  */
 async function medicionYEliminar({ carpeta, exe, datos }) {
   const bd = join(datos, "boldo.db");
-  execFileSync(process.execPath, [join("scripts", "sembrar-grande.mjs"), bd, "--fotos", String(FOTOS)], {
-    stdio: "inherit",
-    timeout: 300_000,
-  });
   const grande = { id: randomUUID(), nombre: "" };
-  grande.nombre = await enBase(bd, (c) => {
-    ponerMeta(c, grande.id);
-    return String(c.prepare("SELECT valor FROM meta WHERE clave = 'org_nombre'").get()?.valor);
-  });
+  grande.nombre = await sembrarGrande(bd, grande.id);
   const chica = { id: randomUUID(), nombre: "Chica del arnés" };
   const chicaRuta = `organizaciones/${chica.id}/organizacion.db`;
   const externas = join(carpeta, "externas");
@@ -542,15 +567,6 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
   const seBorra = { id: randomUUID(), nombre: "Externa que se borra", ruta: join(externas, "se-borra.db") };
   await crearBase(join(datos, chicaRuta), chica.id, chica.nombre, RAIZ_CHICA);
   for (const e of [queda, seBorra]) await crearBase(e.ruta, e.id, e.nombre, `Raíz de ${e.nombre}`);
-  /** @param {{ id: string, nombre: string }} o @param {string} ruta @param {boolean} externa @param {string} color @param {string} abierta */
-  const entrada = (o, ruta, externa, color, abierta) => ({
-    id: o.id,
-    nombre: o.nombre,
-    ruta,
-    externa,
-    color,
-    abierta,
-  });
   writeFileSync(
     join(datos, "organizaciones.json"),
     JSON.stringify({
@@ -698,6 +714,153 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
   console.log(`eliminar: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
 }
 
+/**
+ * Por la paleta, como una persona: desde Inicio, Ctrl+K, escribe el nombre y elige «Comparar con «nombre»». Espera la
+ * comparación número `n` y su resumen dibujado. Devuelve lo que midió la app y si la vista avisó coincidencia aproximada.
+ * La paleta en español: la etiqueta se busca por su texto.
+ * @param {App} app @param {{ nombre: string }} o @param {number} n
+ */
+async function compararPorPaleta(app, o, n) {
+  await app.evaluar(`location.hash = "#/bienvenida"`); // salir de la vista suelta la comparación anterior
+  await verInicio(app, `Inicio antes de la comparación ${n}`);
+  const etiqueta = `Comparar con «${o.nombre}»`;
+  await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
+  const campo = `document.querySelector('[role="dialog"] input')`;
+  await app.hasta(`Boolean(${campo})`, "la paleta abierta");
+  await app.evaluar(
+    `(() => { const c = ${campo}; c.value = ${JSON.stringify(o.nombre)}; c.dispatchEvent(new Event("input", { bubbles: true })); })()`,
+  );
+  const opcion = `[...document.querySelectorAll('[role="dialog"] [role="option"]')].find((x) => x.innerText.trim() === ${JSON.stringify(etiqueta)})`;
+  await app.hasta(`Boolean(${opcion})`, `«${etiqueta}» en la paleta`);
+  await app.evaluar(`${opcion}.click()`);
+  /** @type {{ ms: number, aproximada: boolean } | { error: string }} */
+  const r = await esperar(
+    () =>
+      app.evaluar(`(() => {
+        if (!location.hash.startsWith("#/comparar")) return null;
+        const aviso = document.querySelector('section > [role="alert"]');
+        if (aviso) return { error: aviso.innerText };
+        const hechas = ${COMPARAR};
+        if (hechas.length < ${n}) return null;
+        // el resumen se dibuja tras la medida: dos cuadros
+        return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok({
+          ms: Math.round(hechas.at(-1).duration),
+          aproximada: document.body.innerText.includes("Coincidencia aproximada"),
+        }))));
+      })()`),
+    `la comparación ${n}, con «${o.nombre}»`,
+    120_000,
+  );
+  if ("error" in r) throw new Error(`La comparación con «${o.nombre}» falló: ${r.error}`);
+  return r;
+}
+
+/**
+ * La grande de nuevo en `boldo.db`, con dos internas: `relacionada`, su copia con otro id que viene de ella y 100 teléfonos
+ * cambiados (se compara por id), y `aparte`, otra sembrada con otros ids (se empareja por nombre y correo). Compara la grande
+ * 3 veces con cada una por la paleta y lee lo que midió la app. Pasar de 5000 ms no falla: se pregunta al autor.
+ * @param {Portable} portable
+ */
+async function medirComparacion({ carpeta, exe, datos }) {
+  const previos = fallosHastaAhora();
+  const grande = { id: randomUUID(), nombre: "" };
+  const bd = join(datos, "boldo.db");
+  grande.nombre = await sembrarGrande(bd, grande.id);
+  const relacionada = { id: randomUUID(), nombre: "Relacionada del arnés" };
+  const aparte = { id: randomUUID(), nombre: "Aparte del arnés" };
+  /** @param {{ id: string }} o */
+  const rutaDe = (o) => `organizaciones/${o.id}/organizacion.db`;
+  const rutaRelacionada = join(datos, rutaDe(relacionada));
+  const carpetaRelacionada = dirname(rutaRelacionada);
+  for (const o of [relacionada, aparte]) mkdirSync(dirname(join(datos, rutaDe(o))), { recursive: true });
+  await enBase(bd, (c) => c.prepare("VACUUM INTO ?").run(rutaRelacionada));
+  const cambiadas = await enBase(rutaRelacionada, (c) => {
+    ponerMeta(c, relacionada.id, relacionada.nombre);
+    c.prepare("INSERT OR REPLACE INTO meta (clave, valor) VALUES ('origen_db_id', ?)").run(grande.id);
+    return c
+      .prepare(
+        "UPDATE trabajadores SET telefono = '+56 9 1234 5678' WHERE id IN (SELECT id FROM trabajadores ORDER BY id LIMIT ?)",
+      )
+      .run(CAMBIADAS).changes;
+  });
+  comprobar(
+    `comparar: la relacionada tiene ${CAMBIADAS} teléfonos cambiados`,
+    cambiadas === CAMBIADAS,
+    cambiadas,
+  );
+  await sembrarGrande(join(datos, rutaDe(aparte)), aparte.id, aparte.nombre);
+  writeFileSync(
+    join(datos, "organizaciones.json"),
+    JSON.stringify({
+      version: 1,
+      organizaciones: [
+        entrada(grande, "boldo.db", false, "#3b6fb5", "2026-01-03T00:00:00.000Z"), // la última abierta: abre esta
+        entrada(relacionada, rutaDe(relacionada), false, "#2f855a", "2026-01-02T00:00:00.000Z"),
+        entrada(aparte, rutaDe(aparte), false, "#b7791f", "2026-01-01T00:00:00.000Z"),
+      ],
+    }),
+  );
+  const antes = { archivos: huellas(carpetaRelacionada), mtime: statSync(rutaRelacionada).mtimeMs };
+
+  // Como en la medición: la primera apertura respalda la grande; con «nunca» no frena la comparación. Y en español, por la
+  // etiqueta de la paleta. Se fija y se reabre.
+  let app = await abrirApp(exe);
+  let info = await revisarBase(app, carpeta);
+  comprobar("comparar: abre boldo.db, la grande", info.baseId === grande.id, info);
+  await app.evaluar(
+    `localStorage.setItem("boldo:respaldos", JSON.stringify("nunca")); localStorage.setItem("boldo:idioma", JSON.stringify("es"))`,
+  );
+  await app.cerrar();
+  app = await abrirApp(exe);
+  info = await revisarBase(app, carpeta);
+  comprobar("comparar: la app en español", (await app.evaluar(`document.documentElement.lang`)) === "es");
+
+  /** @type {number[]} */
+  const porId = [];
+  /** @type {number[]} */
+  const aproximado = [];
+  /** @type {string[]} */
+  const mal = [];
+  for (let i = 1; i <= 2 * VECES_COMPARAR; i++) {
+    const otra = i % 2 ? relacionada : aparte;
+    const r = await compararPorPaleta(app, otra, i);
+    (otra === relacionada ? porId : aproximado).push(r.ms);
+    if (r.aproximada !== (otra === aparte)) mal.push(`comparación ${i}: aproximada ${r.aproximada}`);
+    if (otra !== relacionada) continue;
+    const difieren = await app.llamar("comparacion_pagina", {
+      baseId: info.baseId,
+      filtro: { tabla: "trabajadores", presencia: "difieren", desde: 0, cuantos: 1 },
+    });
+    if (difieren.valor?.total !== CAMBIADAS) mal.push(`comparación ${i}: ${JSON.stringify(difieren)}`);
+  }
+  const medidas = await app.evaluar(`${COMPARAR}.length`);
+  if (medidas !== 2 * VECES_COMPARAR) mal.push(`${medidas} medidas, una por comparación`);
+  comprobar(
+    `comparar: con la relacionada, por id y difieren ${CAMBIADAS} personas; con la aparte, coincidencia aproximada`,
+    !mal.length,
+    mal,
+  );
+  await app.evaluar(`location.hash = "#/bienvenida"`);
+  await verInicio(app, "Inicio tras comparar");
+  comprobar("comparar: la app cierra con código 0", (await app.cerrar()) === 0);
+  const despues = { archivos: huellas(carpetaRelacionada), mtime: statSync(rutaRelacionada).mtimeMs };
+  comprobar(
+    "comparar: el archivo de la relacionada no cambió (mismos bytes y fecha, nada nuevo a su lado)",
+    JSON.stringify(despues) === JSON.stringify(antes),
+    { antes, despues },
+  );
+
+  const medianaPorId = mediana(porId);
+  const medianaAproximado = mediana(aproximado);
+  console.log(`comparar por id: ${medianaPorId} ms`);
+  console.log(`comparar aproximado: ${medianaAproximado} ms`);
+  console.log(`comparar, cada vez: por id ${porId.join(", ")} ms; aproximado ${aproximado.join(", ")} ms`);
+  // decisión 10: no falla; con los números en el PR se pregunta al autor
+  if (Math.max(medianaPorId, medianaAproximado) >= META_COMPARAR_MS)
+    console.log(`comparar: una mediana llega a ${META_COMPARAR_MS} ms; se pregunta al autor`);
+  console.log(`comparar: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
+}
+
 /** Como `comprobarInstaladaIntacta`, para la carpeta local: el WebView de una instalada vive ahí. */
 function comprobarLocalIntacta() {
   const { identifier } = JSON.parse(readFileSync(join("src-tauri", "tauri.conf.json"), "utf8"));
@@ -720,6 +883,7 @@ async function correr(zipAntes, zipPublicada) {
   await desdeAntesDeOrganizaciones(zipAntes, nueva.exe);
   await desdeLaPublicada(zipPublicada, nueva.exe);
   await medicionYEliminar(nueva);
+  await medirComparacion(extraer(zipNueva, "comparar"));
   comprobarInstaladaIntacta();
   comprobarLocalIntacta();
   exigirSinFallos();

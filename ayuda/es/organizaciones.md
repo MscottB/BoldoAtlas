@@ -26,8 +26,28 @@ Al abrir una organización, BoldoAtlas pasa a una de sus pestañas o, si no tien
 Cuando las pestañas abiertas son de más de una organización, cada pestaña muestra el punto de color de la suya y su nombre antes del título, por ejemplo «Compañía Demo · Árbol». Pasar a una pestaña de otra organización la abre. Solo la organización de la pestaña activa está cargada, y entre todas puedes tener hasta 12 pestañas abiertas. La barra superior muestra el nombre y el color de la organización abierta.
 
 ::: tip Consejo
-Para comparar dos organizaciones, deja una pestaña de cada una y pasa de una a otra con `Ctrl` + `Tab`.
+Para trabajar en dos organizaciones a la vez, deja una pestaña de cada una y pasa de una a otra con `Ctrl` + `Tab`.
 :::
+
+## Comparar
+
+Comparar muestra qué unidades, personas y puestos están solo en una de dos organizaciones o tienen datos distintos. Siempre se compara con la organización abierta:
+
+- En **Inicio › Abierto recientemente**, abre el menú **⋮** de otra organización y pulsa **Comparar con la abierta**.
+- En la paleta de comandos (`Ctrl+K`), elige **Comparar con «nombre»**.
+
+Arriba, una tabla con **Unidades**, **Personas** y **Puestos** dice cuántas están solo en una, solo en la otra o **Difieren**. Pulsa un número para ver esas filas en la lista de abajo, de 50 en 50; **Ver todas** vuelve a la lista completa. Pulsa una fila para ver su detalle, con los datos de cada lado.
+
+- Una persona que ocupa otro puesto vigente cuenta como distinta.
+- Algo borrado en una y vigente en la otra cuenta como solo en la que lo tiene vigente.
+
+La otra organización no se modifica: BoldoAtlas la copia a un archivo temporal y compara con esa copia. Hay una sola comparación a la vez: comparar de nuevo, cambiar de organización o salir de la vista la suelta. Si cambias de organización y vuelves, la vista dice que la comparación ya no vale y ofrece **Comparar de nuevo**.
+
+### Coincidencia aproximada
+
+Si una organización no viene de la otra, por ejemplo porque se crearon por separado, se emparejan por lo que tienen en común: las unidades por su nombre y el de las unidades sobre ellas, las personas por su correo, y los puestos por su unidad y su nombre. El aviso **Coincidencia aproximada** lo dice, junto con cuántas personas no tienen correo.
+
+Las personas sin correo, o con un correo que se repite, no se emparejan: cuentan como solo en su organización.
 
 ## Qué se guarda aparte
 
