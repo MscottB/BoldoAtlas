@@ -618,7 +618,8 @@ fn recorrer(
                 Ordering::Less => {
                     let m = mia.as_ref().ok_or("fila")?;
                     if con_locales && m[i_baja] == Value::Null {
-                        s.solo_aqui.push((tabla, texto(&m[i_id]).unwrap_or_default().to_string()));
+                        s.solo_aqui
+                            .push((tabla, texto(&m[i_id]).ok_or("id")?.to_string()));
                     }
                     mia = siguiente(&mut filas_l, n_cols)?;
                 }
