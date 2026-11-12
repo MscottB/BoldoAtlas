@@ -2,7 +2,8 @@
 //! de las que tiene esta copia de la app.
 use crate::db;
 use crate::intercambio::validar::{
-    MAX_BYTES_VIVOS, revisar_organizacion, solo_lectura_cerrada, version_leida, version_y_esquema,
+    MAX_BYTES_VIVOS, para_leer, revisar_organizacion, solo_lectura_cerrada, version_leida,
+    version_y_esquema,
 };
 use crate::intercambio::{Temporal, nombre_limpio};
 use crate::respaldos::{
@@ -599,15 +600,20 @@ fn abrir_entrada_con(
         if tiene_diario(&base.bd) {
             return Err(Fallo::de("contenido_invalido", "journal"));
         }
-        version_y_esquema(&base.bd, migraciones)?;
+    }
+    // una que no se abre no se queda con un `-shm` al lado
+    let leida = para_leer(&base.bd, &r.datos)?;
+    if e.externa {
+        version_y_esquema(leida.ruta(), migraciones)?;
     }
     // si la consulta falla no se sabe de quién es: lo decide `abrir_base`, para no tomar un error pasajero por `otro_id`
-    if let Ok(c) = solo_lectura_cerrada(&base.bd)
+    if let Ok(c) = solo_lectura_cerrada(leida.ruta())
         && let Ok(id) = id_del_archivo(&c)
         && id.as_deref() != Some(e.id.as_str())
     {
         return Err(Fallo::de("otro_id", base.bd.display()));
     }
+    drop(leida);
     let a = abrir_base(&base.bd, &base.respaldos, None, espera, migraciones)?;
     if a.id != e.id {
         return Err(Fallo::de("otro_id", base.bd.display()));
@@ -709,7 +715,10 @@ pub(crate) fn copiar_a_carpeta(
     migraciones: &[&str],
 ) -> Result<String, Fallo> {
     let temporal = Temporal::nuevo(&r.datos, "archivo");
-    solo_lectura_cerrada(origen)?.execute("VACUUM INTO ?1", [temporal.ruta().to_string_lossy()])?;
+    let leida = para_leer(origen, &r.datos)?;
+    solo_lectura_cerrada(leida.ruta())?
+        .execute("VACUUM INTO ?1", [temporal.ruta().to_string_lossy()])?;
+    drop(leida);
     // el origen se leyó dos veces, y otro equipo pudo cambiarlo entre medio: una interna no vuelve a pasar por `version_y_esquema`.
     // El total no rechaza: ya se preguntó por el del origen.
     revisar_organizacion(temporal.ruta(), migraciones, MAX_BYTES_VIVOS)?;
@@ -819,12 +828,14 @@ pub(crate) fn agregar_con_red(
     if de_red && !confirmados.contains(&"red") {
         return preguntar("red");
     }
-    let revisada = revisar_organizacion(&absoluta, migraciones, max_bytes)?;
+    let leida = para_leer(&absoluta, &r.datos)?;
+    let revisada = revisar_organizacion(leida.ruta(), migraciones, max_bytes)?;
     let (id_archivo, nombre) = {
-        let c = solo_lectura_cerrada(&absoluta)?;
+        let c = solo_lectura_cerrada(leida.ruta())?;
         let id = id_del_archivo(&c)?.filter(|id| es_id_valido(id));
         (id, leer_meta(&c, "org_nombre").unwrap_or_default())
     };
+    drop(leida);
     let id_archivo = id_archivo.as_deref();
     if buscando.is_some_and(|b| id_archivo != Some(b)) && !confirmados.contains(&"otro_id") {
         return preguntar("otro_id");
@@ -1042,8 +1053,9 @@ fn tam(ruta: &Path) -> Option<u64> {
 }
 
 /// El logo sale del archivo: la lista no guarda imágenes.
-fn logo_de(bd: &Path) -> Option<String> {
-    leer_meta(&solo_lectura_cerrada(bd).ok()?, "logo_png").filter(|l| !l.is_empty())
+fn logo_de(bd: &Path, datos: &Path) -> Option<String> {
+    let leida = para_leer(bd, datos).ok()?;
+    leer_meta(&solo_lectura_cerrada(leida.ruta()).ok()?, "logo_png").filter(|l| !l.is_empty())
 }
 
 pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVista> {
@@ -1060,7 +1072,7 @@ pub fn vistas(r: &Rutas, l: &Lista, activa: Option<&str>) -> Vec<OrganizacionVis
                 ruta: base.bd.display().to_string(),
                 existe: base.bd.is_file(),
                 activa: activa == Some(e.id.as_str()),
-                logo: logo_de(&base.bd),
+                logo: logo_de(&base.bd, &r.datos),
                 bytes_base: tam(&base.bd)
                     .zip(tam(&con_sufijo(&base.bd, "-wal")))
                     .map(|(bd, wal)| bd + wal),
@@ -1118,8 +1130,11 @@ pub fn revisar_para_eliminar(
         return Err(Fallo::de("contenido_invalido", "journal"));
     }
     let usa_el_archivo = !e.externa || borrar_archivo || guardar_copia;
-    if existe && usa_el_archivo && !es_de_la_entrada(&solo_lectura_cerrada(&bd)?, e)? {
-        return Err(Fallo::de("otro_id", bd.display()));
+    if existe && usa_el_archivo {
+        let leida = para_leer(&bd, &r.datos)?;
+        if !es_de_la_entrada(&solo_lectura_cerrada(leida.ruta())?, e)? {
+            return Err(Fallo::de("otro_id", bd.display()));
+        }
     }
     Ok(existe)
 }
@@ -1589,6 +1604,41 @@ pub(crate) mod prueba {
     pub fn sin_rastros(bd: &Path) {
         assert!(!con_sufijo(bd, "-wal").exists(), "{}", bd.display());
         assert!(!con_sufijo(bd, "-shm").exists(), "{}", bd.display());
+    }
+
+    /// Otro nombre y un logo, para `wal_sin_shm`.
+    pub const DEL_WAL: &str = "UPDATE meta SET valor = 'Del wal' WHERE clave = 'org_nombre';
+        INSERT OR REPLACE INTO meta (clave, valor) VALUES ('logo_png', 'QUJD');";
+
+    /// Deja la base cerrada `bd` como tras un corte: lo que hace `sql` solo en su `-wal`, y sin `-shm`. Devuelve lo que tienen
+    /// los dos, para `intacta`.
+    pub fn wal_sin_shm(bd: &Path, sql: &str) -> [Vec<u8>; 2] {
+        let previa = con_sufijo(bd, ".previa");
+        fs::rename(bd, &previa).unwrap();
+        let c = db::abrir(&previa).unwrap();
+        // sin volcado automático: lo cambiado queda solo en el `-wal`
+        c.pragma_update(None, "wal_autocheckpoint", 0).unwrap();
+        c.execute_batch(sql).unwrap();
+        fs::copy(&previa, bd).unwrap();
+        fs::copy(con_sufijo(&previa, "-wal"), con_sufijo(bd, "-wal")).unwrap();
+        drop(c);
+        borrar_bd(&previa).unwrap();
+        assert!(!con_sufijo(bd, "-shm").exists());
+        [
+            fs::read(bd).unwrap(),
+            fs::read(con_sufijo(bd, "-wal")).unwrap(),
+        ]
+    }
+
+    /// Nada al lado, y la base y su `-wal` como los dejó `wal_sin_shm`.
+    pub fn intacta(bd: &Path, antes: &[Vec<u8>; 2]) {
+        assert!(!con_sufijo(bd, "-shm").exists(), "{}", bd.display());
+        assert!(fs::read(bd).unwrap() == antes[0], "{}", bd.display());
+        assert!(
+            fs::read(con_sufijo(bd, "-wal")).unwrap() == antes[1],
+            "{}",
+            bd.display()
+        );
     }
 }
 
@@ -3327,5 +3377,81 @@ mod tests_archivo {
             let f = revisar_para_eliminar(&r, &i, false, false, false).unwrap_err();
             assert_eq!(f.codigo, "otro_id", "{sql}");
         }
+    }
+
+    #[test]
+    fn la_lista_lee_el_logo_del_wal_sin_dejar_shm() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("externa.db");
+        let antes = wal_sin_shm(&bd, DEL_WAL);
+        escribir(&r, vec![entrada(&id, bd.to_str().unwrap(), true, "")]);
+        let v = vistas(&r, &cargar_lista(&r), None);
+        assert_eq!(v[0].logo.as_deref(), Some("QUJD"));
+        intacta(&bd, &antes);
+        assert_eq!(temporales_en(&r), Vec::<String>::new());
+    }
+
+    #[test]
+    fn agregar_revisa_lo_del_wal_sin_dejar_shm() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("externa.db");
+        let antes = wal_sin_shm(&bd, DEL_WAL);
+        assert_eq!(agregar(&r, &bd).unwrap().id.as_deref(), Some(id.as_str()));
+        let e = entrada_con(&r, &id);
+        assert!(e.externa);
+        assert_eq!(e.nombre, "Del wal");
+        intacta(&bd, &antes);
+        assert_eq!(temporales_en(&r), Vec::<String>::new());
+    }
+
+    #[test]
+    fn copiar_a_su_carpeta_lleva_lo_del_wal_sin_dejar_shm() {
+        let (_exe, r) = con_lista_vacia();
+        // dentro de `datos/` y fuera de su lugar: se copia a su carpeta
+        let bd = r.datos.join("suelta.db");
+        let id = crear(&bd, "Ajena", MIGRACIONES);
+        let antes = wal_sin_shm(&bd, DEL_WAL);
+        assert_eq!(agregar(&r, &bd).unwrap().id.as_deref(), Some(id.as_str()));
+        let e = entrada_con(&r, &id);
+        assert!(!e.externa);
+        let copia = solo_lectura_cerrada(&ruta_de(&r, &e)).unwrap();
+        assert_eq!(leer_meta(&copia, "org_nombre").as_deref(), Some("Del wal"));
+        intacta(&bd, &antes);
+        assert_eq!(temporales_en(&r), Vec::<String>::new());
+    }
+
+    #[test]
+    fn abrir_una_que_no_se_abre_no_le_deja_shm() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("externa.db");
+        agregar(&r, &bd).unwrap();
+        // solo el `-wal` dice que es de un esquema más nuevo
+        let antes = wal_sin_shm(&bd, "PRAGMA user_version = 999;");
+        let f = abrir_entrada(&r, &entrada_con(&r, &id), ESPERA_CAMBIO, MIGRACIONES)
+            .err()
+            .unwrap();
+        assert_eq!(f.codigo, "esquema_nuevo");
+        intacta(&bd, &antes);
+        assert!(!con_sufijo(&bd, ".bloqueo").exists());
+        assert_eq!(temporales_en(&r), Vec::<String>::new());
+    }
+
+    #[test]
+    fn revisar_para_eliminar_mira_el_id_del_wal_sin_dejar_shm() {
+        let (_exe, r) = con_lista_vacia();
+        let (_d, bd, id) = afuera("externa.db");
+        // solo el `-wal` dice que es de otra
+        let antes = wal_sin_shm(
+            &bd,
+            &format!(
+                "UPDATE meta SET valor = '{}' WHERE clave = 'db_id';",
+                uuid::Uuid::now_v7()
+            ),
+        );
+        let e = entrada(&id, bd.to_str().unwrap(), true, "");
+        let f = revisar_para_eliminar(&r, &e, false, true, false).unwrap_err();
+        assert_eq!(f.codigo, "otro_id");
+        intacta(&bd, &antes);
+        assert_eq!(temporales_en(&r), Vec::<String>::new());
     }
 }

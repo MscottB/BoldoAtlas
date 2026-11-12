@@ -5,12 +5,12 @@ use crate::intercambio::{
     fusion::{Tabla, describir, normalizar_nombre},
     revision::{CampoDetalle, MAX_PAGINA, fecha_mostrable, nombre_en, valor_campo},
     validar::{
-        MetaArchivo, abrir_no_confiable, migrar_temporal, solo_lectura, solo_lectura_cerrada,
-        version_y_esquema,
+        MetaArchivo, abrir_no_confiable, migrar_temporal, para_leer, solo_lectura,
+        solo_lectura_cerrada, version_y_esquema,
     },
 };
 use crate::organizaciones::{Entrada, base_de, esta_su_archivo, id_del_archivo};
-use crate::respaldos::{Fallo, con_sufijo};
+use crate::respaldos::Fallo;
 use crate::rutas::Rutas;
 use rusqlite::types::Value;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -39,20 +39,11 @@ pub fn copiar_otra(
     if !esta_su_archivo(e, &bd) {
         return Err(Fallo::de("no_encontrado", bd.display()));
     }
-    // con `-wal` y sin `-shm` (tras un corte, o copiado sin él) SQLite crearía el `-shm` al lado, aun en solo lectura y sin
-    // modo exclusivo posible: se lee de una copia del par
-    let par = Temporal::nuevo(&r.datos, "comparar");
-    let leida = if con_sufijo(&bd, "-wal").exists() && !con_sufijo(&bd, "-shm").exists() {
-        std::fs::copy(&bd, par.ruta())?;
-        std::fs::copy(con_sufijo(&bd, "-wal"), con_sufijo(par.ruta(), "-wal"))?;
-        par.ruta()
-    } else {
-        &bd
-    };
+    let leida = para_leer(&bd, &r.datos)?;
     let temporal = Temporal::nuevo(&r.datos, "comparar");
     // sin bloqueo ni escritura: `solo_lectura_cerrada` no deja `-wal` al lado y, si lo hay, lee lo que tiene sin volcar
     let origen = {
-        let c = solo_lectura_cerrada(leida)?;
+        let c = solo_lectura_cerrada(leida.ruta())?;
         // sin `query_only`: SQLite rechaza `VACUUM INTO` con él. La conexión es `READ_ONLY` y escribe solo en el temporal
         if id_del_archivo(&c)?.as_deref() != Some(e.id.as_str()) {
             return Err(Fallo::de("otro_id", bd.display()));
@@ -67,7 +58,7 @@ pub fn copiar_otra(
         c.execute("VACUUM INTO ?1", [temporal.ruta().to_string_lossy()])?;
         origen
     };
-    drop(par);
+    drop(leida);
     // de la copia, no del original: otra copia de la app pudo migrarlo entre medio
     let version = version_y_esquema(temporal.ruta(), migraciones)?;
     migrar_temporal(temporal.ruta(), version, migraciones)?;
@@ -729,6 +720,7 @@ mod tests {
         ESPERA_CAMBIO, bloquear,
         prueba::{crear, entrada, escribir, rutas, sin_rastros},
     };
+    use crate::respaldos::con_sufijo;
     use std::path::PathBuf;
 
     /// Otra organización en una carpeta externa del temporal, con ese esquema.
