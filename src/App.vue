@@ -219,7 +219,7 @@ function escEnBarra(e: KeyboardEvent) {
                       class="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums"
                       :class="angosta ? 'absolute -top-1 -right-1' : 'ml-auto'"
                       aria-hidden="true"
-                      >{{ item.contador() }}</span
+                      >{{ angosta && item.contador() > 99 ? "99+" : item.contador() }}</span
                     >
                     <span v-if="!angosta" class="sr-only">, {{ t("revision.avisos", item.contador()) }}</span>
                   </template>

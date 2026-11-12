@@ -1,4 +1,5 @@
 //! La base descifrada no es confiable, aunque el código sea correcto: quien la envía puede ser cualquiera.
+use super::Temporal;
 use crate::respaldos::{Donde, Fallo, con_sufijo};
 use rusqlite::config::DbConfig;
 use rusqlite::{Connection, ErrorCode, OpenFlags, OptionalExtension};
@@ -99,6 +100,37 @@ pub fn solo_lectura_cerrada(ruta: &Path) -> Result<Connection, Fallo> {
         ruta,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
     )
+}
+
+/// De dónde leer un archivo del usuario sin dejarle nada al lado. Debe durar más que la conexión: al soltarlo se borra la copia.
+pub struct ParaLeer<'a> {
+    original: &'a Path,
+    copia: Option<Temporal>,
+}
+
+impl ParaLeer<'_> {
+    pub fn ruta(&self) -> &Path {
+        self.copia.as_ref().map_or(self.original, Temporal::ruta)
+    }
+}
+
+/// Con `-wal` y sin `-shm` (tras un corte, o copiado sin él) SQLite crearía el `-shm` al lado, aun en solo lectura y sin modo
+/// exclusivo posible: se lee de una copia del par en `datos`. Si no, del archivo mismo.
+pub fn para_leer<'a>(ruta: &'a Path, datos: &Path) -> Result<ParaLeer<'a>, Fallo> {
+    let wal = con_sufijo(ruta, "-wal");
+    if !wal.exists() || con_sufijo(ruta, "-shm").exists() {
+        return Ok(ParaLeer {
+            original: ruta,
+            copia: None,
+        });
+    }
+    let copia = Temporal::nuevo(datos, "leer");
+    std::fs::copy(ruta, copia.ruta())?;
+    std::fs::copy(wal, con_sufijo(copia.ruta(), "-wal"))?;
+    Ok(ParaLeer {
+        original: ruta,
+        copia: Some(copia),
+    })
 }
 
 /// La versión de esquema, si esta app puede con ella.

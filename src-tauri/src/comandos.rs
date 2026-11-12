@@ -2,7 +2,7 @@ use crate::comparar_organizaciones::{
     self, Comparaciones, DetalleComparado, FiltroComparacion, PaginaComparada, ResumenComparacion,
 };
 use crate::db::{self, Sentencia};
-use crate::intercambio::validar::solo_lectura_cerrada;
+use crate::intercambio::validar::{para_leer, solo_lectura_cerrada};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::organizaciones::{
     self, Abierta, ArchivoAgregado, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, EliminadaVista, Entrada,
@@ -458,7 +458,12 @@ impl Estado {
                 bloqueo = Some(bloquear(&base.bd, ESPERA_CAMBIO)?);
             }
             if guardar_copia {
-                avance.copia = Some(guardar_eliminada(r, &e, &solo_lectura_cerrada(&base.bd)?)?);
+                let leida = para_leer(&base.bd, &r.datos)?;
+                avance.copia = Some(guardar_eliminada(
+                    r,
+                    &e,
+                    &solo_lectura_cerrada(leida.ruta())?,
+                )?);
             }
         }
         if borra_archivo && !ya_borrado {
@@ -4376,7 +4381,9 @@ mod como_nueva {
 mod eliminar {
     use super::*;
     use crate::intercambio::validar::solo_lectura_cerrada;
-    use crate::organizaciones::prueba::{crear, crear_enlace, entrada, escribir, interna, rutas};
+    use crate::organizaciones::prueba::{
+        DEL_WAL, crear, crear_enlace, entrada, escribir, intacta, interna, rutas, wal_sin_shm,
+    };
     use crate::organizaciones::{agregar_archivo, esta_vacia, ruta_de};
     use crate::respaldos::{con_sufijo, copia_de_base};
     use serde_json::json;
@@ -4666,6 +4673,20 @@ mod eliminar {
         assert!(ajeno.exists());
         assert!(otro.exists());
         assert!(!ids(&d.r).contains(&d.x.id));
+    }
+
+    #[test]
+    fn la_copia_de_una_externa_lleva_lo_del_wal_sin_dejarle_shm() {
+        let d = cuatro();
+        let bd = ruta_de(&d.r, &d.x);
+        let antes = wal_sin_shm(&bd, DEL_WAL);
+        eliminar(&d.e, &d.x.id, true, false).unwrap();
+        let copia =
+            d.r.datos
+                .join("organizaciones-eliminadas")
+                .join(&eliminadas(&d.r)[0]);
+        assert_eq!(meta_de(&copia, "org_nombre").as_deref(), Some("Del wal"));
+        intacta(&bd, &antes);
     }
 
     #[test]
