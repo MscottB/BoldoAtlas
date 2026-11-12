@@ -149,6 +149,20 @@ describe("useComparar", () => {
     expect(cmp.vencida.value).toBe(false);
   });
 
+  it("una página de la comparación anterior que vence tarde no marca vencida la nueva", async () => {
+    c.compararOrganizaciones.mockResolvedValue(RESUMEN);
+    const vieja = pendiente<unknown>();
+    c.comparacionPagina.mockReturnValue(vieja.promesa);
+    const { cmp } = montar();
+    await cmp.comparar("B");
+    const filtro = { tabla: null, presencia: null, desde: 0, cuantos: 50 };
+    const enCurso = cmp.verPagina(filtro);
+    await cmp.comparar("B");
+    vieja.rechazar({ codigo: "comparacion_vencida", detalle: "" });
+    expect(await enCurso).toMatchObject({ ok: false, codigo: "cancelado" });
+    expect(cmp.vencida.value).toBe(false);
+  });
+
   it("verPagina y verDetalle dejan lo que dio Rust", async () => {
     const pagina = { filas: [], total: 0 };
     const detalle = {

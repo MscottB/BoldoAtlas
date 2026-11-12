@@ -41,7 +41,7 @@ At the top, a table with **Units**, **People** and **Positions** says how many a
 - A person who holds another current position counts as different.
 - Something deleted in one and current in the other counts as only in the one where it is current.
 
-The other organization is not modified: BoldoAtlas copies it to a temporary file and compares with that copy. There is one comparison at a time: comparing again, switching organization or leaving the view releases it. If you switch organization and come back, the view says the comparison is out of date and offers **Compare again**.
+The other organization is not modified: BoldoAtlas copies it to a temporary file and compares with that copy. There is one comparison at a time: comparing again, switching organization or leaving the view releases it. If you switch organization and come back to that tab, it compares again. **Compare again** is also always at hand to refresh the comparison, for example after editing.
 
 ### Approximate match
 

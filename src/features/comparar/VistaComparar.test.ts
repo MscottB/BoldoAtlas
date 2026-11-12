@@ -135,6 +135,13 @@ describe("VistaComparar", () => {
     expect(t).toContain("Comparar de nuevo");
   });
 
+  it("con un resultado al día también ofrece Comparar de nuevo, salvo si la otra es la abierta", async () => {
+    e.resumen.value = resumen(false);
+    expect(texto(await html(VistaComparar))).toContain("Comparar de nuevo");
+    e.resumen.value = resumen(false);
+    expect(texto(await html(VistaComparar, {}, "/comparar?con=A&de=A"))).not.toContain("Comparar de nuevo");
+  });
+
   it("pedida con otra abierta: avisa que ya no vale y ofrece Comparar de nuevo", async () => {
     e.vencida.value = true;
     const t = texto(await html(VistaComparar, {}, "/comparar?con=B&de=Z"));

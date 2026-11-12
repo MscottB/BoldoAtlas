@@ -168,6 +168,12 @@ async function abrirDetalle(f: FilaComparada) {
     </div>
 
     <template v-if="resumen && !cargando">
+      <!-- Se puede editar la abierta sin salir de la vista (la paleta abre fichas encima): los números envejecen. -->
+      <div v-if="puedeDeNuevo && !aviso">
+        <Button type="button" variant="outline" size="sm" @click="compararDeNuevo">
+          {{ t("comparar.compararDeNuevo") }}
+        </Button>
+      </div>
       <div v-if="resumen.aproximada" class="grid gap-1 rounded-lg border p-3 text-sm">
         <Badge variant="secondary">{{ t("comparar.aproximada") }}</Badge>
         <p class="text-muted-foreground">

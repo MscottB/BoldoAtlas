@@ -41,7 +41,7 @@ Arriba, una tabla con **Unidades**, **Personas** y **Puestos** dice cuántas est
 - Una persona que ocupa otro puesto vigente cuenta como distinta.
 - Algo borrado en una y vigente en la otra cuenta como solo en la que lo tiene vigente.
 
-La otra organización no se modifica: BoldoAtlas la copia a un archivo temporal y compara con esa copia. Hay una sola comparación a la vez: comparar de nuevo, cambiar de organización o salir de la vista la suelta. Si cambias de organización y vuelves, la vista dice que la comparación ya no vale y ofrece **Comparar de nuevo**.
+La otra organización no se modifica: BoldoAtlas la copia a un archivo temporal y compara con esa copia. Hay una sola comparación a la vez: comparar de nuevo, cambiar de organización o salir de la vista la suelta. Si cambias de organización y vuelves a esa pestaña, se compara de nuevo. **Comparar de nuevo** también está siempre a mano para refrescar la comparación, por ejemplo después de editar.
 
 ### Coincidencia aproximada
 

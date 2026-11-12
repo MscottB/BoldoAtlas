@@ -51,10 +51,15 @@ export function useComparar() {
 
   // La vista ya se fue: nada de lo que siga esperando puede empezar en Rust, o quedaría una comparación sin soltar.
   let soltado = false;
+  let pedidaPagina = 0;
+  let pedidoDetalle = 0;
 
   /** `de`: la abierta cuando se pidió (`?de=` de la ruta). Si ya es otra, la comparación no vale y no se rehace sola. */
   async function comparar(otraId: string, de = organizaciones.idAbierta): Promise<Resultado> {
     await cancelar();
+    // lo que pidió la comparación anterior y llega tarde no debe marcar vencida la nueva
+    pedidaPagina++;
+    pedidoDetalle++;
     if (de !== organizaciones.idAbierta || otraId === organizaciones.idAbierta) {
       resumen.value = null;
       pagina.value = null;
@@ -98,7 +103,6 @@ export function useComparar() {
     return r.ok ? { ok: true } : fallo(r);
   }
 
-  let pedidaPagina = 0;
   async function verPagina(filtro: FiltroComparacion): Promise<Resultado> {
     const propia = ++pedidaPagina;
     const r = await intentar(() => comparacionPagina(filtro));
@@ -108,7 +112,6 @@ export function useComparar() {
     return { ok: true };
   }
 
-  let pedidoDetalle = 0;
   async function verDetalle(tabla: string, id: string): Promise<Resultado> {
     const propio = ++pedidoDetalle;
     detalle.value = null;

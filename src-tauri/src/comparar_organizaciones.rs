@@ -517,7 +517,7 @@ pub fn comparar(
         .iter()
         .filter_map(|t| c.iguales_vivas.get(t))
         .sum::<u64>()
-        - solo_de_puesto;
+        .saturating_sub(solo_de_puesto);
     let resumen = ResumenComparacion {
         otra: copia.id.clone(),
         aproximada,

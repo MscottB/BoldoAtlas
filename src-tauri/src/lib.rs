@@ -51,6 +51,12 @@ pub fn run() {
             ventana
                 .state::<intercambio::Sesiones>()
                 .al_cargar_pagina(carga.event());
+            // recargar la página suelta la comparación y su temporal, como a las sesiones
+            if carga.event() == tauri::webview::PageLoadEvent::Started {
+                ventana
+                    .state::<comparar_organizaciones::Comparaciones>()
+                    .cerrar();
+            }
             if carga.event() == tauri::webview::PageLoadEvent::Finished {
                 salida::mostrar_al_arrancar(ventana.app_handle());
             }

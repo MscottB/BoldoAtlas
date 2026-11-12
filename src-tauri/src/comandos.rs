@@ -977,6 +977,22 @@ pub async fn quitar_organizacion(app: AppHandle, id: String) -> Result<(), Fallo
         .map_err(|e| e.to_string())?
 }
 
+/// Sin la otra, o sin su base, la comparación ya no vale.
+fn eliminar_en(
+    estado: &Estado,
+    k: &Comparaciones,
+    id: &str,
+    guardar_copia: bool,
+    borrar_archivo: bool,
+    ocupada: &dyn Fn() -> bool,
+    migraciones: &[&str],
+) -> Result<Option<OrganizacionVista>, Fallo> {
+    let hecho = estado.eliminar(id, guardar_copia, borrar_archivo, ocupada, migraciones)?;
+    let abierta = estado.base_abierta().map(|b| b.id);
+    k.soltar_vencida(abierta.as_deref(), Some(id));
+    Ok(hecho)
+}
+
 /// En un hilo aparte: la copia lee el archivo entero, y pasar a otra puede migrarla. Sin `base_id`: no es un dato de la abierta.
 #[tauri::command]
 pub async fn eliminar_organizacion(
@@ -986,19 +1002,16 @@ pub async fn eliminar_organizacion(
     borrar_archivo: bool,
 ) -> Result<Option<OrganizacionVista>, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
-        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
-        let hecho = estado.eliminar(
+        let sesiones = app.state::<Sesiones>();
+        eliminar_en(
+            &app.state::<Estado>(),
+            &app.state::<Comparaciones>(),
             &id,
             guardar_copia,
             borrar_archivo,
             &|| sesiones.ocupada(),
             db::MIGRACIONES,
-        )?;
-        // sin la otra, o sin su base, la comparación ya no vale
-        let abierta = estado.base_abierta().map(|b| b.id);
-        app.state::<Comparaciones>()
-            .soltar_vencida(abierta.as_deref(), Some(&id));
-        Ok(hecho)
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -5958,6 +5971,28 @@ mod comparar {
         assert!(temporales(&d.r).is_empty());
         assert_eq!(
             pagina(&d, &d.b.id).unwrap_err().codigo,
+            "comparacion_vencida"
+        );
+    }
+
+    #[test]
+    fn eliminar_la_otra_suelta_la_comparacion() {
+        let d = dos();
+        comparar(&d, &d.a.id, "t", |_, _| {}).unwrap();
+        assert_eq!(temporales(&d.r).len(), 1);
+        eliminar_en(
+            &d.e,
+            &d.k,
+            &d.b.id,
+            false,
+            false,
+            &|| false,
+            db::MIGRACIONES,
+        )
+        .unwrap();
+        assert!(temporales(&d.r).is_empty());
+        assert_eq!(
+            pagina(&d, &d.a.id).unwrap_err().codigo,
             "comparacion_vencida"
         );
     }
