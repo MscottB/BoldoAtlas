@@ -92,6 +92,8 @@ pub struct Comparacion {
     pub resumidas: HashSet<String>,
     /// Filas vivas de esta base, para saber qué parte de ella se borraría.
     pub vivas_locales: u64,
+    /// Filas vivas que solo están en esta base, en el orden de `tablas()`; solo la llena `comparar_con_locales`.
+    pub solo_aqui: Vec<(&'static str, String)>,
 }
 
 /// Fecha que la app pudo haber escrito: `AAAA-MM-DDTHH:MM:SS[.mmm]Z`, en valores posibles.
@@ -526,6 +528,30 @@ pub fn comparar(
     imp: &Connection,
     meta: &MetaArchivo,
     ahora: &str,
+    seguir: impl FnMut(u64, u64) -> bool,
+) -> Result<Comparacion, Fallo> {
+    recorrer(local, imp, meta, ahora, false, seguir)
+}
+
+/// Como `comparar`, y además lista lo vivo que solo está en `local` (`solo_aqui`).
+// Aún sin quien la llame: la usa Comparar organizaciones en las tareas siguientes; quitar el allow entonces.
+#[allow(dead_code)]
+pub fn comparar_con_locales(
+    local: &Connection,
+    imp: &Connection,
+    meta: &MetaArchivo,
+    ahora: &str,
+    seguir: impl FnMut(u64, u64) -> bool,
+) -> Result<Comparacion, Fallo> {
+    recorrer(local, imp, meta, ahora, true, seguir)
+}
+
+fn recorrer(
+    local: &Connection,
+    imp: &Connection,
+    meta: &MetaArchivo,
+    ahora: &str,
+    con_locales: bool,
     mut seguir: impl FnMut(u64, u64) -> bool,
 ) -> Result<Comparacion, Fallo> {
     let resumidas = resumidas_de(imp, meta)?;
@@ -589,7 +615,13 @@ pub fn comparar(
             }
             match orden {
                 // solo aquí: nunca se borra por no venir en el archivo
-                Ordering::Less => mia = siguiente(&mut filas_l, n_cols)?,
+                Ordering::Less => {
+                    let m = mia.as_ref().ok_or("fila")?;
+                    if con_locales && m[i_baja] == Value::Null {
+                        s.solo_aqui.push((tabla, texto(&m[i_id]).unwrap_or_default().to_string()));
+                    }
+                    mia = siguiente(&mut filas_l, n_cols)?;
+                }
                 Ordering::Greater => {
                     let a = archivo.as_ref().ok_or("fila")?;
                     contexto.solo_en_archivo(tabla, &d, a, &mut por_nombre, &mut s)?;
@@ -761,5 +793,55 @@ mod tests {
         assert_ne!(huella(&a), huella(&b));
         assert_eq!(huella(&a), huella(&a.clone()));
         assert_ne!(huella(&[Value::Null]), huella(&[Value::Integer(0)]));
+    }
+
+    fn base(sql: &str) -> (tempfile::TempDir, Connection) {
+        let dir = tempfile::tempdir().unwrap();
+        let mut c = crate::db::abrir(&dir.path().join("boldo.db")).unwrap();
+        crate::db::migrar(&mut c, dir.path()).unwrap();
+        crate::db::asegurar_meta(&c).unwrap();
+        c.execute_batch(sql).unwrap();
+        (dir, c)
+    }
+
+    fn unidad(id: &str, baja: &str) -> String {
+        format!(
+            "INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at, deleted_at) VALUES ('{id}', '{}', '{id}', 'x', 'x', {baja});",
+            crate::intercambio::prueba::TIPO
+        )
+    }
+
+    fn bases_de_prueba() -> (tempfile::TempDir, Connection, tempfile::TempDir, Connection) {
+        let (d1, local) = base(&format!(
+            "{}{}{}",
+            unidad("a", "NULL"),
+            unidad("b", "'2026-10-01T12:00:00.000Z'"),
+            unidad("c", "NULL")
+        ));
+        let (d2, otra) = base(&unidad("c", "NULL"));
+        (d1, local, d2, otra)
+    }
+
+    fn meta_vacia() -> MetaArchivo {
+        MetaArchivo {
+            parcial: false,
+            ramas: Vec::new(),
+            organizacion: String::new(),
+            origen: None,
+        }
+    }
+
+    #[test]
+    fn con_locales_lista_las_vivas_que_faltan_en_el_otro() {
+        let (_d1, local, _d2, otra) = bases_de_prueba();
+        let c = comparar_con_locales(&local, &otra, &meta_vacia(), AHORA, |_, _| true).unwrap();
+        assert_eq!(c.solo_aqui, vec![("unidades", "a".to_string())]);
+    }
+
+    #[test]
+    fn comparar_no_llena_solo_aqui() {
+        let (_d1, local, _d2, otra) = bases_de_prueba();
+        let c = comparar(&local, &otra, &meta_vacia(), AHORA, |_, _| true).unwrap();
+        assert!(c.solo_aqui.is_empty());
     }
 }
