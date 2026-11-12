@@ -1,10 +1,11 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "vue-sonner";
-import { intercambioCancelar, type ResumenImportacion } from "@/db/cliente";
+import { intercambioCancelar, type ResumenImportacion, type ValorCampo } from "@/db/cliente";
 import type { Unidad } from "@/db/tipos";
 import { dondeDe, excesoDe, mensajeFallo, mensajeTope } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
+import { tamano } from "@/lib/formato";
 import { nuevoId } from "@/lib/ids";
 import { conTrabajo, deLaAbierta, iniciarTrabajo } from "@/lib/trabajos";
 
@@ -138,6 +139,23 @@ export function filasVisibles(
       pila.push({ unidad: hijos[i]!, nivel: nivel + 1, cubierta: baja });
   }
   return filas;
+}
+
+/** El nombre de una columna para quien no sabe de bases de datos. */
+export function nombreColumna(c: string): string {
+  const { t, te } = i18n.global;
+  return te(`intercambio.columnas.${c}`) ? t(`intercambio.columnas.${c}`) : t("intercambio.columnas.otra");
+}
+
+/** Un valor del detalle como se lee: una referencia ya viene por su nombre; una foto, por su tamaño. */
+export function textoValor(columna: string, v: ValorCampo): string {
+  const { t, te, locale } = i18n.global;
+  if (v.oculto !== null && v.oculto !== undefined)
+    return t("intercambio.revisar.valorOculto", { tamano: tamano(v.oculto, locale.value) });
+  if (v.texto === null || v.texto === undefined) return t("intercambio.revisar.vacio");
+  if (columna === "orden") return t("intercambio.revisar.posicion", { n: Number(v.texto) + 1 });
+  const clave = `intercambio.valores.${columna}.${v.texto}`;
+  return te(clave) ? t(clave) : v.texto;
 }
 
 /** Para mostrar una lista de filas sin los ceros. */

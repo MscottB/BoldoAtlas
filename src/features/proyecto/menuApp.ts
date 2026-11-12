@@ -47,6 +47,12 @@ export const entradasAbrirOtra = (
 ): { id: string; nombre: string }[] =>
   recientes.filter((o) => o.id !== activa).map(({ id, nombre }) => ({ id, nombre }));
 
+/** «Comparar con…» en la paleta: toda la lista, sin la abierta. */
+export const entradasComparar = (lista: Organizacion[], activa: string): { id: string; nombre: string }[] =>
+  entradasAbrirOtra(lista, activa);
+
+export const rutaComparar = (id: string): RouteLocationRaw => ({ name: "comparar", query: { con: id } });
+
 export async function abrirOtra(id: string) {
   const r = await useOrganizaciones().abrir(id);
   if (!r.ok) toast.error(r.mensaje);

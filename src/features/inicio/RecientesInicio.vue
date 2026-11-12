@@ -2,7 +2,8 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { EllipsisVertical, FileSearch, ListX, Trash2 } from "@lucide/vue";
+import { useRouter } from "vue-router";
+import { ArrowLeftRight, EllipsisVertical, FileSearch, ListX, Trash2 } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +27,7 @@ import type { Organizacion } from "@/db/cliente";
 import DialogoEliminarOrganizacion from "@/features/organizaciones/DialogoEliminarOrganizacion.vue";
 import PreguntaArchivo from "@/features/organizaciones/PreguntaArchivo.vue";
 import { textoAConfirmar } from "@/features/organizaciones/eliminar";
+import { rutaComparar } from "@/features/proyecto/menuApp";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { enfocarPrimero, volverAlTerminar } from "./foco";
 import { hace } from "./recientes";
@@ -35,6 +37,7 @@ import { hace } from "./recientes";
 const ID_RECIENTES = "inicio-recientes";
 const { t, locale } = useI18n();
 const organizaciones = useOrganizaciones();
+const router = useRouter();
 
 const idEntrada = (id: string) => `inicio-org-${id}`;
 const idProtegida = (id: string) => `inicio-protegida-${id}`;
@@ -195,6 +198,14 @@ async function trasEliminar(eliminada: boolean) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                v-if="!o.activa"
+                :disabled="bloqueado || !o.existe"
+                @select="router.push(rutaComparar(o.id))"
+              >
+                <ArrowLeftRight aria-hidden="true" />
+                {{ t("inicio.compararConAbierta") }}
+              </DropdownMenuItem>
               <DropdownMenuLabel
                 v-if="organizaciones.listaProtegida"
                 :id="idProtegida(o.id)"

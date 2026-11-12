@@ -35,6 +35,11 @@ export const router = createRouter({
       component: () => import("@/features/intercambio/VistaIntercambio.vue"),
     },
     {
+      path: "/comparar",
+      name: "comparar",
+      component: () => import("@/features/comparar/VistaComparar.vue"),
+    },
+    {
       path: "/configuracion",
       name: "configuracion",
       component: () => import("@/vistas/VistaConfiguracion.vue"),
