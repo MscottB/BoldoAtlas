@@ -47,6 +47,8 @@ const PERSONA = "arnes-foto";
 const ORG_MIGRADA = "Organización migrada";
 const RESPALDO = "boldo-20200101-0000.db";
 const CAMBIO = `performance.getEntriesByName("cambio-organizacion")`;
+// el <main> de la app, con marco: ID_AREA de usePestanas.ts
+const ID_AREA = "area-central";
 const COMPARAR = `performance.getEntriesByName("comparar-organizaciones")`;
 const VECES_COMPARAR = 3;
 const META_COMPARAR_MS = 5000;
@@ -715,14 +717,20 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
 }
 
 /**
- * Por la paleta, como una persona: desde Inicio, Ctrl+K, escribe el nombre y elige «Comparar con «nombre»». Espera la
+ * Por la paleta, como una persona: desde Acerca, Ctrl+K, escribe el nombre y elige «Comparar con «nombre»». Espera la
  * comparación número `n` y su resumen dibujado. Devuelve lo que midió la app y si la vista avisó coincidencia aproximada.
  * La paleta en español: la etiqueta se busca por su texto.
  * @param {App} app @param {{ nombre: string }} o @param {number} n
  */
 async function compararPorPaleta(app, o, n) {
-  await app.evaluar(`location.hash = "#/bienvenida"`); // salir de la vista suelta la comparación anterior
-  await verInicio(app, `Inicio antes de la comparación ${n}`);
+  // Acerca: liviana y con marco (Inicio es `sinMarco`: ahí no hay paleta ni atajos). Salir de la vista suelta la
+  // comparación anterior. Sin un diálogo abierto, que se quedaría con el teclado.
+  await app.evaluar(`location.hash = "#/acerca"`);
+  await app.hasta(
+    `location.hash === "#/acerca" && Boolean(document.querySelector('#${ID_AREA} img[alt="BoldoAtlas"]')) &&
+      !document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')`,
+    `Acerca, sin diálogos, antes de la comparación ${n}`,
+  );
   const etiqueta = `Comparar con «${o.nombre}»`;
   await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
   const campo = `document.querySelector('[role="dialog"] input')`;

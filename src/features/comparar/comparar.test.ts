@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { effectScope } from "vue";
 import type { Organizacion, ResumenComparacion } from "@/db/cliente";
@@ -55,6 +55,8 @@ beforeEach(() => {
   organizaciones.lista = [org("A"), org("B")];
   organizaciones.listaAlDia = true;
 });
+// los spyOn de performance no pasan a otra prueba aunque una falle
+afterEach(() => vi.restoreAllMocks());
 
 describe("useComparar", () => {
   it("con una organización que ya no está en la lista lo dice y no llama a Rust", async () => {
@@ -119,7 +121,6 @@ describe("useComparar", () => {
     p.resolver(RESUMEN);
     await hecho;
     expect(medida).not.toHaveBeenCalled();
-    vi.restoreAllMocks();
   });
 
   it("un fallo de Rust vuelve traducido, sin lanzar", async () => {
