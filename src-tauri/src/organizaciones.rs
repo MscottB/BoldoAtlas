@@ -601,13 +601,14 @@ fn abrir_entrada_con(
             return Err(Fallo::de("contenido_invalido", "journal"));
         }
     }
-    // una que no se abre no se queda con un `-shm` al lado
-    let leida = para_leer(&base.bd, &r.datos)?;
+    // una que no se abre no se queda con un `-shm` al lado; si no se pudo copiar (disco lleno), se lee el original como antes
+    let leida = para_leer(&base.bd, &r.datos).ok();
+    let ruta = leida.as_ref().map_or(base.bd.as_path(), |l| l.ruta());
     if e.externa {
-        version_y_esquema(leida.ruta(), migraciones)?;
+        version_y_esquema(ruta, migraciones)?;
     }
     // si la consulta falla no se sabe de quién es: lo decide `abrir_base`, para no tomar un error pasajero por `otro_id`
-    if let Ok(c) = solo_lectura_cerrada(leida.ruta())
+    if let Ok(c) = solo_lectura_cerrada(ruta)
         && let Ok(id) = id_del_archivo(&c)
         && id.as_deref() != Some(e.id.as_str())
     {
