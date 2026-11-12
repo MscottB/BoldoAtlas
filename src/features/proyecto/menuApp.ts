@@ -47,14 +47,21 @@ export const entradasAbrirOtra = (
 ): { id: string; nombre: string }[] =>
   recientes.filter((o) => o.id !== activa).map(({ id, nombre }) => ({ id, nombre }));
 
-/** «Comparar con…» en la paleta: toda la lista, sin la abierta. */
+/** «Comparar con…» en la paleta: toda la lista, sin la abierta ni las que perdieron su archivo (como en Inicio). */
 export const entradasComparar = (lista: Organizacion[], activa: string): { id: string; nombre: string }[] =>
-  entradasAbrirOtra(lista, activa);
+  entradasAbrirOtra(
+    lista.filter((o) => o.existe),
+    activa,
+  );
 
-/** `de` es la abierta al pedirla: si al volver a la vista ya es otra, la comparación no vale y no se rehace sola. */
+/**
+ * `de` es la abierta al pedirla: si al volver a la vista ya es otra, la comparación no vale y no se rehace sola. `force`:
+ * pedir la misma comparación que se está viendo vuelve a comparar.
+ */
 export const rutaComparar = (id: string, de: string): RouteLocationRaw => ({
   name: "comparar",
   query: { con: id, de },
+  force: true,
 });
 
 export async function abrirOtra(id: string) {

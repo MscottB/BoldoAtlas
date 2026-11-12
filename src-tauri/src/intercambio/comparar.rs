@@ -842,6 +842,64 @@ mod tests {
         assert_eq!(c.solo_aqui, vec![("unidades", "a".to_string())]);
     }
 
+    /// Lo que la comparación vio de esa tabla: las vivas solo de aquí y los casos.
+    fn de_tabla(c: &Comparacion, tabla: &str) -> (Vec<String>, Vec<(String, TipoCaso)>) {
+        let solo = c.solo_aqui.iter().filter(|(t, _)| *t == tabla);
+        let casos = c.casos.iter().filter(|k| k.tabla == tabla);
+        (
+            solo.map(|(_, id)| id.clone()).collect(),
+            casos.map(|k| (k.id.clone(), k.tipo)).collect(),
+        )
+    }
+
+    #[test]
+    fn trabajadores_solo_aqui_y_diferentes() {
+        let persona = |id: &str, telefono: &str| {
+            format!(
+                "INSERT INTO trabajadores (id, nombre, telefono, created_at, updated_at) VALUES ('{id}', '{id}', '{telefono}', 'x', 'x');"
+            )
+        };
+        let (_d1, local) = base(&[persona("a", "1"), persona("c", "1")].concat());
+        let (_d2, otra) = base(&[persona("c", "2"), persona("n", "1")].concat());
+        let c = comparar_con_locales(&local, &otra, &meta_vacia(), AHORA, |_, _| true).unwrap();
+        assert_eq!(
+            de_tabla(&c, "trabajadores"),
+            (
+                vec!["a".to_string()],
+                vec![
+                    ("c".to_string(), TipoCaso::Diferente),
+                    ("n".to_string(), TipoCaso::Nuevo)
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn puestos_solo_aqui_y_diferentes() {
+        let comun = format!(
+            "{}INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('k', 'Jefe', 'x', 'x');",
+            unidad("u", "NULL")
+        );
+        let puesto = |id: &str, descripcion: &str| {
+            format!(
+                "INSERT INTO puestos (id, unidad_id, cargo_id, descripcion, created_at, updated_at) VALUES ('{id}', 'u', 'k', '{descripcion}', 'x', 'x');"
+            )
+        };
+        let (_d1, local) = base(&[comun.clone(), puesto("a", "1"), puesto("c", "1")].concat());
+        let (_d2, otra) = base(&[comun, puesto("c", "2"), puesto("n", "1")].concat());
+        let c = comparar_con_locales(&local, &otra, &meta_vacia(), AHORA, |_, _| true).unwrap();
+        assert_eq!(
+            de_tabla(&c, "puestos"),
+            (
+                vec!["a".to_string()],
+                vec![
+                    ("c".to_string(), TipoCaso::Diferente),
+                    ("n".to_string(), TipoCaso::Nuevo)
+                ]
+            )
+        );
+    }
+
     #[test]
     fn comparar_no_llena_solo_aqui() {
         let (_d1, local, _d2, otra) = bases_de_prueba();

@@ -131,3 +131,12 @@ jobs:
         shell: bash # con pipefail: falla si falla el arnés, y si no dijo que terminó
         run: node scripts/arnes-organizaciones.mjs antes-de-organizaciones/BoldoAtlas_windows_x64_portable.zip anterior/BoldoAtlas_windows_x64_portable.zip | tee arnes.log && grep -q "^Arnés comprobado\.$" arnes.log
         timeout-minutes: 25
+      # Las capturas de la comparación y su panel de detalle, para revisarlas a ojo; también si el arnés falló
+      - name: Subir las capturas de comparar
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: capturas-comparar
+          path: ${{ runner.temp }}/capturas/*.png
+          if-no-files-found: warn
+          retention-days: 7

@@ -32,6 +32,25 @@ export const textoPresencia = (p: Presencia, nombreAqui: string, nombreAlla: str
 
 const CANCELADO: Resultado = { ok: false, codigo: "cancelado", mensaje: "" };
 
+/**
+ * Qué hacer con `?con=` y `?de=` de la ruta. `de` es la abierta cuando se pidió: si es otra, la comparación ya no vale.
+ * Sin `de`, o con uno que no es un id (una ruta guardada antes de que existiera, o escrita a mano), no se sabe: se compara.
+ */
+export function decidir(
+  con: string,
+  de: unknown,
+  abierta: string,
+): "sin-con" | "misma" | "vencida" | "comparar" {
+  if (!con) return "sin-con";
+  if (con === abierta) return "misma";
+  return typeof de === "string" && de && de !== abierta ? "vencida" : "comparar";
+}
+
+// Nadie espera el resultado de soltar o cancelar en Rust: que quede rastro si falla.
+const avisarSiFalla = (que: string, r: { ok: true } | { ok: false; mensaje: string }) => {
+  if (!r.ok) console.warn(`No se pudo ${que} la comparación:`, r.mensaje);
+};
+
 /** La comparación de la abierta con otra. Las acciones no lanzan; al salir de la vista se suelta en Rust. */
 export function useComparar() {
   const { t } = i18n.global;
@@ -55,15 +74,17 @@ export function useComparar() {
   let pedidoDetalle = 0;
 
   /** `de`: la abierta cuando se pidió (`?de=` de la ruta). Si ya es otra, la comparación no vale y no se rehace sola. */
-  async function comparar(otraId: string, de = organizaciones.idAbierta): Promise<Resultado> {
-    await cancelar();
-    // lo que pidió la comparación anterior y llega tarde no debe marcar vencida la nueva
+  async function comparar(otraId: string, de?: unknown): Promise<Resultado> {
+    // lo que pidió la comparación anterior y llega tarde (también mientras se cancela) no debe marcar vencida la nueva
     pedidaPagina++;
     pedidoDetalle++;
-    if (de !== organizaciones.idAbierta || otraId === organizaciones.idAbierta) {
+    await cancelar();
+    const decision = decidir(otraId, de, organizaciones.idAbierta);
+    if (decision !== "comparar") {
       resumen.value = null;
       pagina.value = null;
       detalle.value = null;
+      if (decision === "sin-con") return { ok: false, codigo: "sin_con", mensaje: t("comparar.elige") };
       vencida.value = true;
       return { ok: false, codigo: "comparacion_vencida", mensaje: t("respaldos.error.comparacion_vencida") };
     }
@@ -100,6 +121,7 @@ export function useComparar() {
     trabajo.value = null;
     cargando.value = false;
     const r = await intentar(() => comparacionCancelar(propio));
+    avisarSiFalla("cancelar", r);
     return r.ok ? { ok: true } : fallo(r);
   }
 
@@ -130,6 +152,7 @@ export function useComparar() {
     pagina.value = null;
     detalle.value = null;
     const r = await hecho;
+    avisarSiFalla("soltar", r);
     return r.ok ? { ok: true } : fallo(r);
   }
   onScopeDispose(() => {

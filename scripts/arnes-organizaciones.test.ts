@@ -3,9 +3,11 @@ import {
   PREFERENCIAS_VIEJAS,
   VISTA_DE_LA_ORGANIZACION,
   VISTA_GENERAL,
+  etiquetaComparar,
   mediana,
   problemasDeActualizacion,
   problemasDeMigracion,
+  textoEs,
 } from "./arnes-organizaciones.mjs";
 
 const ID = "0190a000-0000-7000-8000-000000000001";
@@ -142,5 +144,24 @@ describe("mediana", () => {
     const ms = [3, 1, 2];
     mediana(ms);
     expect(ms).toEqual([3, 1, 2]);
+  });
+});
+
+describe("etiquetaComparar", () => {
+  it("arma la de la paleta desde es.json, con el nombre y sin la llave", () => {
+    const etiqueta = etiquetaComparar("Aparte del arnés");
+    expect(etiqueta).toContain("Aparte del arnés");
+    expect(etiqueta).not.toContain("{");
+  });
+});
+
+describe("textoEs", () => {
+  it("lee de es.json el aviso de coincidencia aproximada", () => {
+    expect(textoEs("comparar.aproximada")).toMatch(/\S/);
+  });
+
+  it("una clave que no está, o que no es un texto, lanza", () => {
+    expect(() => textoEs("comparar.noExiste")).toThrow("comparar.noExiste");
+    expect(() => textoEs("comparar")).toThrow();
   });
 });

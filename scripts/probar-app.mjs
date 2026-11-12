@@ -246,6 +246,8 @@ export async function abrirApp(exe) {
   );
   return {
     evaluar,
+    /** Un comando de CDP tal cual, como `Page.captureScreenshot`. */
+    enviar,
     vivo: () => !salio,
     /** Por el puente real, como `invoke`: `{ ok, valor }` o `{ ok: false, error }`. @param {string} comando @param {object} [args] */
     llamar: (comando, args = {}) =>
