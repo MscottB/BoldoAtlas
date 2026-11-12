@@ -829,6 +829,8 @@ async function medirComparacion({ carpeta, exe, datos }) {
   app = await abrirApp(exe);
   info = await revisarBase(app, carpeta);
   comprobar("comparar: la app en español", (await app.evaluar(`document.documentElement.lang`)) === "es");
+  // Al cargar, la app se va sola a Inicio: navegar antes de eso lo pisa.
+  await verInicio(app, "Inicio de la grande, antes de comparar");
 
   /** @type {number[]} */
   const porId = [];
