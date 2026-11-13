@@ -1,5 +1,19 @@
 [
   {
+    "id": "revision-clara",
+    "pagina": "revision",
+    "es": {
+      "titulo": "Revisión que dice qué importa",
+      "texto": "Revisión ordena los avisos por importancia y trae la acción a un clic en cada fila. Filtra por rama, y marca con «Así está bien» lo que no es un problema.",
+      "ancla": "asi-esta-bien"
+    },
+    "en": {
+      "titulo": "A Review that says what matters",
+      "texto": "Review sorts warnings by importance and puts the action one click away on each row. Filter by branch, and mark what is not a problem with \"This is fine\".",
+      "ancla": "this-is-fine"
+    }
+  },
+  {
     "id": "ver-al-lado",
     "pagina": "organizaciones",
     "es": {

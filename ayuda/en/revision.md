@@ -1,32 +1,69 @@
 # Data review
 
 ::: info In short
-Review gathers in one screen what is worth fixing in your data: vacant positions, repeated emails, people without a position and more.
+Review tells you what is worth fixing in your data and what matters most. Each warning has a one-click action, and what is fine you can mark with **This is fine**.
 :::
 
-**Review** gathers in one screen what is worth fixing in your data. Every row is a button: press it (or Tab to it and press Enter) to open the unit, position or person and fix it right there.
+**Review** gathers in one screen what is worth fixing in your data. At the top there is a summary with three levels. Below it, one section per type of warning, with a sentence on what it means and how to fix it.
 
-The number next to **Review** in the menu is the total of pending warnings. It does not include current replacements, which are for information only. It updates by itself whenever the data changes.
+The number next to **Review** in the menu is the total of pending warnings for the whole organization. It does not include current replacements, which are for information only, or warnings marked as fine. It updates by itself whenever the data changes.
 
-![Data review screen with the Vacant positions, Current replacements and Unused values lists.](../img/en/revision-lista.webp "The Review screen, with warnings from the sample organization."){width=888 height=440}
+![Data review screen with the summary by levels Important, To review and Tidying up, and the sections with their actions.](../img/en/revision-lista.webp "The Review screen, with warnings from the sample organization."){width=888 height=440}
 
 To fix a warning:
 
 1. Open **Review** in the side menu.
-2. Press the warning's row.
-3. Fix it in the unit, position or record that opens.
+2. Look at the summary and press the type of warning you want to see: it takes you to its section.
+3. Press the row's action and fix it in what opens.
 
-## The lists
+## The three levels
 
-- **Units without a head**: units with no head position, or whose position has no current holder or replacement. The unit opens in the full tree, selected and with its panel.
-- **Vacant positions**: positions with no current holder, with the days since the last holder ended (or since the position was created, if it never had one). The oldest come first. The position opens.
-- **Current replacements**: who is covering each position today. For information only. The position opens.
-- **People without a current position**: people who today neither hold nor replace any position. Their record opens.
-- **Repeated emails**: people with the same email, ignoring case and surrounding spaces. Each person's record opens.
-- **Similar names**: people with the same name ignoring case and accents, or with the same words in another order ("Pérez Juan" and "Juan Perez"). These are possible duplicates; typos are not tolerated in the comparison.
-- **Empty units**: units with no positions and no subunits.
-- **Unused values**: active job titles, contract types, sites, schedules, unit types and legends that nothing uses. They are for information only: you can edit or deactivate them from the lists.
+- **Important**: nobody is in charge of these units, or some data may be duplicated. It includes units without a head, repeated emails and vacancies of more than 90 days.
+- **To review**: they may be fine, but they are worth a look. It includes people without a current position, similar names, recent vacancies and empty units.
+- **Tidying up**: they affect nobody; removing them keeps the lists shorter. It includes unused values.
 
-Lists with warnings come first. Those that are in order are grouped at the end in a single line, **No warnings:** and their names, which unfolds with a click (and stays as you leave it) to show each one with "All in order". Deleted or deactivated items are never reported.
+**Current replacements** only show who is replacing in each position today. They do not count as warnings.
 
-**See also:** [Positions and replacements](puestos.md) · [Person records](fichas.md) · [Settings and lists](mantenedores.md).
+Only the **Important** sections start open. The rest, including **Current replacements** and **Marked as fine**, start collapsed. Each one remembers how you left it.
+
+## What each warning does
+
+- **Units without a head**: press **Choose head**. The unit opens in the tree, selected and with its panel.
+- **Vacancies of more than 90 days** and **Recent vacancies**: press **Assign holder**. The position opens. You see how many days it has been without a holder.
+- **People without a current position**: press **Open record**. A person gets a position from the position, not from their record.
+- **Repeated emails** and **Similar names**: press **Open record** for each person in the group. If it is the same person, delete the extra record. Similar names are possible duplicates: they are compared ignoring accents and case, and with the same words in another order.
+- **Empty units**: press **Delete**. It is deleted right there.
+- **Unused values**: press **Deactivate**. It is deactivated right there. They are job titles, contract types, sites, schedules, unit types and legends.
+
+**Delete** and **Deactivate** show a notice with **Undo**. Press it if you made a mistake.
+
+## This is fine
+
+If a warning is not a problem, press **This is fine**. It asks for a reason, which is required and can be up to 200 characters. Then press **Save**.
+
+- The warning leaves its list and does not count in the menu number.
+- It moves to **Marked as fine**, a collapsed section at the end. There you see each mark's reason and date.
+- Press **Warn again** to put the warning back in its list.
+
+A group of repeated emails or similar names is marked as a whole. If a person joins or leaves the group, it is a new warning and shows again.
+
+If you fix something and it breaks again later, it also warns again.
+
+Marks are stored in this organization's database. They go in backups and full copies. They do not go with an exported branch: on another database you have to mark them again.
+
+## Filter by branch
+
+The **Branch** filter shows a unit and everything under it.
+
+- A group of emails or names appears if any of its people has a position in that branch.
+- Everything outside the branch is hidden, including warnings that belong to no unit, and a line says how many there are.
+- **Current replacements** and **Marked as fine** follow the filter too.
+- The number in the header follows the filter. The menu number is always for the whole organization.
+
+To see everything again, choose **Whole organization**.
+
+## On a date and side by side
+
+If you are viewing a date, or another organization side by side, you can only look and open. The buttons for vacancies and units read **View position** and **View unit**. **This is fine**, **Warn again**, **Delete** and **Deactivate** do not appear.
+
+**See also:** [Positions and replacements](puestos.md) · [Person records](fichas.md) · [Settings and lists](mantenedores.md) · [View side by side](organizaciones.md#view-side-by-side).

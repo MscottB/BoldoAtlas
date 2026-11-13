@@ -21,7 +21,6 @@
   <img alt="Platform: Windows, Linux and macOS" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-1e2a38">
   <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-c8743f">
   <img alt="Built with Tauri and Vue" src="https://img.shields.io/badge/built%20with-Tauri%202%20%2B%20Vue%203-1e2a38">
-  <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-c8743f">
 </p>
 
 ---
@@ -39,7 +38,10 @@ It is designed for **large organizations**: very big trees, several independent 
 - Several trees in one database, and any branch opens as a tree of its own
 - Positions, vacancies and people records, with your own lists of job titles, contracts, sites and shifts
 - The org chart on any date, read-only: who held each position and what changed
-- Review: units without a head, vacancies, people without a position, repeated emails and similar names
+- Review: a summary of what matters most, a one-click action on each warning, a branch filter, and "This is fine" for what is not a problem
+- Compare two organizations: what is only in one, or differs, in units, people and positions
+- Two tabs at once (split view), to see the Directory beside the tree or two branches of the same tree
+- Another organization side by side, read-only, with its tree, Directory and Review
 - Directory with filters, `Ctrl+K` search, light or dark theme with accent color
 - Several organizations, each with its data, photos, backups and preferences apart, and tabs to move between them
 - Export the whole database or a branch to an encrypted `.boldo` file, and import it as a new organization or choosing what stays
@@ -49,7 +51,7 @@ It is designed for **large organizations**: very big trees, several independent 
 
 ## Download
 
-Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (it is an alpha version: a test release). Each system has a **portable** version, the main one: a zip you extract into any folder (or onto a USB drive) that keeps everything in `datos/`, next to the program, and writes nothing outside that folder, except in external files you open with **Open file…**, which stay where they are (and on macOS, the window preferences, see below). And an **installer**, which keeps the data in your user folder.
+Get it from **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (it is still a test release). Each system has a **portable** version, the main one: a zip you extract into any folder (or onto a USB drive) that keeps everything in `datos/`, next to the program, and writes nothing outside that folder, except in external files you open with **Open file…**, which stay where they are (and on macOS, the window preferences, see below). And an **installer**, which keeps the data in your user folder.
 
 | System | Portable | Installer | Installed data |
 |---|---|---|---|

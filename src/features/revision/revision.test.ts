@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TIPO_AREA, TIPO_GERENCIA, type Leyenda, type Trabajador, type ValorCatalogo } from "@/db/tipos";
 import { a, asignaciones, p, puestos as puestosBase, u, unidades } from "@/features/arbol/fixture";
+import type { Marcas } from "./marcas";
 import {
   avisos,
-  contarAvisos,
+  listarAvisos,
+  NIVELES,
+  ramaDe,
+  revisar,
   correosRepetidos,
   nombresParecidos,
   personasSinPuesto,
@@ -133,7 +137,8 @@ describe("puestosVacantes: días con la fecha local", () => {
     else process.env.TZ = TZ;
   });
   const dias = (puesto: Partial<ReturnType<typeof p>>, asig: ReturnType<typeof a>[], hoy: Date) =>
-    puestosVacantes(con({ unidades, puestos: [{ ...p("x", "gg"), ...puesto }], asignaciones: asig }), hoy)[0].dias;
+    puestosVacantes(con({ unidades, puestos: [{ ...p("x", "gg"), ...puesto }], asignaciones: asig }), hoy)[0]
+      .dias;
 
   it("de noche el día local ya cambió pero el UTC aún no (o al revés): cuenta días de calendario locales", () => {
     const cierre = [a("a1", "x", "t1", "titular", "2026-03-10")];
@@ -171,7 +176,14 @@ describe("reemplazosVigentes", () => {
       ],
     });
     expect(reemplazosVigentes(e)).toEqual([
-      { puestoId: "p1", personaId: "t1", persona: "Ana", cargo: "", unidad: "Gerencia General" },
+      {
+        puestoId: "p1",
+        personaId: "t1",
+        persona: "Ana",
+        cargo: "",
+        unidad: "Gerencia General",
+        unidadId: "gg",
+      },
     ]);
   });
 });
@@ -219,6 +231,7 @@ describe("correosRepetidos", () => {
           { id: "t1", nombre: "Ana", correo: "ana@x.cl" },
           { id: "t2", nombre: "Ana bis", correo: "  ANA@x.cl " },
         ],
+        unidades: [],
       },
     ]);
   });
@@ -332,7 +345,7 @@ describe("avisos y contador", () => {
     expect(r.vacantes.map((x) => x.puestoId)).toEqual(["p2", "p6"]);
     expect(r.correos).toHaveLength(1);
     expect(r.sinPuesto.map((x) => x.personaId)).toEqual(["t2"]);
-    expect(contarAvisos(r)).toBe(
+    expect(revisar(r, {}, null).total).toBe(
       r.sinJefatura.length +
         r.vacantes.length +
         r.sinPuesto.length +
@@ -344,7 +357,7 @@ describe("avisos y contador", () => {
   });
 
   it("sin nada que avisar, el contador es 0", () => {
-    expect(contarAvisos(avisos(vacio, HOY))).toBe(0);
+    expect(revisar(avisos(vacio, HOY), {}, null).total).toBe(0);
   });
 
   it("escala: 2.000 unidades, 4.000 puestos y 5.000 personas", () => {
@@ -363,5 +376,146 @@ describe("avisos y contador", () => {
     expect(performance.now() - t0).toBeLessThan(1500);
     expect(r.vacantes).toHaveLength(1000);
     expect(r.sinPuesto).toHaveLength(2000);
+    const lista = listarAvisos(r);
+    expect(lista.length).toBeGreaterThanOrEqual(1000);
+    const marcas: Marcas = Object.fromEntries(
+      lista.slice(0, 1000).map((x) => [x.clave, { motivo: "ok", fecha: "2026-03-11" }]),
+    );
+    const t1 = performance.now();
+    const rev = revisar(r, marcas, null);
+    expect(performance.now() - t1).toBeLessThan(200);
+    expect(rev.marcados).toHaveLength(1000);
+  });
+});
+
+describe("listarAvisos y revisar", () => {
+  const e = con({
+    unidades,
+    puestos: puestosBase,
+    asignaciones,
+    trabajadores: [
+      trab("t1", "Ana Pérez", { correo: "a@x.cl" }),
+      trab("t2", "Beatriz Soto", { correo: "A@x.cl" }),
+      trab("t3", "Carlos Muñoz"),
+      trab("t4", "Diego Rojas"),
+      trab("t5", "Elena Díaz"),
+      trab("t7", "Fabián Vera"),
+      trab("t8", "Gloria Lagos"),
+    ],
+  });
+  const r = avisos(e, HOY);
+
+  it("reparte las vacantes por días, con la misma clave", () => {
+    const largas = (dias: number | null) =>
+      listarAvisos({
+        ...r,
+        vacantes: [{ puestoId: "px", unidadId: "u", unidad: "U", cargo: "C", dias }],
+      }).filter((x) => x.tipo.startsWith("vacantes"));
+    expect(largas(91).map((x) => x.tipo)).toEqual(["vacantesLargas"]);
+    expect(largas(90).map((x) => x.tipo)).toEqual(["vacantesRecientes"]);
+    expect(largas(null).map((x) => x.tipo)).toEqual(["vacantesRecientes"]);
+    expect(largas(91)[0].clave).toBe("vacantes:px");
+    expect(largas(5)[0].clave).toBe("vacantes:px");
+  });
+
+  it("la clave de un grupo no depende del orden y cambia si entra otra persona", () => {
+    const g = (ids: string[]) =>
+      listarAvisos({
+        ...r,
+        correos: [
+          { clave: "k", personas: ids.map((id) => ({ id, nombre: id, correo: null })), unidades: [] },
+        ],
+      }).find((x) => x.tipo === "correos")!.clave;
+    expect(g(["b", "a"])).toBe("correos:a,b");
+    expect(g(["a", "b"])).toBe(g(["b", "a"]));
+    expect(g(["a", "b", "c"])).not.toBe(g(["a", "b"]));
+  });
+
+  it("GrupoPersonas.unidades trae la unidad del puesto vigente, y vacío si nadie tiene puesto", () => {
+    const conPuesto = r.correos[0].unidades; // t1 con puesto, t2 sin puesto
+    const puestoDeT1 = asignaciones.find((x) => x.trabajador_id === "t1" && x.hasta === null)!.puesto_id;
+    expect(conPuesto).toEqual([puestosBase.find((x) => x.id === puestoDeT1)!.unidad_id]);
+    const sin = avisos(
+      con({
+        trabajadores: [trab("a", "A", { correo: "x@x" }), trab("b", "B", { correo: "x@x" })],
+      }),
+      HOY,
+    );
+    expect(sin.correos[0].unidades).toEqual([]);
+  });
+
+  it("una marca saca el aviso de su sección y baja el total", () => {
+    const base = revisar(r, {}, null);
+    const id = r.sinJefatura[0].unidadId;
+    const rev = revisar(r, { [`sinJefatura:${id}`]: { motivo: "ok", fecha: "2026-03-11" } }, null);
+    expect(rev.total).toBe(base.total - 1);
+    expect(rev.secciones.find((s) => s.tipo === "sinJefatura")!.avisos.map((x) => x.clave)).not.toContain(
+      `sinJefatura:${id}`,
+    );
+    expect(rev.marcados.map((x) => x.aviso.clave)).toEqual([`sinJefatura:${id}`]);
+  });
+
+  it("la rama también filtra los marcados; sin unidad quedan ocultos y no cuentan fuera", () => {
+    const gerencia = unidades.find((x) => x.tipo_id === TIPO_GERENCIA)!.id;
+    const rama = ramaDe(unidades, gerencia)!;
+    const dentro = listarAvisos(r).find((x) => x.unidades.some((id) => rama.has(id)))!;
+    const fuera = listarAvisos(r).find((x) => x.unidades.length && !x.unidades.some((id) => rama.has(id)))!;
+    const sinUnidad = listarAvisos(r).find((x) => x.unidades.length === 0)!;
+    const marca = { motivo: "ok", fecha: "2026-03-11" };
+    const marcas = { [dentro.clave]: marca, [fuera.clave]: marca, [sinUnidad.clave]: marca };
+    const todo = revisar(r, {}, rama);
+    const rev = revisar(r, marcas, rama);
+    expect(rev.marcados.map((x) => x.aviso.clave)).toEqual([dentro.clave]);
+    expect(rev.fueraDeRama).toBe(todo.fueraDeRama - 2);
+    expect(revisar(r, marcas, null).marcados).toHaveLength(3);
+  });
+
+  it("una clave heredada como «constructor» no marca nada", () => {
+    const base = revisar(r, {}, null);
+    const rev = revisar(r, { constructor: { motivo: "x", fecha: "2026-03-11" }, toString: {} } as unknown as Marcas, null);
+    expect(rev.marcados).toEqual([]);
+    expect(rev.total).toBe(base.total);
+  });
+
+  it("mantiene las ocho secciones, en el orden de NIVELES", () => {
+    const rev = revisar(avisos(vacio, HOY), {}, null);
+    expect(rev.secciones.map((s) => s.tipo)).toEqual(NIVELES.flatMap((n) => n.tipos));
+    expect(rev.secciones).toHaveLength(8);
+    expect(rev.secciones.map((s) => s.nivel)).toEqual(NIVELES.flatMap((n) => n.tipos.map(() => n.nivel)));
+  });
+
+  it("la rama deja los avisos de la gerencia y sus áreas; el total no cambia", () => {
+    const gerencia = unidades.find((x) => x.tipo_id === TIPO_GERENCIA)!.id;
+    const rama = ramaDe(unidades, gerencia)!;
+    const todo = revisar(r, {}, null);
+    const rev = revisar(r, {}, rama);
+    expect(rev.total).toBe(todo.total);
+    const mostrados = rev.secciones.flatMap((s) => s.avisos);
+    expect(mostrados.every((x) => x.unidades.some((id) => rama.has(id)))).toBe(true);
+    expect(rev.secciones.find((s) => s.tipo === "sinPuesto")!.avisos).toHaveLength(0);
+    expect(rev.secciones.find((s) => s.tipo === "sinUso")!.avisos).toHaveLength(0);
+    expect(mostrados.length + rev.fueraDeRama).toBe(todo.total);
+    expect(rev.fueraDeRama).toBeGreaterThanOrEqual(r.sinPuesto.length + r.sinUso.length);
+  });
+
+  it("los reemplazos se filtran por la rama y no cuentan", () => {
+    const sola = revisar(
+      { ...r, reemplazos: [{ ...r.reemplazos[0], unidadId: "fuera" }] },
+      {},
+      new Set(["dentro"]),
+    );
+    expect(sola.reemplazos).toEqual([]);
+    expect(revisar(r, {}, null).reemplazos).toHaveLength(1);
+  });
+
+  it("ramaDe da null sin id, o con una unidad inexistente o borrada", () => {
+    expect(ramaDe(unidades, null)).toBeNull();
+    expect(ramaDe(unidades, "no-existe")).toBeNull();
+    const borrada = [
+      ...unidades,
+      { ...unidades[0], id: "borrada", deleted_at: BORRADO } as (typeof unidades)[number],
+    ];
+    expect(ramaDe(borrada, "borrada")).toBeNull();
+    expect(ramaDe(unidades, unidades[0].id)!.has(unidades[0].id)).toBe(true);
   });
 });

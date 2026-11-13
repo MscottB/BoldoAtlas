@@ -140,13 +140,13 @@
     {
       "id": "revision",
       "etiqueta": "Revisión",
-      "titulo": "Lo que conviene corregir, en una sola pantalla",
-      "texto": "Revisión junta puestos vacantes, correos repetidos, personas sin puesto y más; cada fila abre lo que hay que arreglar.",
+      "titulo": "Lo que importa, primero",
+      "texto": "Revisión ordena los avisos en tres niveles y dice por qué importa cada uno. Cada fila trae una acción a un clic.",
       "puntos": [
-        "Unidades sin jefatura, puestos vacantes (con los días que llevan así) y personas sin puesto vigente.",
-        "Correos repetidos y nombres parecidos, como posibles duplicados.",
-        "Unidades vacías y valores de las listas que nada usa.",
-        "El número junto a Revisión, en el menú, es el total de avisos pendientes y se actualiza solo."
+        "Un resumen con lo importante arriba: unidades sin jefatura, correos repetidos y vacantes largas.",
+        "Elegir jefatura o asignar titular, a un clic; eliminar una unidad vacía o desactivar un valor sin uso ahí mismo, con Deshacer.",
+        "Un filtro por rama para ver solo una unidad y lo que hay debajo.",
+        "Así está bien: marca con su motivo lo que no es un problema, y vuelve a avisar si cambia."
       ],
       "imagen": {
         "nombre": "revision-lista",
@@ -154,7 +154,7 @@
         "alto": 440,
         "temas": false,
         "ayuda": true,
-        "alt": "Pantalla Revisión de datos con las listas Puestos vacantes, Reemplazos vigentes y Valores sin uso."
+        "alt": "Pantalla Revisión de datos con el resumen por niveles Importante, Para revisar y Orden y limpieza, y las secciones con sus acciones."
       },
       "enlace": {
         "texto": "Leer sobre la Revisión",

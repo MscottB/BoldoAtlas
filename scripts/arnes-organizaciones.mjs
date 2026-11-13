@@ -29,6 +29,7 @@ import {
   comprobar,
   comprobarInstaladaIntacta,
   conPuertoAbierto,
+  dentroDe,
   enCiDeWindows,
   erroresDeConsola,
   esperar,
@@ -967,6 +968,49 @@ async function capturarComparacion(app, carpeta) {
 }
 
 /**
+ * Las capturas de Revisión para la ayuda (el trabajo las sube como `capturas-revision`): 888 × 440 desde la esquina de su
+ * sección, en español y en inglés. El idioma se cambia recargando; deja la app en español, en Inicio.
+ * @param {App} app @param {string} carpeta
+ */
+async function capturarRevision(app, carpeta) {
+  mkdirSync(carpeta, { recursive: true });
+  const seccion = `document.querySelector("details[data-tipo]")?.parentElement`;
+  /** @param {string} idioma */
+  const enIdioma = async (idioma) => {
+    await app.evaluar(`localStorage.setItem("boldo:idioma", ${JSON.stringify(JSON.stringify(idioma))})`);
+    await recargar(app);
+    // al cargar, la app se va sola a Inicio: navegar antes de eso lo pisa
+    await verInicio(app, `Inicio tras recargar en ${idioma}`);
+    await app.hasta(`document.documentElement.lang === ${JSON.stringify(idioma)}`, `la app en ${idioma}`);
+  };
+  for (const idioma of ["es", "en"]) {
+    await enIdioma(idioma);
+    await app.evaluar(`location.hash = "#/revision"`);
+    await app.hasta(
+      // como la ve una persona: solo «Importante» empieza abierta; en las abiertas, sus filas ya dibujadas
+      `location.hash === "#/revision" && (() => {
+        const ds = [...document.querySelectorAll("details[data-tipo]")];
+        return ds.length > 0 && ds.filter((d) => d.open).every((d) => d.querySelector("[data-clave]"));
+      })()`,
+      `Revisión con sus avisos, en ${idioma}`,
+    );
+    // las filas virtuales se dibujan tras medir su lista: dos cuadros
+    const { x, y } =
+      await app.evaluar(`new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      scrollTo(0, 0);
+      const r = ${seccion}.getBoundingClientRect();
+      ok({ x: r.left + scrollX, y: r.top + scrollY });
+    })))`);
+    const { data } = await app.enviar("Page.captureScreenshot", {
+      format: "webp",
+      clip: { x, y, width: 888, height: 440, scale: 1 },
+    });
+    writeFileSync(join(carpeta, `revision-lista-${idioma}.webp`), Buffer.from(data, "base64"));
+  }
+  await enIdioma("es");
+}
+
+/**
  * La grande de nuevo en `boldo.db`, con dos internas: `relacionada`, su copia con otro id que viene de ella y 100 teléfonos
  * cambiados (se compara por id), y `aparte`, otra sembrada con otros ids (se empareja por nombre y correo). Compara la grande
  * 3 veces con cada una por la paleta y lee lo que midió la app. Pasar de 5000 ms no falla: se pregunta al autor; pasar de
@@ -1035,6 +1079,8 @@ async function medirComparacion({ carpeta, exe, datos }) {
   comprobar("comparar: la app en español", (await app.evaluar(`document.documentElement.lang`)) === "es");
   // Al cargar, la app se va sola a Inicio: navegar antes de eso lo pisa.
   await verInicio(app, "Inicio de la grande, antes de comparar");
+  // Antes de comparar (recargar borra las medidas) y antes de que el lado a lado marque un aviso.
+  await capturarRevision(app, join(process.env.RUNNER_TEMP ?? "", "capturas"));
 
   /** @type {number[]} */
   const porId = [];
@@ -1605,8 +1651,8 @@ async function verAlLadoPorPaleta(app, o, n) {
  * Pasar de META_LADO_MS no falla: se pregunta al autor (decisión 11). Después recorre, como una persona, lo que las pruebas
  * sin DOM no alcanzan: la copia que el iframe no suelta al cargar, las escrituras que Rust rechaza, el clic y F6 entre la
  * ventana y el iframe, el menú lateral, las cuatro vistas (con el panel de una unidad, una ficha y un puesto) sin acciones
- * de editar y sin errores en la consola, «Quitar de al lado», Ctrl+W dentro del iframe, el archivo de la otra intacto y,
- * con la otra al lado, abrirla en el principal.
+ * de editar y sin errores en la consola, «Así está bien» y «Volver a avisar» en Revisión del principal, «Quitar de al
+ * lado», Ctrl+W dentro del iframe, el archivo de la otra intacto y, con la otra al lado, abrirla en el principal.
  * @param {Portable} portable @param {{ relacionada: Otra, aparte: Otra }} otras
  */
 async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
@@ -1884,23 +1930,6 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     "Configuración cerrada y el principal en su vista",
   );
 
-  await irAlLado("/revision");
-  await verQue(
-    app,
-    "lado a lado: Revisión en el iframe",
-    `${enRuta("/revision")} && ${enElMarco("h1", textoEs("revision.titulo"))}`,
-  );
-  // Un puesto vacante, desde su fila: su diálogo
-  const vacante = `[...(${EN_MARCO}?.querySelectorAll("details") ?? [])].find((d) => d.querySelector("summary")?.innerText.includes(${JSON.stringify(textoEs("revision.vacantes.titulo"))}))?.querySelector("button")`;
-  await app.hasta(`Boolean(${vacante})`, "una vacante en Revisión del iframe");
-  await app.evaluar(`${vacante}.click()`);
-  await verQue(
-    app,
-    "lado a lado: en Revisión del iframe, una vacante abre el diálogo de su puesto",
-    `Boolean(${DIALOGO})`,
-  );
-  await sinEditar("el diálogo de un puesto, desde Revisión,", EDITAR.puesto);
-  await cerrarDialogo("el diálogo del puesto cerrado");
   /** Sin errores en la consola desde lo último revisado. @param {string} hasta */
   const sinErrores = (hasta) => {
     const nuevos = erroresDeConsola().slice(errores);
@@ -1911,7 +1940,114 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
       nuevos,
     );
   };
-  sinErrores("hasta recorrer sus vistas");
+
+  // «Así está bien» en Revisión del principal, que escribe en la base abierta: antes, que sea la de la portable.
+  const infoApp = await app.llamar("info_app");
+  if (!infoApp.ok || !dentroDe(infoApp.valor.rutaBd, datos))
+    throw new Error(
+      `La base abierta no está en los datos de la portable ${datos}, se aborta: ${JSON.stringify(infoApp)}`,
+    );
+  await enfocar("principal");
+  await app.evaluar(`${entradaLateral("/revision")}.click()`);
+  // Solo las secciones de «Importante» empiezan abiertas: se abre la primera de avisos, la del botón que se pulsa.
+  const primeraSeccion = `${panel("principal")}?.querySelector('details[data-tipo]:not([data-tipo="reemplazos"]):not([data-tipo="marcados"])')`;
+  const bien = `${primeraSeccion}?.querySelector('[data-accion="bien"]')`;
+  const conAviso = await app
+    .hasta(
+      `location.hash === "#/revision" && (() => { const d = ${primeraSeccion}; if (d) d.open = true; return Boolean(${bien}); })()`,
+      "un aviso por marcar en Revisión",
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  // El contador del menú: exacto en su aria-label (menú contraído) o en su texto (la insignia dice «99+» solo contraído).
+  const CONTADOR = `Number(/\\d+/.exec(${entradaLateral("/revision")}?.getAttribute("aria-label") ?? ${entradaLateral("/revision")}?.textContent ?? "")?.[0] ?? 0)`;
+  /** @type {number} */
+  const pendientes = await app.evaluar(CONTADOR);
+  comprobar(
+    "lado a lado: Revisión del principal tiene un aviso pendiente para marcar «Así está bien» (la grande debe traer avisos)",
+    conAviso && pendientes > 0,
+    { pendientes, estado: await app.evaluar(ESTADO) },
+  );
+  if (conAviso) {
+    const MOTIVO = "Prueba del arnés";
+    await clicEn(app, bien, "«Así está bien» del primer aviso");
+    const motivo = `document.getElementById("revision-motivo")`;
+    await app.hasta(`Boolean(${motivo})`, "el diálogo «Así está bien»");
+    await app.evaluar(
+      `(() => { const c = ${motivo}; c.value = ${JSON.stringify(MOTIVO)}; c.dispatchEvent(new Event("input", { bubbles: true })); })()`,
+    );
+    const guardar = `${motivo}?.form.querySelector('button[type="submit"]')`;
+    await app.hasta(`${guardar}?.disabled === false`, "Guardar habilitado con el motivo escrito");
+    await clicEn(app, guardar, "«Guardar» del diálogo «Así está bien»");
+    const marcados = `${panel("principal")}?.querySelector('[data-tipo="marcados"]')`;
+    await verQue(
+      app,
+      `lado a lado: «Así está bien» con un motivo baja el contador del menú de ${pendientes} a ${pendientes - 1} y el aviso pasa a Marcados con «${MOTIVO}»`,
+      `!${motivo} && ${CONTADOR} === ${pendientes - 1} && Boolean(${marcados}?.textContent.includes(${JSON.stringify(MOTIVO)}))`,
+    );
+    // Marcados empieza plegado: se abre para que su fila se vea
+    await app.evaluar(`(() => { const d = ${marcados}; if (d) d.open = true; })()`);
+    const volver = `[...(${marcados}?.querySelectorAll("li") ?? [])].find((f) => f.textContent.includes(${JSON.stringify(MOTIVO)}))?.querySelector('[data-accion="volver"]')`;
+    await app.hasta(
+      `${volver}?.getBoundingClientRect().width > 0`,
+      "«Volver a avisar» a la vista en Marcados",
+    );
+    await clicEn(app, volver, "«Volver a avisar» del aviso marcado");
+    await verQue(
+      app,
+      `lado a lado: «Volver a avisar» devuelve el contador del menú a ${pendientes}`,
+      `${CONTADOR} === ${pendientes} && !${volver}`,
+    );
+    await verQue(
+      app,
+      "lado a lado: … y el foco no se pierde en el body (pasa a la fila siguiente, a una sección o al título)",
+      `Boolean(document.activeElement) && document.activeElement !== document.body`,
+    );
+  }
+  sinErrores("hasta recorrer sus vistas y Revisión del principal");
+  await app.evaluar(`location.hash = ${JSON.stringify(hashPrincipal)}`);
+  await app.hasta(
+    `location.hash === ${JSON.stringify(hashPrincipal)} && ${tarjetas("principal")} > 0`,
+    "el principal de vuelta en su vista",
+  );
+
+  await irAlLado("/revision");
+  await verQue(
+    app,
+    "lado a lado: Revisión en el iframe",
+    `${enRuta("/revision")} && ${enElMarco("h1", textoEs("revision.titulo"))}`,
+  );
+  // Un puesto vacante, desde su fila: su diálogo
+  const vacante = `${EN_MARCO}?.querySelector('[data-tipo^="vacantes"] [data-accion="asignar"]')`;
+  // Se abren todas sus secciones (solo «Importante» empieza abierta): la vacante puede estar en una plegada, y con sus
+  // filas dibujadas, buscar acciones de editar no es en vano.
+  await app.hasta(
+    `(() => {
+      const ds = [...(${EN_MARCO}?.querySelectorAll("details[data-tipo]") ?? [])];
+      for (const d of ds) d.open = true;
+      return ds.length > 0 && ds.every((d) => d.querySelector("[data-clave]")) && Boolean(${vacante});
+    })()`,
+    "las secciones de Revisión del iframe abiertas, con sus filas y una vacante",
+  );
+  const editan = await app.evaluar(
+    `[...(${EN_MARCO}?.querySelectorAll('[data-accion="bien"], [data-accion="volver"], [data-accion="eliminar"], [data-accion="desactivar"]') ?? [])].map((b) => b.getAttribute("aria-label"))`,
+  );
+  comprobar(
+    "lado a lado: Revisión del iframe no ofrece «Así está bien», «Volver a avisar», «Eliminar» ni «Desactivar»",
+    !editan.length,
+    editan,
+  );
+  await app.evaluar(`${vacante}.click()`);
+  await verQue(
+    app,
+    "lado a lado: en Revisión del iframe, una vacante abre el diálogo de su puesto",
+    `Boolean(${DIALOGO})`,
+  );
+  await sinEditar("el diálogo de un puesto, desde Revisión,", EDITAR.puesto);
+  await cerrarDialogo("el diálogo del puesto cerrado");
+  sinErrores("en Revisión del iframe y el diálogo de su puesto");
 
   // Quitar de al lado: la pestaña queda en la barra y la copia se suelta.
   const soltada = () =>

@@ -48,6 +48,17 @@ describe("usePlegable", () => {
     expect(datos.has("boldo:plegado:x")).toBe(false);
   });
 
+  it("abierto por defecto sin nada guardado; plegarlo se guarda y gana", async () => {
+    const datos = conAlmacen();
+    const { abierto, alPlegar } = usePlegable("x", undefined, true);
+    expect(abierto.value).toBe(true);
+    alPlegar(false);
+    await nextTick();
+    expect(abierto.value).toBe(false);
+    expect(datos.get("boldo:plegado:x")).toBe("false");
+    expect(usePlegable("x", undefined, true).abierto.value).toBe(false);
+  });
+
   it("forzado desde el inicio (destino de un salto) abre sin guardar", () => {
     const datos = conAlmacen();
     expect(usePlegable("x", () => true).abierto.value).toBe(true);
