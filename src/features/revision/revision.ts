@@ -8,9 +8,10 @@ import {
   type Unidad,
   type ValorCatalogo,
 } from "@/db/tipos";
-import { jefeVisible, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { descendientes, jefeVisible, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { hoyISO } from "@/features/puestos/puestos";
 import { normalizarTexto } from "@/lib/texto";
+import type { Marca, Marcas } from "./marcas";
 
 type ConBorrado<T> = T & { deleted_at?: string | null };
 
@@ -44,6 +45,7 @@ export interface FilaReemplazo {
   persona: string;
   cargo: string;
   unidad: string;
+  unidadId: string;
 }
 export interface PersonaRef {
   id: string;
@@ -54,6 +56,8 @@ export interface GrupoPersonas {
   /** Lo que tienen en común: el correo, o las palabras del nombre normalizadas. */
   clave: string;
   personas: PersonaRef[];
+  /** Unidades de los puestos vivos donde sus personas tienen hoy una asignación vigente, sin repetir. */
+  unidades: string[];
 }
 export interface FilaValor {
   tabla: TablaCatalogo | "leyendas";
@@ -84,7 +88,11 @@ const utcDe = (iso: string) => {
 /** Días de calendario (locales) de `desde` a `hoy`. `desde` es AAAA-MM-DD o un instante ISO, que se pasa antes a su día local. */
 export function diasDesde(desde: string | undefined, hoy: Date): number | null {
   if (!desde) return null;
-  const dia = /^\d{4}-\d{2}-\d{2}$/.test(desde) ? desde : Number.isNaN(Date.parse(desde)) ? null : hoyISO(new Date(desde));
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(desde)
+    ? desde
+    : Number.isNaN(Date.parse(desde))
+      ? null
+      : hoyISO(new Date(desde));
   // Ambos días como UTC a medianoche: la diferencia es entera y un cambio de horario no la mueve.
   return dia === null ? null : Math.max(0, (utcDe(hoyISO(hoy)) - utcDe(dia)) / DIA_MS);
 }
@@ -162,6 +170,7 @@ export function reemplazosVigentes(e: EstadoRevision): FilaReemplazo[] {
         persona,
         cargo: cargo.get(p.cargo_id) ?? "",
         unidad: unidad.get(p.unidad_id) ?? "",
+        unidadId: p.unidad_id,
       },
     ];
   });
@@ -182,6 +191,15 @@ export function personasSinPuesto(e: EstadoRevision): Avisos["sinPuesto"] {
 
 /** Grupos de dos o más personas vivas con la misma clave (en el orden en que aparece cada clave). */
 function agrupar(e: EstadoRevision, clave: (t: Trabajador) => string): GrupoPersonas[] {
+  const unidadDe = new Map(e.puestos.filter(vivo).map((p) => [p.id, p.unidad_id]));
+  const unidadesDe = new Map<string, Set<string>>();
+  for (const x of e.asignaciones) {
+    const u = unidadDe.get(x.puesto_id);
+    if (!vivo(x) || x.hasta !== null || u === undefined) continue;
+    const set = unidadesDe.get(x.trabajador_id);
+    if (set) set.add(u);
+    else unidadesDe.set(x.trabajador_id, new Set([u]));
+  }
   const grupos = new Map<string, PersonaRef[]>();
   for (const t of e.trabajadores) {
     const k = vivo(t) ? clave(t) : "";
@@ -191,7 +209,13 @@ function agrupar(e: EstadoRevision, clave: (t: Trabajador) => string): GrupoPers
     if (lista) lista.push(ref);
     else grupos.set(k, [ref]);
   }
-  return [...grupos].filter(([, l]) => l.length > 1).map(([k, personas]) => ({ clave: k, personas }));
+  return [...grupos]
+    .filter(([, l]) => l.length > 1)
+    .map(([k, personas]) => ({
+      clave: k,
+      personas,
+      unidades: [...new Set(personas.flatMap((p) => [...(unidadesDe.get(p.id) ?? [])]))],
+    }));
 }
 
 export const correosRepetidos = (e: EstadoRevision) =>
@@ -256,7 +280,135 @@ export function avisos(e: EstadoRevision, hoy: Date = new Date()): Avisos {
   };
 }
 
-/** Total del menú: todos los avisos salvo los reemplazos vigentes, que solo informan. */
-export function contarAvisos(a: Avisos): number {
-  return Object.entries(a).reduce((n, [clave, lista]) => (clave === "reemplazos" ? n : n + lista.length), 0);
+export type TipoAviso =
+  | "sinJefatura"
+  | "correos"
+  | "vacantesLargas"
+  | "sinPuesto"
+  | "nombres"
+  | "vacantesRecientes"
+  | "vacias"
+  | "sinUso";
+export type Nivel = "importante" | "revisar" | "limpieza";
+
+export const NIVELES: readonly { nivel: Nivel; tipos: readonly TipoAviso[] }[] = [
+  { nivel: "importante", tipos: ["sinJefatura", "correos", "vacantesLargas"] },
+  { nivel: "revisar", tipos: ["sinPuesto", "nombres", "vacantesRecientes", "vacias"] },
+  { nivel: "limpieza", tipos: ["sinUso"] },
+];
+
+/** Larga si pasa de 90 días; sin fecha o hasta 90, reciente. */
+export const DIAS_VACANTE_LARGA = 90;
+
+/** `unidades` vacío = sin rama: el filtro por rama lo oculta. */
+export type Aviso = { clave: string; unidades: string[] } & (
+  | { tipo: "sinJefatura" | "vacias"; fila: FilaUnidad }
+  | { tipo: "vacantesLargas" | "vacantesRecientes"; fila: FilaVacante }
+  | { tipo: "sinPuesto"; fila: { personaId: string; nombre: string } }
+  | { tipo: "correos" | "nombres"; fila: GrupoPersonas }
+  | { tipo: "sinUso"; fila: FilaValor }
+);
+
+const claveGrupo = (g: GrupoPersonas) =>
+  g.personas
+    .map((p) => p.id)
+    .sort()
+    .join(",");
+
+/** Todos los avisos, marcados o no, en el orden de NIVELES. */
+export function listarAvisos(a: Avisos): Aviso[] {
+  const unidad =
+    (tipo: "sinJefatura" | "vacias") =>
+    (fila: FilaUnidad): Aviso => ({
+      tipo,
+      clave: `${tipo}:${fila.unidadId}`,
+      unidades: [fila.unidadId],
+      fila,
+    });
+  const grupo =
+    (tipo: "correos" | "nombres") =>
+    (fila: GrupoPersonas): Aviso => ({
+      tipo,
+      clave: `${tipo}:${claveGrupo(fila)}`,
+      unidades: fila.unidades,
+      fila,
+    });
+  const vacante =
+    (tipo: "vacantesLargas" | "vacantesRecientes") =>
+    (fila: FilaVacante): Aviso => ({
+      tipo,
+      clave: `vacantes:${fila.puestoId}`,
+      unidades: [fila.unidadId],
+      fila,
+    });
+  const larga = (f: FilaVacante) => f.dias !== null && f.dias > DIAS_VACANTE_LARGA;
+  return [
+    ...a.sinJefatura.map(unidad("sinJefatura")),
+    ...a.correos.map(grupo("correos")),
+    ...a.vacantes.filter(larga).map(vacante("vacantesLargas")),
+    ...a.sinPuesto.map((fila): Aviso => ({
+      tipo: "sinPuesto",
+      clave: `sinPuesto:${fila.personaId}`,
+      unidades: [],
+      fila,
+    })),
+    ...a.nombres.map(grupo("nombres")),
+    ...a.vacantes.filter((f) => !larga(f)).map(vacante("vacantesRecientes")),
+    ...a.vacias.map(unidad("vacias")),
+    ...a.sinUso.map((fila): Aviso => ({
+      tipo: "sinUso",
+      clave: `sinUso:${fila.tabla}:${fila.id}`,
+      unidades: [],
+      fila,
+    })),
+  ];
+}
+
+/** La unidad viva y todo lo que cuelga de ella; null = toda la organización. */
+export function ramaDe(unidades: ConBorrado<Unidad>[], id: string | null): Set<string> | null {
+  const raiz = id === null ? undefined : unidades.find((u) => u.id === id);
+  if (!raiz || raiz.deleted_at) return null;
+  return new Set([raiz.id, ...descendientes(unidades, raiz.id)]);
+}
+
+export interface Revision {
+  /** Una por tipo, también las vacías; solo con lo pendiente y dentro de la rama. */
+  secciones: { nivel: Nivel; tipo: TipoAviso; avisos: Aviso[] }[];
+  marcados: { aviso: Aviso; marca: Marca }[];
+  reemplazos: FilaReemplazo[];
+  /** Pendientes que el filtro de rama dejó fuera. */
+  fueraDeRama: number;
+  /** Todos los pendientes sin filtro de rama: el contador del menú. */
+  total: number;
+}
+
+export function revisar(a: Avisos, marcas: Marcas, rama: Set<string> | null): Revision {
+  const porTipo = new Map<TipoAviso, Aviso[]>();
+  const marcados: Revision["marcados"] = [];
+  let total = 0;
+  let fueraDeRama = 0;
+  for (const aviso of listarAvisos(a)) {
+    // hasOwn: una clave como «constructor» no es una marca.
+    if (Object.prototype.hasOwnProperty.call(marcas, aviso.clave)) {
+      marcados.push({ aviso, marca: marcas[aviso.clave] });
+      continue;
+    }
+    total++;
+    if (rama && !aviso.unidades.some((u) => rama.has(u))) {
+      fueraDeRama++;
+      continue;
+    }
+    const lista = porTipo.get(aviso.tipo);
+    if (lista) lista.push(aviso);
+    else porTipo.set(aviso.tipo, [aviso]);
+  }
+  return {
+    secciones: NIVELES.flatMap(({ nivel, tipos }) =>
+      tipos.map((tipo) => ({ nivel, tipo, avisos: porTipo.get(tipo) ?? [] })),
+    ),
+    marcados,
+    reemplazos: rama ? a.reemplazos.filter((r) => rama.has(r.unidadId)) : a.reemplazos,
+    fueraDeRama,
+    total,
+  };
 }
