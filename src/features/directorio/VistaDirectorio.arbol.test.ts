@@ -129,7 +129,9 @@ describe("El directorio en modo Árbol", () => {
     expect(s).toContain(t("arbol.niveles.verTodo"));
     // Al abrir se ve el nivel 2 (la raíz abierta): ese botón queda marcado.
     const nivel = (n: number) =>
-      s.match(new RegExp(`<button[^>]*aria-label="${i18n.global.t("arbol.niveles.ver", { n }, n)}"[^>]*>`))![0];
+      s.match(
+        new RegExp(`<button[^>]*aria-label="${i18n.global.t("arbol.niveles.ver", { n }, n)}"[^>]*>`),
+      )![0];
     expect(nivel(2)).toContain('aria-pressed="true"');
     expect(nivel(3)).toContain('aria-pressed="false"');
     // La cifra del encabezado es la del árbol: 7 asignaciones y la vacante de Finanzas.
@@ -172,6 +174,9 @@ describe("El directorio en modo Árbol", () => {
     expect(s).toContain(t("directorio.arbol.sinPuesto"));
     expect(s).not.toContain('role="tree"');
     expect(s).toContain(i18n.global.t("directorio.arbol.filas", 0));
+    // Sin árbol a la vista, tampoco sus niveles (el árbol queda montado y oculto: conserva lo plegado).
+    expect(s).toMatch(new RegExp(`<div[^>]*aria-label="${t("arbol.niveles.titulo")}"[^>]*style="display:none;"`));
+    expect(s).toMatch(/<div class="contents" style="display:none;">/);
   });
 
   it("con una unidad elegida parte de su rama", async () => {

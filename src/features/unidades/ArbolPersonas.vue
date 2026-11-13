@@ -95,6 +95,8 @@ const claveTab = computed(() =>
   ventana.value.some((v) => v.data.clave === activa.value) ? activa.value : ventana.value[0]?.data.clave,
 );
 const primera = computed(() => ventana.value[0]?.index ?? 0);
+// La fila cuyo ícono de ubicar (en la capa de al lado) tiene el mouse o el foco: se resalta como si fuera la fila.
+const conIcono = ref<string | null>(null);
 const enfocar = (indice: number) =>
   arbol.value?.querySelector<HTMLElement>(`[data-indice="${indice}"]`)?.focus({ preventScroll: true });
 
@@ -211,6 +213,7 @@ defineExpose({
           :class="[
             directorio ? 'pr-10' : 'pr-2',
             (directorio || f.clase !== 'vacante') && 'cursor-pointer hover:bg-accent',
+            f.clave === conIcono && 'bg-accent',
           ]"
           @focus="activa = f.clave"
           @click="ejecutar(accionFila(f), $event)"
@@ -299,6 +302,10 @@ defineExpose({
             v-if="personaDe(f)"
             class="pointer-events-auto absolute right-0 flex items-center"
             :style="{ top: `${(index - primera) * altoFila}px`, height: `${altoFila}px` }"
+            @mouseenter="conIcono = f.clave"
+            @mouseleave="conIcono = null"
+            @focusin="conIcono = f.clave"
+            @focusout="conIcono = null"
           >
             <BotonUbicar
               :persona-id="personaDe(f)!.personaId"

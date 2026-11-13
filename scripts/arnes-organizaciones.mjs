@@ -1935,10 +1935,13 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   await app.evaluar(
     `${ubicarConMenu}.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Enter", bubbles: true }))`,
   );
+  // Lo que decide es dónde queda: sin ancla, Reka no lo posiciona y lo deja corrido hacia arriba, fuera de la ventana
+  // (`data-side` lo pone igual, así que no sirve para notarlo).
+  await app.hasta(`Boolean(${menuUbicar})`, "el menú «¿Cuál puesto?» abierto en el iframe");
   await verQue(
     app,
-    "lado a lado: en la ficha del iframe, «Ver en el organigrama» con varios puestos abre su menú junto al botón, dentro de la ventana",
-    `(() => { const m = ${menuUbicar}; if (!m?.dataset.side) return false; const r = m.getBoundingClientRect(); const w = ${MARCO}.contentWindow; return r.width > 0 && r.height > 0 && r.top >= 0 && r.left >= 0 && r.bottom <= w.innerHeight && r.right <= w.innerWidth; })()`,
+    "lado a lado: en la ficha del iframe, el menú «¿Cuál puesto?» de «Ver en el organigrama» queda entero dentro de la ventana (si no, se abrió sin ancla, fuera de la pantalla)",
+    `(() => { const r = ${menuUbicar}?.getBoundingClientRect(); const w = ${MARCO}.contentWindow; return Boolean(r) && r.width > 0 && r.height > 0 && r.top >= 0 && r.left >= 0 && r.bottom <= w.innerHeight && r.right <= w.innerWidth; })()`,
   );
   await app.evaluar(
     `${menuUbicar}?.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Escape", bubbles: true }))`,

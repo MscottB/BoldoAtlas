@@ -335,6 +335,7 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
         </Button>
         <div
           v-if="vista === 'arbol'"
+          v-show="!soloSinPuesto"
           role="group"
           :aria-label="t('arbol.niveles.titulo')"
           class="ml-auto flex items-center gap-1"
@@ -415,19 +416,21 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
         </DropdownMenu>
       </form>
 
-      <p v-if="vista === 'arbol' && soloSinPuesto" class="text-sm text-muted-foreground">
-        {{ t("directorio.arbol.sinPuesto") }}
-      </p>
-      <ArbolPersonas
-        v-else-if="vista === 'arbol'"
-        ref="vistaArbol"
-        :raiz="arbol"
-        :texto="filtros.texto"
-        :coinciden="coinciden"
-        directorio
-        :filtrado="filtrado"
-        @abrir="(f, e) => abrir(e, f)"
-      />
+      <template v-if="vista === 'arbol'">
+        <p v-if="soloSinPuesto" class="text-sm text-muted-foreground">{{ t("directorio.arbol.sinPuesto") }}</p>
+        <!-- Oculto, no desmontado: al volver conserva lo plegado a mano. -->
+        <div v-show="!soloSinPuesto" class="contents">
+          <ArbolPersonas
+            ref="vistaArbol"
+            :raiz="arbol"
+            :texto="filtros.texto"
+            :coinciden="coinciden"
+            directorio
+            :filtrado="filtrado"
+            @abrir="(f, e) => abrir(e, f)"
+          />
+        </div>
+      </template>
       <p v-else-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
       <div v-else v-bind="containerProps" class="min-h-0 flex-1 overflow-auto rounded-lg border">
         <div v-bind="wrapperProps">
