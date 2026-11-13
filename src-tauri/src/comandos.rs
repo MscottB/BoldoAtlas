@@ -1173,11 +1173,20 @@ pub async fn db_lote(
     version_app: String,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>()
-            .con_conexion(&base_id, |c| db::lote(c, &sentencias, &version_app))
+        db_lote_en(&app.state::<Estado>(), &base_id, &sentencias, &version_app)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Solo en la abierta: con el id de la de al lado da `otra_base`.
+pub(crate) fn db_lote_en(
+    estado: &Estado,
+    base_id: &str,
+    sentencias: &[Sentencia],
+    version_app: &str,
+) -> Result<(), String> {
+    estado.con_conexion(base_id, |c| db::lote(c, sentencias, version_app))
 }
 
 #[tauri::command]
@@ -1794,7 +1803,7 @@ fn comparar_en(
         return Err(Fallo::de("cancelado", ""));
     }
     let (r, e) = estado.entrada(otra_id)?;
-    let copia = comparar_organizaciones::copiar_otra(r, &e, base_id, migraciones)?;
+    let copia = comparar_organizaciones::copiar_otra(r, &e, base_id, migraciones, "comparar")?;
     // con `conn` tomado hasta guardarla: un cambio de organización espera, y nunca queda una de otra base
     estado.con_conexion(base_id, |c| {
         let a = comparar_organizaciones::comparar(c, base_id, copia, |hecho, total| {
@@ -6116,6 +6125,31 @@ mod lado {
             "otra_base"
         );
         assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
+    fn eliminar_la_abierta_pasa_a_la_del_lado_y_la_suelta() {
+        let d = tres("");
+        d.abrir_lado();
+        let k = Comparaciones::default();
+        let nueva = eliminar_en(
+            &d.e,
+            &k,
+            &d.lado,
+            &d.a.id,
+            false,
+            false,
+            &|| false,
+            db::MIGRACIONES,
+        )
+        .unwrap();
+        assert_eq!(nueva.unwrap().id, d.b.id);
+        assert_eq!(
+            d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
+            "otra_base"
+        );
+        assert_eq!(d.temporales(), 0);
+        assert_eq!(d.db_id(&d.b.id).unwrap(), d.b.id);
     }
 
     #[test]

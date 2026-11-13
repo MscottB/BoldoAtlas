@@ -6,6 +6,7 @@ use crate::organizaciones::OTRA_BASE;
 use crate::respaldos::Fallo;
 use rusqlite::Connection;
 use serde::Serialize;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use tauri::{AppHandle, Manager, State};
 
@@ -19,6 +20,14 @@ struct Abierto {
 #[derive(Default)]
 pub struct Lado {
     abierto: Mutex<Option<Abierto>>,
+    /// El último pedido: la copia de uno anterior, o de antes de cerrar, no queda al lado aunque termine después.
+    pedidos: AtomicU64,
+}
+
+/// Lo que tarda, sin candados: la copia y su número de pedido. La deja al lado `dejar`.
+struct Copiada {
+    pedido: u64,
+    copia: Copia,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,12 +64,19 @@ impl Lado {
         }
     }
 
+    /// También deja sin efecto las copias que aún no terminan.
     pub fn cerrar(&self) {
-        *self.abierto() = None;
+        let mut g = self.abierto();
+        self.pedidos.fetch_add(1, Ordering::SeqCst);
+        *g = None;
     }
 
-    /// Reemplaza la anterior, que se suelta con su temporal.
-    fn poner(&self, copia: Copia) -> Result<InfoLado, Fallo> {
+    fn pedir(&self) -> u64 {
+        self.pedidos.fetch_add(1, Ordering::SeqCst) + 1
+    }
+
+    /// Reemplaza la anterior, que se suelta con su temporal, si nadie pidió otra o cerró después. Si no, `cancelado`.
+    fn poner(&self, Copiada { pedido, copia }: Copiada) -> Result<InfoLado, Fallo> {
         let conn = leer(&copia)?;
         let (personas, unidades) = conn.query_row(
             "SELECT (SELECT count(*) FROM trabajadores WHERE deleted_at IS NULL),
@@ -73,7 +89,13 @@ impl Lado {
             personas,
             unidades,
         };
-        *self.abierto() = Some(Abierto { conn, copia });
+        let nuevo = Abierto { conn, copia };
+        // con el candado: `cerrar` cuenta su pedido con él tomado
+        let mut g = self.abierto();
+        if self.pedidos.load(Ordering::SeqCst) != pedido {
+            return Err(Fallo::de("cancelado", ""));
+        }
+        *g = Some(nuevo);
         Ok(info)
     }
 }
@@ -99,11 +121,32 @@ fn lado_en(
     otra_id: &str,
     migraciones: &[&str],
 ) -> Result<InfoLado, Fallo> {
+    let copiada = copiar(estado, lado, base_id, otra_id, migraciones)?;
+    dejar(estado, lado, base_id, copiada)
+}
+
+fn copiar(
+    estado: &Estado,
+    lado: &Lado,
+    base_id: &str,
+    otra_id: &str,
+    migraciones: &[&str],
+) -> Result<Copiada, Fallo> {
     estado.base(base_id)?;
+    let pedido = lado.pedir();
     let (r, e) = estado.entrada(otra_id)?;
-    let copia = copiar_otra(r, &e, base_id, migraciones)?;
-    // con `conn` tomado hasta dejarla: un cambio de organización espera, y una pedida desde la anterior no queda
-    estado.con_conexion(base_id, |_| lado.poner(copia))
+    let copia = copiar_otra(r, &e, base_id, migraciones, "lado")?;
+    Ok(Copiada { pedido, copia })
+}
+
+/// Con `conn` tomado hasta dejarla: un cambio de organización o un eliminar esperan, y lo que cambió mientras se copiaba se
+/// nota aquí. Si no queda, su temporal se borra.
+fn dejar(estado: &Estado, lado: &Lado, base_id: &str, copiada: Copiada) -> Result<InfoLado, Fallo> {
+    estado.con_conexion(base_id, |_| {
+        // eliminada mientras se copiaba. Orden de candados: `conn`, luego `lista`, como `cambiar_a`
+        estado.entrada(&copiada.copia.id)?;
+        lado.poner(copiada)
+    })
 }
 
 /// En un hilo aparte, como `comparar_organizaciones`: copia el archivo entero de la otra.
@@ -191,7 +234,7 @@ pub(crate) mod prueba {
                         .unwrap()
                         .file_name()
                         .to_string_lossy()
-                        .starts_with("boldo-comparar-")
+                        .starts_with("boldo-lado-")
                 })
                 .count()
         }
@@ -252,6 +295,53 @@ mod tests {
             (info.id.as_str(), info.unidades, info.personas),
             (d.b.id.as_str(), 1, 2)
         );
+    }
+
+    #[test]
+    fn el_ultimo_pedido_gana_aunque_su_copia_termine_antes() {
+        let d = tres("");
+        let primero = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        let segundo = copiar(&d.e, &d.lado, &d.a.id, &d.c.id, MIGRACIONES).unwrap();
+        dejar(&d.e, &d.lado, &d.a.id, segundo).unwrap();
+        let tarde = dejar(&d.e, &d.lado, &d.a.id, primero);
+        assert_eq!(tarde.unwrap_err().codigo, "cancelado");
+        assert_eq!(d.db_id(&d.c.id).unwrap(), d.c.id);
+        assert_eq!(d.db_id(&d.b.id).unwrap_err(), "otra_base");
+        assert_eq!(d.temporales(), 1);
+    }
+
+    #[test]
+    fn cerrar_deja_sin_efecto_la_copia_en_curso() {
+        let d = tres("");
+        let copiada = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        d.lado.cerrar();
+        let r = dejar(&d.e, &d.lado, &d.a.id, copiada);
+        assert_eq!(r.unwrap_err().codigo, "cancelado");
+        assert_eq!(d.db_id(&d.b.id).unwrap_err(), "otra_base");
+        assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
+    fn eliminada_mientras_se_copiaba_no_queda_al_lado() {
+        let d = tres("");
+        let copiada = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        d.e.eliminar(&d.b.id, false, false, &|| false, MIGRACIONES)
+            .unwrap();
+        let r = dejar(&d.e, &d.lado, &d.a.id, copiada);
+        assert_eq!(r.unwrap_err().codigo, "desconocido");
+        assert_eq!(d.db_id(&d.b.id).unwrap_err(), "otra_base");
+        assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
+    fn cambio_de_base_mientras_se_copiaba_no_deja_nada() {
+        let d = tres("");
+        let copiada = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        d.e.cambiar_a(&d.c.id, &|| false, MIGRACIONES).unwrap();
+        let r = dejar(&d.e, &d.lado, &d.a.id, copiada);
+        assert_eq!(r.unwrap_err().codigo, "otra_base");
+        assert_eq!(d.db_id(&d.b.id).unwrap_err(), "otra_base");
+        assert_eq!(d.temporales(), 0);
     }
 
     #[test]

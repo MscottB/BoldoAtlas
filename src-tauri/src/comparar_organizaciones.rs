@@ -26,11 +26,13 @@ pub struct Copia {
     pub origen: Option<String>,
 }
 
+/// `etiqueta` va en el nombre del temporal: dice para qué es la copia.
 pub fn copiar_otra(
     r: &Rutas,
     e: &Entrada,
     abierta: &str,
     migraciones: &[&str],
+    etiqueta: &str,
 ) -> Result<Copia, Fallo> {
     if e.id == abierta {
         return Err(Fallo::de("misma", &e.id));
@@ -40,7 +42,7 @@ pub fn copiar_otra(
         return Err(Fallo::de("no_encontrado", bd.display()));
     }
     let leida = para_leer(&bd, &r.datos)?;
-    let temporal = Temporal::nuevo(&r.datos, "comparar");
+    let temporal = Temporal::nuevo(&r.datos, etiqueta);
     // sin bloqueo ni escritura: `solo_lectura_cerrada` no deja `-wal` al lado y, si lo hay, lee lo que tiene sin volcar
     let origen = {
         let c = solo_lectura_cerrada(leida.ruta())?;
@@ -731,7 +733,7 @@ mod tests {
     }
 
     fn copiar(r: &Rutas, e: &Entrada) -> Result<Copia, Fallo> {
-        copiar_otra(r, e, "la-abierta", MIGRACIONES)
+        copiar_otra(r, e, "la-abierta", MIGRACIONES, "comparar")
     }
 
     #[test]
@@ -867,7 +869,9 @@ mod tests {
         let (_exe, r) = rutas();
         let (e, _) = otra(&r, MIGRACIONES);
         assert_eq!(
-            copiar_otra(&r, &e, &e.id, MIGRACIONES).unwrap_err().codigo,
+            copiar_otra(&r, &e, &e.id, MIGRACIONES, "comparar")
+                .unwrap_err()
+                .codigo,
             "misma"
         );
     }

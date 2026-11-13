@@ -254,14 +254,16 @@ fn compactar(c: &Connection) -> rusqlite::Result<()> {
     c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
 }
 
+/// Solo en la abierta: con el id de la de al lado da `otra_base`.
+fn compactar_en(estado: &Estado, base_id: &str) -> Result<(), String> {
+    estado.con_conexion(base_id, |c| compactar(c).map_err(|e| e.to_string()))
+}
+
 #[tauri::command]
 pub async fn fotos_compactar(app: AppHandle, base_id: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>()
-            .con_conexion(&base_id, |c| compactar(c).map_err(|e| e.to_string()))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || compactar_en(&app.state::<Estado>(), &base_id))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
@@ -699,14 +701,12 @@ mod tests {
         );
         d.abrir_lado();
         let id = d.b.id.as_str();
-        // lo que hacen `db_lote`, `fotos_guardar` y `fotos_compactar`: solo pasan por la abierta
-        let lote_bd = d.e.con_conexion(id, |c| db::lote(c, &[], "t"));
+        // `db_lote`, `fotos_guardar` y `fotos_compactar` solo pasan por la abierta
+        let lote_bd = crate::comandos::db_lote_en(&d.e, id, &[], "t");
         assert_eq!(lote_bd.unwrap_err(), "otra_base");
         let cuerpo = lote_de(id, &[("ana", FECHA, 10, JPEG)]);
         assert_eq!(guardar_lote(&d.e, &cuerpo).unwrap_err(), "otra_base");
-        let compactada =
-            d.e.con_conexion(id, |c| compactar(c).map_err(|e| e.to_string()));
-        assert_eq!(compactada.unwrap_err(), "otra_base");
+        assert_eq!(compactar_en(&d.e, id).unwrap_err(), "otra_base");
         // `db_consultar` sí llega al lado, y ahí nada escribe
         let insertar = "INSERT INTO meta (clave, valor) VALUES ('x', 'y')";
         let consultada =
