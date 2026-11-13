@@ -111,8 +111,11 @@ describe("Revisión de datos", () => {
   });
 
   it("la línea del filtro dice que el aviso queda fuera de la rama, no que no tenga unidad", () => {
-    const f = (n: number) => i18n.global.t("revision.fueraDeRama", n);
-    expect(f(1)).toBe("1 aviso queda fuera de esta rama");
-    expect(f(3)).toBe("3 avisos quedan fuera de esta rama");
+    // Con `window` simulado, el idioma inicial sale de navigator.language (en el CI, inglés): se pide cada uno.
+    const f = (n: number, locale: "es" | "en") => i18n.global.t("revision.fueraDeRama", n, { locale });
+    expect(f(1, "es")).toBe("1 aviso queda fuera de esta rama");
+    expect(f(3, "es")).toBe("3 avisos quedan fuera de esta rama");
+    expect(f(1, "en")).toBe("1 warning is outside this branch");
+    expect(f(3, "en")).toBe("3 warnings are outside this branch");
   });
 });
