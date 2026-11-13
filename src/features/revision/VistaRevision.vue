@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
@@ -12,6 +12,7 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import DialogoBien from "./DialogoBien.vue";
 import FilasRevision, { type Accion, type Fila } from "./FilasRevision.vue";
+import { focoTras, type Foco } from "./foco";
 import { desmarcar } from "./marcas";
 import { ramaDe, revisar, type Aviso, type FilaValor, type TipoAviso } from "./revision";
 import ResumenRevision from "./ResumenRevision.vue";
@@ -31,7 +32,11 @@ const revision = computed(() =>
 );
 
 const unir = (...partes: (string | null | undefined)[]) => partes.filter(Boolean).join(" · ") || undefined;
-const avisar = (r: Resultado) => !r.ok && toast.error(r.mensaje);
+/** Muestra el error, si lo hay; true si salió bien. */
+function avisar(r: Resultado) {
+  if (!r.ok) toast.error(r.mensaje);
+  return r.ok;
+}
 const deshacible = (texto: string, deshacer: () => Promise<Resultado>) =>
   toast(texto, {
     duration: 8000,
@@ -39,22 +44,46 @@ const deshacible = (texto: string, deshacer: () => Promise<Resultado>) =>
   });
 
 async function eliminar(id: string) {
-  const r = await org.eliminarUnidad(id);
-  if (!r.ok) return void toast.error(r.mensaje);
+  if (!avisar(await org.eliminarUnidad(id))) return false;
   deshacible(t("revision.eliminada"), () => org.deshacer());
+  return true;
 }
 async function desactivar({ tabla, id }: FilaValor) {
   const r = await (tabla === "leyendas" ? org.desactivarLeyenda(id) : org.desactivarValor(tabla, id));
-  if (!r.ok) return void toast.error(r.mensaje);
+  if (!avisar(r)) return false;
   deshacible(t("revision.desactivado"), () =>
     tabla === "leyendas" ? org.reactivarLeyenda(id) : org.reactivarValor(tabla, id),
   );
+  return true;
 }
 // Todo el mapa: guardarMarcasRevision reemplaza el JSON entero.
 const volver = async (clave: string) =>
   avisar(await org.guardarMarcasRevision(desmarcar(estado.value.marcas, clave, estado.value.vigentes)));
 
+// Quitar una fila se lleva el botón con el foco: el foco pasa a la fila siguiente, al título de la sección, al de la
+// siguiente o al h1. El destino se elige con las secciones de antes del cambio.
+const h1 = useTemplateRef("h1");
+const ordenSecciones = () =>
+  [
+    ...secciones.value.map((s) => ({ tipo: s.tipo as string, claves: s.claves })),
+    { tipo: "reemplazos", claves: reemplazos.value.map((f) => f.clave) },
+    { tipo: "marcados", claves: marcados.value.map((f) => f.clave) },
+  ].filter((s) => s.claves.length);
+function elementoDe(f: Foco): HTMLElement | null {
+  const s = f && document.getElementById(`revision-${f.seccion}`);
+  const fila = f?.fila && s?.querySelector<HTMLElement>(`[data-clave="${CSS.escape(f.fila)}"] button`);
+  return fila || s?.querySelector("summary") || h1.value;
+}
+async function quitando(tipo: string, clave: string, hacer: () => Promise<boolean>) {
+  const foco = focoTras(ordenSecciones(), tipo, clave);
+  if (!(await hacer())) return;
+  await nextTick();
+  elementoDe(foco)?.focus();
+}
+
 const porMarcar = ref<{ clave: string; texto: string } | null>(null);
+let focoDialogo: Foco = null;
+const respaldoDialogo = () => elementoDe(focoDialogo);
 
 // Con soloLectura no se ofrece nada que cambie datos; ir a ver (ficha, puesto, unidad) sí.
 const EDITAN = new Set<Accion["id"]>(["eliminar", "desactivar", "bien", "volver"]);
@@ -100,7 +129,10 @@ function filas(av: Aviso): Fila[] {
     ...d,
     acciones: permitidas([
       ...propias,
-      accion("bien", () => (porMarcar.value = { clave: av.clave, texto: unir(d.texto, d.detalle)! })),
+      accion("bien", () => {
+        focoDialogo = focoTras(ordenSecciones(), av.tipo, av.clave);
+        porMarcar.value = { clave: av.clave, texto: unir(d.texto, d.detalle)! };
+      }),
     ]),
   });
   switch (av.tipo) {
@@ -111,7 +143,7 @@ function filas(av: Aviso): Fila[] {
     }
     case "vacias": {
       const id = av.fila.unidadId;
-      return [fila(accion("eliminar", () => eliminar(id)))];
+      return [fila(accion("eliminar", () => quitando(av.tipo, av.clave, () => eliminar(id))))];
     }
     case "vacantesLargas":
     case "vacantesRecientes": {
@@ -122,7 +154,7 @@ function filas(av: Aviso): Fila[] {
       return [fila(abrirFicha(av.fila.personaId))];
     case "sinUso": {
       const valor = av.fila;
-      return [fila(accion("desactivar", () => desactivar(valor)))];
+      return [fila(accion("desactivar", () => quitando(av.tipo, av.clave, () => desactivar(valor))))];
     }
     case "correos":
     case "nombres": {
@@ -145,7 +177,12 @@ function filas(av: Aviso): Fila[] {
 const secciones = computed(() =>
   revision.value.secciones
     .filter((s) => s.avisos.length)
-    .map((s) => ({ tipo: s.tipo, cuenta: s.avisos.length, filas: s.avisos.flatMap(filas) })),
+    .map((s) => ({
+      tipo: s.tipo,
+      cuenta: s.avisos.length,
+      claves: s.avisos.map((a) => a.clave),
+      filas: s.avisos.flatMap(filas),
+    })),
 );
 const reemplazos = computed<Fila[]>(() =>
   revision.value.reemplazos.map((r) => ({
@@ -158,9 +195,13 @@ const reemplazos = computed<Fila[]>(() =>
 const marcados = computed<Fila[]>(() =>
   revision.value.marcados.map(({ aviso, marca }) => ({
     clave: aviso.clave,
-    texto: describir(aviso).texto,
+    // Con su detalle, que distingue avisos de igual texto (dos vacantes del mismo cargo, varios grupos de nombres)
+    // también en el aria-label del botón.
+    texto: unir(describir(aviso).texto, describir(aviso).detalle)!,
     detalle: t("revision.marca", { motivo: marca.motivo, fecha: formatearFecha(marca.fecha, locale.value) }),
-    acciones: permitidas([accion("volver", () => volver(aviso.clave))]),
+    acciones: permitidas([
+      accion("volver", () => quitando("marcados", aviso.clave, () => volver(aviso.clave))),
+    ]),
   })),
 );
 
@@ -180,9 +221,10 @@ async function ir(tipo: TipoAviso) {
 <template>
   <section class="mx-auto flex max-w-4xl flex-col gap-3 p-6">
     <header class="flex flex-wrap items-center gap-2">
-      <h1 class="text-lg font-semibold">{{ t("revision.titulo") }}</h1>
+      <h1 ref="h1" tabindex="-1" class="text-lg font-semibold">{{ t("revision.titulo") }}</h1>
+      <!-- Los de la rama elegida (sin rama, todos); el menú cuenta siempre toda la organización. -->
       <span class="text-sm text-muted-foreground" aria-live="polite">{{
-        t("revision.avisos", estado.total)
+        t("revision.avisos", revision.total - revision.fueraDeRama)
       }}</span>
       <div class="ml-auto flex items-center gap-2">
         <Label for="revision-rama">{{ t("revision.rama") }}</Label>
@@ -216,7 +258,7 @@ async function ir(tipo: TipoAviso) {
       class="rounded-lg border bg-card px-3 py-1"
     >
       <template #titulo>
-        {{ t(`revision.${s.tipo}.titulo`) }}
+        <h3>{{ t(`revision.${s.tipo}.titulo`) }}</h3>
         <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ s.cuenta }}</span>
       </template>
       <p class="pb-2 text-sm text-muted-foreground">{{ t(`revision.${s.tipo}.ayuda`) }}</p>
@@ -225,12 +267,13 @@ async function ir(tipo: TipoAviso) {
 
     <BloquePlegable
       v-if="reemplazos.length"
+      id="revision-reemplazos"
       data-tipo="reemplazos"
       clave="revision.reemplazos"
       class="rounded-lg border bg-card px-3 py-1"
     >
       <template #titulo>
-        {{ t("revision.reemplazos.titulo") }}
+        <h3>{{ t("revision.reemplazos.titulo") }}</h3>
         <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ reemplazos.length }}</span>
       </template>
       <p class="pb-2 text-sm text-muted-foreground">{{ t("revision.reemplazos.ayuda") }}</p>
@@ -239,14 +282,17 @@ async function ir(tipo: TipoAviso) {
 
     <BloquePlegable
       v-if="marcados.length"
+      id="revision-marcados"
       data-tipo="marcados"
       clave="revision.marcados"
       class="rounded-lg border bg-card px-3 py-1"
     >
-      <template #titulo>{{ t("revision.marcados") }} ({{ marcados.length }})</template>
+      <template #titulo>
+        <h3>{{ t("revision.marcados") }} ({{ marcados.length }})</h3>
+      </template>
       <FilasRevision class="-mx-3" :filas="marcados" />
     </BloquePlegable>
 
-    <DialogoBien :aviso="porMarcar" @cerrar="porMarcar = null" />
+    <DialogoBien :aviso="porMarcar" :respaldo="respaldoDialogo" @cerrar="porMarcar = null" />
   </section>
 </template>

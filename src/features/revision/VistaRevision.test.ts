@@ -69,6 +69,9 @@ describe("Revisión de datos", () => {
     expect(s).not.toContain('data-tipo="correos"');
     expect(s).toContain('href="#revision-sinJefatura"');
     expect(s).toContain("Es nueva");
+    // Los títulos de sección son encabezados, y un marcado lleva su detalle (la ruta), también en el aria-label.
+    expect(s).toContain(`<h3>${t("revision.sinJefatura.titulo")}</h3>`);
+    expect(s).toContain(`aria-label="${t("revision.acciones.volver")}: Vacía · Raíz"`);
   });
 
   it("un nivel sin avisos dice «Todo en orden»", async () => {

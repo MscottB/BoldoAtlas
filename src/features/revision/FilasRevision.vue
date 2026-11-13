@@ -47,6 +47,7 @@ watch(
       <li
         v-for="{ data: f, index } in vista"
         :key="f.clave"
+        :data-clave="f.clave"
         class="flex h-8 items-center gap-2 px-3 text-sm whitespace-nowrap"
         :class="f.hija && 'pl-9'"
         :aria-setsize="filas.length"

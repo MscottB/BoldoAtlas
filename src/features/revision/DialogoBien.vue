@@ -20,7 +20,11 @@ import { marcar, MOTIVO_MAX } from "./marcas";
 import { useAvisos } from "./useAvisos";
 
 // «Así está bien»: el aviso deja de contar, con un motivo. `aviso` null = cerrado.
-const props = defineProps<{ aviso: { clave: string; texto: string } | null }>();
+// `respaldo`: dónde dejar el foco al cerrar si el botón que lo abrió ya no existe (su fila se fue al guardar).
+const props = defineProps<{
+  aviso: { clave: string; texto: string } | null;
+  respaldo: () => HTMLElement | null;
+}>();
 const emit = defineEmits<{ cerrar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -29,6 +33,7 @@ const retorno = useRetornoFoco();
 
 const motivo = ref("");
 const error = ref("");
+const guardando = ref(false);
 // El texto sigue a la vista mientras el diálogo se desvanece.
 const texto = ref("");
 watch(
@@ -41,20 +46,25 @@ watch(
 );
 
 async function guardar() {
-  if (!props.aviso) return;
+  if (!props.aviso || guardando.value) return; // un segundo Enter no escribe dos veces
   // Todo el mapa: guardarMarcasRevision reemplaza el JSON entero.
   const { marcas, vigentes } = estado.value;
   const m = marcar(marcas, props.aviso.clave, motivo.value, hoyISO(new Date()), vigentes);
   if (!m) return;
-  const r = await org.guardarMarcasRevision(m);
+  guardando.value = true;
+  const r = await org.guardarMarcasRevision(m).finally(() => (guardando.value = false));
   if (r.ok) emit("cerrar");
   else error.value = r.mensaje;
+}
+function alCerrar(e: Event) {
+  e.preventDefault();
+  retorno.restaurar(props.respaldo());
 }
 </script>
 
 <template>
   <Dialog :open="!!aviso" @update:open="(v) => v || emit('cerrar')">
-    <DialogContent @open-auto-focus="retorno.alAbrir" @close-auto-focus="retorno.alCerrar">
+    <DialogContent @open-auto-focus="retorno.alAbrir" @close-auto-focus="alCerrar">
       <form class="grid gap-4" @submit.prevent="guardar">
         <DialogHeader>
           <DialogTitle>{{ t("revision.bien.titulo") }}</DialogTitle>
@@ -78,7 +88,9 @@ async function guardar() {
           <DialogClose as-child>
             <Button type="button" variant="outline">{{ t("revision.bien.cancelar") }}</Button>
           </DialogClose>
-          <Button type="submit" :disabled="!motivo.trim()">{{ t("revision.bien.guardar") }}</Button>
+          <Button type="submit" :disabled="!motivo.trim() || guardando">{{
+            t("revision.bien.guardar")
+          }}</Button>
         </DialogFooter>
       </form>
     </DialogContent>
