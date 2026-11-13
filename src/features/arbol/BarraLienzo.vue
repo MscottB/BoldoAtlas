@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
+import { profundidad } from "./niveles";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { CONTEXTO_LIENZO } from "./contexto";
@@ -49,7 +50,8 @@ const emit = defineEmits<{ reordenar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
-const NIVELES = [1, 2, 3, 4, 5, 6];
+// Los niveles que de verdad tiene lo que se dibuja (1 a la profundidad).
+const niveles = computed(() => Array.from({ length: profundidad(props.unidades) }, (_, i) => i + 1));
 const { config, minimapa } = useVista();
 const { encuadrar } = inject(CONTEXTO_LIENZO)!;
 
@@ -141,7 +143,7 @@ async function guardarEnArboles() {
                 {{ t("arbol.ramas.contraerHasta") }}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuItem v-for="n in NIVELES" :key="n" @select="contraerHasta(unidades, n)">
+                <DropdownMenuItem v-for="n in niveles" :key="n" @select="contraerHasta(unidades, n)">
                   {{ t("arbol.ramas.nivel", { n }) }}
                 </DropdownMenuItem>
               </DropdownMenuSubContent>

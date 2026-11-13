@@ -27,13 +27,13 @@ Solid lines join each unit to its parent. Dotted lines with an arrow are connect
 
 When the tree opens you see the roots and their first level; the rest is collapsed. The button at the bottom right of a card shows how many sub-units are hidden (for example `+3`): press it to expand them and again to collapse them.
 
-At the bottom left of the canvas, **1**, **2**, **3** and **All** show that many levels (1 = just the roots) and fit the tree to the window.
+At the bottom left of the canvas there is one button for each level that what you see has, plus **All**: they show that many levels (1 = just the roots) and fit the tree to the window. With more than 6 levels you see **−**, the current level and **+** instead, which go down or up one level at a time. With a single level they do not appear.
 
 In **More** (the last button of the canvas toolbar), the **Branches** group expands or collapses everything at once:
 
 - **Expand all** opens every branch.
 - **Collapse all** leaves only the roots.
-- **Collapse to level** 1 to 6 shows that many levels (1 = roots only) and collapses the rest.
+- **Collapse to level** lists the levels that what you see has and shows that many levels (1 = roots only) and collapses the rest.
 
 In a unit's context menu, **Expand branch** opens the unit and everything under it, and **Collapse branch** folds it together with its sub-branches: when you open it again you see one level. In a branch opened as a tree, levels are counted from its root.
 
