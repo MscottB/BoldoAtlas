@@ -987,7 +987,11 @@ async function capturarRevision(app, carpeta) {
     await enIdioma(idioma);
     await app.evaluar(`location.hash = "#/revision"`);
     await app.hasta(
-      `location.hash === "#/revision" && Boolean(${seccion}?.querySelector("[data-accion]"))`,
+      // como la ve una persona: solo «Importante» empieza abierta; en las abiertas, sus filas ya dibujadas
+      `location.hash === "#/revision" && (() => {
+        const ds = [...document.querySelectorAll("details[data-tipo]")];
+        return ds.length > 0 && ds.filter((d) => d.open).every((d) => d.querySelector("[data-clave]"));
+      })()`,
       `Revisión con sus avisos, en ${idioma}`,
     );
     // las filas virtuales se dibujan tras medir su lista: dos cuadros
@@ -1945,9 +1949,14 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     );
   await enfocar("principal");
   await app.evaluar(`${entradaLateral("/revision")}.click()`);
-  const bien = `${panel("principal")}?.querySelector('[data-accion="bien"]')`;
+  // Solo las secciones de «Importante» empiezan abiertas: se abre la primera de avisos, la del botón que se pulsa.
+  const primeraSeccion = `${panel("principal")}?.querySelector('details[data-tipo]:not([data-tipo="reemplazos"]):not([data-tipo="marcados"])')`;
+  const bien = `${primeraSeccion}?.querySelector('[data-accion="bien"]')`;
   const conAviso = await app
-    .hasta(`location.hash === "#/revision" && Boolean(${bien})`, "un aviso por marcar en Revisión")
+    .hasta(
+      `location.hash === "#/revision" && (() => { const d = ${primeraSeccion}; if (d) d.open = true; return Boolean(${bien}); })()`,
+      "un aviso por marcar en Revisión",
+    )
     .then(
       () => true,
       () => false,
@@ -2012,7 +2021,16 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   );
   // Un puesto vacante, desde su fila: su diálogo
   const vacante = `${EN_MARCO}?.querySelector('[data-tipo^="vacantes"] [data-accion="asignar"]')`;
-  await app.hasta(`Boolean(${vacante})`, "una vacante en Revisión del iframe");
+  // Se abren todas sus secciones (solo «Importante» empieza abierta): la vacante puede estar en una plegada, y con sus
+  // filas dibujadas, buscar acciones de editar no es en vano.
+  await app.hasta(
+    `(() => {
+      const ds = [...(${EN_MARCO}?.querySelectorAll("details[data-tipo]") ?? [])];
+      for (const d of ds) d.open = true;
+      return ds.length > 0 && ds.every((d) => d.querySelector("[data-clave]")) && Boolean(${vacante});
+    })()`,
+    "las secciones de Revisión del iframe abiertas, con sus filas y una vacante",
+  );
   const editan = await app.evaluar(
     `[...(${EN_MARCO}?.querySelectorAll('[data-accion="bien"], [data-accion="volver"], [data-accion="eliminar"], [data-accion="desactivar"]') ?? [])].map((b) => b.getAttribute("aria-label"))`,
   );
