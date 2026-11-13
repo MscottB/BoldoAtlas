@@ -1,144 +1,252 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { toast } from "vue-sonner";
+import BloquePlegable from "@/components/BloquePlegable.vue";
+import { Label } from "@/components/ui/label";
+import { formatearFecha } from "@/features/puestos/puestos";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
-import type { PersonaRef } from "./revision";
+import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
+import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import DialogoBien from "./DialogoBien.vue";
+import FilasRevision, { type Accion, type Fila } from "./FilasRevision.vue";
+import { desmarcar } from "./marcas";
+import { ramaDe, revisar, type Aviso, type FilaValor, type TipoAviso } from "./revision";
+import ResumenRevision from "./ResumenRevision.vue";
 import { useAvisos } from "./useAvisos";
-import BloquePlegable from "@/components/BloquePlegable.vue";
-import FilasRevision, { type Fila } from "./FilasRevision.vue";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 const puesto = usePuesto();
 const ficha = useFicha();
-const resumen = useAvisos();
+const org = useOrganizacion();
+const estado = useAvisos();
 
-const unir = (...partes: (string | null | undefined)[]) => partes.filter(Boolean).join(" · ");
-// La unidad se abre en el árbol completo, seleccionada y centrada (con su panel).
-const verUnidad = (id: string) => router.push({ path: "/", query: { ver: id } });
-const filaPersona = (clave: string, p: PersonaRef, detalle?: string): Fila => ({
-  clave: `${clave}:${p.id}`,
-  texto: p.nombre,
-  detalle,
-  abrir: () => void ficha.intentarAbrir(p.id),
-  hija: true,
-});
+const NINGUNA = new Set<string>();
+const rama = ref<string | null>(null);
+const revision = computed(() =>
+  revisar(estado.value.avisos, estado.value.marcas, ramaDe(org.unidades, rama.value)),
+);
 
-const secciones = computed<{ clave: string; cuenta: number; filas: Fila[] }[]>(() => {
-  const a = resumen.value.avisos;
-  const unidad = (f: { unidadId: string; nombre: string; ruta: string }): Fila => ({
-    clave: f.unidadId,
-    texto: f.nombre,
-    detalle: f.ruta,
-    abrir: () => void verUnidad(f.unidadId),
+const unir = (...partes: (string | null | undefined)[]) => partes.filter(Boolean).join(" · ") || undefined;
+const avisar = (r: Resultado) => !r.ok && toast.error(r.mensaje);
+const deshacible = (texto: string, deshacer: () => Promise<Resultado>) =>
+  toast(texto, {
+    duration: 8000,
+    action: { label: t("unidad.deshacer"), onClick: async () => avisar(await deshacer()) },
   });
-  return [
-    { clave: "sinJefatura", cuenta: a.sinJefatura.length, filas: a.sinJefatura.map(unidad) },
-    {
-      clave: "vacantes",
-      cuenta: a.vacantes.length,
-      filas: a.vacantes.map((f) => ({
-        clave: f.puestoId,
-        texto: f.cargo,
-        detalle: unir(f.unidad, f.dias === null ? null : t("revision.dias", f.dias)),
-        abrir: () => puesto.abrir(f.puestoId),
-      })),
-    },
-    {
-      clave: "reemplazos",
-      cuenta: a.reemplazos.length,
-      filas: a.reemplazos.map((f) => ({
-        clave: `${f.puestoId}:${f.personaId}`,
-        texto: f.persona,
-        detalle: unir(f.cargo, f.unidad),
-        abrir: () => puesto.abrir(f.puestoId),
-      })),
-    },
-    {
-      clave: "sinPuesto",
-      cuenta: a.sinPuesto.length,
-      filas: a.sinPuesto.map((f) => ({
-        clave: f.personaId,
-        texto: f.nombre,
-        abrir: () => void ficha.intentarAbrir(f.personaId),
-      })),
-    },
-    {
-      clave: "correos",
-      cuenta: a.correos.length,
-      filas: a.correos.flatMap((g) => [
-        { clave: g.clave, texto: g.clave },
-        ...g.personas.map((p) => filaPersona(g.clave, p)),
-      ]),
-    },
-    {
-      clave: "nombres",
-      cuenta: a.nombres.length,
-      filas: a.nombres.flatMap((g) => [
-        { clave: g.clave, texto: t("revision.nombresGrupo", g.personas.length) },
-        ...g.personas.map((p) => filaPersona(g.clave, p, p.correo ?? undefined)),
-      ]),
-    },
-    { clave: "vacias", cuenta: a.vacias.length, filas: a.vacias.map(unidad) },
-    {
-      clave: "sinUso",
-      cuenta: a.sinUso.length,
-      filas: a.sinUso.map((f) => ({
-        clave: `${f.tabla}:${f.id}`,
-        texto: f.nombre,
-        detalle: t(`revision.tablas.${f.tabla}`),
-      })),
-    },
-  ];
+
+async function eliminar(id: string) {
+  const r = await org.eliminarUnidad(id);
+  if (!r.ok) return void toast.error(r.mensaje);
+  deshacible(t("revision.eliminada"), () => org.deshacer());
+}
+async function desactivar({ tabla, id }: FilaValor) {
+  const r = await (tabla === "leyendas" ? org.desactivarLeyenda(id) : org.desactivarValor(tabla, id));
+  if (!r.ok) return void toast.error(r.mensaje);
+  deshacible(t("revision.desactivado"), () =>
+    tabla === "leyendas" ? org.reactivarLeyenda(id) : org.reactivarValor(tabla, id),
+  );
+}
+// Todo el mapa: guardarMarcasRevision reemplaza el JSON entero.
+const volver = async (clave: string) =>
+  avisar(await org.guardarMarcasRevision(desmarcar(estado.value.marcas, clave, estado.value.vigentes)));
+
+const porMarcar = ref<{ clave: string; texto: string } | null>(null);
+
+// Con soloLectura no se ofrece nada que cambie datos; ir a ver (ficha, puesto, unidad) sí.
+const EDITAN = new Set<Accion["id"]>(["eliminar", "desactivar", "bien", "volver"]);
+const accion = (id: Accion["id"], hacer: () => unknown, etiqueta = t(`revision.acciones.${id}`)): Accion => ({
+  id,
+  etiqueta,
+  hacer: () => void hacer(),
 });
-// Primero lo que tiene avisos (en su orden de siempre); lo que está en orden, agrupado al final.
-const conAvisos = computed(() => secciones.value.filter((s) => s.filas.length));
-const enOrden = computed(() => secciones.value.filter((s) => !s.filas.length));
+const permitidas = (acciones: Accion[]) =>
+  org.soloLectura ? acciones.filter((a) => !EDITAN.has(a.id)) : acciones;
+const abrirFicha = (id: string) => accion("abrir", () => ficha.intentarAbrir(id));
+
+function describir(av: Aviso): { texto: string; detalle?: string } {
+  switch (av.tipo) {
+    case "sinJefatura":
+    case "vacias":
+      return { texto: av.fila.nombre, detalle: unir(av.fila.ruta) };
+    case "vacantesLargas":
+    case "vacantesRecientes":
+      return {
+        texto: av.fila.cargo,
+        detalle: unir(av.fila.unidad, av.fila.dias === null ? null : t("revision.dias", av.fila.dias)),
+      };
+    case "sinPuesto":
+      return { texto: av.fila.nombre };
+    case "correos":
+      return { texto: av.fila.clave };
+    case "nombres":
+      return {
+        texto: t("revision.nombresGrupo", av.fila.personas.length),
+        detalle: av.fila.personas.map((p) => p.nombre).join(", "),
+      };
+    case "sinUso":
+      return { texto: av.fila.nombre, detalle: t(`revision.tablas.${av.fila.tabla}`) };
+  }
+}
+
+// Los grupos (correos, nombres) son la fila del grupo, con «Así está bien», y una fila por persona.
+function filas(av: Aviso): Fila[] {
+  const d = describir(av);
+  const fila = (...propias: Accion[]): Fila => ({
+    clave: av.clave,
+    ...d,
+    acciones: permitidas([
+      ...propias,
+      accion("bien", () => (porMarcar.value = { clave: av.clave, texto: unir(d.texto, d.detalle)! })),
+    ]),
+  });
+  switch (av.tipo) {
+    case "sinJefatura": {
+      const id = av.fila.unidadId;
+      // La unidad se abre en el árbol completo, seleccionada y centrada, con su panel para elegir la jefatura.
+      return [fila(accion("jefatura", () => router.push({ path: "/", query: { ver: id } })))];
+    }
+    case "vacias": {
+      const id = av.fila.unidadId;
+      return [fila(accion("eliminar", () => eliminar(id)))];
+    }
+    case "vacantesLargas":
+    case "vacantesRecientes": {
+      const id = av.fila.puestoId;
+      return [fila(accion("asignar", () => puesto.abrir(id)))];
+    }
+    case "sinPuesto":
+      return [fila(abrirFicha(av.fila.personaId))];
+    case "sinUso": {
+      const valor = av.fila;
+      return [fila(accion("desactivar", () => desactivar(valor)))];
+    }
+    case "correos":
+    case "nombres": {
+      const conCorreo = av.tipo === "nombres";
+      return [
+        fila(),
+        ...av.fila.personas.map((p) => ({
+          clave: `${av.clave}:${p.id}`,
+          texto: p.nombre,
+          detalle: conCorreo ? (p.correo ?? undefined) : undefined,
+          hija: true,
+          acciones: [abrirFicha(p.id)],
+        })),
+      ];
+    }
+  }
+}
+
+// Una sección vacía no se muestra: el resumen ya dice que su nivel está en orden.
+const secciones = computed(() =>
+  revision.value.secciones
+    .filter((s) => s.avisos.length)
+    .map((s) => ({ tipo: s.tipo, cuenta: s.avisos.length, filas: s.avisos.flatMap(filas) })),
+);
+const reemplazos = computed<Fila[]>(() =>
+  revision.value.reemplazos.map((r) => ({
+    clave: `${r.puestoId}:${r.personaId}`,
+    texto: r.persona,
+    detalle: unir(r.cargo, r.unidad),
+    acciones: [accion("abrir", () => puesto.abrir(r.puestoId), t("revision.acciones.verPuesto"))],
+  })),
+);
+const marcados = computed<Fila[]>(() =>
+  revision.value.marcados.map(({ aviso, marca }) => ({
+    clave: aviso.clave,
+    texto: describir(aviso).texto,
+    detalle: t("revision.marca", { motivo: marca.motivo, fecha: formatearFecha(marca.fecha, locale.value) }),
+    acciones: permitidas([accion("volver", () => volver(aviso.clave))]),
+  })),
+);
+
+// Desde el resumen: abre la sección (aunque el usuario la haya plegado) y lleva el foco a su título.
+const destino = ref<TipoAviso | null>(null);
+async function ir(tipo: TipoAviso) {
+  destino.value = null; // si ya era el destino, que vuelva a abrirse
+  await nextTick();
+  destino.value = tipo;
+  await nextTick();
+  const seccion = document.getElementById(`revision-${tipo}`);
+  seccion?.scrollIntoView({ block: "start" });
+  seccion?.querySelector("summary")?.focus({ preventScroll: true });
+}
 </script>
 
 <template>
   <section class="mx-auto flex max-w-4xl flex-col gap-3 p-6">
-    <header class="flex flex-wrap items-baseline gap-2">
+    <header class="flex flex-wrap items-center gap-2">
       <h1 class="text-lg font-semibold">{{ t("revision.titulo") }}</h1>
       <span class="text-sm text-muted-foreground" aria-live="polite">{{
-        t("revision.avisos", resumen.total)
+        t("revision.avisos", estado.total)
       }}</span>
+      <div class="ml-auto flex items-center gap-2">
+        <Label for="revision-rama">{{ t("revision.rama") }}</Label>
+        <div class="w-56">
+          <SelectorUnidad
+            id="revision-rama"
+            class="h-8"
+            :excluidas="NINGUNA"
+            :texto="(rama && org.porId.get(rama)?.nombre) || t('revision.todaLaOrganizacion')"
+            :ninguna="t('revision.todaLaOrganizacion')"
+            @elegir="rama = $event"
+          />
+        </div>
+      </div>
     </header>
 
-    <details v-for="s in conAvisos" :key="s.clave" open class="rounded-lg border bg-card">
-      <summary
-        class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        {{ t(`revision.${s.clave}.titulo`) }}
-        <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ s.cuenta }}</span>
-      </summary>
-      <p class="px-3 pb-2 text-sm text-muted-foreground">{{ t(`revision.${s.clave}.ayuda`) }}</p>
-      <FilasRevision :filas="s.filas" />
-    </details>
+    <ResumenRevision :secciones="revision.secciones" @ir="ir" />
 
-    <!-- Lo que está en orden va junto al final, en una línea que se despliega. -->
+    <p v-if="revision.fueraDeRama" class="text-sm text-muted-foreground">
+      {{ t("revision.fueraDeRama", revision.fueraDeRama) }}
+    </p>
+
     <BloquePlegable
-      v-if="enOrden.length"
-      clave="revision.enOrden"
+      v-for="s in secciones"
+      :id="`revision-${s.tipo}`"
+      :key="s.tipo"
+      :data-tipo="s.tipo"
+      :clave="`revision.${s.tipo}`"
+      abierto-por-defecto
+      :abrir="destino === s.tipo"
       class="rounded-lg border bg-card px-3 py-1"
     >
       <template #titulo>
-        <span class="min-w-0">
-          {{ t("revision.sinAvisos") }}
-          <span class="text-sm font-normal text-muted-foreground">{{
-            enOrden.map((s) => t(`revision.${s.clave}.titulo`)).join(" · ")
-          }}</span>
-        </span>
+        {{ t(`revision.${s.tipo}.titulo`) }}
+        <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ s.cuenta }}</span>
       </template>
-      <ul class="grid gap-2 pb-2 pl-5 text-sm">
-        <li v-for="s in enOrden" :key="s.clave">
-          <span class="font-medium">{{ t(`revision.${s.clave}.titulo`) }}</span>
-          · {{ t("revision.todoEnOrden") }}
-          <p class="text-muted-foreground">{{ t(`revision.${s.clave}.ayuda`) }}</p>
-        </li>
-      </ul>
+      <p class="pb-2 text-sm text-muted-foreground">{{ t(`revision.${s.tipo}.ayuda`) }}</p>
+      <FilasRevision class="-mx-3" :filas="s.filas" />
     </BloquePlegable>
+
+    <BloquePlegable
+      v-if="reemplazos.length"
+      data-tipo="reemplazos"
+      clave="revision.reemplazos"
+      class="rounded-lg border bg-card px-3 py-1"
+    >
+      <template #titulo>
+        {{ t("revision.reemplazos.titulo") }}
+        <span class="rounded-full bg-muted px-2 text-xs text-foreground">{{ reemplazos.length }}</span>
+      </template>
+      <p class="pb-2 text-sm text-muted-foreground">{{ t("revision.reemplazos.ayuda") }}</p>
+      <FilasRevision class="-mx-3" :filas="reemplazos" />
+    </BloquePlegable>
+
+    <BloquePlegable
+      v-if="marcados.length"
+      data-tipo="marcados"
+      clave="revision.marcados"
+      class="rounded-lg border bg-card px-3 py-1"
+    >
+      <template #titulo>{{ t("revision.marcados") }} ({{ marcados.length }})</template>
+      <FilasRevision class="-mx-3" :filas="marcados" />
+    </BloquePlegable>
+
+    <DialogoBien :aviso="porMarcar" @cerrar="porMarcar = null" />
   </section>
 </template>

@@ -4,8 +4,9 @@ import { usePlegable } from "@/lib/plegable";
 
 // El bloque plegable de toda la app: un <details> (el resumen entra al orden de Tab y abre con Enter o Espacio).
 // `clave` es la preferencia por PC; `abrir` lo abre mientras haga falta (error, dato puesto, destino de un salto).
-const props = defineProps<{ clave: string; titulo?: string; abrir?: boolean }>();
-const { abierto, alPlegar } = usePlegable(props.clave, () => !!props.abrir);
+// `abiertoPorDefecto`: cómo empieza si el usuario nunca lo abrió ni plegó.
+const props = defineProps<{ clave: string; titulo?: string; abrir?: boolean; abiertoPorDefecto?: boolean }>();
+const { abierto, alPlegar } = usePlegable(props.clave, () => !!props.abrir, props.abiertoPorDefecto);
 </script>
 
 <template>

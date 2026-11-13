@@ -13,19 +13,24 @@ interface Estado {
   total: number;
 }
 
-// Un solo cálculo por cambio del store, compartido por el menú (contador) y la vista.
-let compartido: ComputedRef<Estado> | undefined;
+// Un solo cálculo por cambio del store, compartido por el menú (contador) y la vista; uno por store (cada pinia).
+const compartidos = new WeakMap<object, ComputedRef<Estado>>();
 
-export function useAvisos() {
-  return (compartido ??= computed(() => {
-    const s = useOrganizacion();
-    const a = avisos(s);
-    const marcas = leerMarcas(s.marcasRevision);
-    return {
-      avisos: a,
-      marcas,
-      vigentes: new Set(listarAvisos(a).map((x) => x.clave)),
-      total: revisar(a, marcas, null).total,
-    };
-  }));
+export function useAvisos(): ComputedRef<Estado> {
+  const s = useOrganizacion();
+  let c = compartidos.get(s);
+  if (!c) {
+    c = computed(() => {
+      const a = avisos(s);
+      const marcas = leerMarcas(s.marcasRevision);
+      return {
+        avisos: a,
+        marcas,
+        vigentes: new Set(listarAvisos(a).map((x) => x.clave)),
+        total: revisar(a, marcas, null).total,
+      };
+    });
+    compartidos.set(s, c);
+  }
+  return c;
 }

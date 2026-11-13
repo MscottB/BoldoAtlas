@@ -335,39 +335,80 @@
       "tipos_unidad": "Unit type",
       "leyendas": "Legend"
     },
+    "niveles": {
+      "importante": {
+        "titulo": "Important",
+        "ayuda": "Nobody is in charge of these units, or some data may be duplicated."
+      },
+      "revisar": {
+        "titulo": "To review",
+        "ayuda": "They may be fine, but they are worth a look."
+      },
+      "limpieza": {
+        "titulo": "Tidying up",
+        "ayuda": "They affect nobody; removing them keeps the lists shorter."
+      }
+    },
     "sinJefatura": {
       "titulo": "Units without a head",
-      "ayuda": "Units with no head position, or whose position has no current holder or replacement."
-    },
-    "vacantes": {
-      "titulo": "Vacant positions",
-      "ayuda": "Positions with no current holder, longest without a holder first."
-    },
-    "reemplazos": {
-      "titulo": "Current replacements",
-      "ayuda": "For information only: not counted in the menu counter."
-    },
-    "sinPuesto": {
-      "titulo": "People without a current position",
-      "ayuda": "Registered people who do not hold or replace any position today."
+      "ayuda": "Nobody is in charge of these units today: choose their head position and give it a holder or a replacement."
     },
     "correos": {
       "titulo": "Repeated emails",
-      "ayuda": "People who share the same email."
+      "ayuda": "Two records with the same email are usually the same person entered twice: delete the extra one or fix the email."
+    },
+    "vacantesLargas": {
+      "titulo": "Vacancies of more than 90 days",
+      "ayuda": "Over three months without a holder: assign one, or delete the position if it is no longer used."
+    },
+    "sinPuesto": {
+      "titulo": "People without a current position",
+      "ayuda": "They hold or replace no position today: assign them from the position, or delete them if they no longer work here."
     },
     "nombres": {
       "titulo": "Similar names",
-      "ayuda": "The same name ignoring case and accents, or the same words in another order: possible duplicates."
+      "ayuda": "The same name, ignoring accents and word order: if it is the same person, delete the extra record; if not, mark it as fine."
+    },
+    "vacantesRecientes": {
+      "titulo": "Recent vacancies",
+      "ayuda": "Without a holder for 90 days or less, or with no date: assign one when you have it."
     },
     "vacias": {
       "titulo": "Empty units",
-      "ayuda": "Units with no positions and no subunits."
+      "ayuda": "They have no positions or subunits: add positions, or delete the unit if it no longer exists."
     },
     "sinUso": {
       "titulo": "Unused values",
-      "ayuda": "Active values of the lists and active legends that nothing uses."
+      "ayuda": "Nothing uses them: deactivate them so they are not offered when choosing."
     },
-    "sinAvisos": "No warnings:"
+    "reemplazos": {
+      "titulo": "Current replacements",
+      "ayuda": "Only shows who is replacing in each position today; not counted as a warning."
+    },
+    "acciones": {
+      "jefatura": "Choose head",
+      "asignar": "Assign holder",
+      "abrir": "Open record",
+      "verPuesto": "View position",
+      "eliminar": "Delete",
+      "desactivar": "Deactivate",
+      "bien": "This is fine",
+      "volver": "Warn again"
+    },
+    "bien": {
+      "titulo": "This is fine",
+      "motivo": "Reason",
+      "ejemplo": "For example: it is a new unit and has no people yet.",
+      "guardar": "Save",
+      "cancelar": "Cancel"
+    },
+    "marcados": "Marked as fine",
+    "marca": "{motivo} · {fecha}",
+    "rama": "Branch",
+    "todaLaOrganizacion": "Whole organization",
+    "fueraDeRama": "{n} warning belongs to no unit and is not shown with this filter | {n} warnings belong to no unit and are not shown with this filter",
+    "eliminada": "Unit deleted",
+    "desactivado": "Value deactivated"
   },
   "idioma": {
     "etiqueta": "Language",

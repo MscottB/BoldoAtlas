@@ -335,39 +335,80 @@
       "tipos_unidad": "Tipo de unidad",
       "leyendas": "Leyenda"
     },
+    "niveles": {
+      "importante": {
+        "titulo": "Importante",
+        "ayuda": "Nadie responde por estas unidades, o hay datos que pueden estar duplicados."
+      },
+      "revisar": {
+        "titulo": "Para revisar",
+        "ayuda": "Puede que estén bien, pero conviene mirarlos."
+      },
+      "limpieza": {
+        "titulo": "Orden y limpieza",
+        "ayuda": "No afectan a nadie; quitarlos deja las listas más cortas."
+      }
+    },
     "sinJefatura": {
       "titulo": "Unidades sin jefatura",
-      "ayuda": "Unidades sin puesto de jefatura, o cuyo puesto no tiene titular ni reemplazo vigente."
-    },
-    "vacantes": {
-      "titulo": "Puestos vacantes",
-      "ayuda": "Puestos sin titular vigente, de más a menos tiempo sin titular."
-    },
-    "reemplazos": {
-      "titulo": "Reemplazos vigentes",
-      "ayuda": "Solo informativo: no suma al contador del menú."
-    },
-    "sinPuesto": {
-      "titulo": "Personas sin puesto vigente",
-      "ayuda": "Personas registradas que hoy no ocupan ni reemplazan ningún puesto."
+      "ayuda": "Nadie responde hoy por estas unidades: elige su puesto de jefatura y dale un titular o un reemplazo."
     },
     "correos": {
       "titulo": "Correos repetidos",
-      "ayuda": "Personas que comparten el mismo correo."
+      "ayuda": "Dos fichas con el mismo correo suelen ser la misma persona cargada dos veces: elimina la que sobra o corrige el correo."
+    },
+    "vacantesLargas": {
+      "titulo": "Vacantes de más de 90 días",
+      "ayuda": "Llevan más de tres meses sin titular: asígnale uno, o elimina el puesto si ya no se usa."
+    },
+    "sinPuesto": {
+      "titulo": "Personas sin puesto vigente",
+      "ayuda": "Hoy no ocupan ni reemplazan ningún puesto: asígnalas desde el puesto, o elimínalas si ya no trabajan aquí."
     },
     "nombres": {
       "titulo": "Nombres parecidos",
-      "ayuda": "Mismo nombre sin considerar mayúsculas ni tildes, o con las mismas palabras en otro orden: posibles duplicados."
+      "ayuda": "Mismo nombre, sin contar tildes ni el orden de las palabras: si es la misma persona, elimina la ficha que sobra; si no, márcalo como bien."
+    },
+    "vacantesRecientes": {
+      "titulo": "Vacantes recientes",
+      "ayuda": "Sin titular hace 90 días o menos, o sin fecha: asígnale uno cuando lo tengas."
     },
     "vacias": {
       "titulo": "Unidades vacías",
-      "ayuda": "Unidades sin puestos ni subunidades."
+      "ayuda": "No tienen puestos ni subunidades: agrégale puestos, o elimínala si ya no existe."
     },
     "sinUso": {
       "titulo": "Valores sin uso",
-      "ayuda": "Valores activos de los mantenedores y leyendas activas que nada usa."
+      "ayuda": "Nada los usa: desactívalos para que no aparezcan al elegir."
     },
-    "sinAvisos": "Sin avisos:"
+    "reemplazos": {
+      "titulo": "Reemplazos vigentes",
+      "ayuda": "Solo informa quién reemplaza hoy en cada puesto; no cuenta como aviso."
+    },
+    "acciones": {
+      "jefatura": "Elegir jefatura",
+      "asignar": "Asignar titular",
+      "abrir": "Abrir ficha",
+      "verPuesto": "Ver puesto",
+      "eliminar": "Eliminar",
+      "desactivar": "Desactivar",
+      "bien": "Así está bien",
+      "volver": "Volver a avisar"
+    },
+    "bien": {
+      "titulo": "Así está bien",
+      "motivo": "Motivo",
+      "ejemplo": "Por ejemplo: es una unidad nueva y todavía no tiene personas.",
+      "guardar": "Guardar",
+      "cancelar": "Cancelar"
+    },
+    "marcados": "Marcados como bien",
+    "marca": "{motivo} · {fecha}",
+    "rama": "Rama",
+    "todaLaOrganizacion": "Toda la organización",
+    "fueraDeRama": "{n} aviso no pertenece a ninguna unidad y no se ve con este filtro | {n} avisos no pertenecen a ninguna unidad y no se ven con este filtro",
+    "eliminada": "Unidad eliminada",
+    "desactivado": "Valor desactivado"
   },
   "idioma": {
     "etiqueta": "Idioma",
