@@ -19,11 +19,24 @@ export function nuevaProporcion(accion: string, p: number): number | null {
   return paso === undefined ? null : acotar(Math.round((p + paso) * 100) / 100);
 }
 
-/** Al arrastrar: lo que queda antes del puntero en el contenedor de los dos paneles, acotado. */
+/**
+ * Al arrastrar: el centro del divisor queda bajo el puntero. Los paneles se reparten lo que deja el divisor (`grosor`),
+ * así que se mide sobre eso. Acotada, sin redondear.
+ */
 export function proporcionDelPuntero(
   orientacion: Division["orientacion"],
   { x, y }: { x: number; y: number },
   caja: { left: number; top: number; width: number; height: number },
+  grosor: number,
 ): number {
-  return acotar(orientacion === "horizontal" ? (x - caja.left) / caja.width : (y - caja.top) / caja.height);
+  const [desde, largo] =
+    orientacion === "horizontal" ? [x - caja.left, caja.width] : [y - caja.top, caja.height];
+  return acotar((desde - grosor / 2) / (largo - grosor));
+}
+
+/** Al soltar el divisor, la proporción que se guarda (en centésimas); null si no se arrastró o no cambió. */
+export function finDelArrastre(guardada: number, arrastre: number | null): number | null {
+  if (arrastre === null) return null;
+  const p = Math.round(arrastre * 100) / 100;
+  return p === guardada ? null : p;
 }

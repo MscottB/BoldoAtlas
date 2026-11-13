@@ -118,8 +118,12 @@ export const usePestanas = defineStore("pestanas", () => {
         nuevoId,
       );
     enProyecto = true;
-    const p = modelo.value.lista.find((x) => x.id === modelo.value.activa)!;
-    // Configuración, Ayuda y Acerca de son de paso: al entrar se llega a la vista de trabajo de la pestaña.
+    // Al entrar se llega a la vista de trabajo de la pestaña.
+    return rutaDeTrabajo(modelo.value.lista.find((x) => x.id === modelo.value.activa)!);
+  }
+
+  /** Configuración, Ayuda y Acerca de son de paso: de ellas, la vista a la que vuelve su «Cerrar», o el inicio. */
+  function rutaDeTrabajo(p: P.Pestana): string {
     return esVistaCerrable(router?.resolve(p.ruta).name) ? (p.volver ?? P.RUTA_INICIO) : p.ruta;
   }
 
@@ -311,9 +315,7 @@ export const usePestanas = defineStore("pestanas", () => {
     // Una activa de otra organización, sin abrir o a medio cambio no tiene una vista de la abierta que copiar.
     if (!p || !vaAlLado(p.id) || useOrganizaciones().enCurso)
       return { ok: false, mensaje: t("pestanas.noAbre") };
-    const nueva = agregarNueva(
-      esVistaCerrable(router?.resolve(p.ruta).name) ? (p.volver ?? P.RUTA_INICIO) : p.ruta,
-    );
+    const nueva = agregarNueva(rutaDeTrabajo(p));
     if (nueva.ok) modelo.value = P.alLado(modelo.value, nueva.id!);
     return nueva;
   }
@@ -389,6 +391,7 @@ export const usePestanas = defineStore("pestanas", () => {
     conFoco,
     conectar,
     entrar,
+    rutaDeTrabajo,
     /** Desde la Bienvenida, al Árbol (las demás pestañas quedan como estaban). */
     async volverAlProyecto() {
       const ruta = entrar(true);

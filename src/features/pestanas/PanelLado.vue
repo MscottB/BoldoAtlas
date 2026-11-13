@@ -16,7 +16,10 @@ import { usePestanas } from "./usePestanas";
 // El panel de al lado: con su propio router, sus vistas (useRoute, useRouter, RouterLink) navegan solo aquí. Se monta
 // con la key de su pestaña, así que cada pestaña que llega al lado tiene un router nuevo, y se suelta al desmontarse.
 const props = defineProps<{ id: string }>();
-const r = crearRouterLado(usePestanas().lista.find((p) => p.id === props.id)?.ruta ?? RUTA_INICIO);
+const pestanas = usePestanas();
+const pestana = pestanas.lista.find((p) => p.id === props.id);
+// De Configuración, Ayuda o Acerca de, que no van al lado, a la vista de trabajo de la pestaña.
+const r = crearRouterLado(pestana ? pestanas.rutaDeTrabajo(pestana) : RUTA_INICIO);
 // Como hace vue-router al instalarse: cada clave lee la de la ruta actual.
 const ruta = {} as RouteLocationNormalizedLoaded;
 for (const k of Object.keys(START_LOCATION) as (keyof RouteLocationNormalizedLoaded)[])

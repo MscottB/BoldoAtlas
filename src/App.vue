@@ -42,13 +42,7 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
 import VistaDividida from "@/features/pestanas/VistaDividida.vue";
-import {
-  ID_AREA,
-  abrirEnPestanaNueva,
-  clicNuevaPestana,
-  idPestana,
-  usePestanas,
-} from "@/features/pestanas/usePestanas";
+import { abrirEnPestanaNueva, clicNuevaPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: solo con MOSTRAR_PROXIMAMENTE se muestra, deshabilitada y con el aviso de la fase en que llega.
@@ -243,15 +237,7 @@ function escEnBarra(e: KeyboardEvent) {
       <div class="flex min-w-0 flex-1 flex-col">
         <BarraSuperior @buscar="paletaAbierta = true" />
         <BarraPestanas v-if="conPestanas" />
-        <main
-          :id="ID_AREA"
-          tabindex="-1"
-          class="min-h-0 flex-1 overflow-auto outline-none"
-          :role="conPestanas ? 'tabpanel' : undefined"
-          :aria-labelledby="conPestanas ? idPestana(pestanas.activa) : undefined"
-        >
-          <VistaDividida />
-        </main>
+        <VistaDividida />
       </div>
     </div>
     <PaletaComandos v-if="!route.meta.sinMarco" v-model:open="paletaAbierta" />
