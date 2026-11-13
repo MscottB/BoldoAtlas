@@ -71,6 +71,11 @@ describe("Revisión de datos", () => {
     expect(s).toContain("Es nueva");
     // Los títulos de sección son encabezados, y un marcado lleva su detalle (la ruta), también en el aria-label.
     expect(s).toContain(`<h3>${t("revision.sinJefatura.titulo")}</h3>`);
+    // Sin nada guardado, solo las secciones de «Importante» empiezan abiertas.
+    const etiqueta = (tipo: string) => s.match(new RegExp(`<details[^>]*data-tipo="${tipo}"[^>]*>`))?.[0];
+    expect(etiqueta("sinJefatura")).toMatch(/\sopen[\s>]/);
+    expect(etiqueta("vacias")).toBeDefined();
+    expect(etiqueta("vacias")).not.toMatch(/\sopen[\s>]/);
     expect(s).toContain(`aria-label="${t("revision.acciones.volver")}: Vacía · Raíz"`);
   });
 

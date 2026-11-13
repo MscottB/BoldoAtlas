@@ -178,12 +178,14 @@ function filas(av: Aviso): Fila[] {
   }
 }
 
-// Una sección vacía no se muestra: el resumen ya dice que su nivel está en orden.
+// Una sección vacía no se muestra: el resumen ya dice que su nivel está en orden. Solo las de «Importante» empiezan
+// abiertas; después cada una recuerda cómo la dejó el usuario.
 const secciones = computed(() =>
   revision.value.secciones
     .filter((s) => s.avisos.length)
     .map((s) => ({
       tipo: s.tipo,
+      nivel: s.nivel,
       cuenta: s.avisos.length,
       claves: s.avisos.map((a) => a.clave),
       filas: s.avisos.flatMap(filas),
@@ -258,7 +260,7 @@ async function ir(tipo: TipoAviso) {
       :key="s.tipo"
       :data-tipo="s.tipo"
       :clave="`revision.${s.tipo}`"
-      abierto-por-defecto
+      :abierto-por-defecto="s.nivel === 'importante'"
       :abrir="destino === s.tipo"
       class="rounded-lg border bg-card px-3 py-1"
     >
