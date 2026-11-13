@@ -322,7 +322,14 @@
     "filtrosBoton": "Filtros",
     "filtrosActivos": "{n} filtro activo | {n} filtros activos",
     "quitarFiltros": "Quitar estos filtros",
-    "columnas": "Columnas"
+    "columnas": "Columnas",
+    "arbol": {
+      "nombre": "El directorio como árbol",
+      "ayuda": "Flechas arriba y abajo para moverse, derecha e izquierda para abrir y cerrar. Enter abre a la persona, o abre y cierra la unidad; Mayús+Enter abre a la jefatura de la unidad. Tab lleva al botón para ver a la persona en el organigrama.",
+      "menos": "Un nivel menos",
+      "mas": "Un nivel más",
+      "nivel": "Nivel {n} de {total}"
+    }
   },
   "revision": {
     "titulo": "Revisión de datos",
@@ -756,6 +763,7 @@
   },
   "ubicar": {
     "ver": "Ver en el organigrama",
+    "verEnOrganigrama": "Ver a {nombre} en el organigrama",
     "verAyuda": "Ver en el organigrama (Ctrl+clic: en una pestaña nueva)",
     "verSinPuesto": "Ver en el organigrama: {motivo}",
     "sinPuesto": "Sin puesto vigente",

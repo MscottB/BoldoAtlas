@@ -1914,6 +1914,18 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   );
   await sinEditar("la ficha de una persona, desde el Directorio,", EDITAR.ficha);
   await cerrarDialogo("la ficha cerrada");
+  // El modo Árbol, sin búsqueda: parte de la raíz. Solo lee (al lado, la vista elegida ni siquiera se guarda).
+  const modo = (/** @type {string} */ m) => `${EN_MARCO}?.querySelector('[data-vista-directorio="${m}"]')`;
+  await app.evaluar(
+    `(() => { const c = ${buscar}; c.value = ""; c.dispatchEvent(new (${MARCO}.contentWindow.Event)("input", { bubbles: true })); ${modo("arbol")}.click(); })()`,
+  );
+  await verQue(
+    app,
+    `lado a lado: el Directorio del iframe en modo Árbol muestra la raíz «${raizDe(o)}» como fila del árbol`,
+    `${modo("arbol")}?.getAttribute("aria-pressed") === "true" && [...(${EN_MARCO}?.querySelectorAll('[role="treeitem"]') ?? [])].some((x) => x.innerText.includes(${JSON.stringify(raizDe(o))}))`,
+  );
+  await app.evaluar(`${modo("lista")}.click()`);
+  await app.hasta(`Boolean(${EN_MARCO}?.querySelector("tbody tr"))`, "el Directorio del iframe de vuelta en Lista");
   // Un clic de verdad, como una persona: Configuración no se ve al lado.
   await clicEn(app, entradaLateral("/configuracion"), "«Configuración» en el menú lateral");
   await verQue(

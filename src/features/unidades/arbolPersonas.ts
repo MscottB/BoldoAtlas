@@ -21,6 +21,9 @@ export interface NodoArbol {
 }
 
 export const claveUnidad = (id: string) => `u:${id}`;
+export const claveVacante = (puestoId: string) => `v:${puestoId}`;
+/** Una raíz, o varias (el directorio de una organización con más de una). */
+export type Raices = NodoArbol | NodoArbol[];
 
 /**
  * El árbol de `raiz` en O(unidades + puestos + filas). `filas` son las de `personasDelAlcance`, ya en el orden pedido;
@@ -51,7 +54,7 @@ export function arbolDePersonas(
   for (const p of puestos) {
     const v = vigentes.get(p.id);
     if (!v?.titular && !v?.reemplazo)
-      agrupar(vacios, p.unidad_id, { clave: `v:${p.id}`, cargo: nombreCargo.get(p.cargo_id) ?? "" });
+      agrupar(vacios, p.unidad_id, { clave: claveVacante(p.id), cargo: nombreCargo.get(p.cargo_id) ?? "" });
   }
 
   const vistos = new Set<string>(); // corta si los datos ya traen un ciclo
@@ -77,12 +80,13 @@ export function arbolDePersonas(
 
 /**
  * Lo que se ve con una búsqueda: lo que coincide y sus ancestros. `coinciden` son las claves de las filas que dejó el
- * filtro de la lista (nombre, cargo, unidad o correo), así ambas vistas muestran a las mismas personas; `buscado` ya
- * viene normalizado. Las subunidades de una unidad que coincide no entran si no coinciden ellas.
+ * filtro de la lista (nombre, cargo, unidad o correo; en el directorio, también las vacantes), así ambas vistas muestran
+ * lo mismo; `buscado` ya viene normalizado, y vacío no busca en nombres de unidad ni cargos de vacantes. Las subunidades
+ * de una unidad que coincide no entran si no coinciden ellas.
  */
-export function visiblesDeBusqueda(raiz: NodoArbol, coinciden: Set<string>, buscado: string): Set<string> {
+export function visiblesDeBusqueda(raiz: Raices, coinciden: Set<string>, buscado: string): Set<string> {
   const visibles = new Set<string>();
-  const incluye = (s: string) => normalizarTexto(s).includes(buscado);
+  const incluye = (s: string) => !!buscado && normalizarTexto(s).includes(buscado);
   const ver = (n: NodoArbol): boolean => {
     const porNombre = incluye(n.unidad.nombre);
     let algo = porNombre || (!!n.jefe && coinciden.has(n.jefe.clave));
@@ -92,7 +96,7 @@ export function visiblesDeBusqueda(raiz: NodoArbol, coinciden: Set<string>, busc
       algo = true;
     }
     for (const v of n.vacantes) {
-      if (!porNombre && !incluye(v.cargo)) continue;
+      if (!porNombre && !incluye(v.cargo) && !coinciden.has(v.clave)) continue;
       visibles.add(v.clave);
       algo = true;
     }
@@ -100,7 +104,7 @@ export function visiblesDeBusqueda(raiz: NodoArbol, coinciden: Set<string>, busc
     if (algo) visibles.add(claveUnidad(n.unidad.id));
     return algo;
   };
-  ver(raiz);
+  for (const r of [raiz].flat()) ver(r);
   return visibles;
 }
 
@@ -120,7 +124,7 @@ export type FilaArbol = FilaBase &
 
 /** Las filas a la vista, en orden: bajo cada unidad abierta, sus personas, sus vacantes y luego sus subunidades. */
 export function aplanarArbol(
-  raiz: NodoArbol,
+  raiz: Raices,
   abierta: (id: string) => boolean,
   visibles: Set<string> | null,
 ): FilaArbol[] {
@@ -152,20 +156,31 @@ export function aplanarArbol(
       filas.push({ ...base, clase: "vacante", clave: vacante.clave, posicion: i++, vacante });
     for (const h of hijos) agregar(h, nivel + 1, i++, debajo);
   };
-  if (!visibles || visibles.has(claveUnidad(raiz.unidad.id))) agregar(raiz, 1, 1, 1);
+  const raices = ve([raiz].flat(), (r) => claveUnidad(r.unidad.id));
+  raices.forEach((r, i) => agregar(r, 1, i + 1, raices.length));
   return filas;
 }
 
-/** Ids de las unidades del árbol. */
-export function idsDelArbol(raiz: NodoArbol): string[] {
-  const ids: string[] = [];
-  const pendientes = [raiz];
+/** Cada unidad del árbol con su nivel: las raíces son el 1. */
+function niveles(raiz: Raices): Map<string, number> {
+  const nivel = new Map<string, number>();
+  const pendientes: [NodoArbol, number][] = [raiz].flat().map((n) => [n, 1]);
   while (pendientes.length) {
-    const n = pendientes.pop()!;
-    ids.push(n.unidad.id);
-    pendientes.push(...n.hijos);
+    const [n, k] = pendientes.pop()!;
+    nivel.set(n.unidad.id, k);
+    for (const h of n.hijos) pendientes.push([h, k + 1]);
   }
-  return ids;
+  return nivel;
+}
+
+/** Ids de las unidades del árbol. */
+export const idsDelArbol = (raiz: Raices): string[] => [...niveles(raiz).keys()];
+
+/** Cuántos niveles de unidades tiene el árbol (0 sin unidades): los que ofrece «plegar por niveles». */
+export function profundidad(raiz: Raices): number {
+  let max = 0;
+  for (const k of niveles(raiz).values()) if (k > max) max = k;
+  return max;
 }
 
 /**
@@ -187,17 +202,19 @@ export function plegarUnidad(p: Pliegue, buscando: boolean, id: string, abrir: b
   return buscando ? { ...p, cerradas: s } : { ...p, abiertas: s };
 }
 
-export function expandirTodo(p: Pliegue, buscando: boolean, raiz: NodoArbol): Pliegue {
-  return buscando ? { ...p, cerradas: new Set() } : { ...p, abiertas: new Set(idsDelArbol(raiz)) };
+/** Se ven las unidades hasta el nivel `nivel`, cerradas las de ese nivel: como los niveles del lienzo. */
+export function abrirHastaNivel(p: Pliegue, buscando: boolean, raiz: Raices, nivel: number): Pliegue {
+  const ids = (cerrada: boolean) =>
+    new Set([...niveles(raiz)].filter(([, k]) => k >= nivel === cerrada).map(([id]) => id));
+  return buscando ? { ...p, cerradas: ids(true) } : { ...p, abiertas: ids(false) };
 }
 
+export const expandirTodo = (p: Pliegue, buscando: boolean, raiz: Raices) =>
+  abrirHastaNivel(p, buscando, raiz, Infinity);
+
 /** Deja la raíz con su primer nivel: como la carpeta raíz de un explorador, ella sigue abierta. */
-export function contraerTodo(p: Pliegue, buscando: boolean, raiz: NodoArbol): Pliegue {
-  const id = raiz.unidad.id;
-  return buscando
-    ? { ...p, cerradas: new Set(idsDelArbol(raiz).filter((x) => x !== id)) }
-    : { ...p, abiertas: new Set([id]) };
-}
+export const contraerTodo = (p: Pliegue, buscando: boolean, raiz: Raices) =>
+  abrirHastaNivel(p, buscando, raiz, 2);
 
 /** El árbol pasa a partir de `id`: lo abierto se conserva, para volver atrás con las mismas ramas abiertas. */
 export function cambiarRaiz(p: Pliegue, id: string): Pliegue {

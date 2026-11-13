@@ -322,7 +322,14 @@
     "filtrosBoton": "Filters",
     "filtrosActivos": "{n} active filter | {n} active filters",
     "quitarFiltros": "Clear these filters",
-    "columnas": "Columns"
+    "columnas": "Columns",
+    "arbol": {
+      "nombre": "The directory as a tree",
+      "ayuda": "Up and down arrows move, right and left open and close. Enter opens the person, or opens and closes the unit; Shift+Enter opens the unit's head. Tab goes to the button that shows the person in the org chart.",
+      "menos": "One level less",
+      "mas": "One level more",
+      "nivel": "Level {n} of {total}"
+    }
   },
   "revision": {
     "titulo": "Data review",
@@ -756,6 +763,7 @@
   },
   "ubicar": {
     "ver": "Show in the org chart",
+    "verEnOrganigrama": "Show {nombre} in the org chart",
     "verAyuda": "Show in the org chart (Ctrl+click: in a new tab)",
     "verSinPuesto": "Show in the org chart: {motivo}",
     "sinPuesto": "No current position",
