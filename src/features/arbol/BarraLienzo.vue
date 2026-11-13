@@ -34,7 +34,6 @@ import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
-import { profundidad } from "./niveles";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { CONTEXTO_LIENZO } from "./contexto";
@@ -45,13 +44,13 @@ import SelectorFecha from "./SelectorFecha.vue";
 
 // Una fila de 7 controles: lo frecuente a la vista y lo ocasional en «Más». El zoom está en la esquina del lienzo.
 // `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
-const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
+const props = defineProps<{ raiz: string | null; unidades: Unidad[]; totalNiveles: number }>();
 const emit = defineEmits<{ reordenar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
 // Los niveles que de verdad tiene lo que se dibuja (1 a la profundidad).
-const niveles = computed(() => Array.from({ length: profundidad(props.unidades) }, (_, i) => i + 1));
+const niveles = computed(() => Array.from({ length: props.totalNiveles }, (_, i) => i + 1));
 const { config, minimapa } = useVista();
 const { encuadrar } = inject(CONTEXTO_LIENZO)!;
 
@@ -137,7 +136,7 @@ async function guardarEnArboles() {
               <ChevronsDownUp aria-hidden="true" />
               {{ t("arbol.ramas.contraerTodo") }}
             </DropdownMenuItem>
-            <DropdownMenuSub>
+            <DropdownMenuSub v-if="niveles.length">
               <DropdownMenuSubTrigger>
                 <ListCollapse aria-hidden="true" />
                 {{ t("arbol.ramas.contraerHasta") }}

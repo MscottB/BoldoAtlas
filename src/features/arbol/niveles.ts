@@ -30,3 +30,7 @@ export function profundidad(
   }
   return max;
 }
+
+/** El nivel de «−» (`paso` -1) o «+» (1) desde `actual`, sin salirse de 1..`total`. */
+export const nivelVecino = (actual: number, total: number, paso: -1 | 1) =>
+  Math.min(Math.max(actual + paso, 1), total);

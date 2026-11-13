@@ -4,17 +4,16 @@ import { useI18n } from "vue-i18n";
 import { Minus, Plus } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import type { Unidad } from "@/db/tipos";
-import { MAX_BOTONES_NIVEL, profundidad } from "./niveles";
+import { MAX_BOTONES_NIVEL, nivelVecino, profundidad } from "./niveles";
 import { useLienzo } from "./useLienzo";
 
 // Niveles rápidos, en la esquina opuesta al zoom. Pasan por lo mismo que «Más › Ramas»: si abren de más, primero el aviso.
 // Solo los niveles que existen: hasta MAX_BOTONES_NIVEL, un botón por nivel; con más, «−», el nivel actual y «+».
 // El nivel actual es el que se ve (se calcula de lo plegado), así que «Todo», el menú y las vistas guardadas lo mantienen al día.
-const props = defineProps<{ unidades: Unidad[] }>();
+const props = defineProps<{ unidades: Unidad[]; total: number }>();
 const emit = defineEmits<{ encuadrar: [] }>();
 const { t } = useI18n();
 const { avisoExpansion, colapsados, contraerHasta, expandirTodo } = useLienzo();
-const total = computed(() => profundidad(props.unidades));
 const actual = computed(() => profundidad(props.unidades, colapsados.value));
 // Otro nivel cambia la forma del árbol: se encuadra tras el layout (si queda el aviso, aún no cambió nada).
 function aplicar(plegar: () => unknown) {
@@ -53,7 +52,7 @@ function aplicar(plegar: () => unknown) {
         :aria-label="t('arbol.niveles.menos')"
         :title="t('arbol.niveles.menos')"
         :disabled="actual <= 1"
-        @click="aplicar(() => contraerHasta(unidades, actual - 1))"
+        @click="aplicar(() => contraerHasta(unidades, nivelVecino(actual, total, -1)))"
       >
         <Minus aria-hidden="true" />
       </Button>
@@ -69,7 +68,7 @@ function aplicar(plegar: () => unknown) {
         :aria-label="t('arbol.niveles.mas')"
         :title="t('arbol.niveles.mas')"
         :disabled="actual >= total"
-        @click="aplicar(() => contraerHasta(unidades, actual + 1))"
+        @click="aplicar(() => contraerHasta(unidades, nivelVecino(actual, total, 1)))"
       >
         <Plus aria-hidden="true" />
       </Button>
