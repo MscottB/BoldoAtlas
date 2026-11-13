@@ -683,6 +683,15 @@ describe("organización, etiquetas y conexiones", () => {
     expect(Object.keys(JSON.parse(s.marcasRevision))).toEqual([a]);
   });
 
+  it("un cambio en fila no escribe si antes de correr se pasó a una fecha", async () => {
+    const s = nuevo();
+    const a = `sinJefatura:${await unidad(s, "A")}`;
+    const r = s.cambiarMarcasRevision((m) => marcar(m, a, "uno", "2026-11-13", useAvisos().value.vigentes));
+    s.$patch({ fechaVista: "2020-01-01" }); // antes de que corra el paso en fila
+    expect((await r).ok).toBe(false);
+    expect(s.marcasRevision).toBe("");
+  });
+
   it("un cambio que devuelve null falla con aviso y no rompe la fila", async () => {
     const s = nuevo();
     const a = `sinJefatura:${await unidad(s, "A")}`;

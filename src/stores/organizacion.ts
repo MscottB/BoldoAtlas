@@ -666,6 +666,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   function cambiarMarcasRevision(cambio: (m: Marcas) => Marcas | null): Promise<Resultado> {
     if (soloLectura.value) return Promise.resolve(rechazarSoloLectura());
     const paso = filaMarcas.then(async (): Promise<Resultado> => {
+      if (soloLectura.value) return rechazarSoloLectura(); // pudo cambiar mientras esperaba en la fila
       const nuevo = cambio(leerMarcas(marcasRevision.value));
       if (!nuevo) return rechazar(t("revision.bien.motivoInvalido"));
       return escribir(() => guardarMeta("revision_bien", JSON.stringify(nuevo)));
