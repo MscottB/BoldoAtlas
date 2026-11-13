@@ -13,6 +13,7 @@
 //!   y macOS (`.app`) usan el plugin: sus temporales caen en `datos/temporales` (ver `rutas::entorno_portable`).
 use crate::comandos::Estado;
 use crate::comparar_organizaciones::Comparaciones;
+use crate::lado::Lado;
 use futures_util::future::{AbortHandle, Abortable};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -510,12 +511,14 @@ fn instalar(app: &AppHandle, update: &Update, modo: Modo, bytes: &[u8]) -> Resul
     app.restart()
 }
 
-/// Lo de `RunEvent::Exit`, por el que el instalador de Windows no pasa: SQLite en orden y el temporal de una comparación borrado.
+/// Lo de `RunEvent::Exit`, por el que el instalador de Windows no pasa: SQLite en orden y los temporales de una comparación y
+/// de la de al lado borrados.
 fn cerrar_para_reiniciar(app: &AppHandle) {
     let estado = app.state::<Estado>();
     estado.antes_de_reiniciar();
     estado.cerrar_ordenado(Duration::from_secs(3));
     app.state::<Comparaciones>().cerrar();
+    app.state::<Lado>().cerrar();
 }
 
 #[tauri::command]

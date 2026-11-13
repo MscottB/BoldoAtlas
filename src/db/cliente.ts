@@ -641,6 +641,23 @@ export function comparacionCerrar(): Promise<void> {
   return invoke("comparacion_cerrar");
 }
 
+export interface InfoLado {
+  id: string;
+  /** Las vivas, sin las eliminadas. */
+  personas: number;
+  unidades: number;
+}
+
+/** Copia otra organización a un temporal de solo lectura, que reemplaza al anterior. Se lee con `db_consultar` y su id. */
+export function ladoAbrir(otraId: string): Promise<InfoLado> {
+  return conBase("lado_abrir", { otraId });
+}
+
+/** Suelta la organización de al lado y borra su copia. */
+export function ladoCerrar(): Promise<void> {
+  return invoke("lado_cerrar");
+}
+
 // Fotos, en binario: no pasan por JSON.
 export function fotoBytes(id: string): Promise<ArrayBuffer> {
   return conBase<ArrayBuffer>("foto_bytes", { id });
