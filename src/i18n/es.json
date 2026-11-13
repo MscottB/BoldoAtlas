@@ -744,7 +744,8 @@
       "ayuda": "Ayuda",
       "dividir": "Dividir la vista",
       "abrirOtra": "Abrir otra organización: {nombre}",
-      "comparar": "Comparar con «{nombre}»"
+      "comparar": "Comparar con «{nombre}»",
+      "verAlLado": "Ver «{nombre}» al lado"
     }
   },
   "organizaciones": {
@@ -887,7 +888,12 @@
     "divisor": "Tamaño de los paneles",
     "abrirAlLado": "Abrir al lado",
     "quitarDeAlLado": "Quitar de al lado",
-    "alLado": "(al lado)"
+    "alLado": "(al lado)",
+    "verAlLado": "Ver al lado",
+    "soloLectura": "Solo lectura",
+    "copiando": "Copiando la organización…",
+    "sinMemoria": "Puede que no haya memoria para las dos. ¿Abrir igual?",
+    "abrirIgual": "Abrir igual"
   },
   "bienvenida": {
     "titulo": "Te damos la bienvenida a BoldoAtlas",
@@ -1123,7 +1129,8 @@
     "cerrar": "Cerrar",
     "avisos": "Avisos",
     "recargar": "Recargar",
-    "suprimir": "Supr"
+    "suprimir": "Supr",
+    "no": "No"
   },
   "inicio": {
     "organizacion": "Tu organización",

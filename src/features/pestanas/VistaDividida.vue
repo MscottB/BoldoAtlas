@@ -2,9 +2,11 @@
 import { computed, provide, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Columns2, Rows2, X } from "@lucide/vue";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import DivisorPaneles from "./DivisorPaneles.vue";
+import LadoOtra from "./LadoOtra.vue";
 import PanelLado from "./PanelLado.vue";
 import PestanaSinAbrir from "./PestanaSinAbrir.vue";
 import { PANEL, propsPanel } from "./panel";
@@ -45,6 +47,14 @@ function titulo(id: string) {
   const p = pestanas.lista.find((x) => x.id === id);
   return p ? pestanas.titulo(p) : "";
 }
+// La de al lado, si es de otra organización: se ve en solo lectura, con su nombre y su color. `idAbierta` y no
+// `baseActual()`, que no es reactiva: al cambiar de organización, el panel se vuelve a montar en el otro modo.
+const otraAlLado = computed(() => {
+  const org = pestanas.lista.find((p) => p.id === pestanas.lado)?.org;
+  return org && org !== organizaciones.idAbierta
+    ? (organizaciones.lista.find((o) => o.id === org) ?? { nombre: "", color: "" })
+    : null;
+});
 const encabezado = (p: Panel) => [
   "flex h-8 shrink-0 items-center gap-1 border-t-2 border-b px-3 text-sm",
   conFoco(p) ? "border-t-primary bg-muted font-medium" : "border-t-transparent text-muted-foreground",
@@ -102,7 +112,18 @@ const encabezado = (p: Panel) => [
           :aria-labelledby="idPestana(pestanas.lado)"
         >
           <header :class="encabezado('lado')">
-            <span class="min-w-0 flex-1 truncate">{{ titulo(pestanas.lado) }}</span>
+            <template v-if="otraAlLado">
+              <span
+                class="inline-block size-2 shrink-0 rounded-full"
+                :style="{ backgroundColor: otraAlLado.color || 'currentColor' }"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 flex-1 truncate">
+                {{ `${otraAlLado.nombre || t("barra.sinNombre")} · ${titulo(pestanas.lado)}` }}
+              </span>
+              <Badge variant="outline" class="shrink-0">{{ t("pestanas.soloLectura") }}</Badge>
+            </template>
+            <span v-else class="min-w-0 flex-1 truncate">{{ titulo(pestanas.lado) }}</span>
             <Button
               variant="ghost"
               size="icon-xs"
@@ -123,7 +144,9 @@ const encabezado = (p: Panel) => [
             </Button>
           </header>
           <div class="min-h-0 flex-1 overflow-auto">
-            <PanelLado :id="pestanas.lado" :key="pestanas.lado" />
+            <!-- La key es la pestaña y su modo: si su organización pasa a ser la abierta (o deja de serlo), se monta de cero. -->
+            <LadoOtra v-if="otraAlLado" :id="pestanas.lado" :key="`${pestanas.lado}:otra`" />
+            <PanelLado v-else :id="pestanas.lado" :key="pestanas.lado" />
           </div>
         </section>
       </template>

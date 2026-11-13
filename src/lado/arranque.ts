@@ -9,11 +9,8 @@ import { registrarRouter } from "@/features/pestanas/routerConFoco";
 import { useOrganizacion } from "@/stores/organizacion";
 import PantallaError from "@/vistas/PantallaError.vue";
 import AppLado from "./AppLado.vue";
-import { idLado } from "./modo";
+import { VISTAS_LADO, idLado } from "./modo";
 import { instalarPuente } from "./puente";
-
-/** Las vistas que se ven al lado (nombres de ruta). */
-export const VISTAS_LADO = ["arbol", "arboles", "directorio", "revision"];
 
 /** Mismo origen que el padre: el mensaje no sale de la app. */
 const alPadre = (mensaje: { tipo: string; ruta: string }) =>

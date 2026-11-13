@@ -37,6 +37,7 @@ import {
   abrirOtra,
   entradasAbrirOtra,
   entradasComparar,
+  entradasVerAlLado,
   irAEntrada,
   rutaComparar,
 } from "@/features/proyecto/menuApp";
@@ -146,6 +147,16 @@ const acciones = computed<AccionPaleta[]>(() => [
     icono: ArrowLeftRight,
     ejecutar: () => ir(rutaComparar(o.id, organizaciones.idAbierta)),
     ruta: rutaComparar(o.id, organizaciones.idAbierta),
+  })),
+  // Sin cambiar la abierta: la otra se ve al lado, en solo lectura.
+  ...entradasVerAlLado(organizaciones.lista, organizaciones.idAbierta).map((o) => ({
+    id: `ver:${o.id}`,
+    etiqueta: t("paleta.acciones.verAlLado", { nombre: o.nombre || t("barra.sinNombre") }),
+    icono: Columns2,
+    ejecutar: () => {
+      const r = pestanas.verAlLado(o.id);
+      if (!r.ok) toast.error(r.mensaje);
+    },
   })),
   {
     id: "ayuda",

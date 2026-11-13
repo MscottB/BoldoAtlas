@@ -92,18 +92,20 @@ export function alLado(m: Pestanas, id: string): Pestanas {
 
 /**
  * La entrada del menú de la pestaña `id`: «Quitar de al lado» en la de al lado; «Abrir al lado» si puede ir (`vaAlLado`)
- * y, si es la activa, si la que el principal mostraría en su lugar también puede (si no, abrir fallaría); si no, ninguna.
+ * y, si es la activa, si la que el principal mostraría en su lugar puede ir a él (`vaAlPrincipal`; si no, abrir fallaría);
+ * si no, ninguna.
  */
 export function entradaMenu(
   m: Pestanas,
   id: string,
   vaAlLado: (id: string) => boolean,
+  vaAlPrincipal = vaAlLado,
 ): "abrirAlLado" | "quitarDeAlLado" | null {
   if (id === m.lado) return "quitarDeAlLado";
   if (!vaAlLado(id)) return null;
   if (id !== m.activa) return "abrirAlLado";
   const otra = alLado(m, id).activa;
-  return otra !== id && vaAlLado(otra) ? "abrirAlLado" : null;
+  return otra !== id && vaAlPrincipal(otra) ? "abrirAlLado" : null;
 }
 
 /** Quita la vista dividida. */

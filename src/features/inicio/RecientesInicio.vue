@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
-import { ArrowLeftRight, EllipsisVertical, FileSearch, ListX, Trash2 } from "@lucide/vue";
+import { ArrowLeftRight, Columns2, EllipsisVertical, FileSearch, ListX, Trash2 } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ import type { Organizacion } from "@/db/cliente";
 import DialogoEliminarOrganizacion from "@/features/organizaciones/DialogoEliminarOrganizacion.vue";
 import PreguntaArchivo from "@/features/organizaciones/PreguntaArchivo.vue";
 import { textoAConfirmar } from "@/features/organizaciones/eliminar";
+import { usePestanas } from "@/features/pestanas/usePestanas";
 import { rutaComparar } from "@/features/proyecto/menuApp";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { enfocarPrimero, volverAlTerminar } from "./foco";
@@ -37,6 +38,7 @@ import { hace } from "./recientes";
 const ID_RECIENTES = "inicio-recientes";
 const { t, locale } = useI18n();
 const organizaciones = useOrganizaciones();
+const pestanas = usePestanas();
 const router = useRouter();
 
 const idEntrada = (id: string) => `inicio-org-${id}`;
@@ -69,6 +71,13 @@ async function abrir(o: Organizacion) {
   ocupado.value = false;
   if (r.ok) volverAlTerminar(null);
   else toast.error(r.mensaje);
+}
+
+// Al lado, sin cambiar la abierta; se ve de vuelta en el proyecto, como con «Volver».
+function verAlLado(o: Organizacion) {
+  const r = pestanas.verAlLado(o.id);
+  if (!r.ok) return void toast.error(r.mensaje);
+  void pestanas.volverAlProyecto();
 }
 
 const preguntas = ref<InstanceType<typeof PreguntaArchivo> | null>(null);
@@ -205,6 +214,10 @@ async function trasEliminar(eliminada: boolean) {
               >
                 <ArrowLeftRight aria-hidden="true" />
                 {{ t("inicio.compararConAbierta") }}
+              </DropdownMenuItem>
+              <DropdownMenuItem v-if="!o.activa" :disabled="bloqueado || !o.existe" @select="verAlLado(o)">
+                <Columns2 aria-hidden="true" />
+                {{ t("pestanas.verAlLado") }}
               </DropdownMenuItem>
               <DropdownMenuLabel
                 v-if="organizaciones.listaProtegida"

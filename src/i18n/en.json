@@ -744,7 +744,8 @@
       "ayuda": "Help",
       "dividir": "Split the view",
       "abrirOtra": "Open another organization: {nombre}",
-      "comparar": "Compare with “{nombre}”"
+      "comparar": "Compare with “{nombre}”",
+      "verAlLado": "View “{nombre}” side by side"
     }
   },
   "organizaciones": {
@@ -887,7 +888,12 @@
     "divisor": "Panel size",
     "abrirAlLado": "Open to the side",
     "quitarDeAlLado": "Remove from the side",
-    "alLado": "(to the side)"
+    "alLado": "(to the side)",
+    "verAlLado": "View side by side",
+    "soloLectura": "Read-only",
+    "copiando": "Copying the organization…",
+    "sinMemoria": "There may not be enough memory for both. Open anyway?",
+    "abrirIgual": "Open anyway"
   },
   "bienvenida": {
     "titulo": "Welcome to BoldoAtlas",
@@ -1123,7 +1129,8 @@
     "cerrar": "Close",
     "avisos": "Notifications",
     "recargar": "Reload",
-    "suprimir": "Del"
+    "suprimir": "Del",
+    "no": "No"
   },
   "inicio": {
     "organizacion": "Your organization",

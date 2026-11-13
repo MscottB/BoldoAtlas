@@ -63,14 +63,24 @@ export const usePestanas = defineStore("pestanas", () => {
   watch(modelo, (m) => clave && guardarPreferencia(clave, m), { flush: "sync" });
 
   const deLaAbierta = (id: string) => modelo.value.lista.find((x) => x.id === id)?.org === baseActual();
-  /** Al lado solo va una de la abierta que abrió: una con motivo se vería sin datos. En esta entrega, nunca de otra. */
-  const vaAlLado = (id: string) => deLaAbierta(id) && !useOrganizaciones().sinAbrir.has(id);
   /**
-   * Al lado solo queda una de la abierta que siga en la lista. Tras cambiar de organización, la de antes se editaría sobre
-   * los datos de la nueva: deja de estar al lado, y así lo ven igual F6, Ctrl+W y la vista dividida.
+   * Al lado va una que abrió (una con motivo se vería sin datos): de la abierta, o de otra de la lista con su archivo, que
+   * se ve en solo lectura.
+   */
+  function vaAlLado(id: string): boolean {
+    const p = modelo.value.lista.find((x) => x.id === id);
+    const organizaciones = useOrganizaciones();
+    if (!p || organizaciones.sinAbrir.has(id)) return false;
+    return p.org === baseActual() || organizaciones.lista.some((o) => o.id === p.org && o.existe);
+  }
+  /**
+   * Al lado queda una que siga en la lista. Tras cambiar de organización, la de antes sigue al lado, ahora en solo lectura
+   * (Review Focus 3). La de una organización eliminada ya no está: sus pestañas se cerraron.
    */
   const conLadoValido = (n: P.Pestanas): P.Pestanas =>
-    !n.lado || n.lista.some((x) => x.id === n.lado && x.org === baseActual()) ? n : P.sinLado(n);
+    !n.lado || n.lista.some((x) => x.id === n.lado) ? n : P.sinLado(n);
+  /** La que deja su lugar en el principal: de la abierta, porque el principal no cambia de organización para eso. */
+  const vaAlPrincipal = (id: string) => deLaAbierta(id) && vaAlLado(id);
   /** `id` al panel principal (ver `P.enPanel`); la activa de antes va al lado solo si sigue en la lista. */
   const aPrincipal = (m: P.Pestanas, id: string) => conLadoValido(P.enPanel(m, "principal", id));
 
@@ -255,10 +265,12 @@ export const usePestanas = defineStore("pestanas", () => {
     await enfocar(siempre);
   }
 
-  /** Muestra `id` en el panel con foco. Al lado solo va una de la abierta; con otra, el foco vuelve al principal. */
+  /** Muestra `id` en el panel con foco. Al lado solo va una que pueda (`vaAlLado`); otra va al principal. */
   function activar(id: string): Resultado {
     if (conFoco.value === "lado") {
-      if (vaAlLado(id)) return abrirAlLado(id);
+      // La activa no pasa al lado si el principal tendría que cambiar de organización: se queda en él, con el foco.
+      const r = vaAlLado(id) ? abrirAlLado(id) : null;
+      if (r?.ok) return r;
       conFoco.value = "principal";
     }
     // Se compara con adónde se va, no con la activa de ahora. Un `abrir` o `eliminar` en curso o en espera no dice adónde: a la cola.
@@ -278,6 +290,15 @@ export const usePestanas = defineStore("pestanas", () => {
     if (!m) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
     modelo.value = { ...m, activa: modelo.value.activa };
     return { ok: true, id };
+  }
+
+  /** Una pestaña nueva de `org` en el inicio, a la derecha de la activa, sin activarla. null con el tope lleno. */
+  function agregarDe(org: string): string | null {
+    const id = nuevoId();
+    const m = P.abrir(modelo.value, id, P.RUTA_INICIO, org);
+    if (!m) return null;
+    modelo.value = { ...m, activa: modelo.value.activa };
+    return id;
   }
 
   /** Abre `destino` en una pestaña nueva, a la derecha de la activa, y la activa. */
@@ -311,7 +332,7 @@ export const usePestanas = defineStore("pestanas", () => {
     }
     const otra = P.alLado(modelo.value, id).activa;
     // Con una sola pestaña no hay otra para el principal; con una de otra organización, el principal cambiaría de organización.
-    if (otra === id || !vaAlLado(otra)) return noAbre;
+    if (otra === id || !vaAlPrincipal(otra)) return noAbre;
     void ir(otra).then(() => {
       if (activa.value !== id && vaAlLado(id)) modelo.value = P.alLado(modelo.value, id);
     });
@@ -329,7 +350,7 @@ export const usePestanas = defineStore("pestanas", () => {
     }
     const p = modelo.value.lista.find((x) => x.id === activa.value);
     // Una activa de otra organización, sin abrir o a medio cambio no tiene una vista de la abierta que copiar.
-    if (!p || !vaAlLado(p.id) || useOrganizaciones().enCurso)
+    if (!p || !vaAlPrincipal(p.id) || useOrganizaciones().enCurso)
       return { ok: false, mensaje: t("pestanas.noAbre") };
     const nueva = agregarNueva(rutaDeTrabajo(p));
     if (nueva.ok) {
@@ -426,7 +447,7 @@ export const usePestanas = defineStore("pestanas", () => {
     /** Si la pestaña puede ir al lado. */
     vaAlLado,
     /** Qué ofrece el menú de la pestaña (ver `P.entradaMenu`). */
-    entradaMenu: (id: string) => P.entradaMenu(modelo.value, id, vaAlLado),
+    entradaMenu: (id: string) => P.entradaMenu(modelo.value, id, vaAlLado, vaAlPrincipal),
     /** Lo que hace esa entrada: quita de al lado la de al lado; si no, abre `id` al lado. */
     alternarLado(id: string): Resultado {
       if (id !== modelo.value.lado) return abrirAlLado(id);
@@ -449,10 +470,21 @@ export const usePestanas = defineStore("pestanas", () => {
     enfocarPanel(p: P.Panel) {
       if (p === "principal" || modelo.value.lado) conFoco.value = p;
     },
-    /** La escribe el router del panel de al lado al navegar; nunca en una de otra organización. */
-    rutaDelLado(ruta: string) {
+    /**
+     * La escribe al navegar el router del panel de al lado, en una de la abierta, o el iframe (`deOtra`), en una de otra
+     * organización. Cada uno solo en la suya: tras cambiar de organización, el que quedó no escribe en la que ya no muestra.
+     */
+    rutaDelLado(ruta: string, deOtra = false) {
       const l = modelo.value.lado;
-      if (l && deLaAbierta(l)) modelo.value = P.cambiar(modelo.value, l, { ruta });
+      if (l && deLaAbierta(l) !== deOtra) modelo.value = P.cambiar(modelo.value, l, { ruta });
+    },
+    /** Abre al lado una pestaña nueva de `org` en su inicio, sin cambiar la abierta: se ve en solo lectura. */
+    verAlLado(org: string): Resultado {
+      if (!cargadas) cargarGuardadas(); // desde Inicio: lo que sigue parte de las guardadas
+      const id = agregarDe(org);
+      if (!id) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
+      modelo.value = P.alLado(modelo.value, id);
+      return { ok: true };
     },
     /**
      * Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1) en el panel con foco, saltando la del otro. En el principal, con un cambio aún
@@ -514,14 +546,7 @@ export const usePestanas = defineStore("pestanas", () => {
         ),
       };
     },
-    /** Una pestaña nueva de `org` en el inicio, sin activarla. null con el tope lleno. */
-    agregarDe(org: string): string | null {
-      const id = nuevoId();
-      const m = P.abrir(modelo.value, id, P.RUTA_INICIO, org);
-      if (!m) return null;
-      modelo.value = { ...m, activa: modelo.value.activa };
-      return id;
-    },
+    agregarDe,
     /** La quita sin más: es la que `agregarDe` dejó para un cambio que no ocurrió, y nunca la activa. */
     quitar(id: string) {
       modelo.value = { ...modelo.value, lista: modelo.value.lista.filter((p) => p.id !== id) };

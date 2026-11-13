@@ -8,7 +8,8 @@ import { router as routerApp, rutas } from "@/router";
 import { routerDel } from "@/features/pestanas/routerConFoco";
 import AppLado from "./AppLado.vue";
 import PantallaError from "@/vistas/PantallaError.vue";
-import { arrancar, guiarRouter, VISTAS_LADO } from "./arranque";
+import { arrancar, guiarRouter } from "./arranque";
+import { VISTAS_LADO } from "./modo";
 
 // localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
 vi.hoisted(() =>

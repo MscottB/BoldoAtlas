@@ -4,7 +4,8 @@ import { createRenderer } from "vue";
 import { createMemoryHistory, createRouter, routeLocationKey, type Router } from "vue-router";
 import type { Unidad } from "@/db/tipos";
 import { i18n } from "@/i18n";
-import { fijarBase } from "@/lib/baseActiva";
+import type { Organizacion } from "@/db/cliente";
+import { baseActual, fijarBase } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { PANEL, usePanel } from "./panel";
@@ -851,30 +852,30 @@ describe("usePestanas con la vista dividida", () => {
     lado,
   });
 
-  it("activar una de otra organización con la vista dividida quita la de al lado", async () => {
+  it("activar una de otra organización con la vista dividida deja la de al lado, ahora de la otra", async () => {
     const p = await arrancar(conOtra("a", "b"));
     cambioQueSale(p);
     p.activar("x");
     await esperar();
     expect(p.activa).toBe("x");
-    expect(p.lado).toBeNull();
+    expect(p.lado).toBe("b");
     expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]);
   });
 
-  it("cerrar la activa cuya vecina es de otra organización y abre quita la de al lado", async () => {
+  it("cerrar la activa cuya vecina es de otra organización y abre deja la de al lado", async () => {
     const p = await arrancar(conOtra("a", "b"));
     cambioQueSale(p);
     expect(p.cerrar("a").ok).toBe(true);
     await esperar();
     expect(p.activa).toBe("x");
-    expect(p.lado).toBeNull();
+    expect(p.lado).toBe("b");
     expect(p.lista.map((x) => x.id)).toEqual(["b", "x"]);
   });
 
-  it("al entrar, una de al lado de otra organización deja de estarlo", async () => {
+  it("al entrar, una de al lado de otra organización sigue al lado", async () => {
     let p = await arrancar(conOtra("a", "x"));
     expect(p.activa).toBe("a");
-    expect(p.lado).toBeNull();
+    expect(p.lado).toBe("x");
 
     // También cuando la activa guardada tampoco es de la abierta.
     setActivePinia(createPinia());
@@ -889,7 +890,181 @@ describe("usePestanas con la vista dividida", () => {
       lado: "y",
     });
     expect(p.activa).toBe("a");
+    expect(p.lado).toBe("y");
+  });
+
+  // B está en la lista, con su archivo: sus pestañas pueden ir al lado.
+  const conB = () => {
+    useOrganizaciones().lista = [
+      { id: "A", nombre: "Org A", existe: true },
+      { id: "B", nombre: "Org B", existe: true },
+    ] as Organizacion[];
+  };
+
+  it("ver_al_lado_no_cambia_la_abierta", async () => {
+    const p = await arrancar(tres("b", null));
+    const organizaciones = useOrganizaciones();
+    const abrir = vi.spyOn(organizaciones, "abrir");
+    const activarPestana = vi.spyOn(organizaciones, "activarPestana");
+    const replace = vi.spyOn(router, "replace");
+    expect(p.verAlLado("B")).toEqual({ ok: true });
+    await esperar();
+    expect(baseActual()).toBe("A");
+    expect(abrir).not.toHaveBeenCalled();
+    expect(activarPestana).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    expect(p.activa).toBe("b");
+    // Una pestaña nueva de B en su inicio, justo después de la activa, y al lado.
+    expect(p.lista.map((x) => x.id).indexOf(p.lado!)).toBe(2);
+    expect(p.lista.find((x) => x.id === p.lado)).toMatchObject({ org: "B", ruta: "/" });
+    expect(guardadas()).toMatchObject({ lado: p.lado });
+
+    const lista = Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `p${i}`, org: "A", ruta: "/" }));
+    setActivePinia(createPinia());
+    router = nuevoRouter();
+    const llena = await arrancar({ lista, activa: "p0" });
+    expect(llena.verAlLado("B")).toEqual({
+      ok: false,
+      mensaje: i18n.global.t("pestanas.limite", { n: MAX_PESTANAS }),
+    });
+    expect(llena.lado).toBeNull();
+  });
+
+  it("ver al lado desde Inicio, sin haber entrado, parte de las pestañas guardadas", async () => {
+    datos.set(CLAVE, JSON.stringify(tres("b", null)));
+    const p = usePestanas();
+    p.conectar(router, "C:/datos", "C:/datos/boldo.db");
+    expect(p.verAlLado("B").ok).toBe(true);
+    expect(p.lista.map((x) => x.org)).toEqual(["A", "A", "B", "A"]);
+    expect(guardadas().lista).toHaveLength(4);
+  });
+
+  it("una de otra organización de la lista va al lado; sin archivo, fuera de la lista o con motivo, no", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "A", ruta: "/directorio" },
+        { id: "x", org: "B", ruta: "/revision" },
+        { id: "z", org: "Z", ruta: "/" },
+      ],
+      activa: "a",
+    });
+    conB();
+    expect(p.entradaMenu("x")).toBe("abrirAlLado");
+    expect(p.entradaMenu("z")).toBeNull();
+    expect(p.abrirAlLado("z")).toEqual(noAbre());
+    useOrganizaciones().sinAbrir.set("x", motivo);
+    expect(p.abrirAlLado("x")).toEqual(noAbre());
+    useOrganizaciones().sinAbrir.delete("x");
+    useOrganizaciones().lista[1]!.existe = false;
+    expect(p.abrirAlLado("x")).toEqual(noAbre());
+    useOrganizaciones().lista[1]!.existe = true;
+
+    expect(p.alternarLado("x").ok).toBe(true);
+    expect(p.lado).toBe("x");
+    expect(baseActual()).toBe("A");
+    expect(rutaActual()).toBe("/");
+    // Con foco al lado, Ctrl+Tab pasa por ella y por las de la abierta.
+    p.enfocarPanel("lado");
+    p.siguiente(1);
+    expect(p.lado).toBe("b");
+    p.siguiente(1);
+    expect(p.lado).toBe("x");
+  });
+
+  it("con foco al lado en una de otra organización, la activa no pasa al lado: el foco vuelve al principal", async () => {
+    const p = await arrancar(conOtra("a", "x"));
+    conB();
+    const activarPestana = vi.spyOn(useOrganizaciones(), "activarPestana");
+    p.enfocarPanel("lado");
+    expect(p.activar("a").ok).toBe(true);
+    await esperar();
+    expect(p.activa).toBe("a");
+    expect(p.lado).toBe("x");
+    expect(p.conFoco).toBe("principal");
+    expect(activarPestana).not.toHaveBeenCalled();
+  });
+
+  it("ver al lado desde Inicio vuelve al proyecto con la otra al lado", async () => {
+    const p = await arrancar(tres("a", null));
+    await router.push("/bienvenida");
+    conB();
+    expect(p.verAlLado("B").ok).toBe(true);
+    const nueva = p.lado;
+    await p.volverAlProyecto();
+    expect(rutaActual()).toBe("/");
+    expect(p.activa).toBe("a");
+    expect(p.lado).toBe(nueva);
+    expect(baseActual()).toBe("A");
+  });
+
+  it("dividir con una de otra organización activa no abre aunque esté en la lista", async () => {
+    const p = await arrancar(conOtra("a", null));
+    conB();
+    p.marcarActiva("x");
+    expect(p.dividir()).toEqual(noAbre());
+  });
+
+  it("abrir_la_del_lado_en_el_principal_la_vuelve_editable", async () => {
+    const p = await arrancar(conOtra("a", "x"));
+    conB();
+    cambioQueSale(p);
+    p.activar("x"); // clic en su pestaña con foco en el principal
+    await esperar();
+    expect(baseActual()).toBe("B");
+    expect(p.activa).toBe("x");
+    // Se intercambian: la de antes queda al lado, ahora de otra organización y en solo lectura.
+    expect(p.lado).toBe("a");
+    expect(p.lista.find((x) => x.id === "a")!.ruta).toBe("/");
+    // Su router (el de la vista editable) ya no escribe en ella; el iframe sí.
+    p.rutaDelLado("/revision");
+    expect(p.lista.find((x) => x.id === "a")!.ruta).toBe("/");
+    p.rutaDelLado("/revision", true);
+    expect(p.lista.find((x) => x.id === "a")!.ruta).toBe("/revision");
+  });
+
+  it("si pasa a ser la abierta la organización de al lado, ese panel es de la abierta", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "y", org: "B", ruta: "/" },
+        { id: "x", org: "B", ruta: "/directorio" },
+      ],
+      activa: "a",
+      lado: "x",
+    });
+    conB();
+    cambioQueSale(p);
+    p.activar("y");
+    await esperar();
+    expect(baseActual()).toBe("B");
+    expect(p.lado).toBe("x");
+    // Ya no escribe el iframe, sino el router del panel de la abierta.
+    p.rutaDelLado("/revision", true);
+    expect(p.lista.find((x) => x.id === "x")!.ruta).toBe("/directorio");
+    p.rutaDelLado("/revision");
+    expect(p.lista.find((x) => x.id === "x")!.ruta).toBe("/revision");
+  });
+
+  it("cambiar_la_abierta_deja_al_lado_en_solo_lectura_con_su_ruta", async () => {
+    const p = await arrancar(conOtra("a", "b"));
+    conB();
+    cambioQueSale(p);
+    p.activar("x");
+    await esperar();
+    expect(baseActual()).toBe("B");
+    expect(p.lado).toBe("b");
+    expect(p.lista.find((x) => x.id === "b")).toMatchObject({ org: "A", ruta: "/directorio" });
+    expect(guardadas()).toMatchObject({ activa: "x", lado: "b" });
+  });
+
+  it("eliminar_la_del_lado_cierra_la_division", async () => {
+    const p = await arrancar(conOtra("a", "x"));
+    conB();
+    p.cerrarDeOrganizacion("B");
     expect(p.lado).toBeNull();
+    expect(p.lista.map((x) => x.id)).toEqual(["a", "b"]);
+    expect(p.activa).toBe("a");
   });
 
   it("tras cambiar de organización, la vista de al lado de antes no escribe en su pestaña", async () => {
@@ -1042,8 +1217,10 @@ describe("usePestanas con la vista dividida", () => {
       activa: "a",
     });
     useOrganizaciones().sinAbrir.set("c", motivo);
-    // «Abrir al lado» solo en las que pueden ir: de la abierta y sin motivo.
+    // «Abrir al lado» solo en las que pueden ir: sin motivo, y de la abierta o de otra de la lista con su archivo.
     expect(["a", "b", "c", "x"].map(p.entradaMenu)).toEqual(["abrirAlLado", "abrirAlLado", null, null]);
+    conB();
+    expect(p.entradaMenu("x")).toBe("abrirAlLado");
 
     expect(p.alternarLado("b").ok).toBe(true);
     expect(p.lado).toBe("b");
@@ -1063,6 +1240,7 @@ describe("usePestanas con la vista dividida", () => {
       ],
       activa: "a",
     });
+    conB(); // aunque la otra pueda ir al lado, el principal no cambia de organización para dejarle el lugar
     expect(p.entradaMenu("a")).toBeNull();
     expect(p.alternarLado("a")).toEqual(noAbre());
   });

@@ -7,3 +7,6 @@ const id = pedido && ID.test(pedido) ? pedido : "";
 export const MODO_LADO: boolean = id !== "";
 /** El id de la organización de al lado; vacío fuera del modo lado. */
 export const idLado = (): string => id;
+
+/** Las vistas que se ven al lado (nombres de ruta). Aquí y no en el arranque: el padre la usa sin cargarlo. */
+export const VISTAS_LADO = ["arbol", "arboles", "directorio", "revision"];
