@@ -77,6 +77,7 @@ import AristaLateral from "./AristaLateral.vue";
 import ConexionLienzo from "./ConexionLienzo.vue";
 import ZonasLienzo from "./ZonasLienzo.vue";
 import NivelesLienzo from "./NivelesLienzo.vue";
+import { profundidad } from "./niveles";
 import PreviaMover, { type Previa } from "./PreviaMover.vue";
 import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
@@ -159,6 +160,8 @@ const raiz = computed(() => {
 const mostradas = computed(() =>
   raiz.value ? unidadesDeRama(org.enFecha.unidades, raiz.value) : org.enFecha.unidades,
 );
+// Los niveles de lo que se dibuja: se calculan una vez y los usan la barra y la esquina de niveles.
+const totalNiveles = computed(() => profundidad(mostradas.value));
 const origen = computed(() => (raiz.value ? ruta(org.enFecha.unidades, raiz.value) : []));
 // Cada árbol (completo o subárbol guardado) recuerda su última configuración; una rama sin guardar usa la general.
 const arbol = computed(() => arbolDeVista(raiz.value, org.subarboles));
@@ -872,7 +875,7 @@ function verCompleto() {
         <Button variant="outline" size="sm" @click="verCompleto">{{ t("arbol.verCompleto") }}</Button>
       </span>
     </nav>
-    <BarraLienzo :raiz="raiz" :unidades="mostradas" @reordenar="reordenar" />
+    <BarraLienzo :raiz="raiz" :unidades="mostradas" :total-niveles="totalNiveles" @reordenar="reordenar" />
     <div role="status">
       <div
         v-if="org.fechaVista"
@@ -899,7 +902,12 @@ function verCompleto() {
         @focusout="alDesenfocar"
       >
         <ZoomLienzo />
-        <NivelesLienzo v-if="!org.vacia" :unidades="mostradas" @encuadrar="encuadrar = true" />
+        <NivelesLienzo
+          v-if="!org.vacia"
+          :unidades="mostradas"
+          :total="totalNiveles"
+          @encuadrar="encuadrar = true"
+        />
         <MenuLienzo :unidades="mostradas" :visibles="visibles" :raiz="raiz" @reordenar="reordenar">
           <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
           <VueFlow

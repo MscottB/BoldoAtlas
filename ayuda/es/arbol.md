@@ -27,13 +27,13 @@ Las líneas continuas unen cada unidad con su superior. Las líneas punteadas co
 
 Al abrir el árbol se ven las raíces y su primer nivel; el resto está plegado. El botón de abajo a la derecha de una tarjeta muestra cuántas subunidades tiene ocultas (por ejemplo `+3`): púlsalo para desplegarlas y otra vez para plegarlas.
 
-Abajo a la izquierda del lienzo, **1**, **2**, **3** y **Todo** muestran esa cantidad de niveles (1 = solo las raíces) y encuadran el árbol.
+Abajo a la izquierda del lienzo hay un botón por cada nivel que tiene lo que ves, y **Todo**: muestran esa cantidad de niveles (1 = solo las raíces) y encuadran el árbol. Si son más de 6, en su lugar ves **−**, el nivel actual y **+**, que bajan o suben de a un nivel. Con un solo nivel no aparecen.
 
 En **Más** (el último botón de la barra del lienzo), el grupo **Ramas** pliega o despliega todo de una vez:
 
 - **Expandir todo** abre todas las ramas.
 - **Contraer todo** deja solo las raíces.
-- **Contraer hasta el nivel** 1 a 6 muestra esa cantidad de niveles (1 = solo las raíces) y pliega el resto.
+- **Contraer hasta el nivel** lista los niveles que tiene lo que ves y muestra esa cantidad de niveles (1 = solo las raíces) y pliega el resto.
 
 En el menú contextual de una unidad, **Expandir rama** abre la unidad y todo lo que cuelga de ella, y **Contraer rama** la pliega junto con sus subramas: al volver a abrirla se ve un nivel. En una rama abierta como árbol, los niveles se cuentan desde su raíz.
 

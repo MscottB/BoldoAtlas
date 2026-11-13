@@ -24,7 +24,7 @@
       "titulo": "The whole structure on one canvas",
       "texto": "Each card shows the unit's head, the team's faces, the headcount and the vacancies. Zones, with a name and a color, group units from any branch without changing who reports to whom.",
       "puntos": [
-        "Branches fold away, and the 1, 2, 3 and All buttons choose how many levels you see.",
+        "Branches fold away, and one button per real level (or − and + when there are many) and All choose how many levels you see.",
         "Lateral connections between units: dotted lines with their description, through the free space between cards.",
         "Several trees in one database, and any branch opens as a tree of its own.",
         "Saved views, and highlighting by tag or by text."

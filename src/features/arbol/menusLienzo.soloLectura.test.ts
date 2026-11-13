@@ -162,7 +162,7 @@ describe("El menú contextual del lienzo", () => {
 });
 
 describe("La barra del lienzo", () => {
-  const barra = () => html(BarraLienzo, { raiz: "a", unidades: useOrganizacion().unidades });
+  const barra = () => html(BarraLienzo, { raiz: "a", unidades: useOrganizacion().unidades, totalNiveles: 3 });
 
   it("al lado no ofrece nueva unidad ni guardar en Árboles", async () => {
     lado.activo = true;

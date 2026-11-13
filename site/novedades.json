@@ -1,5 +1,19 @@
 [
   {
+    "id": "niveles-reales",
+    "pagina": "arbol",
+    "es": {
+      "titulo": "Niveles según la profundidad real",
+      "texto": "Los botones de niveles del lienzo ofrecen exactamente los que tiene tu árbol, ni uno más. Si son muchos, usa «−» y «+» para bajar o subir de a un nivel, o Todo para verlos todos.",
+      "ancla": "plegar-y-desplegar-ramas"
+    },
+    "en": {
+      "titulo": "Levels that match the real depth",
+      "texto": "The canvas level buttons offer exactly the levels your tree has, no more. When there are many, use − and + to go down or up one level at a time, or All to see them all.",
+      "ancla": "collapsing-and-expanding-branches"
+    }
+  },
+  {
     "id": "revision-clara",
     "pagina": "revision",
     "es": {

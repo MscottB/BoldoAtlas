@@ -44,12 +44,13 @@ import SelectorFecha from "./SelectorFecha.vue";
 
 // Una fila de 7 controles: lo frecuente a la vista y lo ocasional en «Más». El zoom está en la esquina del lienzo.
 // `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
-const props = defineProps<{ raiz: string | null; unidades: Unidad[] }>();
+const props = defineProps<{ raiz: string | null; unidades: Unidad[]; totalNiveles: number }>();
 const emit = defineEmits<{ reordenar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
-const NIVELES = [1, 2, 3, 4, 5, 6];
+// Los niveles que de verdad tiene lo que se dibuja (1 a la profundidad).
+const niveles = computed(() => Array.from({ length: props.totalNiveles }, (_, i) => i + 1));
 const { config, minimapa } = useVista();
 const { encuadrar } = inject(CONTEXTO_LIENZO)!;
 
@@ -135,13 +136,13 @@ async function guardarEnArboles() {
               <ChevronsDownUp aria-hidden="true" />
               {{ t("arbol.ramas.contraerTodo") }}
             </DropdownMenuItem>
-            <DropdownMenuSub>
+            <DropdownMenuSub v-if="niveles.length">
               <DropdownMenuSubTrigger>
                 <ListCollapse aria-hidden="true" />
                 {{ t("arbol.ramas.contraerHasta") }}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuItem v-for="n in NIVELES" :key="n" @select="contraerHasta(unidades, n)">
+                <DropdownMenuItem v-for="n in niveles" :key="n" @select="contraerHasta(unidades, n)">
                   {{ t("arbol.ramas.nivel", { n }) }}
                 </DropdownMenuItem>
               </DropdownMenuSubContent>

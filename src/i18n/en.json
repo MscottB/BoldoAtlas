@@ -241,7 +241,10 @@
       "titulo": "Levels in view",
       "ver": "Show {n} level | Show {n} levels",
       "todo": "All",
-      "verTodo": "Show all levels"
+      "verTodo": "Show all levels",
+      "menos": "One level fewer",
+      "mas": "One level more",
+      "actual": "Level {n} in view"
     },
     "previa": {
       "valido": "It will go inside “{destino}”. Drop to confirm or press Esc to cancel.",

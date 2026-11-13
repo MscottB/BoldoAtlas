@@ -241,7 +241,10 @@
       "titulo": "Niveles a la vista",
       "ver": "Ver {n} nivel | Ver {n} niveles",
       "todo": "Todo",
-      "verTodo": "Ver todos los niveles"
+      "verTodo": "Ver todos los niveles",
+      "menos": "Un nivel menos",
+      "mas": "Un nivel más",
+      "actual": "Nivel {n} a la vista"
     },
     "previa": {
       "valido": "Quedará dentro de «{destino}». Suelta para confirmar o pulsa Esc para cancelar.",
