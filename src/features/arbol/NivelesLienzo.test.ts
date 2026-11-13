@@ -36,6 +36,7 @@ beforeEach(() => {
   i18n.global.locale.value = "es";
   pinia = createPinia();
   setActivePinia(pinia);
+  useLienzo().colapsados.value = new Set(); // estado de módulo: se limpia entre pruebas
 });
 
 describe("NivelesLienzo", () => {
