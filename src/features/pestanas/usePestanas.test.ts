@@ -677,6 +677,140 @@ describe("usePestanas con la vista dividida", () => {
     expect(p.lado).toBe("a");
   });
 
+  const noAbre = () => ({ ok: false, mensaje: i18n.global.t("pestanas.noAbre") });
+  const motivo = { codigo: "fallo", mensaje: "no cargó", detalle: "" };
+
+  it("dividir desde Configuración, Ayuda o Acerca de abre al lado la vista a la que vuelve su «Cerrar»", async () => {
+    const p = await arrancar();
+    await router.push("/directorio");
+    await router.push("/configuracion");
+    expect(p.dividir().ok).toBe(true);
+    expect(p.lista.find((x) => x.id === p.lado)!.ruta).toBe("/directorio");
+    p.cerrarDivision();
+
+    p.abrirNueva("/ayuda"); // sin vista a la que volver
+    await esperar();
+    expect(p.dividir().ok).toBe(true);
+    expect(p.lista.find((x) => x.id === p.lado)!.ruta).toBe("/");
+  });
+
+  it("dividir con la activa sin abrir, de otra organización o a medio cambio no abre", async () => {
+    const p = await arrancar({
+      lista: [...tres("a", null).lista, { id: "x", org: "B", ruta: "/" }],
+      activa: "a",
+    });
+    const organizaciones = useOrganizaciones();
+    organizaciones.sinAbrir.set("a", motivo);
+    expect(p.dividir()).toEqual(noAbre());
+    organizaciones.sinAbrir.delete("a");
+
+    organizaciones.enCurso = true;
+    expect(p.dividir()).toEqual(noAbre());
+    organizaciones.enCurso = false;
+
+    p.marcarActiva("x");
+    expect(p.dividir()).toEqual(noAbre());
+    expect(p.lado).toBeNull();
+    expect(p.lista).toHaveLength(4);
+  });
+
+  it("una pestaña de la abierta con motivo no va al lado", async () => {
+    const p = await arrancar(tres("a", null));
+    useOrganizaciones().sinAbrir.set("b", motivo);
+    expect(p.abrirAlLado("b")).toEqual(noAbre());
+    expect(p.lado).toBeNull();
+  });
+
+  it("Ctrl+Tab con foco al lado salta las de otra organización y las sin abrir, y sin ninguna no hace nada", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "A", ruta: "/directorio" },
+        { id: "x", org: "B", ruta: "/" },
+        { id: "m", org: "A", ruta: "/revision" },
+        { id: "c", org: "A", ruta: "/revision" },
+      ],
+      activa: "a",
+      lado: "b",
+    });
+    const activarPestana = vi.spyOn(useOrganizaciones(), "activarPestana");
+    useOrganizaciones().sinAbrir.set("m", motivo);
+    p.enfocarPanel("lado");
+    p.siguiente(1);
+    expect(p.lado).toBe("c");
+    p.siguiente(1); // da la vuelta saltando la activa
+    expect(p.lado).toBe("b");
+    p.siguiente(-1);
+    expect(p.lado).toBe("c");
+
+    useOrganizaciones().sinAbrir.set("b", motivo); // ya no queda otra que pueda ir al lado
+    p.siguiente(1);
+    p.siguiente(-1);
+    await esperar();
+    expect(p.lado).toBe("c");
+    expect(p.activa).toBe("a");
+    expect(p.conFoco).toBe("lado");
+    expect(activarPestana).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+T con foco al lado pone la nueva justo después de la de al lado", async () => {
+    const p = await arrancar(tres("a", "c"));
+    p.mover("c", 0); // c, a, b
+    p.enfocarPanel("lado");
+    p.abrirNueva("/revision");
+    expect(p.lista.map((x) => x.id).indexOf(p.lado!)).toBe(1);
+    expect(p.lista[0]!.id).toBe("c");
+    expect(p.lista.slice(2).map((x) => x.id)).toEqual(["a", "b"]);
+  });
+
+  it("al entrar con la activa de otra organización, prefiere una de la abierta que no esté al lado", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "x", org: "B", ruta: "/" },
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "A", ruta: "/directorio" },
+      ],
+      activa: "x",
+      lado: "a",
+    });
+    expect(p.activa).toBe("b");
+    expect(p.lado).toBe("a");
+  });
+
+  it("al entrar con la activa de otra organización y solo la de al lado de la abierta, esa pasa al principal", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "x", org: "B", ruta: "/" },
+        { id: "a", org: "A", ruta: "/directorio" },
+      ],
+      activa: "x",
+      lado: "a",
+    });
+    expect(p.activa).toBe("a");
+    expect(p.lado).toBeNull();
+    expect(rutaActual()).toBe("/directorio");
+  });
+
+  it("cerrar la activa cuya vecina es de otra organización y no abre: vuelve a la cerrada y la de al lado sigue", async () => {
+    const p = await arrancar({
+      lista: [...tres("a", "b").lista.slice(0, 2), { id: "x", org: "B", ruta: "/" }],
+      activa: "a",
+      lado: "b",
+    });
+    const organizaciones = useOrganizaciones();
+    // Como el cambio real cuando el archivo de la vecina no está: deja el motivo en ella y la marca activa.
+    vi.spyOn(organizaciones, "activarPestana").mockImplementation(async (v) => {
+      organizaciones.sinAbrir.set(v, { codigo: "no_encontrado", mensaje: "no está", detalle: "" });
+      p.marcarActiva(v);
+      return { ok: true };
+    });
+    expect(p.cerrar("a").ok).toBe(true);
+    await esperar();
+    expect(p.activa).toBe("a");
+    expect(p.lado).toBe("b");
+    expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]);
+  });
+
   it("useEstadoPestana guarda en la pestaña de su panel", async () => {
     vi.stubGlobal("window", { addEventListener: () => {}, removeEventListener: () => {} });
     const p = await arrancar(tres("a", "b"));

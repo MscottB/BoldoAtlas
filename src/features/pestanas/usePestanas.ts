@@ -57,6 +57,8 @@ export const usePestanas = defineStore("pestanas", () => {
   watch(modelo, (m) => clave && guardarPreferencia(clave, m), { flush: "sync" });
 
   const deLaAbierta = (id: string) => modelo.value.lista.find((x) => x.id === id)?.org === baseActual();
+  /** Al lado solo va una de la abierta que abrió: una con motivo se vería sin datos. En esta entrega, nunca de otra. */
+  const vaAlLado = (id: string) => deLaAbierta(id) && !useOrganizaciones().sinAbrir.has(id);
   /** `id` al panel principal (ver `P.enPanel`); la activa de antes va al lado solo si sigue en la lista. */
   function aPrincipal(m: P.Pestanas, id: string): P.Pestanas {
     const n = P.enPanel(m, "principal", id);
@@ -240,7 +242,7 @@ export const usePestanas = defineStore("pestanas", () => {
   /** Muestra `id` en el panel con foco. Al lado solo va una de la abierta; con otra, el foco vuelve al principal. */
   function activar(id: string): Resultado {
     if (conFoco.value === "lado") {
-      if (deLaAbierta(id)) return abrirAlLado(id);
+      if (vaAlLado(id)) return abrirAlLado(id);
       conFoco.value = "principal";
     }
     // Se compara con adónde se va, no con la activa de ahora. Un `abrir` o `eliminar` en curso o en espera no dice adónde: a la cola.
@@ -250,13 +252,13 @@ export const usePestanas = defineStore("pestanas", () => {
     return { ok: true };
   }
 
-  /** Una pestaña nueva de la abierta, sin activarla: se activa al llegar (ver `destino`). */
-  function agregarNueva(ruta: string): Resultado {
+  /** Una pestaña nueva de la abierta, a la derecha de `tras`, sin activarla: se activa al llegar (ver `destino`). */
+  function agregarNueva(ruta: string, tras = activa.value): Resultado {
     // Sus datos no cargaron: la pestaña nueva se vería vacía, y parecería que se perdieron.
     const motivo = useOrganizaciones().sinAbrir.get(activa.value);
     if (motivo?.codigo === "fallo") return { ok: false, mensaje: motivo.mensaje };
     const id = nuevoId();
-    const m = P.abrir(modelo.value, id, ruta, baseActual());
+    const m = P.abrir({ ...modelo.value, activa: tras }, id, ruta, baseActual());
     if (!m) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
     modelo.value = { ...m, activa: modelo.value.activa };
     return { ok: true, id };
@@ -267,9 +269,10 @@ export const usePestanas = defineStore("pestanas", () => {
     if (!router) return { ok: false, mensaje: t("pestanas.noAbre") };
     const r = router.resolve(destino);
     if (!r.matched.length || r.meta.sinMarco) return { ok: false, mensaje: t("pestanas.noAbre") };
-    const nueva = agregarNueva(r.fullPath);
+    const alLado = conFoco.value === "lado" ? modelo.value.lado : null;
+    const nueva = alLado ? agregarNueva(r.fullPath, alLado) : agregarNueva(r.fullPath);
     if (nueva.ok) {
-      if (conFoco.value === "lado") modelo.value = P.alLado(modelo.value, nueva.id!);
+      if (alLado) modelo.value = P.alLado(modelo.value, nueva.id!);
       else void ir(nueva.id!);
     }
     return nueva;
@@ -277,33 +280,53 @@ export const usePestanas = defineStore("pestanas", () => {
 
   /**
    * Pone `id` al lado. Si es la activa, el panel principal primero llega a la que deja `alLado` (la de al lado, si hay),
-   * y la activa cambia al llegar. En esta entrega una de otra organización no va al lado.
+   * y la activa cambia al llegar. Solo va al lado una que cumpla `vaAlLado`.
    */
   function abrirAlLado(id: string): Resultado {
     const noAbre = { ok: false as const, mensaje: t("pestanas.noAbre") };
-    if (!deLaAbierta(id)) return noAbre;
+    if (!vaAlLado(id)) return noAbre;
     if (id !== activa.value) {
       modelo.value = P.alLado(modelo.value, id);
       return { ok: true };
     }
     const otra = P.alLado(modelo.value, id).activa;
     // Con una sola pestaña no hay otra para el principal; con una de otra organización, el principal cambiaría de organización.
-    if (otra === id || !deLaAbierta(otra)) return noAbre;
+    if (otra === id || !vaAlLado(otra)) return noAbre;
     void ir(otra).then(() => {
-      if (activa.value !== id && deLaAbierta(id)) modelo.value = P.alLado(modelo.value, id);
+      if (activa.value !== id && vaAlLado(id)) modelo.value = P.alLado(modelo.value, id);
     });
     return { ok: true };
   }
 
-  /** Abre al lado una pestaña nueva con la ruta de la activa; con la vista ya dividida, la cierra. */
+  /**
+   * Abre al lado una pestaña nueva con la vista de la activa; con la vista ya dividida, la cierra. Configuración, Ayuda y
+   * Acerca de no van al lado: de una de ellas, la nueva lleva la vista a la que vuelve su «Cerrar».
+   */
   function dividir(): Resultado {
     if (modelo.value.lado) {
       modelo.value = P.sinLado(modelo.value);
       return { ok: true };
     }
-    const nueva = agregarNueva(modelo.value.lista.find((x) => x.id === activa.value)?.ruta ?? P.RUTA_INICIO);
+    const p = modelo.value.lista.find((x) => x.id === activa.value);
+    // Una activa de otra organización, sin abrir o a medio cambio no tiene una vista de la abierta que copiar.
+    if (!p || !vaAlLado(p.id) || useOrganizaciones().enCurso)
+      return { ok: false, mensaje: t("pestanas.noAbre") };
+    const nueva = agregarNueva(
+      esVistaCerrable(router?.resolve(p.ruta).name) ? (p.volver ?? P.RUTA_INICIO) : p.ruta,
+    );
     if (nueva.ok) modelo.value = P.alLado(modelo.value, nueva.id!);
     return nueva;
+  }
+
+  /** Ctrl+Tab con foco al lado: la siguiente que puede ir al lado, sin pasar por la activa; sin ninguna, nada cambia. */
+  function siguienteAlLado(paso: 1 | -1): Resultado {
+    const m = modelo.value;
+    const id = P.vecina(
+      { ...m, lista: m.lista.filter((x) => x.id === m.activa || x.id === m.lado || vaAlLado(x.id)) },
+      paso,
+      "lado",
+    );
+    return id === m.activa ? { ok: true } : abrirAlLado(id);
   }
 
   /** La vecina es de otra organización: primero el cambio, y la pestaña se quita solo si salió bien. */
@@ -402,11 +425,9 @@ export const usePestanas = defineStore("pestanas", () => {
      * en curso, cuenta desde la pestaña a la que se va.
      */
     siguiente: (paso: 1 | -1) =>
-      activar(
-        conFoco.value === "lado"
-          ? P.vecina(modelo.value, paso, "lado")
-          : P.vecina({ ...modelo.value, activa: pedida ?? destino?.id ?? modelo.value.activa }, paso),
-      ),
+      conFoco.value === "lado"
+        ? siguienteAlLado(paso)
+        : activar(P.vecina({ ...modelo.value, activa: pedida ?? destino?.id ?? modelo.value.activa }, paso)),
     /** Las guardadas, si aún no se leyeron: lo que sigue parte de ellas y no de la pestaña inicial. */
     asegurarCargadas() {
       if (!cargadas) cargarGuardadas();
