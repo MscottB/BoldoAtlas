@@ -300,4 +300,10 @@ describe("centroDelClic", () => {
     expect(centroDelClic({ left: 0, top: 0, width: 0, height: 0 })).toBeNull();
     expect(centroDelClic({ left: 5, top: 5, width: 30, height: 0 })).toBeNull();
   });
+
+  it("si en su centro hay otra cosa (fuera de la barra desplazada, o tapado), null: el clic no lo alcanzaría", () => {
+    const caja = { left: 10, top: 20, width: 100, height: 40 };
+    expect(centroDelClic({ ...caja, alcanza: false })).toBeNull();
+    expect(centroDelClic({ ...caja, alcanza: true })).toEqual({ x: 60, y: 40 });
+  });
 });

@@ -618,6 +618,32 @@ describe("panel de al lado con otra organización", () => {
     expect(p.existe(nueva)).toBe(true);
   });
 
+  it("abrir en el principal la organización de al lado deja al lado el panel de la abierta, sin copiar de nuevo", async () => {
+    vi.useFakeTimers();
+    const p = await arrancar();
+    const { app } = montar(); // x, de B, al lado y ya copiada
+    await esperar();
+    delIframe({ tipo: "boldo-lado-ruta", ruta: "/directorio" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cliente.ladoAbrir).toHaveBeenCalledTimes(1);
+    // El cambio a B, como `cambiarA`: con `cambiando` el área no muestra los paneles (el de al lado se desmonta), y al
+    // entrar en B la base y `idAbierta` cambian antes de volver a mostrarlos.
+    const organizaciones = useOrganizaciones();
+    organizaciones.cambiando = true;
+    app.unmount();
+    expect(cliente.ladoCerrar).toHaveBeenCalledTimes(1);
+    fijarBase("B");
+    organizaciones.idAbierta = "B";
+    organizaciones.cambiando = false;
+    const s = await html();
+    expect(p.lado).toBe("x");
+    expect(texto(s)).not.toContain("Solo lectura");
+    expect(texto(s)).not.toContain("Copiando la organización…");
+    expect(s).not.toContain("<iframe");
+    await vi.advanceTimersByTimeAsync(2 * ESPERA_COPIA);
+    expect(cliente.ladoAbrir).toHaveBeenCalledTimes(1);
+  });
+
   it("con una de la abierta al lado, el encabezado es el de siempre", async () => {
     await arrancar();
     useOrganizaciones().idAbierta = "B";

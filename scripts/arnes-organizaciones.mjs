@@ -1106,26 +1106,35 @@ async function pulsar(app, key, mayus = false, ctrl = false) {
 
 /**
  * Dónde cae el clic: el centro de la caja. Sin caja, o sin ancho o alto (un elemento oculto), null: el clic iría a (0,0).
- * @param {{ left: number, top: number, width: number, height: number } | null} r
+ * También null si en ese centro la página tiene otra cosa (`alcanza` false): fuera de la parte visible de la barra de
+ * pestañas desplazada, o tapado; el clic caería en otro lado sin decirlo.
+ * @param {{ left: number, top: number, width: number, height: number, alcanza?: boolean } | null} r
  * @returns {{ x: number, y: number } | null}
  */
 export function centroDelClic(r) {
-  return r?.width && r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  return r?.width && r.height && r.alcanza !== false
+    ? { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+    : null;
 }
 
 /**
  * Un clic de verdad (CDP) en el centro del elemento que da `elemento` (una expresión de la página): con él llegan el
- * puntero, el foco y, con el botón derecho, el menú contextual.
+ * puntero, el foco y, con el botón derecho, el menú contextual. Antes lo trae a la vista, como una persona que desplaza la
+ * barra de pestañas, y mira que el clic lo alcance.
  * @param {App} app @param {string} elemento @param {string} que @param {"left" | "right"} [boton]
  */
 async function clicEn(app, elemento, que, boton = "left") {
   const c = centroDelClic(
     await app.evaluar(`(() => {
-      const r = (${elemento})?.getBoundingClientRect();
-      return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+      const el = ${elemento};
+      el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      const r = el?.getBoundingClientRect();
+      if (!r) return null;
+      const alli = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { left: r.left, top: r.top, width: r.width, height: r.height, alcanza: Boolean(alli && el.contains(alli)) };
     })()`),
   );
-  if (!c) throw new Error(`No está ${que} para el clic, o está oculto`);
+  if (!c) throw new Error(`No está ${que} para el clic, o está oculto o tapado`);
   const comun = { ...c, button: boton, clickCount: 1 };
   await app.enviar("Input.dispatchMouseEvent", { type: "mouseMoved", ...c });
   await app.enviar("Input.dispatchMouseEvent", {
@@ -1978,6 +1987,8 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     JSON.stringify(relacionadaAntes) === JSON.stringify(antes[0]),
     { antes: antes[0], ahora: relacionadaAntes },
   );
+  // Con el foco en el principal: con el foco al lado, el clic en una pestaña la lleva al lado.
+  await enfocar("principal");
   await clicEn(app, pestana(primera), "la otra pestaña de la relacionada");
   const nuevaUnidad = `[...(${panel("lado")}?.querySelectorAll("button") ?? [])].some((b) => [b.innerText.trim(), b.getAttribute("aria-label")].includes(${JSON.stringify(textoEs("arbol.nuevaUnidad"))}))`;
   await verQue(
