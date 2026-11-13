@@ -430,6 +430,72 @@ describe("useLadoOtra", () => {
     }
   });
 
+  it("«No» tras «Ver al lado» no deja la pestaña que abrió; tras «Abrir al lado», la pestaña sigue", async () => {
+    const p = await arrancar();
+    Object.defineProperty(performance, "memory", {
+      value: { usedJSHeapSize: 4 * 2 ** 30, jsHeapSizeLimit: 4 * 2 ** 30 },
+      configurable: true,
+    });
+    try {
+      expect(p.verAlLado("B").ok).toBe(true);
+      const nueva = p.lado!;
+      let { lado, app } = montar(nueva);
+      await esperar();
+      expect(lado.estado.value).toBe("preguntando");
+      lado.alCerrarPregunta();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(p.lado).toBeNull();
+      expect(p.existe(nueva)).toBe(false);
+      expect(p.lista.map((x) => x.id)).toEqual(["a", "x", "y"]);
+      app.unmount();
+
+      // Una que ya estaba en la barra, llevada al lado: «No» la deja donde estaba.
+      expect(p.abrirAlLado("y").ok).toBe(true);
+      ({ lado, app } = montar("y"));
+      await esperar();
+      lado.alCerrarPregunta();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(p.lado).toBeNull();
+      expect(p.existe("y")).toBe(true);
+    } finally {
+      Reflect.deleteProperty(performance, "memory");
+    }
+  });
+
+  it("«Cerrar la vista dividida» tras un fallo de la copia quita la que abrió «Ver al lado»; la que estaba, no", async () => {
+    const p = await arrancar();
+    cliente.ladoAbrir.mockRejectedValue({ codigo: "otra_base", detalle: "" });
+    p.verAlLado("B");
+    const nueva = p.lado!;
+    const primero = montar(nueva);
+    await esperar();
+    expect(primero.lado.estado.value).toBe("error");
+    primero.lado.cerrar();
+    expect(p.lado).toBeNull();
+    expect(p.existe(nueva)).toBe(false);
+    primero.app.unmount();
+
+    p.abrirAlLado("x");
+    const { lado } = montar("x");
+    await esperar();
+    lado.cerrar();
+    expect(p.lado).toBeNull();
+    expect(p.existe("x")).toBe(true);
+  });
+
+  it("la que abrió «Ver al lado» y ya se vio sigue en la barra si después se cierra la vista", async () => {
+    const p = await arrancar();
+    p.verAlLado("B");
+    const nueva = p.lado!;
+    const { lado, app } = montar(nueva);
+    await esperar();
+    delIframe({ tipo: "boldo-lado-ruta", ruta: "/" });
+    await vi.advanceTimersByTimeAsync(0);
+    lado.cerrar();
+    expect(p.existe(nueva)).toBe(true);
+    app.unmount();
+  });
+
   it("un fallo se muestra traducido; un pedido reemplazado (`cancelado`) no", async () => {
     await arrancar();
     cliente.ladoAbrir.mockRejectedValueOnce({ codigo: "otra_base", detalle: "" });

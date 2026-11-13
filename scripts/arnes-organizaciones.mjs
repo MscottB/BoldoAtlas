@@ -77,15 +77,16 @@ const PLAZO_LADO_MS = 120_000;
 const MEMORIA_LADO = join("src", "features", "pestanas", "memoriaLado.ts");
 /**
  * Las acciones de editar (sus textos en es.json) que no deben verse en el iframe de al lado, por lo que el recorrido abre:
- * el árbol con una tarjeta elegida y el panel de su unidad (Resumen y Puestos), Árboles, la ficha de una persona (desde el
- * Directorio) y el diálogo de un puesto (desde Revisión). Se buscan en botones, listas y campos, por su texto o su
- * `aria-label`.
+ * el árbol con una tarjeta elegida, el panel de su unidad (Resumen y Puestos) y su menú contextual, Árboles, la ficha de
+ * una persona (desde el Directorio) y el diálogo de un puesto (desde Revisión). Se buscan en botones, listas, campos y
+ * entradas de menú, por su texto (el propio, sin el del atajo) o su `aria-label`.
  */
 export const EDITAR = {
   arbol: [
     "arbol.nuevaUnidad",
     "arbol.nuevaSubunidad",
     "arbol.menu.renombrar",
+    "arbol.menu.eliminar",
     "unidad.conectarCon",
     "unidad.duplicar",
     "unidad.eliminar",
@@ -1589,7 +1590,8 @@ async function verAlLadoPorPaleta(app, o, n) {
  * Pasar de META_LADO_MS no falla: se pregunta al autor (decisión 11). Después recorre, como una persona, lo que las pruebas
  * sin DOM no alcanzan: la copia que el iframe no suelta al cargar, las escrituras que Rust rechaza, el clic y F6 entre la
  * ventana y el iframe, el menú lateral, las cuatro vistas (con el panel de una unidad, una ficha y un puesto) sin acciones
- * de editar y sin errores en la consola, «Quitar de al lado», Ctrl+W dentro del iframe y el archivo de la otra intacto.
+ * de editar y sin errores en la consola, «Quitar de al lado», Ctrl+W dentro del iframe, el archivo de la otra intacto y,
+ * con la otra al lado, abrirla en el principal.
  * @param {Portable} portable @param {{ relacionada: Otra, aparte: Otra }} otras
  */
 async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
@@ -1760,7 +1762,11 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     /** @type {string[]} */
     const hay = await app.evaluar(
       `[...(${EN_MARCO}?.querySelectorAll('button, select, input, [role="menuitem"]') ?? [])]
-        .flatMap((b) => [b.getAttribute("aria-label"), b.innerText?.trim()])
+        .flatMap((b) => [
+          b.getAttribute("aria-label"),
+          b.innerText?.trim(),
+          [...b.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim(),
+        ])
         .filter((x) => ${JSON.stringify(claves.map(textoEs))}.includes(x))`,
     );
     comprobar(`lado a lado: ${vista} del iframe no muestra acciones de editar`, !hay.length, hay);
@@ -1806,6 +1812,18 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     "los Puestos de la unidad en el iframe",
   );
   await sinEditar("el panel de la unidad, en Puestos,", EDITAR.arbol);
+  // El menú contextual de la tarjeta elegida, con Mayús+F10 como una persona: solo lo de leer.
+  const menuMarco = `${EN_MARCO}?.querySelector('[role="menu"][data-state="open"]')`;
+  await app.evaluar(`${EN_MARCO}?.querySelector('.vue-flow__node [aria-pressed="true"]')?.focus()`);
+  await pulsar(app, "F10", true);
+  await verQue(
+    app,
+    "lado a lado: Mayús+F10 en la tarjeta elegida del iframe abre su menú",
+    `[...(${menuMarco}?.querySelectorAll('[role="menuitem"]') ?? [])].some((x) => x.innerText.trim() === ${JSON.stringify(textoEs("arbol.menu.abrirPanel"))})`,
+  );
+  await sinEditar("el menú contextual de una tarjeta", EDITAR.arbol);
+  await pulsar(app, "Escape");
+  await app.hasta(`!${menuMarco}`, "el menú de la tarjeta cerrado");
 
   await irAlLado("/arboles");
   await verQue(
@@ -1827,9 +1845,9 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `${enRuta("/directorio")} && ${EN_MARCO}.body.innerText.includes(${JSON.stringify(personaDe(o))})`,
   );
   // La ficha de esa persona, desde su fila
-  await app.evaluar(
-    `[...${EN_MARCO}.querySelectorAll("tbody tr")].find((f) => f.innerText.includes(${JSON.stringify(personaDe(o))})).querySelector("button").click()`,
-  );
+  const fila = `[...(${EN_MARCO}?.querySelectorAll("tbody tr") ?? [])].find((f) => f.innerText.includes(${JSON.stringify(personaDe(o))}))?.querySelector("button")`;
+  await app.hasta(`Boolean(${fila})`, `la fila de «${personaDe(o)}» en el Directorio del iframe`);
+  await app.evaluar(`${fila}.click()`);
   await verQue(
     app,
     `lado a lado: en el Directorio del iframe, la ficha de «${personaDe(o)}» se abre en solo lectura`,
@@ -1860,9 +1878,9 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `${enRuta("/revision")} && ${enElMarco("h1", textoEs("revision.titulo"))}`,
   );
   // Un puesto vacante, desde su fila: su diálogo
-  await app.evaluar(
-    `[...${EN_MARCO}.querySelectorAll("details")].find((d) => d.querySelector("summary").innerText.includes(${JSON.stringify(textoEs("revision.vacantes.titulo"))})).querySelector("button").click()`,
-  );
+  const vacante = `[...(${EN_MARCO}?.querySelectorAll("details") ?? [])].find((d) => d.querySelector("summary")?.innerText.includes(${JSON.stringify(textoEs("revision.vacantes.titulo"))}))?.querySelector("button")`;
+  await app.hasta(`Boolean(${vacante})`, "una vacante en Revisión del iframe");
+  await app.evaluar(`${vacante}.click()`);
   await verQue(
     app,
     "lado a lado: en Revisión del iframe, una vacante abre el diálogo de su puesto",
@@ -1931,15 +1949,53 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   );
   comprobar("lado a lado: … y suelta la copia", await soltada(), temporales());
 
+  // Lo de más riesgo: con la relacionada al lado, abrirla en el principal desde otra pestaña suya (la primera que se vio,
+  // quitada de al lado). El panel de al lado pasa a ser el de la abierta, editable, y la copia se suelta. Va al final: la
+  // relacionada queda abierta, y su archivo cambia desde ahí con razón.
+  /** @param {string} que */
+  const sinDividir = (que) =>
+    app.hasta(`!${panel("lado")} && ${tarjetas("principal")} > 0 && ${sinDialogos}`, que);
+  await sinDividir("el árbol sin dividir, antes de ver la relacionada al lado");
+  /** @type {number} */
+  const vistas = await app.evaluar(`${VER_AL_LADO}.length`);
+  await verAlLadoPorPaleta(app, relacionada, vistas + 1);
+  /** @type {string} */
+  const primera = await app.evaluar(AL_LADO);
+  await clicEn(app, pestana(primera), "la pestaña de la relacionada", "right");
+  await app.hasta(
+    `Boolean(${entradaDelMenu("pestanas.quitarDeAlLado")})`,
+    "«Quitar de al lado» en el menú de la relacionada",
+  );
+  await app.evaluar(`${entradaDelMenu("pestanas.quitarDeAlLado")}.click()`);
+  await sinDividir("la relacionada quitada de al lado");
+  await verAlLadoPorPaleta(app, relacionada, vistas + 2);
+  /** @type {string} */
+  const segunda = await app.evaluar(AL_LADO);
+  const [relacionadaAntes] = archivos();
+  comprobar(
+    "lado a lado: mientras la relacionada estuvo al lado, su archivo no cambió (mismos bytes y fecha, nada nuevo a su lado)",
+    JSON.stringify(relacionadaAntes) === JSON.stringify(antes[0]),
+    { antes: antes[0], ahora: relacionadaAntes },
+  );
+  await clicEn(app, pestana(primera), "la otra pestaña de la relacionada");
+  const nuevaUnidad = `[...(${panel("lado")}?.querySelectorAll("button") ?? [])].some((b) => [b.innerText.trim(), b.getAttribute("aria-label")].includes(${JSON.stringify(textoEs("arbol.nuevaUnidad"))}))`;
+  await verQue(
+    app,
+    "lado a lado: con la relacionada al lado, abrirla en el principal deja al lado el panel editable de la abierta (sin iframe, con «Nueva unidad»)",
+    `${ACTIVA} === ${JSON.stringify(primera)} && ${AL_LADO} === ${JSON.stringify(segunda)} && ` +
+      `${panel("principal")}?.innerText.includes(${JSON.stringify(raizDe(relacionada))}) && !${MARCO} && ${nuevaUnidad}`,
+  );
+  comprobar("lado a lado: … y suelta la copia", await soltada(), temporales());
+
   await app.evaluar(`location.hash = "#/bienvenida"`);
   await verInicio(app, "Inicio tras ver al lado");
-  sinErrores("al quitarla, volver a abrirla y cerrarla con Ctrl+W");
+  sinErrores("al quitarla, volver a abrirla, cerrarla con Ctrl+W y abrir en el principal la de al lado");
   comprobar("lado a lado: la app cierra con código 0", (await app.cerrar()) === 0);
   const despues = archivos();
   comprobar(
-    "lado a lado: los archivos de la relacionada y la aparte no cambiaron (mismos bytes y fecha, nada nuevo a su lado)",
-    JSON.stringify(despues) === JSON.stringify(antes),
-    { antes, despues },
+    "lado a lado: el archivo de la aparte no cambió (mismos bytes y fecha, nada nuevo a su lado)",
+    JSON.stringify(despues[1]) === JSON.stringify(antes[1]),
+    { antes: antes[1], despues: despues[1] },
   );
   console.log(`lado a lado: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
 }

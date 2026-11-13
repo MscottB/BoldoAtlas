@@ -33,7 +33,7 @@ const pantallaDeFallo = (e: unknown) =>
     .mount("#app");
 // En el iframe del panel de al lado, otra organización en solo lectura: arranca aparte (src/lado/arranque.ts).
 // Si Rust no pudo abrir la base (o ni siquiera responde), se muestra el motivo en vez de una ventana en blanco.
-if (MODO_LADO) void import("./lado/arranque").then((m) => m.arrancar(), pantallaDeFallo);
+if (MODO_LADO) void import("./lado/arranque").then((m) => m.arrancar()).catch(pantallaDeFallo);
 else
   infoApp()
     .then(async (info) => {

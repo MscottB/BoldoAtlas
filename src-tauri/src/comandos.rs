@@ -993,9 +993,18 @@ pub async fn crear_organizacion(
 /// congelaría la ventana.
 #[tauri::command]
 pub async fn quitar_organizacion(app: AppHandle, id: String) -> Result<(), Fallo> {
-    tauri::async_runtime::spawn_blocking(move || app.state::<Estado>().quitar(&id))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        quitar_en(&app.state::<Estado>(), &app.state::<Lado>(), &id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// La quitada deja de estar al lado: su copia se suelta, con su temporal.
+fn quitar_en(estado: &Estado, lado: &Lado, id: &str) -> Result<(), Fallo> {
+    estado.quitar(id)?;
+    lado.soltar_si(id);
+    Ok(())
 }
 
 /// Sin la otra, o sin su base, la comparación ya no vale. La eliminada, o la que pasa a ser la abierta, deja de estar al lado.
@@ -6102,6 +6111,27 @@ mod lado {
         assert_eq!(d.temporales(), 0);
         // ahora responde la abierta
         assert_eq!(d.db_id(&d.b.id).unwrap(), d.b.id);
+    }
+
+    #[test]
+    fn quitar_la_del_lado_la_suelta() {
+        let d = tres("");
+        d.abrir_lado();
+        quitar_en(&d.e, &d.lado, &d.b.id).unwrap();
+        assert_eq!(
+            d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
+            "otra_base"
+        );
+        assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
+    fn quitar_otra_no_suelta_la_del_lado() {
+        let d = tres("");
+        d.abrir_lado();
+        quitar_en(&d.e, &d.lado, &d.c.id).unwrap();
+        assert!(d.lado.con_lectura(&d.b.id, |_| Ok(())).is_ok());
+        assert_eq!(d.temporales(), 1);
     }
 
     #[test]

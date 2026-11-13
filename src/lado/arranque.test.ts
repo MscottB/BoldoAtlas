@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import { createPinia } from "pinia";
@@ -7,7 +8,6 @@ import { i18n } from "@/i18n";
 import { router as routerApp, rutas } from "@/router";
 import { routerDel } from "@/features/pestanas/routerConFoco";
 import AppLado from "./AppLado.vue";
-import PantallaError from "@/vistas/PantallaError.vue";
 import { arrancar, guiarRouter } from "./arranque";
 import { VISTAS_LADO } from "./modo";
 
@@ -144,21 +144,16 @@ describe("arrancar", () => {
     expect(routerDel("principal")).toBe(routerApp);
   });
 
-  it("si algo falla, el iframe muestra el motivo y no queda en blanco", async () => {
+  it("si algo falla, rechaza con el motivo y no monta nada: lo muestra el mismo manejador de main.ts", async () => {
     // el padre no es la app: no hay IPC que tomar
     vi.stubGlobal("window", { parent: {} });
-    const consola = vi.spyOn(console, "error").mockImplementation(() => {});
-    const montar = vi.fn();
-    const app = { use: () => app, mount: montar } as unknown as App;
-    vi.mocked(createApp).mockReturnValueOnce(app);
-    await arrancar();
-    expect(createApp).toHaveBeenCalledWith(
-      PantallaError,
-      expect.objectContaining({
-        info: expect.objectContaining({ error: expect.stringContaining("TypeError") }),
-      }),
+    vi.mocked(createApp).mockClear();
+    await expect(arrancar()).rejects.toThrow(TypeError);
+    expect(createApp).not.toHaveBeenCalled();
+    // main.ts: el fallo de arrancar y el de su import van a `pantallaDeFallo`, la pantalla de fallo de la app.
+    const main = readFileSync(new URL("../main.ts", import.meta.url), "utf8");
+    expect(main).toMatch(
+      /import\("\.\/lado\/arranque"\)\s*\.then\(\(m\) => m\.arrancar\(\)\)\s*\.catch\(pantallaDeFallo\)/,
     );
-    expect(montar).toHaveBeenCalledWith("#app");
-    consola.mockRestore();
   });
 });

@@ -56,6 +56,8 @@ export const usePestanas = defineStore("pestanas", () => {
   let ultimoPedido = 0;
   /** false mientras `modelo` sea el inicial: desde Inicio se puede llegar aquí sin `entrar`, y guardarlo pisaría la clave. */
   let cargadas = false;
+  /** Las que abrió «Ver al lado» y aún no llegaron a un panel: ver `nuevaAlLado`. No se guarda. */
+  const nuevas = new Set<string>();
 
   const lista = computed(() => modelo.value.lista);
   const activa = computed(() => modelo.value.activa);
@@ -517,9 +519,15 @@ export const usePestanas = defineStore("pestanas", () => {
       const id = agregarDe(org);
       if (!id) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
       performance.mark(marcaVerAlLado(id));
+      nuevas.add(id);
       modelo.value = P.alLado(modelo.value, id);
       return { ok: true };
     },
+    /**
+     * Si «Ver al lado» acaba de abrir `id`: lo sabe solo el primer panel que la muestra, que la quita si se cierra sin
+     * llegar a verse (nadie pidió esa pestaña, sino verla). Una que ya estaba en la barra no lo es.
+     */
+    nuevaAlLado: (id: string) => nuevas.delete(id),
     /**
      * Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1) en el panel con foco, saltando la del otro. En el principal, con un cambio aún
      * en curso, cuenta desde la pestaña a la que se va.

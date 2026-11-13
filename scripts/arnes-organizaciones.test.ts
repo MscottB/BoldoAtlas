@@ -181,6 +181,9 @@ describe("EDITAR", () => {
       "puesto.nuevoPuesto",
     ])
       expect(EDITAR.arbol).toContain(clave);
+    // el menú contextual de la tarjeta elegida, que el recorrido abre con Mayús+F10
+    for (const clave of ["arbol.menu.renombrar", "arbol.menu.eliminar"])
+      expect(EDITAR.arbol).toContain(clave);
     expect(EDITAR.ficha).toContain("ficha.eliminar");
     expect(EDITAR.puesto).toContain("puesto.eliminar");
     // la vista guardada solo está en un menú que el recorrido no abre

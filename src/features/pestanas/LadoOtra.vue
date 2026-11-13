@@ -14,15 +14,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useLadoOtra } from "./useLadoOtra";
-import { usePestanas } from "./usePestanas";
 
 // El panel de al lado con otra organización: una copia de solo lectura, en un iframe con la app en modo lado (decisión 2).
 // Lo que se ve es una foto tomada al abrir.
 const props = defineProps<{ id: string }>();
 const { t } = useI18n();
-const pestanas = usePestanas();
 const marco = useTemplateRef<HTMLIFrameElement>("marco");
-const { nombre, estado, error, src, clave, abrirIgual, alCerrarPregunta } = useLadoOtra(
+const { nombre, estado, error, src, clave, abrirIgual, alCerrarPregunta, cerrar } = useLadoOtra(
   props.id,
   () => marco.value?.contentWindow,
 );
@@ -34,7 +32,7 @@ const { nombre, estado, error, src, clave, abrirIgual, alCerrarPregunta } = useL
       <TriangleAlert class="size-5 shrink-0 text-destructive" aria-hidden="true" />
       {{ error }}
     </p>
-    <Button variant="outline" size="sm" @click="pestanas.cerrarDivision()">
+    <Button variant="outline" size="sm" @click="cerrar()">
       {{ t("pestanas.cerrarDivision") }}
     </Button>
   </div>
