@@ -140,13 +140,13 @@
     {
       "id": "revision",
       "etiqueta": "Review",
-      "titulo": "What is worth fixing, on a single screen",
-      "texto": "Review gathers vacant positions, repeated emails, people without a position and more; each row opens what needs fixing.",
+      "titulo": "What matters, first",
+      "texto": "Review sorts warnings into three levels and says why each one matters. Each row has a one-click action.",
       "puntos": [
-        "Units without a head, vacant positions (with the days they have been so) and people without a current position.",
-        "Repeated emails and similar names, as possible duplicates.",
-        "Empty units and list values that nothing uses.",
-        "The number next to Review in the menu is the total of pending warnings and updates by itself."
+        "A summary with what matters on top: units without a head, repeated emails and long vacancies.",
+        "Choose a head, assign a holder, delete an empty unit or deactivate an unused value, right there and with Undo.",
+        "A branch filter to see only one unit and what is under it.",
+        "This is fine: mark what is not a problem, with its reason, and it warns again if it changes."
       ],
       "imagen": {
         "nombre": "revision-lista",
@@ -154,7 +154,7 @@
         "alto": 440,
         "temas": false,
         "ayuda": true,
-        "alt": "Data review screen with the Vacant positions, Current replacements and Unused values lists."
+        "alt": "Data review screen with the summary by levels Important, To review and Tidying up, and the sections with their actions."
       },
       "enlace": {
         "texto": "Read about Review",

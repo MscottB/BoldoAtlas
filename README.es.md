@@ -21,7 +21,6 @@
   <img alt="Plataforma: Windows, Linux y macOS" src="https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux%20%7C%20macOS-1e2a38">
   <img alt="Licencia: AGPL-3.0" src="https://img.shields.io/badge/licencia-AGPL--3.0-c8743f">
   <img alt="Hecho con Tauri y Vue" src="https://img.shields.io/badge/hecho%20con-Tauri%202%20%2B%20Vue%203-1e2a38">
-  <img alt="Estado: alfa" src="https://img.shields.io/badge/estado-alfa-c8743f">
 </p>
 
 ---
@@ -39,7 +38,10 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 - Varios árboles en la misma base, y cualquier rama se abre como árbol propio
 - Puestos, vacantes y fichas de personas, con listas propias de cargos, contratos, sedes y jornadas
 - El organigrama a cualquier fecha, en solo lectura: quién ocupaba cada puesto y qué cambió
-- Revisión: unidades sin jefatura, vacantes, personas sin puesto, correos repetidos y nombres parecidos
+- Revisión: un resumen de lo que más importa, una acción a un clic en cada aviso, un filtro por rama y «Así está bien» para lo que no es un problema
+- Comparar dos organizaciones: qué está solo en una, o es distinto, en unidades, personas y puestos
+- Dos pestañas a la vez (vista dividida), para ver el Directorio junto al árbol o dos ramas del mismo árbol
+- Otra organización al lado, en solo lectura, con su árbol, su Directorio y su Revisión
 - Directorio con filtros, búsqueda con `Ctrl+K`, tema claro u oscuro con color de acento
 - Varias organizaciones, cada una con sus datos, fotos, respaldos y preferencias aparte, y pestañas para pasar de una a otra
 - Exportar toda la base o una rama a un archivo `.boldo` cifrado, e importarlo como una organización nueva o eligiendo qué se queda
@@ -49,7 +51,7 @@ Está pensado para **organizaciones grandes**: árboles muy extensos, varios ár
 
 ## Descarga
 
-Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (es una versión alfa: de prueba). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta, salvo en los archivos externos que abras con **Abrir archivo…**, que se quedan donde están (y en macOS, las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
+Disponible en **[Releases](https://github.com/MscottB/BoldoAtlas/releases)** (todavía es una versión de prueba). Cada sistema tiene una versión **portable**, la principal: un zip que se extrae en cualquier carpeta (o en un pendrive) y guarda todo en `datos/`, junto al programa, sin escribir fuera de esa carpeta, salvo en los archivos externos que abras con **Abrir archivo…**, que se quedan donde están (y en macOS, las preferencias de la ventana, ver más abajo). Y un **instalador**, que guarda los datos en la carpeta de tu usuario.
 
 | Sistema | Portable | Instalador | Datos del instalado |
 |---|---|---|---|
