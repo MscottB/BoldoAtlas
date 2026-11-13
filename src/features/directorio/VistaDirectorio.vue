@@ -3,7 +3,18 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { useVirtualList } from "@vueuse/core";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Columns3, Download, ListFilter, X } from "@lucide/vue";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  Columns3,
+  Download,
+  ListFilter,
+  Minus,
+  Plus,
+  X,
+} from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,10 +26,14 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TablaCatalogo } from "@/db/tipos";
-import { tiposEnUso } from "@/features/arbol/jerarquia";
+import { tiposEnUso, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { MAX_BOTONES_NIVEL, nivelVecino } from "@/features/arbol/niveles";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
+import ArbolPersonas from "@/features/unidades/ArbolPersonas.vue";
+import { arbolesDePersonas, claveVacante, contarFilas, profundidad } from "@/features/unidades/arbolPersonas";
+import { filtrarPersonasUnidad, personasDelAlcance } from "@/features/unidades/personas";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
@@ -35,9 +50,11 @@ import {
   filtrarYOrdenar,
   leerColumnas,
   leerEstadoDirectorio,
+  pulsarFila,
   type FilaDirectorio,
   type Filtros,
   type Orden,
+  type Pulsable,
 } from "./filtrar";
 
 const { t } = useI18n();
@@ -141,13 +158,13 @@ const ariaSort = (campo: Orden["campo"]) =>
   orden.value.campo !== campo ? "none" : orden.value.asc ? "ascending" : "descending";
 
 // Clic en la fila (o Enter sobre el nombre, que es un botón dentro de ella): la ficha de la persona o, en una vacante, el puesto.
-// Ctrl+clic o clic central sobre una persona: ella sola en una pestaña nueva.
-function abrir(e: MouseEvent, f: FilaDirectorio) {
-  if (f.personaId && clicNuevaPestana(e, { name: "directorio", query: { persona: f.personaId } })) return;
-  if (e.type === "auxclick") return;
-  if (f.personaId) void ficha.intentarAbrir(f.personaId);
-  else if (f.puestoId) puesto.abrir(f.puestoId);
-}
+// Ctrl+clic o clic central sobre una persona: ella sola en una pestaña nueva. Las filas del árbol hacen lo mismo.
+const abrir = (e: MouseEvent | null, f: Pulsable) =>
+  pulsarFila(e, f, {
+    nueva: (ev, persona) => clicNuevaPestana(ev, { name: "directorio", query: { persona } }),
+    ficha: (id) => void ficha.intentarAbrir(id),
+    puesto: (id) => puesto.abrir(id),
+  });
 // «Limpiar todo» desaparece al limpiar: el foco pasa al buscador para no quedar en el body.
 function limpiarTodo() {
   filtros.value = { ...SIN_FILTROS };
@@ -159,13 +176,84 @@ function quitarPersona() {
   enfocarBuscador();
 }
 const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipoId === tipoId)?.nombre;
+
+// Lista o árbol: se recuerda por organización, como las columnas (es cómo se ve, no qué se busca).
+const vista = ref(leerPreferenciaOrg<unknown>("directorio:vista", "lista") === "arbol" ? "arbol" : "lista");
+watch(vista, (v) => guardarPreferenciaOrg("directorio:vista", v));
+// El árbol es de hoy, como la lista: parte de la raíz (o de cada una) o de la rama elegida en Unidad. Se arma solo si
+// se ve, y se rehace con los datos o la rama, no con cada tecla: los filtros solo eligen qué se ve.
+const deHoy = computed(() => {
+  const vigentes = vigentesPorPuesto(org.asignaciones);
+  const personas = personasDelAlcance(
+    org.puestos,
+    vigentes,
+    org.trabajadores,
+    org.catalogos.cargos,
+    org.porId,
+  );
+  return { vigentes, personas: filtrarPersonasUnidad(personas, "", "nombre") };
+});
+const arbol = computed(() => {
+  const { vigentes, personas } = deHoy.value;
+  const jefaturas = new Set(org.unidades.map((u) => u.jefe_puesto_id));
+  const deJefatura = personas.filter((f) => jefaturas.has(f.puestoId));
+  const rama = filtros.value.unidad ? org.porId.get(filtros.value.unidad) : undefined;
+  return arbolesDePersonas(
+    rama ? [rama] : org.raices,
+    org.unidades,
+    org.puestos,
+    personas,
+    vigentes,
+    org.catalogos.cargos,
+    deJefatura,
+  );
+});
+// Se ven los puestos de la lista (con su titular y su reemplazo, o vacantes) y las unidades que los contienen.
+const filtrado = computed(() => Object.entries(filtros.value).some(([k, v]) => k !== "unidad" && !!v));
+const coinciden = computed(() => {
+  const puestos = new Set(filas.value.flatMap((f) => (f.puestoId ? [f.puestoId] : [])));
+  const claves = new Set([...puestos].map(claveVacante));
+  for (const f of deHoy.value.personas) if (puestos.has(f.puestoId)) claves.add(f.clave);
+  return claves;
+});
+// Cuántas personas y vacantes muestra el árbol. Sin ninguna, lo que deja la lista son personas sin puesto: se dice.
+const enArbol = computed(() => contarFilas(arbol.value, filtrado.value ? coinciden.value : null));
+// Con filtros y sin nada que coincida, el árbol no tiene filas: sin sus niveles, que no harían nada.
+const arbolVacio = computed(() => (filtrado.value && !enArbol.value) || !hondura.value);
+const soloSinPuesto = computed(
+  () => arbolVacio.value && !!filas.value.length && filas.value.every((f) => f.estado === "sinPuesto"),
+);
+
+// Plegar por niveles, como el lienzo (mismos límites, textos y paso): un botón por nivel real si caben; si son muchos,
+// «−», el nivel y «+».
+const vistaArbol = useTemplateRef<InstanceType<typeof ArbolPersonas>>("vistaArbol");
+const hondura = computed(() => profundidad(arbol.value));
+// El nivel a la vista lo da el árbol (sigue a lo que se pliega a mano); antes de montarse, el de partida: las raíces abiertas.
+const nivelVisto = computed(() => vistaArbol.value?.nivel ?? Math.min(2, hondura.value));
+const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
 </script>
 
 <template>
   <section class="flex h-full flex-col gap-3 p-6">
     <header class="flex flex-wrap items-center gap-2">
       <h1 class="text-lg font-semibold">{{ t("nav.directorio") }}</h1>
-      <span class="text-sm text-muted-foreground" aria-live="polite">{{ t("directorio.filas", filas.length) }}</span>
+      <span class="text-sm text-muted-foreground" aria-live="polite">{{
+        vista === "arbol" ? t("directorio.arbol.filas", enArbol) : t("directorio.filas", filas.length)
+      }}</span>
+      <div v-if="!sinDatos" role="group" :aria-label="t('personas.vista.titulo')" class="flex gap-1">
+        <Button
+          v-for="o in ['lista', 'arbol'] as const"
+          :key="o"
+          type="button"
+          size="sm"
+          :variant="vista === o ? 'default' : 'outline'"
+          :aria-pressed="vista === o"
+          :data-vista-directorio="o"
+          @click="vista = o"
+        >
+          {{ t(`personas.vista.${o}`) }}
+        </Button>
+      </div>
       <Tooltip v-if="MOSTRAR_PROXIMAMENTE">
         <TooltipTrigger as-child>
           <Button variant="outline" aria-disabled="true" class="ml-auto cursor-not-allowed text-muted-foreground">
@@ -255,7 +343,71 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
         <Button v-if="hayFiltros" type="button" variant="ghost" size="sm" @click="limpiarTodo">
           {{ t("directorio.limpiar") }}
         </Button>
-        <DropdownMenu>
+        <div
+          v-if="vista === 'arbol'"
+          v-show="!arbolVacio"
+          role="group"
+          :aria-label="t('arbol.niveles.titulo')"
+          class="ml-auto flex items-center gap-1"
+        >
+          <template v-if="hondura <= MAX_BOTONES_NIVEL">
+            <Button
+              v-for="n in hondura"
+              :key="n"
+              type="button"
+              size="icon-sm"
+              :aria-label="t('arbol.niveles.ver', { n }, n)"
+              :title="t('arbol.niveles.ver', { n }, n)"
+              variant="outline"
+              :aria-pressed="n === nivelVisto"
+              :class="n === nivelVisto && 'bg-accent'"
+              @click="verNivel(n)"
+            >
+              {{ n }}
+            </Button>
+          </template>
+          <template v-else>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              :disabled="nivelVisto <= 1"
+              :aria-label="t('arbol.niveles.menos')"
+              :title="t('arbol.niveles.menos')"
+              @click="verNivel(nivelVecino(nivelVisto, hondura, -1))"
+            >
+              <Minus aria-hidden="true" />
+            </Button>
+            <span
+              class="min-w-6 text-center text-sm tabular-nums"
+              role="status"
+              :aria-label="t('arbol.niveles.actual', { n: nivelVisto })"
+              >{{ nivelVisto }}</span
+            >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              :disabled="nivelVisto >= hondura"
+              :aria-label="t('arbol.niveles.mas')"
+              :title="t('arbol.niveles.mas')"
+              @click="verNivel(nivelVecino(nivelVisto, hondura, 1))"
+            >
+              <Plus aria-hidden="true" />
+            </Button>
+          </template>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            :aria-label="t('arbol.niveles.verTodo')"
+            :title="t('arbol.niveles.verTodo')"
+            @click="vistaArbol?.expandirTodo()"
+          >
+            {{ t("arbol.niveles.todo") }}
+          </Button>
+        </div>
+        <DropdownMenu v-else>
           <DropdownMenuTrigger as-child>
             <Button type="button" variant="outline" size="sm" class="ml-auto h-8">
               <Columns3 aria-hidden="true" />
@@ -278,7 +430,22 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
         </DropdownMenu>
       </form>
 
-      <p v-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
+      <template v-if="vista === 'arbol'">
+        <p v-if="soloSinPuesto" class="text-sm text-muted-foreground">{{ t("directorio.arbol.sinPuesto") }}</p>
+        <!-- Oculto, no desmontado: al volver conserva lo plegado a mano. -->
+        <div v-show="!soloSinPuesto" class="contents">
+          <ArbolPersonas
+            ref="vistaArbol"
+            :raiz="arbol"
+            :texto="filtros.texto"
+            :coinciden="coinciden"
+            directorio
+            :filtrado="filtrado"
+            @abrir="(f, e) => abrir(e, f)"
+          />
+        </div>
+      </template>
+      <p v-else-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
       <div v-else v-bind="containerProps" class="min-h-0 flex-1 overflow-auto rounded-lg border">
         <div v-bind="wrapperProps">
           <table
@@ -361,7 +528,7 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
                     </button>
                     <!-- «Ver en el organigrama»: el puesto de la fila; una persona sin puesto, los suyos (si tiene). -->
                     <span class="-my-1 inline-flex">
-                      <BotonUbicar :persona-id="f.personaId" :puesto-id="f.puestoId" icono />
+                      <BotonUbicar :persona-id="f.personaId" :puesto-id="f.puestoId" :nombre="f.persona" icono />
                     </span>
                   </span>
                 </th>

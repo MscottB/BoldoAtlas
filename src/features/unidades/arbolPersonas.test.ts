@@ -4,17 +4,23 @@ import { a, asignaciones, p, puestos, u, unidades } from "@/features/arbol/fixtu
 import { dotacion, indexar, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { TIPO_AREA } from "@/db/tipos";
 import {
+  abrirHastaNivel,
   accionFila,
   accionTecla,
   aplanarArbol,
   arbolDePersonas,
+  arbolesDePersonas,
   cambiarRaiz,
   claveUnidad,
+  claveVacante,
+  contarFilas,
   contraerTodo,
   estaAbierta,
   expandirTodo,
   idsDelArbol,
+  nivelALaVista,
   plegarUnidad,
+  profundidad,
   visiblesDeBusqueda,
   type Pliegue,
 } from "./arbolPersonas";
@@ -111,7 +117,7 @@ describe("arbolDePersonas", () => {
     const alcance = [...puestosDelAlcance(unidades, puestos, "mecanica", false), vacio];
     const filas = personasDelAlcance(alcance, vigentes, trabajadores, cargos, porId);
     const arbol = arbolDePersonas(porId.get("mecanica")!, [], alcance, filas, vigentes, cargos);
-    expect(arbol.vacantes).toEqual([{ clave: "v:pv", cargo: "Analista" }]);
+    expect(arbol.vacantes).toEqual([{ clave: "v:pv", puestoId: "pv", cargo: "Analista" }]);
     expect(arbol.personas.find((f) => f.tipo === "reemplazo")?.puestoId).toBe("p6");
   });
 
@@ -233,7 +239,8 @@ describe("accionTecla", () => {
     expect(accionTecla(lista, 0, " ")).toEqual({ tipo: "unidad", id: "x" });
     expect(accionTecla(lista, 0, "Enter", true)).toMatchObject({ tipo: "persona", fila: { clave: "b1" } });
     expect(accionTecla(lista, 1, "Enter")).toMatchObject({ tipo: "persona", fila: { clave: "b2" } });
-    expect(accionTecla(lista, 2, "Enter")).toEqual({ tipo: "nada" });
+    // Una vacante lleva su puesto: el directorio lo abre; la pestaña Personas no hace nada con ella.
+    expect(accionTecla(lista, 2, "Enter")).toEqual({ tipo: "vacante", puestoId: "j3" });
     // Sin jefatura, Mayús no cambia nada.
     expect(accionTecla(filas, mecanica, "Enter", true)).toEqual({ tipo: "unidad", id: "mecanica" });
     expect(accionFila(unidad)).toEqual({ tipo: "unidad", id: "x" });
@@ -283,6 +290,117 @@ describe("pliegue", () => {
   });
 });
 
+describe("niveles", () => {
+  const { arbol } = construir("gg"); // gg › operaciones › mantencion › {mecanica, electrica}; gg › finanzas
+  const inicial: Pliegue = { abiertas: new Set(["gg"]), cerradas: new Set() };
+  const unidadesVistas = (pl: Pliegue, buscando = false) =>
+    aplanarArbol(arbol, (id) => estaAbierta(pl, buscando, id), null)
+      .filter((f) => f.clase === "unidad")
+      .map((f) => f.clave);
+
+  it("la profundidad es la de las unidades; sin unidades, 0", () => {
+    expect(profundidad(arbol)).toBe(4);
+    expect(profundidad(construir("mantencion").arbol)).toBe(2);
+    expect(profundidad([])).toBe(0);
+  });
+
+  it("hasta el nivel n se ven las unidades de los niveles 1 a n, cerradas las del nivel n", () => {
+    expect(unidadesVistas(abrirHastaNivel(inicial, false, arbol, 1))).toEqual([claveUnidad("gg")]);
+    const dos = abrirHastaNivel(inicial, false, arbol, 2);
+    expect(unidadesVistas(dos)).toEqual(["gg", "operaciones", "finanzas"].map(claveUnidad));
+    expect(estaAbierta(dos, false, "operaciones")).toBe(false);
+    expect([...abrirHastaNivel(inicial, false, arbol, 4).abiertas].sort()).toEqual([
+      "finanzas",
+      "gg",
+      "mantencion",
+      "operaciones",
+    ]);
+  });
+
+  it("buscando, lo de los niveles n y más abajo queda en `cerradas`", () => {
+    const tres = abrirHastaNivel(inicial, true, arbol, 3);
+    expect([...tres.cerradas].sort()).toEqual(["electrica", "mantencion", "mecanica"]);
+    expect(tres.abiertas).toEqual(inicial.abiertas);
+    expect(unidadesVistas(tres, true)).toContain(claveUnidad("mantencion"));
+    expect(unidadesVistas(tres, true)).not.toContain(claveUnidad("mecanica"));
+  });
+
+  it("el nivel a la vista es el de la unidad más honda que se ve, y sigue a lo que se abre a mano", () => {
+    const vistas = (pl: Pliegue) => aplanarArbol(arbol, (id) => estaAbierta(pl, false, id), null);
+    expect(nivelALaVista(vistas(inicial))).toBe(2);
+    expect(nivelALaVista(vistas(abrirHastaNivel(inicial, false, arbol, 3)))).toBe(3);
+    expect(nivelALaVista(vistas(abrirHastaNivel(inicial, false, arbol, 1)))).toBe(1);
+    // A mano: solo la rama de Operaciones, hasta Mantención abierta.
+    const amano = plegarUnidad(plegarUnidad(inicial, false, "operaciones", true), false, "mantencion", true);
+    expect(nivelALaVista(vistas(amano))).toBe(4);
+    expect(nivelALaVista([])).toBe(0);
+  });
+});
+
+describe("contarFilas", () => {
+  const { arbol } = construir("gg");
+
+  it("cuenta personas (una por puesto) y vacantes; con `coinciden`, solo las que coinciden", () => {
+    expect(contarFilas(arbol, null)).toBe(8); // 7 asignaciones vigentes y la vacante de Finanzas
+    expect(contarFilas(arbol, new Set(["a7", claveVacante("p2"), claveVacante("p7")]))).toBe(2);
+    expect(contarFilas([], null)).toBe(0);
+  });
+
+  it("la jefatura de una unidad también cuenta", () => {
+    const con = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j1" };
+    const vig = vigentesPorPuesto([a("b1", "j1", "t1")]);
+    const filas = personasDelAlcance([p("j1", "x")], vig, trabajadores, cargos, indexar([con]));
+    const conJefe = arbolDePersonas(con, [], [p("j1", "x")], filas, vig, cargos);
+    expect(contarFilas(conJefe, null)).toBe(1);
+    expect(contarFilas(conJefe, new Set(["b1"]))).toBe(1);
+    expect(contarFilas(conJefe, new Set())).toBe(0);
+  });
+});
+
+describe("varias raíces (el directorio de una organización con más de una)", () => {
+  const otra = u("otra", TIPO_AREA, "Otra raíz", null);
+  const raices = [construir("gg").arbol, arbolDePersonas(otra, [otra], [], [], vigentes, cargos)];
+
+  it("cada raíz es del nivel 1, con su posición entre las raíces; expandir y contraer las toman todas", () => {
+    const filas = aplanarArbol(raices, () => false, null);
+    expect(filas.map((f) => [f.clave, f.nivel, f.posicion, f.hermanos])).toEqual([
+      [claveUnidad("gg"), 1, 1, 2],
+      [claveUnidad("otra"), 1, 2, 2],
+    ]);
+    expect(
+      expandirTodo({ abiertas: new Set(), cerradas: new Set() }, false, raices).abiertas.has("otra"),
+    ).toBe(true);
+    expect(
+      [...contraerTodo({ abiertas: new Set(), cerradas: new Set() }, false, raices).abiertas].sort(),
+    ).toEqual(["gg", "otra"]);
+  });
+
+  it("arbolesDePersonas arma todas las raíces de una vez, igual que una por una", () => {
+    const us = [...unidades.filter((x) => !x.deleted_at), otra];
+    const alcance = [...puestos, p("pv", "otra")];
+    const filas = personasDelAlcance(alcance, vigentes, trabajadores, cargos, indexar(us));
+    const juntas = arbolesDePersonas([us[0], otra], us, alcance, filas, vigentes, cargos);
+    const solas = [us[0], otra].map((r) => arbolDePersonas(r, us, alcance, filas, vigentes, cargos));
+    expect(juntas).toEqual(solas);
+    expect(juntas[1].vacantes.map((v) => v.clave)).toEqual([claveVacante("pv")]);
+  });
+
+  it("sin texto, solo `coinciden` decide: personas y vacantes por su clave, con sus ancestros", () => {
+    const vacante = arbolDePersonas(otra, [otra], [p("pv", "otra")], [], vigentes, cargos);
+    const visibles = visiblesDeBusqueda([raices[0], vacante], new Set(["a7", claveVacante("pv")]), "");
+    const vistas = aplanarArbol([raices[0], vacante], todo, visibles);
+    expect(vistas.filter((f) => f.clase !== "unidad").map((f) => f.clave)).toEqual([
+      "a7",
+      claveVacante("pv"),
+    ]);
+    expect(vistas.filter((f) => f.clase === "unidad").map((f) => f.clave)).toEqual(
+      ["gg", "operaciones", "mantencion", "electrica", "otra"].map(claveUnidad),
+    );
+    // Sin texto no coincide el nombre de una unidad ni el cargo de una vacante.
+    expect(visiblesDeBusqueda(vacante, new Set(), "").size).toBe(0);
+  });
+});
+
 describe("rendimiento", () => {
   it("2.000 unidades y 10.000 personas: armar, aplanar todo y buscar sin demora", () => {
     const us = [
@@ -309,5 +427,44 @@ describe("rendimiento", () => {
     expect(arbol.total).toBe(10_000);
     expect(todas).toHaveLength(12_000);
     expect(vistas.filter((f) => f.clase === "persona").length).toBe(coinciden.size);
+  });
+
+  it("el directorio: 2.000 unidades en 6 niveles y 10.000 personas; armar, plegar por nivel, aplanar y filtrar", () => {
+    // De a cinco hijos por unidad: la raíz, 5, 25, 125, 625 y el resto en el nivel 6.
+    const us = [
+      u("r", TIPO_AREA, "Raíz", null),
+      ...Array.from({ length: 1999 }, (_, i) =>
+        u(`u${i}`, TIPO_AREA, `Unidad ${i}`, i < 5 ? "r" : `u${Math.floor(i / 5) - 1}`),
+      ),
+    ];
+    const muchos = Array.from({ length: 10_000 }, (_, i) =>
+      p(`q${i}`, i % 2000 === 1999 ? "r" : `u${i % 2000}`),
+    );
+    const vig = vigentesPorPuesto(muchos.map((x, i) => a(`b${i}`, x.id, `w${i}`)));
+    const gente = muchos.map((_, i) => w(`w${i}`, `Persona ${i}`));
+    const vacio: Pliegue = { abiertas: new Set(), cerradas: new Set() };
+
+    // Lo que hace el directorio al pasar a Árbol: las personas de hoy, ordenadas, y el árbol.
+    const inicio = performance.now();
+    const filas = filtrarPersonasUnidad(
+      personasDelAlcance(muchos, vig, gente, cargos, indexar(us)),
+      "",
+      "nombre",
+    );
+    const arbol = [arbolDePersonas(us[0], us, muchos, filas, vig, cargos)];
+    const hondo = profundidad(arbol);
+    const tres = abrirHastaNivel(vacio, false, arbol, 3);
+    const alNivel = aplanarArbol(arbol, (id) => estaAbierta(tres, false, id), null);
+    const entero = expandirTodo(vacio, false, arbol);
+    const todas = aplanarArbol(arbol, (id) => estaAbierta(entero, false, id), null);
+    // Un filtro del directorio: unos 1.100 puestos (los de «persona 9…»), sin texto que buscar en las unidades.
+    const coinciden = new Set(filtrarPersonasUnidad(filas, "persona 9", "nombre").map((f) => f.clave));
+    const vistas = aplanarArbol(arbol, todo, visiblesDeBusqueda(arbol, coinciden, ""));
+    expect(performance.now() - inicio).toBeLessThan(500); // medido: unos 60 ms en total
+
+    expect(hondo).toBe(6);
+    expect(alNivel.filter((f) => f.clase === "unidad")).toHaveLength(1 + 5 + 25);
+    expect(todas).toHaveLength(12_000);
+    expect(vistas.filter((f) => f.clase === "persona")).toHaveLength(coinciden.size);
   });
 });

@@ -36,6 +36,7 @@ describe("borrarPreferenciasOrg", () => {
       "boldo:minimapa:A": "1",
       "boldo:vista:arbol:A": "1",
       "boldo:directorio:columnas:A": "1",
+      "boldo:directorio:vista:A": "1",
       "boldo:vista:B": "2",
       "boldo:minimapa:B": "2",
       "boldo:vista": "por PC",

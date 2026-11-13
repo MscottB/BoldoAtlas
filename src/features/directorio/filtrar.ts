@@ -258,3 +258,25 @@ export function columnaVisible(columnas: Columnas, clave: string, tiposEnUso: { 
   const base = tiposEnUso.filter((t) => t.id === TIPO_GERENCIA || t.id === TIPO_AREA);
   return (base.length ? base : tiposEnUso.slice(0, 1)).some((t) => clave === `tipo:${t.id}`);
 }
+
+/** Lo que abre una fila del directorio, de la lista o del árbol: la persona o, si no hay, el puesto (una vacante). */
+export interface Pulsable {
+  personaId: string | null;
+  puestoId: string | null;
+}
+
+/**
+ * Pulsar una fila del directorio, de la lista o del árbol, con el clic que la pulsó (null: Enter en el árbol). Ctrl+clic
+ * o clic central sobre una persona: `nueva` la abre en una pestaña nueva si puede (al lado no). Si no, un clic abre la
+ * ficha de la persona o, en una vacante, el puesto; el clic central u otro botón no hace nada más.
+ */
+export function pulsarFila(
+  e: MouseEvent | null,
+  f: Pulsable,
+  h: { nueva: (e: MouseEvent, personaId: string) => boolean; ficha: (id: string) => void; puesto: (id: string) => void },
+): void {
+  if (e && f.personaId && h.nueva(e, f.personaId)) return;
+  if (e?.type === "auxclick") return;
+  if (f.personaId) h.ficha(f.personaId);
+  else if (f.puestoId) h.puesto(f.puestoId);
+}
