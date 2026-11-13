@@ -5,6 +5,8 @@ import { i18n } from "@/i18n";
 import { alSoltarDatos } from "@/lib/baseActiva";
 import { normalizarTexto } from "@/lib/texto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { panelPropio, raizDelPanel } from "@/features/pestanas/panel";
+import type { Panel } from "@/features/pestanas/pestanas";
 import { creaCiclo, hijos, ruta, tipoHijo, type Vigentes } from "./jerarquia";
 import { colapsadosIniciales, contraerRama, expandirRama, subgrafoVisible } from "./layout";
 import { sumar, type Seleccion } from "./multiple";
@@ -111,61 +113,6 @@ export type VentanaConexion = { ancla: DOMRect; foco: HTMLElement | null } & (
   | { id: string; fija?: string }
   | { origen: string }
 );
-export const ventanaConexion = shallowRef<VentanaConexion | null>(null);
-/** Conexión que debe mostrarse si está en una rama plegada: ConexionLienzo abre la rama, mueve el lienzo y lo deja en null. */
-export const verConexion = ref<string | null>(null);
-
-/** «Conectar con…» de la tarjeta y de su menú contextual. */
-export function conectarDesde(origen: string) {
-  const tarjeta = document.querySelector(`.vue-flow__node[data-id="${CSS.escape(origen)}"]`) ?? document.body;
-  ventanaConexion.value = {
-    origen,
-    ancla: tarjeta.getBoundingClientRect(),
-    foco: document.activeElement as HTMLElement | null,
-  };
-}
-
-// Estado compartido por el lienzo y el panel de unidad: hay un solo lienzo en la app.
-const colapsados = ref(new Set<string>());
-const seleccion = ref<string | null>(null);
-/** Con 2 o más unidades seleccionadas, todas ellas (y `seleccion` es la última tocada); si no, vacío. */
-const multi = shallowRef<ReadonlySet<string>>(new Set());
-const seleccionadas = computed<ReadonlySet<string>>(() =>
-  multi.value.size ? multi.value : new Set(seleccion.value ? [seleccion.value] : []),
-);
-// Cambiar `seleccion` a algo fuera del conjunto (clic suelto, Esc, otra rama…) lo deshace.
-watch(
-  seleccion,
-  (id) => {
-    if (multi.value.size && (!id || !multi.value.has(id))) multi.value = new Set();
-  },
-  { flush: "sync" },
-);
-function aplicar({ ids, foco }: Seleccion) {
-  multi.value = ids.size >= 2 ? ids : new Set();
-  seleccion.value = foco;
-}
-const editando = ref<string | null>(null);
-/** Unidad que el lienzo debe centrar en cuanto pueda (VistaArbol lo atiende y lo deja en null). */
-const centrarEn = ref<string | null>(null);
-/** Zoom pedido por teclado (Ctrl+±): el grupo de zoom del lienzo lo atiende y lo deja en null. */
-const pedidoZoom = ref<"acercar" | "alejar" | null>(null);
-/** Cada pedido (Supr) sube el contador; el panel de la unidad seleccionada lo atiende con su flujo de eliminar. */
-const pedidoEliminar = ref(0);
-/** Pestaña que el panel de la unidad debe mostrar (lo atiende y la deja en null). */
-const pestanaPanel = ref<string | null>(null);
-/** Alcance que la pestaña Personas debe usar (true = con subunidades; la atiende y lo deja en null). */
-const ramaPersonas = ref<boolean | null>(null);
-let etiquetadas: ComputedRef<Set<string> | null> | undefined; // uno para todos los nodos
-let cumplen: ComputedRef<Set<string> | null> | undefined;
-let porPersona: ComputedRef<Map<string, Ubicacion[]>> | undefined;
-let conPersona: ComputedRef<Set<string> | null> | undefined;
-/** Puesto ubicado de una persona («Ver en el organigrama»): su tarjeta se marca hasta que cambia la selección. */
-export const puestoUbicado = ref<string | null>(null);
-watch(seleccion, () => (puestoUbicado.value = null), { flush: "sync" });
-/** Tarjeta (unidad o puesto) que recibe el foco en cuanto VistaArbol la centra (lo atiende y lo deja en null). */
-const enfocar = ref<string | null>(null);
-
 /** Una expansión que dejaría demasiadas tarjetas: VistaArbol pregunta si aplicar `todo`, `hasta` (nivel `nivel`) o nada. */
 export interface AvisoExpansion {
   tarjetas: number;
@@ -176,61 +123,157 @@ export interface AvisoExpansion {
   /** Deshace lo que el llamador ya cambió (una vista guardada aplica su configuración antes de preguntar). */
   revertir?: () => void;
 }
-const avisoExpansion = shallowRef<AvisoExpansion | null>(null);
+
+/** La tarjeta (unidad o puesto) `id` dentro de `raiz`: con el mismo árbol en los dos paneles, la de ese panel. */
+export const nodoEn = (raiz: ParentNode, id: string) =>
+  raiz.querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"]`);
+
+/**
+ * El id del Vue Flow de cada lienzo. Con el panel: si una pestaña pasa de un panel al otro, el lienzo que se monta no
+ * toma el del que se desmonta (que lo destruye al irse).
+ */
+export const idLienzo = (panel: Panel, pestana: string) => `arbol-${panel}-${pestana}`;
+
+// Estado compartido por el lienzo y el panel de unidad de cada panel: con la vista dividida hay un lienzo en cada uno.
+function crearEstado() {
+  const seleccion = ref<string | null>(null);
+  /** Con 2 o más unidades seleccionadas, todas ellas (y `seleccion` es la última tocada); si no, vacío. */
+  const multi = shallowRef<ReadonlySet<string>>(new Set());
+  /** Puesto ubicado de una persona («Ver en el organigrama»): su tarjeta se marca hasta que cambia la selección. */
+  const puestoUbicado = ref<string | null>(null);
+  // Cambiar `seleccion` a algo fuera del conjunto (clic suelto, Esc, otra rama…) deshace la múltiple y lo ubicado.
+  watch(
+    seleccion,
+    (id) => {
+      if (multi.value.size && (!id || !multi.value.has(id))) multi.value = new Set();
+      puestoUbicado.value = null;
+    },
+    { flush: "sync" },
+  );
+  return {
+    colapsados: ref(new Set<string>()),
+    seleccion,
+    multi,
+    seleccionadas: computed<ReadonlySet<string>>(() =>
+      multi.value.size ? multi.value : new Set(seleccion.value ? [seleccion.value] : []),
+    ),
+    editando: ref<string | null>(null),
+    /** Unidad que el lienzo debe centrar en cuanto pueda (VistaArbol lo atiende y lo deja en null). */
+    centrarEn: ref<string | null>(null),
+    /** Zoom pedido por teclado (Ctrl+±): el grupo de zoom del lienzo lo atiende y lo deja en null. */
+    pedidoZoom: ref<"acercar" | "alejar" | null>(null),
+    /** Cada pedido (Supr) sube el contador; el panel de la unidad seleccionada lo atiende con su flujo de eliminar. */
+    pedidoEliminar: ref(0),
+    /** Pestaña que el panel de la unidad debe mostrar (lo atiende y la deja en null). */
+    pestanaPanel: ref<string | null>(null),
+    /** Alcance que la pestaña Personas debe usar (true = con subunidades; la atiende y lo deja en null). */
+    ramaPersonas: ref<boolean | null>(null),
+    puestoUbicado,
+    /** Tarjeta (unidad o puesto) que recibe el foco en cuanto VistaArbol la centra (lo atiende y lo deja en null). */
+    enfocar: ref<string | null>(null),
+    avisoExpansion: shallowRef<AvisoExpansion | null>(null),
+    ventanaConexion: shallowRef<VentanaConexion | null>(null),
+    /** Conexión que debe mostrarse si está en una rama plegada: ConexionLienzo abre la rama, mueve el lienzo y lo deja en null. */
+    verConexion: ref<string | null>(null),
+    // Uno para todos los nodos del panel: el resaltado es de la vista de cada uno.
+    etiquetadas: undefined as ComputedRef<Set<string> | null> | undefined,
+    cumplen: undefined as ComputedRef<Set<string> | null> | undefined,
+    conPersona: undefined as ComputedRef<Set<string> | null> | undefined,
+  };
+}
+const lienzos = { principal: crearEstado(), lado: crearEstado() };
+let porPersona: ComputedRef<Map<string, Ubicacion[]>> | undefined;
 
 /** Sus ids son de la base anterior. `pedidoEliminar` es un contador: no nombra nada. */
 export function reiniciarLienzo(): void {
-  colapsados.value = new Set();
-  seleccion.value = null;
-  multi.value = new Set();
-  editando.value = null;
-  centrarEn.value = null;
-  pedidoZoom.value = null;
-  pestanaPanel.value = null;
-  ramaPersonas.value = null;
-  puestoUbicado.value = null;
-  enfocar.value = null;
-  avisoExpansion.value = null;
-  ventanaConexion.value = null;
-  verConexion.value = null;
+  for (const l of Object.values(lienzos)) {
+    l.colapsados.value = new Set();
+    l.seleccion.value = null;
+    l.multi.value = new Set();
+    l.editando.value = null;
+    l.centrarEn.value = null;
+    l.pedidoZoom.value = null;
+    l.pestanaPanel.value = null;
+    l.ramaPersonas.value = null;
+    l.puestoUbicado.value = null;
+    l.enfocar.value = null;
+    l.avisoExpansion.value = null;
+    l.ventanaConexion.value = null;
+    l.verConexion.value = null;
+  }
 }
 alSoltarDatos(reiniciarLienzo);
 
-function expandir(id: string) {
-  if (!colapsados.value.has(id)) return;
-  const s = new Set(colapsados.value);
-  s.delete(id);
-  colapsados.value = s;
-}
-
-export function useLienzo() {
+/** El lienzo del panel donde se monta quien llama, o el del panel que se pide (lo que no es de un panel: el con foco). */
+export function useLienzo(panel: Panel = panelPropio()) {
   const org = useOrganizacion();
-  const { config } = useVista();
+  const { config } = useVista(panel);
+  const estado = lienzos[panel];
+  const {
+    colapsados,
+    seleccion,
+    multi,
+    seleccionadas,
+    editando,
+    centrarEn,
+    pedidoZoom,
+    pedidoEliminar,
+    pestanaPanel,
+    ramaPersonas,
+    puestoUbicado,
+    enfocar,
+    avisoExpansion,
+    ventanaConexion,
+    verConexion,
+  } = estado;
+  function aplicar({ ids, foco }: Seleccion) {
+    multi.value = ids.size >= 2 ? ids : new Set();
+    seleccion.value = foco;
+  }
+  function expandir(id: string) {
+    if (!colapsados.value.has(id)) return;
+    const s = new Set(colapsados.value);
+    s.delete(id);
+    colapsados.value = s;
+  }
   // El resaltado vive en la configuración de la vista (así lo guardan las vistas nombradas).
-  etiquetadas ??= computed(() => {
+  const etiquetadas = (estado.etiquetadas ??= computed(() => {
     const id = config.value.resaltar.etiqueta;
     return id
       ? new Set(org.unidadEtiquetas.filter((x) => x.etiqueta_id === id).map((x) => x.unidad_id))
       : null;
-  });
-  cumplen ??= computed(() =>
+  }));
+  const cumplen = (estado.cumplen ??= computed(() =>
     unidadesQueCumplen(
       config.value.resaltar,
       org.enFecha.puestos,
       org.enFecha.vigentes,
       org.enFecha.trabajadores,
     ),
-  );
-  porPersona ??= computed(() => puestosPorPersona(org.enFecha.puestos, org.enFecha.vigentes));
+  ));
+  const personas = (porPersona ??= computed(() =>
+    puestosPorPersona(org.enFecha.puestos, org.enFecha.vigentes),
+  ));
   // El índice se rehace solo si cambian las personas; cada tecla solo lo recorre. Lo lee cada tarjeta (`coincide`):
   // cambiar el texto no rehace los nodos (17h).
-  if (!conPersona) {
+  if (!estado.conPersona) {
     const indice = computed(() => indicePersonas(org.enFecha.trabajadores));
     // Sin texto no se lee el índice: se arma recién con la primera búsqueda.
-    conPersona = computed(() => {
+    estado.conPersona = computed(() => {
       const texto = config.value.resaltar.texto;
-      return normalizarTexto(texto) ? unidadesConPersona(texto, indice.value, porPersona!.value) : null;
+      return normalizarTexto(texto) ? unidadesConPersona(texto, indice.value, personas.value) : null;
     });
+  }
+  const conPersona = estado.conPersona;
+
+  /** «Conectar con…» de la tarjeta y de su menú contextual: la ventanita, junto a la tarjeta de este panel. */
+  function conectarDesde(origen: string) {
+    const tarjeta = nodoEn(raizDelPanel(panel), origen) ?? document.body;
+    ventanaConexion.value = {
+      origen,
+      ancla: tarjeta.getBoundingClientRect(),
+      foco: document.activeElement as HTMLElement | null,
+    };
   }
 
   // Tarjetas a la vista con esas ramas plegadas (de `unidades`, las que se dibujan), con sus puestos si se ven.
@@ -335,6 +378,10 @@ export function useLienzo() {
     pestanaPanel,
     ramaPersonas,
     avisoExpansion,
+    puestoUbicado,
+    ventanaConexion,
+    verConexion,
+    conectarDesde,
     expandir,
     /** Las ramas plegadas de una vista guardada (avisa igual si abren de más; `revertir` deshace la vista si se cancela). */
     aplicarPlegado: plegar,
@@ -358,7 +405,7 @@ export function useLienzo() {
     revelarPuesto,
     enfocar,
     /** Puestos vigentes de cada persona en lo que muestra el lienzo (hoy o la fecha que se ve). */
-    puestosDePersona: porPersona,
+    puestosDePersona: personas,
     extender,
     duplicar,
     /** Ctrl+clic (`alternar`) o Mayús+clic sobre una tarjeta. */
@@ -406,6 +453,6 @@ export function useLienzo() {
       seleccion.value = id;
     },
     coincide: (u: Unidad) =>
-      coincideFiltro(u, config.value.resaltar.texto, etiquetadas!.value, cumplen!.value, conPersona!.value),
+      coincideFiltro(u, config.value.resaltar.texto, etiquetadas.value, cumplen.value, conPersona.value),
   };
 }

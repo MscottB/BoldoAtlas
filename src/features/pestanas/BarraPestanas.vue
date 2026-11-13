@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Plus, X } from "@lucide/vue";
+import { toast } from "vue-sonner";
+import { Columns2, Plus, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { RUTA_INICIO, hayVariasOrganizaciones } from "./pestanas";
-import { ID_AREA, abrirEnPestanaNueva, idPestana, usePestanas } from "./usePestanas";
+import { ID_AREA, ID_PANEL, abrirEnPestanaNueva, idPestana, usePestanas } from "./usePestanas";
 
 // Barra de pestañas sobre el área central (App.vue la muestra desde la segunda pestaña). Patrón tablist con activación
 // manual: las flechas solo mueven el foco (Enter o Espacio activan), para no montar el lienzo de cada pestaña al pasar.
@@ -121,6 +128,20 @@ function alPulsar(id: string) {
   if (recienArrastrada) return void (recienArrastrada = false);
   pestanas.activar(id);
 }
+// El tabpanel de cada pestaña: con la vista dividida, la sección de su panel; si no, el área central.
+function controla(id: string) {
+  if (id === pestanas.lado) return ID_PANEL.lado;
+  return pestanas.lado && id === pestanas.activa ? ID_PANEL.principal : ID_AREA;
+}
+// Menú contextual (clic derecho, Mayús+F10 o la tecla Menú): «Quitar de al lado» en la de al lado; «Abrir al lado» en
+// una que puede ir. En las demás no hay menú.
+const entrada = (id: string) =>
+  id === pestanas.lado ? "quitarDeAlLado" : pestanas.vaAlLado(id) ? "abrirAlLado" : null;
+function alElegir(id: string) {
+  if (id === pestanas.lado) return pestanas.cerrarDivision();
+  const r = pestanas.abrirAlLado(id);
+  if (!r.ok) toast.error(r.mensaje);
+}
 // Clic central sobre una pestaña: la cierra.
 function alPulsarAux(e: MouseEvent, id: string) {
   if (e.button !== 1) return;
@@ -137,54 +158,64 @@ function alPulsarAux(e: MouseEvent, id: string) {
       :aria-label="t('pestanas.barra')"
       class="flex min-w-0 items-end gap-0.5 overflow-x-auto"
     >
-      <div
-        v-for="(p, i) in items"
-        :key="p.id"
-        data-pestana
-        role="presentation"
-        class="flex max-w-52 min-w-24 shrink-0 touch-none items-center rounded-t-md select-none"
-        :class="[
-          p.id === pestanas.activa
-            ? 'bg-accent font-medium text-foreground shadow-[inset_0_-2px_0_var(--primary)]'
-            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-          arrastrada === p.id && 'opacity-60',
-        ]"
-        @pointerdown="alPresionar($event, p.id)"
-        @auxclick="alPulsarAux($event, p.id)"
-        @mousedown.middle.prevent
-      >
-        <button
-          :id="idPestana(p.id)"
-          type="button"
-          role="tab"
-          :aria-selected="p.id === pestanas.activa"
-          :aria-controls="ID_AREA"
-          aria-describedby="pestanas-ayuda"
-          :tabindex="enfocable(p.id) ? 0 : -1"
-          :title="p.titulo"
-          class="min-w-0 flex-1 truncate rounded-sm py-1.5 pr-1 pl-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-ring"
-          @click="alPulsar(p.id)"
-          @keydown="tecla($event, i)"
-          @focus="foco = p.id"
-        >
-          <span
-            v-if="p.color"
-            class="mr-1.5 inline-block size-2 rounded-full align-middle"
-            :style="{ backgroundColor: p.color }"
-            aria-hidden="true"
-          />{{ p.titulo }}
-        </button>
-        <button
-          type="button"
-          :tabindex="enfocable(p.id) ? 0 : -1"
-          :aria-label="t('pestanas.cerrar', { titulo: p.titulo })"
-          :title="t('pestanas.cerrar', { titulo: p.titulo })"
-          class="mr-1 shrink-0 rounded-sm p-0.5 hover:bg-background focus-visible:outline-2 focus-visible:outline-ring"
-          @click="pestanas.cerrar(p.id)"
-        >
-          <X class="size-3.5" aria-hidden="true" />
-        </button>
-      </div>
+      <ContextMenu v-for="(p, i) in items" :key="p.id">
+        <ContextMenuTrigger as-child :disabled="!entrada(p.id)">
+          <div
+            data-pestana
+            role="presentation"
+            class="flex max-w-52 min-w-24 shrink-0 touch-none items-center rounded-t-md select-none"
+            :class="[
+              p.id === pestanas.activa
+                ? 'bg-accent font-medium text-foreground shadow-[inset_0_-2px_0_var(--primary)]'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+              arrastrada === p.id && 'opacity-60',
+            ]"
+            @pointerdown="alPresionar($event, p.id)"
+            @auxclick="alPulsarAux($event, p.id)"
+            @mousedown.middle.prevent
+          >
+            <button
+              :id="idPestana(p.id)"
+              type="button"
+              role="tab"
+              :aria-selected="p.id === pestanas.activa"
+              :aria-controls="controla(p.id)"
+              aria-describedby="pestanas-ayuda"
+              :tabindex="enfocable(p.id) ? 0 : -1"
+              :title="p.titulo"
+              class="min-w-0 flex-1 truncate rounded-sm py-1.5 pr-1 pl-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-ring"
+              @click="alPulsar(p.id)"
+              @keydown="tecla($event, i)"
+              @focus="foco = p.id"
+            >
+              <span
+                v-if="p.color"
+                class="mr-1.5 inline-block size-2 rounded-full align-middle"
+                :style="{ backgroundColor: p.color }"
+                aria-hidden="true"
+              /><Columns2
+                v-if="p.id === pestanas.lado"
+                class="mr-1 inline-block size-3.5 align-middle"
+                aria-hidden="true"
+              />{{ p.titulo
+              }}<span v-if="p.id === pestanas.lado" class="sr-only"> {{ t("pestanas.alLado") }}</span>
+            </button>
+            <button
+              type="button"
+              :tabindex="enfocable(p.id) ? 0 : -1"
+              :aria-label="t('pestanas.cerrar', { titulo: p.titulo })"
+              :title="t('pestanas.cerrar', { titulo: p.titulo })"
+              class="mr-1 shrink-0 rounded-sm p-0.5 hover:bg-background focus-visible:outline-2 focus-visible:outline-ring"
+              @click="pestanas.cerrar(p.id)"
+            >
+              <X class="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent v-if="entrada(p.id)" class="w-48">
+          <ContextMenuItem @select="alElegir(p.id)">{{ t(`pestanas.${entrada(p.id)}`) }}</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
     <Button
       variant="ghost"

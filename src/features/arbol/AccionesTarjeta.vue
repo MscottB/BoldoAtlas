@@ -5,7 +5,7 @@ import { useVueFlow } from "@vue-flow/core";
 import { ChevronsDownUp, ChevronsUpDown, Ellipsis, Pencil, Plus, Waypoints } from "@lucide/vue";
 import type { Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
-import { abrirMenuContextual, conectarDesde, useLienzo } from "./useLienzo";
+import { abrirMenuContextual, useLienzo } from "./useLienzo";
 
 // Acciones de la tarjeta activa o seleccionada. Flotan sobre su borde: no mueven nada de lo que hay bajo el puntero. Las
 // mismas del menú contextual, y «Más» abre ese menú. Se montan solo en una tarjeta a la vez.
@@ -13,7 +13,7 @@ const props = defineProps<{ id: string; unidad: Unidad; hijos: number }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { viewport } = useVueFlow();
-const { colapsados, nuevaUnidad, renombrar, alternarRama } = useLienzo();
+const { colapsados, nuevaUnidad, renombrar, alternarRama, conectarDesde } = useLienzo();
 
 const soloLectura = computed(() => !!org.fechaVista);
 const plegada = computed(() => colapsados.value.has(props.id));

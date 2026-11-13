@@ -1,12 +1,13 @@
-import { computed, ref } from "vue";
-import { useRoute } from "vue-router";
+import { ref } from "vue";
 import { useEventListener } from "@vueuse/core";
 import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
-import { abrirMenuContextual, useLienzo } from "@/features/arbol/useLienzo";
+import { abrirMenuContextual, nodoEn, useLienzo } from "@/features/arbol/useLienzo";
 import { esVistaCerrable } from "@/app/estructura";
 import { useCerrarVista } from "@/app/useCerrarVista";
+import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
+import { routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
@@ -29,38 +30,24 @@ const MODAL =
 // panel mismo (no en sus pestañas ni campos, que las usan).
 const LIENZO_O_PANEL = ".vue-flow, [data-panel-unidad]";
 
-/** Atajos de teclado de la app. Se registra una sola vez, en App.vue. */
+/**
+ * Atajos de teclado de la app. Se registra una sola vez, en App.vue. Con la vista dividida actúan en el panel con foco:
+ * su ruta, su lienzo y lo que se busca, dentro de él.
+ */
 export function useAtajos() {
-  const route = useRoute();
   const org = useOrganizacion();
   const cerrarVista = useCerrarVista();
   const pestanas = usePestanas();
   const organizaciones = useOrganizaciones();
-  const { config } = useVista();
-  const {
-    seleccion,
-    seleccionadas,
-    editando,
-    nuevaHija,
-    revelar,
-    extender,
-    duplicar,
-    pedidoEliminar,
-    pedidoZoom,
-  } = useLienzo();
-
-  // Lo que se dibuja: el árbol completo o la rama enfocada (/?raiz=). Igual que VistaArbol.
-  const mostradas = computed(() => {
-    const raiz = route.query.raiz;
-    return typeof raiz === "string" && org.enFecha.porId.has(raiz)
-      ? unidadesDeRama(org.enFecha.unidades, raiz)
-      : org.enFecha.unidades;
-  });
+  const conFoco = usePanel();
 
   useEventListener(window, "keydown", (e: KeyboardEvent) => {
     // Ctrl+W nunca llega a la ventana (cerrarla o lo que haga el WebView), ni con un diálogo abierto.
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") e.preventDefault();
+    const route = routerConFoco().currentRoute.value;
     if (route.meta.sinMarco || e.isComposing) return;
+    const panel = conFoco.panel;
+    const { config } = useVista(panel);
     const destino = e.target instanceof Element ? e.target : null;
 
     // Con la paleta abierta solo Ctrl+K cuenta (la cierra); Esc y las flechas son de ella.
@@ -83,6 +70,7 @@ export function useAtajos() {
       modalAbierto: !!document.querySelector(MODAL),
       soloLectura: !!org.fechaVista,
       horizontal: config.value.direccion === "horizontal",
+      dividida: !!pestanas.lado,
     });
     if (!atajo) return;
 
@@ -100,8 +88,16 @@ export function useAtajos() {
       else pestanas.siguiente(atajo === "pestanaSiguiente" ? 1 : -1);
       return;
     }
+    // F6: el foco del teclado pasa al otro panel (el panel mismo lo recibe; desde ahí valen las flechas del lienzo).
+    if (atajo === "otroPanel") {
+      e.preventDefault();
+      const otro = panel === "lado" ? "principal" : "lado";
+      pestanas.enfocarPanel(otro);
+      document.querySelector<HTMLElement>(`[data-panel="${otro}"]`)?.focus();
+      return;
+    }
     // La pantalla del motivo tapa la vista: la ruta sigue siendo de la abierta, y lo demás escribiría en ella sin verse.
-    if (organizaciones.sinAbrir.has(pestanas.activa)) return;
+    if (organizaciones.sinAbrir.has(conFoco.pestana())) return;
     // Esc en Configuración, Ayuda o Acerca de las cierra (salvo que se esté escribiendo; los diálogos ya mandaron arriba).
     if (atajo === "cerrar" && esVistaCerrable(route.name)) {
       if (!destino?.closest(CAMPO)) {
@@ -112,6 +108,18 @@ export function useAtajos() {
     }
     // Ctrl+0 (encuadrar) lo atiende la barra del lienzo. El resto solo vale sobre el árbol.
     if (atajo === "encuadrar" || route.name !== "arbol") return;
+    const {
+      seleccion,
+      seleccionadas,
+      editando,
+      nuevaHija,
+      revelar,
+      extender,
+      duplicar,
+      pedidoEliminar,
+      pedidoZoom,
+    } = useLienzo(panel);
+    const raizPanel = raizDelPanel(panel);
 
     if (atajo === "acercar" || atajo === "alejar") {
       e.preventDefault(); // en WebView2 cambiaría el zoom de la página
@@ -125,29 +133,29 @@ export function useAtajos() {
       return;
     }
 
-    // Las flechas y el menú contextual valen con el foco suelto, en el lienzo o en el panel mismo.
+    // Las flechas y el menú contextual valen con el foco suelto, en el lienzo, en el panel de la unidad o en el panel de
+    // la vista dividida (al que lleva F6).
     const libre =
       !destino ||
       destino === document.body ||
       destino.closest(".vue-flow") ||
-      destino.matches("[data-panel-unidad]");
+      destino.matches("[data-panel-unidad], [data-panel]");
 
     if (atajo === "nuevaUnidad") {
       const raiz = route.query.raiz;
       void nuevaHija(typeof raiz === "string" ? raiz : null);
     } else if (atajo === "buscarLienzo") {
-      document.querySelector<HTMLElement>("[data-buscar-lienzo]")?.focus();
+      raizPanel.querySelector<HTMLElement>("[data-buscar-lienzo]")?.focus();
     } else if (atajo === "eliminar") {
       if (!seleccion.value) return;
       pedidoEliminar.value++;
     } else if (atajo === "menuContextual") {
       // Sobre la tarjeta enfocada; si no, la seleccionada; si no, el fondo del lienzo. Se abre en su centro.
       if (!libre) return;
-      const elegida = seleccion.value && `.vue-flow__node[data-id="${CSS.escape(seleccion.value)}"]`;
       const el =
         destino?.closest(".vue-flow__node") ??
-        (elegida ? document.querySelector(elegida) : null) ??
-        document.querySelector(".vue-flow__pane");
+        (seleccion.value ? nodoEn(raizPanel, seleccion.value) : null) ??
+        raizPanel.querySelector(".vue-flow__pane");
       if (!el) return;
       abrirMenuContextual(el);
     } else if (atajo === "renombrar") {
@@ -162,8 +170,14 @@ export function useAtajos() {
     } else {
       if (!libre) return;
       const extiende = atajo.startsWith("extender:");
+      // Lo que se dibuja: el árbol completo o la rama enfocada (/?raiz=). Igual que VistaArbol.
+      const raiz = route.query.raiz;
+      const mostradas =
+        typeof raiz === "string" && org.enFecha.porId.has(raiz)
+          ? unidadesDeRama(org.enFecha.unidades, raiz)
+          : org.enFecha.unidades;
       const id = destinoNavegacion(
-        mostradas.value,
+        mostradas,
         seleccion.value,
         (extiende ? atajo.slice("extender:".length) : atajo) as Navegacion,
       );

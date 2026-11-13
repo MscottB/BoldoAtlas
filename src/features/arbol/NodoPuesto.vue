@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useEstilo } from "@/features/puestos/useEstilo";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useTema } from "@/features/tema/useTema";
-import { puestoUbicado } from "./useLienzo";
+import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamPuesto } from "./vista";
 import { CONTEXTO_LIENZO } from "./contexto";
@@ -37,6 +37,7 @@ watch(contexto.ligera, async () => {
   raiz.value?.focus();
 });
 // El puesto de una persona que se buscó con «Ver en el organigrama»: marcado como la unidad seleccionada.
+const { puestoUbicado } = useLienzo();
 const ubicado = computed(() => puestoUbicado.value === props.id);
 const compacta = computed(() => config.value.densidad === "compacta");
 const horizontal = computed(() => config.value.direccion === "horizontal");

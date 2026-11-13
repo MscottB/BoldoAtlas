@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -42,6 +42,7 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
 import VistaDividida from "@/features/pestanas/VistaDividida.vue";
+import { routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, clicNuevaPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
@@ -90,6 +91,7 @@ const nombre = (item: Entrada) => {
   return n ? `${t(item.etiqueta)}, ${t("revision.avisos", n)}` : t(item.etiqueta);
 };
 const route = useRoute();
+const router = useRouter();
 const org = useOrganizacion();
 watch(() => org.org.nombre, ponerTitulo, { immediate: true });
 const cerrarVista = useCerrarVista();
@@ -102,10 +104,16 @@ void organizaciones.cargarLista().then((r) => {
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);
-// Ctrl+clic: la entrada se abre en una pestaña nueva. Un segundo clic en la entrada de la vista que ya se está viendo la
-// cierra (en captura: antes de que el enlace navegue).
+// Ctrl+clic: la entrada se abre en una pestaña nueva. Con foco al lado, navega en ese panel; Configuración, Ayuda y
+// Acerca de, en el principal. Un segundo clic en la entrada de la vista que ya se está viendo la cierra (en captura: antes
+// de que el enlace navegue).
 function alPulsar(e: MouseEvent, item: Entrada) {
   if (item.to && clicNuevaPestana(e, item.to)) return;
+  const lado = item.to && routerConFoco(item.to);
+  if (item.to && lado && lado !== router) {
+    e.preventDefault();
+    return void lado.push(item.to);
+  }
   // La pantalla del motivo tapa la vista: en la misma ruta, sin esto, el clic no haría nada (el resto lo ve `usePestanas`).
   if (item.to && sinAbrirActiva.value) {
     e.preventDefault();

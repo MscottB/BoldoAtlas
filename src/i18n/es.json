@@ -23,7 +23,8 @@
     "exportar": "Exportar",
     "llegaFase4": "Llega en la Fase 4",
     "temaClaro": "Cambiar a tema claro",
-    "temaOscuro": "Cambiar a tema oscuro"
+    "temaOscuro": "Cambiar a tema oscuro",
+    "dividir": "Dividir"
   },
   "guardado": {
     "guardando": "Guardando…",
@@ -737,6 +738,7 @@
       "revision": "Ir a Revisión",
       "tema": "Cambiar tema",
       "ayuda": "Ayuda",
+      "dividir": "Dividir la vista",
       "abrirOtra": "Abrir otra organización: {nombre}",
       "comparar": "Comparar con «{nombre}»"
     }
@@ -878,7 +880,10 @@
     "ladoALado": "Lado a lado",
     "unaSobreOtra": "Una sobre otra",
     "cerrarDivision": "Cerrar la vista dividida",
-    "divisor": "Tamaño de los paneles"
+    "divisor": "Tamaño de los paneles",
+    "abrirAlLado": "Abrir al lado",
+    "quitarDeAlLado": "Quitar de al lado",
+    "alLado": "(al lado)"
   },
   "bienvenida": {
     "titulo": "Te damos la bienvenida a BoldoAtlas",

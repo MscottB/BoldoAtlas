@@ -13,7 +13,7 @@ import {
   type Caja,
   type Punto,
 } from "./lateral";
-import { ventanaConexion, verConexion } from "./useLienzo";
+import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 
 // Conexión lateral: la línea va por donde dijo trazarLaterales, no de una tarjeta a otra. Sobre la línea hay un botón: su
@@ -35,6 +35,7 @@ const org = useOrganizacion();
 const { trazados, cajas, relacionesActivas, ligera } = inject(CONTEXTO_LIENZO)!;
 const { viewport, panBy } = useVueFlow();
 const { config } = useVista();
+const { ventanaConexion, verConexion } = useLienzo();
 
 const trazado = computed(() => trazados.value.get(props.id));
 const d = computed(() => trazado.value && caminoSvg(trazado.value.puntos));

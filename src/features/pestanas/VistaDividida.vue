@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, provide, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Columns2, Rows2, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,9 @@ import { useOrganizaciones } from "@/stores/organizaciones";
 import DivisorPaneles from "./DivisorPaneles.vue";
 import PanelLado from "./PanelLado.vue";
 import PestanaSinAbrir from "./PestanaSinAbrir.vue";
-import { propsPanel } from "./panel";
+import { PANEL, propsPanel } from "./panel";
 import type { Panel } from "./pestanas";
-import { ID_AREA, idPestana, usePestanas } from "./usePestanas";
+import { ID_AREA, ID_PANEL, idPestana, usePestanas } from "./usePestanas";
 
 // El área central: la pestaña activa y, con la vista dividida, la de al lado, con el divisor entre ambas.
 // El panel principal es siempre el mismo elemento: dividir o dejar de dividir no vuelve a montar su vista.
@@ -17,6 +17,8 @@ const { t } = useI18n();
 const pestanas = usePestanas();
 const organizaciones = useOrganizaciones();
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
+// Las vistas del principal saben que están en él; lo que no es de un panel (paleta, atajos) sigue al foco (ver usePanel).
+provide(PANEL, { panel: "principal", pestana: () => pestanas.activa });
 // Con una sola pestaña no hay barra, ni panel de pestaña. Con la vista dividida, el de la activa es el panel principal.
 const conPestanas = computed(() => pestanas.lista.length > 1);
 const panelDePestana = (enPrincipal: boolean) =>
@@ -25,6 +27,11 @@ const panelDePestana = (enPrincipal: boolean) =>
     : {};
 // Mientras se arrastra el divisor, la proporción vive aquí; se guarda una vez, al soltarlo.
 const enArrastre = ref<number | null>(null);
+// Cerrada a mitad de un arrastre: al volver a dividir no queda la proporción de entonces.
+watch(
+  () => pestanas.lado,
+  (l) => l || (enArrastre.value = null),
+);
 const proporcion = computed(() => enArrastre.value ?? pestanas.division.proporcion);
 const ladoALado = computed(() => pestanas.division.orientacion === "horizontal");
 const etiquetaOrientacion = computed(() =>
@@ -58,8 +65,9 @@ const encabezado = (p: Panel) => [
     <div v-else class="flex h-full" :class="ladoALado ? 'flex-row' : 'flex-col'">
       <!-- `propsPanel` marca con `aria-current` el panel donde actúan la barra de pestañas y sus atajos. -->
       <section
+        :id="ID_PANEL.principal"
         v-bind="{ ...propsPanel('principal'), ...panelDePestana(true) }"
-        class="flex min-h-0 min-w-0 flex-col"
+        class="flex min-h-0 min-w-0 flex-col focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         :style="{ flex: `${crece('principal')} 1 0%` }"
       >
         <header v-if="pestanas.lado" :class="encabezado('principal')">
@@ -86,8 +94,9 @@ const encabezado = (p: Panel) => [
           @update:proporcion="pestanas.proporcion"
         />
         <section
+          :id="ID_PANEL.lado"
           v-bind="propsPanel('lado')"
-          class="flex min-h-0 min-w-0 flex-col"
+          class="flex min-h-0 min-w-0 flex-col focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
           :style="{ flex: `${crece('lado')} 1 0%` }"
           aria-labelledby="titulo-panel-lado"
         >

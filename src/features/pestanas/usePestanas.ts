@@ -22,6 +22,8 @@ import * as P from "./pestanas";
 /** Id del área central (el panel de las pestañas): recibe el foco si al cerrar una pestaña no queda barra. */
 export const ID_AREA = "area-central";
 export const idPestana = (id: string) => `pestana-${id}`;
+/** La sección de cada panel con la vista dividida: el tabpanel de la pestaña que muestra. */
+export const ID_PANEL = { principal: "panel-principal", lado: "panel-lado" } as const;
 
 /**
  * Pestañas de trabajo del proyecto abierto (spec §7). La ruta de la pestaña activa es la del router: navegar dentro de
@@ -404,6 +406,8 @@ export const usePestanas = defineStore("pestanas", () => {
     abrirNueva,
     cerrar,
     abrirAlLado,
+    /** Si la pestaña puede ir al lado (el menú de la pestaña ofrece «Abrir al lado» solo entonces). */
+    vaAlLado,
     dividir,
     /** Deja la pestaña de al lado en la barra como una más. */
     cerrarDivision() {

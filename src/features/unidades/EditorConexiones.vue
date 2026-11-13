@@ -3,7 +3,7 @@ import { computed, ref, useId, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { Pencil, Waypoints, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
-import { ventanaConexion } from "@/features/arbol/useLienzo";
+import { useLienzo } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { filasDeConexiones } from "./panel";
@@ -16,6 +16,7 @@ const props = defineProps<{ unidadId: string }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { config } = useVista();
+const { ventanaConexion } = useLienzo();
 const uid = useId();
 
 const filas = computed(() => filasDeConexiones(org.conexiones, org.porId, props.unidadId));

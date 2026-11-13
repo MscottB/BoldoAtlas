@@ -9,6 +9,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { finDelArrastre, nuevaProporcion, proporcionDelPuntero } from "./divisor";
 import { propsPanel, usePanel } from "./panel";
 import { usePestanas } from "./usePestanas";
+import BarraPestanas from "./BarraPestanas.vue";
 import VistaDividida from "./VistaDividida.vue";
 
 // Cada vista dice cuál es, qué ruta ve y en qué panel está: así se ve qué router y qué panel le llegan.
@@ -76,8 +77,8 @@ async function arrancar(conLado: boolean, deLado: { ruta: string; volver?: strin
   return p;
 }
 
-async function html() {
-  const app = createSSRApp({ render: () => h(VistaDividida) });
+async function html(raiz: Component = VistaDividida) {
+  const app = createSSRApp({ render: () => h(raiz) });
   app.use(pinia).use(router).use(i18n);
   return renderToString(app);
 }
@@ -134,6 +135,23 @@ describe("VistaDividida", () => {
     expect(s).toMatch(/aria-valuemax="80"/);
     expect(s).toMatch(/tabindex="0"/);
     expect(s).toMatch(/data-panel="principal"[^>]*aria-current="true"/);
+  });
+
+  it("la pestaña de al lado se marca en la barra y cada pestaña controla la sección de su panel", async () => {
+    await arrancar(true);
+    const vista = await html();
+    expect(vista).toMatch(/<section id="panel-principal"[^>]*data-panel="principal"/);
+    expect(vista).toMatch(/<section id="panel-lado"[^>]*data-panel="lado"/);
+    const barra = await html(BarraPestanas);
+    expect(barra).toMatch(/id="pestana-a"[^>]*aria-controls="panel-principal"/);
+    expect(barra).toMatch(/id="pestana-b"[^>]*aria-controls="panel-lado"/);
+    expect(texto(barra)).toContain("(al lado)");
+
+    usePestanas().cerrarDivision();
+    const sinDividir = await html(BarraPestanas);
+    expect(sinDividir).toMatch(/id="pestana-a"[^>]*aria-controls="area-central"/);
+    expect(sinDividir).toMatch(/id="pestana-b"[^>]*aria-controls="area-central"/);
+    expect(texto(sinDividir)).not.toContain("(al lado)");
   });
 
   it("un focusin o un clic en un panel lo deja con foco y lo marca", async () => {

@@ -8,12 +8,9 @@ import {
   coincideFiltro,
   destinoAlSoltar,
   estadoMover,
-  puestoUbicado,
   reiniciarLienzo,
   unidadesQueCumplen,
   useLienzo,
-  ventanaConexion,
-  verConexion,
 } from "./useLienzo";
 import { useVista } from "./useVista";
 import { VISTA_POR_DEFECTO } from "./vista";
@@ -33,9 +30,11 @@ describe("reiniciarLienzo", () => {
     l.ramaPersonas.value = true;
     l.enfocar.value = "u1";
     l.avisoExpansion.value = { tarjetas: 1, nivel: null, todo: new Set(["u1"]), hasta: null };
-    puestoUbicado.value = "p1";
-    verConexion.value = "x1";
-    ventanaConexion.value = { id: "x1", ancla: {} as DOMRect, foco: null };
+    const alLado = useLienzo("lado");
+    alLado.seleccion.value = "u1";
+    l.puestoUbicado.value = "p1";
+    l.verConexion.value = "x1";
+    l.ventanaConexion.value = { id: "x1", ancla: {} as DOMRect, foco: null };
     reiniciarLienzo();
     expect(l.colapsados.value.size).toBe(0);
     expect(l.seleccion.value).toBeNull();
@@ -47,9 +46,10 @@ describe("reiniciarLienzo", () => {
     expect(l.ramaPersonas.value).toBeNull();
     expect(l.enfocar.value).toBeNull();
     expect(l.avisoExpansion.value).toBeNull();
-    expect(puestoUbicado.value).toBeNull();
-    expect(verConexion.value).toBeNull();
-    expect(ventanaConexion.value).toBeNull();
+    expect(l.puestoUbicado.value).toBeNull();
+    expect(l.verConexion.value).toBeNull();
+    expect(l.ventanaConexion.value).toBeNull();
+    expect(alLado.seleccion.value).toBeNull(); // también el lienzo del panel de al lado
   });
 
   it("no toca el contador de Supr", () => {
@@ -353,16 +353,16 @@ describe("ver a una persona en el organigrama", () => {
     expect(l.revelarPuesto("p4")).toEqual({ ok: true });
     expect(l.colapsados.value).toEqual(new Set());
     expect([l.seleccion.value, l.centrarEn.value, l.enfocar.value]).toEqual(["mecanica", "mecanica", "mecanica"]);
-    expect(puestoUbicado.value).toBeNull();
+    expect(l.puestoUbicado.value).toBeNull();
   });
 
   it("con «Ver puestos»: selecciona la unidad y centra, marca y enfoca la tarjeta del puesto", () => {
     const l = nuevo(true);
     expect(l.revelarPuesto("p4").ok).toBe(true);
     expect([l.seleccion.value, l.centrarEn.value, l.enfocar.value]).toEqual(["mecanica", "p4", "p4"]);
-    expect(puestoUbicado.value).toBe("p4");
+    expect(l.puestoUbicado.value).toBe("p4");
     l.seleccionar("finanzas"); // otra selección quita la marca
-    expect(puestoUbicado.value).toBeNull();
+    expect(l.puestoUbicado.value).toBeNull();
   });
 
   it("un puesto que no está en lo que se ve no se revela y lo dice", () => {

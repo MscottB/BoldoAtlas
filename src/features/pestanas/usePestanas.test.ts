@@ -7,8 +7,9 @@ import { i18n } from "@/i18n";
 import { fijarBase } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
-import { PANEL } from "./panel";
+import { PANEL, usePanel } from "./panel";
 import { MAX_PESTANAS } from "./pestanas";
+import { registrarRouter, routerConFoco } from "./routerConFoco";
 import { useEstadoPestana, usePestanas } from "./usePestanas";
 
 // Sin DOM: un renderer que no dibuja nada, para que un componente se monte y desmonte (onMounted, onBeforeUnmount).
@@ -809,6 +810,60 @@ describe("usePestanas con la vista dividida", () => {
     expect(p.activa).toBe("a");
     expect(p.lado).toBe("b");
     expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]);
+  });
+
+  it("paleta_y_menu_lateral_navegan_en_el_panel_con_foco", async () => {
+    const p = await arrancar(tres("a", "b"));
+    const lado = nuevoRouter();
+    const quitarPrincipal = registrarRouter("principal", router);
+    const quitarLado = registrarRouter("lado", lado);
+    expect(routerConFoco()).toBe(router);
+    // Fuera de los paneles (la paleta, la ficha, los atajos), el panel es el que tiene el foco.
+    expect(usePanel().panel).toBe("principal");
+    expect(usePanel().pestana()).toBe("a");
+
+    p.enfocarPanel("lado");
+    expect(usePanel().panel).toBe("lado");
+    expect(usePanel().pestana()).toBe("b");
+    expect(routerConFoco()).toBe(lado);
+    expect(routerConFoco("/directorio")).toBe(lado);
+    expect(p.conFoco).toBe("lado");
+
+    // Configuración, Ayuda, Acerca de y la Bienvenida no van al lado: al principal, que pasa a tener el foco.
+    for (const destino of ["/configuracion", "/ayuda", { name: "acerca" }, "/bienvenida"]) {
+      p.enfocarPanel("lado");
+      expect(routerConFoco(destino)).toBe(router);
+      expect(p.conFoco).toBe("principal");
+    }
+
+    // Sin el panel de al lado montado, el principal.
+    p.enfocarPanel("lado");
+    quitarLado();
+    expect(routerConFoco()).toBe(router);
+    // Quitar uno que ya no es el registrado no quita el nuevo.
+    const otro = nuevoRouter();
+    registrarRouter("lado", otro);
+    quitarLado();
+    expect(routerConFoco()).toBe(otro);
+    quitarPrincipal();
+  });
+
+  it("menu_de_pestana_abrir_y_quitar_de_al_lado", async () => {
+    const p = await arrancar({
+      lista: [...tres("a", null).lista, { id: "x", org: "B", ruta: "/" }],
+      activa: "a",
+    });
+    useOrganizaciones().sinAbrir.set("c", motivo);
+    // «Abrir al lado» solo en las que pueden ir: de la abierta y sin motivo.
+    expect(["a", "b", "c", "x"].map(p.vaAlLado)).toEqual([true, true, false, false]);
+
+    expect(p.abrirAlLado("b").ok).toBe(true);
+    expect(p.lado).toBe("b");
+    // «Quitar de al lado»: la pestaña sigue en la barra como una más.
+    p.cerrarDivision();
+    expect(p.lado).toBeNull();
+    expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "c", "x"]);
+    expect(p.activa).toBe("a");
   });
 
   it("useEstadoPestana guarda en la pestaña de su panel", async () => {

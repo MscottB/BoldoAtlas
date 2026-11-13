@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CONTEXTO_LIENZO } from "@/features/arbol/contexto";
-import { useLienzo, verConexion } from "@/features/arbol/useLienzo";
+import { useLienzo } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { conexionOculta, excluidasParaConexion, ultimoEnviado } from "./panel";
@@ -21,7 +21,7 @@ const emit = defineEmits<{ cerrar: [] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { colapsados } = useLienzo();
+const { colapsados, verConexion } = useLienzo();
 const { config } = useVista();
 const { mostradas } = inject(CONTEXTO_LIENZO)!;
 const uid = useId();

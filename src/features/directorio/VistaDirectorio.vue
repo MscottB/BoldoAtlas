@@ -21,6 +21,7 @@ import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
+import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
@@ -42,6 +43,10 @@ const { t } = useI18n();
 const org = useOrganizacion();
 const ficha = useFicha();
 const puesto = usePuesto();
+// Con el directorio en los dos paneles, el buscador de este.
+const { panel } = usePanel();
+const enfocarBuscador = () =>
+  raizDelPanel(panel).querySelector<HTMLInputElement>("[data-buscar-directorio]")?.focus();
 
 // Los filtros y el orden se recuerdan por organización; cada pestaña, además, recuerda los suyos (validados al leer).
 const dePestana = useEstadoPestana(() => ({ filtros: { ...filtros.value }, orden: { ...orden.value } }));
@@ -145,12 +150,12 @@ function abrir(e: MouseEvent, f: FilaDirectorio) {
 // «Limpiar todo» desaparece al limpiar: el foco pasa al buscador para no quedar en el body.
 function limpiarTodo() {
   filtros.value = { ...SIN_FILTROS };
-  document.querySelector<HTMLInputElement>("[data-buscar-directorio]")?.focus();
+  enfocarBuscador();
 }
 // El botón desaparece con la etiqueta: el foco pasa al buscador para no quedar en el body.
 function quitarPersona() {
   filtros.value.persona = null;
-  document.querySelector<HTMLInputElement>("[data-buscar-directorio]")?.focus();
+  enfocarBuscador();
 }
 const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipoId === tipoId)?.nombre;
 </script>

@@ -23,7 +23,8 @@
     "exportar": "Export",
     "llegaFase4": "Coming in Phase 4",
     "temaClaro": "Switch to light theme",
-    "temaOscuro": "Switch to dark theme"
+    "temaOscuro": "Switch to dark theme",
+    "dividir": "Split"
   },
   "guardado": {
     "guardando": "Saving…",
@@ -737,6 +738,7 @@
       "revision": "Go to Review",
       "tema": "Change theme",
       "ayuda": "Help",
+      "dividir": "Split the view",
       "abrirOtra": "Open another organization: {nombre}",
       "comparar": "Compare with “{nombre}”"
     }
@@ -878,7 +880,10 @@
     "ladoALado": "Side by side",
     "unaSobreOtra": "One above the other",
     "cerrarDivision": "Close split view",
-    "divisor": "Panel size"
+    "divisor": "Panel size",
+    "abrirAlLado": "Open to the side",
+    "quitarDeAlLado": "Remove from the side",
+    "alLado": "(to the side)"
   },
   "bienvenida": {
     "titulo": "Welcome to BoldoAtlas",

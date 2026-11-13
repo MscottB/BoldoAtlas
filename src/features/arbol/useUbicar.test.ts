@@ -11,10 +11,17 @@ const m = vi.hoisted(() => ({
   push: vi.fn(),
   guardarEstado: vi.fn(),
 }));
-vi.mock("vue-router", () => ({ useRoute: () => m.ruta, useRouter: () => ({ push: m.push }) }));
+vi.mock("@/features/pestanas/routerConFoco", () => ({
+  routerDel: () => ({ currentRoute: { value: m.ruta }, push: m.push }),
+}));
 vi.mock("@/features/pestanas/usePestanas", () => ({
   abrirEnPestanaNueva: vi.fn(),
-  usePestanas: () => ({ activa: "pestana", guardarEstado: m.guardarEstado }),
+  usePestanas: () => ({
+    activa: "pestana",
+    conFoco: "principal",
+    lado: null,
+    guardarEstado: m.guardarEstado,
+  }),
 }));
 
 // p4 está en Mecánica (GG › Operaciones › Mantención › Mecánica).

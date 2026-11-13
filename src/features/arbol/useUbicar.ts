@@ -1,6 +1,7 @@
-import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 import { i18n } from "@/i18n";
 import { usePanel } from "@/features/pestanas/panel";
+import { routerDel } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { unidadesDeRama } from "./layout";
@@ -13,16 +14,17 @@ export const rutaPuesto = (p: { id: string; unidad_id: string }): RouteLocationR
   query: { ver: p.unidad_id, puesto: p.id },
 });
 
-/** «Ver en el organigrama»: lleva al lienzo con el puesto de una persona a la vista. */
+/**
+ * «Ver en el organigrama»: lleva al lienzo con el puesto de una persona a la vista. En el panel de quien llama; fuera de
+ * los paneles (la ficha, la paleta), en el que tiene el foco al ubicar.
+ */
 export function useUbicar() {
-  const route = useRoute();
-  const router = useRouter();
   const org = useOrganizacion();
-  const { revelarPuesto, puestosDePersona } = useLienzo();
+  const { puestosDePersona } = useLienzo();
   const panel = usePanel();
 
   /**
-   * En la pestaña activa (o en una nueva con `nueva`, como Ctrl+clic). Ya en el árbol y con la unidad dentro de la rama
+   * En la pestaña de su panel (o en una nueva con `nueva`, como Ctrl+clic). Ya en el árbol y con la unidad dentro de la rama
    * enfocada basta revelarla; si no (otra vista, otra rama o un subárbol guardado que no la incluye), se abre el árbol
    * completo con ella. Una rama enfocada que no existe en la fecha que se ve no cuenta: el lienzo ya muestra todo.
    */
@@ -34,12 +36,14 @@ export function useUbicar() {
       abrirEnPestanaNueva(rutaPuesto(p)); // avisa por su cuenta si no se puede
       return { ok: true };
     }
+    const router = routerDel(panel.panel);
+    const route = router.currentRoute.value;
     const raiz = route.query.raiz;
     const dentro =
       typeof raiz !== "string" ||
       !org.enFecha.porId.has(raiz) ||
       unidadesDeRama(org.enFecha.unidades, raiz).some((u) => u.id === p.unidad_id);
-    if (route.name === "arbol" && dentro) return revelarPuesto(p.id);
+    if (route.name === "arbol" && dentro) return useLienzo(panel.panel).revelarPuesto(p.id);
     // La pestaña restaura su estado guardado si vuelve a la misma ruta (viniendo de una vista que no guarda el suyo): esto
     // es saltar, no volver.
     usePestanas().guardarEstado(panel.pestana(), "", null);

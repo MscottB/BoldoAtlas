@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { Download, Search } from "@lucide/vue";
+import { toast } from "vue-sonner";
+import { Columns2, Download, Search } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import BotonTema from "@/components/BotonTema.vue";
@@ -11,6 +12,7 @@ import MenuApp from "@/features/proyecto/MenuApp.vue";
 import { datosProyectoAbierto } from "@/features/proyecto/menuApp";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import AvisoActualizacion from "@/features/actualizaciones/AvisoActualizacion.vue";
+import { usePestanas } from "@/features/pestanas/usePestanas";
 
 // "buscar" abre la paleta de comandos (Ctrl+K); lo atiende App.vue. La barra lateral se pliega con su botón, al pie de ella.
 defineEmits<{ buscar: [] }>();
@@ -18,6 +20,12 @@ defineEmits<{ buscar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const organizaciones = useOrganizaciones();
+const pestanas = usePestanas();
+// Abre al lado una pestaña nueva con la vista de la activa; con la vista ya dividida, la cierra.
+function dividir() {
+  const r = pestanas.dividir();
+  if (!r.ok) toast.error(r.mensaje);
+}
 </script>
 
 <template>
@@ -52,6 +60,15 @@ const organizaciones = useOrganizaciones();
         <Search aria-hidden="true" />
         <span>{{ t("barra.buscar") }}</span>
         <kbd class="ml-auto rounded border px-1 font-sans text-xs">Ctrl K</kbd>
+      </Button>
+      <Button
+        variant="outline"
+        class="aria-pressed:bg-accent"
+        :aria-pressed="!!pestanas.lado"
+        @click="dividir"
+      >
+        <Columns2 aria-hidden="true" />
+        {{ t("barra.dividir") }}
       </Button>
       <IndicadorGuardado :guardando="org.guardando" :error="org.error" />
       <Tooltip v-if="MOSTRAR_PROXIMAMENTE">

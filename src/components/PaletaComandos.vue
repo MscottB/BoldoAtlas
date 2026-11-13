@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from "vue";
-import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
   ArrowLeftRight,
   CircleHelp,
+  Columns2,
   FolderOpen,
   ListChecks,
   LocateFixed,
@@ -40,20 +41,23 @@ import {
   rutaComparar,
 } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
+import { usePanel } from "@/features/pestanas/panel";
+import { routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 
 // Ctrl+K: unidades, personas, puestos vacantes y acciones. El filtro es propio (sin tildes ni mayúsculas): el de Command
-// compara contra `value`, que aquí es un id con prefijo de grupo.
+// compara contra `value`, que aquí es un id con prefijo de grupo. Con la vista dividida, lo que elige actúa en el panel
+// con foco: su ruta, su lienzo y su navegación (Configuración, Ayuda y Acerca de, en el principal).
 const abierto = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
-const route = useRoute();
-const router = useRouter();
 const org = useOrganizacion();
 const organizaciones = useOrganizaciones();
 const pestanas = usePestanas();
-const { revelar, nuevaHija } = useLienzo();
+const conFoco = usePanel();
+const route = computed(() => routerConFoco().currentRoute.value);
+const ir = (destino: RouteLocationRaw) => routerConFoco(destino).push(destino);
 const { tema } = useTema();
 const ficha = useFicha();
 const puesto = usePuesto();
@@ -83,9 +87,9 @@ interface AccionPaleta extends Accion {
 }
 // La pantalla del motivo tapa la vista: lo que hay detrás es de la organización abierta, no de esta pestaña. Nada de sus
 // datos (una ficha o un puesto escribirían en ella), y lo que lleva a una vista va a una pestaña nueva.
-const conMotivo = computed(() => organizaciones.sinAbrir.has(pestanas.activa));
+const conMotivo = computed(() => organizaciones.sinAbrir.has(conFoco.pestana()));
 const SIN_DATOS: IndicePaleta = { unidades: [], personas: [], vacantes: [] };
-const enArbol = computed(() => route.name === "arbol" && !conMotivo.value);
+const enArbol = computed(() => route.value.name === "arbol" && !conMotivo.value);
 const acciones = computed<AccionPaleta[]>(() => [
   // Crear solo tiene sentido sobre el árbol y con la fecha de hoy.
   ...(enArbol.value && !org.fechaVista
@@ -94,7 +98,10 @@ const acciones = computed<AccionPaleta[]>(() => [
           id: "nueva",
           etiqueta: t("paleta.acciones.nueva"),
           icono: Plus,
-          ejecutar: () => nuevaHija(typeof route.query.raiz === "string" ? route.query.raiz : null),
+          ejecutar: () => {
+            const raiz = route.value.query.raiz;
+            return useLienzo(conFoco.panel).nuevaHija(typeof raiz === "string" ? raiz : null);
+          },
         },
       ]
     : []),
@@ -102,14 +109,14 @@ const acciones = computed<AccionPaleta[]>(() => [
     id: "directorio",
     etiqueta: t("paleta.acciones.directorio"),
     icono: Users,
-    ejecutar: () => router.push("/directorio"),
+    ejecutar: () => ir("/directorio"),
     ruta: "/directorio",
   },
   {
     id: "revision",
     etiqueta: t("paleta.acciones.revision"),
     icono: ListChecks,
-    ejecutar: () => router.push("/revision"),
+    ejecutar: () => ir("/revision"),
     ruta: "/revision",
   },
   {
@@ -125,8 +132,8 @@ const acciones = computed<AccionPaleta[]>(() => [
     etiqueta: e.fase ? `${t(`menu.${e.id}`)} (${t(e.fase)})` : t(`menu.${e.id}`),
     icono: e.icono,
     deshabilitada: !!e.fase,
-    ejecutar: () => irAEntrada(e, router),
-    ruta: e.destino && !router.resolve(e.destino).meta.sinMarco ? e.destino : undefined,
+    ejecutar: () => irAEntrada(e, routerConFoco(e.destino)),
+    ruta: e.destino && !routerConFoco().resolve(e.destino).meta.sinMarco ? e.destino : undefined,
   })),
   ...entradasAbrirOtra(organizaciones.recientes, organizaciones.idAbierta).map((o) => ({
     id: `abrir:${o.id}`,
@@ -138,15 +145,25 @@ const acciones = computed<AccionPaleta[]>(() => [
     id: `comparar:${o.id}`,
     etiqueta: t("paleta.acciones.comparar", { nombre: o.nombre || t("barra.sinNombre") }),
     icono: ArrowLeftRight,
-    ejecutar: () => router.push(rutaComparar(o.id, organizaciones.idAbierta)),
+    ejecutar: () => ir(rutaComparar(o.id, organizaciones.idAbierta)),
     ruta: rutaComparar(o.id, organizaciones.idAbierta),
   })),
   {
     id: "ayuda",
     etiqueta: t("paleta.acciones.ayuda"),
     icono: CircleHelp,
-    ejecutar: () => router.push("/ayuda"),
+    ejecutar: () => ir("/ayuda"),
     ruta: "/ayuda",
+  },
+  // Una u otra según haya vista dividida (como el botón «Dividir» de la barra superior).
+  {
+    id: "dividir",
+    etiqueta: t(pestanas.lado ? "pestanas.cerrarDivision" : "paleta.acciones.dividir"),
+    icono: Columns2,
+    ejecutar: () => {
+      const r = pestanas.dividir();
+      if (!r.ok) toast.error(r.mensaje);
+    },
   },
 ]);
 
@@ -159,12 +176,12 @@ const total = computed(
 const faltan = (g: Grupo<unknown>) => g.total - g.items.length;
 
 function irAUnidad(id: string) {
-  const raiz = route.query.raiz;
+  const raiz = route.value.query.raiz;
   // En el árbol y dentro de la rama enfocada (o sin enfocar) basta seleccionarla; si no, se abre el árbol completo con ella.
   const dentro =
     typeof raiz !== "string" || unidadesDeRama(org.enFecha.unidades, raiz).some((u) => u.id === id);
-  if (enArbol.value && dentro) revelar(id);
-  else void router.push({ name: "arbol", query: { ver: id } });
+  if (enArbol.value && dentro) useLienzo(conFoco.panel).revelar(id);
+  else void ir({ name: "arbol", query: { ver: id } });
 }
 
 const rutaUnidad = (id: string): RouteLocationRaw => ({ name: "arbol", query: { ver: id } });

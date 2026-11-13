@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, shallowReactive } from "vue";
+import { onBeforeUnmount, onMounted, provide, shallowReactive } from "vue";
 import {
   RouterView,
   START_LOCATION,
@@ -10,6 +10,7 @@ import {
 } from "vue-router";
 import { PANEL } from "./panel";
 import { RUTA_INICIO } from "./pestanas";
+import { registrarRouter } from "./routerConFoco";
 import { crearRouterLado } from "./routerLado";
 import { usePestanas } from "./usePestanas";
 
@@ -29,6 +30,10 @@ provide(routeLocationKey, shallowReactive(ruta));
 // El RouterView muestra esta; si no, la del router principal, que la app provee.
 provide(routerViewLocationKey, r.currentRoute);
 provide(PANEL, { panel: "lado", pestana: () => props.id });
+// Mientras está montado, lo que no es de un panel (menú lateral, paleta, atajos) navega aquí si tiene el foco.
+let quitar = () => {};
+onMounted(() => (quitar = registrarRouter("lado", r)));
+onBeforeUnmount(() => quitar());
 </script>
 
 <template>

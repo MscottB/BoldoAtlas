@@ -1,6 +1,6 @@
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
-import { esVistaCerrable } from "@/app/estructura";
 import { rutas } from "@/router";
+import { seAbreAlLado } from "./routerConFoco";
 import { usePestanas } from "./usePestanas";
 
 /**
@@ -12,7 +12,7 @@ export function crearRouterLado(inicial: string): Router {
   // La de ahora: si deja de estar al lado, una navegación que termina después no escribe en la que llegó.
   const id = pestanas.lado;
   const r = createRouter({ history: createMemoryHistory(), routes: rutas });
-  r.beforeEach((to) => !to.meta.sinMarco && !esVistaCerrable(to.name));
+  r.beforeEach((to) => seAbreAlLado(to));
   r.afterEach((to, _de, fallo) => {
     if (!fallo && pestanas.lado === id) pestanas.rutaDelLado(to.fullPath);
   });

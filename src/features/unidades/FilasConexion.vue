@@ -3,7 +3,7 @@ import { inject } from "vue";
 import { useI18n } from "vue-i18n";
 import { ArrowLeft, ArrowRight } from "@lucide/vue";
 import { CONTEXTO_LIENZO } from "@/features/arbol/contexto";
-import { useLienzo, verConexion } from "@/features/arbol/useLienzo";
+import { useLienzo } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { porQueNoSeVe, type FilaConexion } from "./panel";
@@ -15,9 +15,10 @@ const emit = defineEmits<{ abrir: [id: string] }>();
 
 const { t } = useI18n();
 const org = useOrganizacion();
-const { colapsados } = useLienzo();
+const { colapsados, verConexion } = useLienzo();
 const { config } = useVista();
 const { mostradas } = inject(CONTEXTO_LIENZO)!;
+const ver = (id: string) => (verConexion.value = id);
 const oculta = (id: string) => porQueNoSeVe(mostradas.value, colapsados.value, id);
 </script>
 
@@ -66,7 +67,7 @@ const oculta = (id: string) => porQueNoSeVe(mostradas.value, colapsados.value, i
           type="button"
           class="justify-self-start rounded text-xs font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-ring"
           :aria-label="t('unidad.verConexion', { nombre: f.otro.nombre })"
-          @click="verConexion = f.id"
+          @click="ver(f.id)"
         >
           {{ t("conexion.verEnDiagrama") }}
         </button>

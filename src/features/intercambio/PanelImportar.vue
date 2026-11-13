@@ -38,6 +38,7 @@ import { deLaAbierta } from "@/lib/trabajos";
 import { claseSelect } from "@/lib/utils";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
+import { usePanel } from "@/features/pestanas/panel";
 import BarraAvance from "./BarraAvance.vue";
 import ListaDetalle from "./ListaDetalle.vue";
 import RevisarDecidir from "./RevisarDecidir.vue";
@@ -61,6 +62,9 @@ const router = useRouter();
 const org = useOrganizacion();
 const organizaciones = useOrganizaciones();
 const trabajo = useTrabajo();
+// Ids con la pestaña: con Importar y exportar en los dos paneles, cada etiqueta apunta a su campo.
+const { pestana } = usePanel();
+const id = (nombre: string) => `${pestana()}-${nombre}`;
 const avance = useAvance(() => trabajo.actual.value);
 
 // Con la lista protegida, Rust no puede agregar otra: no se ofrece.
@@ -415,20 +419,20 @@ onUnmounted(() => {
         </p>
       </div>
       <div class="grid max-w-sm gap-1.5">
-        <Label for="importar-codigo">{{ t("intercambio.importar.codigo") }}</Label>
+        <Label :for="id('importar-codigo')">{{ t("intercambio.importar.codigo") }}</Label>
         <Input
-          id="importar-codigo"
+          :id="id('importar-codigo')"
           v-model="codigo"
           class="font-mono"
           autocomplete="off"
           autocapitalize="characters"
           spellcheck="false"
           :aria-invalid="!!error"
-          :aria-describedby="error ? 'importar-error' : undefined"
+          :aria-describedby="error ? id('importar-error') : undefined"
         />
         <p class="text-xs text-muted-foreground">{{ t("intercambio.importar.codigoAyuda") }}</p>
       </div>
-      <p v-if="error" id="importar-error" role="alert" class="text-sm text-destructive">{{ error }}</p>
+      <p v-if="error" :id="id('importar-error')" role="alert" class="text-sm text-destructive">{{ error }}</p>
       <div class="flex gap-2">
         <Button type="submit" :disabled="!archivo || !codigo.trim() || !!organizacionEnCreacion">
           {{ t("intercambio.importar.abrir") }}
@@ -539,8 +543,8 @@ onUnmounted(() => {
           <p class="text-sm font-medium">{{ t("intercambio.importar.dondeVa") }}</p>
           <template v-for="r in resumen.ramas ?? []" :key="r.id">
             <div v-if="r.pideLugar" class="grid max-w-lg gap-1.5">
-              <Label :for="`lugar-${r.id}`">{{ r.nombre }}</Label>
-              <select :id="`lugar-${r.id}`" v-model="lugares[r.id]" :class="claseSelect">
+              <Label :for="id(`lugar-${r.id}`)">{{ r.nombre }}</Label>
+              <select :id="id(`lugar-${r.id}`)" v-model="lugares[r.id]" :class="claseSelect">
                 <option value="">{{ t("intercambio.importar.independiente") }}</option>
                 <option v-for="o in opciones" :key="o.id" :value="o.id">
                   {{ t("intercambio.importar.dentroDe", { nombre: o.texto }) }}

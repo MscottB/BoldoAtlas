@@ -13,9 +13,8 @@ vi.mock("@vueuse/core", async (original) => ({
   ...(await original<object>()),
   useEventListener: (_d: unknown, _e: unknown, f: (e: unknown) => void) => void (h.manejador = f),
 }));
-vi.mock("vue-router", async (original) => ({
-  ...(await original<object>()),
-  useRoute: () => ({ name: "arbol", query: {}, meta: {} }),
+vi.mock("@/features/pestanas/routerConFoco", () => ({
+  routerConFoco: () => ({ currentRoute: { value: { name: "arbol", query: {}, meta: {} } } }),
 }));
 vi.mock("@/features/arbol/useLienzo", async (original) => ({
   ...(await original<object>()),
