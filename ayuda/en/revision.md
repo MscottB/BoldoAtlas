@@ -24,7 +24,7 @@ To fix a warning:
 
 **Current replacements** only show who is replacing in each position today. They do not count as warnings.
 
-The important sections start open and the rest start collapsed. Each one remembers how you left it.
+Only the **Important** sections start open. The rest, including **Current replacements** and **Marked as fine**, start collapsed. Each one remembers how you left it.
 
 ## What each warning does
 
@@ -49,7 +49,7 @@ A group of repeated emails or similar names is marked as a whole. If a person jo
 
 If you fix something and it breaks again later, it also warns again.
 
-Marks are stored in this organization's database. They go in backups and full copies. They do not go with an exported branch: on another database, you mark them again.
+Marks are stored in this organization's database. They go in backups and full copies. They do not go with an exported branch: on another database you have to mark them again.
 
 ## Filter by branch
 

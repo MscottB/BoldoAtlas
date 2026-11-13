@@ -24,7 +24,7 @@ Para corregir un aviso:
 
 Los **Reemplazos vigentes** solo informan quién reemplaza hoy en cada puesto. No cuentan como aviso.
 
-Las secciones importantes empiezan abiertas y las demás, plegadas. Cada una recuerda cómo la dejaste.
+Solo las secciones de **Importante** empiezan abiertas. Las demás, incluidas **Reemplazos vigentes** y **Marcados como bien**, empiezan plegadas. Cada una recuerda cómo la dejaste.
 
 ## Qué hace cada aviso
 
@@ -49,7 +49,7 @@ Un grupo de correos repetidos o de nombres parecidos se marca entero. Si una per
 
 Si arreglas algo y más tarde se rompe otra vez, también vuelve a avisar.
 
-Las marcas se guardan en la base de esta organización. Van en los respaldos y en las copias completas. No viajan con una rama exportada: en otra base, la marcas de nuevo.
+Las marcas se guardan en la base de esta organización. Van en los respaldos y en las copias completas. No viajan con una rama exportada: en otra base tienes que marcarlas de nuevo.
 
 ## Filtrar por rama
 
