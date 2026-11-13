@@ -127,8 +127,28 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
     const ruta = p ? pestanas.rutaDeTrabajo(p) : RUTA_INICIO;
     return { ruta, nombre: routerDel("principal").resolve(ruta).name };
   }
+  // Hasta que el iframe avisa la primera ruta, su app aún no escucha: lo que se le pida espera (solo lo último).
+  let iframeListo = false;
+  let pendiente: string | null = null;
+  function pedir(ruta: string) {
+    if (!iframeListo) return void (pendiente = ruta);
+    const pedido: MensajePadre = { tipo: "boldo-lado-ir", ruta };
+    (ventana() as Window | null | undefined)?.postMessage(pedido, location.origin);
+  }
+  function alLlegar(ruta: string) {
+    if (!iframeListo) {
+      iframeListo = true;
+      if (pendiente !== null && pendiente !== ruta) pedir(pendiente);
+      pendiente = null;
+    }
+    otra?.llego(ruta);
+  }
+
   function armar() {
     const { ruta, nombre } = rutaDeLaPestana();
+    // Un iframe nuevo, en la ruta de ahora (la pestaña ya tiene lo último pedido).
+    iframeListo = false;
+    pendiente = null;
     src.value = srcLado(location.pathname, org, ruta, nombre);
   }
   watch(clave, () => src.value && armar());
@@ -152,15 +172,12 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
   let quitarRouter = () => {};
   const alMensaje = (e: MessageEvent) => {
     const m = filtrarMensaje(e, ventana(), location.origin);
-    if (m) atenderMensaje(m, (ruta) => otra?.llego(ruta));
+    if (m) atenderMensaje(m, alLlegar);
   };
   onMounted(async () => {
     window.addEventListener("message", alMensaje);
     const { ruta, nombre } = rutaDeLaPestana();
-    otra = crearRouterOtra(rutaLado(ruta, nombre), (destino) => {
-      const pedido: MensajePadre = { tipo: "boldo-lado-ir", ruta: destino };
-      (ventana() as Window | null | undefined)?.postMessage(pedido, location.origin);
-    });
+    otra = crearRouterOtra(rutaLado(ruta, nombre), pedir);
     quitarRouter = registrarRouter("lado", otra.router);
     await new Promise((listo) => setTimeout(listo, ESPERA_COPIA));
     if (!vivo) return;

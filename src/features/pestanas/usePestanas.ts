@@ -489,6 +489,11 @@ export const usePestanas = defineStore("pestanas", () => {
     proporcion(p: number) {
       modelo.value = P.conProporcion(modelo.value, p);
     },
+    /**
+     * Si el foco está en el panel de al lado y muestra otra organización: ahí no actúa nada que use los datos de la
+     * abierta (crear, el lienzo, una unidad o persona de la paleta).
+     */
+    otraConFoco: () => conFoco.value === "lado" && !!modelo.value.lado && !deLaAbierta(modelo.value.lado),
     /** Sin vista dividida, el foco no pasa al lado. */
     enfocarPanel(p: P.Panel) {
       if (p === "principal" || modelo.value.lado) conFoco.value = p;

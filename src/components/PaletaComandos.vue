@@ -42,7 +42,7 @@ import {
   rutaComparar,
 } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
-import { usePanel } from "@/features/pestanas/panel";
+import { alPanelDeLaAbierta, usePanel } from "@/features/pestanas/panel";
 import { irConFoco as ir, routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -91,8 +91,9 @@ const conMotivo = computed(() => organizaciones.sinAbrir.has(conFoco.pestana()))
 const SIN_DATOS: IndicePaleta = { unidades: [], personas: [], vacantes: [] };
 const enArbol = computed(() => route.value.name === "arbol" && !conMotivo.value);
 const acciones = computed<AccionPaleta[]>(() => [
-  // Crear solo tiene sentido sobre el árbol y con la fecha de hoy.
-  ...(enArbol.value && !org.soloLectura
+  // Crear solo tiene sentido sobre el árbol y con la fecha de hoy; con el foco en otra organización al lado, no: se
+  // crearía en la abierta sin verse.
+  ...(enArbol.value && !org.soloLectura && !pestanas.otraConFoco()
     ? [
         {
           id: "nueva",
@@ -216,6 +217,11 @@ function alTeclear(e: KeyboardEvent) {
   resaltada.click(); // elige en el acto (o nada, si está deshabilitada)
   conCtrl = false;
 }
+// Unidades, personas y vacantes son de la abierta: con el foco en otra organización al lado, van al principal.
+function elegirDato(accion: () => unknown, ev?: CustomEvent<{ originalEvent: Event }>, ruta?: RouteLocationRaw) {
+  alPanelDeLaAbierta();
+  elegir(accion, ev, ruta);
+}
 // Se cierra primero: lo elegido (ficha, diálogo del puesto) toma el foco sin pelearlo con la paleta.
 function elegir(accion: () => unknown, ev?: CustomEvent<{ originalEvent: Event }>, ruta?: RouteLocationRaw) {
   const clic = ev?.detail?.originalEvent;
@@ -225,7 +231,11 @@ function elegir(accion: () => unknown, ev?: CustomEvent<{ originalEvent: Event }
   if (ruta && nueva) abrirEnPestanaNueva(ruta);
   else accion();
 }
-// Clic central: también en una pestaña nueva.
+// Clic central: también en una pestaña nueva. Sobre algo de la abierta, como `elegirDato`.
+function alPulsarAuxDato(e: MouseEvent, ruta: RouteLocationRaw) {
+  if (e.button === 1) alPanelDeLaAbierta();
+  alPulsarAux(e, ruta);
+}
 function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
   if (e.button !== 1 || !ruta) return;
   e.preventDefault();
@@ -262,8 +272,8 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
           v-for="u in r.unidades.items"
           :key="u.id"
           :value="`unidad:${u.id}`"
-          @select="elegir(() => irAUnidad(u.id), $event, rutaUnidad(u.id))"
-          @auxclick="alPulsarAux($event, rutaUnidad(u.id))"
+          @select="elegirDato(() => irAUnidad(u.id), $event, rutaUnidad(u.id))"
+          @auxclick="alPulsarAuxDato($event, rutaUnidad(u.id))"
         >
           <Network aria-hidden="true" />
           <span class="grid min-w-0">
@@ -280,8 +290,8 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
         <template v-for="p in r.personas.items" :key="p.id">
           <CommandItem
             :value="`persona:${p.id}`"
-            @select="elegir(() => ficha.intentarAbrir(p.id), $event, rutaPersona(p.id))"
-            @auxclick="alPulsarAux($event, rutaPersona(p.id))"
+            @select="elegirDato(() => ficha.intentarAbrir(p.id), $event, rutaPersona(p.id))"
+            @auxclick="alPulsarAuxDato($event, rutaPersona(p.id))"
           >
             <User aria-hidden="true" />
             <span class="grid min-w-0">
@@ -297,13 +307,13 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
             :value="`ubicar:${p.id}:${u.puestoId}`"
             class="pl-8"
             @select="
-              elegir(
+              elegirDato(
                 () => verEnOrganigrama(u.puestoId),
                 $event,
                 rutaPuesto({ id: u.puestoId, unidad_id: u.unidadId }),
               )
             "
-            @auxclick="alPulsarAux($event, rutaPuesto({ id: u.puestoId, unidad_id: u.unidadId }))"
+            @auxclick="alPulsarAuxDato($event, rutaPuesto({ id: u.puestoId, unidad_id: u.unidadId }))"
           >
             <LocateFixed aria-hidden="true" />
             <span class="grid min-w-0">
@@ -322,7 +332,7 @@ function alPulsarAux(e: MouseEvent, ruta?: RouteLocationRaw) {
           v-for="v in r.vacantes.items"
           :key="v.id"
           :value="`vacante:${v.id}`"
-          @select="elegir(() => puesto.abrir(v.id))"
+          @select="elegirDato(() => puesto.abrir(v.id))"
         >
           <UserRoundX aria-hidden="true" />
           <span class="grid min-w-0">

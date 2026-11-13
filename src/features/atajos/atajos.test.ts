@@ -250,6 +250,32 @@ describe("resolverAtajo: al lado (otra organización, en el iframe)", () => {
   });
 });
 
+describe("resolverAtajo: con el foco en el panel de otra organización, en la ventana", () => {
+  const otra = { otraAlLado: true, dividida: true };
+
+  it("solo quedan las pestañas, la paleta y F6: lo del lienzo y lo de editar actuarían en la abierta", () => {
+    expect(resolverAtajo(tecla("k", { ...otra, ctrlKey: true }))).toBe("paleta");
+    expect(resolverAtajo(tecla("t", { ...otra, ctrlKey: true }))).toBe("nuevaPestana");
+    expect(resolverAtajo(tecla("w", { ...otra, ctrlKey: true }))).toBe("cerrarPestana");
+    expect(resolverAtajo(tecla("Tab", { ...otra, ctrlKey: true }))).toBe("pestanaSiguiente");
+    expect(resolverAtajo(tecla("F6", otra))).toBe("otroPanel");
+    for (const [key, extra] of [
+      ["n", {}],
+      ["Delete", {}],
+      ["F2", {}],
+      ["ArrowDown", {}],
+      ["ArrowDown", { shiftKey: true }],
+      ["f", {}],
+      ["Escape", {}],
+      ["ContextMenu", {}],
+      ["d", { ctrlKey: true }],
+      ["0", { ctrlKey: true }],
+      ["-", { ctrlKey: true }],
+    ] as const)
+      expect(resolverAtajo(tecla(key, { ...otra, ...extra })), key).toBeNull();
+  });
+});
+
 describe("resolverAtajo: renombrar", () => {
   it("F2 renombra la unidad seleccionada, fuera de campos, sin modificadores ni diálogos, y no viendo una fecha", () => {
     expect(resolverAtajo(tecla("F2"))).toBe("renombrar");

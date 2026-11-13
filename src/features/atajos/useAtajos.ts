@@ -7,7 +7,7 @@ import { esVistaCerrable } from "@/app/estructura";
 import { alPadre, type TeclaLado } from "@/lado/mensajes";
 import { MODO_LADO } from "@/lado/modo";
 import { useCerrarVista } from "@/app/useCerrarVista";
-import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
+import { enfocarElPanel, raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
 import { routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
@@ -74,6 +74,7 @@ export function useAtajos() {
       horizontal: config.value.direccion === "horizontal",
       dividida: !!pestanas.lado,
       lado: MODO_LADO,
+      otraAlLado: pestanas.otraConFoco(),
     });
     if (!atajo) return;
 
@@ -101,7 +102,7 @@ export function useAtajos() {
       e.preventDefault();
       const otro = panel === "lado" ? "principal" : "lado";
       pestanas.enfocarPanel(otro);
-      document.querySelector<HTMLElement>(`[data-panel="${otro}"]`)?.focus();
+      enfocarElPanel(otro);
       return;
     }
     // La pantalla del motivo tapa la vista: la ruta sigue siendo de la abierta, y lo demás escribiría en ella sin verse.

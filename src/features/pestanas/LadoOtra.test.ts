@@ -14,6 +14,7 @@ import { ESPERA_COPIA, atenderMensaje, srcLado, useLadoOtra } from "./useLadoOtr
 import { esRutaConFoco, irConFoco, registrarRouter, routerDel } from "./routerConFoco";
 import { usePestanas } from "./usePestanas";
 import VistaDividida from "./VistaDividida.vue";
+import PaletaComandos from "@/components/PaletaComandos.vue";
 
 // localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
 vi.hoisted(() =>
@@ -26,6 +27,18 @@ vi.mock("@/db/cliente", async (original) => ({
 }));
 // El panel de al lado de la abierta, sin el router de la app (que pide `location` al importarse).
 vi.mock("./routerLado", () => ({ crearRouterLado: () => nuevoRouter() }));
+// La paleta sin su diálogo ni su lista (en el servidor no se abren): solo lo que muestra cada opción.
+vi.mock("@/components/ui/command", async () => {
+  const { defineComponent, h: hh } = await import("vue");
+  const pasa = defineComponent((_p, { slots }) => {
+    return () => hh("div", slots.default?.());
+  });
+  return { CommandDialog: pasa, CommandGroup: pasa, CommandItem: pasa, CommandList: pasa };
+});
+vi.mock("reka-ui", async (original) => ({
+  ...(await original<object>()),
+  ListboxFilter: { render: () => null },
+}));
 
 // Sin DOM: un renderer que no dibuja nada, para montar y desmontar el composable (onMounted, onBeforeUnmount).
 const sinDom = createRenderer<object, object>({
@@ -271,6 +284,8 @@ describe("useLadoOtra", () => {
     const p = await arrancar();
     montar();
     await esperar();
+    delIframe({ tipo: "boldo-lado-ruta", ruta: "/directorio" }); // el iframe ya cargó
+    await vi.advanceTimersByTimeAsync(0);
     p.enfocarPanel("lado");
     // El menú lateral marca la vista que muestra el iframe.
     expect(esRutaConFoco("/directorio")).toBe(true);
@@ -297,6 +312,24 @@ describe("useLadoOtra", () => {
     }
     expect(marco.postMessage).toHaveBeenCalledTimes(1);
     expect(rutaDe("x")).toBe("/revision");
+  });
+
+  it("lo que se pide mientras el iframe carga se le envía cuando avisa que llegó (solo lo último)", async () => {
+    const p = await arrancar();
+    montar();
+    await esperar();
+    p.enfocarPanel("lado");
+    await irConFoco("/revision");
+    await irConFoco("/");
+    expect(marco.postMessage).not.toHaveBeenCalled();
+    expect(rutaDe("x")).toBe("/");
+    delIframe({ tipo: "boldo-lado-ruta", ruta: "/directorio" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(marco.postMessage).toHaveBeenCalledTimes(1);
+    expect(marco.postMessage).toHaveBeenCalledWith({ tipo: "boldo-lado-ir", ruta: "/" }, ORIGEN);
+    // Ya cargado, va directo.
+    await irConFoco("/revision");
+    expect(marco.postMessage).toHaveBeenCalledTimes(2);
   });
 
   it("al pasar rápido por varias pestañas de otra organización, solo copia la última", async () => {
@@ -407,6 +440,23 @@ describe("panel de al lado con otra organización", () => {
     expect(s).toMatch(/<header[^>]*>.*background-color:#aa0000/s);
     expect(s).toContain('aria-label="Cerrar la vista dividida"');
     expect(s).not.toContain("<iframe");
+  });
+
+  it("la paleta con el foco en la otra no ofrece crear en la abierta; con el foco en el principal, sí", async () => {
+    vi.useFakeTimers();
+    const p = await arrancar({ ruta: "/" });
+    montar(); // registra el router del panel, en el Árbol
+    await esperar();
+    const paleta = async () => {
+      const app = createSSRApp({ render: () => h(PaletaComandos, { open: true }) });
+      app.use(pinia).use(router).use(i18n);
+      return texto(await renderToString(app));
+    };
+    expect(await paleta()).toContain("Nueva unidad");
+    p.enfocarPanel("lado");
+    const t = await paleta();
+    expect(t).not.toContain("Nueva unidad");
+    expect(t).toContain("Ir al directorio"); // navegar sí: va al iframe
   });
 
   it("con una de la abierta al lado, el encabezado es el de siempre", async () => {

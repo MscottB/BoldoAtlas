@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { fijarBase } from "@/lib/baseActiva";
+import type { Organizacion } from "@/db/cliente";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { useAtajos } from "./useAtajos";
 
@@ -68,6 +69,40 @@ describe("useAtajos con una pestaña sin abrir", () => {
     const e = tecla("n");
     expect(h.nuevaHija).not.toHaveBeenCalled();
     expect(e.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("con el foco en el panel de otra organización, N no crea en la abierta; Ctrl+Tab sigue", () => {
+    const pestanas = usePestanas();
+    useOrganizaciones().lista = [
+      { id: "A", nombre: "A", existe: true },
+      { id: "B", nombre: "B", existe: true },
+    ] as Organizacion[];
+    expect(pestanas.verAlLado("B").ok).toBe(true);
+    pestanas.enfocarPanel("lado");
+    const e = tecla("n");
+    expect(h.nuevaHija).not.toHaveBeenCalled();
+    expect(e.preventDefault).not.toHaveBeenCalled();
+    const siguiente = vi.spyOn(pestanas, "siguiente").mockReturnValue({ ok: true });
+    tecla("Tab", true);
+    expect(siguiente).toHaveBeenCalledWith(1);
+  });
+
+  it("F6 hacia el panel de otra organización lleva el foco del teclado al iframe", () => {
+    const pestanas = usePestanas();
+    useOrganizaciones().lista = [
+      { id: "A", nombre: "A", existe: true },
+      { id: "B", nombre: "B", existe: true },
+    ] as Organizacion[];
+    pestanas.verAlLado("B");
+    const ventana = { focus: vi.fn() };
+    const marco = { focus: vi.fn(), contentWindow: ventana };
+    const seccion = { focus: vi.fn(), querySelector: (s: string) => (s === "iframe" ? marco : null) };
+    vi.stubGlobal("document", { querySelector: (s: string) => (s === '[data-panel="lado"]' ? seccion : null) });
+    tecla("F6");
+    expect(pestanas.conFoco).toBe("lado");
+    expect(marco.focus).toHaveBeenCalled();
+    expect(ventana.focus).toHaveBeenCalled();
+    expect(seccion.focus).not.toHaveBeenCalled();
   });
 
   it("con motivo, los atajos de pestañas siguen valiendo", () => {

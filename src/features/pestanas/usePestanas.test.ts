@@ -8,7 +8,7 @@ import type { Organizacion } from "@/db/cliente";
 import { baseActual, fijarBase } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
-import { PANEL, usePanel } from "./panel";
+import { PANEL, alPanelDeLaAbierta, usePanel } from "./panel";
 import { MAX_PESTANAS } from "./pestanas";
 import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
 import { esRutaConFoco, irConFoco, registrarRouter, routerConFoco } from "./routerConFoco";
@@ -1032,6 +1032,24 @@ describe("usePestanas con la vista dividida", () => {
     await esperar();
     expect(p.lado).toBeNull();
     expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]); // sigue en la barra, con su motivo al activarla
+  });
+
+  it("otraConFoco: el foco en el panel de al lado y la de al lado de otra organización", async () => {
+    const p = await arrancar(conOtra("a", "x"));
+    conB();
+    expect(p.otraConFoco()).toBe(false);
+    p.enfocarPanel("lado");
+    expect(p.otraConFoco()).toBe(true);
+    // Lo que usa los datos de la abierta va al principal, que pasa a tener el foco.
+    alPanelDeLaAbierta();
+    expect(p.conFoco).toBe("principal");
+    expect(p.otraConFoco()).toBe(false);
+
+    p.alternarLado("b"); // una de la abierta al lado: ahí sí actúa
+    p.enfocarPanel("lado");
+    expect(p.otraConFoco()).toBe(false);
+    alPanelDeLaAbierta();
+    expect(p.conFoco).toBe("lado");
   });
 
   it("dividir con una de otra organización activa no abre aunque esté en la lista", async () => {

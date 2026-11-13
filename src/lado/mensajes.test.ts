@@ -59,10 +59,18 @@ describe("escucharPadre", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("navega a lo que pide la ventana si se ve al lado; lo demás, y lo de otros, no", async () => {
-    emitir("message", { data: { tipo: "boldo-lado-ir", ruta: "/configuracion" }, source: padre, origin: ORIGEN });
+    emitir("message", {
+      data: { tipo: "boldo-lado-ir", ruta: "/configuracion" },
+      source: padre,
+      origin: ORIGEN,
+    });
     emitir("message", { data: { tipo: "boldo-lado-ir", ruta: "/directorio" }, source: {}, origin: ORIGEN });
     await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe("/"));
-    emitir("message", { data: { tipo: "boldo-lado-ir", ruta: "/directorio" }, source: padre, origin: ORIGEN });
+    emitir("message", {
+      data: { tipo: "boldo-lado-ir", ruta: "/directorio" },
+      source: padre,
+      origin: ORIGEN,
+    });
     await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe("/directorio"));
   });
 
