@@ -283,13 +283,15 @@ export const usePestanas = defineStore("pestanas", () => {
     if (!router) return { ok: false, mensaje: t("pestanas.noAbre") };
     const r = router.resolve(destino);
     if (!r.matched.length || r.meta.sinMarco) return { ok: false, mensaje: t("pestanas.noAbre") };
-    // Configuración, Ayuda y Acerca de no van al lado: se abren en el principal, que pasa a tener el foco.
+    // Configuración, Ayuda y Acerca de no van al lado: se abren en el principal, que pasa a tener el foco (si se abrió).
     const alLado = conFoco.value === "lado" && seAbreAlLado(r) ? modelo.value.lado : null;
-    if (!alLado) conFoco.value = "principal";
     const nueva = alLado ? agregarNueva(r.fullPath, alLado) : agregarNueva(r.fullPath);
     if (nueva.ok) {
       if (alLado) modelo.value = P.alLado(modelo.value, nueva.id!);
-      else void ir(nueva.id!);
+      else {
+        conFoco.value = "principal";
+        void ir(nueva.id!);
+      }
     }
     return nueva;
   }

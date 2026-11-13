@@ -923,6 +923,18 @@ describe("usePestanas con la vista dividida", () => {
     expect(rutaActual()).toBe("/ayuda");
   });
 
+  it("Ctrl+clic en Ayuda con foco al lado y el tope lleno: no abre, avisa y el foco sigue al lado", async () => {
+    const lista = Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `p${i}`, org: "A", ruta: "/" }));
+    const p = await arrancar({ lista, activa: "p0", lado: "p1" });
+    p.enfocarPanel("lado");
+    expect(p.abrirNueva("/ayuda")).toEqual({
+      ok: false,
+      mensaje: i18n.global.t("pestanas.limite", { n: MAX_PESTANAS }),
+    });
+    expect(p.conFoco).toBe("lado");
+    expect(p.lista).toHaveLength(MAX_PESTANAS);
+  });
+
   it("la X de la vista dividida deja el foco en la pestaña activa", async () => {
     const focus = vi.fn();
     vi.stubGlobal("document", {
