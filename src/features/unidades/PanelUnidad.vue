@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import type { Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { dotacion, jefeVisible } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { usePuesto } from "@/features/puestos/usePuesto";
@@ -67,7 +68,8 @@ function cerrar() {
   emit("cerrar");
 }
 
-// Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada; al lado, tampoco.
+// Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada (deshabilitado); al lado, otra
+// organización, los botones de cambiar ni se ven.
 const soloLectura = computed(() => org.soloLectura);
 const pestana = ref("resumen");
 // El menú contextual de la tarjeta puede pedir una pestaña («Ver personas»).
@@ -367,7 +369,14 @@ async function eliminar() {
                   :placeholder="t('unidad.marcaCodigo')"
                   @change="guardarMarca(unidad.marca_color)"
                 />
-                <Button type="button" variant="outline" size="sm" :disabled="sinMarca" @click="quitarMarca">
+                <Button
+                  v-if="!MODO_LADO"
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  :disabled="sinMarca"
+                  @click="quitarMarca"
+                >
                   {{ t("unidad.quitarMarca") }}
                 </Button>
               </div>
@@ -377,7 +386,7 @@ async function eliminar() {
             </fieldset>
           </BloquePlegable>
 
-          <div class="flex flex-wrap items-center gap-2 border-t pt-3">
+          <div v-if="!MODO_LADO" class="flex flex-wrap items-center gap-2 border-t pt-3">
             <Button
               v-if="guardable"
               type="button"
@@ -455,6 +464,7 @@ async function eliminar() {
             </li>
           </ul>
           <Button
+            v-if="!MODO_LADO"
             type="button"
             size="sm"
             variant="outline"

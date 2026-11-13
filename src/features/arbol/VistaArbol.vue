@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type { Etiqueta, Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   dotacionPorUnidad,
@@ -968,7 +969,9 @@ function verCompleto() {
         >
           <Network class="size-10 text-muted-foreground" aria-hidden="true" />
           <h1 class="text-lg font-semibold">{{ t("arbol.vacioTitulo") }}</h1>
-          <p class="max-w-sm text-sm text-muted-foreground">{{ t("arbol.vacioTexto") }}</p>
+          <p class="max-w-sm text-sm text-muted-foreground">{{
+            t(MODO_LADO ? "arbol.vacioTextoLado" : "arbol.vacioTexto")
+          }}</p>
         </div>
       </div>
 

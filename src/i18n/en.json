@@ -65,6 +65,7 @@
   "arbol": {
     "vacioTitulo": "There are no units yet",
     "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here.",
+    "vacioTextoLado": "This organization has no divisions, areas or sub-areas yet.",
     "nuevaUnidad": "New unit",
     "nuevaSubunidad": "New sub-unit",
     "sinTiposActivos": "There are no active unit types.",
@@ -199,6 +200,7 @@
     "vistas": {
       "titulo": "Saved views",
       "sinArbol": "This branch is not saved in Trees. Save it there to have views of its own.",
+      "sinArbolLado": "This branch is not saved in Trees: it has no views of its own.",
       "nombre": "View name",
       "guardar": "Save current view",
       "sinVistas": "There are no saved views in this tree yet.",
@@ -312,6 +314,7 @@
     "ordenarUnidad": "Sort by unit",
     "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",
+    "vacioLado": "There are no positions or people yet.",
     "sinResultados": "No rows match the filters.",
     "filtrosBoton": "Filters",
     "filtrosActivos": "{n} active filter | {n} active filters",

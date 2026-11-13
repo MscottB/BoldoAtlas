@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { TriangleAlert } from "@lucide/vue";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
+import { useAtajos } from "@/features/atajos/useAtajos";
 
 /** La app en el iframe del panel de al lado: solo la vista, sin barras ni pestañas (esas son del padre). */
 defineProps<{
@@ -12,6 +14,8 @@ defineProps<{
   motivo: string;
 }>();
 const { t } = useI18n();
+// Leer con el teclado (flechas, F, menú, zoom) y F6 de vuelta al panel principal. Al montar: escucha la ventana del iframe.
+onMounted(useAtajos);
 </script>
 
 <template>

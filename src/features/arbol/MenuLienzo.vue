@@ -110,22 +110,29 @@ const abrirVista = () => (panelAbierto.value = true);
         <slot />
       </div>
     </ContextMenuTrigger>
+    <!-- Viendo una fecha, lo que cambia datos queda deshabilitado; al lado (otra organización) ni se ofrece. -->
     <ContextMenuContent class="w-56" :aria-label="titulo" @close-auto-focus="alCerrar">
       <template v-if="unidad">
         <ContextMenuItem @select="pedir(() => lienzo.seleccionar(id))">
           {{ t("arbol.menu.abrirPanel") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(nuevaSubunidad)">
-          {{ t("arbol.nuevaSubunidad") }}
-        </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => lienzo.renombrar(id))">
-          {{ t("arbol.menu.renombrar") }}
-          <ContextMenuShortcut>F2</ContextMenuShortcut>
-        </ContextMenuItem>
+        <template v-if="!MODO_LADO">
+          <ContextMenuItem :disabled="soloLectura" @select="pedir(nuevaSubunidad)">
+            {{ t("arbol.nuevaSubunidad") }}
+          </ContextMenuItem>
+          <ContextMenuItem :disabled="soloLectura" @select="pedir(() => lienzo.renombrar(id))">
+            {{ t("arbol.menu.renombrar") }}
+            <ContextMenuShortcut>F2</ContextMenuShortcut>
+          </ContextMenuItem>
+        </template>
         <ContextMenuItem @select="pedir(() => lienzo.verPersonas(id))">
           {{ t("arbol.menu.verPersonas") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => lienzo.conectarDesde(id))">
+        <ContextMenuItem
+          v-if="!MODO_LADO"
+          :disabled="soloLectura"
+          @select="pedir(() => lienzo.conectarDesde(id))"
+        >
           {{ t("unidad.conectarCon") }}
         </ContextMenuItem>
         <ContextMenuSeparator />
@@ -135,11 +142,11 @@ const abrirVista = () => (panelAbierto.value = true);
         <ContextMenuItem :disabled="!conHijos" @select="pedir(() => lienzo.contraerRama(unidades, id))">
           {{ t("arbol.menu.contraerRama") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => seleccionarRama(id))">
+        <ContextMenuItem v-if="!MODO_LADO" :disabled="soloLectura" @select="pedir(() => seleccionarRama(id))">
           {{ t("arbol.menu.seleccionarRama") }}
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => lienzo.duplicar(id))">
+        <ContextMenuItem v-if="!MODO_LADO" :disabled="soloLectura" @select="pedir(() => lienzo.duplicar(id))">
           {{ t("unidad.duplicar") }}
           <ContextMenuShortcut>Ctrl+D</ContextMenuShortcut>
         </ContextMenuItem>
@@ -153,49 +160,56 @@ const abrirVista = () => (panelAbierto.value = true);
         >
           {{ t("pestanas.abrirNueva") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura || !guardable" @select="pedir(() => guardar(id))">
-          {{ t("arboles.guardarEnArboles") }}
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem variant="destructive" :disabled="soloLectura" @select="pedir(() => eliminar(id))">
-          {{ t("arbol.menu.eliminar") }}
-          <ContextMenuShortcut>{{ t("comun.suprimir") }}</ContextMenuShortcut>
-        </ContextMenuItem>
+        <template v-if="!MODO_LADO">
+          <ContextMenuItem :disabled="soloLectura || !guardable" @select="pedir(() => guardar(id))">
+            {{ t("arboles.guardarEnArboles") }}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive" :disabled="soloLectura" @select="pedir(() => eliminar(id))">
+            {{ t("arbol.menu.eliminar") }}
+            <ContextMenuShortcut>{{ t("comun.suprimir") }}</ContextMenuShortcut>
+          </ContextMenuItem>
+        </template>
       </template>
       <template v-else-if="delPuesto">
         <ContextMenuItem @select="pedir(() => puesto.abrir(id))">
           {{ t("arbol.menu.abrirPuesto") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => puesto.abrir(id, 'titular'))">
-          {{ t("puesto.accion.titular") }}
-        </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => puesto.abrir(id, 'reemplazo'))">
-          {{ t("puesto.accion.reemplazo") }}
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem @select="pedir(() => estilo.copiar(id))">
-          {{ t("leyenda.copiar") }}
-          <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem
-          :disabled="soloLectura || !org.puedePegarEstilo"
-          @select="pedir(() => estilo.pegar(id))"
-        >
-          {{ t("leyenda.pegar") }}
-          <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem
-          :disabled="soloLectura || !delPuesto.leyenda_id"
-          @select="pedir(() => estilo.quitar(id))"
-        >
-          {{ t("leyenda.quitar") }}
-        </ContextMenuItem>
+        <!-- Al lado no hay a dónde pegar un estilo: copiarlo tampoco se ofrece. -->
+        <template v-if="!MODO_LADO">
+          <ContextMenuItem :disabled="soloLectura" @select="pedir(() => puesto.abrir(id, 'titular'))">
+            {{ t("puesto.accion.titular") }}
+          </ContextMenuItem>
+          <ContextMenuItem :disabled="soloLectura" @select="pedir(() => puesto.abrir(id, 'reemplazo'))">
+            {{ t("puesto.accion.reemplazo") }}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem @select="pedir(() => estilo.copiar(id))">
+            {{ t("leyenda.copiar") }}
+            <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem
+            :disabled="soloLectura || !org.puedePegarEstilo"
+            @select="pedir(() => estilo.pegar(id))"
+          >
+            {{ t("leyenda.pegar") }}
+            <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem
+            :disabled="soloLectura || !delPuesto.leyenda_id"
+            @select="pedir(() => estilo.quitar(id))"
+          >
+            {{ t("leyenda.quitar") }}
+          </ContextMenuItem>
+        </template>
       </template>
       <template v-else>
-        <ContextMenuItem :disabled="soloLectura || !!raiz" @select="pedir(() => lienzo.nuevaUnidad(null))">
-          {{ t("arbol.menu.nuevaRaiz") }}
-        </ContextMenuItem>
-        <ContextMenuSeparator />
+        <template v-if="!MODO_LADO">
+          <ContextMenuItem :disabled="soloLectura || !!raiz" @select="pedir(() => lienzo.nuevaUnidad(null))">
+            {{ t("arbol.menu.nuevaRaiz") }}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+        </template>
         <ContextMenuItem @select="pedir(() => lienzo.expandirTodo(unidades))">
           {{ t("arbol.ramas.expandirTodo") }}
         </ContextMenuItem>

@@ -30,8 +30,8 @@ vi.mock("@/components/ui/popover", async () => {
 });
 
 let pinia: Pinia;
-async function html() {
-  const app = createSSRApp({ render: () => h(MenuVistas, { raiz: null, unidades: [] }) });
+async function html(raiz: string | null = null) {
+  const app = createSSRApp({ render: () => h(MenuVistas, { raiz, unidades: [] }) });
   app.use(pinia).use(i18n);
   return renderToString(app);
 }
@@ -53,6 +53,16 @@ describe("Las vistas guardadas en solo lectura", () => {
     expect(s).not.toContain(t("arbol.vistas.renombrar", { nombre: "Mía" }));
     expect(s).not.toContain(t("arbol.vistas.eliminar", { nombre: "Mía" }));
     expect(s).toContain(t("arbol.vistas.aplicar", { nombre: "Mía" }));
+  });
+
+  it("una rama no guardada: al lado no invita a guardarla", async () => {
+    lado.activo = true;
+    let s = await html("a");
+    expect(s).not.toContain(t("arbol.vistas.sinArbol"));
+    expect(s).toContain(t("arbol.vistas.sinArbolLado"));
+    lado.activo = false;
+    s = await html("a");
+    expect(s).toContain(t("arbol.vistas.sinArbol"));
   });
 
   it("fuera del lado, como siempre", async () => {

@@ -65,6 +65,7 @@
   "arbol": {
     "vacioTitulo": "Aún no hay unidades",
     "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí.",
+    "vacioTextoLado": "Esta organización aún no tiene gerencias, áreas ni subáreas.",
     "nuevaUnidad": "Nueva unidad",
     "nuevaSubunidad": "Nueva subunidad",
     "sinTiposActivos": "No hay tipos de unidad activos.",
@@ -199,6 +200,7 @@
     "vistas": {
       "titulo": "Vistas guardadas",
       "sinArbol": "Esta rama no está guardada en Árboles. Guárdala allí para tener vistas propias.",
+      "sinArbolLado": "Esta rama no está guardada en Árboles: no tiene vistas propias.",
       "nombre": "Nombre de la vista",
       "guardar": "Guardar vista actual",
       "sinVistas": "Aún no hay vistas guardadas en este árbol.",
@@ -312,6 +314,7 @@
     "ordenarUnidad": "Ordenar por unidad",
     "exportar": "Exportar esta lista a Excel",
     "vacio": "Aún no hay puestos ni personas. Crea unidades y puestos en el árbol.",
+    "vacioLado": "Aún no hay puestos ni personas.",
     "sinResultados": "Ninguna fila coincide con los filtros.",
     "filtrosBoton": "Filtros",
     "filtrosActivos": "{n} filtro activo | {n} filtros activos",

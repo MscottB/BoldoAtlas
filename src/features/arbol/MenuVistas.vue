@@ -88,7 +88,9 @@ async function eliminar(id: string) {
       </Button>
     </PopoverTrigger>
     <PopoverContent align="start" class="w-80 gap-3 text-sm">
-      <p v-if="arbol === undefined" class="text-muted-foreground">{{ t("arbol.vistas.sinArbol") }}</p>
+      <p v-if="arbol === undefined" class="text-muted-foreground">
+        {{ t(MODO_LADO ? "arbol.vistas.sinArbolLado" : "arbol.vistas.sinArbol") }}
+      </p>
       <template v-else>
         <!-- Al lado, las vistas de la otra organización se aplican, pero no se guardan ni se cambian. -->
         <form v-if="!MODO_LADO" class="flex items-center gap-2" @submit.prevent="guardar">

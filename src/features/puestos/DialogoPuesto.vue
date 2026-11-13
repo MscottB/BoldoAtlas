@@ -26,6 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Asignacion } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { rutaPorTipo } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
@@ -241,6 +242,7 @@ async function verPersona(id: string) {
                   {{ t("puesto.desdeFecha", { fecha: fecha(vigentes[tipo]!.desde) }) }}
                 </p>
                 <Button
+                  v-if="!MODO_LADO"
                   type="button"
                   size="sm"
                   variant="outline"
@@ -259,7 +261,8 @@ async function verPersona(id: string) {
             </div>
           </section>
 
-          <div class="flex flex-wrap gap-2">
+          <!-- Viendo una fecha, deshabilitados; al lado (otra organización), ni se ofrecen. -->
+          <div v-if="!MODO_LADO" class="flex flex-wrap gap-2">
             <Button type="button" size="sm" :disabled="soloLectura" @click="abrirForm('titular')">{{
               t("puesto.accion.titular")
             }}</Button>
@@ -328,7 +331,7 @@ async function verPersona(id: string) {
 
       <DialogFooter>
         <Button
-          v-if="puesto"
+          v-if="puesto && !MODO_LADO"
           type="button"
           variant="destructive"
           class="sm:mr-auto"
@@ -338,7 +341,7 @@ async function verPersona(id: string) {
           <Trash2 aria-hidden="true" />
           {{ t("puesto.eliminar") }}
         </Button>
-        <Button v-else type="button" @click="crear">{{ t("puesto.crear") }}</Button>
+        <Button v-else-if="!puesto" type="button" @click="crear">{{ t("puesto.crear") }}</Button>
         <DialogClose as-child>
           <Button type="button" variant="outline">{{ t("ficha.cerrar") }}</Button>
         </DialogClose>

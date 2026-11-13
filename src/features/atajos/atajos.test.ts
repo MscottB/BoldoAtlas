@@ -213,6 +213,43 @@ describe("resolverAtajo: vista dividida", () => {
   });
 });
 
+describe("resolverAtajo: al lado (otra organización, en el iframe)", () => {
+  const lado = { lado: true, soloLectura: true };
+
+  it("sin pestañas ni paleta: Ctrl+K, Ctrl+T, Ctrl+W y Ctrl+Tab no hacen nada", () => {
+    for (const [key, extra] of [
+      ["k", { ctrlKey: true }],
+      ["t", { ctrlKey: true }],
+      ["w", { ctrlKey: true }],
+      ["Tab", { ctrlKey: true }],
+      ["Tab", { ctrlKey: true, shiftKey: true }],
+    ] as const)
+      expect(resolverAtajo(tecla(key, { ...lado, ...extra })), key).toBeNull();
+  });
+
+  it("F6 vuelve al panel principal, aunque el iframe no tenga vista dividida", () => {
+    expect(resolverAtajo(tecla("F6", lado))).toBe("otroPanel");
+    expect(resolverAtajo(tecla("F6", { ...lado, enCampoDeTexto: true }))).toBe("otroPanel");
+    expect(resolverAtajo(tecla("F6", { ...lado, modalAbierto: true }))).toBeNull();
+  });
+
+  it("lo de leer sigue (flechas, F, menú, zoom, Esc); lo de editar no", () => {
+    expect(resolverAtajo(tecla("ArrowDown", lado))).toBe("irPrimerHijo");
+    expect(resolverAtajo(tecla("f", lado))).toBe("buscarLienzo");
+    expect(resolverAtajo(tecla("ContextMenu", lado))).toBe("menuContextual");
+    expect(resolverAtajo(tecla("-", { ...lado, ctrlKey: true }))).toBe("alejar");
+    expect(resolverAtajo(tecla("Escape", lado))).toBe("cerrar");
+    for (const [key, extra] of [
+      ["n", {}],
+      ["Delete", {}],
+      ["F2", {}],
+      ["d", { ctrlKey: true }],
+      ["ArrowDown", { shiftKey: true }],
+    ] as const)
+      expect(resolverAtajo(tecla(key, { ...lado, ...extra })), key).toBeNull();
+  });
+});
+
 describe("resolverAtajo: renombrar", () => {
   it("F2 renombra la unidad seleccionada, fuera de campos, sin modificadores ni diálogos, y no viendo una fecha", () => {
     expect(resolverAtajo(tecla("F2"))).toBe("renombrar");

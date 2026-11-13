@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Puesto } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { textoSobre } from "@/features/tema/tema";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useEstilo } from "./useEstilo";
@@ -95,21 +96,30 @@ async function crear() {
         :style="{ background: actual.color, color: textoSobre(actual.color) }"
         >{{ actual.nombre }}</span
       >
-      <Button type="button" size="sm" variant="outline" @click="copiar(puesto.id)">
-        {{ t("leyenda.copiar") }}
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        :disabled="!org.puedePegarEstilo"
-        @click="pegar(puesto.id)"
-      >
-        {{ t("leyenda.pegar") }}
-      </Button>
-      <Button type="button" size="sm" variant="outline" :disabled="!puesto.leyenda_id" @click="asignar(null)">
-        {{ t("leyenda.quitar") }}
-      </Button>
+      <!-- Al lado (otra organización) el estilo solo se ve: no hay dónde pegarlo ni qué cambiar. -->
+      <template v-if="!MODO_LADO">
+        <Button type="button" size="sm" variant="outline" @click="copiar(puesto.id)">
+          {{ t("leyenda.copiar") }}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          :disabled="!org.puedePegarEstilo"
+          @click="pegar(puesto.id)"
+        >
+          {{ t("leyenda.pegar") }}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          :disabled="!puesto.leyenda_id"
+          @click="asignar(null)"
+        >
+          {{ t("leyenda.quitar") }}
+        </Button>
+      </template>
     </div>
     <p v-if="actual?.descripcion" class="text-xs text-muted-foreground">{{ actual.descripcion }}</p>
 

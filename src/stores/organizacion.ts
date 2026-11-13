@@ -316,6 +316,9 @@ export const useOrganizacion = defineStore("organizacion", () => {
     error.value = mensaje;
     return { ok: false, mensaje };
   };
+  /** Viendo una fecha, vuelve a hoy; al lado, la otra organización solo se mira (el mismo aviso que da su filtro). */
+  const rechazarSoloLectura = () =>
+    rechazar(MODO_LADO ? traducirError("solo_lectura") : t("store.soloLectura"));
 
   /** Única vía de escritura. Sin los datos cargados no: lo escrito se calcularía sobre lo que no se leyó. */
   const escribir = async (...args: Parameters<typeof aplicar>): Promise<Resultado> =>
@@ -334,7 +337,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Mueve las seleccionadas bajo `nuevoPadre` en un lote. Solo se mueven las cimas: su rama las acompaña. */
   async function moverUnidades(ids: string[], nuevoPadre: string | null): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const cimas = soloCimas(unidades.value, ids);
     if (cimas.some((id) => creaCiclo(unidades.value, id, nuevoPadre))) return rechazar(t("store.cicloRama"));
     const mover = cimas.filter((id) => porId.value.get(id)?.parent_id !== nuevoPadre);
@@ -343,7 +346,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Elimina varias en un lote (un solo Deshacer). Las raíces con contenido se omiten: ver `planEliminar`. */
   async function eliminarUnidades(ids: string[]): Promise<ResultadoEliminar> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const { bajas, omitidas } = planEliminar(unidades.value, puestos.value, ids);
     if (!bajas.length) return rechazar(t("store.raizConContenido"));
     const r = await escribir(
@@ -463,7 +466,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     escribir(() => E.quitarEtiqueta(unidadId, etiquetaId));
   /** Agrega la etiqueta a todas en un lote; las que ya la tienen se saltan (el índice no admite repetirla). */
   async function etiquetarUnidades(ids: string[], etiquetaId: string): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const tienen = new Set(
       unidadEtiquetas.value.filter((x) => x.etiqueta_id === etiquetaId).map((x) => x.unidad_id),
     );
@@ -478,7 +481,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     color: string,
     paraUnidad?: string | string[],
   ): Promise<ResultadoValor> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
     const c = L.normalizarColor(color);
     if (!c) return rechazar(t("errores.colorInvalido"));
@@ -498,7 +501,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
   /** Crea la zona con esas unidades, en un lote. Como con las etiquetas, un nombre repetido sugiere la existente. */
   async function crearZona(nombre: string, color: string, unidades: string[] = []): Promise<ResultadoValor> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
     const c = L.normalizarColor(color);
     if (!c) return rechazar(t("errores.colorInvalido"));
@@ -519,7 +522,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     return r.ok ? { ok: true, id: r.id! } : r;
   }
   async function editarZona(id: string, cambios: { nombre?: string; color?: string }): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const color = cambios.color === undefined ? undefined : L.normalizarColor(cambios.color);
     if (color === null) return rechazar(t("errores.colorInvalido"));
     if (cambios.nombre !== undefined) {
@@ -532,17 +535,17 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
   /** Agrega a todas en un lote; las que ya están se saltan (el índice no admite repetirlas). */
   async function agregarAZona(ids: string[], zonaId: string): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const estan = new Set(zonaUnidades.value.filter((x) => x.zona_id === zonaId).map((x) => x.unidad_id));
     const faltan = ids.filter((id) => !estan.has(id));
     return faltan.length ? escribir(() => faltan.flatMap((id) => Z.agregarAZona(zonaId, id))) : { ok: true };
   }
   async function quitarDeZona(ids: string[], zonaId: string): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     return escribir(() => ids.flatMap((id) => Z.quitarDeZona(zonaId, id)));
   }
   async function eliminarZona(id: string): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     return escribir(
       () => Z.eliminarZona(id),
       () => (ultimoBorrado.value = { tipo: "zona", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
@@ -563,7 +566,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     destino: string,
     etiqueta: string | null = null,
   ): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const motivo = conexionRechazada(origen, destino, conexiones.value);
     return motivo ? rechazar(motivo) : escribir(() => X.crearConexion(origen, destino, etiqueta));
   }
@@ -573,7 +576,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     id: string,
     cambios: { origen_id?: string; destino_id?: string; etiqueta?: string | null },
   ): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const c = conexiones.value.find((x) => x.id === id);
     if (!c) return rechazar(t("store.conexionInexistente"));
     const { origen_id = c.origen_id, destino_id = c.destino_id } = cambios;
@@ -601,7 +604,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Con Deshacer, como las demás bajas. */
   async function eliminarConexion(id: string): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const c = conexiones.value.find((x) => x.id === id);
     if (!c) return rechazar(t("store.conexionInexistente"));
     return escribir(
@@ -618,7 +621,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
 
   /** Copia la unidad con su rama (ver `duplicarRama`) y devuelve el id de la copia. */
   async function duplicarRama(id: string): Promise<Resultado> {
-    if (fechaVista.value) return rechazar(t("store.soloLectura"));
+    if (soloLectura.value) return rechazarSoloLectura();
     const u = porId.value.get(id);
     if (!u) return rechazar(t("store.unidadInexistente"));
     const estado = {

@@ -4,7 +4,8 @@ import { createPinia } from "pinia";
 import { createApp, createSSRApp, type App } from "vue";
 import { renderToString } from "vue/server-renderer";
 import { i18n } from "@/i18n";
-import { rutas } from "@/router";
+import { router as routerApp, rutas } from "@/router";
+import { routerDel } from "@/features/pestanas/routerConFoco";
 import AppLado from "./AppLado.vue";
 import PantallaError from "@/vistas/PantallaError.vue";
 import { arrancar, guiarRouter, VISTAS_LADO } from "./arranque";
@@ -22,6 +23,19 @@ vi.mock("vue", async (original) => {
 vi.mock("vue-router", async (original) => {
   const vr = await original<typeof import("vue-router")>();
   return { ...vr, createWebHashHistory: vr.createMemoryHistory };
+});
+// La carga de la organización, fingida solo donde una prueba lo pide.
+const carga = vi.hoisted(() => ({ fingir: false }));
+vi.mock("@/stores/organizacion", async (original) => {
+  const m = await original<typeof import("@/stores/organizacion")>();
+  return {
+    ...m,
+    useOrganizacion: (...args: Parameters<typeof m.useOrganizacion>) => {
+      const org = m.useOrganizacion(...args);
+      if (carga.fingir) org.cargar = async () => ({ ok: true });
+      return org;
+    },
+  };
 });
 // Las vistas reales no se montan aquí: solo importa a qué ruta llega el router.
 const vacia = vi.hoisted(() => ({ default: { render: () => null } }));
@@ -112,6 +126,23 @@ describe("AppLado", () => {
 });
 
 describe("arrancar", () => {
+  it("registra el router del iframe como el del panel: «Ver en el organigrama» navega con él", async () => {
+    // Tauri ya le dio IPC al iframe: el puente no toca nada
+    vi.stubGlobal("window", { parent: {}, __TAURI_INTERNALS__: {} });
+    carga.fingir = true;
+    const montar = vi.fn();
+    const app = { use: () => app, mount: montar } as unknown as App;
+    vi.mocked(createApp).mockReturnValueOnce(app);
+    try {
+      await arrancar();
+    } finally {
+      carga.fingir = false;
+    }
+    expect(createApp).toHaveBeenLastCalledWith(AppLado, { motivo: "" });
+    expect(montar).toHaveBeenCalledWith("#app");
+    expect(routerDel("principal")).toBe(routerApp);
+  });
+
   it("si algo falla, el iframe muestra el motivo y no queda en blanco", async () => {
     // el padre no es la app: no hay IPC que tomar
     vi.stubGlobal("window", { parent: {} });

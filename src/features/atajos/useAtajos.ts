@@ -4,6 +4,7 @@ import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { abrirMenuContextual, nodoEn, useLienzo } from "@/features/arbol/useLienzo";
 import { esVistaCerrable } from "@/app/estructura";
+import { MODO_LADO } from "@/lado/modo";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
@@ -31,8 +32,8 @@ const MODAL =
 const LIENZO_O_PANEL = ".vue-flow, [data-panel-unidad]";
 
 /**
- * Atajos de teclado de la app. Se registra una sola vez, en App.vue. Con la vista dividida actúan en el panel con foco:
- * su ruta, su lienzo y lo que se busca, dentro de él.
+ * Atajos de teclado de la app. Se registra una sola vez, en App.vue (y en AppLado, el iframe de al lado). Con la vista
+ * dividida actúan en el panel con foco: su ruta, su lienzo y lo que se busca, dentro de él.
  */
 export function useAtajos() {
   const org = useOrganizacion();
@@ -71,6 +72,7 @@ export function useAtajos() {
       soloLectura: org.soloLectura,
       horizontal: config.value.direccion === "horizontal",
       dividida: !!pestanas.lado,
+      lado: MODO_LADO,
     });
     if (!atajo) return;
 
@@ -91,6 +93,9 @@ export function useAtajos() {
     // F6: el foco del teclado pasa al otro panel (el panel mismo lo recibe; desde ahí valen las flechas del lienzo).
     if (atajo === "otroPanel") {
       e.preventDefault();
+      // En el iframe de al lado el otro panel es de la ventana: el padre le pasa el foco (mismo origen).
+      if (MODO_LADO)
+        return window.parent.postMessage({ tipo: "boldo-lado-tecla", tecla: "F6" }, location.origin);
       const otro = panel === "lado" ? "principal" : "lado";
       pestanas.enfocarPanel(otro);
       document.querySelector<HTMLElement>(`[data-panel="${otro}"]`)?.focus();

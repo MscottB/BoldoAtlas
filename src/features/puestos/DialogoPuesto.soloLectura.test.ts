@@ -69,7 +69,15 @@ function boton(s: string, texto: string) {
   return b.slice(0, b.indexOf(">") + 1);
 }
 const deshabilitado = /\sdisabled[\s>=]/;
-const EDITAR = ["puesto.accion.titular", "puesto.accion.reemplazo", "puesto.eliminar"] as const;
+const EDITAR = [
+  "puesto.accion.titular",
+  "puesto.accion.reemplazo",
+  "puesto.eliminar",
+  "leyenda.copiar",
+  "leyenda.pegar",
+  "leyenda.quitar",
+] as const;
+const terminar = () => t("puesto.terminarDe", { nombre: "Ana Pérez" });
 
 beforeEach(() => {
   fijarBase("A");
@@ -85,11 +93,11 @@ beforeEach(() => {
 });
 
 describe("El puesto en solo lectura", () => {
-  it("al lado nada se cambia, sin el aviso de la fecha; la persona y cerrar siguen", async () => {
+  it("al lado no hay acciones de editar y los campos quedan deshabilitados, sin el aviso de la fecha", async () => {
     lado.activo = true;
     const s = await html();
-    for (const clave of EDITAR) expect(boton(s, t(clave)), clave).toMatch(deshabilitado);
-    expect(boton(s, t("puesto.terminarDe", { nombre: "Ana Pérez" }))).toMatch(deshabilitado);
+    for (const clave of EDITAR) expect(s, clave).not.toContain(t(clave));
+    expect(s).not.toContain(terminar());
     expect(s).toMatch(/<textarea[^>]*id="puesto-descripcion"[^>]*\sdisabled/);
     expect(s).toMatch(/<input type="checkbox"[^>]*\sdisabled/);
     expect(s).toMatch(/<fieldset[^>]*\sdisabled/);
@@ -98,10 +106,23 @@ describe("El puesto en solo lectura", () => {
     expect(s).toContain(t("ficha.cerrar"));
   });
 
+  it("viendo una fecha, como hoy: las acciones están, deshabilitadas", async () => {
+    lado.activo = false;
+    useOrganizacion().fechaVista = "2026-01-01";
+    const s = await html();
+    for (const clave of ["puesto.accion.titular", "puesto.accion.reemplazo", "puesto.eliminar"])
+      expect(boton(s, t(clave)), clave).toMatch(deshabilitado);
+    expect(boton(s, terminar())).toMatch(deshabilitado);
+    expect(s).toMatch(/<fieldset[^>]*\sdisabled/);
+    expect(s).toContain(t("leyenda.copiar"));
+  });
+
   it("fuera del lado se edita como siempre", async () => {
     lado.activo = false;
     const s = await html();
-    for (const clave of EDITAR) expect(boton(s, t(clave)), clave).not.toMatch(deshabilitado);
+    for (const clave of ["puesto.accion.titular", "puesto.accion.reemplazo", "puesto.eliminar"])
+      expect(boton(s, t(clave)), clave).not.toMatch(deshabilitado);
+    for (const clave of EDITAR) expect(s, clave).toContain(t(clave));
     expect(s).not.toMatch(/<fieldset[^>]*\sdisabled/);
   });
 });

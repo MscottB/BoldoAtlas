@@ -5,6 +5,7 @@ import { Pencil, Waypoints, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { filasDeConexiones } from "./panel";
 import EliminarConexion from "./EliminarConexion.vue";
@@ -53,7 +54,8 @@ const alEliminar = () => raiz.value?.closest<HTMLElement>("[data-panel-unidad]")
     </h3>
     <p class="text-xs text-muted-foreground">{{ t("unidad.conexionesAyuda") }}</p>
     <FilasConexion v-if="filas.length" :filas="filas" :aria-labelledby="`${uid}-titulo`">
-      <template #acciones="{ fila: f }">
+      <!-- Al lado (otra organización) las conexiones solo se ven. -->
+      <template v-if="!MODO_LADO" #acciones="{ fila: f }">
         <button
           type="button"
           class="grid size-6 shrink-0 place-items-center rounded hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
@@ -81,6 +83,7 @@ const alEliminar = () => raiz.value?.closest<HTMLElement>("[data-panel-unidad]")
       {{ t("unidad.relacionesApagadas") }}
     </p>
     <Button
+      v-if="!MODO_LADO"
       type="button"
       variant="outline"
       size="sm"

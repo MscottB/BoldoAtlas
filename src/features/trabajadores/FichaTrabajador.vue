@@ -56,7 +56,7 @@ const org = useOrganizacion();
 const ficha = useFicha();
 const puesto = usePuesto();
 // Al lado, la otra organización: la ficha se lee, no se cambia. Viendo una fecha sí se edita: la persona no depende del día.
-const soloLectura = MODO_LADO;
+const alLado = MODO_LADO;
 
 type CampoCatalogo = "tipo_contrato_id" | "sede_id" | "jornada_id";
 const CATALOGOS: { campo: CampoCatalogo; tabla: TablaCatalogo; etiqueta: string }[] = [
@@ -376,7 +376,7 @@ const alAbrir = (e: Event) => {
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
         <DialogDescription>{{
-          t(soloLectura ? "ficha.descripcionSoloLectura" : "ficha.descripcion")
+          t(alLado ? "ficha.descripcionSoloLectura" : "ficha.descripcion")
         }}</DialogDescription>
       </DialogHeader>
 
@@ -389,7 +389,7 @@ const alAbrir = (e: Event) => {
             id="ficha-nombre"
             v-model="form.nombre"
             autocomplete="off"
-            :disabled="soloLectura"
+            :disabled="alLado"
             :aria-invalid="!!errores.nombre"
             :aria-describedby="describe('nombre')"
             @blur="alSalir"
@@ -406,7 +406,7 @@ const alAbrir = (e: Event) => {
             v-model="form.correo"
             type="email"
             autocomplete="off"
-            :disabled="soloLectura"
+            :disabled="alLado"
             :aria-invalid="!!errores.correo"
             :aria-describedby="describe('correo')"
             @input="delete fallidos.correo"
@@ -424,7 +424,7 @@ const alAbrir = (e: Event) => {
             v-model="form.telefono"
             type="tel"
             autocomplete="off"
-            :disabled="soloLectura"
+            :disabled="alLado"
             @blur="alSalir"
           />
         </div>
@@ -487,7 +487,7 @@ const alAbrir = (e: Event) => {
                 :id="`ficha-${c.campo}`"
                 :tabla="c.tabla"
                 :model-value="form[c.campo]"
-                :disabled="soloLectura"
+                :disabled="alLado"
                 @update:model-value="cambiar(c.campo, $event)"
               />
             </div>
@@ -497,7 +497,7 @@ const alAbrir = (e: Event) => {
               <Textarea
                 id="ficha-notas"
                 v-model="form.notas"
-                :disabled="soloLectura || notasGuardadas === undefined"
+                :disabled="alLado || notasGuardadas === undefined"
                 @blur="alSalir"
               />
               <p v-if="errorNotas" role="alert" class="text-xs text-destructive">
@@ -514,7 +514,7 @@ const alAbrir = (e: Event) => {
                   alt=""
                   class="size-12 rounded-full object-cover"
                 />
-                <template v-if="!soloLectura">
+                <template v-if="!alLado">
                   <input
                     ref="inputFoto"
                     type="file"
@@ -551,7 +551,7 @@ const alAbrir = (e: Event) => {
 
       <DialogFooter>
         <Button
-          v-if="id && !soloLectura"
+          v-if="id && !alLado"
           type="button"
           variant="destructive"
           class="sm:mr-auto"

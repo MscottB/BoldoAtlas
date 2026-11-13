@@ -20,6 +20,11 @@ vi.mock("@/lado/modo", () => ({
   },
   idLado: () => "",
 }));
+const db = vi.hoisted(() => ({ lote: vi.fn(async () => {}) }));
+vi.mock("@/db/cliente", async (original) => ({
+  ...(await original<typeof import("@/db/cliente")>()),
+  lote: db.lote,
+}));
 
 const gerencia = u("g", TIPO_GERENCIA, "Gerencia", null);
 let pinia: Pinia;
@@ -39,6 +44,30 @@ describe("soloLectura del store", () => {
     lado.activo = true;
     setActivePinia(createPinia());
     expect(useOrganizacion().soloLectura).toBe(true);
+  });
+});
+
+describe("Las escrituras del store", () => {
+  it("al lado se rechazan con el aviso de solo lectura de la otra organización, sin escribir", async () => {
+    lado.activo = true;
+    const org = useOrganizacion();
+    org.cargado = true;
+    const r = await org.moverUnidades(["a"], null);
+    expect(r).toEqual({ ok: false, mensaje: i18n.global.t("respaldos.error.solo_lectura") });
+    expect(org.error).toBe(i18n.global.t("respaldos.error.solo_lectura"));
+    expect(await org.crearZona("Z", "#112233")).toMatchObject({ ok: false });
+    expect(db.lote).not.toHaveBeenCalled();
+  });
+
+  it("viendo una fecha, el aviso de siempre", async () => {
+    lado.activo = false;
+    const org = useOrganizacion();
+    org.cargado = true;
+    org.fechaVista = "2026-01-01";
+    expect(await org.eliminarUnidades(["a"])).toEqual({
+      ok: false,
+      mensaje: i18n.global.t("store.soloLectura"),
+    });
   });
 });
 
