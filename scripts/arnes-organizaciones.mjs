@@ -1599,7 +1599,9 @@ const marcarOtra = (o) =>
     const persona = String(
       c.prepare("SELECT id FROM trabajadores WHERE deleted_at IS NULL ORDER BY id LIMIT 1").get()?.id,
     );
-    const cargo = String(c.prepare("SELECT id FROM cargos WHERE deleted_at IS NULL ORDER BY id LIMIT 1").get()?.id);
+    const cargo = String(
+      c.prepare("SELECT id FROM cargos WHERE deleted_at IS NULL ORDER BY id LIMIT 1").get()?.id,
+    );
     for (let i = 0; i < 2; i++) {
       const puesto = randomUUID();
       c.prepare(
@@ -1845,13 +1847,14 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     comprobar(`lado a lado: ${vista} del iframe no muestra acciones de editar`, !hay.length, hay);
   };
   const DIALOGO = `${EN_MARCO}?.querySelector('[role="dialog"][data-state="open"]')`;
+  // Un menú que se acaba de cerrar sigue siendo la capa de arriba mientras se anima y se queda con el Esc: se repite
+  // mientras el diálogo siga abierto.
   /** Esc en el iframe, que cierra su diálogo. @param {string} que */
-  const cerrarDialogo = async (que) => {
-    await app.evaluar(
-      `${EN_MARCO}.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Escape", bubbles: true }))`,
+  const cerrarDialogo = (que) =>
+    app.hasta(
+      `!${DIALOGO} || (${EN_MARCO}.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Escape", bubbles: true })), false)`,
+      que,
     );
-    await app.hasta(`!${DIALOGO}`, que);
-  };
 
   await irAlLado("/");
   await verQue(
@@ -1946,7 +1949,10 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   await app.evaluar(
     `${menuUbicar}?.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Escape", bubbles: true }))`,
   );
-  await app.hasta(`!(${menuUbicar}) && Boolean(${DIALOGO})`, "el menú «¿Cuál puesto?» cerrado, con la ficha abierta");
+  await app.hasta(
+    `!(${menuUbicar}) && Boolean(${DIALOGO})`,
+    "el menú «¿Cuál puesto?» cerrado, con la ficha abierta",
+  );
   await cerrarDialogo("la ficha cerrada");
   // El modo Árbol, sin búsqueda: parte de la raíz. Solo lee (al lado, la vista elegida ni siquiera se guarda).
   const modo = (/** @type {string} */ m) => `${EN_MARCO}?.querySelector('[data-vista-directorio="${m}"]')`;
@@ -1959,7 +1965,10 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `${modo("arbol")}?.getAttribute("aria-pressed") === "true" && [...(${EN_MARCO}?.querySelectorAll('[role="treeitem"]') ?? [])].some((x) => x.innerText.includes(${JSON.stringify(raizDe(o))}))`,
   );
   await app.evaluar(`${modo("lista")}.click()`);
-  await app.hasta(`Boolean(${EN_MARCO}?.querySelector("tbody tr"))`, "el Directorio del iframe de vuelta en Lista");
+  await app.hasta(
+    `Boolean(${EN_MARCO}?.querySelector("tbody tr"))`,
+    "el Directorio del iframe de vuelta en Lista",
+  );
   // Un clic de verdad, como una persona: Configuración no se ve al lado.
   await clicEn(app, entradaLateral("/configuracion"), "«Configuración» en el menú lateral");
   await verQue(
