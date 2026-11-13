@@ -124,7 +124,6 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
   const { tema, acento, escala } = useTema();
   // El panel se vuelve a montar si cambia su pestaña o su modo: la organización es fija.
   const org = pestanas.lista.find((p) => p.id === id)?.org ?? "";
-  let nueva = pestanas.nuevaAlLado(id);
   const nombre = computed(
     () => organizaciones.lista.find((o) => o.id === org)?.nombre || i18n.global.t("barra.sinNombre"),
   );
@@ -151,7 +150,7 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
   function alLlegar(ruta: string) {
     if (!iframeListo) {
       iframeListo = true;
-      nueva = false;
+      pestanas.vistaAlLado(id);
       medir(id);
       if (pendiente !== null && pendiente !== ruta) pedir(pendiente);
       pendiente = null;
@@ -173,18 +172,13 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
     armar();
   }
   let vivo = true;
-  /** Cierra la vista dividida sin haber mostrado la otra: la pestaña que abrió «Ver al lado» no queda en la barra. */
-  function cerrar() {
-    pestanas.cerrarDivision();
-    if (nueva) pestanas.quitar(id);
-  }
   /**
    * El diálogo de memoria se cerró. «Abrir igual» también lo cierra, y antes de que corra su clic: se mira después, y si
    * no se eligió, es un «No» (el botón, Esc).
    */
   function alCerrarPregunta() {
     setTimeout(() => {
-      if (vivo && estado.value === "preguntando") cerrar();
+      if (vivo && estado.value === "preguntando") pestanas.cerrarDivision();
     });
   }
 
@@ -217,6 +211,8 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
   });
   onBeforeUnmount(() => {
     vivo = false;
+    // Se fue sin verse (otra pestaña al lado, o se cerró la vista): si vuelve, ya es una más.
+    pestanas.vistaAlLado(id);
     // Cerrado antes de verse: su marca no queda si la pestaña vuelve al lado.
     performance.clearMarks(marcaVerAlLado(id));
     window.removeEventListener("message", alMensaje);
@@ -227,5 +223,5 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
     );
   });
 
-  return { nombre, estado, error, src, clave, abrirIgual, alCerrarPregunta, cerrar };
+  return { nombre, estado, error, src, clave, abrirIgual, alCerrarPregunta };
 }

@@ -21,6 +21,8 @@ import { MARCA_DIVIDIR, usePestanas } from "./usePestanas";
 const props = defineProps<{ id: string }>();
 const pestanas = usePestanas();
 const pestana = pestanas.lista.find((p) => p.id === props.id);
+// Mostrada como panel de la abierta: si la abrió «Ver al lado», ya se vio.
+pestanas.vistaAlLado(props.id);
 // De Configuración, Ayuda o Acerca de, que no van al lado, a la vista de trabajo de la pestaña.
 const r = crearRouterLado(pestana ? pestanas.rutaDeTrabajo(pestana) : RUTA_INICIO);
 // Como hace vue-router al instalarse: cada clave lee la de la ruta actual.

@@ -56,8 +56,15 @@ export const usePestanas = defineStore("pestanas", () => {
   let ultimoPedido = 0;
   /** false mientras `modelo` sea el inicial: desde Inicio se puede llegar aquí sin `entrar`, y guardarlo pisaría la clave. */
   let cargadas = false;
-  /** Las que abrió «Ver al lado» y aún no llegaron a un panel: ver `nuevaAlLado`. No se guarda. */
+  /**
+   * Las que abrió «Ver al lado» y aún no se vieron: si la vista dividida se cierra antes, no quedan en la barra (nadie pidió
+   * esa pestaña, sino verla). Dejan de serlo al verse, al irse del lado o al cambiar la organización abierta. No se guarda.
+   */
   const nuevas = new Set<string>();
+  watch(
+    () => useOrganizaciones().idAbierta,
+    () => nuevas.clear(),
+  );
 
   const lista = computed(() => modelo.value.lista);
   const activa = computed(() => modelo.value.activa);
@@ -485,9 +492,14 @@ export const usePestanas = defineStore("pestanas", () => {
       return { ok: true };
     },
     dividir,
-    /** Deja la pestaña de al lado en la barra como una más. El foco no queda suelto: va a la activa, como con Ctrl+W. */
+    /**
+     * Deja la pestaña de al lado en la barra como una más, salvo la que abrió «Ver al lado» y no se vio, que se quita. El
+     * foco no queda suelto: va a la activa, como con Ctrl+W.
+     */
     cerrarDivision() {
-      modelo.value = P.sinLado(modelo.value);
+      const l = modelo.value.lado;
+      const m = P.sinLado(modelo.value);
+      modelo.value = l && nuevas.delete(l) ? { ...m, lista: m.lista.filter((p) => p.id !== l) } : m;
       void enfocar(true);
     },
     orientar(o: P.Division["orientacion"]) {
@@ -523,11 +535,8 @@ export const usePestanas = defineStore("pestanas", () => {
       modelo.value = P.alLado(modelo.value, id);
       return { ok: true };
     },
-    /**
-     * Si «Ver al lado» acaba de abrir `id`: lo sabe solo el primer panel que la muestra, que la quita si se cierra sin
-     * llegar a verse (nadie pidió esa pestaña, sino verla). Una que ya estaba en la barra no lo es.
-     */
-    nuevaAlLado: (id: string) => nuevas.delete(id),
+    /** El panel de al lado ya mostró `id`, o se fue sin mostrarla: cerrar la vista ya no la quita. */
+    vistaAlLado: (id: string) => void nuevas.delete(id),
     /**
      * Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1) en el panel con foco, saltando la del otro. En el principal, con un cambio aún
      * en curso, cuenta desde la pestaña a la que se va.

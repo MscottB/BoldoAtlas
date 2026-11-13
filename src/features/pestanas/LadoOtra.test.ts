@@ -470,28 +470,67 @@ describe("useLadoOtra", () => {
     const primero = montar(nueva);
     await esperar();
     expect(primero.lado.estado.value).toBe("error");
-    primero.lado.cerrar();
+    p.cerrarDivision();
     expect(p.lado).toBeNull();
     expect(p.existe(nueva)).toBe(false);
     primero.app.unmount();
 
     p.abrirAlLado("x");
-    const { lado } = montar("x");
+    montar("x");
     await esperar();
-    lado.cerrar();
+    p.cerrarDivision();
     expect(p.lado).toBeNull();
     expect(p.existe("x")).toBe(true);
+  });
+
+  it("la × de la vista dividida mientras copia quita la que abrió «Ver al lado»; con una que ya estaba, no", async () => {
+    const p = await arrancar();
+    p.verAlLado("B");
+    const nueva = p.lado!;
+    const { app } = montar(nueva);
+    p.cerrarDivision();
+    expect(p.lado).toBeNull();
+    expect(p.existe(nueva)).toBe(false);
+    app.unmount();
+
+    p.abrirAlLado("y");
+    montar("y");
+    p.cerrarDivision();
+    expect(p.existe("y")).toBe(true);
+  });
+
+  it("la que abrió «Ver al lado» y dejó el lado sin verse ya es una más: al volver, cerrar la vista no la quita", async () => {
+    const p = await arrancar();
+    p.verAlLado("B");
+    const nueva = p.lado!;
+    const { app } = montar(nueva);
+    p.abrirAlLado("y");
+    app.unmount(); // el panel se va con su pestaña
+    p.abrirAlLado(nueva);
+    montar(nueva);
+    p.cerrarDivision();
+    expect(p.existe(nueva)).toBe(true);
+  });
+
+  it("la que abrió «Ver al lado», si su organización pasa a ser la abierta, ya no se quita al cerrar la vista", async () => {
+    const p = await arrancar();
+    p.verAlLado("B");
+    const nueva = p.lado!;
+    useOrganizaciones().idAbierta = "B";
+    await vi.advanceTimersByTimeAsync(0);
+    p.cerrarDivision();
+    expect(p.existe(nueva)).toBe(true);
   });
 
   it("la que abrió «Ver al lado» y ya se vio sigue en la barra si después se cierra la vista", async () => {
     const p = await arrancar();
     p.verAlLado("B");
     const nueva = p.lado!;
-    const { lado, app } = montar(nueva);
+    const { app } = montar(nueva);
     await esperar();
     delIframe({ tipo: "boldo-lado-ruta", ruta: "/" });
     await vi.advanceTimersByTimeAsync(0);
-    lado.cerrar();
+    p.cerrarDivision();
     expect(p.existe(nueva)).toBe(true);
     app.unmount();
   });
@@ -568,6 +607,15 @@ describe("panel de al lado con otra organización", () => {
     const t = await paleta();
     expect(t).not.toContain("Nueva unidad");
     expect(t).toContain("Ir al directorio"); // navegar sí: va al iframe
+  });
+
+  it("una que abrió «Ver al lado» y se mostró como panel de la abierta ya no se quita al cerrar la vista", async () => {
+    const p = await arrancar();
+    p.verAlLado("A");
+    const nueva = p.lado!;
+    expect(texto(await html())).not.toContain("Solo lectura");
+    p.cerrarDivision();
+    expect(p.existe(nueva)).toBe(true);
   });
 
   it("con una de la abierta al lado, el encabezado es el de siempre", async () => {

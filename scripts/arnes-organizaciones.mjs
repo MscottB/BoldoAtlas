@@ -1597,7 +1597,8 @@ async function verAlLadoPorPaleta(app, o, n) {
 async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   const previos = fallosHastaAhora();
   const tamanos = { relacionada: await marcarOtra(relacionada), aparte: await marcarOtra(aparte) };
-  // El archivo de cada una y lo que hay a su lado, con su fecha; se mira después de cerrar la app.
+  // El archivo de cada una y lo que hay a su lado, con su fecha. La aparte se mira después de cerrar la app; la
+  // relacionada, justo antes de abrirla en el principal (desde ahí su archivo cambia con razón).
   const archivos = () =>
     [relacionada, aparte].map((o) => ({
       archivos: huellas(dirname(o.ruta)),
