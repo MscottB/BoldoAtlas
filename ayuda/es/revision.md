@@ -37,7 +37,7 @@ Las secciones importantes empiezan abiertas y las demás, plegadas. Cada una rec
 
 **Eliminar** y **Desactivar** avisan con un mensaje que trae **Deshacer**. Púlsalo si te equivocaste.
 
-## Así está bien {#asi-esta-bien}
+## Así está bien
 
 Si un aviso no es un problema, pulsa **Así está bien**. Te pide un motivo, que es obligatorio y puede tener hasta 200 caracteres. Luego pulsa **Guardar**.
 
@@ -63,6 +63,6 @@ Para volver a verlo todo, elige **Toda la organización**.
 
 ## A una fecha y al lado
 
-Si miras una fecha, o si ves otra organización al lado, solo puedes mirar y abrir. **Así está bien**, **Volver a avisar**, **Eliminar** y **Desactivar** no aparecen.
+Si miras una fecha, o si ves otra organización al lado, solo puedes mirar y abrir. Los botones de las vacantes y de las unidades dicen **Ver puesto** y **Ver unidad**. **Así está bien**, **Volver a avisar**, **Eliminar** y **Desactivar** no aparecen.
 
 **Ver también:** [Puestos y reemplazos](puestos.md) · [Fichas de personas](fichas.md) · [Configuración y mantenedores](mantenedores.md) · [Ver al lado](organizaciones.md#ver-al-lado).

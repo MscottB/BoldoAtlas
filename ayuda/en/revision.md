@@ -37,7 +37,7 @@ The important sections start open and the rest start collapsed. Each one remembe
 
 **Delete** and **Deactivate** show a notice with **Undo**. Press it if you made a mistake.
 
-## This is fine {#looks-fine}
+## This is fine
 
 If a warning is not a problem, press **This is fine**. It asks for a reason, which is required and can be up to 200 characters. Then press **Save**.
 
@@ -63,6 +63,6 @@ To see everything again, choose **Whole organization**.
 
 ## On a date and side by side
 
-If you are viewing a date, or another organization side by side, you can only look and open. **This is fine**, **Warn again**, **Delete** and **Deactivate** do not appear.
+If you are viewing a date, or another organization side by side, you can only look and open. The buttons for vacancies and units read **View position** and **View unit**. **This is fine**, **Warn again**, **Delete** and **Deactivate** do not appear.
 
 **See also:** [Positions and replacements](puestos.md) · [Person records](fichas.md) · [Settings and lists](mantenedores.md) · [View side by side](organizaciones.md#view-side-by-side).
