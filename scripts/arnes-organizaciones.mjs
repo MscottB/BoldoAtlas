@@ -1162,7 +1162,11 @@ async function medirDivision({ carpeta, exe, datos }) {
   await app.hasta(`/^[^,]+$/.test(${elegidas("lado")})`, "una unidad elegida al lado");
   /** @type {string} */
   const unidad = await app.evaluar(elegidas("lado"));
-  await pausa(500); // el panel de la unidad elegida se abre y toma el foco: que no se lo quite al campo de F2
+  // El panel de la unidad elegida se abre y toma el foco: hasta entonces, F2 podría perder el campo.
+  await app.hasta(
+    `document.activeElement === ${panel("lado")}?.querySelector("[data-panel-unidad]")`,
+    "el panel de la unidad de al lado, con el foco",
+  );
   const campo = (/** @type {Panel} */ p) =>
     `${panel(p)}?.querySelector('.vue-flow__node[data-id="${unidad}"] input')`;
   await pulsar(app, "F2");
@@ -1204,22 +1208,29 @@ async function medirDivision({ carpeta, exe, datos }) {
   // Dos Vue Flow montados a la vez. Al intercambiar las pestañas (con el foco en el principal, un clic en la de al lado),
   // ninguno queda en blanco.
   const ids = { principal: await app.evaluar(ACTIVA), lado: await app.evaluar(AL_LADO) };
+  // cada Vue Flow, con su panel y su id (VistaArbol lo deja en data-lienzo)
+  const lienzos = `[...document.querySelectorAll(".vue-flow")].map((l) => l.closest("[data-panel]")?.dataset.panel + ":" + l.dataset.lienzo).join()`;
+  const esperados = `principal:arbol-principal-${ids.principal},lado:arbol-lado-${ids.lado}`;
   comprobar(
-    `vista dividida: dos lienzos a la vez, arbol-principal-${ids.principal} y arbol-lado-${ids.lado}, cada uno con sus tarjetas`,
-    Boolean(ids.principal && ids.lado) &&
+    `vista dividida: dos Vue Flow a la vez, arbol-principal-${ids.principal} y arbol-lado-${ids.lado}, cada uno con sus tarjetas`,
+    (await app.evaluar(lienzos)) === esperados &&
       (await app.evaluar(`${tarjetas("principal")} > 0 && ${tarjetas("lado")} > 0`)),
-    await app.evaluar(ESTADO),
+    { lienzos: await app.evaluar(lienzos), estado: await app.evaluar(ESTADO) },
   );
   await clicEn(app, encabezado("principal"), "el encabezado del principal");
   await app.hasta(`${MARCADO} === "principal"`, "el foco en el principal");
   await app.evaluar(`${pestana(ids.lado)}.click()`);
   const intercambiadas = `(${ACTIVA} === ${JSON.stringify(ids.lado)} && ${AL_LADO} === ${JSON.stringify(ids.principal)} && ${tarjetas("principal")} > 0 && ${tarjetas("lado")} > 0)`;
-  await app.hasta(intercambiadas, "las pestañas intercambiadas").catch(() => undefined);
-  await pausa(1000); // un lienzo que se desmonta tarde dejaría en blanco al otro después de verse
   await verQue(
     app,
     "vista dividida: al intercambiar las pestañas de panel, ninguno de los dos lienzos queda en blanco",
     intercambiadas,
+  );
+  await pausa(1000); // un lienzo que se desmonta tarde dejaría en blanco al otro después de verse
+  comprobar(
+    "vista dividida: … y siguen dibujados un segundo después",
+    await app.evaluar(intercambiadas),
+    await app.evaluar(ESTADO),
   );
 
   // F6, y el clic o el foco que entra a un panel lo marcan.
@@ -1253,12 +1264,16 @@ async function medirDivision({ carpeta, exe, datos }) {
     "vista dividida: con el foco al lado, «Directorio» del menú lateral cambia ese panel y no el principal",
     `${tituloPanel("lado")} === ${directorio} && location.hash === ${JSON.stringify(hash)} && ${tarjetas("principal")} > 0`,
   );
-  await app.evaluar(`${entradaLateral("/configuracion")}.click()`);
+  // Un clic de verdad, como una persona: el foco del teclado sale del panel de al lado y va al menú.
+  await clicEn(app, entradaLateral("/configuracion"), "«Configuración» en el menú lateral");
   await verQue(
     app,
-    "vista dividida: «Configuración» se abre en el principal, que pasa a tener el foco",
-    `location.hash === "#/configuracion" && ${MARCADO} === "principal" && ${tituloPanel("lado")} === ${directorio}`,
+    "vista dividida: «Configuración» se abre en el principal, que queda marcado, y el foco sale del panel de al lado",
+    `location.hash === "#/configuracion" && ${MARCADO} === "principal" && ${FOCO_EN} !== "lado" && ${tituloPanel("lado")} === ${directorio}`,
   );
+  // De vuelta en el principal (con el menú lateral contraído, Esc en él solo lo pliega)
+  await clicEn(app, encabezado("principal"), "el encabezado del principal");
+  await app.hasta(`${FOCO_EN} === "principal"`, "el foco en el principal, en Configuración");
   await pulsar(app, "Escape");
   await verQue(
     app,
@@ -1338,8 +1353,8 @@ async function medirDivision({ carpeta, exe, datos }) {
   await pausa(300);
   const durante = await app.evaluar(`window.__guardadas`);
   await raton("mouseReleased", 1, 0);
-  await app.hasta(`window.__guardadas > 0`, "que se guarde la proporción al soltar").catch(() => undefined);
-  await pausa(300);
+  await verQue(app, "vista dividida: al soltar el divisor se guarda la proporción", `window.__guardadas > 0`);
+  await pausa(300); // una segunda escritura llegaría aquí
   const guardadas = await app.evaluar(`window.__guardadas`);
   await app.evaluar(`window.__soltarConteo()`);
   const proporcionDespues = await proporcion();

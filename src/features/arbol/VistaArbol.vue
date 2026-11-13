@@ -674,10 +674,16 @@ const aristas = computed<Edge[]>(() => {
         };
         const grupo = "conexiones" in c ? c : undefined;
         const sentido = grupo
-          ? t("arbol.lateral.haciaPlegada", { ...nombres, n: grupo.conexiones.length }, grupo.conexiones.length)
+          ? t(
+              "arbol.lateral.haciaPlegada",
+              { ...nombres, n: grupo.conexiones.length },
+              grupo.conexiones.length,
+            )
           : t("arbol.lateral.sinEtiqueta", nombres);
         const descripcion =
-          c.etiqueta && !grupo ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta }) : sentido;
+          c.etiqueta && !grupo
+            ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta })
+            : sentido;
         return {
           id: c.id,
           source: c.origen_id,
@@ -897,6 +903,7 @@ function verCompleto() {
           <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
           <VueFlow
             :id="vueFlowId"
+            :data-lienzo="vueFlowId"
             :nodes="nodos"
             :edges="aristas"
             :min-zoom="0.05"
