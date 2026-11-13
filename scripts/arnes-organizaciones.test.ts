@@ -4,6 +4,8 @@ import {
   VISTA_DE_LA_ORGANIZACION,
   VISTA_GENERAL,
   etiquetaComparar,
+  eventosTecla,
+  lineaDivision,
   mediana,
   problemasDeActualizacion,
   problemasDeMigracion,
@@ -163,5 +165,37 @@ describe("textoEs", () => {
   it("una clave que no está, o que no es un texto, lanza", () => {
     expect(() => textoEs("comparar.noExiste")).toThrow("comparar.noExiste");
     expect(() => textoEs("comparar")).toThrow();
+  });
+});
+
+describe("lineaDivision", () => {
+  const MB = 2 ** 20;
+
+  it("la mediana de las aperturas y lo que creció la memoria, en MB con un decimal", () => {
+    expect(lineaDivision([1500.4, 900, 1200], 100 * MB, 130.46 * MB)).toBe(
+      "dividir: 1200 ms, memoria: +30.5 MB",
+    );
+  });
+
+  it("si la memoria bajó lleva el signo menos, y sin performance.memory lo dice", () => {
+    expect(lineaDivision([800], 50 * MB, 48 * MB)).toBe("dividir: 800 ms, memoria: -2.0 MB");
+    expect(lineaDivision([800, 1000], null, null)).toBe("dividir: 900 ms, memoria: sin medir");
+  });
+});
+
+describe("eventosTecla", () => {
+  it("abajo y arriba con su código de Windows; Mayús va en los modificadores", () => {
+    expect(eventosTecla("F10", true)).toEqual([
+      { type: "rawKeyDown", key: "F10", code: "F10", windowsVirtualKeyCode: 121, modifiers: 8 },
+      { type: "keyUp", key: "F10", code: "F10", windowsVirtualKeyCode: 121, modifiers: 8 },
+    ]);
+    expect(eventosTecla("F6").map((e) => [e.windowsVirtualKeyCode, e.modifiers])).toEqual([
+      [117, 0],
+      [117, 0],
+    ]);
+  });
+
+  it("una tecla sin código lanza", () => {
+    expect(() => eventosTecla("Hyper")).toThrow("Hyper");
   });
 });

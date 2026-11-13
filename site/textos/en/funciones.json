@@ -73,6 +73,7 @@
       "texto": "An organization is a file with its org chart, its people and its lists: it lets you keep different clients, the companies in a group or a test copy.",
       "puntos": [
         "Several organizations, each with its data, photos and backups apart: you move between them with their tabs.",
+        "Two tabs at once, side by side or one above the other, with a divider you can move: for example, the tree next to the Directory.",
         "Create one, open a .db file or explore the example, without touching the one you have open.",
         "With more than one, Home shows up to 8 recently opened, and one click opens the one you want.",
         "When you open more than one organization, each tab carries the color dot and the name of its own.",

@@ -24,6 +24,8 @@ export const ID_AREA = "area-central";
 export const idPestana = (id: string) => `pestana-${id}`;
 /** La sección de cada panel con la vista dividida: el tabpanel de la pestaña que muestra. */
 export const ID_PANEL = { principal: "panel-principal", lado: "panel-lado" } as const;
+/** Marca de `performance` al dividir: el panel de al lado mide desde ella cuánto tarda en verse (la lee el arnés). */
+export const MARCA_DIVIDIR = "dividir";
 
 /**
  * Pestañas de trabajo del proyecto abierto (spec §7). La ruta de la pestaña activa es la del router: navegar dentro de
@@ -320,7 +322,10 @@ export const usePestanas = defineStore("pestanas", () => {
     if (!p || !vaAlLado(p.id) || useOrganizaciones().enCurso)
       return { ok: false, mensaje: t("pestanas.noAbre") };
     const nueva = agregarNueva(rutaDeTrabajo(p));
-    if (nueva.ok) modelo.value = P.alLado(modelo.value, nueva.id!);
+    if (nueva.ok) {
+      performance.mark(MARCA_DIVIDIR);
+      modelo.value = P.alLado(modelo.value, nueva.id!);
+    }
     return nueva;
   }
 

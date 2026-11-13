@@ -33,6 +33,7 @@ test("la prueba de palabras prohibidas detecta cada una", () => {
 test("ninguna novedad se quita: novedades.json acumula", () => {
   const ids = novedades.map((n) => n.id);
   for (const id of [
+    "vista-dividida",
     "varias-organizaciones",
     "zonas",
     "version-a-la-vista",

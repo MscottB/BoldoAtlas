@@ -8,11 +8,13 @@ import {
   routerViewLocationKey,
   type RouteLocationNormalizedLoaded,
 } from "vue-router";
+import { useVueFlow } from "@vue-flow/core";
+import { idLienzo } from "@/features/arbol/useLienzo";
 import { PANEL } from "./panel";
 import { RUTA_INICIO } from "./pestanas";
 import { registrarRouter } from "./routerConFoco";
 import { crearRouterLado } from "./routerLado";
-import { usePestanas } from "./usePestanas";
+import { MARCA_DIVIDIR, usePestanas } from "./usePestanas";
 
 // El panel de al lado: con su propio router, sus vistas (useRoute, useRouter, RouterLink) navegan solo aquí. Se monta
 // con la key de su pestaña, así que cada pestaña que llega al lado tiene un router nuevo, y se suelta al desmontarse.
@@ -34,8 +36,28 @@ provide(PANEL, { panel: "lado", pestana: () => props.id });
 let quitar = () => {};
 onMounted(() => (quitar = registrarRouter("lado", r)));
 onBeforeUnmount(() => quitar());
+
+// Cuánto tarda en verse lo que abrió «Dividir» (decisión 11; lo lee el arnés): desde su marca hasta que el lienzo midió sus
+// tarjetas o, en otra vista, hasta que se montó. Sin la marca (otra forma de llegar al lado) no se mide.
+function medir() {
+  if (!performance.getEntriesByName(MARCA_DIVIDIR, "mark").length) return;
+  performance.measure("abrir-al-lado", MARCA_DIVIDIR);
+  performance.clearMarks(MARCA_DIVIDIR);
+}
+function alMontarVista() {
+  if (r.currentRoute.value.name !== "arbol") return medir();
+  // El Vue Flow que la vista ya creó: fuera de un setup, useVueFlow lo toma sin crear otro ni soltarlo al irse.
+  const lienzo = useVueFlow(idLienzo("lado", props.id));
+  if (lienzo.areNodesInitialized.value) medir();
+  else lienzo.onNodesInitialized(medir);
+}
+// Cerrada antes de verse: la marca no queda para otra pestaña que llegue al lado.
+onBeforeUnmount(() => performance.clearMarks(MARCA_DIVIDIR));
 </script>
 
 <template>
-  <RouterView :key="id" />
+  <RouterView v-slot="{ Component: vista }" :key="id">
+    <!-- Hasta que su router llega a la ruta no hay vista. -->
+    <component :is="vista" v-if="vista" @vue:mounted="alMontarVista" />
+  </RouterView>
 </template>

@@ -44,4 +44,23 @@ Cuando las pestañas abiertas son de más de una organización, cada una muestra
 
 Las pestañas se recuerdan en este computador, aparte para cada copia de BoldoAtlas (la instalada y cada portable), con las de todas tus organizaciones. Al abrir el programa aparece **Inicio** y, con **Volver a mi organización**, las pestañas están como las dejaste y se ve la del **Árbol** (si no había una, se abre). Con **Continuar donde estaba** (en **Configuración › Al abrir y al salir**) se abre directo en la última vista. Las de unidades o personas que ya no existen se cierran solas.
 
+## Vista dividida
+
+Con la vista dividida ves dos pestañas a la vez: la activa en el panel principal y otra en el panel de al lado. Por ejemplo, el árbol junto al Directorio, o dos ramas del mismo árbol.
+
+- **Dividir**, en la barra superior, abre al lado una pestaña nueva con la misma vista. Si lo pulsas otra vez, cierra la vista dividida.
+- En la paleta de comandos (`Ctrl` + `K`): **Dividir la vista** o **Cerrar la vista dividida**.
+- Con clic derecho sobre una pestaña, o con `Mayús` + `F10` si está enfocada: **Abrir al lado** o **Quitar de al lado**.
+- La × del encabezado de al lado también cierra la vista dividida.
+
+Al cerrar la vista dividida, la pestaña de al lado queda en la barra como una más. Si cierras esa pestaña, se cierra la vista dividida.
+
+Entre los dos paneles hay un divisor: arrástralo para darle más espacio a uno. Con el teclado, llega a él con `Tab` y muévelo con las flechas, de 5 en 5 %; `Inicio` y `Fin` lo llevan a un extremo, y un doble clic lo deja al medio. Cada panel ocupa entre 20 % y 80 %. El botón del encabezado de al lado cambia entre **Lado a lado** y **Una sobre otra**.
+
+Manda el panel con foco: el último donde hiciste clic o al que llegó el foco. Su encabezado se marca. El menú lateral, la paleta, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` y un clic en la barra de pestañas actúan en ese panel. `F6` pasa el foco al otro panel. Las teclas del árbol (`F2`, las flechas, `Supr`, `N`…) actúan solo en el lienzo del panel con foco, aunque los dos muestren el mismo árbol. Configuración, Ayuda y Acerca de se abren siempre en el panel principal.
+
+Una pestaña no se muestra en los dos paneles: si pides en un panel la que está en el otro, se intercambian. Con la vista dividida están cargadas las dos pestañas que ves.
+
+La vista dividida se recuerda con las pestañas: cuál está al lado, la orientación y el tamaño de cada panel.
+
 **Ver también:** [Atajos de teclado](atajos.md) · [Directorio](directorio.md).

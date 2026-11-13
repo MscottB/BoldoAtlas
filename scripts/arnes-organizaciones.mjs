@@ -60,6 +60,13 @@ const OTRA_PESTANA = `document.querySelector('[role="tab"][id^="pestana-"][aria-
 // la raíz de la grande, de sembrar-grande.mjs
 const RAIZ_GRANDE = "Gerencia General";
 const RAIZ_CHICA = "Raíz de la chica";
+const ABRIR_AL_LADO = `performance.getEntriesByName("abrir-al-lado")`;
+const VECES_DIVIDIR = 3;
+// decisión 11: menos de 3 s hasta ver el segundo lienzo
+const META_DIVIDIR_MS = 3000;
+const SUBARBOL = "Subárbol del arnés";
+/** Código de Windows de cada tecla que el arnés pulsa de verdad. */
+const CODIGOS = { F2: 113, F6: 117, F10: 121, Escape: 27, ArrowDown: 40, ArrowRight: 39 };
 
 /**
  * Lo que una persona dejó por PC en una versión de antes de varias organizaciones. Elegir la horizontal en el árbol completo
@@ -179,6 +186,34 @@ const textoMediana = (xs) => {
   const m = mediana(xs);
   return Number.isFinite(m) ? `${m} ms` : `más de ${PLAZO_COMPARAR_MS} ms`;
 };
+
+/**
+ * La línea de la medición de dividir que se pega en el PR: la mediana de las aperturas y lo que creció
+ * `performance.memory.usedJSHeapSize` (null si el navegador no lo da).
+ * @param {number[]} ms @param {number | null} antes @param {number | null} despues
+ */
+export function lineaDivision(ms, antes, despues) {
+  const memoria =
+    antes === null || despues === null
+      ? "sin medir"
+      : `${despues < antes ? "-" : "+"}${(Math.abs(despues - antes) / 2 ** 20).toFixed(1)} MB`;
+  return `dividir: ${Math.round(mediana(ms))} ms, memoria: ${memoria}`;
+}
+
+/**
+ * Una tecla como la pulsa una persona, para `Input.dispatchKeyEvent` de CDP: abajo y arriba (en Windows, Mayús+F10 abre el
+ * menú contextual al soltarla). Llega al elemento con el foco, y el navegador hace lo suyo, como con el teclado.
+ * @param {string} key @param {boolean} [mayus]
+ */
+export function eventosTecla(key, mayus = false) {
+  const codigo = CODIGOS[/** @type {keyof typeof CODIGOS} */ (key)];
+  if (!codigo) throw new Error(`Tecla sin código de Windows en el arnés: ${key}`);
+  const comun = { key, code: key, windowsVirtualKeyCode: codigo, modifiers: mayus ? 8 : 0 };
+  return [
+    { type: "rawKeyDown", ...comun },
+    { type: "keyUp", ...comun },
+  ];
+}
 
 /** @param {string} bd @param {(c: import("node:sqlite").DatabaseSync) => any} f @param {boolean} [soloLectura] */
 async function enBase(bd, f, soloLectura = false) {
@@ -970,6 +1005,384 @@ async function medirComparacion({ carpeta, exe, datos }) {
   console.log(`comparar: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
 }
 
+/** Pulsa una tecla de verdad (CDP) donde está el foco. @param {App} app @param {string} key @param {boolean} [mayus] */
+async function pulsar(app, key, mayus = false) {
+  for (const e of eventosTecla(key, mayus)) await app.enviar("Input.dispatchKeyEvent", e);
+}
+
+/**
+ * Un clic de verdad (CDP) en el centro del elemento que da `elemento` (una expresión de la página): con él llegan el
+ * puntero, el foco y, con el botón derecho, el menú contextual.
+ * @param {App} app @param {string} elemento @param {string} que @param {"left" | "right"} [boton]
+ */
+async function clicEn(app, elemento, que, boton = "left") {
+  /** @type {{ x: number, y: number } | null} */
+  const c = await app.evaluar(`(() => {
+    const r = (${elemento})?.getBoundingClientRect();
+    return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  })()`);
+  if (!c) throw new Error(`No está ${que} para el clic`);
+  const comun = { ...c, button: boton, clickCount: 1 };
+  await app.enviar("Input.dispatchMouseEvent", { type: "mouseMoved", ...c });
+  await app.enviar("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    ...comun,
+    buttons: boton === "left" ? 1 : 2,
+  });
+  await app.enviar("Input.dispatchMouseEvent", { type: "mouseReleased", ...comun, buttons: 0 });
+}
+
+/** La memoria que usa la página, tras soltar la basura: así se compara lo que queda. @param {App} app */
+async function memoria(app) {
+  await app.enviar("HeapProfiler.collectGarbage");
+  /** @type {number | null} */
+  const usada = await app.evaluar(`performance.memory?.usedJSHeapSize ?? null`);
+  return usada;
+}
+
+/** @typedef {"principal" | "lado"} Panel */
+/** @param {Panel} p */
+const panel = (p) => `document.querySelector('[data-panel="${p}"]')`;
+/** @param {Panel} p */
+const tarjetas = (p) => `(${panel(p)}?.querySelectorAll(".vue-flow__node").length ?? 0)`;
+/** Los ids de las tarjetas elegidas en un panel, en orden. @param {Panel} p */
+const elegidas = (p) =>
+  `[...(${panel(p)}?.querySelectorAll(".vue-flow__node") ?? [])].filter((n) => n.querySelector('[aria-pressed="true"]')).map((n) => n.dataset.id).sort().join()`;
+/** El encuadre del lienzo de un panel. @param {Panel} p */
+const encuadre = (p) =>
+  `(${panel(p)}?.querySelector(".vue-flow__transformationpane")?.style.transform ?? "")`;
+/** @param {Panel} p */
+const encabezado = (p) => `${panel(p)}?.querySelector("header")`;
+/** El título que muestra el encabezado de un panel. @param {Panel} p */
+const tituloPanel = (p) => `${encabezado(p)}?.querySelector("span")?.innerText.trim()`;
+// El panel marcado (el del foco: ahí actúan el menú lateral, la paleta y los atajos) y el que tiene el foco del teclado.
+const MARCADO = `(document.querySelector('[data-panel][aria-current="true"]')?.dataset.panel ?? null)`;
+const FOCO_EN = `(document.activeElement?.closest("[data-panel]")?.dataset.panel ?? null)`;
+// la pestaña de cada panel, por el id de su botón (idPestana: «pestana-<id>»)
+const ACTIVA = `document.querySelector('[role="tab"][aria-selected="true"]')?.id.slice(8)`;
+const AL_LADO = `(document.querySelector('[role="tab"][aria-controls="panel-lado"]')?.id.slice(8) ?? null)`;
+/** El botón de una pestaña. @param {string} id */
+const pestana = (id) => `document.getElementById(${JSON.stringify(`pestana-${id}`)})`;
+/** Una entrada del menú lateral. @param {string} ruta */
+const entradaLateral = (ruta) => `document.querySelector('nav a[href="#${ruta}"]')`;
+const MENU = `document.querySelector('[role="menu"][data-state="open"]')`;
+/** Una entrada del menú abierto, por su texto en es.json. @param {string} clave */
+const entradaDelMenu = (clave) =>
+  `[...(${MENU}?.querySelectorAll('[role="menuitem"]') ?? [])].find((x) => x.innerText.trim() === ${JSON.stringify(textoEs(clave))})`;
+// Para el detalle de lo que falla: dónde está cada cosa.
+const ESTADO = `({ marcado: ${MARCADO}, foco: ${FOCO_EN}, activa: ${ACTIVA}, alLado: ${AL_LADO}, hash: location.hash,
+  tarjetas: [${tarjetas("principal")}, ${tarjetas("lado")}], elegidas: [${elegidas("principal")}, ${elegidas("lado")}],
+  titulos: [${tituloPanel("principal")}, ${tituloPanel("lado")}], activo: document.activeElement?.outerHTML.slice(0, 120) })`;
+
+/**
+ * Espera `condicion` (una expresión de la página) y lo anota como comprobación: si no llega en 30 s, FALLA con dónde está
+ * cada cosa. Sigue con lo demás: un paso que falla no oculta los siguientes.
+ * @param {App} app @param {string} nombre @param {string} condicion
+ */
+async function verQue(app, nombre, condicion) {
+  const ok = await app.hasta(condicion, nombre).then(
+    () => true,
+    () => false,
+  );
+  comprobar(nombre, ok, ok ? "" : await app.evaluar(ESTADO).catch((/** @type {Error} */ e) => e.message));
+}
+
+/**
+ * Con la grande de `medirComparacion` (ya sembrada en `boldo.db`), divide 3 veces con el Árbol en los dos paneles y lee lo
+ * que midió la app (`abrir-al-lado`, desde «Dividir» hasta ver el segundo lienzo) y la memoria antes y después. Pasar de
+ * META_DIVIDIR_MS no falla: se pregunta al autor (decisión 11). Después recorre, como una persona, lo que las pruebas sin
+ * DOM no alcanzan: F2, las flechas y Ubicar con el mismo árbol en los dos paneles, los dos Vue Flow y su intercambio, F6 y
+ * el panel marcado, el menú lateral, el menú de las pestañas, el divisor y renombrar en Árboles.
+ * @param {Portable} portable
+ */
+async function medirDivision({ carpeta, exe, datos }) {
+  const previos = fallosHastaAhora();
+  const bd = join(datos, "boldo.db");
+  // Con la app cerrada, como al sembrar: un subárbol guardado para Árboles, y la unidad a la que va Ubicar, la última
+  // sembrada, en una rama plegada lejos de la raíz.
+  const subarbol = randomUUID();
+  const ahora = new Date().toISOString();
+  /** @type {{ id: string, nombre: string }} */
+  const lejana = await enBase(bd, (c) => {
+    c.prepare(
+      `INSERT INTO subarboles_guardados (id, unidad_id, nombre, orden, created_at, updated_at)
+        SELECT ?, id, ?, 0, ?, ? FROM unidades WHERE nombre = 'Gerencia 1' AND deleted_at IS NULL`,
+    ).run(subarbol, SUBARBOL, ahora, ahora);
+    return c
+      .prepare("SELECT id, nombre FROM unidades WHERE deleted_at IS NULL ORDER BY orden DESC LIMIT 1")
+      .get();
+  });
+
+  const app = await abrirApp(exe);
+  const info = await revisarBase(app, carpeta);
+  // Que la página se comporte como la ventana de adelante: el foco y sus eventos, aunque otra ventana lo tenga.
+  await app.enviar("Emulation.setFocusEmulationEnabled", { enabled: true });
+  await verInicio(app, "Inicio de la grande, antes de dividir");
+  await app.evaluar(`location.hash = "#/"`);
+
+  const dividir = `[...document.querySelectorAll("header button[aria-pressed]")].find((b) => b.innerText.trim() === ${JSON.stringify(textoEs("barra.dividir"))})`;
+  await app.hasta(`${tarjetas("principal")} > 0 && Boolean(${dividir})`, "el árbol de la grande");
+  await app.evaluar(`performance.clearMeasures("abrir-al-lado")`);
+  const antes = await memoria(app);
+  /** @type {number[]} */
+  const ms = [];
+  for (let i = 1; i <= VECES_DIVIDIR; i++) {
+    await app.hasta(
+      `!${panel("lado")} && ${tarjetas("principal")} > 0`,
+      `el árbol sin dividir, antes de la división ${i}`,
+    );
+    await app.evaluar(`${dividir}.click()`);
+    await app.hasta(
+      `${ABRIR_AL_LADO}.length === ${i} && ${tarjetas("lado")} > 0`,
+      `el segundo lienzo, división ${i}`,
+    );
+    ms.push(Math.round(await app.evaluar(`${ABRIR_AL_LADO}.at(-1).duration`)));
+    // la cierra, menos la última: la de al lado queda en la barra como una más
+    if (i < VECES_DIVIDIR) await app.evaluar(`${dividir}.click()`);
+  }
+  const despues = await memoria(app);
+  console.log(lineaDivision(ms, antes, despues));
+  console.log(`dividir, cada vez: ${ms.join(", ")} ms`);
+  // decisión 11: no falla; con los números en el PR se pregunta al autor
+  if (mediana(ms) >= META_DIVIDIR_MS)
+    console.log(`dividir: la mediana llega a ${META_DIVIDIR_MS} ms; se pregunta al autor`);
+
+  // El mismo árbol en los dos paneles, con el foco al lado (un clic en su encabezado). Sin nada elegido, la flecha elige
+  // la raíz, ahí.
+  await clicEn(app, encabezado("lado"), "el encabezado de al lado");
+  await app.hasta(`${MARCADO} === "lado" && ${FOCO_EN} === "lado"`, "el foco en el panel de al lado");
+  const principal = {
+    elegidas: await app.evaluar(elegidas("principal")),
+    encuadre: await app.evaluar(encuadre("principal")),
+  };
+  const principalIgual = `(${elegidas("principal")} === ${JSON.stringify(principal.elegidas)} && ${encuadre("principal")} === ${JSON.stringify(principal.encuadre)})`;
+  const vertical = await app.evaluar(`Boolean(${panel("lado")}.querySelector(".vue-flow__handle-bottom"))`);
+  const alHijo = vertical ? "ArrowDown" : "ArrowRight";
+  await pulsar(app, alHijo);
+  await app.hasta(`/^[^,]+$/.test(${elegidas("lado")})`, "una unidad elegida al lado");
+  /** @type {string} */
+  const unidad = await app.evaluar(elegidas("lado"));
+  await pausa(500); // el panel de la unidad elegida se abre y toma el foco: que no se lo quite al campo de F2
+  const campo = (/** @type {Panel} */ p) =>
+    `${panel(p)}?.querySelector('.vue-flow__node[data-id="${unidad}"] input')`;
+  await pulsar(app, "F2");
+  await verQue(
+    app,
+    "vista dividida: F2 renombra en la tarjeta de al lado y no en la del principal (mismo árbol en los dos)",
+    `document.activeElement === ${campo("lado")} && !${campo("principal")} && ${principalIgual}`,
+  );
+  await pulsar(app, "Escape");
+  await app.hasta(`!${campo("lado")}`, "el renombrado cancelado con Esc");
+  await pulsar(app, alHijo);
+  await verQue(
+    app,
+    "vista dividida: las flechas mueven solo la selección de al lado",
+    `/^[^,]+$/.test(${elegidas("lado")}) && ${elegidas("lado")} !== ${JSON.stringify(unidad)} && ${principalIgual}`,
+  );
+  const encuadreLado = await app.evaluar(encuadre("lado"));
+  await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
+  const busqueda = `document.querySelector('[role="dialog"] input')`;
+  await app.hasta(`Boolean(${busqueda})`, "la paleta abierta");
+  await app.evaluar(
+    `(() => { const c = ${busqueda}; c.value = ${JSON.stringify(lejana.nombre)}; c.dispatchEvent(new Event("input", { bubbles: true })); })()`,
+  );
+  const opcion = `[...document.querySelectorAll('[role="dialog"] [role="option"]')].find((o) => o.querySelector("span.grid > span")?.innerText.trim() === ${JSON.stringify(lejana.nombre)})`;
+  await app.hasta(`Boolean(${opcion})`, `«${lejana.nombre}» en la paleta`);
+  await app.evaluar(`${opcion}.click()`);
+  await verQue(
+    app,
+    `vista dividida: Ubicar «${lejana.nombre}» desde la paleta lo encuadra en el lienzo de al lado`,
+    `${elegidas("lado")} === ${JSON.stringify(lejana.id)} && ${encuadre("lado")} !== ${JSON.stringify(encuadreLado)}`,
+  );
+  await pausa(500); // si el principal se fuera a mover, ya lo habría hecho
+  comprobar(
+    "vista dividida: … y el principal sigue con su encuadre y su selección",
+    await app.evaluar(principalIgual),
+    await app.evaluar(ESTADO),
+  );
+
+  // Dos Vue Flow montados a la vez. Al intercambiar las pestañas (con el foco en el principal, un clic en la de al lado),
+  // ninguno queda en blanco.
+  const ids = { principal: await app.evaluar(ACTIVA), lado: await app.evaluar(AL_LADO) };
+  comprobar(
+    `vista dividida: dos lienzos a la vez, arbol-principal-${ids.principal} y arbol-lado-${ids.lado}, cada uno con sus tarjetas`,
+    Boolean(ids.principal && ids.lado) &&
+      (await app.evaluar(`${tarjetas("principal")} > 0 && ${tarjetas("lado")} > 0`)),
+    await app.evaluar(ESTADO),
+  );
+  await clicEn(app, encabezado("principal"), "el encabezado del principal");
+  await app.hasta(`${MARCADO} === "principal"`, "el foco en el principal");
+  await app.evaluar(`${pestana(ids.lado)}.click()`);
+  const intercambiadas = `(${ACTIVA} === ${JSON.stringify(ids.lado)} && ${AL_LADO} === ${JSON.stringify(ids.principal)} && ${tarjetas("principal")} > 0 && ${tarjetas("lado")} > 0)`;
+  await app.hasta(intercambiadas, "las pestañas intercambiadas").catch(() => undefined);
+  await pausa(1000); // un lienzo que se desmonta tarde dejaría en blanco al otro después de verse
+  await verQue(
+    app,
+    "vista dividida: al intercambiar las pestañas de panel, ninguno de los dos lienzos queda en blanco",
+    intercambiadas,
+  );
+
+  // F6, y el clic o el foco que entra a un panel lo marcan.
+  await clicEn(app, encabezado("principal"), "el encabezado del principal");
+  await app.hasta(`${FOCO_EN} === "principal"`, "el foco del teclado en el principal");
+  await pulsar(app, "F6");
+  await verQue(
+    app,
+    "vista dividida: F6 lleva el foco al panel de al lado y marca su encabezado",
+    `${MARCADO} === "lado" && ${FOCO_EN} === "lado"`,
+  );
+  await pulsar(app, "F6");
+  await verQue(
+    app,
+    "vista dividida: F6 otra vez lo devuelve al principal",
+    `${MARCADO} === "principal" && ${FOCO_EN} === "principal"`,
+  );
+  await clicEn(app, encabezado("lado"), "el encabezado de al lado");
+  await verQue(app, "vista dividida: un clic en un panel lo marca", `${MARCADO} === "lado"`);
+  await app.evaluar(`${panel("principal")}.focus()`);
+  await verQue(app, "vista dividida: el foco que entra a un panel lo marca", `${MARCADO} === "principal"`);
+
+  // El menú lateral con el foco al lado: Directorio va a ese panel; Configuración, al principal, y Esc la cierra.
+  await clicEn(app, encabezado("lado"), "el encabezado de al lado");
+  await app.hasta(`${MARCADO} === "lado"`, "el foco al lado");
+  const hash = await app.evaluar(`location.hash`);
+  const directorio = JSON.stringify(textoEs("nav.directorio"));
+  await app.evaluar(`${entradaLateral("/directorio")}.click()`);
+  await verQue(
+    app,
+    "vista dividida: con el foco al lado, «Directorio» del menú lateral cambia ese panel y no el principal",
+    `${tituloPanel("lado")} === ${directorio} && location.hash === ${JSON.stringify(hash)} && ${tarjetas("principal")} > 0`,
+  );
+  await app.evaluar(`${entradaLateral("/configuracion")}.click()`);
+  await verQue(
+    app,
+    "vista dividida: «Configuración» se abre en el principal, que pasa a tener el foco",
+    `location.hash === "#/configuracion" && ${MARCADO} === "principal" && ${tituloPanel("lado")} === ${directorio}`,
+  );
+  await pulsar(app, "Escape");
+  await verQue(
+    app,
+    "vista dividida: Esc cierra Configuración y el principal vuelve a su vista",
+    `location.hash === ${JSON.stringify(hash)} && ${tarjetas("principal")} > 0 && ${tituloPanel("lado")} === ${directorio}`,
+  );
+
+  // El menú de las pestañas: clic derecho en la de al lado y Mayús+F10 en otra.
+  /** @type {string} */
+  const deAlLado = await app.evaluar(AL_LADO);
+  await clicEn(app, pestana(deAlLado), "la pestaña de al lado", "right");
+  await verQue(
+    app,
+    "pestañas: el clic derecho en la de al lado ofrece «Quitar de al lado»",
+    `Boolean(${entradaDelMenu("pestanas.quitarDeAlLado")})`,
+  );
+  await app.evaluar(`${entradaDelMenu("pestanas.quitarDeAlLado")}?.click()`);
+  await verQue(
+    app,
+    "pestañas: «Quitar de al lado» cierra la vista dividida y la deja en la barra",
+    `!${panel("lado")} && Boolean(${pestana(deAlLado)}) && !${MENU}`,
+  );
+  /** @type {string} */
+  const otra = await app.evaluar(
+    `document.querySelector('[role="tab"][aria-selected="false"]')?.id.slice(8)`,
+  );
+  await app.evaluar(`${pestana(otra)}.focus()`);
+  await pulsar(app, "F10", true);
+  await verQue(
+    app,
+    "pestañas: Mayús+F10 en otra pestaña ofrece «Abrir al lado»",
+    `Boolean(${entradaDelMenu("pestanas.abrirAlLado")})`,
+  );
+  await app.evaluar(`${entradaDelMenu("pestanas.abrirAlLado")}?.click()`);
+  await verQue(
+    app,
+    "pestañas: «Abrir al lado» la muestra en el panel de al lado",
+    `${AL_LADO} === ${JSON.stringify(otra)} && Boolean(${panel("lado")}) && !${MENU}`,
+  );
+
+  // El divisor: arrastrarlo cambia la proporción, que se guarda una vez, al soltar (no en cada movimiento).
+  await pausa(1500); // lo que las vistas guardan tras una pausa (useEstadoPestana) no se cuenta como del arrastre
+  const clave = `boldo:pestanas:${info.dirDatos}`;
+  await app.evaluar(`(() => {
+    const original = Storage.prototype.setItem;
+    window.__guardadas = 0;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === ${JSON.stringify(clave)}) window.__guardadas++;
+      return original.call(this, k, v);
+    };
+    window.__soltarConteo = () => (Storage.prototype.setItem = original);
+  })()`);
+  const proporcion = () =>
+    app.evaluar(`JSON.parse(localStorage.getItem(${JSON.stringify(clave)}))?.division?.proporcion`);
+  const proporcionAntes = await proporcion();
+  /** @type {{ x: number, y: number, dx: number, dy: number }} */
+  const divisor = await app.evaluar(`(() => {
+    const d = document.querySelector('#${ID_AREA} [role="separator"]');
+    const r = d.getBoundingClientRect();
+    const caja = d.parentElement.getBoundingClientRect();
+    const ladoALado = d.getAttribute("aria-orientation") === "vertical";
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, dx: ladoALado ? caja.width * 0.15 : 0, dy: ladoALado ? 0 : caja.height * 0.15 };
+  })()`);
+  /** @param {string} type @param {number} f cuánto del camino @param {number} buttons */
+  const raton = (type, f, buttons) =>
+    app.enviar("Input.dispatchMouseEvent", {
+      type,
+      x: divisor.x + divisor.dx * f,
+      y: divisor.y + divisor.dy * f,
+      button: "left",
+      buttons,
+      clickCount: 1,
+    });
+  await raton("mouseMoved", 0, 0);
+  await raton("mousePressed", 0, 1);
+  for (const f of [0.2, 0.4, 0.6, 0.8, 1]) await raton("mouseMoved", f, 1);
+  await pausa(300);
+  const durante = await app.evaluar(`window.__guardadas`);
+  await raton("mouseReleased", 1, 0);
+  await app.hasta(`window.__guardadas > 0`, "que se guarde la proporción al soltar").catch(() => undefined);
+  await pausa(300);
+  const guardadas = await app.evaluar(`window.__guardadas`);
+  await app.evaluar(`window.__soltarConteo()`);
+  const proporcionDespues = await proporcion();
+  comprobar(
+    "vista dividida: arrastrar el divisor cambia la proporción y se guarda una vez, al soltar",
+    durante === 0 && guardadas === 1 && proporcionDespues > proporcionAntes,
+    { durante, guardadas, proporcionAntes, proporcionDespues },
+  );
+
+  // Árboles en los dos paneles: renombrar pone el foco en el campo del panel donde se pidió, también con el del otro
+  // abierto (los dos campos llevan el mismo id).
+  for (const p of /** @type {const} */ (["principal", "lado"])) {
+    await clicEn(app, encabezado(p), `el encabezado del panel ${p}`);
+    await app.hasta(`${MARCADO} === "${p}"`, `el foco en el panel ${p}`);
+    await app.evaluar(`${entradaLateral("/arboles")}.click()`);
+  }
+  const renombrar = (/** @type {Panel} */ p) =>
+    `${panel(p)}?.querySelector(${JSON.stringify(`button[aria-label="${textoEs("arboles.renombrar")}"]`)})`;
+  await app.hasta(
+    `location.hash === "#/arboles" && Boolean(${renombrar("principal")}) && Boolean(${renombrar("lado")})`,
+    "Árboles en los dos paneles, con el subárbol guardado",
+  );
+  const enSuCampo = `document.activeElement?.id === ${JSON.stringify(`renombrar-${subarbol}`)}`;
+  await app.evaluar(`${renombrar("principal")}.click()`);
+  await verQue(
+    app,
+    "vista dividida: con Árboles en los dos paneles, renombrar en el principal pone el foco en su campo",
+    `${enSuCampo} && ${FOCO_EN} === "principal"`,
+  );
+  await app.evaluar(`${renombrar("lado")}.click()`);
+  await verQue(
+    app,
+    "vista dividida: … y renombrar al lado, en el campo de al lado (con el del principal aún abierto)",
+    `${enSuCampo} && ${FOCO_EN} === "lado"`,
+  );
+  await pulsar(app, "Escape");
+
+  await app.evaluar(`location.hash = "#/bienvenida"`);
+  await verInicio(app, "Inicio tras dividir");
+  comprobar("vista dividida: la app cierra con código 0", (await app.cerrar()) === 0);
+  console.log(`vista dividida: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
+}
+
 /** Como `comprobarInstaladaIntacta`, para la carpeta local: el WebView de una instalada vive ahí. */
 function comprobarLocalIntacta() {
   const { identifier } = JSON.parse(readFileSync(join("src-tauri", "tauri.conf.json"), "utf8"));
@@ -992,7 +1405,10 @@ async function correr(zipAntes, zipPublicada) {
   await desdeAntesDeOrganizaciones(zipAntes, nueva.exe);
   await desdeLaPublicada(zipPublicada, nueva.exe);
   await medicionYEliminar(nueva);
-  await medirComparacion(extraer(zipNueva, "comparar"));
+  // la grande que siembra la comparación sirve también para dividir
+  const comparar = extraer(zipNueva, "comparar");
+  await medirComparacion(comparar);
+  await medirDivision(comparar);
   comprobarInstaladaIntacta();
   comprobarLocalIntacta();
   exigirSinFallos();
