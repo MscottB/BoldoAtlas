@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { ChevronDown, FolderOpen, LogOut } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
@@ -20,13 +19,13 @@ import {
 import icono from "../../../assets/brand/icono.png";
 import { pedirSalir } from "@/app/ventana";
 import { IDIOMAS, cambiarIdioma, type Idioma } from "@/i18n";
+import { routerConFoco } from "@/features/pestanas/routerConFoco";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { GRUPOS_MENU, abrirOtra, entradasAbrirOtra, irAEntrada } from "./menuApp";
 
 // Menú de la app: el logo en la barra superior. Cada entrada lleva a una ruta o hace una acción (p. ej. buscar
 // actualizaciones); las de fases futuras solo salen (deshabilitadas) con MOSTRAR_PROXIMAMENTE.
 const { t, locale } = useI18n();
-const router = useRouter();
 const organizaciones = useOrganizaciones();
 const otras = computed(() => entradasAbrirOtra(organizaciones.recientes, organizaciones.idAbierta));
 </script>
@@ -42,7 +41,13 @@ const otras = computed(() => entradasAbrirOtra(organizaciones.recientes, organiz
     <DropdownMenuContent align="start" class="w-64">
       <template v-for="(grupo, i) in GRUPOS_MENU" :key="i">
         <DropdownMenuSeparator v-if="i" />
-        <DropdownMenuItem v-for="e in grupo" :key="e.id" :disabled="!!e.fase" @select="irAEntrada(e, router)">
+        <!-- En el panel con foco; Configuración, en el principal. -->
+        <DropdownMenuItem
+          v-for="e in grupo"
+          :key="e.id"
+          :disabled="!!e.fase"
+          @select="irAEntrada(e, routerConFoco(e.destino))"
+        >
           <component :is="e.icono" aria-hidden="true" />
           {{ t(`menu.${e.id}`) }}
           <span v-if="e.fase" class="ml-auto text-xs">{{ t(e.fase) }}</span>

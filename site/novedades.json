@@ -1,5 +1,19 @@
 [
   {
+    "id": "vista-dividida",
+    "pagina": "pestanas",
+    "es": {
+      "titulo": "Dos pestañas a la vez",
+      "texto": "Pulsa Dividir, en la barra superior, y la misma vista se abre al lado, en una pestaña nueva. Luego eliges en ese panel qué ver: el Directorio junto al árbol, o dos ramas del mismo árbol. Mueve el divisor para darle más espacio a una, o ponlas una sobre otra. También puedes abrir una pestaña al lado con clic derecho sobre ella.",
+      "ancla": "vista-dividida"
+    },
+    "en": {
+      "titulo": "Two tabs at once",
+      "texto": "Press Split, in the top bar, and the same view opens to the side, in a new tab. Then choose what to see in that panel: the Directory beside the tree, or two branches of the same tree. Move the divider to give one more room, or put them one above the other. You can also open a tab to the side by right-clicking it.",
+      "ancla": "split-view"
+    }
+  },
+  {
     "id": "comparar-organizaciones",
     "pagina": "organizaciones",
     "es": {

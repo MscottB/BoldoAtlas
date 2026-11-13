@@ -24,6 +24,8 @@ export type Atajo =
   | "cerrarPestana"
   | "pestanaSiguiente"
   | "pestanaAnterior"
+  /** F6 (o Mayús+F6) con la vista dividida: el foco pasa al otro panel. */
+  | "otroPanel"
   /** Mayús+flecha: suma a la selección la unidad a la que iría la flecha. */
   | `extender:${Navegacion}`;
 
@@ -42,6 +44,8 @@ export interface TeclaAtajo {
   horizontal?: boolean;
   /** El foco está en un control dentro del panel de la unidad (ver `dentroDelPanel`). */
   enPanel?: boolean;
+  /** Hay vista dividida: F6 pasa al otro panel. */
+  dividida?: boolean;
 }
 
 const FLECHAS: Record<string, [vertical: Navegacion, horizontal: Navegacion]> = {
@@ -74,6 +78,8 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return "nuevaPestana";
   if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";
   if (e.ctrlKey && !e.altKey && e.key === "Tab") return e.shiftKey ? "pestanaAnterior" : "pestanaSiguiente";
+  // Como en Windows, también desde un campo. Con dos paneles, adelante y atrás llevan al mismo.
+  if (e.key === "F6" && !conControl && !e.altKey) return e.dividida ? "otroPanel" : null;
   if (conControl && tecla === "d" && !e.altKey)
     return e.enCampoDeTexto || e.soloLectura || e.enPanel ? null : "duplicar";
   if (conControl || e.altKey || e.enCampoDeTexto || e.enPanel) return null;

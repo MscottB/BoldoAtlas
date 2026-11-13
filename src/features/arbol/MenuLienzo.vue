@@ -17,7 +17,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { descendientes, indiceHijos } from "./jerarquia";
-import { conectarDesde, useLienzo } from "./useLienzo";
+import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { CONTEXTO_LIENZO } from "./contexto";
 
@@ -124,7 +124,7 @@ const abrirVista = () => (panelAbierto.value = true);
         <ContextMenuItem @select="pedir(() => lienzo.verPersonas(id))">
           {{ t("arbol.menu.verPersonas") }}
         </ContextMenuItem>
-        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => conectarDesde(id))">
+        <ContextMenuItem :disabled="soloLectura" @select="pedir(() => lienzo.conectarDesde(id))">
           {{ t("unidad.conectarCon") }}
         </ContextMenuItem>
         <ContextMenuSeparator />

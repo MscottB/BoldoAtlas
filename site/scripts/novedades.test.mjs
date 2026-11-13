@@ -33,6 +33,7 @@ test("la prueba de palabras prohibidas detecta cada una", () => {
 test("ninguna novedad se quita: novedades.json acumula", () => {
   const ids = novedades.map((n) => n.id);
   for (const id of [
+    "vista-dividida",
     "varias-organizaciones",
     "zonas",
     "version-a-la-vista",
@@ -109,6 +110,14 @@ test("cada novedad trae título y texto en es y en, y una página de la ayuda", 
       }
     }
   }
+});
+
+test("la vista dividida: «Dividir» abre al lado la misma vista, y la otra se elige en ese panel", () => {
+  const n = novedades.find((x) => x.id === "vista-dividida");
+  assert.match(n.es.texto, /la misma vista/);
+  assert.match(n.en.texto, /the same view/);
+  assert.doesNotMatch(n.es.texto, /al lado del Directorio/);
+  assert.doesNotMatch(n.en.texto, /beside the Directory/);
 });
 
 test("la imagen, si hay, existe en la ayuda de los dos idiomas y lleva texto alternativo", () => {

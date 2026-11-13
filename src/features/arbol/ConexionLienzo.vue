@@ -12,7 +12,8 @@ import ListaUnidades from "@/features/unidades/ListaUnidades.vue";
 import { excluidasParaConexion, filasDeConexiones, porQueNoSeVe } from "@/features/unidades/panel";
 import { CONTEXTO_LIENZO } from "./contexto";
 import { encuadreDeLinea, type Trazado } from "./lateral";
-import { useLienzo, ventanaConexion as ventana, verConexion } from "./useLienzo";
+import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
+import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 
 // La ventanita de las conexiones: una sola para todas, aquí y no dentro de cada línea. La abren la línea, «Conectar con…» de
@@ -21,7 +22,10 @@ const { t } = useI18n();
 const org = useOrganizacion();
 const { viewport, dimensions, setCenter } = useVueFlow();
 const { trazados, mostradas } = inject(CONTEXTO_LIENZO)!;
-const { colapsados, abrirRuta } = useLienzo();
+const { colapsados, abrirRuta, ventanaConexion: ventana, verConexion } = useLienzo();
+// Lo del lienzo se busca en su panel: con el mismo árbol en los dos, el botón de la línea está dos veces.
+const { panel } = usePanel();
+const buscar = (s: string) => raizDelPanel(panel).querySelector<HTMLElement>(s);
 const { config } = useVista();
 
 const editar = computed(() => (ventana.value && "id" in ventana.value ? ventana.value : null));
@@ -61,7 +65,7 @@ function abrirConexion(id: string) {
 }
 
 const cuadro = () => new Promise(requestAnimationFrame);
-const botonDe = (id: string) => document.querySelector<HTMLElement>(`[data-conexion="${CSS.escape(id)}"]`);
+const botonDe = (id: string) => buscar(`[data-conexion="${CSS.escape(id)}"]`);
 
 // El próximo layout trae la línea, si es que llega a dibujarse; con tope por si nunca.
 function proximoTrazado(id: string) {
@@ -132,7 +136,6 @@ function alCerrar(e: Event) {
   const activo = document.activeElement;
   if (activo && activo !== document.body && !activo.closest("[role='dialog']")) return; // un clic afuera ya lo llevó a otro lado
   const { foco, id, unidad } = ultima;
-  const buscar = (s: string) => document.querySelector<HTMLElement>(s);
   const destino =
     (foco !== document.body && foco?.isConnected && foco) ||
     (id && botonDe(id)) ||

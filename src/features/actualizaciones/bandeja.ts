@@ -10,6 +10,7 @@ import { RUTA_BIENVENIDA } from "@/app/estructura";
 import { bandejaLista, traerAlFrente } from "@/app/ventana";
 import { abrirCarpetaDatos } from "@/db/cliente";
 import { buscarPersona } from "@/features/atajos/buscarPersona";
+import { irConFoco } from "@/features/pestanas/routerConFoco";
 import { mensajeFallo, respaldar as hacerRespaldo } from "@/features/respaldos/respaldos";
 import { i18n } from "@/i18n";
 import { enCambio } from "@/lib/baseActiva";
@@ -86,12 +87,12 @@ export async function crearBandeja(router: Router): Promise<void> {
     const configuracion = await MenuItem.new({
       id: "configuracion",
       text: x.configuracion,
-      action: tras(() => router.push("/configuracion")),
+      action: tras(() => irConFoco("/configuracion")),
     });
     const ayuda = await MenuItem.new({
       id: "ayuda",
       text: x.ayuda,
-      action: tras(() => router.push("/ayuda")),
+      action: tras(() => irConFoco("/ayuda")),
     });
     const respaldar = await MenuItem.new({
       id: "respaldar",

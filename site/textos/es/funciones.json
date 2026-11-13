@@ -168,7 +168,8 @@
       "puntos": [
         "Ctrl+K abre la paleta de comandos: escribe y llega a cualquier unidad o persona.",
         "Ordena por persona, cargo o gerencia.",
-        "Busca también dentro del diagrama."
+        "Busca también dentro del diagrama.",
+        "Dos pestañas a la vez, lado a lado o una sobre otra, con un divisor que se mueve: por ejemplo, el árbol junto al Directorio."
       ],
       "imagen": {
         "nombre": "directorio",

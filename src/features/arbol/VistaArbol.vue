@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, provide, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, provide, ref, shallowRef, useTemplateRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { VueFlow, useVueFlow, type Edge, type Node, type NodeDragEvent } from "@vue-flow/core";
@@ -52,7 +52,7 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { destinoAlSoltar, estadoMover, puestoUbicado, useLienzo, ventanaConexion } from "./useLienzo";
+import { destinoAlSoltar, estadoMover, idLienzo, nodoEn, useLienzo } from "./useLienzo";
 import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
 import { recordarPorArbol, useVista } from "./useVista";
@@ -86,6 +86,7 @@ import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha } from "@/features/puestos/puestos";
 import { useTema } from "@/features/tema/useTema";
 import { leerEstadoArbol, type EstadoArbol } from "@/features/pestanas/pestanas";
+import { usePanel } from "@/features/pestanas/panel";
 import { useEstadoPestana } from "@/features/pestanas/usePestanas";
 
 type Punto = { x: number; y: number };
@@ -106,7 +107,14 @@ const {
   avisoExpansion,
   cancelarExpansion,
   enfocar,
+  puestoUbicado,
+  ventanaConexion,
 } = useLienzo();
+// Con el mismo árbol en los dos paneles, cada lienzo tiene su Vue Flow y busca sus tarjetas dentro de su vista.
+const { panel, pestana } = usePanel();
+const vueFlowId = idLienzo(panel, pestana());
+const seccion = useTemplateRef<HTMLElement>("seccion");
+const tarjetaEn = (id: string) => nodoEn(seccion.value ?? document, id);
 const {
   fitView,
   fitBounds,
@@ -119,7 +127,7 @@ const {
   removeSelectedElements,
   setViewport,
   viewport,
-} = useVueFlow();
+} = useVueFlow(vueFlowId);
 const { config, minimapa } = useVista();
 const { escala } = useTema();
 
@@ -405,9 +413,7 @@ async function enfocarTarjeta(id: string) {
   await cuadro();
   await cuadro();
   centrarTarjeta(id);
-  document
-    .querySelector<HTMLElement>(`.vue-flow__node[data-id="${CSS.escape(id)}"] :is(button, [role=button])`)
-    ?.focus({ preventScroll: true });
+  tarjetaEn(id)?.querySelector<HTMLElement>(":is(button, [role=button])")?.focus({ preventScroll: true });
 }
 
 const visibles = computed(() => new Set(vista.value?.g.nodos.map((u) => u.id)));
@@ -550,11 +556,7 @@ async function alEnfocar({ target, relatedTarget }: FocusEvent) {
   // La barra se monta con el foco y va al final de la tarjeta: Mayús+Tab ya la pasó de largo. El foco sigue a su último botón,
   // que es donde habría caído de existir ya.
   await nextTick();
-  document
-    .querySelector<HTMLElement>(
-      `.vue-flow__node[data-id="${CSS.escape(id)}"] [data-acciones-tarjeta] button:last-of-type`,
-    )
-    ?.focus();
+  tarjetaEn(id)?.querySelector<HTMLElement>("[data-acciones-tarjeta] button:last-of-type")?.focus();
 }
 // Si el foco sigue en la misma tarjeta no se toca: quitar sus acciones ahora botaría el foco que va hacia una de ellas.
 function alDesenfocar({ relatedTarget }: FocusEvent) {
@@ -672,10 +674,16 @@ const aristas = computed<Edge[]>(() => {
         };
         const grupo = "conexiones" in c ? c : undefined;
         const sentido = grupo
-          ? t("arbol.lateral.haciaPlegada", { ...nombres, n: grupo.conexiones.length }, grupo.conexiones.length)
+          ? t(
+              "arbol.lateral.haciaPlegada",
+              { ...nombres, n: grupo.conexiones.length },
+              grupo.conexiones.length,
+            )
           : t("arbol.lateral.sinEtiqueta", nombres);
         const descripcion =
-          c.etiqueta && !grupo ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta }) : sentido;
+          c.etiqueta && !grupo
+            ? t("arbol.lateral.conEtiqueta", { ...nombres, etiqueta: c.etiqueta })
+            : sentido;
         return {
           id: c.id,
           source: c.origen_id,
@@ -804,11 +812,9 @@ async function cerrarPanel(destino?: string | null) {
   seleccion.value = null;
   await nextTick();
   const tarjeta = id
-    ? document.querySelector<HTMLElement>(
-        `.vue-flow__node[data-id="${CSS.escape(id)}"] :is(button, [role=button])`,
-      )
+    ? tarjetaEn(id)?.querySelector<HTMLElement>(":is(button, [role=button])")
     : destino === null
-      ? document.querySelector<HTMLElement>(".vue-flow__node :is(button, [role=button])")
+      ? seccion.value?.querySelector<HTMLElement>(".vue-flow__node :is(button, [role=button])")
       : null;
   tarjeta?.focus();
 }
@@ -823,7 +829,7 @@ function escEnLienzo(e: KeyboardEvent) {
 async function volverAHoy() {
   await org.verAFecha(null);
   await nextTick();
-  document.querySelector<HTMLElement>("[data-fecha-vista]")?.focus();
+  seccion.value?.querySelector<HTMLElement>("[data-fecha-vista]")?.focus();
 }
 
 const irA = (id: string | null) => router.push({ query: id ? { raiz: id } : {} });
@@ -837,7 +843,7 @@ function verCompleto() {
 </script>
 
 <template>
-  <section class="flex h-full flex-col">
+  <section ref="seccion" class="flex h-full flex-col">
     <nav
       v-if="raiz"
       class="flex flex-wrap items-center gap-2 border-b px-3 py-2 text-sm"
@@ -896,6 +902,8 @@ function verCompleto() {
         <MenuLienzo :unidades="mostradas" :visibles="visibles" :raiz="raiz" @reordenar="reordenar">
           <!-- Sin only-render-visible-elements: empeora el arrastre (nota de rendimiento). -->
           <VueFlow
+            :id="vueFlowId"
+            :data-lienzo="vueFlowId"
             :nodes="nodos"
             :edges="aristas"
             :min-zoom="0.05"

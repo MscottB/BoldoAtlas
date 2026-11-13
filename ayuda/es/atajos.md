@@ -25,6 +25,7 @@ Atajos propios de BoldoAtlas:
 | `Ctrl` + `T`                              | Abre una pestaña nueva en el árbol (funciona incluso escribiendo en un campo)                                                                                 |
 | `Ctrl` + `W`                              | Cierra la pestaña activa (la última no se cierra)                                                                                                             |
 | `Ctrl` + `Tab` / `Ctrl` + `Mayús` + `Tab` | Pasa a la pestaña siguiente o a la anterior                                                                                                                   |
+| `F6`                                      | Con la vista dividida, pasa el foco al otro panel                                                                                                             |
 | `Ctrl` + clic / clic central              | En una entrada del menú, un resultado de la paleta, una persona del Directorio o **Ver en el organigrama**: lo abre en una pestaña nueva                                                 |
 | `Ctrl` + `Enter`                          | En la paleta de comandos: abre el resultado elegido en una pestaña nueva                                                                                      |
 
@@ -36,6 +37,6 @@ La paleta funciona incluso mientras escribes en un campo: úsala para saltar a c
 
 `N`, `F`, `Supr`, `Ctrl` + `D`, `Ctrl` + `=` / `+` / `-`, `F2`, `Mayús` + `F10` y las flechas (también con `Mayús`) solo actúan en el árbol, cuando no estás escribiendo en un campo de texto ni hay un diálogo abierto. Salvo el zoom, tampoco actúan con el foco en un botón, una fila u otro control dentro del panel de la unidad, para que una tecla no elimine ni cree nada por sorpresa; sí actúan con el foco en el panel mismo, como justo después de abrirlo. Viendo el organigrama a una fecha, `N`, `Supr`, `Ctrl` + `D` y `F2` no hacen nada (es solo lectura) y tampoco hay selección múltiple. `Ctrl` + `D` solo duplica cuando hay una única unidad seleccionada. Con `Supr`, una unidad con contenido pide confirmación antes de eliminarse; varias unidades seleccionadas siempre la piden.
 
-En la barra de pestañas (aparece desde la segunda): `←` `→` recorren las pestañas, `Enter` abre la enfocada, `Supr` la cierra y `Ctrl` + `Mayús` + `←` `→` la mueven. Más en la página «Pestañas de trabajo».
+En la barra de pestañas (aparece desde la segunda): `←` `→` recorren las pestañas, `Enter` abre la enfocada, `Supr` la cierra y `Ctrl` + `Mayús` + `←` `→` la mueven. Con la vista dividida, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` y las teclas del árbol actúan en el panel con foco. Más en la página «Pestañas de trabajo».
 
 **Ver también:** [Pestañas de trabajo](pestanas.md) · [El árbol](arbol.md).

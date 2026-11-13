@@ -197,6 +197,22 @@ describe("resolverAtajo: menú contextual", () => {
   });
 });
 
+describe("resolverAtajo: vista dividida", () => {
+  it("f6_da_otroPanel_solo_con_vista_dividida", () => {
+    const dividida = { dividida: true };
+    expect(resolverAtajo(tecla("F6", dividida))).toBe("otroPanel");
+    expect(resolverAtajo(tecla("F6", { ...dividida, shiftKey: true }))).toBe("otroPanel");
+    // Como en Windows: también desde un campo o el panel de la unidad.
+    expect(resolverAtajo(tecla("F6", { ...dividida, enCampoDeTexto: true }))).toBe("otroPanel");
+    expect(resolverAtajo(tecla("F6", { ...dividida, enPanel: true }))).toBe("otroPanel");
+
+    expect(resolverAtajo(tecla("F6"))).toBeNull();
+    expect(resolverAtajo(tecla("F6", { ...dividida, modalAbierto: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F6", { ...dividida, ctrlKey: true }))).toBeNull();
+    expect(resolverAtajo(tecla("F6", { ...dividida, altKey: true }))).toBeNull();
+  });
+});
+
 describe("resolverAtajo: renombrar", () => {
   it("F2 renombra la unidad seleccionada, fuera de campos, sin modificadores ni diálogos, y no viendo una fecha", () => {
     expect(resolverAtajo(tecla("F2"))).toBe("renombrar");

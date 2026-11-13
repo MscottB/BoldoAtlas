@@ -44,4 +44,23 @@ When the open tabs belong to more than one organization, each one shows its orga
 
 Tabs are remembered on this computer, separately for each copy of BoldoAtlas (the installed one and each portable one), with those of all your organizations. When you open the program, **Home** appears and, with **Back to my organization**, your tabs are as you left them and the **Tree** tab is shown (if there was none, one opens). With **Continue where I left off** (in **Settings › When opening and quitting**) it opens right in the last view. Tabs for units or people that no longer exist close on their own.
 
+## Split view
+
+With the split view you see two tabs at once: the active one in the main panel and another one in the side panel. For example, the tree next to the Directory, or two branches of the same tree.
+
+- **Split**, in the top bar, opens a new tab with the same view to the side. If you press it again, it closes the split view.
+- In the command palette (`Ctrl` + `K`): **Split the view** or **Close split view**.
+- Right-click a tab, or press `Shift` + `F10` when it is focused: **Open to the side** or **Remove from the side**.
+- The × in the side panel's header also closes the split view.
+
+When you close the split view, the side tab stays in the bar like any other. If you close that tab, the split view closes.
+
+Between the two panels there is a divider: drag it to give one of them more room. With the keyboard, reach it with `Tab` and move it with the arrow keys, 5 % at a time; `Home` and `End` take it to one end, and a double click puts it back in the middle. Each panel takes between 20 % and 80 %. The button in the side panel's header switches between **Side by side** and **One above the other**.
+
+The focused panel is in charge: the last one you clicked or the focus moved to. Its header is highlighted. The side menu, the palette, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` and a click on the tab bar act on that panel. `F6` moves the focus to the other panel. The tree keys (`F2`, the arrow keys, `Del`, `N`…) only act on the canvas of the focused panel, even when both show the same tree. Settings, Help and About always open in the main panel.
+
+A tab is not shown in both panels: if you ask one panel for the tab that is in the other, they swap. With the split view, both tabs you see are loaded.
+
+The split view is remembered with your tabs: which one is to the side, the orientation and the size of each panel.
+
 **See also:** [Keyboard shortcuts](atajos.md) · [Directory](directorio.md).

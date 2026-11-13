@@ -1,3 +1,4 @@
+import type { RouteMeta } from "vue-router";
 import type { InfoApp } from "@/db/cliente";
 import type { Resultado } from "@/stores/organizacion";
 
@@ -23,6 +24,10 @@ export const infoSiFalloCarga = (r: Resultado): InfoApp | null =>
 const VISTAS_CERRABLES = ["configuracion", "ayuda", "acerca"];
 export const esVistaCerrable = (nombre: unknown): boolean =>
   typeof nombre === "string" && VISTAS_CERRABLES.includes(nombre);
+
+/** Lo de pantalla completa (la Bienvenida) y Configuración, Ayuda y Acerca de no se abren en el panel de al lado. */
+export const seAbreAlLado = (to: { name?: unknown; meta: RouteMeta }): boolean =>
+  !to.meta.sinMarco && !esVistaCerrable(to.name);
 
 /** Título de la ventana: el programa y la organización abierta. */
 export const tituloVentana = (organizacion: string): string =>

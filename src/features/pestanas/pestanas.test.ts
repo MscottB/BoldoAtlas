@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  DIVISION_INICIAL,
   MAX_PESTANAS,
+  PROPORCION_MAX,
+  PROPORCION_MIN,
   abrir,
+  alLado,
   alArbol,
   cambiar,
   cerrar,
+  conProporcion,
   detalleUtil,
+  enPanel,
+  entradaMenu,
   estadoDe,
   hayVariasOrganizaciones,
   leerEstadoArbol,
@@ -15,12 +22,14 @@ import {
   sePuedeBuscar,
   sePuedeReintentar,
   sePuedeCerrar,
+  sinLado,
   sinOrganizacion,
   unaPestana,
   vecina,
   type Pestanas,
 } from "./pestanas";
 
+const sin = { lado: null, division: DIVISION_INICIAL };
 const tres = (activa = "b"): Pestanas => ({
   lista: [
     { id: "a", org: "A", ruta: "/" },
@@ -28,6 +37,7 @@ const tres = (activa = "b"): Pestanas => ({
     { id: "c", org: "A", ruta: "/?raiz=u1" },
   ],
   activa,
+  ...sin,
 });
 const ids = (m: Pestanas) => m.lista.map((p) => p.id).join("");
 
@@ -123,20 +133,21 @@ describe("sinOrganizacion", () => {
       { id: "c", org: "B", ruta: "/revision" },
     ],
     activa: "a",
+    ...sin,
   };
 
   it("quita las suyas y deja la activa", () => {
-    expect(sinOrganizacion(dos, "B", () => "n", "A")).toEqual({ lista: [dos.lista[0]], activa: "a" });
+    expect(sinOrganizacion(dos, "B", () => "n", "A")).toEqual({ lista: [dos.lista[0]], activa: "a", ...sin });
   });
 
   it("si la activa era suya, pasa a una de la abierta", () => {
     const m = sinOrganizacion({ ...dos, activa: "b" }, "B", () => "n", "A");
-    expect(m).toEqual({ lista: [dos.lista[0]], activa: "a" });
+    expect(m).toEqual({ lista: [dos.lista[0]], activa: "a", ...sin });
   });
 
   it("si no queda ninguna, deja una de la abierta en /", () => {
-    const m = sinOrganizacion({ lista: [dos.lista[1]!], activa: "b" }, "B", () => "n", "A");
-    expect(m).toEqual({ lista: [{ id: "n", org: "A", ruta: "/" }], activa: "n" });
+    const m = sinOrganizacion({ lista: [dos.lista[1]!], activa: "b", ...sin }, "B", () => "n", "A");
+    expect(m).toEqual({ lista: [{ id: "n", org: "A", ruta: "/" }], activa: "n", ...sin });
   });
 
   it("si solo quedan de otras, también abre una de la abierta", () => {
@@ -191,6 +202,7 @@ describe("cerrar", () => {
         { id: "d", org: "B", ruta: "/" },
       ],
       activa: "a",
+      ...sin,
     };
     expect(cerrar(m, "a").activa).toBe("c"); // a la derecha, saltando la de B
     expect(cerrar({ ...m, activa: "c" }, "c").activa).toBe("a"); // sin más a la derecha, a la izquierda
@@ -205,6 +217,7 @@ describe("cerrar", () => {
         { id: "c", org: "C", ruta: "/" },
       ],
       activa: "b",
+      ...sin,
     };
     expect(cerrar(m, "b").activa).toBe("c");
     expect(cerrar({ ...m, activa: "c" }, "c").activa).toBe("b");
@@ -255,10 +268,12 @@ describe("alArbol: al volver a la organización se empieza en el Árbol", () => 
         { id: "d", org: "A", ruta: "/directorio" },
       ],
       activa: "r",
+      ...sin,
     };
     expect(alArbol(m, "A", esArbol, nuevo)).toEqual({
       lista: [m.lista[0], { id: "n", org: "A", ruta: "/" }, m.lista[1]],
       activa: "n",
+      ...sin,
     });
   });
 
@@ -269,6 +284,7 @@ describe("alArbol: al volver a la organización se empieza en el Árbol", () => 
         { id: "r", org: "A", ruta: "/revision" },
       ],
       activa: "r",
+      ...sin,
     };
     expect(alArbol(m, "A", esArbol, nuevo).activa).toBe("n");
   });
@@ -281,6 +297,7 @@ describe("alArbol: al volver a la organización se empieza en el Árbol", () => 
     const lleno: Pestanas = {
       lista: Array.from({ length: MAX_PESTANAS }, (_, i) => ({ id: `p${i}`, org: "A", ruta: "/revision" })),
       activa: "p0",
+      ...sin,
     };
     expect(alArbol(lleno, "A", esArbol, nuevo)).toBe(lleno);
   });
@@ -420,5 +437,143 @@ describe("leerEstadoArbol", () => {
     expect(e!.seleccion).toBeNull();
     expect(e!.encuadre).toBeNull();
     expect(leerEstadoArbol({ colapsados: [], encuadre: { x: NaN, y: 0, zoom: 1 } })!.encuadre).toBeNull();
+  });
+});
+
+describe("vista dividida: la pestaña de al lado", () => {
+  // [a, b, c], la activa b y c al lado
+  const dividida = (): Pestanas => ({ ...tres("b"), lado: "c" });
+
+  it("alLado_intercambia_si_es_la_activa", () => {
+    const m = alLado(dividida(), "b");
+    expect(m.activa).toBe("c");
+    expect(m.lado).toBe("b");
+  });
+
+  it("alLado pone otra pestaña al lado sin tocar la activa", () => {
+    const m = alLado(tres("b"), "c");
+    expect(m).toMatchObject({ activa: "b", lado: "c" });
+  });
+
+  it("alLado sin pestaña al lado manda la activa a la vecina de cerrar", () => {
+    expect(alLado(tres("b"), "b")).toMatchObject({ activa: "c", lado: "b" });
+    expect(alLado(tres("c"), "c")).toMatchObject({ activa: "b", lado: "c" });
+  });
+
+  it("alLado_con_una_sola_pestana_no_cambia", () => {
+    const una = unaPestana("a", "A");
+    expect(alLado(una, "a")).toBe(una);
+  });
+
+  it("enPanel_intercambia_entre_paneles", () => {
+    expect(enPanel(dividida(), "principal", "c")).toMatchObject({ activa: "c", lado: "b" });
+    expect(enPanel(dividida(), "lado", "b")).toMatchObject({ activa: "c", lado: "b" });
+    expect(enPanel(dividida(), "lado", "a")).toMatchObject({ activa: "b", lado: "a" });
+    expect(enPanel(dividida(), "principal", "a")).toMatchObject({ activa: "a", lado: "c" });
+  });
+
+  it("cerrar_la_activa_no_activa_la_de_al_lado", () => {
+    const m = cerrar(dividida(), "b");
+    expect(m.activa).toBe("a");
+    expect(m.lado).toBe("c");
+  });
+
+  it("cerrar_la_de_al_lado_quita_la_division", () => {
+    const m = cerrar(dividida(), "c");
+    expect(m).toMatchObject({ activa: "b", lado: null });
+    expect(ids(m)).toBe("ab");
+  });
+
+  it("cerrar la activa cuando la de al lado es la única que queda la activa y quita la división", () => {
+    const m = cerrar({ ...tres("a"), lista: tres().lista.slice(0, 2), lado: "b" }, "a");
+    expect(m).toMatchObject({ activa: "b", lado: null });
+  });
+
+  it("vecina_salta_la_del_otro_panel", () => {
+    expect(vecina(dividida(), 1)).toBe("a"); // b → c es la de al lado: salta a a
+    expect(vecina({ ...dividida(), activa: "a" }, 1)).toBe("b");
+    expect(vecina(dividida(), 1, "lado")).toBe("a"); // c → a
+    expect(vecina(dividida(), -1, "lado")).toBe("a"); // c → b es la activa: salta a a
+  });
+
+  it("sinLado quita la división", () => {
+    expect(sinLado(dividida()).lado).toBeNull();
+  });
+
+  it("sinOrganizacion_quita_el_lado", () => {
+    const m: Pestanas = {
+      ...unaPestana("a", "A"),
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "b", org: "B", ruta: "/" },
+      ],
+      lado: "b",
+    };
+    expect(sinOrganizacion(m, "B", () => "n", "A")).toMatchObject({ activa: "a", lado: null });
+    expect(sinOrganizacion(m, "Z", () => "n", "A")).toMatchObject({ activa: "a", lado: "b" });
+  });
+
+  it("conProporcion_acota", () => {
+    expect(conProporcion(tres(), 0.05).division.proporcion).toBe(PROPORCION_MIN);
+    expect(conProporcion(tres(), 0.95).division.proporcion).toBe(PROPORCION_MAX);
+    expect(conProporcion(tres(), 0.3).division.proporcion).toBe(0.3);
+    expect(conProporcion(tres(), NaN)).toEqual(tres());
+    expect(conProporcion(tres(), Infinity).division.proporcion).toBe(PROPORCION_MAX);
+    expect(conProporcion(tres(), -Infinity).division.proporcion).toBe(PROPORCION_MIN);
+  });
+
+  it("una pestaña nueva nace sin división", () => {
+    expect(unaPestana("a", "A")).toMatchObject({ lado: null, division: DIVISION_INICIAL });
+  });
+});
+
+describe("leerPestanas con la vista dividida", () => {
+  const lista = [
+    { id: "a", ruta: "/" },
+    { id: "b", ruta: "/" },
+  ];
+  const leer = (extra: object) =>
+    leerPestanas(
+      { lista, activa: "a", ...extra },
+      () => true,
+      () => "n",
+      "A",
+    );
+
+  it("lee un lado y una división válidos", () => {
+    const division = { orientacion: "vertical", proporcion: 0.3 };
+    expect(leer({ lado: "b", division })).toMatchObject({ lado: "b", division });
+  });
+
+  it("leerPestanas_lado_invalido", () => {
+    for (const lado of ["zz", "a", 3, null]) expect(leer({ lado }).lado).toBeNull();
+    for (const division of [
+      { orientacion: "diagonal", proporcion: NaN },
+      "x",
+      null,
+      { orientacion: "vertical", proporcion: 0.9 },
+    ])
+      expect(leer({ division }).division).toEqual(DIVISION_INICIAL);
+  });
+
+  it("las pestañas guardadas sin estos campos se leen igual que antes", () => {
+    expect(leer({})).toMatchObject({ activa: "a", lado: null, division: DIVISION_INICIAL });
+  });
+});
+
+describe("entradaMenu", () => {
+  const todas = () => true;
+  it("quitar en la de al lado, abrir en las que pueden ir y nada en las demás", () => {
+    const m = { ...tres(), lado: "c" };
+    expect(entradaMenu(m, "c", todas)).toBe("quitarDeAlLado");
+    expect(entradaMenu(m, "a", todas)).toBe("abrirAlLado");
+    expect(entradaMenu(m, "a", (id) => id !== "a")).toBeNull();
+  });
+
+  it("la activa: solo si la que el principal mostraría en su lugar también puede ir", () => {
+    expect(entradaMenu(tres(), "b", todas)).toBe("abrirAlLado");
+    // El principal pasaría a «a» (o a «c»): si ninguna de ellas puede, abrir fallaría.
+    expect(entradaMenu(tres(), "b", (id) => id === "b")).toBeNull();
+    expect(entradaMenu({ ...tres(), lista: [tres().lista[1]!] }, "b", todas)).toBeNull();
   });
 });

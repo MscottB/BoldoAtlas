@@ -12,6 +12,7 @@ import { migrarPreferencias } from "./lib/preferencias";
 import { useTema } from "./features/tema/useTema";
 import { useOrganizacion } from "./stores/organizacion";
 import { usePestanas } from "./features/pestanas/usePestanas";
+import { registrarRouter } from "./features/pestanas/routerConFoco";
 import { sePuedeReintentar } from "./features/pestanas/pestanas";
 import { iniciarRespaldoAutomatico, mensajeOrganizacion } from "./features/respaldos/respaldos";
 import { useActualizaciones } from "./stores/actualizaciones";
@@ -43,6 +44,7 @@ infoApp()
     // la que estaba activa.
     const pestanas = usePestanas(pinia);
     pestanas.conectar(router, info.dirDatos, info.rutaBd);
+    registrarRouter("principal", router);
     const destino = destinoInicial(org.cargado, org.vacia, continuarDondeEstaba.value) ?? pestanas.entrar();
     const app = createApp(App).use(pinia).use(router).use(i18n);
     await router.replace(destino);

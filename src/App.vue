@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -41,14 +41,9 @@ import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
-import PestanaSinAbrir from "@/features/pestanas/PestanaSinAbrir.vue";
-import {
-  ID_AREA,
-  abrirEnPestanaNueva,
-  clicNuevaPestana,
-  idPestana,
-  usePestanas,
-} from "@/features/pestanas/usePestanas";
+import VistaDividida from "@/features/pestanas/VistaDividida.vue";
+import { esRutaConFoco, routerConFoco } from "@/features/pestanas/routerConFoco";
+import { abrirEnPestanaNueva, clicNuevaPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
 // Sin `to`, la entrada aún no existe: solo con MOSTRAR_PROXIMAMENTE se muestra, deshabilitada y con el aviso de la fase en que llega.
@@ -96,6 +91,7 @@ const nombre = (item: Entrada) => {
   return n ? `${t(item.etiqueta)}, ${t("revision.avisos", n)}` : t(item.etiqueta);
 };
 const route = useRoute();
+const router = useRouter();
 const org = useOrganizacion();
 watch(() => org.org.nombre, ponerTitulo, { immediate: true });
 const cerrarVista = useCerrarVista();
@@ -108,10 +104,16 @@ void organizaciones.cargarLista().then((r) => {
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);
-// Ctrl+clic: la entrada se abre en una pestaña nueva. Un segundo clic en la entrada de la vista que ya se está viendo la
-// cierra (en captura: antes de que el enlace navegue).
+// Ctrl+clic: la entrada se abre en una pestaña nueva. Con foco al lado, navega en ese panel; Configuración, Ayuda y
+// Acerca de, en el principal. Un segundo clic en la entrada de la vista que ya se está viendo la cierra (en captura: antes
+// de que el enlace navegue).
 function alPulsar(e: MouseEvent, item: Entrada) {
   if (item.to && clicNuevaPestana(e, item.to)) return;
+  const destino = item.to && routerConFoco(item.to);
+  if (item.to && destino && destino !== router) {
+    e.preventDefault();
+    return void destino.push(item.to);
+  }
   // La pantalla del motivo tapa la vista: en la misma ruta, sin esto, el clic no haría nada (el resto lo ve `usePestanas`).
   if (item.to && sinAbrirActiva.value) {
     e.preventDefault();
@@ -207,7 +209,10 @@ function escEnBarra(e: KeyboardEvent) {
                   :to="item.to"
                   :aria-label="angosta ? nombre(item) : undefined"
                   class="relative flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
-                  active-class="bg-sidebar-accent font-medium"
+                  active-class=""
+                  exact-active-class=""
+                  :class="esRutaConFoco(item.to) && 'bg-sidebar-accent font-medium'"
+                  :aria-current="esRutaConFoco(item.to) ? 'page' : undefined"
                   @click.capture="alPulsar($event, item)"
                   @auxclick="clicNuevaPestana($event, item.to)"
                   @mousedown.middle.prevent
@@ -243,28 +248,7 @@ function escEnBarra(e: KeyboardEvent) {
       <div class="flex min-w-0 flex-1 flex-col">
         <BarraSuperior @buscar="paletaAbierta = true" />
         <BarraPestanas v-if="conPestanas" />
-        <!-- La key es la pestaña: cambiar de pestaña monta su vista de cero (solo la activa está montada). -->
-        <main
-          :id="ID_AREA"
-          tabindex="-1"
-          class="min-h-0 flex-1 overflow-auto outline-none"
-          :role="conPestanas ? 'tabpanel' : undefined"
-          :aria-labelledby="conPestanas ? idPestana(pestanas.activa) : undefined"
-        >
-          <!-- Sin la vista mientras se cambia: se desmonta y guarda su estado antes de que la base cambie. -->
-          <p v-if="organizaciones.cambiando" role="status" class="p-6 text-sm text-muted-foreground">
-            {{ t("organizaciones.cambiando") }}
-          </p>
-          <PestanaSinAbrir
-            v-else-if="sinAbrirActiva"
-            :id="pestanas.activa"
-            :key="pestanas.activa"
-            :motivo="sinAbrirActiva"
-          />
-          <RouterView v-else v-slot="{ Component: vista }">
-            <component :is="vista" :key="pestanas.activa" />
-          </RouterView>
-        </main>
+        <VistaDividida />
       </div>
     </div>
     <PaletaComandos v-if="!route.meta.sinMarco" v-model:open="paletaAbierta" />
