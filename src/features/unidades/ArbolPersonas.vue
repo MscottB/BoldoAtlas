@@ -18,6 +18,7 @@ import {
   contraerTodo,
   estaAbierta,
   expandirTodo,
+  nivelALaVista,
   plegarUnidad,
   visiblesDeBusqueda,
   type AccionTecla,
@@ -30,7 +31,8 @@ import TextoResaltado from "./TextoResaltado.vue";
 
 // Vista «Árbol» de la pestaña Personas: esquema con sangría desde la unidad del panel. Solo lee lo que le pasan.
 // En el directorio (`directorio`): parte de la raíz o la rama elegida, filtra por lo que dejan sus filtros (`filtrado`,
-// con o sin texto), una unidad se abre o cierra al pulsarla y cada persona trae el ícono para verla en el organigrama.
+// con o sin texto), una unidad se abre o cierra al pulsarla, una persona o una vacante emiten `abrir` (también con
+// Ctrl+clic y clic central) y cada persona trae el ícono para verla en el organigrama.
 const props = defineProps<{
   raiz: Raices;
   texto: string;
@@ -38,7 +40,11 @@ const props = defineProps<{
   directorio?: boolean;
   filtrado?: boolean;
 }>();
-const emit = defineEmits<{ persona: [fila: FilaPersonaUnidad] }>();
+const emit = defineEmits<{
+  persona: [fila: FilaPersonaUnidad];
+  /** Directorio: lo que abre la fila (como su lista), con el clic que la pulsó (null: Enter). */
+  abrir: [fila: { personaId: string | null; puestoId: string }, e: MouseEvent | null];
+}>();
 const { t } = useI18n();
 const org = useOrganizacion();
 const { revelar } = useLienzo();
@@ -88,6 +94,7 @@ const activa = ref(claveUnidad(raizIds.value[0] ?? ""));
 const claveTab = computed(() =>
   ventana.value.some((v) => v.data.clave === activa.value) ? activa.value : ventana.value[0]?.data.clave,
 );
+const primera = computed(() => ventana.value[0]?.index ?? 0);
 const enfocar = (indice: number) =>
   arbol.value?.querySelector<HTMLElement>(`[data-indice="${indice}"]`)?.focus({ preventScroll: true });
 
@@ -107,9 +114,9 @@ async function irA(i: number) {
 
 // Si la fila enfocada sale del DOM (se desplazó con la rueda, cambiaron los datos), el foco no cae en <body>.
 watch(ventana, () => {
-  if (!arbol.value?.contains(document.activeElement)) return;
+  if (!contenedor.value?.contains(document.activeElement)) return;
   void nextTick(() => {
-    if (arbol.value?.contains(document.activeElement)) return;
+    if (contenedor.value?.contains(document.activeElement)) return;
     enfocar(Math.ceil((contenedor.value?.scrollTop ?? 0) / altoFila.value));
   });
 });
@@ -128,7 +135,12 @@ function alternar(id: string) {
   const f = filas.value.find((x) => x.clase === "unidad" && x.nodo.unidad.id === id);
   if (f?.clase === "unidad" && f.abierta !== undefined) plegar(id, !f.abierta);
 }
-function ejecutar(accion: AccionTecla) {
+function ejecutar(accion: AccionTecla, e: MouseEvent | null = null) {
+  if (props.directorio && accion.tipo === "persona")
+    return emit("abrir", { personaId: accion.fila.personaId, puestoId: accion.fila.puestoId }, e);
+  if (props.directorio && accion.tipo === "vacante")
+    return emit("abrir", { personaId: null, puestoId: accion.puestoId }, e);
+  if (e?.type === "auxclick") return; // el clic central solo abre pestañas, y solo en el directorio
   if (accion.tipo === "persona") emit("persona", accion.fila);
   else if (accion.tipo === "unidad") (props.directorio ? alternar : revelar)(accion.id);
   else if (accion.tipo === "ir") void irA(accion.indice);
@@ -150,6 +162,8 @@ const personaDe = (f: FilaArbol) =>
   f.clase === "persona" ? f.fila : f.clase === "unidad" ? f.nodo.jefe : null;
 
 defineExpose({
+  /** El nivel que se ve: sigue a lo que se pliega a mano. */
+  nivel: computed(() => nivelALaVista(filas.value)),
   hastaNivel(nivel: number) {
     pliegue.value = abrirHastaNivel(pliegue.value, buscando.value, props.raiz, nivel);
   },
@@ -171,26 +185,20 @@ defineExpose({
     <p :id="`${uid}-ayuda`" class="sr-only">
       {{ t(directorio ? "directorio.arbol.ayuda" : "personas.arbol.ayuda") }}
     </p>
-    <div
-      ref="arbol"
-      v-bind="wrapperProps"
-      role="tree"
-      :aria-label="
-        directorio
-          ? t('directorio.arbol.nombre')
-          : t('personas.arbol.nombre', { unidad: raices[0]?.unidad.nombre })
-      "
-      :aria-describedby="`${uid}-ayuda`"
-    >
-      <!-- El botón de ubicar va junto a la fila, no dentro: un treeitem no lleva controles adentro. -->
+    <div v-bind="wrapperProps" class="relative">
       <div
-        v-for="{ data: f, index } in ventana"
-        :key="f.clave"
-        role="none"
-        class="flex items-center border-b"
-        :class="f.clase !== 'vacante' && 'hover:bg-accent'"
+        ref="arbol"
+        role="tree"
+        :aria-label="
+          directorio
+            ? t('directorio.arbol.nombre')
+            : t('personas.arbol.nombre', { unidad: raices[0]?.unidad.nombre })
+        "
+        :aria-describedby="`${uid}-ayuda`"
       >
         <div
+          v-for="{ data: f, index } in ventana"
+          :key="f.clave"
           role="treeitem"
           :data-indice="index"
           :aria-level="f.nivel"
@@ -199,10 +207,15 @@ defineExpose({
           :aria-expanded="f.clase === 'unidad' ? f.abierta : undefined"
           :aria-keyshortcuts="f.clase === 'unidad' && f.nodo.jefe ? 'Shift+Enter' : undefined"
           :tabindex="f.clave === claveTab ? 0 : -1"
-          class="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2 pl-1 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-          :class="f.clase !== 'vacante' && 'cursor-pointer'"
+          class="flex items-center gap-2 border-b py-1.5 pl-1 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          :class="[
+            directorio ? 'pr-10' : 'pr-2',
+            (directorio || f.clase !== 'vacante') && 'cursor-pointer hover:bg-accent',
+          ]"
           @focus="activa = f.clave"
-          @click="ejecutar(accionFila(f))"
+          @click="ejecutar(accionFila(f), $event)"
+          @auxclick="ejecutar(accionFila(f), $event)"
+          @mousedown.middle="directorio && $event.preventDefault()"
           @keydown="alTeclear($event, index)"
         >
           <!-- Las guías de la sangría, una línea por nivel; sin tope, una cadena muy honda se comería la fila. -->
@@ -238,15 +251,15 @@ defineExpose({
               </span>
               <!-- Si no cabe se corta el tipo, no la cifra. -->
               <span class="min-w-0 truncate text-xs text-muted-foreground">
-                {{ t("personas.arbol.nPersonas", f.nodo.total) }} ·
-                {{ nombreTipo.get(f.nodo.unidad.tipo_id) }}
+                {{ t("personas.arbol.nPersonas", f.nodo.total) }} · {{ nombreTipo.get(f.nodo.unidad.tipo_id) }}
               </span>
             </span>
             <span v-if="f.nodo.jefe" class="truncate text-xs text-muted-foreground">
               <span
                 class="underline underline-offset-2"
                 :title="t('personas.arbol.verJefe')"
-                @click.stop="emit('persona', f.nodo.jefe!)"
+                @click.stop="ejecutar({ tipo: 'persona', fila: f.nodo.jefe! }, $event)"
+                @auxclick.stop="ejecutar({ tipo: 'persona', fila: f.nodo.jefe! }, $event)"
               >
                 <TextoResaltado :texto="nombreJefe(f.nodo.jefe)" :buscado="buscado" />
               </span>
@@ -275,16 +288,27 @@ defineExpose({
             </span>
           </span>
         </div>
-        <!-- Solo el de la fila activa entra al orden de tabulación: Tab va de la fila a él. -->
-        <BotonUbicar
-          v-if="directorio && personaDe(f)"
-          :persona-id="personaDe(f)!.personaId"
-          :puesto-id="personaDe(f)!.puestoId"
-          :nombre="personaDe(f)!.nombre"
-          icono
-          :tabindex="f.clave === claveTab ? 0 : -1"
-          class="mr-2 shrink-0"
-        />
+      </div>
+      <!--
+        El ícono de ubicar de cada persona (directorio), sobre el borde derecho de su fila pero fuera del árbol: un tree
+        solo tiene treeitems. Solo el de la fila activa entra al orden de tabulación: Tab va de la fila a él.
+      -->
+      <div v-if="directorio" class="pointer-events-none absolute inset-y-0 right-2">
+        <template v-for="{ data: f, index } in ventana" :key="f.clave">
+          <span
+            v-if="personaDe(f)"
+            class="pointer-events-auto absolute right-0 flex items-center"
+            :style="{ top: `${(index - primera) * altoFila}px`, height: `${altoFila}px` }"
+          >
+            <BotonUbicar
+              :persona-id="personaDe(f)!.personaId"
+              :puesto-id="personaDe(f)!.puestoId"
+              :nombre="personaDe(f)!.nombre"
+              icono
+              :tabindex="f.clave === claveTab ? 0 : -1"
+            />
+          </span>
+        </template>
       </div>
     </div>
   </div>

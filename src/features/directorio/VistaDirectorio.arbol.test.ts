@@ -127,6 +127,23 @@ describe("El directorio en modo Árbol", () => {
       expect(s).toContain(`aria-label="${i18n.global.t("arbol.niveles.ver", { n }, n)}"`);
     expect(s).not.toContain(`aria-label="${i18n.global.t("arbol.niveles.ver", { n: 5 }, 5)}"`);
     expect(s).toContain(t("arbol.niveles.verTodo"));
+    // Al abrir se ve el nivel 2 (la raíz abierta): ese botón queda marcado.
+    const nivel = (n: number) =>
+      s.match(new RegExp(`<button[^>]*aria-label="${i18n.global.t("arbol.niveles.ver", { n }, n)}"[^>]*>`))![0];
+    expect(nivel(2)).toContain('aria-pressed="true"');
+    expect(nivel(3)).toContain('aria-pressed="false"');
+    // La cifra del encabezado es la del árbol: 7 asignaciones y la vacante de Finanzas.
+    expect(s).toContain(i18n.global.t("directorio.arbol.filas", 8));
+    expect(s).not.toContain(i18n.global.t("directorio.filas", 9));
+  });
+
+  it("el árbol solo tiene treeitems: los íconos de ubicar van fuera de él, uno por persona", async () => {
+    const s = await html();
+    const arbol = s.slice(s.indexOf('role="tree"'), s.indexOf("pointer-events-none absolute"));
+    expect(arbol).toContain('role="treeitem"');
+    expect(arbol).not.toContain("<button");
+    expect(arbol).not.toContain('role="none"');
+    expect(s.slice(s.indexOf("pointer-events-none absolute"))).toContain(`aria-label="${ver("Ana Pérez")}"`);
   });
 
   it("con texto deja a quien coincide y la cadena hasta él, ya abierta", async () => {
@@ -146,6 +163,15 @@ describe("El directorio en modo Árbol", () => {
     expect(s).toContain("Carla Muñoz"); // reemplazo en el puesto vacante de Mecánica
     expect(s).toContain(t("puesto.tipo.reemplazo"));
     expect(s).not.toContain("Ana Pérez");
+    expect(s).toContain(i18n.global.t("directorio.arbol.filas", 2));
+  });
+
+  it("con solo personas sin puesto lo dice: no están en el árbol", async () => {
+    filtros({ estado: "sinPuesto" }); // Beto Ruiz: su puesto en Finanzas terminó
+    const s = await html();
+    expect(s).toContain(t("directorio.arbol.sinPuesto"));
+    expect(s).not.toContain('role="tree"');
+    expect(s).toContain(i18n.global.t("directorio.arbol.filas", 0));
   });
 
   it("con una unidad elegida parte de su rama", async () => {

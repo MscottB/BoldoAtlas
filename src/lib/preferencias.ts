@@ -43,7 +43,7 @@ export function guardarPreferenciaOrg(clave: string, valor: unknown): void {
 // vuelven a copiar `vista:<árbol>:<db_id>`. shortcut: `vista:<db_id>` (la general ya copiada) sí calza y, si otra copia
 // de la app comparte localStorage, deja una clave `vista:<db_id>:<otro>` que nadie lee; inocua, sin limpiar.
 // `plegado:*`, tema, idioma y respaldos siguen por PC; `recientes:*` se borra (`borrarRecientesViejos`).
-const POR_ORGANIZACION = /^(vista|vista:[^:]+|directorio|directorio:columnas|personas:vista|minimapa)$/;
+const POR_ORGANIZACION = /^(vista|vista:[^:]+|directorio|directorio:columnas|directorio:vista|personas:vista|minimapa)$/;
 
 /** Quita las preferencias de una organización que ya no existe. Las de las demás, y las de cada PC, quedan. */
 export function borrarPreferenciasOrg(id: string): void {

@@ -31,12 +31,8 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import ArbolPersonas from "@/features/unidades/ArbolPersonas.vue";
-import { arbolDePersonas, claveVacante, profundidad } from "@/features/unidades/arbolPersonas";
-import {
-  filtrarPersonasUnidad,
-  personasDelAlcance,
-  type FilaPersonaUnidad,
-} from "@/features/unidades/personas";
+import { arbolDePersonas, claveVacante, contarFilas, profundidad } from "@/features/unidades/arbolPersonas";
+import { filtrarPersonasUnidad, personasDelAlcance } from "@/features/unidades/personas";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
@@ -53,9 +49,11 @@ import {
   filtrarYOrdenar,
   leerColumnas,
   leerEstadoDirectorio,
+  pulsarFila,
   type FilaDirectorio,
   type Filtros,
   type Orden,
+  type Pulsable,
 } from "./filtrar";
 
 const { t } = useI18n();
@@ -159,13 +157,13 @@ const ariaSort = (campo: Orden["campo"]) =>
   orden.value.campo !== campo ? "none" : orden.value.asc ? "ascending" : "descending";
 
 // Clic en la fila (o Enter sobre el nombre, que es un botón dentro de ella): la ficha de la persona o, en una vacante, el puesto.
-// Ctrl+clic o clic central sobre una persona: ella sola en una pestaña nueva.
-function abrir(e: MouseEvent, f: FilaDirectorio) {
-  if (f.personaId && clicNuevaPestana(e, { name: "directorio", query: { persona: f.personaId } })) return;
-  if (e.type === "auxclick") return;
-  if (f.personaId) void ficha.intentarAbrir(f.personaId);
-  else if (f.puestoId) puesto.abrir(f.puestoId);
-}
+// Ctrl+clic o clic central sobre una persona: ella sola en una pestaña nueva. Las filas del árbol hacen lo mismo.
+const abrir = (e: MouseEvent | null, f: Pulsable) =>
+  pulsarFila(e, f, {
+    nueva: (ev, persona) => clicNuevaPestana(ev, { name: "directorio", query: { persona } }),
+    ficha: (id) => void ficha.intentarAbrir(id),
+    puesto: (id) => puesto.abrir(id),
+  });
 // «Limpiar todo» desaparece al limpiar: el foco pasa al buscador para no quedar en el body.
 function limpiarTodo() {
   filtros.value = { ...SIN_FILTROS };
@@ -211,29 +209,27 @@ const coinciden = computed(() => {
   for (const f of deHoy.value.personas) if (puestos.has(f.puestoId)) claves.add(f.clave);
   return claves;
 });
-const abrirPersona = (f: FilaPersonaUnidad) => void ficha.intentarAbrir(f.personaId);
+// Cuántas personas y vacantes muestra el árbol. Sin ninguna, lo que deja la lista son personas sin puesto: se dice.
+const enArbol = computed(() => contarFilas(arbol.value, filtrado.value ? coinciden.value : null));
+const soloSinPuesto = computed(
+  () => !enArbol.value && !!filas.value.length && filas.value.every((f) => f.estado === "sinPuesto"),
+);
 
 // Plegar por niveles, como el lienzo: un botón por nivel real si caben; si son muchos, «−», el nivel y «+».
 const vistaArbol = useTemplateRef<InstanceType<typeof ArbolPersonas>>("vistaArbol");
 const hondura = computed(() => profundidad(arbol.value));
-const nivel = ref(2); // al abrir, las raíces están abiertas: se ve el nivel 2
-const nivelVisto = computed(() => Math.min(nivel.value, hondura.value));
-function verNivel(n: number) {
-  nivel.value = n;
-  vistaArbol.value?.hastaNivel(n);
-}
-// Todo abierto: «−» parte desde el último nivel.
-function verTodo() {
-  nivel.value = hondura.value;
-  vistaArbol.value?.expandirTodo();
-}
+// El nivel a la vista lo da el árbol (sigue a lo que se pliega a mano); antes de montarse, el de partida: las raíces abiertas.
+const nivelVisto = computed(() => vistaArbol.value?.nivel ?? Math.min(2, hondura.value));
+const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
 </script>
 
 <template>
   <section class="flex h-full flex-col gap-3 p-6">
     <header class="flex flex-wrap items-center gap-2">
       <h1 class="text-lg font-semibold">{{ t("nav.directorio") }}</h1>
-      <span class="text-sm text-muted-foreground" aria-live="polite">{{ t("directorio.filas", filas.length) }}</span>
+      <span class="text-sm text-muted-foreground" aria-live="polite">{{
+        vista === "arbol" ? t("directorio.arbol.filas", enArbol) : t("directorio.filas", filas.length)
+      }}</span>
       <div v-if="!sinDatos" role="group" :aria-label="t('personas.vista.titulo')" class="flex gap-1">
         <Button
           v-for="o in ['lista', 'arbol'] as const"
@@ -348,10 +344,11 @@ function verTodo() {
               v-for="n in hondura"
               :key="n"
               type="button"
-              variant="outline"
               size="icon-sm"
               :aria-label="t('arbol.niveles.ver', { n }, n)"
               :title="t('arbol.niveles.ver', { n }, n)"
+              :aria-pressed="n === nivelVisto"
+              :variant="n === nivelVisto ? 'default' : 'outline'"
               @click="verNivel(n)"
             >
               {{ n }}
@@ -390,7 +387,7 @@ function verTodo() {
             size="sm"
             :aria-label="t('arbol.niveles.verTodo')"
             :title="t('arbol.niveles.verTodo')"
-            @click="verTodo"
+            @click="vistaArbol?.expandirTodo()"
           >
             {{ t("arbol.niveles.todo") }}
           </Button>
@@ -418,15 +415,18 @@ function verTodo() {
         </DropdownMenu>
       </form>
 
+      <p v-if="vista === 'arbol' && soloSinPuesto" class="text-sm text-muted-foreground">
+        {{ t("directorio.arbol.sinPuesto") }}
+      </p>
       <ArbolPersonas
-        v-if="vista === 'arbol'"
+        v-else-if="vista === 'arbol'"
         ref="vistaArbol"
         :raiz="arbol"
         :texto="filtros.texto"
         :coinciden="coinciden"
         directorio
         :filtrado="filtrado"
-        @persona="abrirPersona"
+        @abrir="(f, e) => abrir(e, f)"
       />
       <p v-else-if="!filas.length" class="text-sm text-muted-foreground">{{ t("directorio.sinResultados") }}</p>
       <div v-else v-bind="containerProps" class="min-h-0 flex-1 overflow-auto rounded-lg border">

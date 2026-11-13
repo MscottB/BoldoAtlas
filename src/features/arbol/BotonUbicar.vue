@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { ChevronDown, LocateFixed } from "@lucide/vue";
@@ -58,6 +58,10 @@ const etiqueta = computed(() =>
   props.nombre ? t("ubicar.verEnOrganigrama", { nombre: props.nombre }) : t("ubicar.ver"),
 );
 const menu = ref(false);
+// El Tooltip que envuelve al disparador del menú es otro PopperRoot: el ancla del disparador se registra en el del
+// tooltip y el menú quedaría sin ancla, fuera de la pantalla. El menú se ancla explícitamente al botón.
+const botonMenu = useTemplateRef<{ $el: HTMLElement }>("botonMenu");
+const anclaMenu = computed(() => botonMenu.value?.$el);
 // El evento `select` del menú no trae el clic que lo causó: el Ctrl se toma del clic real, antes de que el menú lo atienda.
 let conCtrl = false;
 const anotarCtrl = (e: MouseEvent) => (conCtrl = e.ctrlKey || e.metaKey);
@@ -113,6 +117,7 @@ function alPulsarAux(e: MouseEvent, puestoId: string) {
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child>
           <Button
+            ref="botonMenu"
             v-bind="$attrs"
             type="button"
             :variant="icono ? 'ghost' : 'outline'"
@@ -130,7 +135,7 @@ function alPulsarAux(e: MouseEvent, puestoId: string) {
       </TooltipTrigger>
       <TooltipContent>{{ etiqueta }}</TooltipContent>
     </Tooltip>
-    <DropdownMenuContent align="start" class="w-72">
+    <DropdownMenuContent align="start" class="w-72" :reference="anclaMenu">
       <DropdownMenuLabel>{{ t("ubicar.cual") }}</DropdownMenuLabel>
       <DropdownMenuItem
         v-for="o in opciones"

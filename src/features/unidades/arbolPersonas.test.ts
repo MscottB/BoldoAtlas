@@ -12,10 +12,12 @@ import {
   cambiarRaiz,
   claveUnidad,
   claveVacante,
+  contarFilas,
   contraerTodo,
   estaAbierta,
   expandirTodo,
   idsDelArbol,
+  nivelALaVista,
   plegarUnidad,
   profundidad,
   visiblesDeBusqueda,
@@ -114,7 +116,7 @@ describe("arbolDePersonas", () => {
     const alcance = [...puestosDelAlcance(unidades, puestos, "mecanica", false), vacio];
     const filas = personasDelAlcance(alcance, vigentes, trabajadores, cargos, porId);
     const arbol = arbolDePersonas(porId.get("mecanica")!, [], alcance, filas, vigentes, cargos);
-    expect(arbol.vacantes).toEqual([{ clave: "v:pv", cargo: "Analista" }]);
+    expect(arbol.vacantes).toEqual([{ clave: "v:pv", puestoId: "pv", cargo: "Analista" }]);
     expect(arbol.personas.find((f) => f.tipo === "reemplazo")?.puestoId).toBe("p6");
   });
 
@@ -236,7 +238,8 @@ describe("accionTecla", () => {
     expect(accionTecla(lista, 0, " ")).toEqual({ tipo: "unidad", id: "x" });
     expect(accionTecla(lista, 0, "Enter", true)).toMatchObject({ tipo: "persona", fila: { clave: "b1" } });
     expect(accionTecla(lista, 1, "Enter")).toMatchObject({ tipo: "persona", fila: { clave: "b2" } });
-    expect(accionTecla(lista, 2, "Enter")).toEqual({ tipo: "nada" });
+    // Una vacante lleva su puesto: el directorio lo abre; la pestaña Personas no hace nada con ella.
+    expect(accionTecla(lista, 2, "Enter")).toEqual({ tipo: "vacante", puestoId: "j3" });
     // Sin jefatura, Mayús no cambia nada.
     expect(accionTecla(filas, mecanica, "Enter", true)).toEqual({ tipo: "unidad", id: "mecanica" });
     expect(accionFila(unidad)).toEqual({ tipo: "unidad", id: "x" });
@@ -319,6 +322,37 @@ describe("niveles", () => {
     expect(tres.abiertas).toEqual(inicial.abiertas);
     expect(unidadesVistas(tres, true)).toContain(claveUnidad("mantencion"));
     expect(unidadesVistas(tres, true)).not.toContain(claveUnidad("mecanica"));
+  });
+
+  it("el nivel a la vista es el de la unidad más honda que se ve, y sigue a lo que se abre a mano", () => {
+    const vistas = (pl: Pliegue) => aplanarArbol(arbol, (id) => estaAbierta(pl, false, id), null);
+    expect(nivelALaVista(vistas(inicial))).toBe(2);
+    expect(nivelALaVista(vistas(abrirHastaNivel(inicial, false, arbol, 3)))).toBe(3);
+    expect(nivelALaVista(vistas(abrirHastaNivel(inicial, false, arbol, 1)))).toBe(1);
+    // A mano: solo la rama de Operaciones, hasta Mantención abierta.
+    const amano = plegarUnidad(plegarUnidad(inicial, false, "operaciones", true), false, "mantencion", true);
+    expect(nivelALaVista(vistas(amano))).toBe(4);
+    expect(nivelALaVista([])).toBe(0);
+  });
+});
+
+describe("contarFilas", () => {
+  const { arbol } = construir("gg");
+
+  it("cuenta personas (una por puesto) y vacantes; con `coinciden`, solo las que coinciden", () => {
+    expect(contarFilas(arbol, null)).toBe(8); // 7 asignaciones vigentes y la vacante de Finanzas
+    expect(contarFilas(arbol, new Set(["a7", claveVacante("p2"), claveVacante("p7")]))).toBe(2);
+    expect(contarFilas([], null)).toBe(0);
+  });
+
+  it("la jefatura de una unidad también cuenta", () => {
+    const con = { ...u("x", TIPO_AREA, "X", null), jefe_puesto_id: "j1" };
+    const vig = vigentesPorPuesto([a("b1", "j1", "t1")]);
+    const filas = personasDelAlcance([p("j1", "x")], vig, trabajadores, cargos, indexar([con]));
+    const conJefe = arbolDePersonas(con, [], [p("j1", "x")], filas, vig, cargos);
+    expect(contarFilas(conJefe, null)).toBe(1);
+    expect(contarFilas(conJefe, new Set(["b1"]))).toBe(1);
+    expect(contarFilas(conJefe, new Set())).toBe(0);
   });
 });
 

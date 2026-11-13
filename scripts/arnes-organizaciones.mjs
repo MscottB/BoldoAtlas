@@ -1595,6 +1595,20 @@ const marcarOtra = (o) =>
     c.prepare(
       "UPDATE trabajadores SET nombre = ? WHERE id = (SELECT id FROM trabajadores WHERE deleted_at IS NULL ORDER BY id LIMIT 1)",
     ).run(personaDe(o));
+    // Y dos puestos más en la raíz: su ficha ofrece «Ver en el organigrama» con el menú «¿Cuál puesto?».
+    const persona = String(
+      c.prepare("SELECT id FROM trabajadores WHERE deleted_at IS NULL ORDER BY id LIMIT 1").get()?.id,
+    );
+    const cargo = String(c.prepare("SELECT id FROM cargos WHERE deleted_at IS NULL ORDER BY id LIMIT 1").get()?.id);
+    for (let i = 0; i < 2; i++) {
+      const puesto = randomUUID();
+      c.prepare(
+        "INSERT INTO puestos (id, unidad_id, cargo_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      ).run(puesto, raiz, cargo, ahora, ahora);
+      c.prepare(
+        "INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, created_at, updated_at) VALUES (?, ?, ?, 'titular', '2020-01-01', ?, ?)",
+      ).run(randomUUID(), puesto, persona, ahora, ahora);
+    }
     const n = c
       .prepare(
         `SELECT (SELECT count(*) FROM trabajadores WHERE deleted_at IS NULL) AS personas,
@@ -1913,6 +1927,23 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `Boolean(${DIALOGO}?.innerText.includes(${JSON.stringify(textoEs("ficha.descripcionSoloLectura"))}))`,
   );
   await sinEditar("la ficha de una persona, desde el Directorio,", EDITAR.ficha);
+  // Con varios puestos, «Ver en el organigrama» (con su tooltip alrededor) abre «¿Cuál puesto?» junto a su botón: el menú
+  // tiene lado y queda dentro de la ventana, no fuera de la pantalla. Solo se mira; Esc lo cierra.
+  const ubicarConMenu = `[...(${DIALOGO}?.querySelectorAll('button[aria-haspopup="menu"]') ?? [])].find((b) => b.innerText.includes(${JSON.stringify(textoEs("ubicar.ver"))}))`;
+  const menuUbicar = `[...(${EN_MARCO}?.querySelectorAll('[role="menu"][data-state="open"]') ?? [])].find((m) => m.innerText.includes(${JSON.stringify(textoEs("ubicar.cual"))}))`;
+  await app.hasta(`Boolean(${ubicarConMenu})`, "«Ver en el organigrama» con menú, en la ficha del iframe");
+  await app.evaluar(
+    `${ubicarConMenu}.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Enter", bubbles: true }))`,
+  );
+  await verQue(
+    app,
+    "lado a lado: en la ficha del iframe, «Ver en el organigrama» con varios puestos abre su menú junto al botón, dentro de la ventana",
+    `(() => { const m = ${menuUbicar}; if (!m?.dataset.side) return false; const r = m.getBoundingClientRect(); const w = ${MARCO}.contentWindow; return r.width > 0 && r.height > 0 && r.top >= 0 && r.left >= 0 && r.bottom <= w.innerHeight && r.right <= w.innerWidth; })()`,
+  );
+  await app.evaluar(
+    `${menuUbicar}?.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Escape", bubbles: true }))`,
+  );
+  await app.hasta(`!(${menuUbicar}) && Boolean(${DIALOGO})`, "el menú «¿Cuál puesto?» cerrado, con la ficha abierta");
   await cerrarDialogo("la ficha cerrada");
   // El modo Árbol, sin búsqueda: parte de la raíz. Solo lee (al lado, la vista elegida ni siquiera se guarda).
   const modo = (/** @type {string} */ m) => `${EN_MARCO}?.querySelector('[data-vista-directorio="${m}"]')`;

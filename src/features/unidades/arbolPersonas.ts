@@ -6,6 +6,7 @@ import { collator, type FilaPersonaUnidad } from "./personas";
 /** Puesto sin titular ni reemplazo vigentes. */
 export interface VacanteArbol {
   clave: string;
+  puestoId: string;
   cargo: string;
 }
 
@@ -54,7 +55,11 @@ export function arbolDePersonas(
   for (const p of puestos) {
     const v = vigentes.get(p.id);
     if (!v?.titular && !v?.reemplazo)
-      agrupar(vacios, p.unidad_id, { clave: claveVacante(p.id), cargo: nombreCargo.get(p.cargo_id) ?? "" });
+      agrupar(vacios, p.unidad_id, {
+        clave: claveVacante(p.id),
+        puestoId: p.id,
+        cargo: nombreCargo.get(p.cargo_id) ?? "",
+      });
   }
 
   const vistos = new Set<string>(); // corta si los datos ya traen un ciclo
@@ -202,6 +207,28 @@ export function plegarUnidad(p: Pliegue, buscando: boolean, id: string, abrir: b
   return buscando ? { ...p, cerradas: s } : { ...p, abiertas: s };
 }
 
+/** El nivel que se ve: el de la unidad más honda a la vista (0 sin filas). Sigue a lo que se pliega a mano. */
+export function nivelALaVista(filas: FilaArbol[]): number {
+  let max = 0;
+  for (const f of filas) if (f.clase === "unidad" && f.nivel > max) max = f.nivel;
+  return max;
+}
+
+/** Cuántas personas (jefaturas incluidas) y vacantes tiene el árbol o, con `coinciden`, cuántas de ellas coinciden. */
+export function contarFilas(raiz: Raices, coinciden: Set<string> | null): number {
+  const cuenta = (clave: string) => (!coinciden || coinciden.has(clave) ? 1 : 0);
+  let n = 0;
+  const pendientes = [raiz].flat();
+  while (pendientes.length) {
+    const nodo = pendientes.pop()!;
+    if (nodo.jefe) n += cuenta(nodo.jefe.clave);
+    for (const f of nodo.personas) n += cuenta(f.clave);
+    for (const v of nodo.vacantes) n += cuenta(v.clave);
+    pendientes.push(...nodo.hijos);
+  }
+  return n;
+}
+
 /** Se ven las unidades hasta el nivel `nivel`, cerradas las de ese nivel: como los niveles del lienzo. */
 export function abrirHastaNivel(p: Pliegue, buscando: boolean, raiz: Raices, nivel: number): Pliegue {
   const ids = (cerrada: boolean) =>
@@ -222,12 +249,18 @@ export function cambiarRaiz(p: Pliegue, id: string): Pliegue {
 }
 
 export type AccionFila =
-  { tipo: "persona"; fila: FilaPersonaUnidad } | { tipo: "unidad"; id: string } | { tipo: "nada" };
+  | { tipo: "persona"; fila: FilaPersonaUnidad }
+  | { tipo: "vacante"; puestoId: string }
+  | { tipo: "unidad"; id: string }
+  | { tipo: "nada" };
 
-/** Lo que hace una fila al pulsarla. Con `jefatura` (Mayús+Enter), una unidad abre a quien la encabeza, si tiene. */
+/**
+ * Lo que hace una fila al pulsarla. Con `jefatura` (Mayús+Enter), una unidad abre a quien la encabeza, si tiene. Una
+ * vacante abre su puesto donde se puede (el directorio); en la pestaña Personas no hace nada.
+ */
 export function accionFila(f: FilaArbol, jefatura = false): AccionFila {
   if (f.clase === "persona") return { tipo: "persona", fila: f.fila };
-  if (f.clase === "vacante") return { tipo: "nada" };
+  if (f.clase === "vacante") return { tipo: "vacante", puestoId: f.vacante.puestoId };
   return jefatura && f.nodo.jefe
     ? { tipo: "persona", fila: f.nodo.jefe }
     : { tipo: "unidad", id: f.nodo.unidad.id };

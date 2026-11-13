@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   TIPO_AREA,
   TIPO_GERENCIA,
@@ -16,6 +16,7 @@ import {
   filtrarYOrdenar,
   leerColumnas,
   leerEstadoDirectorio,
+  pulsarFila,
   type EstadoDirectorio,
   type Filtros,
   type Orden,
@@ -293,5 +294,50 @@ describe("columnas del directorio", () => {
       columnaVisible({ [`tipo:${TIPO_GERENCIA}`]: false, sede: true }, `tipo:${TIPO_GERENCIA}`, enUso),
     ).toBe(false);
     expect(columnaVisible({ sede: true }, "sede", enUso)).toBe(true);
+  });
+});
+
+describe("pulsarFila (lista y árbol del directorio)", () => {
+  const clic = (x: Partial<MouseEvent> = {}) =>
+    ({ type: "click", button: 0, ctrlKey: false, ...x }) as MouseEvent;
+  // `nueva` como clicNuevaPestana fuera del lado: Ctrl+clic, o clic central (auxclick con el botón 1).
+  const pulsar = (e: MouseEvent | null, f: { personaId: string | null; puestoId: string | null }) => {
+    const h = {
+      nueva: vi.fn((ev: MouseEvent) => (ev.type === "auxclick" ? ev.button === 1 : ev.ctrlKey)),
+      ficha: vi.fn(),
+      puesto: vi.fn(),
+    };
+    pulsarFila(e, f, h);
+    return h;
+  };
+  const persona = { personaId: "t1", puestoId: "p1" };
+  const vacante = { personaId: null, puestoId: "p2" };
+
+  it("un clic (o Enter, sin clic) abre la ficha de la persona y, en una vacante, el puesto", () => {
+    expect(pulsar(clic(), persona).ficha).toHaveBeenCalledWith("t1");
+    expect(pulsar(null, persona).ficha).toHaveBeenCalledWith("t1");
+    const h = pulsar(clic(), vacante);
+    expect(h.puesto).toHaveBeenCalledWith("p2");
+    expect(h.nueva).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+clic o clic central sobre una persona van a una pestaña nueva, sin abrir la ficha", () => {
+    for (const e of [clic({ ctrlKey: true }), clic({ type: "auxclick", button: 1 })]) {
+      const h = pulsar(e, persona);
+      expect(h.nueva).toHaveBeenCalledWith(e, "t1");
+      expect(h.ficha).not.toHaveBeenCalled();
+    }
+  });
+
+  it("al lado (sin pestaña nueva) Ctrl+clic abre la ficha; el clic central u otro botón no hacen nada", () => {
+    const h = { nueva: vi.fn(() => false), ficha: vi.fn(), puesto: vi.fn() };
+    pulsarFila(clic({ ctrlKey: true }), persona, h);
+    expect(h.ficha).toHaveBeenCalledWith("t1");
+    for (const e of [clic({ type: "auxclick", button: 1 }), clic({ type: "auxclick", button: 2 })]) {
+      const otro = pulsar(e, vacante);
+      expect(otro.puesto).not.toHaveBeenCalled();
+    }
+    const derecho = pulsar(clic({ type: "auxclick", button: 2 }), persona);
+    expect(derecho.ficha).not.toHaveBeenCalled();
   });
 });
