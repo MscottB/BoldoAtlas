@@ -34,6 +34,7 @@ import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
 import { SQL_HISTORICO } from "@/db/repos/historico";
 import { guardarMeta } from "@/db/repos/meta";
+import type { Marcas } from "@/features/revision/marcas";
 import { TIPOS_SEMILLA } from "@/db/repos/reemplazo";
 import {
   creaCiclo,
@@ -107,6 +108,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const estiloCopiado = ref<string | null | undefined>(undefined);
   const catalogos = ref(catalogosVacios());
   const org = ref<{ nombre: string; logo: string | null }>({ nombre: "", logo: null });
+  /** Texto crudo de `meta.revision_bien` (las marcas «Así está bien»); `leerMarcas` lo interpreta. */
+  const marcasRevision = ref("");
   const cargado = ref(false);
   const pendientes = ref(0);
   const guardando = computed(() => pendientes.value > 0);
@@ -247,6 +250,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       if (hist && fechaVista.value) historico.value = hist;
       cambios.value = null;
       org.value = { nombre: meta.org_nombre ?? "", logo: meta.logo_png || null };
+      marcasRevision.value = meta.revision_bien ?? "";
       cargado.value = true;
       error.value = null;
       return { ok: true };
@@ -272,6 +276,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     leyendas.value = [];
     catalogos.value = catalogosVacios();
     org.value = { nombre: "", logo: null };
+    marcasRevision.value = "";
     cargado.value = false;
     error.value = null;
     ultimoBorrado.value = null;
@@ -655,6 +660,11 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => (ultimoBorrado.value = { tipo: "vista", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
 
+  /** Solo escribe en el hoy propio: a una fecha o en el panel de al lado se rechaza. */
+  async function guardarMarcasRevision(m: Marcas): Promise<Resultado> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    return escribir(() => guardarMeta("revision_bien", JSON.stringify(m)));
+  }
   const guardarOrg = (nombre: string, logo: string | null) =>
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
 
@@ -932,6 +942,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     puedePegarEstilo,
     catalogos,
     org,
+    marcasRevision,
+    guardarMarcasRevision,
     cargado,
     guardando,
     error,

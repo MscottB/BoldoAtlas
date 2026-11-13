@@ -1,6 +1,6 @@
 import type { Sentencia } from "@/db/cliente";
 
-/** Claves que escribe la app: `org_nombre`, `logo_png`. */
+/** Claves que escribe la app: `org_nombre`, `logo_png`, `revision_bien` (JSON de las marcas «Así está bien»). */
 export function guardarMeta(clave: string, valor: string): Sentencia[] {
   return [
     {

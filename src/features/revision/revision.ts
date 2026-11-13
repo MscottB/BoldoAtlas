@@ -390,7 +390,7 @@ export function revisar(a: Avisos, marcas: Marcas, rama: Set<string> | null): Re
   for (const aviso of listarAvisos(a)) {
     // hasOwn: una clave como «constructor» no es una marca.
     if (Object.prototype.hasOwnProperty.call(marcas, aviso.clave)) {
-      marcados.push({ aviso, marca: marcas[aviso.clave] });
+      if (!rama || aviso.unidades.some((u) => rama.has(u))) marcados.push({ aviso, marca: marcas[aviso.clave] });
       continue;
     }
     total++;

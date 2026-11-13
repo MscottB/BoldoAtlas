@@ -8,6 +8,7 @@ import { useOrganizacion } from "./organizacion";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
 import { cambiarIdioma } from "@/i18n";
 import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { useAvisos } from "@/features/revision/useAvisos";
 
 // antesDeLote / antesDeMeta: ganchos de los tests para pausar una llamada y forzar solapes.
 const h = vi.hoisted(() => ({
@@ -636,6 +637,41 @@ describe("organización, etiquetas y conexiones", () => {
     expect(s.org).toEqual({ nombre: "Acme", logo: "data:image/png;base64,AAAA" });
     await s.guardarOrg("Acme", null);
     expect(s.org.logo).toBeNull();
+  });
+
+  it("guarda las marcas de la revisión y las trae al recargar", async () => {
+    const s = nuevo();
+    expect(s.marcasRevision).toBe("");
+    const m = { "vacias:u1": { motivo: "nueva", fecha: "2026-11-13" } };
+    expect((await s.guardarMarcasRevision(m)).ok).toBe(true);
+    expect(JSON.parse(s.marcasRevision)).toEqual(m);
+    s.soltar();
+    expect(s.marcasRevision).toBe("");
+    await s.cargar();
+    expect(JSON.parse(s.marcasRevision)).toEqual(m);
+  });
+
+  it("a una fecha no guarda las marcas", async () => {
+    const s = nuevo();
+    await s.verAFecha("2020-01-01");
+    const antes = revision();
+    expect(await s.guardarMarcasRevision({})).toEqual({
+      ok: false,
+      mensaje: "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo.",
+    });
+    expect(revision()).toBe(antes);
+    expect(s.marcasRevision).toBe("");
+  });
+
+  it("el contador del menú baja en 1 al marcar un aviso que existe", async () => {
+    const s = nuevo();
+    const id = await unidad(s, "Sola");
+    const av = useAvisos();
+    const antes = av.value.total;
+    expect(av.value.vigentes.has(`sinJefatura:${id}`)).toBe(true);
+    await s.guardarMarcasRevision({ [`sinJefatura:${id}`]: { motivo: "ok", fecha: "2026-11-13" } });
+    expect(av.value.marcas).toHaveProperty(`sinJefatura:${id}`);
+    expect(av.value.total).toBe(antes - 1);
   });
 
   it("etiqueta y quita etiquetas, crea y elimina conexiones", async () => {

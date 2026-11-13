@@ -455,6 +455,28 @@ describe("listarAvisos y revisar", () => {
     expect(rev.marcados.map((x) => x.aviso.clave)).toEqual([`sinJefatura:${id}`]);
   });
 
+  it("la rama también filtra los marcados; sin unidad quedan ocultos y no cuentan fuera", () => {
+    const gerencia = unidades.find((x) => x.tipo_id === TIPO_GERENCIA)!.id;
+    const rama = ramaDe(unidades, gerencia)!;
+    const dentro = listarAvisos(r).find((x) => x.unidades.some((id) => rama.has(id)))!;
+    const fuera = listarAvisos(r).find((x) => x.unidades.length && !x.unidades.some((id) => rama.has(id)))!;
+    const sinUnidad = listarAvisos(r).find((x) => x.unidades.length === 0)!;
+    const marca = { motivo: "ok", fecha: "2026-03-11" };
+    const marcas = { [dentro.clave]: marca, [fuera.clave]: marca, [sinUnidad.clave]: marca };
+    const todo = revisar(r, {}, rama);
+    const rev = revisar(r, marcas, rama);
+    expect(rev.marcados.map((x) => x.aviso.clave)).toEqual([dentro.clave]);
+    expect(rev.fueraDeRama).toBe(todo.fueraDeRama - 2);
+    expect(revisar(r, marcas, null).marcados).toHaveLength(3);
+  });
+
+  it("una clave heredada como «constructor» no marca nada", () => {
+    const base = revisar(r, {}, null);
+    const rev = revisar(r, { constructor: { motivo: "x", fecha: "2026-03-11" }, toString: {} } as unknown as Marcas, null);
+    expect(rev.marcados).toEqual([]);
+    expect(rev.total).toBe(base.total);
+  });
+
   it("mantiene las ocho secciones, en el orden de NIVELES", () => {
     const rev = revisar(avisos(vacio, HOY), {}, null);
     expect(rev.secciones.map((s) => s.tipo)).toEqual(NIVELES.flatMap((n) => n.tipos));
