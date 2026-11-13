@@ -2,6 +2,7 @@
 import { useI18n } from "vue-i18n";
 import { finDelArrastre, nuevaProporcion, proporcionDelPuntero } from "./divisor";
 import { PROPORCION_MAX, PROPORCION_MIN, type Division } from "./pestanas";
+import { ID_PANEL } from "./usePestanas";
 
 // Entre los dos paneles: se arrastra, o con el foco se mueve con las flechas, Inicio y Fin; un doble clic lo centra.
 // `proporcion` es lo que ocupa el panel principal. Mientras se arrastra, la de ahora va en `arrastre` (la lee el
@@ -44,6 +45,7 @@ function soltar() {
     tabindex="0"
     :aria-label="t('pestanas.divisor')"
     :aria-orientation="orientacion === 'horizontal' ? 'vertical' : 'horizontal'"
+    :aria-controls="ID_PANEL.principal"
     :aria-valuenow="porcentaje(arrastre ?? proporcion)"
     :aria-valuemin="porcentaje(PROPORCION_MIN)"
     :aria-valuemax="porcentaje(PROPORCION_MAX)"

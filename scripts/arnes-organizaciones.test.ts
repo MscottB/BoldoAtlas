@@ -3,6 +3,7 @@ import {
   PREFERENCIAS_VIEJAS,
   VISTA_DE_LA_ORGANIZACION,
   VISTA_GENERAL,
+  centroDelClic,
   etiquetaComparar,
   eventosTecla,
   lineaDivision,
@@ -197,5 +198,14 @@ describe("eventosTecla", () => {
 
   it("una tecla sin código lanza", () => {
     expect(() => eventosTecla("Hyper")).toThrow("Hyper");
+  });
+});
+
+describe("centroDelClic", () => {
+  it("el centro de la caja; sin caja, o sin ancho o alto (oculto), null", () => {
+    expect(centroDelClic({ left: 10, top: 20, width: 100, height: 40 })).toEqual({ x: 60, y: 40 });
+    expect(centroDelClic(null)).toBeNull();
+    expect(centroDelClic({ left: 0, top: 0, width: 0, height: 0 })).toBeNull();
+    expect(centroDelClic({ left: 5, top: 5, width: 30, height: 0 })).toBeNull();
   });
 });

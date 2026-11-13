@@ -151,6 +151,8 @@ describe("VistaDividida", () => {
     expect(s).toMatch(/aria-valuemin="20"/);
     expect(s).toMatch(/aria-valuemax="80"/);
     expect(s).toMatch(/tabindex="0"/);
+    // Patrón «window splitter» de APG: el divisor controla el panel cuyo tamaño fija `aria-valuenow`.
+    expect(s).toMatch(/role="separator"[^>]*aria-controls="panel-principal"/);
     expect(s).toMatch(/data-panel="principal"[^>]*aria-current="true"/);
   });
 
@@ -163,6 +165,8 @@ describe("VistaDividida", () => {
     expect(barra).toMatch(/id="pestana-a"[^>]*aria-controls="panel-principal"/);
     expect(barra).toMatch(/id="pestana-b"[^>]*aria-controls="panel-lado"/);
     expect(texto(barra)).toContain("(al lado)");
+    // La ayuda del teclado dice cómo llegar al menú de la pestaña, que abre o quita de al lado.
+    expect(texto(barra)).toMatch(/Mayús\+F10 abre su menú.*«Abrir al lado».*«Quitar de al lado»/);
 
     usePestanas().cerrarDivision();
     const sinDividir = await html(BarraPestanas);

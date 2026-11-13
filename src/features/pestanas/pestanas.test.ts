@@ -518,6 +518,8 @@ describe("vista dividida: la pestaña de al lado", () => {
     expect(conProporcion(tres(), 0.95).division.proporcion).toBe(PROPORCION_MAX);
     expect(conProporcion(tres(), 0.3).division.proporcion).toBe(0.3);
     expect(conProporcion(tres(), NaN)).toEqual(tres());
+    expect(conProporcion(tres(), Infinity).division.proporcion).toBe(PROPORCION_MAX);
+    expect(conProporcion(tres(), -Infinity).division.proporcion).toBe(PROPORCION_MIN);
   });
 
   it("una pestaña nueva nace sin división", () => {

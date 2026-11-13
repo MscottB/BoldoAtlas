@@ -119,9 +119,12 @@ export function enPanel(m: Pestanas, panel: Panel, id: string): Pestanas {
 
 /** Cambia lo que ocupa el panel principal, acotado para que ninguno de los dos desaparezca. */
 export const conProporcion = (m: Pestanas, p: number): Pestanas =>
-  Number.isFinite(p)
-    ? { ...m, division: { ...m.division, proporcion: Math.min(Math.max(p, PROPORCION_MIN), PROPORCION_MAX) } }
-    : m;
+  Number.isNaN(p)
+    ? m
+    : {
+        ...m,
+        division: { ...m.division, proporcion: Math.min(Math.max(p, PROPORCION_MIN), PROPORCION_MAX) },
+      };
 
 /**
  * Sin las pestañas de `org`, que ya no existe. La activa debe ser de la abierta: si era de `org`, pasa a una suya y, sin

@@ -63,11 +63,14 @@ export const usePestanas = defineStore("pestanas", () => {
   const deLaAbierta = (id: string) => modelo.value.lista.find((x) => x.id === id)?.org === baseActual();
   /** Al lado solo va una de la abierta que abrió: una con motivo se vería sin datos. En esta entrega, nunca de otra. */
   const vaAlLado = (id: string) => deLaAbierta(id) && !useOrganizaciones().sinAbrir.has(id);
+  /**
+   * Al lado solo queda una de la abierta que siga en la lista. Tras cambiar de organización, la de antes se editaría sobre
+   * los datos de la nueva: deja de estar al lado, y así lo ven igual F6, Ctrl+W y la vista dividida.
+   */
+  const conLadoValido = (n: P.Pestanas): P.Pestanas =>
+    !n.lado || n.lista.some((x) => x.id === n.lado && x.org === baseActual()) ? n : P.sinLado(n);
   /** `id` al panel principal (ver `P.enPanel`); la activa de antes va al lado solo si sigue en la lista. */
-  function aPrincipal(m: P.Pestanas, id: string): P.Pestanas {
-    const n = P.enPanel(m, "principal", id);
-    return n.lado && !n.lista.some((x) => x.id === n.lado) ? P.sinLado(n) : n;
-  }
+  const aPrincipal = (m: P.Pestanas, id: string) => conLadoValido(P.enPanel(m, "principal", id));
 
   /** Para otra organización solo mira la vista: sus unidades y personas no están cargadas. */
   function valida(ruta: string, org = baseActual()): boolean {
@@ -80,8 +83,9 @@ export const usePestanas = defineStore("pestanas", () => {
     );
   }
 
-  /** Siempre activa una de la organización abierta; sin ninguna, abre una en el inicio. */
-  function aLaAbierta(m: P.Pestanas): P.Pestanas {
+  /** Siempre activa una de la organización abierta, y al lado solo una suya; sin ninguna, abre una en el inicio. */
+  const aLaAbierta = (m: P.Pestanas) => conLadoValido(activaDeLaAbierta(m));
+  function activaDeLaAbierta(m: P.Pestanas): P.Pestanas {
     const org = baseActual();
     // la activa puede no estar en la lista: se cerró mientras se llegaba a otra
     const de = (x?: P.Pestana) => x?.org === org;
@@ -279,7 +283,9 @@ export const usePestanas = defineStore("pestanas", () => {
     if (!router) return { ok: false, mensaje: t("pestanas.noAbre") };
     const r = router.resolve(destino);
     if (!r.matched.length || r.meta.sinMarco) return { ok: false, mensaje: t("pestanas.noAbre") };
-    const alLado = conFoco.value === "lado" ? modelo.value.lado : null;
+    // Configuración, Ayuda y Acerca de no van al lado: se abren en el principal, que pasa a tener el foco.
+    const alLado = conFoco.value === "lado" && seAbreAlLado(r) ? modelo.value.lado : null;
+    if (!alLado) conFoco.value = "principal";
     const nueva = alLado ? agregarNueva(r.fullPath, alLado) : agregarNueva(r.fullPath);
     if (nueva.ok) {
       if (alLado) modelo.value = P.alLado(modelo.value, nueva.id!);
@@ -424,9 +430,10 @@ export const usePestanas = defineStore("pestanas", () => {
       return { ok: true };
     },
     dividir,
-    /** Deja la pestaña de al lado en la barra como una más. */
+    /** Deja la pestaña de al lado en la barra como una más. El foco no queda suelto: va a la activa, como con Ctrl+W. */
     cerrarDivision() {
       modelo.value = P.sinLado(modelo.value);
+      void enfocar(true);
     },
     orientar(o: P.Division["orientacion"]) {
       modelo.value = { ...modelo.value, division: { ...modelo.value.division, orientacion: o } };
@@ -438,9 +445,10 @@ export const usePestanas = defineStore("pestanas", () => {
     enfocarPanel(p: P.Panel) {
       if (p === "principal" || modelo.value.lado) conFoco.value = p;
     },
-    /** La escribe el router del panel de al lado al navegar. */
+    /** La escribe el router del panel de al lado al navegar; nunca en una de otra organización. */
     rutaDelLado(ruta: string) {
-      if (modelo.value.lado) modelo.value = P.cambiar(modelo.value, modelo.value.lado, { ruta });
+      const l = modelo.value.lado;
+      if (l && deLaAbierta(l)) modelo.value = P.cambiar(modelo.value, l, { ruta });
     },
     /**
      * Ctrl+Tab (1) y Ctrl+Mayús+Tab (-1) en el panel con foco, saltando la del otro. En el principal, con un cambio aún
@@ -600,7 +608,9 @@ export function useEstadoPestana(leer: () => unknown): unknown {
       if (route.name === nombre && panel.pestana() === id) ruta = r;
     },
   );
-  const guardar = () => pestanas.guardarEstado(id, ruta, leer());
+  // Montada con otra base (antes de cambiar de organización): lo que lee ya no es de esa pestaña.
+  const base = baseActual();
+  const guardar = () => base === baseActual() && pestanas.guardarEstado(id, ruta, leer());
   // También mientras se usa (tras una pausa): al cerrar la ventana, Tauri puede no avisar con beforeunload.
   let espera: ReturnType<typeof setTimeout> | undefined;
   // Al montar: `leer` suele usar refs que la vista declara después de llamar a esta función.

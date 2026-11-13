@@ -838,6 +838,105 @@ describe("usePestanas con la vista dividida", () => {
     expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]);
   });
 
+  // Como el cambio real que sale bien: la base pasa a la de la pestaña y después se la marca activa.
+  const cambioQueSale = (p: ReturnType<typeof usePestanas>) =>
+    vi.spyOn(useOrganizaciones(), "activarPestana").mockImplementation(async (v) => {
+      fijarBase(p.lista.find((x) => x.id === v)!.org);
+      p.marcarActiva(v);
+      return { ok: true };
+    });
+  const conOtra = (activa: string, lado: string | null) => ({
+    lista: [...tres("a", null).lista.slice(0, 2), { id: "x", org: "B", ruta: "/" }],
+    activa,
+    lado,
+  });
+
+  it("activar una de otra organización con la vista dividida quita la de al lado", async () => {
+    const p = await arrancar(conOtra("a", "b"));
+    cambioQueSale(p);
+    p.activar("x");
+    await esperar();
+    expect(p.activa).toBe("x");
+    expect(p.lado).toBeNull();
+    expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]);
+  });
+
+  it("cerrar la activa cuya vecina es de otra organización y abre quita la de al lado", async () => {
+    const p = await arrancar(conOtra("a", "b"));
+    cambioQueSale(p);
+    expect(p.cerrar("a").ok).toBe(true);
+    await esperar();
+    expect(p.activa).toBe("x");
+    expect(p.lado).toBeNull();
+    expect(p.lista.map((x) => x.id)).toEqual(["b", "x"]);
+  });
+
+  it("al entrar, una de al lado de otra organización deja de estarlo", async () => {
+    let p = await arrancar(conOtra("a", "x"));
+    expect(p.activa).toBe("a");
+    expect(p.lado).toBeNull();
+
+    // También cuando la activa guardada tampoco es de la abierta.
+    setActivePinia(createPinia());
+    router = nuevoRouter();
+    p = await arrancar({
+      lista: [
+        { id: "x", org: "B", ruta: "/" },
+        { id: "y", org: "B", ruta: "/directorio" },
+        { id: "a", org: "A", ruta: "/revision" },
+      ],
+      activa: "x",
+      lado: "y",
+    });
+    expect(p.activa).toBe("a");
+    expect(p.lado).toBeNull();
+  });
+
+  it("tras cambiar de organización, la vista de al lado de antes no escribe en su pestaña", async () => {
+    vi.stubGlobal("window", { addEventListener: () => {}, removeEventListener: () => {} });
+    const p = await arrancar(tres("a", "b"));
+    const app = sinDom.createApp({
+      setup() {
+        useEstadoPestana(() => ({ x: 1 }));
+        return () => null;
+      },
+    });
+    app.provide(PANEL, { panel: "lado", pestana: () => "b" });
+    app.provide(routeLocationKey, router.currentRoute.value);
+    app.mount({});
+    fijarBase("B");
+    p.rutaDelLado("/revision");
+    app.unmount();
+    expect(rutas()).toEqual(["/", "/directorio", "/revision"]);
+    expect(p.estadoDe("b", "/")).toBeUndefined();
+  });
+
+  it("Ctrl+clic en Ayuda con foco al lado la abre en el principal, que pasa a tener el foco", async () => {
+    const p = await arrancar(tres("a", "b"));
+    p.enfocarPanel("lado");
+    expect(p.abrirNueva("/ayuda").ok).toBe(true);
+    await esperar();
+    expect(p.lado).toBe("b");
+    expect(p.lista.find((x) => x.id === p.activa)!.ruta).toBe("/ayuda");
+    expect(p.lista).toHaveLength(4);
+    expect(p.conFoco).toBe("principal");
+    expect(rutaActual()).toBe("/ayuda");
+  });
+
+  it("la X de la vista dividida deja el foco en la pestaña activa", async () => {
+    const focus = vi.fn();
+    vi.stubGlobal("document", {
+      activeElement: null,
+      body: {},
+      getElementById: (id: string) => (id === "pestana-a" ? { focus } : null),
+    });
+    const p = await arrancar(tres("a", "b"));
+    p.cerrarDivision();
+    await esperar();
+    expect(p.lado).toBeNull();
+    expect(focus).toHaveBeenCalled();
+  });
+
   it("paleta_y_menu_lateral_navegan_en_el_panel_con_foco", async () => {
     const p = await arrancar(tres("a", "b"));
     const lado = nuevoRouter();

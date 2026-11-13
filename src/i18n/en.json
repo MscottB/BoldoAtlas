@@ -876,7 +876,7 @@
     "ultima": "The last tab can't be closed.",
     "noAbre": "That can't be opened in a tab.",
     "movida": "{titulo}: position {posicion} of {total}",
-    "ayudaTeclado": "Enter opens the tab, Delete closes it, Control+Shift+arrows move it.",
+    "ayudaTeclado": "Enter opens the tab, Delete closes it, Control+Shift+arrows move it. Shift+F10 opens its menu, with “Open to the side” or “Remove from the side”.",
     "ladoALado": "Side by side",
     "unaSobreOtra": "One above the other",
     "cerrarDivision": "Close split view",

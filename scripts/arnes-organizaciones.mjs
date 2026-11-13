@@ -1011,17 +1011,27 @@ async function pulsar(app, key, mayus = false) {
 }
 
 /**
+ * Dónde cae el clic: el centro de la caja. Sin caja, o sin ancho o alto (un elemento oculto), null: el clic iría a (0,0).
+ * @param {{ left: number, top: number, width: number, height: number } | null} r
+ * @returns {{ x: number, y: number } | null}
+ */
+export function centroDelClic(r) {
+  return r?.width && r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+}
+
+/**
  * Un clic de verdad (CDP) en el centro del elemento que da `elemento` (una expresión de la página): con él llegan el
  * puntero, el foco y, con el botón derecho, el menú contextual.
  * @param {App} app @param {string} elemento @param {string} que @param {"left" | "right"} [boton]
  */
 async function clicEn(app, elemento, que, boton = "left") {
-  /** @type {{ x: number, y: number } | null} */
-  const c = await app.evaluar(`(() => {
-    const r = (${elemento})?.getBoundingClientRect();
-    return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
-  })()`);
-  if (!c) throw new Error(`No está ${que} para el clic`);
+  const c = centroDelClic(
+    await app.evaluar(`(() => {
+      const r = (${elemento})?.getBoundingClientRect();
+      return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+    })()`),
+  );
+  if (!c) throw new Error(`No está ${que} para el clic, o está oculto`);
   const comun = { ...c, button: boton, clickCount: 1 };
   await app.enviar("Input.dispatchMouseEvent", { type: "mouseMoved", ...c });
   await app.enviar("Input.dispatchMouseEvent", {
