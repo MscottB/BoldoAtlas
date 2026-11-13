@@ -109,4 +109,10 @@ describe("Revisión de datos", () => {
     expect(s).toContain(`aria-label="${t("revision.acciones.verPuesto")}: `);
     expect(s).toContain(`aria-label="${t("revision.acciones.verUnidad")}: Raíz"`);
   });
+
+  it("la línea del filtro dice que el aviso queda fuera de la rama, no que no tenga unidad", () => {
+    const f = (n: number) => i18n.global.t("revision.fueraDeRama", n);
+    expect(f(1)).toBe("1 aviso queda fuera de esta rama");
+    expect(f(3)).toBe("3 avisos quedan fuera de esta rama");
+  });
 });

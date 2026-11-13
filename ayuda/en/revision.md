@@ -56,7 +56,8 @@ Marks are stored in this organization's database. They go in backups and full co
 The **Branch** filter shows a unit and everything under it.
 
 - A group of emails or names appears if any of its people has a position in that branch.
-- Warnings that belong to no unit are hidden, and a line says how many there are.
+- Everything outside the branch is hidden, including warnings that belong to no unit, and a line says how many there are.
+- **Current replacements** and **Marked as fine** follow the filter too.
 - The number in the header follows the filter. The menu number is always for the whole organization.
 
 To see everything again, choose **Whole organization**.

@@ -20,6 +20,8 @@ describe("leerMarcas", () => {
       "vacias:u2": { motivo: "a".repeat(MOTIVO_MAX + 1), fecha: "2026-11-13" },
       "vacias:u3": { motivo: "   ", fecha: "2026-11-13" },
       "vacias:u4": { motivo: "x", fecha: "ayer" },
+      "vacias:u5": { motivo: "x", fecha: "2026-99-99" },
+      "vacias:u6": { motivo: "x", fecha: "2026-02-30" },
       "otro:1": ok,
       "sinUso:cargos:c-1": ok,
     });

@@ -401,13 +401,14 @@
       "motivo": "Motivo",
       "ejemplo": "Por ejemplo: es una unidad nueva y todavía no tiene personas.",
       "guardar": "Guardar",
-      "cancelar": "Cancelar"
+      "cancelar": "Cancelar",
+      "motivoInvalido": "Escribe un motivo de hasta 200 caracteres."
     },
     "marcados": "Marcados como bien",
     "marca": "{motivo} · {fecha}",
     "rama": "Rama",
     "todaLaOrganizacion": "Toda la organización",
-    "fueraDeRama": "{n} aviso no pertenece a ninguna unidad y no se ve con este filtro | {n} avisos no pertenecen a ninguna unidad y no se ven con este filtro",
+    "fueraDeRama": "{n} aviso queda fuera de esta rama | {n} avisos quedan fuera de esta rama",
     "eliminada": "Unidad eliminada",
     "desactivado": "Valor desactivado"
   },

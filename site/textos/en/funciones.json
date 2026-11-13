@@ -144,7 +144,7 @@
       "texto": "Review sorts warnings into three levels and says why each one matters. Each row has a one-click action.",
       "puntos": [
         "A summary with what matters on top: units without a head, repeated emails and long vacancies.",
-        "Choose a head, assign a holder, delete an empty unit or deactivate an unused value, right there and with Undo.",
+        "Choose a head or assign a holder in one click; delete an empty unit or deactivate an unused value right there, with Undo.",
         "A branch filter to see only one unit and what is under it.",
         "This is fine: mark what is not a problem, with its reason, and it warns again if it changes."
       ],

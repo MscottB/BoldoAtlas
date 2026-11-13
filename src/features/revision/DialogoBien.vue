@@ -47,12 +47,13 @@ watch(
 
 async function guardar() {
   if (!props.aviso || guardando.value) return; // un segundo Enter no escribe dos veces
-  // Todo el mapa: guardarMarcasRevision reemplaza el JSON entero.
-  const { marcas, vigentes } = estado.value;
-  const m = marcar(marcas, props.aviso.clave, motivo.value, hoyISO(new Date()), vigentes);
-  if (!m) return;
+  const { clave } = props.aviso;
+  const texto = motivo.value;
+  if (!texto.trim()) return;
   guardando.value = true;
-  const r = await org.guardarMarcasRevision(m).finally(() => (guardando.value = false));
+  const r = await org
+    .cambiarMarcasRevision((m) => marcar(m, clave, texto, hoyISO(new Date()), estado.value.vigentes))
+    .finally(() => (guardando.value = false));
   if (r.ok) emit("cerrar");
   else error.value = r.mensaje;
 }

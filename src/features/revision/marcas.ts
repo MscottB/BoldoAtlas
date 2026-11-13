@@ -11,6 +11,11 @@ export const MOTIVO_MAX = 200;
 const CLAVE = /^(sinJefatura|vacias|vacantes|sinPuesto|correos|nombres|sinUso):[\w:,-]+$/;
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
+const fechaReal = (f: string) => {
+  const d = new Date(`${f}T00:00:00Z`);
+  return FECHA.test(f) && !Number.isNaN(d.getTime()) && d.toISOString().startsWith(f);
+};
+
 // Object.fromEntries define claves propias: un «__proto__» del texto no toca el prototipo.
 const desde = (entradas: [string, Marca][]): Marcas => Object.fromEntries(entradas);
 
@@ -28,7 +33,7 @@ export function leerMarcas(texto: string | undefined): Marcas {
   for (const [clave, v] of Object.entries(crudo)) {
     if (!CLAVE.test(clave) || typeof v !== "object" || v === null) continue;
     const { motivo, fecha } = v as Record<string, unknown>;
-    if (typeof motivo !== "string" || typeof fecha !== "string" || !FECHA.test(fecha)) continue;
+    if (typeof motivo !== "string" || typeof fecha !== "string" || !fechaReal(fecha)) continue;
     const limpio = motivo.trim();
     if (limpio && limpio.length <= MOTIVO_MAX) validas.push([clave, { motivo: limpio, fecha }]);
   }

@@ -9,6 +9,7 @@ import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
 import { cambiarIdioma } from "@/i18n";
 import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { useAvisos } from "@/features/revision/useAvisos";
+import { desmarcar, marcar } from "@/features/revision/marcas";
 
 // antesDeLote / antesDeMeta: ganchos de los tests para pausar una llamada y forzar solapes.
 const h = vi.hoisted(() => ({
@@ -643,7 +644,7 @@ describe("organización, etiquetas y conexiones", () => {
     const s = nuevo();
     expect(s.marcasRevision).toBe("");
     const m = { "vacias:u1": { motivo: "nueva", fecha: "2026-11-13" } };
-    expect((await s.guardarMarcasRevision(m)).ok).toBe(true);
+    expect((await s.cambiarMarcasRevision(() => m)).ok).toBe(true);
     expect(JSON.parse(s.marcasRevision)).toEqual(m);
     s.soltar();
     expect(s.marcasRevision).toBe("");
@@ -655,12 +656,43 @@ describe("organización, etiquetas y conexiones", () => {
     const s = nuevo();
     await s.verAFecha("2020-01-01");
     const antes = revision();
-    expect(await s.guardarMarcasRevision({})).toEqual({
+    expect(await s.cambiarMarcasRevision(() => ({}))).toEqual({
       ok: false,
       mensaje: "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo.",
     });
     expect(revision()).toBe(antes);
     expect(s.marcasRevision).toBe("");
+  });
+
+  it("marcas seguidas sin esperar: cada cambio parte de lo que dejó el anterior", async () => {
+    const s = nuevo();
+    const a = `sinJefatura:${await unidad(s, "A")}`;
+    const b = `sinJefatura:${await unidad(s, "B")}`;
+    const av = useAvisos();
+    const vig = () => av.value.vigentes;
+    await Promise.all([
+      s.cambiarMarcasRevision((m) => marcar(m, a, "uno", "2026-11-13", vig())),
+      s.cambiarMarcasRevision((m) => marcar(m, b, "dos", "2026-11-13", vig())),
+    ]);
+    expect(Object.keys(JSON.parse(s.marcasRevision)).sort()).toEqual([a, b].sort());
+    await Promise.all([
+      s.cambiarMarcasRevision((m) => desmarcar(m, a, vig())),
+      s.cambiarMarcasRevision((m) => desmarcar(m, b, vig())),
+      s.cambiarMarcasRevision((m) => marcar(m, a, "otra vez", "2026-11-13", vig())),
+    ]);
+    expect(Object.keys(JSON.parse(s.marcasRevision))).toEqual([a]);
+  });
+
+  it("un cambio que devuelve null falla con aviso y no rompe la fila", async () => {
+    const s = nuevo();
+    const a = `sinJefatura:${await unidad(s, "A")}`;
+    const [mal, bien] = await Promise.all([
+      s.cambiarMarcasRevision(() => null),
+      s.cambiarMarcasRevision((m) => marcar(m, a, "ok", "2026-11-13", useAvisos().value.vigentes)),
+    ]);
+    expect(mal).toEqual({ ok: false, mensaje: "Escribe un motivo de hasta 200 caracteres." });
+    expect(bien.ok).toBe(true);
+    expect(Object.keys(JSON.parse(s.marcasRevision))).toEqual([a]);
   });
 
   it("el contador del menú baja en 1 al marcar un aviso que existe", async () => {
@@ -669,7 +701,7 @@ describe("organización, etiquetas y conexiones", () => {
     const av = useAvisos();
     const antes = av.value.total;
     expect(av.value.vigentes.has(`sinJefatura:${id}`)).toBe(true);
-    await s.guardarMarcasRevision({ [`sinJefatura:${id}`]: { motivo: "ok", fecha: "2026-11-13" } });
+    await s.cambiarMarcasRevision(() => ({ [`sinJefatura:${id}`]: { motivo: "ok", fecha: "2026-11-13" } }));
     expect(av.value.marcas).toHaveProperty(`sinJefatura:${id}`);
     expect(av.value.total).toBe(antes - 1);
   });

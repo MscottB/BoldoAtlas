@@ -56,7 +56,8 @@ Las marcas se guardan en la base de esta organización. Van en los respaldos y e
 El filtro **Rama** muestra una unidad y todo lo que hay debajo de ella.
 
 - Un grupo de correos o de nombres aparece si alguna de sus personas tiene un puesto en esa rama.
-- Los avisos que no pertenecen a ninguna unidad se ocultan, y una línea dice cuántos son.
+- Se oculta todo lo que queda fuera de la rama, incluidos los avisos que no pertenecen a ninguna unidad, y una línea dice cuántos son.
+- **Reemplazos vigentes** y **Marcados como bien** también siguen el filtro.
 - El número del encabezado sigue al filtro. El número del menú siempre es el de toda la organización.
 
 Para volver a verlo todo, elige **Toda la organización**.

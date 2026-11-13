@@ -34,7 +34,7 @@ import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
 import { SQL_HISTORICO } from "@/db/repos/historico";
 import { guardarMeta } from "@/db/repos/meta";
-import type { Marcas } from "@/features/revision/marcas";
+import { leerMarcas, type Marcas } from "@/features/revision/marcas";
 import { TIPOS_SEMILLA } from "@/db/repos/reemplazo";
 import {
   creaCiclo,
@@ -660,10 +660,18 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => (ultimoBorrado.value = { tipo: "vista", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
 
-  /** Solo escribe en el hoy propio: a una fecha o en el panel de al lado se rechaza. */
-  async function guardarMarcasRevision(m: Marcas): Promise<Resultado> {
-    if (soloLectura.value) return rechazarSoloLectura();
-    return escribir(() => guardarMeta("revision_bien", JSON.stringify(m)));
+  /** Fila de escrituras de marcas: cada una parte de lo que dejó la anterior (el store recarga al escribir). */
+  let filaMarcas: Promise<unknown> = Promise.resolve();
+  /** Solo escribe en el hoy propio: a una fecha o en el panel de al lado se rechaza. `cambio` null = no vale. */
+  function cambiarMarcasRevision(cambio: (m: Marcas) => Marcas | null): Promise<Resultado> {
+    if (soloLectura.value) return Promise.resolve(rechazarSoloLectura());
+    const paso = filaMarcas.then(async (): Promise<Resultado> => {
+      const nuevo = cambio(leerMarcas(marcasRevision.value));
+      if (!nuevo) return rechazar(t("revision.bien.motivoInvalido"));
+      return escribir(() => guardarMeta("revision_bien", JSON.stringify(nuevo)));
+    });
+    filaMarcas = paso.catch(() => undefined);
+    return paso;
   }
   const guardarOrg = (nombre: string, logo: string | null) =>
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
@@ -943,7 +951,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     catalogos,
     org,
     marcasRevision,
-    guardarMarcasRevision,
+    cambiarMarcasRevision,
     cargado,
     guardando,
     error,

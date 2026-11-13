@@ -144,7 +144,7 @@
       "texto": "Revisión ordena los avisos en tres niveles y dice por qué importa cada uno. Cada fila trae una acción a un clic.",
       "puntos": [
         "Un resumen con lo importante arriba: unidades sin jefatura, correos repetidos y vacantes largas.",
-        "Elegir jefatura, asignar titular, eliminar una unidad vacía o desactivar un valor sin uso, ahí mismo y con Deshacer.",
+        "Elegir jefatura o asignar titular, a un clic; eliminar una unidad vacía o desactivar un valor sin uso ahí mismo, con Deshacer.",
         "Un filtro por rama para ver solo una unidad y lo que hay debajo.",
         "Así está bien: marca con su motivo lo que no es un problema, y vuelve a avisar si cambia."
       ],

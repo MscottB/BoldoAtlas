@@ -401,13 +401,14 @@
       "motivo": "Reason",
       "ejemplo": "For example: it is a new unit and has no people yet.",
       "guardar": "Save",
-      "cancelar": "Cancel"
+      "cancelar": "Cancel",
+      "motivoInvalido": "Write a reason of up to 200 characters."
     },
     "marcados": "Marked as fine",
     "marca": "{motivo} · {fecha}",
     "rama": "Branch",
     "todaLaOrganizacion": "Whole organization",
-    "fueraDeRama": "{n} warning belongs to no unit and is not shown with this filter | {n} warnings belong to no unit and are not shown with this filter",
+    "fueraDeRama": "{n} warning is outside this branch | {n} warnings are outside this branch",
     "eliminada": "Unit deleted",
     "desactivado": "Value deactivated"
   },

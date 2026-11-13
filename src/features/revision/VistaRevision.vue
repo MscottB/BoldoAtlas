@@ -45,7 +45,7 @@ const deshacible = (texto: string, deshacer: () => Promise<Resultado>) =>
 
 async function eliminar(id: string) {
   if (!avisar(await org.eliminarUnidad(id))) return false;
-  deshacible(t("revision.eliminada"), () => org.deshacer());
+  deshacible(t("revision.eliminada"), () => org.deshacer(id));
   return true;
 }
 async function desactivar({ tabla, id }: FilaValor) {
@@ -56,9 +56,9 @@ async function desactivar({ tabla, id }: FilaValor) {
   );
   return true;
 }
-// Todo el mapa: guardarMarcasRevision reemplaza el JSON entero.
+// Los vigentes se leen al correr el paso: las marcas anteriores en fila ya cambiaron los datos.
 const volver = async (clave: string) =>
-  avisar(await org.guardarMarcasRevision(desmarcar(estado.value.marcas, clave, estado.value.vigentes)));
+  avisar(await org.cambiarMarcasRevision((m) => desmarcar(m, clave, estado.value.vigentes)));
 
 // Quitar una fila se lleva el botón con el foco: el foco pasa a la fila siguiente, al título de la sección, al de la
 // siguiente o al h1. El destino se elige con las secciones de antes del cambio.
