@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { effectScope, nextTick, ref } from "vue";
 
 function simularAlmacen(inicial: Record<string, string> = {}) {
   const datos = new Map(Object.entries(inicial));
@@ -54,5 +55,64 @@ describe("useVista por organización", () => {
     soltarDatos();
     expect(minimapa.value).toBe(true);
     expect(config.value.direccion).toBe("horizontal");
+  });
+});
+
+describe("useVista con la vista dividida", () => {
+  async function dos() {
+    const datos = simularAlmacen();
+    vi.resetModules();
+    const base = await import("@/lib/baseActiva");
+    const { recordarPorArbol, useVista } = await import("./useVista");
+    base.fijarBase("A");
+    base.soltarDatos();
+    const ambito = effectScope();
+    const claves = { principal: ref<string | null>(null), lado: ref<string | null>(null) };
+    const montar = (panel: "principal" | "lado", clave: string | null) => {
+      claves[panel].value = clave;
+      ambito.run(() => recordarPorArbol(claves[panel], panel));
+    };
+    return { datos, montar, ambito, principal: useVista("principal").config, lado: useVista("lado").config };
+  }
+
+  it("el mismo árbol guardado en los dos paneles: lo que cambia uno llega al otro, sin su resaltado", async () => {
+    const { datos, montar, ambito, principal, lado } = await dos();
+    montar("principal", "x");
+    montar("lado", "x");
+    lado.value = { ...lado.value, resaltar: { ...lado.value.resaltar, texto: "ana" } };
+    await nextTick();
+    principal.value = { ...principal.value, direccion: "horizontal" };
+    await nextTick();
+    expect(lado.value.direccion).toBe("horizontal");
+    expect(lado.value.resaltar.texto).toBe("ana");
+    expect(principal.value.resaltar.texto).toBe("");
+    expect(JSON.parse(datos.get("boldo:vista:x:A")!).direccion).toBe("horizontal");
+
+    // El otro cambia algo más: no pisa lo del primero.
+    lado.value = { ...lado.value, densidad: "compacta" };
+    await nextTick();
+    expect(principal.value.direccion).toBe("horizontal");
+    expect(principal.value.densidad).toBe("compacta");
+    const guardada = JSON.parse(datos.get("boldo:vista:x:A")!);
+    expect([guardada.direccion, guardada.densidad]).toEqual(["horizontal", "compacta"]);
+    ambito.stop();
+  });
+
+  it("al lado en una rama sin guardar: parte de la del principal y sigue a la general; otro árbol no cambia", async () => {
+    const { montar, ambito, principal, lado } = await dos();
+    montar("principal", "x");
+    principal.value = { ...principal.value, direccion: "horizontal" };
+    await nextTick();
+    montar("lado", null);
+    expect(lado.value.direccion).toBe("horizontal");
+
+    principal.value = { ...principal.value, densidad: "compacta" };
+    await nextTick();
+    expect(lado.value.densidad).toBe("compacta"); // la general la escribe cada cambio: la rama sin guardar la muestra
+
+    lado.value = { ...lado.value, direccion: "vertical" };
+    await nextTick();
+    expect(principal.value.direccion).toBe("horizontal"); // el árbol «x» guarda la suya
+    ambito.stop();
   });
 });

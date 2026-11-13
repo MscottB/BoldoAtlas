@@ -98,10 +98,11 @@ const encabezado = (p: Panel) => [
           v-bind="propsPanel('lado')"
           class="flex min-h-0 min-w-0 flex-col focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
           :style="{ flex: `${crece('lado')} 1 0%` }"
-          aria-labelledby="titulo-panel-lado"
+          role="tabpanel"
+          :aria-labelledby="idPestana(pestanas.lado)"
         >
           <header :class="encabezado('lado')">
-            <span id="titulo-panel-lado" class="min-w-0 flex-1 truncate">{{ titulo(pestanas.lado) }}</span>
+            <span class="min-w-0 flex-1 truncate">{{ titulo(pestanas.lado) }}</span>
             <Button
               variant="ghost"
               size="icon-xs"

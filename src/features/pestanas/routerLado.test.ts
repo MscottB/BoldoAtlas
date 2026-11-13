@@ -5,6 +5,7 @@ import type { Unidad } from "@/db/tipos";
 import { fijarBase } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { rutas } from "@/router";
+import { registrarRouter } from "./routerConFoco";
 import { crearRouterLado } from "./routerLado";
 import { usePestanas } from "./usePestanas";
 
@@ -26,6 +27,7 @@ vi.mock("@/vistas/VistaBienvenida.vue", () => vacia);
 const CLAVE = "boldo:pestanas:C:/datos";
 let datos: Map<string, string>;
 let router: Router;
+let quitarPrincipal = () => {};
 
 beforeEach(async () => {
   datos = new Map();
@@ -54,9 +56,14 @@ beforeEach(async () => {
   const p = usePestanas();
   p.conectar(router, "C:/datos", "C:/datos/boldo.db");
   await router.replace(p.entrar());
+  quitarPrincipal = registrarRouter("principal", router);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  quitarPrincipal();
+  vi.unstubAllGlobals();
+});
 
+const esperar = () => new Promise((r) => setTimeout(r));
 const rutaDe = (id: string) => usePestanas().lista.find((x) => x.id === id)?.ruta;
 async function lado() {
   const r = crearRouterLado("/revision");
@@ -75,18 +82,27 @@ describe("crearRouterLado", () => {
     expect(rutaDe("a")).toBe("/");
   });
 
-  it("el_lado_no_abre_la_bienvenida", async () => {
+  it("el_lado_no_abre_la_bienvenida: la abre el principal", async () => {
     const r = await lado();
+    usePestanas().enfocarPanel("lado");
     await r.push("/bienvenida");
+    await esperar();
     expect(r.currentRoute.value.fullPath).toBe("/revision");
     expect(rutaDe("b")).toBe("/revision");
+    expect(router.currentRoute.value.fullPath).toBe("/bienvenida");
+    expect(usePestanas().conFoco).toBe("principal");
   });
 
-  it("el lado no abre Configuración, Ayuda ni Acerca de", async () => {
+  it("un enlace del lado a Configuración, Ayuda o Acerca de las abre en el principal, que pasa a tener el foco", async () => {
     const r = await lado();
     for (const ruta of ["/configuracion", "/ayuda/pestanas", "/acerca"]) {
+      await router.push("/");
+      usePestanas().enfocarPanel("lado");
       await r.push(ruta);
+      await esperar();
       expect(r.currentRoute.value.fullPath).toBe("/revision");
+      expect(router.currentRoute.value.fullPath).toBe(ruta);
+      expect(usePestanas().conFoco).toBe("principal");
     }
     expect(rutaDe("b")).toBe("/revision");
   });

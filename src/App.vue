@@ -42,7 +42,7 @@ import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
 import VistaDividida from "@/features/pestanas/VistaDividida.vue";
-import { routerConFoco } from "@/features/pestanas/routerConFoco";
+import { esRutaConFoco, routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, clicNuevaPestana, usePestanas } from "@/features/pestanas/usePestanas";
 import icono from "../assets/brand/icono.png";
 
@@ -109,10 +109,10 @@ const conPestanas = computed(() => pestanas.lista.length > 1);
 // de que el enlace navegue).
 function alPulsar(e: MouseEvent, item: Entrada) {
   if (item.to && clicNuevaPestana(e, item.to)) return;
-  const lado = item.to && routerConFoco(item.to);
-  if (item.to && lado && lado !== router) {
+  const destino = item.to && routerConFoco(item.to);
+  if (item.to && destino && destino !== router) {
     e.preventDefault();
-    return void lado.push(item.to);
+    return void destino.push(item.to);
   }
   // La pantalla del motivo tapa la vista: en la misma ruta, sin esto, el clic no haría nada (el resto lo ve `usePestanas`).
   if (item.to && sinAbrirActiva.value) {
@@ -209,7 +209,10 @@ function escEnBarra(e: KeyboardEvent) {
                   :to="item.to"
                   :aria-label="angosta ? nombre(item) : undefined"
                   class="relative flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"
-                  active-class="bg-sidebar-accent font-medium"
+                  active-class=""
+                  exact-active-class=""
+                  :class="esRutaConFoco(item.to) && 'bg-sidebar-accent font-medium'"
+                  :aria-current="esRutaConFoco(item.to) ? 'page' : undefined"
                   @click.capture="alPulsar($event, item)"
                   @auxclick="clicNuevaPestana($event, item.to)"
                   @mousedown.middle.prevent

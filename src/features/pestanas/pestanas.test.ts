@@ -12,6 +12,7 @@ import {
   conProporcion,
   detalleUtil,
   enPanel,
+  entradaMenu,
   estadoDe,
   hayVariasOrganizaciones,
   leerEstadoArbol,
@@ -555,5 +556,22 @@ describe("leerPestanas con la vista dividida", () => {
 
   it("las pestañas guardadas sin estos campos se leen igual que antes", () => {
     expect(leer({})).toMatchObject({ activa: "a", lado: null, division: DIVISION_INICIAL });
+  });
+});
+
+describe("entradaMenu", () => {
+  const todas = () => true;
+  it("quitar en la de al lado, abrir en las que pueden ir y nada en las demás", () => {
+    const m = { ...tres(), lado: "c" };
+    expect(entradaMenu(m, "c", todas)).toBe("quitarDeAlLado");
+    expect(entradaMenu(m, "a", todas)).toBe("abrirAlLado");
+    expect(entradaMenu(m, "a", (id) => id !== "a")).toBeNull();
+  });
+
+  it("la activa: solo si la que el principal mostraría en su lugar también puede ir", () => {
+    expect(entradaMenu(tres(), "b", todas)).toBe("abrirAlLado");
+    // El principal pasaría a «a» (o a «c»): si ninguna de ellas puede, abrir fallaría.
+    expect(entradaMenu(tres(), "b", (id) => id === "b")).toBeNull();
+    expect(entradaMenu({ ...tres(), lista: [tres().lista[1]!] }, "b", todas)).toBeNull();
   });
 });

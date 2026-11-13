@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import type { TablaOrdenable } from "@/db/repos/catalogos";
 import type { ValorCatalogo } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { moverEn } from "./orden";
 
 // Un mantenedor: lista los valores (también los desactivados) con cuánto se usan y permite agregar, renombrar,
@@ -15,6 +16,8 @@ import { moverEn } from "./orden";
 const props = defineProps<{ tabla: TablaOrdenable }>();
 const { t } = useI18n();
 const org = useOrganizacion();
+// Con Mantenedores en los dos paneles, el campo de renombrar se busca en el de esta vista.
+const { panel } = usePanel();
 
 type Fila = ValorCatalogo & { color?: string; descripcion?: string | null };
 const filas = computed<Fila[]>(() =>
@@ -53,7 +56,9 @@ async function empezarRenombrar(f: Fila) {
   editando.value = f.id;
   texto.value = f.nombre;
   await nextTick();
-  document.getElementById(`renombrar-${f.id}`)?.focus();
+  raizDelPanel(panel)
+    .querySelector<HTMLElement>(`#${CSS.escape(`renombrar-${f.id}`)}`)
+    ?.focus();
 }
 async function renombrar(f: Fila) {
   if (editando.value !== f.id) return; // Enter y blur pueden llegar juntos

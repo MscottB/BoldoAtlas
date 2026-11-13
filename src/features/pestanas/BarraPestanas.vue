@@ -133,13 +133,10 @@ function controla(id: string) {
   if (id === pestanas.lado) return ID_PANEL.lado;
   return pestanas.lado && id === pestanas.activa ? ID_PANEL.principal : ID_AREA;
 }
-// Menú contextual (clic derecho, Mayús+F10 o la tecla Menú): «Quitar de al lado» en la de al lado; «Abrir al lado» en
-// una que puede ir. En las demás no hay menú.
-const entrada = (id: string) =>
-  id === pestanas.lado ? "quitarDeAlLado" : pestanas.vaAlLado(id) ? "abrirAlLado" : null;
+// Menú contextual (clic derecho, Mayús+F10 o la tecla Menú): «Abrir al lado» o «Quitar de al lado» (ver
+// `pestanas.entradaMenu`). En las demás no hay menú.
 function alElegir(id: string) {
-  if (id === pestanas.lado) return pestanas.cerrarDivision();
-  const r = pestanas.abrirAlLado(id);
+  const r = pestanas.alternarLado(id);
   if (!r.ok) toast.error(r.mensaje);
 }
 // Clic central sobre una pestaña: la cierra.
@@ -159,7 +156,7 @@ function alPulsarAux(e: MouseEvent, id: string) {
       class="flex min-w-0 items-end gap-0.5 overflow-x-auto"
     >
       <ContextMenu v-for="(p, i) in items" :key="p.id">
-        <ContextMenuTrigger as-child :disabled="!entrada(p.id)">
+        <ContextMenuTrigger as-child :disabled="!pestanas.entradaMenu(p.id)">
           <div
             data-pestana
             role="presentation"
@@ -212,8 +209,10 @@ function alPulsarAux(e: MouseEvent, id: string) {
             </button>
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent v-if="entrada(p.id)" class="w-48">
-          <ContextMenuItem @select="alElegir(p.id)">{{ t(`pestanas.${entrada(p.id)}`) }}</ContextMenuItem>
+        <ContextMenuContent v-if="pestanas.entradaMenu(p.id)" class="w-48">
+          <ContextMenuItem @select="alElegir(p.id)">{{
+            t(`pestanas.${pestanas.entradaMenu(p.id)}`)
+          }}</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { ChevronDown, Eye, Pencil, Trash2 } from "@lucide/vue";
@@ -49,12 +49,15 @@ function aplicar(texto: string) {
 }
 
 const editando = ref<string | null>(null);
+// La lista va en la ventanita (fuera del panel, en el body): el campo se busca en ella, no en el documento, que con el
+// árbol en los dos paneles podría tener otro igual.
+const listaEl = useTemplateRef<HTMLElement>("listaEl");
 const texto = ref("");
 async function empezarRenombrar(id: string, actual: string) {
   editando.value = id;
   texto.value = actual;
   await nextTick();
-  document.getElementById(`renombrar-vista-${id}`)?.focus();
+  listaEl.value?.querySelector<HTMLElement>(`#${CSS.escape(`renombrar-vista-${id}`)}`)?.focus();
 }
 async function renombrar(id: string) {
   if (editando.value !== id) return; // Enter y blur pueden llegar juntos
@@ -96,7 +99,7 @@ async function eliminar(id: string) {
           <Button type="submit" size="sm" :disabled="!nombre.trim()">{{ t("arbol.vistas.guardar") }}</Button>
         </form>
         <p v-if="!lista.length" class="text-muted-foreground">{{ t("arbol.vistas.sinVistas") }}</p>
-        <ul v-else class="grid gap-1" :aria-label="t('arbol.vistas.lista')">
+        <ul v-else ref="listaEl" class="grid gap-1" :aria-label="t('arbol.vistas.lista')">
           <li v-for="v in lista" :key="v.id" class="flex items-center gap-1">
             <Input
               v-if="editando === v.id"

@@ -9,7 +9,7 @@ import {
 } from "vue-router";
 import { useEventListener } from "@vueuse/core";
 import { toast } from "vue-sonner";
-import { RUTA_BIENVENIDA, esVistaCerrable } from "@/app/estructura";
+import { RUTA_BIENVENIDA, esVistaCerrable, seAbreAlLado } from "@/app/estructura";
 import { i18n } from "@/i18n";
 import { baseActual } from "@/lib/baseActiva";
 import { nuevoId } from "@/lib/ids";
@@ -162,6 +162,8 @@ export const usePestanas = defineStore("pestanas", () => {
         if (!isNavigationFailure(fallo, NavigationFailureType.cancelled)) destino = null;
         return;
       }
+      // Lo que no va al lado se ve en el principal, llegue por donde llegue (menú, bandeja, enlace): ahí actúan Esc y los atajos.
+      if (!seAbreAlLado(to)) conFoco.value = "principal";
       if (!esVistaCerrable(to.name) || destino) vueltaAInicio = false;
       if (from.name === "bienvenida" && to.name === "acerca") vueltaAInicio = true;
       if (to.meta.sinMarco) return void (enProyecto = false);
@@ -406,8 +408,16 @@ export const usePestanas = defineStore("pestanas", () => {
     abrirNueva,
     cerrar,
     abrirAlLado,
-    /** Si la pestaña puede ir al lado (el menú de la pestaña ofrece «Abrir al lado» solo entonces). */
+    /** Si la pestaña puede ir al lado. */
     vaAlLado,
+    /** Qué ofrece el menú de la pestaña (ver `P.entradaMenu`). */
+    entradaMenu: (id: string) => P.entradaMenu(modelo.value, id, vaAlLado),
+    /** Lo que hace esa entrada: quita de al lado la de al lado; si no, abre `id` al lado. */
+    alternarLado(id: string): Resultado {
+      if (id !== modelo.value.lado) return abrirAlLado(id);
+      modelo.value = P.sinLado(modelo.value);
+      return { ok: true };
+    },
     dividir,
     /** Deja la pestaña de al lado en la barra como una más. */
     cerrarDivision() {

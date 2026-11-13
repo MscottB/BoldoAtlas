@@ -9,7 +9,8 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { PANEL, usePanel } from "./panel";
 import { MAX_PESTANAS } from "./pestanas";
-import { registrarRouter, routerConFoco } from "./routerConFoco";
+import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
+import { esRutaConFoco, irConFoco, registrarRouter, routerConFoco } from "./routerConFoco";
 import { useEstadoPestana, usePestanas } from "./usePestanas";
 
 // Sin DOM: un renderer que no dibuja nada, para que un componente se monte y desmonte (onMounted, onBeforeUnmount).
@@ -65,7 +66,17 @@ beforeEach(async () => {
   useOrganizacion().cargado = true;
   router = nuevoRouter();
 });
-afterEach(() => vi.unstubAllGlobals());
+// Los routers que una prueba registra para `routerConFoco`: se quitan al terminar, para no pasar a la siguiente.
+const registrados: (() => void)[] = [];
+const registrar = (...args: Parameters<typeof registrarRouter>) => {
+  const quitar = registrarRouter(...args);
+  registrados.push(quitar);
+  return quitar;
+};
+afterEach(() => {
+  registrados.splice(0).forEach((quitar) => quitar());
+  vi.unstubAllGlobals();
+});
 
 async function arrancar(guardado?: unknown) {
   if (guardado) datos.set(CLAVE, JSON.stringify(guardado));
@@ -815,8 +826,8 @@ describe("usePestanas con la vista dividida", () => {
   it("paleta_y_menu_lateral_navegan_en_el_panel_con_foco", async () => {
     const p = await arrancar(tres("a", "b"));
     const lado = nuevoRouter();
-    const quitarPrincipal = registrarRouter("principal", router);
-    const quitarLado = registrarRouter("lado", lado);
+    registrar("principal", router);
+    const quitarLado = registrar("lado", lado);
     expect(routerConFoco()).toBe(router);
     // Fuera de los paneles (la paleta, la ficha, los atajos), el panel es el que tiene el foco.
     expect(usePanel().panel).toBe("principal");
@@ -842,10 +853,61 @@ describe("usePestanas con la vista dividida", () => {
     expect(routerConFoco()).toBe(router);
     // Quitar uno que ya no es el registrado no quita el nuevo.
     const otro = nuevoRouter();
-    registrarRouter("lado", otro);
+    registrar("lado", otro);
     quitarLado();
     expect(routerConFoco()).toBe(otro);
-    quitarPrincipal();
+  });
+
+  it("el menú lateral marca la entrada de la vista del panel con foco", async () => {
+    const p = await arrancar(tres("a", "b"));
+    const lado = nuevoRouter();
+    await lado.push("/directorio");
+    registrar("principal", router);
+    registrar("lado", lado);
+    expect(esRutaConFoco("/")).toBe(true);
+    expect(esRutaConFoco("/directorio")).toBe(false);
+    p.enfocarPanel("lado");
+    expect(esRutaConFoco("/directorio")).toBe(true);
+    expect(esRutaConFoco("/")).toBe(false);
+  });
+
+  it("el menú de la app y la bandeja navegan en el panel con foco; Configuración y Ayuda, en el principal", async () => {
+    const p = await arrancar(tres("a", "b"));
+    const lado = nuevoRouter();
+    await lado.push("/revision");
+    registrar("principal", router);
+    registrar("lado", lado);
+    const entrada = (id: string) => GRUPOS_MENU.flat().find((e) => e.id === id)!;
+
+    p.enfocarPanel("lado");
+    await irAEntrada(entrada("boldo"), routerConFoco(entrada("boldo").destino));
+    expect(lado.currentRoute.value.fullPath).toBe("/importar-exportar?accion=importar");
+    expect(rutaActual()).toBe("/");
+    expect(p.conFoco).toBe("lado");
+
+    await irAEntrada(entrada("configuracion"), routerConFoco(entrada("configuracion").destino));
+    expect(rutaActual()).toBe("/configuracion");
+    expect(p.conFoco).toBe("principal");
+
+    await router.push("/");
+    p.enfocarPanel("lado");
+    await irConFoco("/ayuda"); // la bandeja
+    expect(rutaActual()).toBe("/ayuda");
+    expect(p.conFoco).toBe("principal");
+  });
+
+  it("el principal en Configuración, Ayuda, Acerca de o la Bienvenida se queda con el foco, llegue por donde llegue", async () => {
+    const p = await arrancar(tres("a", "b"));
+    for (const ruta of ["/configuracion", "/ayuda", "/acerca"]) {
+      await router.push("/");
+      p.enfocarPanel("lado");
+      await router.push(ruta);
+      expect(p.conFoco).toBe("principal");
+    }
+    await router.push("/");
+    p.enfocarPanel("lado");
+    await router.push("/directorio");
+    expect(p.conFoco).toBe("lado");
   });
 
   it("menu_de_pestana_abrir_y_quitar_de_al_lado", async () => {
@@ -855,15 +917,28 @@ describe("usePestanas con la vista dividida", () => {
     });
     useOrganizaciones().sinAbrir.set("c", motivo);
     // «Abrir al lado» solo en las que pueden ir: de la abierta y sin motivo.
-    expect(["a", "b", "c", "x"].map(p.vaAlLado)).toEqual([true, true, false, false]);
+    expect(["a", "b", "c", "x"].map(p.entradaMenu)).toEqual(["abrirAlLado", "abrirAlLado", null, null]);
 
-    expect(p.abrirAlLado("b").ok).toBe(true);
+    expect(p.alternarLado("b").ok).toBe(true);
     expect(p.lado).toBe("b");
+    expect(p.entradaMenu("b")).toBe("quitarDeAlLado");
     // «Quitar de al lado»: la pestaña sigue en la barra como una más.
-    p.cerrarDivision();
+    expect(p.alternarLado("b").ok).toBe(true);
     expect(p.lado).toBeNull();
     expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "c", "x"]);
     expect(p.activa).toBe("a");
+  });
+
+  it("el menú no ofrece abrir al lado la activa si el principal no tiene otra de la abierta para mostrar", async () => {
+    const p = await arrancar({
+      lista: [
+        { id: "a", org: "A", ruta: "/" },
+        { id: "x", org: "B", ruta: "/" },
+      ],
+      activa: "a",
+    });
+    expect(p.entradaMenu("a")).toBeNull();
+    expect(p.alternarLado("a")).toEqual(noAbre());
   });
 
   it("useEstadoPestana guarda en la pestaña de su panel", async () => {

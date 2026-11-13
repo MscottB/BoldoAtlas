@@ -8,7 +8,10 @@ import { fijarBase } from "@/lib/baseActiva";
 import { useOrganizacion } from "@/stores/organizacion";
 import { finDelArrastre, nuevaProporcion, proporcionDelPuntero } from "./divisor";
 import { propsPanel, usePanel } from "./panel";
+import { registrarRouter } from "./routerConFoco";
 import { usePestanas } from "./usePestanas";
+import BarraSuperior from "@/components/BarraSuperior.vue";
+import PaletaComandos from "@/components/PaletaComandos.vue";
 import BarraPestanas from "./BarraPestanas.vue";
 import VistaDividida from "./VistaDividida.vue";
 
@@ -34,6 +37,19 @@ vi.mock("./routerLado", () => ({
     lado.inicial = inicial;
     return lado.router;
   },
+}));
+
+// La paleta sin su diálogo ni su lista (en el servidor no se abren): solo lo que muestra cada opción.
+vi.mock("@/components/ui/command", async () => {
+  const { defineComponent, h: hh } = await import("vue");
+  const pasa = defineComponent((_p, { slots }) => {
+    return () => hh("div", slots.default?.());
+  });
+  return { CommandDialog: pasa, CommandGroup: pasa, CommandItem: pasa, CommandList: pasa };
+});
+vi.mock("reka-ui", async (original) => ({
+  ...(await original<object>()),
+  ListboxFilter: { render: () => null },
 }));
 
 const CLAVE = "boldo:pestanas:C:/datos";
@@ -95,15 +111,16 @@ describe("VistaDividida", () => {
     expect(s).toMatch(/<main[^>]*role="tabpanel"[^>]*aria-labelledby="pestana-a"/);
   });
 
-  it("con la vista dividida, el panel de la pestaña activa es el principal y no todo el área", async () => {
+  it("con la vista dividida, cada panel es el tabpanel de su pestaña y no todo el área", async () => {
     await arrancar(true);
     const s = await html();
     expect(s).not.toMatch(/<main[^>]*role=/);
     expect(s).toMatch(
       /<section[^>]*data-panel="principal"[^>]*role="tabpanel"[^>]*aria-labelledby="pestana-a"/,
     );
-    expect(s).not.toMatch(/data-panel="lado"[^>]*role="tabpanel"/);
-    expect(s.match(/role="tabpanel"/g)).toHaveLength(1);
+    // La de al lado también es un tabpanel: el de su pestaña, que lo nombra con aria-controls.
+    expect(s).toMatch(/<section[^>]*data-panel="lado"[^>]*role="tabpanel"[^>]*aria-labelledby="pestana-b"/);
+    expect(s.match(/role="tabpanel"/g)).toHaveLength(2);
   });
 
   it("una pestaña en Configuración se abre al lado en su vista de trabajo", async () => {
@@ -152,6 +169,34 @@ describe("VistaDividida", () => {
     expect(sinDividir).toMatch(/id="pestana-a"[^>]*aria-controls="area-central"/);
     expect(sinDividir).toMatch(/id="pestana-b"[^>]*aria-controls="area-central"/);
     expect(texto(sinDividir)).not.toContain("(al lado)");
+  });
+
+  it("el botón «Dividir» de la barra superior dice si la vista está dividida", async () => {
+    await arrancar(true);
+    const boton = (s: string) =>
+      s.match(/<button[^>]*aria-pressed="(true|false)"[^>]*>(?:(?!<\/button>).)*Dividir/s);
+    expect(boton(await html(BarraSuperior))?.[1]).toBe("true");
+    usePestanas().cerrarDivision();
+    expect(boton(await html(BarraSuperior))?.[1]).toBe("false");
+  });
+
+  it("la paleta ofrece «Dividir la vista» o «Cerrar la vista dividida» según el estado", async () => {
+    const quitar = registrarRouter("principal", router);
+    const paleta = async () => {
+      const app = createSSRApp({ render: () => h(PaletaComandos, { open: true }) });
+      app.use(pinia).use(router).use(i18n);
+      return texto(await renderToString(app));
+    };
+    try {
+      await arrancar(true);
+      expect(await paleta()).toContain("Cerrar la vista dividida");
+      expect(await paleta()).not.toContain("Dividir la vista");
+      usePestanas().cerrarDivision();
+      expect(await paleta()).toContain("Dividir la vista");
+      expect(await paleta()).not.toContain("Cerrar la vista dividida");
+    } finally {
+      quitar();
+    }
   });
 
   it("un focusin o un clic en un panel lo deja con foco y lo marca", async () => {

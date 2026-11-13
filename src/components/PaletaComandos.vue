@@ -42,7 +42,7 @@ import {
 } from "@/features/proyecto/menuApp";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { usePanel } from "@/features/pestanas/panel";
-import { routerConFoco } from "@/features/pestanas/routerConFoco";
+import { irConFoco as ir, routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
@@ -57,7 +57,6 @@ const organizaciones = useOrganizaciones();
 const pestanas = usePestanas();
 const conFoco = usePanel();
 const route = computed(() => routerConFoco().currentRoute.value);
-const ir = (destino: RouteLocationRaw) => routerConFoco(destino).push(destino);
 const { tema } = useTema();
 const ficha = useFicha();
 const puesto = usePuesto();

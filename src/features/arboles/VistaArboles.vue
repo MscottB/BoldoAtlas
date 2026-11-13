@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
+import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { clicNuevaPestana } from "@/features/pestanas/usePestanas";
 import { dotacionPorUnidad, ruta, rutaTexto, tipoHijo } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
@@ -15,6 +16,8 @@ import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 const { t } = useI18n();
 const router = useRouter();
 const org = useOrganizacion();
+// Con Árboles en los dos paneles, el campo de renombrar se busca en el de esta vista.
+const { panel } = usePanel();
 
 const dotaciones = computed(() => dotacionPorUnidad(org.unidades, org.puestos, org.asignaciones));
 const total = (id: string) => dotaciones.value.get(id)?.total ?? 0;
@@ -69,7 +72,9 @@ async function empezarRenombrar(s: Rama) {
   editando.value = s.id;
   texto.value = s.nombre ?? "";
   await nextTick();
-  document.getElementById(`renombrar-${s.id}`)?.focus();
+  raizDelPanel(panel)
+    .querySelector<HTMLElement>(`#${CSS.escape(`renombrar-${s.id}`)}`)
+    ?.focus();
 }
 async function renombrar(id: string) {
   if (editando.value !== id) return; // Enter y blur pueden llegar juntos
