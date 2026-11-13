@@ -175,7 +175,9 @@ describe("El directorio en modo Árbol", () => {
     expect(s).not.toContain('role="tree"');
     expect(s).toContain(i18n.global.t("directorio.arbol.filas", 0));
     // Sin árbol a la vista, tampoco sus niveles (el árbol queda montado y oculto: conserva lo plegado).
-    expect(s).toMatch(new RegExp(`<div[^>]*aria-label="${t("arbol.niveles.titulo")}"[^>]*style="display:none;"`));
+    expect(s).toMatch(
+      new RegExp(`<div[^>]*aria-label="${t("arbol.niveles.titulo")}"[^>]*style="display:none;"`),
+    );
     expect(s).toMatch(/<div class="contents" style="display:none;">/);
   });
 
@@ -190,7 +192,10 @@ describe("El directorio en modo Árbol", () => {
 
   it("sin nada que coincida lo dice, como la lista", async () => {
     filtros({ texto: "zzz" });
-    expect(await html()).toContain(t("directorio.sinResultados"));
+    const s = await html();
+    expect(s).toContain(t("directorio.sinResultados"));
+    // Sin filas, los niveles no harían nada: se ocultan.
+    expect(s).toMatch(new RegExp(`<div[^>]*aria-label="${t("arbol.niveles.titulo")}"[^>]*style="display:none;"`));
   });
 });
 

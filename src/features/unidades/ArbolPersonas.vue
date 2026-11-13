@@ -83,8 +83,9 @@ const contenedor = containerProps.ref;
 watch(
   ventana,
   () => {
-    const fila = arbol.value?.children[0];
-    if (fila) altoFila.value = fila.getBoundingClientRect().height;
+    // Oculto (v-show en el directorio) mide 0: se queda con la última altura buena.
+    const alto = arbol.value?.children[0]?.getBoundingClientRect().height;
+    if (alto) altoFila.value = alto;
   },
   { flush: "post" },
 );

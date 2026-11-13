@@ -9,6 +9,7 @@ import {
   accionTecla,
   aplanarArbol,
   arbolDePersonas,
+  arbolesDePersonas,
   cambiarRaiz,
   claveUnidad,
   claveVacante,
@@ -372,6 +373,16 @@ describe("varias raíces (el directorio de una organización con más de una)", 
     expect(
       [...contraerTodo({ abiertas: new Set(), cerradas: new Set() }, false, raices).abiertas].sort(),
     ).toEqual(["gg", "otra"]);
+  });
+
+  it("arbolesDePersonas arma todas las raíces de una vez, igual que una por una", () => {
+    const us = [...unidades.filter((x) => !x.deleted_at), otra];
+    const alcance = [...puestos, p("pv", "otra")];
+    const filas = personasDelAlcance(alcance, vigentes, trabajadores, cargos, indexar(us));
+    const juntas = arbolesDePersonas([us[0], otra], us, alcance, filas, vigentes, cargos);
+    const solas = [us[0], otra].map((r) => arbolDePersonas(r, us, alcance, filas, vigentes, cargos));
+    expect(juntas).toEqual(solas);
+    expect(juntas[1].vacantes.map((v) => v.clave)).toEqual([claveVacante("pv")]);
   });
 
   it("sin texto, solo `coinciden` decide: personas y vacantes por su clave, con sus ancestros", () => {

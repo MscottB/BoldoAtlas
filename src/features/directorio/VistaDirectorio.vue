@@ -32,7 +32,7 @@ import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import ArbolPersonas from "@/features/unidades/ArbolPersonas.vue";
-import { arbolDePersonas, claveVacante, contarFilas, profundidad } from "@/features/unidades/arbolPersonas";
+import { arbolesDePersonas, claveVacante, contarFilas, profundidad } from "@/features/unidades/arbolPersonas";
 import { filtrarPersonasUnidad, personasDelAlcance } from "@/features/unidades/personas";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
@@ -198,8 +198,14 @@ const arbol = computed(() => {
   const jefaturas = new Set(org.unidades.map((u) => u.jefe_puesto_id));
   const deJefatura = personas.filter((f) => jefaturas.has(f.puestoId));
   const rama = filtros.value.unidad ? org.porId.get(filtros.value.unidad) : undefined;
-  return (rama ? [rama] : org.raices).map((r) =>
-    arbolDePersonas(r, org.unidades, org.puestos, personas, vigentes, org.catalogos.cargos, deJefatura),
+  return arbolesDePersonas(
+    rama ? [rama] : org.raices,
+    org.unidades,
+    org.puestos,
+    personas,
+    vigentes,
+    org.catalogos.cargos,
+    deJefatura,
   );
 });
 // Se ven los puestos de la lista (con su titular y su reemplazo, o vacantes) y las unidades que los contienen.
@@ -212,8 +218,10 @@ const coinciden = computed(() => {
 });
 // Cuántas personas y vacantes muestra el árbol. Sin ninguna, lo que deja la lista son personas sin puesto: se dice.
 const enArbol = computed(() => contarFilas(arbol.value, filtrado.value ? coinciden.value : null));
+// Con filtros y sin nada que coincida, el árbol no tiene filas: sin sus niveles, que no harían nada.
+const arbolVacio = computed(() => (filtrado.value && !enArbol.value) || !hondura.value);
 const soloSinPuesto = computed(
-  () => !enArbol.value && !!filas.value.length && filas.value.every((f) => f.estado === "sinPuesto"),
+  () => arbolVacio.value && !!filas.value.length && filas.value.every((f) => f.estado === "sinPuesto"),
 );
 
 // Plegar por niveles, como el lienzo (mismos límites, textos y paso): un botón por nivel real si caben; si son muchos,
@@ -337,7 +345,7 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
         </Button>
         <div
           v-if="vista === 'arbol'"
-          v-show="!soloSinPuesto"
+          v-show="!arbolVacio"
           role="group"
           :aria-label="t('arbol.niveles.titulo')"
           class="ml-auto flex items-center gap-1"

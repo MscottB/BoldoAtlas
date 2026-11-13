@@ -32,7 +32,7 @@ export type Raices = NodoArbol | NodoArbol[];
  * solo la raíz, como «Incluir subunidades» apagado. `jefaturas` son las filas de los puestos de jefatura: un puesto
  * movido a otra unidad sigue siendo su jefatura (la de Resumen), aunque su fila no esté entre las de la unidad.
  */
-export function arbolDePersonas(
+export const arbolDePersonas = (
   raiz: Unidad,
   unidades: Unidad[],
   puestos: Puesto[],
@@ -40,7 +40,18 @@ export function arbolDePersonas(
   vigentes: Vigentes,
   cargos: ValorCatalogo[],
   jefaturas: FilaPersonaUnidad[] = [],
-): NodoArbol {
+): NodoArbol => arbolesDePersonas([raiz], unidades, puestos, filas, vigentes, cargos, jefaturas)[0];
+
+/** Lo mismo con varias raíces (el directorio): personas y vacantes se agrupan una sola vez para todas. */
+export function arbolesDePersonas(
+  raices: Unidad[],
+  unidades: Unidad[],
+  puestos: Puesto[],
+  filas: FilaPersonaUnidad[],
+  vigentes: Vigentes,
+  cargos: ValorCatalogo[],
+  jefaturas: FilaPersonaUnidad[] = [],
+): NodoArbol[] {
   const indice = indiceHijos(unidades);
   const deJefatura = new Map(jefaturas.map((f) => [f.clave, f]));
   const nombreCargo = new Map(cargos.map((c) => [c.id, c.nombre]));
@@ -80,7 +91,7 @@ export function arbolDePersonas(
       total: hijos.reduce((suma, h) => suma + h.total, propias.filter((f) => f.tipo === "titular").length),
     };
   };
-  return armar(raiz);
+  return raices.map(armar);
 }
 
 /**
