@@ -326,9 +326,6 @@
     "arbol": {
       "nombre": "The directory as a tree",
       "ayuda": "Up and down arrows move, right and left open and close. Enter opens the person or a vacancy's position, or opens and closes the unit; Shift+Enter opens the unit's head. Tab goes to the button that shows the person in the org chart.",
-      "menos": "One level less",
-      "mas": "One level more",
-      "nivel": "Level {n} of {total}",
       "filas": "{n} person or vacancy | {n} people or vacancies",
       "sinPuesto": "People without a position don't appear in the tree."
     }

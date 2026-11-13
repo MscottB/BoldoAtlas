@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TablaCatalogo } from "@/db/tipos";
 import { tiposEnUso, vigentesPorPuesto } from "@/features/arbol/jerarquia";
+import { MAX_BOTONES_NIVEL, nivelVecino } from "@/features/arbol/niveles";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
@@ -215,7 +216,8 @@ const soloSinPuesto = computed(
   () => !enArbol.value && !!filas.value.length && filas.value.every((f) => f.estado === "sinPuesto"),
 );
 
-// Plegar por niveles, como el lienzo: un botón por nivel real si caben; si son muchos, «−», el nivel y «+».
+// Plegar por niveles, como el lienzo (mismos límites, textos y paso): un botón por nivel real si caben; si son muchos,
+// «−», el nivel y «+».
 const vistaArbol = useTemplateRef<InstanceType<typeof ArbolPersonas>>("vistaArbol");
 const hondura = computed(() => profundidad(arbol.value));
 // El nivel a la vista lo da el árbol (sigue a lo que se pliega a mano); antes de montarse, el de partida: las raíces abiertas.
@@ -340,7 +342,7 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
           :aria-label="t('arbol.niveles.titulo')"
           class="ml-auto flex items-center gap-1"
         >
-          <template v-if="hondura <= 6">
+          <template v-if="hondura <= MAX_BOTONES_NIVEL">
             <Button
               v-for="n in hondura"
               :key="n"
@@ -348,8 +350,9 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
               size="icon-sm"
               :aria-label="t('arbol.niveles.ver', { n }, n)"
               :title="t('arbol.niveles.ver', { n }, n)"
+              variant="outline"
               :aria-pressed="n === nivelVisto"
-              :variant="n === nivelVisto ? 'default' : 'outline'"
+              :class="n === nivelVisto && 'bg-accent'"
               @click="verNivel(n)"
             >
               {{ n }}
@@ -361,23 +364,26 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
               variant="outline"
               size="icon-sm"
               :disabled="nivelVisto <= 1"
-              :aria-label="t('directorio.arbol.menos')"
-              :title="t('directorio.arbol.menos')"
-              @click="verNivel(nivelVisto - 1)"
+              :aria-label="t('arbol.niveles.menos')"
+              :title="t('arbol.niveles.menos')"
+              @click="verNivel(nivelVecino(nivelVisto, hondura, -1))"
             >
               <Minus aria-hidden="true" />
             </Button>
-            <span class="px-1 text-sm tabular-nums" aria-live="polite">
-              {{ t("directorio.arbol.nivel", { n: nivelVisto, total: hondura }) }}
-            </span>
+            <span
+              class="min-w-6 text-center text-sm tabular-nums"
+              role="status"
+              :aria-label="t('arbol.niveles.actual', { n: nivelVisto })"
+              >{{ nivelVisto }}</span
+            >
             <Button
               type="button"
               variant="outline"
               size="icon-sm"
               :disabled="nivelVisto >= hondura"
-              :aria-label="t('directorio.arbol.mas')"
-              :title="t('directorio.arbol.mas')"
-              @click="verNivel(nivelVisto + 1)"
+              :aria-label="t('arbol.niveles.mas')"
+              :title="t('arbol.niveles.mas')"
+              @click="verNivel(nivelVecino(nivelVisto, hondura, 1))"
             >
               <Plus aria-hidden="true" />
             </Button>
