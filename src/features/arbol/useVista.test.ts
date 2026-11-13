@@ -98,6 +98,19 @@ describe("useVista con la vista dividida", () => {
     ambito.stop();
   });
 
+  it("el otro panel abre un árbol que este muestra sin nada guardado: la misma vista que este", async () => {
+    const { datos, montar, ambito, principal, lado } = await dos();
+    principal.value = { ...principal.value, direccion: "horizontal" }; // como si viniera de otro árbol
+    montar("principal", "completo");
+    await nextTick();
+    expect(datos.has("boldo:vista:completo:A")).toBe(false);
+    lado.value = { ...lado.value, densidad: "compacta" }; // lo que el de al lado traía de antes
+    montar("lado", "completo");
+    expect(lado.value.direccion).toBe("horizontal");
+    expect(lado.value.densidad).toBe(principal.value.densidad);
+    ambito.stop();
+  });
+
   it("al lado en una rama sin guardar: parte de la del principal y sigue a la general; otro árbol no cambia", async () => {
     const { montar, ambito, principal, lado } = await dos();
     montar("principal", "x");

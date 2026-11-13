@@ -56,6 +56,9 @@ export function recordarPorArbol(clave: Ref<string | null>, panel: Panel = panel
       claves[panel] = k;
       const guardada = k && leerPreferenciaOrg<unknown>(`vista:${k}`, null);
       if (guardada) config.value = { ...leerVista(guardada), resaltar: config.value.resaltar };
+      // Sin nada guardado de ese árbol, pero el otro panel lo muestra: la misma vista que allá.
+      else if (k && claves[otro(panel)] === k)
+        config.value = { ...copia(configs[otro(panel)].value), resaltar: config.value.resaltar };
       else if (!k && montando && panel === "lado")
         config.value = { ...copia(configs.principal.value), resaltar: config.value.resaltar };
       montando = false;
