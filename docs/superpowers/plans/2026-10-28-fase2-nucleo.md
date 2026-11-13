@@ -701,6 +701,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 1c. 27a y 27b: fotos optimizadas y carga bajo demanda.
 1d. 28c: zonas, probándolas con el organigrama del autor. 28d solo si aún hace falta.
 1e. 29b: vista dividida. 29c: Revisión de datos más clara; su parte de historial, después de la 19c.
+1f. 29d y 29e (pedido del autor, 2026-11-13): niveles según la profundidad real y Directorio más claro, antes de la 23a.
 2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
 3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
 4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
@@ -736,6 +737,14 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 ### Task 29c: Revisión de datos más clara (pedido del autor, 2026-11-01)
 - Hoy son listas por tipo (spec §8 "Revisión de datos"). Un resumen primero, con qué es importante y por qué; cada aviso explica en una frase qué significa y cómo resolverlo, con la acción a un clic. Filtrar por rama, y marcar «así está bien» con motivo, sin que reaparezca. Debe verse igual de claro con mil avisos.
 - Con el historial (19c): desde cuándo está así un aviso, qué cambio lo causó y volver atrás desde ahí. Esa parte se entrega después de la 19c.
+
+### Task 29d: Niveles según la profundidad real (pedido del autor, 2026-11-13)
+- Hoy la esquina del lienzo (`NivelesLienzo.vue`) ofrece solo 1, 2, 3 y «Todo», y «Más › Ramas» (`BarraLienzo.vue`, `NIVELES`) lista 1 a 6 fijos, aunque el árbol tenga más o menos niveles.
+- Calcular la profundidad de lo que se dibuja (el árbol completo o la rama enfocada) y ofrecer todos sus niveles, sin niveles que no existen. Si caben, un botón por nivel; si son muchos, «−», el nivel actual y «+», que sube o baja de a uno. El menú lista los mismos niveles reales. Sigue pasando por el aviso de expansión y encuadra igual que hoy. Probar con la organización grande.
+
+### Task 29e: Directorio más claro y con modo Árbol (pedido del autor, 2026-11-13)
+- El ícono de cada fila que lleva al organigrama (`BotonUbicar`, con `icono`) no dice nada al pasar el mouse: mostrar «Ver a {nombre} en el organigrama» al pasar o enfocar, como en el resto de la app.
+- Modo «Árbol» en el Directorio, junto a la lista: quién depende de quién, desde la raíz o la rama elegida. Parte de la vista Árbol de la pestaña Personas (`ArbolPersonas.vue` y `arbolPersonas.ts`: plegar, búsqueda y teclado) y la mejora: cargo y foto en cada fila, cuántas personas tiene a cargo, plegar por niveles como en el lienzo (29d) y la búsqueda que deja ver la cadena hasta la persona. Lista virtual para que la organización grande siga fluida; medir antes de cerrar.
 
 ### Task 27a: Fotos optimizadas al subir (pedido del autor, 2026-11-01)
 - Al elegir una foto, la app la reduce con `canvas`, sin dependencias: lado máximo razonable para una ficha y compresión JPEG o WebP, como en `logoComoPng` de `configuracion/logo.ts`. Hoy se guarda una imagen de hasta 1 MiB por persona. Medir peso y nitidez con fotos reales antes de fijar el tamaño. La foto solo es para presentación.
