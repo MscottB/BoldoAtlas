@@ -12,6 +12,15 @@ export function filtrarLado(cmd: string, args: Record<string, unknown> = {}): Re
   return (PERMITIDOS as readonly string[]).includes(cmd) ? { ...args, baseId: idLado() } : null;
 }
 
+/** Un error de este iframe; si no se puede copiar (lleva una función, por ejemplo), el mismo y no un DataCloneError. */
+function copiaDe(e: unknown): unknown {
+  try {
+    return structuredClone(e);
+  } catch {
+    return e;
+  }
+}
+
 interface Internos {
   invoke: (cmd: string, args?: Record<string, unknown>, opciones?: unknown) => Promise<unknown>;
   convertFileSrc: (ruta: string, protocolo?: string) => string;
@@ -39,7 +48,7 @@ export function instalarPuente(padre: Window): void {
       if (!conLado) return Promise.reject("solo_lectura");
       return invocar(cmd, conLado, opciones).then(
         (r) => structuredClone(r),
-        (e: unknown) => Promise.reject(structuredClone(e)),
+        (e: unknown) => Promise.reject(copiaDe(e)),
       );
     },
     // las fotos llegan por `foto://<id del lado>/…`

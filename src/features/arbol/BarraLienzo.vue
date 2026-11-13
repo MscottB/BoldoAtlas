@@ -76,7 +76,7 @@ async function guardarEnArboles() {
   <!-- @container: bajo 62rem de ancho, «Ver en otra fecha» y «Más» se acortan y la búsqueda queda en su mínimo (la fila cabe en la ventana mínima). -->
   <div class="@container border-b">
     <div class="flex flex-wrap items-center gap-2 p-2">
-      <Button size="sm" :disabled="!!org.fechaVista" @click="nueva">
+      <Button size="sm" :disabled="org.soloLectura" @click="nueva">
         <Plus aria-hidden="true" />
         {{ t("arbol.nuevaUnidad") }}
       </Button>
@@ -117,7 +117,7 @@ async function guardarEnArboles() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-60">
           <template v-if="aGuardar">
-            <DropdownMenuItem :disabled="guardada || !!org.fechaVista" @select="guardarEnArboles">
+            <DropdownMenuItem :disabled="guardada || org.soloLectura" @select="guardarEnArboles">
               <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
               {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
             </DropdownMenuItem>

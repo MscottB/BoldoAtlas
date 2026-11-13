@@ -14,13 +14,13 @@ export function useEstilo() {
     else toast.error(r.mensaje);
   }
   async function pegar(puestoId: string) {
-    if (org.fechaVista) return; // solo lectura
+    if (org.soloLectura) return; // solo lectura
     const r = await org.pegarEstilo(puestoId);
     if (r.ok) toast(t("leyenda.pegado", { nombre: nombre() }));
     else toast.error(r.mensaje);
   }
   async function quitar(puestoId: string) {
-    if (org.fechaVista) return; // solo lectura
+    if (org.soloLectura) return; // solo lectura
     const r = await org.asignarLeyenda(puestoId, null);
     if (!r.ok) toast.error(r.mensaje);
   }

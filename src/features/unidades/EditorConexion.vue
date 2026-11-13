@@ -25,7 +25,7 @@ const { colapsados, verConexion } = useLienzo();
 const { config } = useVista();
 const { mostradas } = inject(CONTEXTO_LIENZO)!;
 const uid = useId();
-const soloLectura = computed(() => !!org.fechaVista);
+const soloLectura = computed(() => org.soloLectura);
 
 const conexion = computed(() => org.conexiones.find((c) => c.id === props.id));
 const nombre = (id: string) => org.enFecha.porId.get(id)?.nombre ?? org.porId.get(id)?.nombre ?? "";

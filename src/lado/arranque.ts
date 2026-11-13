@@ -5,6 +5,7 @@ import { router } from "@/router";
 import { i18n } from "@/i18n";
 import { fijarBase, soltarDatos } from "@/lib/baseActiva";
 import { infoSiFalloCarga } from "@/app/estructura";
+import { registrarRouter } from "@/features/pestanas/routerConFoco";
 import { useOrganizacion } from "@/stores/organizacion";
 import PantallaError from "@/vistas/PantallaError.vue";
 import AppLado from "./AppLado.vue";
@@ -50,6 +51,8 @@ export async function arrancar(): Promise<void> {
     soltarDatos();
     const pinia = createPinia();
     const r = await useOrganizacion(pinia).cargar();
+    // «Ver en el organigrama» y lo que se abriría en una pestaña nueva navegan con el router del panel: aquí, el único.
+    registrarRouter("principal", router);
     createApp(AppLado, { motivo: r.ok ? "" : r.mensaje })
       .use(pinia)
       .use(guiarRouter(router))

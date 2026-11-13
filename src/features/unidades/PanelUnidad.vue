@@ -67,8 +67,8 @@ function cerrar() {
   emit("cerrar");
 }
 
-// Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada.
-const soloLectura = computed(() => !!org.fechaVista);
+// Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada; al lado, tampoco.
+const soloLectura = computed(() => org.soloLectura);
 const pestana = ref("resumen");
 // El menú contextual de la tarjeta puede pedir una pestaña («Ver personas»).
 watch(
@@ -242,7 +242,8 @@ async function eliminar() {
       </Button>
     </header>
 
-    <p v-if="soloLectura" class="border-b bg-muted px-3 py-1.5 text-xs text-foreground">
+    <!-- Al lado, el aviso de solo lectura lo da el encabezado del panel. -->
+    <p v-if="org.fechaVista" class="border-b bg-muted px-3 py-1.5 text-xs text-foreground">
       {{ t("arbol.fecha.panelSoloLectura") }}
     </p>
 

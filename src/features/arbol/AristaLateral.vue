@@ -71,7 +71,7 @@ const texto = computed(() =>
   activa.value || (!ligera.value && trazado.value?.conTexto) ? props.etiqueta : undefined,
 );
 const accion = computed(() =>
-  t(props.grupo ? "arbol.lateral.clicAbrirRama" : org.fechaVista ? "arbol.lateral.clicVer" : "arbol.lateral.clicEditar"),
+  t(props.grupo ? "arbol.lateral.clicAbrirRama" : org.soloLectura ? "arbol.lateral.clicVer" : "arbol.lateral.clicEditar"),
 );
 // La pista va fuera del lienzo, sobre tarjetas y paneles. Junto al puntero o, con el teclado, junto al botón, sin cubrirlo. Dice el
 // sentido; la descripción, solo si no está a la vista. El botón se lee después de pintar: al activarse cambia de tamaño.

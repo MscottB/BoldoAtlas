@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 import { leerMeta, lote, consultar, type AvanceEliminar, type Sentencia } from "@/db/cliente";
 import { traducirError } from "@/db/errores";
+import { MODO_LADO } from "@/lado/modo";
 import {
   TABLAS_CATALOGO,
   TIPO_AREA,
@@ -113,6 +114,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const ultimoBorrado = ref<Borrado | null>(null);
   /** Día (AAAA-MM-DD) al que se ve el organigrama; null = hoy. No persiste. */
   const fechaVista = ref<string | null>(null);
+  /** No se ofrece cambiar nada: se ve una fecha, o es la otra organización en el panel de al lado. */
+  const soloLectura = computed(() => !!fechaVista.value || MODO_LADO);
   /** Filas con lo eliminado, cargadas solo mientras se ve una fecha: nunca se mezclan con los arreglos vivos. */
   const historico = shallowRef<Historico | null>(null);
   /** Cambios de cada día para el calendario: se calculan al pedirlos (`leerCambios`) y se descartan en cada carga. */
@@ -931,6 +934,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     error,
     ultimoBorrado,
     fechaVista,
+    soloLectura,
     enFecha,
     verAFecha,
     cambios,

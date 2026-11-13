@@ -429,6 +429,7 @@
     "tituloPersona": "Ficha de persona",
     "nuevaPersona": "Nueva persona",
     "descripcion": "Los cambios se guardan al salir de cada campo, si son válidos.",
+    "descripcionSoloLectura": "Persona de otra organización: solo lectura.",
     "nombre": "Nombre",
     "tipoContrato": "Tipo de contrato",
     "sede": "Sede",

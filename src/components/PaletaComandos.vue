@@ -91,7 +91,7 @@ const SIN_DATOS: IndicePaleta = { unidades: [], personas: [], vacantes: [] };
 const enArbol = computed(() => route.value.name === "arbol" && !conMotivo.value);
 const acciones = computed<AccionPaleta[]>(() => [
   // Crear solo tiene sentido sobre el árbol y con la fecha de hoy.
-  ...(enArbol.value && !org.fechaVista
+  ...(enArbol.value && !org.soloLectura
     ? [
         {
           id: "nueva",

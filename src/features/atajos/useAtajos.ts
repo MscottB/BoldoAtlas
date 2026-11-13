@@ -68,7 +68,7 @@ export function useAtajos() {
       enCampoDeTexto: !!destino?.closest(CAMPO),
       enPanel: dentroDelPanel(destino),
       modalAbierto: !!document.querySelector(MODAL),
-      soloLectura: !!org.fechaVista,
+      soloLectura: org.soloLectura,
       horizontal: config.value.direccion === "horizontal",
       dividida: !!pestanas.lado,
     });

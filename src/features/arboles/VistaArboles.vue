@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp, FolderTree, Pencil, Plus, Trash2, Users } from "@lu
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { clicNuevaPestana } from "@/features/pestanas/usePestanas";
@@ -87,7 +88,8 @@ async function renombrar(id: string) {
   <section class="mx-auto flex max-w-4xl flex-col gap-6 p-6">
     <header class="flex flex-wrap items-center gap-2">
       <h1 class="text-lg font-semibold">{{ t("arboles.titulo") }}</h1>
-      <Button class="ml-auto" size="sm" @click="empezarCrear">
+      <!-- Al lado, la otra organización solo se ve: Árboles se abre, no se cambia. -->
+      <Button v-if="!MODO_LADO" class="ml-auto" size="sm" @click="empezarCrear">
         <Plus aria-hidden="true" />
         {{ t("arboles.nuevoArbol") }}
       </Button>
@@ -182,44 +184,46 @@ async function renombrar(id: string) {
             >
               {{ t("arboles.abrir") }}
             </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              :aria-label="t('arboles.renombrar')"
-              :title="t('arboles.renombrar')"
-              @click="empezarRenombrar(s)"
-            >
-              <Pencil aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              :disabled="i === 0"
-              :aria-label="t('arboles.subir')"
-              :title="t('arboles.subir')"
-              @click="org.moverSubarbol(s.id, porRaiz.get(r.id)![i - 1].orden).then(avisar)"
-            >
-              <ArrowUp aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              :disabled="i === porRaiz.get(r.id)!.length - 1"
-              :aria-label="t('arboles.bajar')"
-              :title="t('arboles.bajar')"
-              @click="org.moverSubarbol(s.id, porRaiz.get(r.id)![i + 1].orden).then(avisar)"
-            >
-              <ArrowDown aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              :aria-label="t('arboles.quitar')"
-              :title="t('arboles.quitar')"
-              @click="org.quitarSubarbol(s.id).then(avisar)"
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
+            <template v-if="!MODO_LADO">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                :aria-label="t('arboles.renombrar')"
+                :title="t('arboles.renombrar')"
+                @click="empezarRenombrar(s)"
+              >
+                <Pencil aria-hidden="true" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                :disabled="i === 0"
+                :aria-label="t('arboles.subir')"
+                :title="t('arboles.subir')"
+                @click="org.moverSubarbol(s.id, porRaiz.get(r.id)![i - 1].orden).then(avisar)"
+              >
+                <ArrowUp aria-hidden="true" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                :disabled="i === porRaiz.get(r.id)!.length - 1"
+                :aria-label="t('arboles.bajar')"
+                :title="t('arboles.bajar')"
+                @click="org.moverSubarbol(s.id, porRaiz.get(r.id)![i + 1].orden).then(avisar)"
+              >
+                <ArrowDown aria-hidden="true" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                :aria-label="t('arboles.quitar')"
+                :title="t('arboles.quitar')"
+                @click="org.quitarSubarbol(s.id).then(avisar)"
+              >
+                <Trash2 aria-hidden="true" />
+              </Button>
+            </template>
           </li>
         </ul>
       </div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
@@ -89,7 +90,8 @@ async function eliminar(id: string) {
     <PopoverContent align="start" class="w-80 gap-3 text-sm">
       <p v-if="arbol === undefined" class="text-muted-foreground">{{ t("arbol.vistas.sinArbol") }}</p>
       <template v-else>
-        <form class="flex items-center gap-2" @submit.prevent="guardar">
+        <!-- Al lado, las vistas de la otra organización se aplican, pero no se guardan ni se cambian. -->
+        <form v-if="!MODO_LADO" class="flex items-center gap-2" @submit.prevent="guardar">
           <Input
             v-model="nombre"
             class="h-7"
@@ -120,24 +122,26 @@ async function eliminar(id: string) {
               >
                 {{ v.nombre }}
               </button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                :aria-label="t('arbol.vistas.renombrar', { nombre: v.nombre })"
-                :title="t('arbol.vistas.renombrar', { nombre: v.nombre })"
-                @click="empezarRenombrar(v.id, v.nombre)"
-              >
-                <Pencil aria-hidden="true" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                :aria-label="t('arbol.vistas.eliminar', { nombre: v.nombre })"
-                :title="t('arbol.vistas.eliminar', { nombre: v.nombre })"
-                @click="eliminar(v.id)"
-              >
-                <Trash2 aria-hidden="true" />
-              </Button>
+              <template v-if="!MODO_LADO">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  :aria-label="t('arbol.vistas.renombrar', { nombre: v.nombre })"
+                  :title="t('arbol.vistas.renombrar', { nombre: v.nombre })"
+                  @click="empezarRenombrar(v.id, v.nombre)"
+                >
+                  <Pencil aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  :aria-label="t('arbol.vistas.eliminar', { nombre: v.nombre })"
+                  :title="t('arbol.vistas.eliminar', { nombre: v.nombre })"
+                  @click="eliminar(v.id)"
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              </template>
             </template>
           </li>
         </ul>

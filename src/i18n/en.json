@@ -429,6 +429,7 @@
     "tituloPersona": "Person record",
     "nuevaPersona": "New person",
     "descripcion": "Changes are saved when you leave each field, if they are valid.",
+    "descripcionSoloLectura": "Person from another organization: read only.",
     "nombre": "Name",
     "tipoContrato": "Contract type",
     "sede": "Site",

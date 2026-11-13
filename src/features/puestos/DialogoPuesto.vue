@@ -49,8 +49,9 @@ const puesto = computed(() =>
 // Un puesto que ya no existe (borrado) no ofrece acciones: el diálogo se cierra.
 watch([ctl.abierta, puesto], ([a, p]) => a?.id && !p && ctl.cerrar());
 
-// Con una fecha elegida se ve el puesto de ese día (titular, reemplazo e historial completo) y no se puede cambiar nada.
-const soloLectura = computed(() => !!org.fechaVista);
+// Con una fecha elegida se ve el puesto de ese día (titular, reemplazo e historial completo) y no se puede cambiar nada;
+// al lado, tampoco.
+const soloLectura = computed(() => org.soloLectura);
 const unidad = computed(() =>
   org.enFecha.porId.get(puesto.value?.unidad_id ?? ctl.abierta.value?.unidadId ?? ""),
 );
@@ -180,7 +181,7 @@ async function verPersona(id: string) {
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
         <DialogDescription>{{ ubicacion }}</DialogDescription>
-        <p v-if="soloLectura" class="text-sm text-muted-foreground">
+        <p v-if="org.fechaVista" class="text-sm text-muted-foreground">
           {{ t("arbol.fecha.dialogoSoloLectura", { fecha: fecha(org.fechaVista!) }) }}
         </p>
       </DialogHeader>

@@ -12,6 +12,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import type { Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { useEstilo } from "@/features/puestos/useEstilo";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { abrirEnPestanaNueva } from "@/features/pestanas/usePestanas";
@@ -41,7 +42,7 @@ const unidad = computed(() => org.enFecha.porId.get(id.value));
 const delPuesto = computed(() =>
   unidad.value ? undefined : org.enFecha.puestos.find((p) => p.id === id.value),
 );
-const soloLectura = computed(() => !!org.fechaVista);
+const soloLectura = computed(() => org.soloLectura);
 const conHijos = computed(() => !!indiceHijos(props.unidades).get(id.value)?.length);
 // Una raíz ya es un árbol en Árboles: solo se guardan ramas (el superior real, no el de la rama enfocada).
 const guardable = computed(
@@ -145,7 +146,11 @@ const abrirVista = () => (panelAbierto.value = true);
         <ContextMenuItem @select="pedir(() => router.push({ query: { raiz: id } }))">
           {{ t("arbol.abrirComoArbol") }}
         </ContextMenuItem>
-        <ContextMenuItem @select="pedir(() => abrirEnPestanaNueva({ name: 'arbol', query: { raiz: id } }))">
+        <!-- Al lado no hay pestañas: «Abrir como árbol» ya abre la rama ahí mismo. -->
+        <ContextMenuItem
+          v-if="!MODO_LADO"
+          @select="pedir(() => abrirEnPestanaNueva({ name: 'arbol', query: { raiz: id } }))"
+        >
           {{ t("pestanas.abrirNueva") }}
         </ContextMenuItem>
         <ContextMenuItem :disabled="soloLectura || !guardable" @select="pedir(() => guardar(id))">

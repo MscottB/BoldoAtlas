@@ -122,6 +122,13 @@ describe("instalarPuente, sin IPC propio (macOS y Linux)", () => {
     expect(e).not.toBe(fallo);
   });
 
+  it("un error que no se puede copiar llega tal cual, no como DataCloneError", async () => {
+    const { internos, puente } = await conPadre();
+    const fallo = { codigo: "x", detalle: () => {} }; // una función no se puede copiar
+    internos.invoke.mockRejectedValueOnce(fallo);
+    expect(await puente.invoke("db_consultar", {}).catch((x: unknown) => x)).toBe(fallo);
+  });
+
   it("las fotos, las llamadas de vuelta y la ventana son las del padre", async () => {
     const { internos, puente } = await conPadre();
     expect(puente.convertFileSrc(LADO, "foto")).toBe(`http://foto.localhost/${LADO}`);

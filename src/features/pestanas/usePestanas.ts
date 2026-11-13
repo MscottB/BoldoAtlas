@@ -11,6 +11,7 @@ import { useEventListener } from "@vueuse/core";
 import { toast } from "vue-sonner";
 import { RUTA_BIENVENIDA, esVistaCerrable, seAbreAlLado } from "@/app/estructura";
 import { i18n } from "@/i18n";
+import { MODO_LADO } from "@/lado/modo";
 import { baseActual } from "@/lib/baseActiva";
 import { nuevoId } from "@/lib/ids";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
@@ -18,6 +19,7 @@ import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { useOrganizaciones, type Motivo } from "@/stores/organizaciones";
 import { usePanel } from "./panel";
 import * as P from "./pestanas";
+import { routerDel } from "./routerConFoco";
 
 /** Id del área central (el panel de las pestañas): recibe el foco si al cerrar una pestaña no queda barra. */
 export const ID_AREA = "area-central";
@@ -578,15 +580,22 @@ export const usePestanas = defineStore("pestanas", () => {
   };
 });
 
-/** «Abrir en pestaña nueva»: si no se puede (tope de pestañas), lo avisa. */
+/**
+ * «Abrir en pestaña nueva»: si no se puede (tope de pestañas), lo avisa. En el panel de al lado no hay pestañas (las del
+ * iframe no se verían): navega ahí mismo.
+ */
 export function abrirEnPestanaNueva(destino: RouteLocationRaw) {
+  if (MODO_LADO) return void routerDel("principal").push(destino);
   const r = usePestanas().abrirNueva(destino);
   if (!r.ok) toast.warning(r.mensaje);
 }
 
-/** Ctrl+clic (Cmd en Mac) o clic central sobre algo que navega: lo abre en una pestaña nueva y anula el clic. */
+/**
+ * Ctrl+clic (Cmd en Mac) o clic central sobre algo que navega: lo abre en una pestaña nueva y anula el clic. Al lado es un
+ * clic normal.
+ */
 export function clicNuevaPestana(e: MouseEvent, destino: RouteLocationRaw): boolean {
-  if (e.type === "auxclick" ? e.button !== 1 : !(e.ctrlKey || e.metaKey)) return false;
+  if (MODO_LADO || (e.type === "auxclick" ? e.button !== 1 : !(e.ctrlKey || e.metaKey))) return false;
   e.preventDefault();
   abrirEnPestanaNueva(destino);
   return true;
