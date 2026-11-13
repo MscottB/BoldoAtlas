@@ -49,6 +49,24 @@ If one organization does not come from the other, for example because they were 
 
 People without an email, or with an email that is repeated, are not matched: they count as only in their organization.
 
+## View side by side
+
+You can view another organization in the side panel, next to the open one, without switching organization. It lets you look at one while you work on the other. It opens on its tree, in a new tab:
+
+- In **Home › Recently opened**, open the **⋮** menu of another organization and press **View side by side**.
+- In the command palette (`Ctrl+K`), choose **View “name” side by side**.
+- Right-click a tab of another organization, or press `Shift` + `F10` when it is focused, and press **Open to the side**.
+
+The panel's header shows that organization's name and color, and **Read-only**. To the side you can see the **Tree**, **Trees**, the **Directory** and **Review**; Settings, Import/Export, Help and About open in the main panel. You can browse the tree, search and open people's records, but not change anything: only the open organization can be edited.
+
+What you see is a snapshot taken when you opened it. BoldoAtlas copies the organization to a temporary file and shows it from that copy, so it does not change while it is to the side, and the organization itself is not modified. There is one at a time: removing it from the side or closing its tab releases the copy.
+
+If you open that organization in the main panel, for example by going to its tab, the side panel reloads with its data and can be edited. The other way around, if the open one ends up to the side, it becomes read-only. If you delete the organization to the side, the split view closes.
+
+Viewing two organizations uses more memory. If BoldoAtlas estimates it might not be enough, it asks first: "There may not be enough memory for both. Open anyway?". **Open anyway** shows it, and **No** closes the split view.
+
+The panel, the divider and `F6` work as in the [split view](pestanas.md#split-view).
+
 ## What is kept apart
 
 Each organization has its own file, with its photos and its logo, and its own backups. Its view preferences are its own too: the state of the tree, the Directory's filters and columns, how people show in a unit's panel and the minimap. The theme, the language, the accent color, the interface size, how often backups and updates run, the sidebar and what happens on closing apply to all your organizations.

@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { anclasAyuda } from "../../site/scripts/reglas.mjs";
 
 // Las páginas de ayuda viven en ayuda/<idioma>/<tema>.md (también las usa el sitio web): las dos versiones deben
 // tener las mismas páginas y la misma estructura. Es un control grueso: no compara las palabras.
@@ -163,5 +164,18 @@ describe("enlaces entre páginas de la ayuda", () => {
     for (const f of paginas(idioma))
       for (const m of sinCodigo(leer(idioma, f)).matchAll(/\]\(([\w-]+\.md)(#[^)]*)?\)/g))
         expect(existentes, `${idioma}/${f} enlaza a ${m[1]}`).toContain(m[1]);
+  });
+
+  it.each(["es", "en"])("%s: el ancla de un enlace a otra página es uno de sus títulos", (idioma) => {
+    for (const f of paginas(idioma))
+      for (const m of sinCodigo(leer(idioma, f)).matchAll(/\]\(([\w-]+)\.md#([^)]+)\)/g))
+        expect(anclasAyuda(idioma, m[1]), `${idioma}/${f} enlaza a ${m[1]}.md#${m[2]}`).toContain(m[2]);
+  });
+
+  it.each([
+    ["es", "ver-al-lado"],
+    ["en", "view-side-by-side"],
+  ])("%s: Pestañas lleva a la sección de otra organización al lado", (idioma, ancla) => {
+    expect(leer(idioma, "pestanas.md")).toContain(`(organizaciones.md#${ancla})`);
   });
 });

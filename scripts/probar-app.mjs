@@ -103,6 +103,14 @@ function detener(p) {
 const registro = [];
 /** @param {string} linea */
 const anotar = (linea) => void registro.push(linea);
+/**
+ * Una línea del registro que es un error de la página, de cualquiera de sus marcos: de la consola, una excepción o del
+ * navegador (`Log`). No los avisos ni la salida del proceso.
+ * @param {string} linea
+ */
+export const esErrorDeConsola = (linea) => /^\[(?:excepción|\S+ error)\]/.test(linea);
+/** Los errores de la página anotados hasta ahora, en orden. */
+export const erroresDeConsola = () => registro.filter(esErrorDeConsola);
 /** @type {string[]} */
 const fallos = [];
 /** @param {string} nombre @param {boolean} ok @param {unknown} [detalle] */

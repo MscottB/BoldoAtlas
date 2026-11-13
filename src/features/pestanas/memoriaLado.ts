@@ -1,7 +1,8 @@
 import type { InfoLado } from "@/db/cliente";
 
 // Lo que se estima que agrega otra organización al lado: un segundo Vue con sus datos (decisión 10).
-// shortcut: valores iniciales; la Task 10 los fija con lo medido en el arnés con la organización grande.
+// shortcut: valores iniciales; el arnés (`medirLado`) imprime los que sugiere lo medido con la organización grande, y se
+// fijan con ellos. Se escriben `<n> * 2 ** <k>`: así los lee el arnés.
 export const BASE_LADO = 120 * 2 ** 20;
 export const POR_PERSONA = 8 * 2 ** 10;
 export const POR_UNIDAD = 4 * 2 ** 10;

@@ -12,7 +12,7 @@ import { PANEL, alPanelDeLaAbierta, usePanel } from "./panel";
 import { MAX_PESTANAS } from "./pestanas";
 import { GRUPOS_MENU, irAEntrada } from "@/features/proyecto/menuApp";
 import { esRutaConFoco, irConFoco, registrarRouter, routerConFoco } from "./routerConFoco";
-import { MARCA_DIVIDIR, useEstadoPestana, usePestanas } from "./usePestanas";
+import { MARCA_DIVIDIR, MARCA_VER_AL_LADO, useEstadoPestana, usePestanas } from "./usePestanas";
 
 // Sin DOM: un renderer que no dibuja nada, para que un componente se monte y desmonte (onMounted, onBeforeUnmount).
 const sinDom = createRenderer<object, object>({
@@ -928,6 +928,19 @@ describe("usePestanas con la vista dividida", () => {
       mensaje: i18n.global.t("pestanas.limite", { n: MAX_PESTANAS }),
     });
     expect(llena.lado).toBeNull();
+  });
+
+  it("ver al lado deja la marca desde la que se mide; sin lugar para la pestaña, no", async () => {
+    const p = await arrancar(tres("b", null));
+    const marcas = () => performance.getEntriesByName(MARCA_VER_AL_LADO, "mark").length;
+    performance.clearMarks(MARCA_VER_AL_LADO);
+    expect(p.verAlLado("B").ok).toBe(true);
+    expect(marcas()).toBe(1);
+    performance.clearMarks(MARCA_VER_AL_LADO);
+    for (let i = p.lista.length; i < MAX_PESTANAS; i++) p.abrirNueva("/");
+    await esperar();
+    expect(p.verAlLado("B").ok).toBe(false);
+    expect(marcas()).toBe(0);
   });
 
   it("ver al lado desde Inicio, sin haber entrado, parte de las pestañas guardadas", async () => {

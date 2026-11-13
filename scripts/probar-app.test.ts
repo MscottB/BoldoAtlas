@@ -2,7 +2,25 @@ import { describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { conPuertoAbierto, dentroDe, enCI, exigirPortable } from "./probar-app.mjs";
+import { conPuertoAbierto, dentroDe, enCI, esErrorDeConsola, exigirPortable } from "./probar-app.mjs";
+
+describe("esErrorDeConsola", () => {
+  it("errores de la consola, excepciones y errores del navegador; no avisos ni la salida del proceso", () => {
+    for (const l of [
+      "[consola error] fallo",
+      "[excepción] TypeError: x",
+      "[network error] Failed to load resource",
+    ])
+      expect(esErrorDeConsola(l), l).toBe(true);
+    for (const l of [
+      "[consola warn] No se pudo soltar",
+      "[consola log] hola",
+      "[proceso] error de Rust",
+      "error suelto",
+    ])
+      expect(esErrorDeConsola(l), l).toBe(false);
+  });
+});
 
 describe("conPuertoAbierto", () => {
   const WRY = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";

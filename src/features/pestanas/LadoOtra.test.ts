@@ -12,7 +12,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { ESPERA_COPIA, atenderMensaje, srcLado, useLadoOtra } from "./useLadoOtra";
 import { esRutaConFoco, irConFoco, registrarRouter, routerDel } from "./routerConFoco";
-import { usePestanas } from "./usePestanas";
+import { MARCA_VER_AL_LADO, usePestanas } from "./usePestanas";
 import VistaDividida from "./VistaDividida.vue";
 import PaletaComandos from "@/components/PaletaComandos.vue";
 
@@ -330,6 +330,40 @@ describe("useLadoOtra", () => {
     // Ya cargado, va directo.
     await irConFoco("/revision");
     expect(marco.postMessage).toHaveBeenCalledTimes(2);
+  });
+
+  // Con los relojes falsos de siempre, `performance` también es falso: sus marcas no quedan.
+  const conPerformanceReal = () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  };
+
+  it("lo pedido con «Ver al lado» se mide hasta que el iframe llega a su primera ruta; sin la marca, no", async () => {
+    conPerformanceReal();
+    const medidas = () => performance.getEntriesByName("ver-al-lado", "measure").length;
+    performance.clearMeasures("ver-al-lado");
+    await arrancar();
+    performance.mark(MARCA_VER_AL_LADO);
+    montar();
+    await esperar();
+    expect(medidas()).toBe(0);
+    delIframe({ tipo: "boldo-lado-ruta", ruta: "/directorio" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(medidas()).toBe(1);
+    expect(performance.getEntriesByName(MARCA_VER_AL_LADO, "mark")).toHaveLength(0);
+    delIframe({ tipo: "boldo-lado-ruta", ruta: "/revision" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(medidas()).toBe(1);
+  });
+
+  it("cerrado antes de que el iframe llegue, la marca no queda para el siguiente", async () => {
+    conPerformanceReal();
+    await arrancar();
+    performance.mark(MARCA_VER_AL_LADO);
+    const { app } = montar();
+    await esperar();
+    app.unmount();
+    expect(performance.getEntriesByName(MARCA_VER_AL_LADO, "mark")).toHaveLength(0);
   });
 
   it("al pasar rápido por varias pestañas de otra organización, solo copia la última", async () => {
