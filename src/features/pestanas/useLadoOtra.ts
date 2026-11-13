@@ -11,16 +11,18 @@ import { useOrganizaciones } from "@/stores/organizaciones";
 import { caben, type Memoria } from "./memoriaLado";
 import { RUTA_INICIO } from "./pestanas";
 import { irConFoco, registrarRouter, routerDel } from "./routerConFoco";
-import { ID_PANEL, MARCA_VER_AL_LADO, abrirEnPestanaNueva, usePestanas } from "./usePestanas";
+import { ID_PANEL, abrirEnPestanaNueva, marcaVerAlLado, usePestanas } from "./usePestanas";
 
 /**
- * Cuánto tarda en verse lo que pidió «Ver al lado», copia incluida (decisión 11; lo lee el arnés): desde su marca hasta
- * que el iframe llega a su primera ruta, con los datos ya leídos. Sin la marca (otra forma de llegar al lado) no se mide.
+ * Cuánto tarda en verse lo que pidió «Ver al lado», copia incluida (decisión 11; lo lee el arnés): desde la marca de la
+ * pestaña `id` hasta que el iframe llega a su primera ruta, con los datos ya leídos. Sin la marca (otra forma de llegar al
+ * lado) no se mide.
  */
-function medir() {
-  if (!performance.getEntriesByName(MARCA_VER_AL_LADO, "mark").length) return;
-  performance.measure("ver-al-lado", MARCA_VER_AL_LADO);
-  performance.clearMarks(MARCA_VER_AL_LADO);
+function medir(id: string) {
+  const marca = marcaVerAlLado(id);
+  if (!performance.getEntriesByName(marca, "mark").length) return;
+  performance.measure("ver-al-lado", marca);
+  performance.clearMarks(marca);
 }
 
 /** Cuánto espera el panel antes de copiar: al pasar rápido por varias pestañas (Ctrl+Tab) solo copia la última. */
@@ -148,7 +150,7 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
   function alLlegar(ruta: string) {
     if (!iframeListo) {
       iframeListo = true;
-      medir();
+      medir(id);
       if (pendiente !== null && pendiente !== ruta) pedir(pendiente);
       pendiente = null;
     }
@@ -208,8 +210,8 @@ export function useLadoOtra(id: string, ventana: () => unknown) {
   });
   onBeforeUnmount(() => {
     vivo = false;
-    // Cerrado antes de verse: la marca no queda para otro panel.
-    performance.clearMarks(MARCA_VER_AL_LADO);
+    // Cerrado antes de verse: su marca no queda si la pestaña vuelve al lado.
+    performance.clearMarks(marcaVerAlLado(id));
     window.removeEventListener("message", alMensaje);
     quitarRouter();
     // Nadie espera que se suelte: que quede rastro si falla.

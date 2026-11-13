@@ -51,13 +51,13 @@ People without an email, or with an email that is repeated, are not matched: the
 
 ## View side by side
 
-You can view another organization in the side panel, next to the open one, without switching organization. It lets you look at one while you work on the other. It opens on its tree, in a new tab:
+You can view another organization in the side panel, next to the open one, without switching organization. It lets you look at one while you work on the other.
 
-- In **Home › Recently opened**, open the **⋮** menu of another organization and press **View side by side**.
-- In the command palette (`Ctrl+K`), choose **View “name” side by side**.
-- Right-click a tab of another organization, or press `Shift` + `F10` when it is focused, and press **Open to the side**.
+- In **Home › Recently opened**, open the **⋮** menu of another organization and press **View side by side**. It opens on its tree, in a new tab.
+- In the command palette (`Ctrl+K`), choose **View “name” side by side**. It also opens on its tree, in a new tab.
+- Right-click a tab of another organization, or press `Shift` + `F10` when it is focused, and press **Open to the side**. That tab moves to the side, in its view.
 
-The panel's header shows that organization's name and color, and **Read-only**. To the side you can see the **Tree**, **Trees**, the **Directory** and **Review**; Settings, Import/Export, Help and About open in the main panel. You can browse the tree, search and open people's records, but not change anything: only the open organization can be edited.
+The panel's header shows that organization's name and color, and **Read-only**. To the side you can see the **Tree**, **Trees**, the **Directory** and **Review**; the other views open in the main panel. You can browse the tree, search and open people's records, but not change anything: only the open organization can be edited.
 
 What you see is a snapshot taken when you opened it. BoldoAtlas copies the organization to a temporary file and shows it from that copy, so it does not change while it is to the side, and the organization itself is not modified. There is one at a time: removing it from the side or closing its tab releases the copy.
 

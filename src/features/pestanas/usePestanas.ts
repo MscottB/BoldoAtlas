@@ -28,8 +28,11 @@ export const idPestana = (id: string) => `pestana-${id}`;
 export const ID_PANEL = { principal: "panel-principal", lado: "panel-lado" } as const;
 /** Marca de `performance` al dividir: el panel de al lado mide desde ella cuánto tarda en verse (la lee el arnés). */
 export const MARCA_DIVIDIR = "dividir";
-/** Marca de `performance` al pedir «Ver al lado»: el panel de otra organización mide desde ella (la lee el arnés). */
-export const MARCA_VER_AL_LADO = "ver-al-lado-pedido";
+/**
+ * Marca de `performance` al pedir «Ver al lado», una por pestaña: el panel de esa pestaña mide desde ella (la lee el arnés),
+ * y el que se va no quita la del que llega.
+ */
+export const marcaVerAlLado = (id: string) => `ver-al-lado-pedido:${id}`;
 
 /**
  * Pestañas de trabajo del proyecto abierto (spec §7). La ruta de la pestaña activa es la del router: navegar dentro de
@@ -513,7 +516,7 @@ export const usePestanas = defineStore("pestanas", () => {
       if (!cargadas) cargarGuardadas(); // desde Inicio: lo que sigue parte de las guardadas
       const id = agregarDe(org);
       if (!id) return { ok: false, mensaje: t("pestanas.limite", { n: P.MAX_PESTANAS }) };
-      performance.mark(MARCA_VER_AL_LADO);
+      performance.mark(marcaVerAlLado(id));
       modelo.value = P.alLado(modelo.value, id);
       return { ok: true };
     },

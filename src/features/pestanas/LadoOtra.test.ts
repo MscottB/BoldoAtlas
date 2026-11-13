@@ -12,7 +12,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { ESPERA_COPIA, atenderMensaje, srcLado, useLadoOtra } from "./useLadoOtra";
 import { esRutaConFoco, irConFoco, registrarRouter, routerDel } from "./routerConFoco";
-import { MARCA_VER_AL_LADO, usePestanas } from "./usePestanas";
+import { marcaVerAlLado, usePestanas } from "./usePestanas";
 import VistaDividida from "./VistaDividida.vue";
 import PaletaComandos from "@/components/PaletaComandos.vue";
 
@@ -343,14 +343,14 @@ describe("useLadoOtra", () => {
     const medidas = () => performance.getEntriesByName("ver-al-lado", "measure").length;
     performance.clearMeasures("ver-al-lado");
     await arrancar();
-    performance.mark(MARCA_VER_AL_LADO);
+    performance.mark(marcaVerAlLado("x"));
     montar();
     await esperar();
     expect(medidas()).toBe(0);
     delIframe({ tipo: "boldo-lado-ruta", ruta: "/directorio" });
     await vi.advanceTimersByTimeAsync(0);
     expect(medidas()).toBe(1);
-    expect(performance.getEntriesByName(MARCA_VER_AL_LADO, "mark")).toHaveLength(0);
+    expect(performance.getEntriesByName(marcaVerAlLado("x"), "mark")).toHaveLength(0);
     delIframe({ tipo: "boldo-lado-ruta", ruta: "/revision" });
     await vi.advanceTimersByTimeAsync(0);
     expect(medidas()).toBe(1);
@@ -359,11 +359,22 @@ describe("useLadoOtra", () => {
   it("cerrado antes de que el iframe llegue, la marca no queda para el siguiente", async () => {
     conPerformanceReal();
     await arrancar();
-    performance.mark(MARCA_VER_AL_LADO);
+    performance.mark(marcaVerAlLado("x"));
     const { app } = montar();
     await esperar();
     app.unmount();
-    expect(performance.getEntriesByName(MARCA_VER_AL_LADO, "mark")).toHaveLength(0);
+    expect(performance.getEntriesByName(marcaVerAlLado("x"), "mark")).toHaveLength(0);
+  });
+
+  it("al irse, no quita la marca de la pestaña que llega al lado después (otra «Ver al lado»)", async () => {
+    conPerformanceReal();
+    await arrancar();
+    const { app } = montar();
+    await esperar();
+    performance.mark(marcaVerAlLado("z"));
+    app.unmount();
+    expect(performance.getEntriesByName(marcaVerAlLado("z"), "mark")).toHaveLength(1);
+    performance.clearMarks(marcaVerAlLado("z"));
   });
 
   it("al pasar rápido por varias pestañas de otra organización, solo copia la última", async () => {

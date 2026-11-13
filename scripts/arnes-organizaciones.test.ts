@@ -169,7 +169,22 @@ describe("etiquetaPaleta", () => {
 
 describe("EDITAR", () => {
   it("cada acción de editar tiene su texto en es.json, sin llaves que rellenar", () => {
-    for (const clave of EDITAR) expect(textoEs(clave), clave).not.toContain("{");
+    for (const clave of Object.values(EDITAR).flat()) expect(textoEs(clave), clave).not.toContain("{");
+  });
+
+  it("cada superficie que el recorrido abre tiene las suyas: el panel de la unidad, la ficha y el puesto", () => {
+    expect(Object.keys(EDITAR).sort()).toEqual(["arbol", "arboles", "ficha", "puesto"]);
+    for (const clave of [
+      "unidad.eliminar",
+      "unidad.quitarMarca",
+      "unidad.agregarEtiqueta",
+      "puesto.nuevoPuesto",
+    ])
+      expect(EDITAR.arbol).toContain(clave);
+    expect(EDITAR.ficha).toContain("ficha.eliminar");
+    expect(EDITAR.puesto).toContain("puesto.eliminar");
+    // la vista guardada solo está en un menú que el recorrido no abre
+    expect(Object.values(EDITAR).flat()).not.toContain("arbol.vistas.guardar");
   });
 });
 
@@ -227,9 +242,14 @@ describe("constantesSugeridas", () => {
     });
   });
 
+  it("sin una medida útil (cero o menos), no sugiere nada", () => {
+    expect(constantesSugeridas(0, grande, actuales)).toBeNull();
+    expect(constantesSugeridas(-3 * MB, grande, actuales)).toBeNull();
+  });
+
   it("redondea hacia arriba: lo sugerido nunca queda bajo el 50 % de margen", () => {
     const medido = 37.3 * MB;
-    const s = constantesSugeridas(medido, grande, actuales);
+    const s = constantesSugeridas(medido, grande, actuales)!;
     const enBytes = (x: string) => {
       const [n, k] = x.split(" * 2 ** ").map(Number);
       return n! * 2 ** k!;

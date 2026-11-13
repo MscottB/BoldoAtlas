@@ -30,3 +30,18 @@ describe("caben", () => {
     ).toBe(false);
   });
 });
+
+describe("constantes medidas", () => {
+  it("con la grande (10.000 personas, 2.000 unidades) estiman el 50 % sobre lo medido en CI (+23,6 MB)", () => {
+    const grande = BASE_LADO + 10_000 * POR_PERSONA + 2_000 * POR_UNIDAD;
+    expect(grande).toBeGreaterThanOrEqual(1.5 * 23.6 * 2 ** 20);
+    // y no tanto más: con el límite de CI y lo que usa la app, no pregunta
+    expect(grande).toBeLessThan(2 * 1.5 * 23.6 * 2 ** 20);
+    expect(
+      caben(
+        { id: "B", personas: 10_000, unidades: 2_000 },
+        { usedJSHeapSize: 43_301_810, jsHeapSizeLimit: 4_395_630_592 },
+      ),
+    ).toBe(true);
+  });
+});

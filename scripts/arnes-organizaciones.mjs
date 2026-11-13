@@ -75,19 +75,36 @@ const META_LADO_MS = 8000;
 // una copia que pasa de esto se da por perdida
 const PLAZO_LADO_MS = 120_000;
 const MEMORIA_LADO = join("src", "features", "pestanas", "memoriaLado.ts");
-/** Las acciones de editar (sus textos en es.json) que no deben verse en el iframe de al lado. */
-export const EDITAR = [
-  "arbol.nuevaUnidad",
-  "arbol.nuevaSubunidad",
-  "arbol.menu.renombrar",
-  "unidad.conectarCon",
-  "arbol.vistas.guardar",
-  "arboles.nuevoArbol",
-  "arboles.renombrar",
-  "arboles.subir",
-  "arboles.bajar",
-  "arboles.quitar",
-];
+/**
+ * Las acciones de editar (sus textos en es.json) que no deben verse en el iframe de al lado, por lo que el recorrido abre:
+ * el árbol con una tarjeta elegida y el panel de su unidad (Resumen y Puestos), Árboles, la ficha de una persona (desde el
+ * Directorio) y el diálogo de un puesto (desde Revisión). Se buscan en botones, listas y campos, por su texto o su
+ * `aria-label`.
+ */
+export const EDITAR = {
+  arbol: [
+    "arbol.nuevaUnidad",
+    "arbol.nuevaSubunidad",
+    "arbol.menu.renombrar",
+    "unidad.conectarCon",
+    "unidad.duplicar",
+    "unidad.eliminar",
+    "unidad.quitarMarca",
+    "unidad.agregarEtiqueta",
+    "arboles.guardarEnArboles",
+    "puesto.nuevoPuesto",
+  ],
+  arboles: ["arboles.nuevoArbol", "arboles.renombrar", "arboles.subir", "arboles.bajar", "arboles.quitar"],
+  ficha: ["ficha.eliminar", "ficha.elegirFoto", "ficha.quitarFoto"],
+  puesto: [
+    "puesto.accion.titular",
+    "puesto.accion.reemplazo",
+    "puesto.eliminar",
+    "leyenda.copiar",
+    "leyenda.pegar",
+    "leyenda.quitar",
+  ],
+};
 
 /**
  * Lo que una persona dejó por PC en una versión de antes de varias organizaciones. Elegir la horizontal en el árbol completo
@@ -239,10 +256,12 @@ export function constantesActuales(fuente = readFileSync(MEMORIA_LADO, "utf8")) 
 /**
  * Las tres constantes, como se escriben en memoriaLado.ts, para que una organización de `personas` y `unidades` estime
  * el 50 % sobre lo que creció la memoria al verla al lado (`medido`). Una sola medida no separa la base de lo que suma
- * cada persona y unidad: se escalan las de ahora en la misma proporción, hacia arriba.
+ * cada persona y unidad: se escalan las de ahora en la misma proporción, hacia arriba. Sin una medida útil (cero o menos),
+ * null.
  * @param {number} medido @param {{ personas: number, unidades: number }} org @param {Constantes} actuales
  */
 export function constantesSugeridas(medido, { personas, unidades }, actuales) {
+  if (!(medido > 0)) return null;
   const estimado = actuales.BASE_LADO + personas * actuales.POR_PERSONA + unidades * actuales.POR_UNIDAD;
   const f = (1.5 * medido) / estimado;
   const en = (/** @type {number} */ bytes, /** @type {number} */ k) =>
@@ -854,6 +873,23 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
 }
 
 /**
+ * Abre la paleta con Ctrl+K, escribe `texto` y elige la opción `etiqueta`, como una persona. Deja en `window.__elegida`
+ * el momento del clic, para medir desde ahí.
+ * @param {App} app @param {string} etiqueta @param {string} texto
+ */
+async function elegirEnPaleta(app, etiqueta, texto) {
+  await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
+  const campo = `document.querySelector('[role="dialog"] input')`;
+  await app.hasta(`Boolean(${campo})`, "la paleta abierta");
+  await app.evaluar(
+    `(() => { const c = ${campo}; c.value = ${JSON.stringify(texto)}; c.dispatchEvent(new Event("input", { bubbles: true })); })()`,
+  );
+  const opcion = `[...document.querySelectorAll('[role="dialog"] [role="option"]')].find((x) => x.innerText.trim() === ${JSON.stringify(etiqueta)})`;
+  await app.hasta(`Boolean(${opcion})`, `«${etiqueta}» en la paleta`);
+  await app.evaluar(`window.__elegida = performance.now(); ${opcion}.click()`);
+}
+
+/**
  * Por la paleta, como una persona: desde Acerca, Ctrl+K, escribe el nombre y elige «Comparar con «nombre»». Espera la
  * comparación número `n` y su resumen dibujado. Devuelve lo que midió la app y si la vista avisó coincidencia aproximada, o
  * `{ tarde }` si pasó de PLAZO_COMPARAR_MS. La paleta en español: la etiqueta sale de es.json.
@@ -869,16 +905,7 @@ async function compararPorPaleta(app, o, n) {
       !document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')`,
     `Acerca, sin diálogos, antes de la comparación ${n}`,
   );
-  const etiqueta = etiquetaPaleta("comparar", o.nombre);
-  await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
-  const campo = `document.querySelector('[role="dialog"] input')`;
-  await app.hasta(`Boolean(${campo})`, "la paleta abierta");
-  await app.evaluar(
-    `(() => { const c = ${campo}; c.value = ${JSON.stringify(o.nombre)}; c.dispatchEvent(new Event("input", { bubbles: true })); })()`,
-  );
-  const opcion = `[...document.querySelectorAll('[role="dialog"] [role="option"]')].find((x) => x.innerText.trim() === ${JSON.stringify(etiqueta)})`;
-  await app.hasta(`Boolean(${opcion})`, `«${etiqueta}» en la paleta`);
-  await app.evaluar(`${opcion}.click()`);
+  await elegirEnPaleta(app, etiquetaPaleta("comparar", o.nombre), o.nombre);
   // esperar solo lanza al vencer el plazo: es un tiempo que se anota, no un error de la página
   /** @type {{ ms: number, aproximada: boolean } | { error: string } | { tarde: string }} */
   const r = await esperar(
@@ -1516,40 +1543,41 @@ const marcarOtra = (o) =>
   });
 
 /**
- * Por la paleta, como una persona: con el árbol en el principal, Ctrl+K, escribe el nombre y elige «Ver «nombre» al lado».
- * Espera la medida número `n` y la raíz de la otra dibujada en el iframe. Si la app pregunta por la memoria, elige «Abrir
- * igual» y lo dice: no es un fallo. Devuelve lo que midió la app y lo que tardó en verse desde el clic.
+ * Espera, con la otra yendo al lado, a que `condicion` (una expresión de la página) dé un valor verdadero, y lo devuelve.
+ * Si antes la app pregunta por la memoria, elige «Abrir igual» y lo dice: no es un fallo. Si pasa PLAZO_LADO_MS, lanza.
+ * @param {App} app @param {string} condicion @param {string} que
+ * @returns {Promise<{ valor: any, conPregunta: boolean }>}
+ */
+async function esperarAlLado(app, condicion, que) {
+  const pregunta = `[...document.querySelectorAll('[role="alertdialog"][data-state="open"]')].find((d) => d.innerText.includes(${JSON.stringify(textoEs("pestanas.sinMemoria"))}))`;
+  /** @param {string} c */
+  const hasta = (c) => esperar(() => app.evaluar(c), que, PLAZO_LADO_MS);
+  const r = await hasta(`(${pregunta}) ? "pregunta" : (${condicion})`);
+  if (r !== "pregunta") return { valor: r, conPregunta: false };
+  console.log(`ver al lado: preguntó por la memoria (${que}); se eligió «Abrir igual»`);
+  await app.evaluar(
+    `[...(${pregunta}).querySelectorAll("button")].find((b) => b.innerText.trim() === ${JSON.stringify(textoEs("pestanas.abrirIgual"))}).click()`,
+  );
+  return { valor: await hasta(condicion), conPregunta: true };
+}
+
+/**
+ * Por la paleta, como una persona: con el árbol en el principal, elige «Ver «nombre» al lado». Espera la medida número `n`
+ * y la raíz de la otra dibujada en el iframe. Devuelve lo que midió la app, lo que tardó en verse desde el clic y si
+ * preguntó por la memoria.
  * @param {App} app @param {Otra} o @param {number} n
  */
 async function verAlLadoPorPaleta(app, o, n) {
-  await app.evaluar(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))`);
-  const campo = `document.querySelector('[role="dialog"] input')`;
-  await app.hasta(`Boolean(${campo})`, "la paleta abierta");
-  await app.evaluar(
-    `(() => { const c = ${campo}; c.value = ${JSON.stringify(o.nombre)}; c.dispatchEvent(new Event("input", { bubbles: true })); })()`,
-  );
-  const etiqueta = etiquetaPaleta("verAlLado", o.nombre);
-  const opcion = `[...document.querySelectorAll('[role="dialog"] [role="option"]')].find((x) => x.innerText.trim() === ${JSON.stringify(etiqueta)})`;
-  await app.hasta(`Boolean(${opcion})`, `«${etiqueta}» en la paleta`);
-  await app.evaluar(`window.__pedido = performance.now(); ${opcion}.click()`);
-  const pregunta = `[...document.querySelectorAll('[role="alertdialog"][data-state="open"]')].find((d) => d.innerText.includes(${JSON.stringify(textoEs("pestanas.sinMemoria"))}))`;
+  await elegirEnPaleta(app, etiquetaPaleta("verAlLado", o.nombre), o.nombre);
   const visto = `(${VER_AL_LADO}.length === ${n} && ${enElMarco(".vue-flow__node", raizDe(o))})`;
-  const desdeElClic = `(${visto} ? Math.round(performance.now() - window.__pedido) : null)`;
-  /** @param {string} condicion */
-  const hasta = (condicion) =>
-    esperar(() => app.evaluar(condicion), `«${o.nombre}» al lado, la vez ${n}`, PLAZO_LADO_MS);
-  let pantalla = await hasta(`(${pregunta}) ? "pregunta" : ${desdeElClic}`);
-  const conPregunta = pantalla === "pregunta";
-  if (conPregunta) {
-    console.log(`ver al lado: con «${o.nombre}» (vez ${n}) preguntó por la memoria; se eligió «Abrir igual»`);
-    await app.evaluar(
-      `[...(${pregunta}).querySelectorAll("button")].find((b) => b.innerText.trim() === ${JSON.stringify(textoEs("pestanas.abrirIgual"))}).click()`,
-    );
-    pantalla = await hasta(desdeElClic);
-  }
+  const { valor, conPregunta } = await esperarAlLado(
+    app,
+    `${visto} ? Math.round(performance.now() - window.__elegida) : null`,
+    `«${o.nombre}» al lado, la vez ${n}`,
+  );
   return {
     app: Math.round(await app.evaluar(`${VER_AL_LADO}.at(-1).duration`)),
-    pantalla: Number(pantalla),
+    pantalla: Number(valor),
     conPregunta,
   };
 }
@@ -1560,8 +1588,8 @@ async function verAlLadoPorPaleta(app, o, n) {
  * incluida), lo que tardó en verse su raíz y lo que creció la memoria, y con eso sugiere las constantes de memoriaLado.ts.
  * Pasar de META_LADO_MS no falla: se pregunta al autor (decisión 11). Después recorre, como una persona, lo que las pruebas
  * sin DOM no alcanzan: la copia que el iframe no suelta al cargar, las escrituras que Rust rechaza, el clic y F6 entre la
- * ventana y el iframe, el menú lateral, las cuatro vistas sin acciones de editar y sin errores en la consola, «Quitar de al
- * lado», Ctrl+W dentro del iframe y el archivo de la otra intacto.
+ * ventana y el iframe, el menú lateral, las cuatro vistas (con el panel de una unidad, una ficha y un puesto) sin acciones
+ * de editar y sin errores en la consola, «Quitar de al lado», Ctrl+W dentro del iframe y el archivo de la otra intacto.
  * @param {Portable} portable @param {{ relacionada: Otra, aparte: Otra }} otras
  */
 async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
@@ -1577,7 +1605,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   const temporales = () => readdirSync(datos).filter((n) => n.startsWith("boldo-lado-"));
 
   const app = await abrirApp(exe);
-  const errores = erroresDeConsola().length;
+  let errores = erroresDeConsola().length;
   await revisarBase(app, carpeta);
   await app.enviar("Emulation.setFocusEmulationEnabled", { enabled: true });
   await verInicio(app, "Inicio de la grande, antes de ver al lado");
@@ -1593,6 +1621,8 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   const tiempos = [];
   /** @type {{ antes: number | null, despues: number | null }[]} */
   const memorias = [];
+  /** @type {{ personas: number, unidades: number }[]} */
+  const medidas = [];
   const sinDialogos = `!document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')`;
   for (let i = 1; i <= 2 * VECES_LADO; i++) {
     const o = i % 2 ? relacionada : aparte;
@@ -1603,6 +1633,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     const antesDe = await memoria(app);
     tiempos.push(await verAlLadoPorPaleta(app, o, i));
     memorias.push({ antes: antesDe, despues: await memoria(app) });
+    medidas.push(o === relacionada ? tamanos.relacionada : tamanos.aparte);
     // la cierra con la × de su pestaña, menos la última, que queda para el recorrido
     if (i < 2 * VECES_LADO)
       await app.evaluar(`document.getElementById("pestana-" + ${AL_LADO}).nextElementSibling.click()`);
@@ -1626,13 +1657,23 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
       `límite ${limite}; relacionada ${tamanos.relacionada.personas} personas y ${tamanos.relacionada.unidades} unidades, ` +
       `aparte ${tamanos.aparte.personas} y ${tamanos.aparte.unidades}`,
   );
-  if (medido !== null) {
-    const s = constantesSugeridas(medido, tamanos.relacionada, constantesActuales());
-    console.log(
-      `ver al lado, constantes sugeridas (50 % sobre ${(medido / 2 ** 20).toFixed(1)} MB): ` +
-        `BASE_LADO = ${s.BASE_LADO}, POR_PERSONA = ${s.POR_PERSONA}, POR_UNIDAD = ${s.POR_UNIDAD}`,
-    );
-  }
+  // el tamaño de lo que se midió: el promedio de las que se vieron al lado
+  /** @param {"personas" | "unidades"} k */
+  const promedio = (k) => medidas.reduce((n, m) => n + m[k], 0) / medidas.length;
+  const s =
+    medido === null
+      ? null
+      : constantesSugeridas(
+          medido,
+          { personas: promedio("personas"), unidades: promedio("unidades") },
+          constantesActuales(),
+        );
+  console.log(
+    s
+      ? `ver al lado, constantes sugeridas (50 % sobre ${(Number(medido) / 2 ** 20).toFixed(1)} MB): ` +
+          `BASE_LADO = ${s.BASE_LADO}, POR_PERSONA = ${s.POR_PERSONA}, POR_UNIDAD = ${s.POR_UNIDAD}`
+      : "ver al lado, constantes sugeridas: sin medida útil",
+  );
   const preguntas = tiempos.filter((t) => t.conPregunta).length;
   if (preguntas)
     console.log(
@@ -1714,15 +1755,23 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   /** @param {string} ruta */
   const enRuta = (ruta) =>
     `${HASH_MARCO} === ${JSON.stringify(`#${ruta}`)} && location.hash === ${JSON.stringify(hashPrincipal)}`;
-  const textos = JSON.stringify(EDITAR.map(textoEs));
-  /** @param {string} vista */
-  const sinEditar = async (vista) => {
+  /** @param {string} vista @param {string[]} claves de EDITAR */
+  const sinEditar = async (vista, claves) => {
     /** @type {string[]} */
     const hay = await app.evaluar(
-      `[...(${EN_MARCO}?.querySelectorAll('button, [role="menuitem"]') ?? [])]
-        .flatMap((b) => [b.getAttribute("aria-label"), b.innerText.trim()]).filter((x) => ${textos}.includes(x))`,
+      `[...(${EN_MARCO}?.querySelectorAll('button, select, input, [role="menuitem"]') ?? [])]
+        .flatMap((b) => [b.getAttribute("aria-label"), b.innerText?.trim()])
+        .filter((x) => ${JSON.stringify(claves.map(textoEs))}.includes(x))`,
     );
     comprobar(`lado a lado: ${vista} del iframe no muestra acciones de editar`, !hay.length, hay);
+  };
+  const DIALOGO = `${EN_MARCO}?.querySelector('[role="dialog"][data-state="open"]')`;
+  /** Esc en el iframe, que cierra su diálogo. @param {string} que */
+  const cerrarDialogo = async (que) => {
+    await app.evaluar(
+      `${EN_MARCO}.dispatchEvent(new (${MARCO}.contentWindow.KeyboardEvent)("keydown", { key: "Escape", bubbles: true }))`,
+    );
+    await app.hasta(`!${DIALOGO}`, que);
   };
 
   await irAlLado("/");
@@ -1742,7 +1791,21 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     "lado a lado: en el Árbol del iframe, la flecha elige una tarjeta",
     `Boolean(${EN_MARCO}?.querySelector('.vue-flow__node [aria-pressed="true"]'))`,
   );
-  await sinEditar("el Árbol, con una tarjeta elegida,");
+  await app.hasta(
+    `Boolean(${EN_MARCO}?.querySelector("[data-panel-unidad]"))`,
+    "el panel de la unidad en el iframe",
+  );
+  await sinEditar("el Árbol, con una tarjeta elegida y el Resumen de su unidad,", EDITAR.arbol);
+  // La pestaña Puestos del panel: Reka la activa al presionar el botón.
+  const pestanaPuestos = `[...(${EN_MARCO}?.querySelectorAll('[data-panel-unidad] [role="tab"]') ?? [])].find((x) => x.innerText.startsWith(${JSON.stringify(textoEs("puesto.puestos").split(" (")[0])}))`;
+  await app.evaluar(
+    `${pestanaPuestos}.dispatchEvent(new (${MARCO}.contentWindow.MouseEvent)("mousedown", { bubbles: true, button: 0 }))`,
+  );
+  await app.hasta(
+    `${pestanaPuestos}?.getAttribute("aria-selected") === "true"`,
+    "los Puestos de la unidad en el iframe",
+  );
+  await sinEditar("el panel de la unidad, en Puestos,", EDITAR.arbol);
 
   await irAlLado("/arboles");
   await verQue(
@@ -1750,7 +1813,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `lado a lado: Árboles del iframe muestra «${subarbolDe(o)}»`,
     `${enRuta("/arboles")} && ${EN_MARCO}.body.innerText.includes(${JSON.stringify(subarbolDe(o))})`,
   );
-  await sinEditar("Árboles");
+  await sinEditar("Árboles", EDITAR.arboles);
 
   await irAlLado("/directorio");
   const buscar = `${EN_MARCO}?.querySelector("[data-buscar-directorio]")`;
@@ -1763,7 +1826,17 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `lado a lado: con el foco al lado, «Directorio» del menú lateral navega el iframe, que encuentra a «${personaDe(o)}»; el principal sigue en su vista`,
     `${enRuta("/directorio")} && ${EN_MARCO}.body.innerText.includes(${JSON.stringify(personaDe(o))})`,
   );
-  await sinEditar("el Directorio");
+  // La ficha de esa persona, desde su fila
+  await app.evaluar(
+    `[...${EN_MARCO}.querySelectorAll("tbody tr")].find((f) => f.innerText.includes(${JSON.stringify(personaDe(o))})).querySelector("button").click()`,
+  );
+  await verQue(
+    app,
+    `lado a lado: en el Directorio del iframe, la ficha de «${personaDe(o)}» se abre en solo lectura`,
+    `Boolean(${DIALOGO}?.innerText.includes(${JSON.stringify(textoEs("ficha.descripcionSoloLectura"))}))`,
+  );
+  await sinEditar("la ficha de una persona, desde el Directorio,", EDITAR.ficha);
+  await cerrarDialogo("la ficha cerrada");
   // Un clic de verdad, como una persona: Configuración no se ve al lado.
   await clicEn(app, entradaLateral("/configuracion"), "«Configuración» en el menú lateral");
   await verQue(
@@ -1786,9 +1859,28 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     "lado a lado: Revisión en el iframe",
     `${enRuta("/revision")} && ${enElMarco("h1", textoEs("revision.titulo"))}`,
   );
-  await sinEditar("Revisión");
-  const nuevos = erroresDeConsola().slice(errores);
-  comprobar("lado a lado: sin errores en la consola, de la ventana ni del iframe", !nuevos.length, nuevos);
+  // Un puesto vacante, desde su fila: su diálogo
+  await app.evaluar(
+    `[...${EN_MARCO}.querySelectorAll("details")].find((d) => d.querySelector("summary").innerText.includes(${JSON.stringify(textoEs("revision.vacantes.titulo"))})).querySelector("button").click()`,
+  );
+  await verQue(
+    app,
+    "lado a lado: en Revisión del iframe, una vacante abre el diálogo de su puesto",
+    `Boolean(${DIALOGO})`,
+  );
+  await sinEditar("el diálogo de un puesto, desde Revisión,", EDITAR.puesto);
+  await cerrarDialogo("el diálogo del puesto cerrado");
+  /** Sin errores en la consola desde lo último revisado. @param {string} hasta */
+  const sinErrores = (hasta) => {
+    const nuevos = erroresDeConsola().slice(errores);
+    errores += nuevos.length;
+    comprobar(
+      `lado a lado: sin errores en la consola, de la ventana ni del iframe, ${hasta}`,
+      !nuevos.length,
+      nuevos,
+    );
+  };
+  sinErrores("hasta recorrer sus vistas");
 
   // Quitar de al lado: la pestaña queda en la barra y la copia se suelta.
   const soltada = () =>
@@ -1814,10 +1906,18 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   await clicEn(app, pestana(idLado), "la pestaña de la otra", "right");
   await app.hasta(`Boolean(${entradaDelMenu("pestanas.abrirAlLado")})`, "«Abrir al lado» en su menú");
   await app.evaluar(`${entradaDelMenu("pestanas.abrirAlLado")}.click()`);
-  await verQue(
+  const deNuevo = await esperarAlLado(
     app,
-    "lado a lado: «Abrir al lado» la vuelve a mostrar, en la vista donde quedó",
     `${AL_LADO} === ${JSON.stringify(idLado)} && ${enElMarco("h1", textoEs("revision.titulo"))}`,
+    "«Abrir al lado» por el menú de la pestaña",
+  ).then(
+    () => true,
+    () => false,
+  );
+  comprobar(
+    "lado a lado: «Abrir al lado» la vuelve a mostrar, en la vista donde quedó",
+    deNuevo,
+    deNuevo || (await app.evaluar(ESTADO)),
   );
   await enfocar("principal");
   const activa = await app.evaluar(ACTIVA);
@@ -1833,6 +1933,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
 
   await app.evaluar(`location.hash = "#/bienvenida"`);
   await verInicio(app, "Inicio tras ver al lado");
+  sinErrores("al quitarla, volver a abrirla y cerrarla con Ctrl+W");
   comprobar("lado a lado: la app cierra con código 0", (await app.cerrar()) === 0);
   const despues = archivos();
   comprobar(

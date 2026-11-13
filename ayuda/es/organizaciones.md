@@ -51,13 +51,13 @@ Las personas sin correo, o con un correo que se repite, no se emparejan: cuentan
 
 ## Ver al lado
 
-Puedes ver otra organización en el panel de al lado, junto a la abierta, sin cambiar de organización. Sirve para mirar una mientras trabajas en la otra. Se abre en su árbol, en una pestaña nueva:
+Puedes ver otra organización en el panel de al lado, junto a la abierta, sin cambiar de organización. Sirve para mirar una mientras trabajas en la otra.
 
-- En **Inicio › Abierto recientemente**, abre el menú **⋮** de otra organización y pulsa **Ver al lado**.
-- En la paleta de comandos (`Ctrl+K`), elige **Ver «nombre» al lado**.
-- Con clic derecho sobre una pestaña de otra organización, o con `Mayús` + `F10` si está enfocada, pulsa **Abrir al lado**.
+- En **Inicio › Abierto recientemente**, abre el menú **⋮** de otra organización y pulsa **Ver al lado**. Se abre en su árbol, en una pestaña nueva.
+- En la paleta de comandos (`Ctrl+K`), elige **Ver «nombre» al lado**. También se abre en su árbol, en una pestaña nueva.
+- Con clic derecho sobre una pestaña de otra organización, o con `Mayús` + `F10` si está enfocada, pulsa **Abrir al lado**. Esa pestaña pasa al lado, en su vista.
 
-El encabezado del panel muestra el nombre y el color de esa organización, y **Solo lectura**. Al lado se ven el **Árbol**, **Árboles**, el **Directorio** y **Revisión**; Configuración, Importar/Exportar, Ayuda y Acerca de se abren en el panel principal. Puedes recorrer el árbol, buscar y abrir fichas, pero no cambiar nada: solo se edita la organización abierta.
+El encabezado del panel muestra el nombre y el color de esa organización, y **Solo lectura**. Al lado se ven el **Árbol**, **Árboles**, el **Directorio** y **Revisión**; las demás vistas se abren en el panel principal. Puedes recorrer el árbol, buscar y abrir fichas, pero no cambiar nada: solo se edita la organización abierta.
 
 Lo que ves es una foto tomada al abrirla. BoldoAtlas copia la organización a un archivo temporal y la muestra desde esa copia, así que no cambia mientras está al lado, y la organización misma no se modifica. Hay una sola a la vez: al quitarla de al lado o cerrar su pestaña, la copia se suelta.
 
