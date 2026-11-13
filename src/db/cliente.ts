@@ -1,6 +1,16 @@
 // Único punto de acceso a SQLite desde el frontend (puente Rust en src-tauri/src/comandos.rs).
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as invocar, type InvokeArgs } from "@tauri-apps/api/core";
+import { MODO_LADO } from "@/lado/modo";
+import { filtrarLado } from "@/lado/puente";
 import { BaseCambiada, baseActual, enCambio } from "@/lib/baseActiva";
+
+/** Toda llamada a Rust sale de aquí. En el panel de al lado solo salen las lecturas, con su id; lo demás, `solo_lectura`. */
+const invoke: typeof invocar = MODO_LADO
+  ? <T>(comando: string, args?: InvokeArgs) => {
+      const conLado = filtrarLado(comando, args as Record<string, unknown> | undefined);
+      return conLado ? invocar<T>(comando, conLado) : Promise.reject("solo_lectura");
+    }
+  : invocar;
 
 export interface InfoApp {
   baseId: string;

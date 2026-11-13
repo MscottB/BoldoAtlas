@@ -27,9 +27,20 @@ useTema().aplicar();
 callarAvisosVacios();
 
 /* eslint-disable vue/one-component-per-file -- son dos raíces alternativas de createApp, no dos componentes */
+const pantallaDeFallo = (e: unknown) => {
+  const info = {
+    baseId: "",
+    dirDatos: "",
+    rutaBd: "",
+    portable: false,
+    versionEsquema: 0,
+    error: String(e),
+  };
+  createApp(PantallaError, { info }).use(i18n).mount("#app");
+};
 // En el iframe del panel de al lado, otra organización en solo lectura: arranca aparte (src/lado/arranque.ts).
 // Si Rust no pudo abrir la base (o ni siquiera responde), se muestra el motivo en vez de una ventana en blanco.
-if (MODO_LADO) void import("./lado/arranque").then((m) => m.arrancar());
+if (MODO_LADO) void import("./lado/arranque").then((m) => m.arrancar(), pantallaDeFallo);
 else
   infoApp()
     .then(async (info) => {
@@ -68,14 +79,4 @@ else
       // Desde aquí, cerrar la ventana sigue la opción «Al cerrar la ventana»; si la app no llegó hasta aquí, se cierra sin más.
       void conectarCierre();
     })
-    .catch((e: unknown) => {
-      const info = {
-        baseId: "",
-        dirDatos: "",
-        rutaBd: "",
-        portable: false,
-        versionEsquema: 0,
-        error: String(e),
-      };
-      createApp(PantallaError, { info }).use(i18n).mount("#app");
-    });
+    .catch(pantallaDeFallo);
