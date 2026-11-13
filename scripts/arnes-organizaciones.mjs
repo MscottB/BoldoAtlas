@@ -329,14 +329,20 @@ function ponerMeta(c, id, nombre) {
   if (nombre) poner.run("org_nombre", nombre);
 }
 
-/** Nombre y sha256 de cada archivo. @param {string} carpeta */
-const huellas = (carpeta) =>
+/**
+ * Nombre y sha256 de cada archivo. Una carpeta (p. ej. `respaldos/`, que crea abrirla) no se lee: queda como «carpeta», y
+ * para una organización que no debía cambiar cuenta como algo nuevo a su lado.
+ * @param {string} carpeta @returns {Record<string, string>}
+ */
+export const huellas = (carpeta) =>
   Object.fromEntries(
-    readdirSync(carpeta).map((n) => [
-      n,
-      createHash("sha256")
-        .update(readFileSync(join(carpeta, n)))
-        .digest("hex"),
+    readdirSync(carpeta, { withFileTypes: true }).map((e) => [
+      e.name,
+      e.isDirectory()
+        ? "carpeta"
+        : createHash("sha256")
+            .update(readFileSync(join(carpeta, e.name)))
+            .digest("hex"),
     ]),
   );
 
@@ -1608,12 +1614,9 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   const tamanos = { relacionada: await marcarOtra(relacionada), aparte: await marcarOtra(aparte) };
   // El archivo de cada una y lo que hay a su lado, con su fecha. La aparte se mira después de cerrar la app; la
   // relacionada, justo antes de abrirla en el principal (desde ahí su archivo cambia con razón).
-  const archivos = () =>
-    [relacionada, aparte].map((o) => ({
-      archivos: huellas(dirname(o.ruta)),
-      mtime: statSync(o.ruta).mtimeMs,
-    }));
-  const antes = archivos();
+  /** @param {Otra} o */
+  const huellaDe = (o) => ({ archivos: huellas(dirname(o.ruta)), mtime: statSync(o.ruta).mtimeMs });
+  const antes = { relacionada: huellaDe(relacionada), aparte: huellaDe(aparte) };
   const temporales = () => readdirSync(datos).filter((n) => n.startsWith("boldo-lado-"));
 
   const app = await abrirApp(exe);
@@ -1981,11 +1984,11 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   await verAlLadoPorPaleta(app, relacionada, vistas + 2);
   /** @type {string} */
   const segunda = await app.evaluar(AL_LADO);
-  const [relacionadaAntes] = archivos();
+  const relacionadaAntes = huellaDe(relacionada);
   comprobar(
     "lado a lado: mientras la relacionada estuvo al lado, su archivo no cambió (mismos bytes y fecha, nada nuevo a su lado)",
-    JSON.stringify(relacionadaAntes) === JSON.stringify(antes[0]),
-    { antes: antes[0], ahora: relacionadaAntes },
+    JSON.stringify(relacionadaAntes) === JSON.stringify(antes.relacionada),
+    { antes: antes.relacionada, ahora: relacionadaAntes },
   );
   // Con el foco en el principal: con el foco al lado, el clic en una pestaña la lleva al lado.
   await enfocar("principal");
@@ -2003,11 +2006,12 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   await verInicio(app, "Inicio tras ver al lado");
   sinErrores("al quitarla, volver a abrirla, cerrarla con Ctrl+W y abrir en el principal la de al lado");
   comprobar("lado a lado: la app cierra con código 0", (await app.cerrar()) === 0);
-  const despues = archivos();
+  // solo la aparte: la relacionada quedó abierta, y su carpeta cambia con razón (respaldos, bloqueo)
+  const despues = huellaDe(aparte);
   comprobar(
     "lado a lado: el archivo de la aparte no cambió (mismos bytes y fecha, nada nuevo a su lado)",
-    JSON.stringify(despues[1]) === JSON.stringify(antes[1]),
-    { antes: antes[1], despues: despues[1] },
+    JSON.stringify(despues) === JSON.stringify(antes.aparte),
+    { antes: antes.aparte, despues },
   );
   console.log(`lado a lado: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
 }

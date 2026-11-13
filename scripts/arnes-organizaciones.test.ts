@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   PREFERENCIAS_VIEJAS,
@@ -8,6 +11,7 @@ import {
   constantesActuales,
   constantesSugeridas,
   etiquetaPaleta,
+  huellas,
   eventosTecla,
   lineaMedida,
   mediana,
@@ -290,6 +294,25 @@ describe("eventosTecla", () => {
 
   it("una tecla sin código lanza", () => {
     expect(() => eventosTecla("Hyper")).toThrow("Hyper");
+  });
+});
+
+describe("huellas", () => {
+  it("cada archivo con su sha256; una carpeta al lado se anota como tal, sin leerla", () => {
+    const carpeta = mkdtempSync(join(tmpdir(), "boldo-huellas-"));
+    try {
+      writeFileSync(join(carpeta, "boldo.db"), "abc");
+      const antes = huellas(carpeta);
+      expect(antes).toEqual({
+        "boldo.db": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      });
+      mkdirSync(join(carpeta, "respaldos"));
+      const despues = huellas(carpeta);
+      expect(despues).toEqual({ ...antes, respaldos: "carpeta" });
+      expect(JSON.stringify(despues)).not.toBe(JSON.stringify(antes));
+    } finally {
+      rmSync(carpeta, { recursive: true, force: true });
+    }
   });
 });
 
