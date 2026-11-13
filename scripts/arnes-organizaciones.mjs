@@ -993,6 +993,7 @@ async function capturarRevision(app, carpeta) {
     // las filas virtuales se dibujan tras medir su lista: dos cuadros
     const { x, y } =
       await app.evaluar(`new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      scrollTo(0, 0);
       const r = ${seccion}.getBoundingClientRect();
       ok({ x: r.left + scrollX, y: r.top + scrollY });
     })))`);
@@ -1978,7 +1979,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
       `!${motivo} && ${CONTADOR} === ${pendientes - 1} && Boolean(${marcados}?.textContent.includes(${JSON.stringify(MOTIVO)}))`,
     );
     // Marcados empieza plegado: se abre para que su fila se vea
-    await app.evaluar(`${marcados} && (${marcados}.open = true)`);
+    await app.evaluar(`(() => { const d = ${marcados}; if (d) d.open = true; })()`);
     const volver = `[...(${marcados}?.querySelectorAll("li") ?? [])].find((f) => f.textContent.includes(${JSON.stringify(MOTIVO)}))?.querySelector('[data-accion="volver"]')`;
     await app.hasta(
       `${volver}?.getBoundingClientRect().width > 0`,
@@ -1996,7 +1997,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
       `Boolean(document.activeElement) && document.activeElement !== document.body`,
     );
   }
-  sinErrores("al marcar «Así está bien» y volver a avisar en Revisión del principal");
+  sinErrores("hasta recorrer sus vistas y Revisión del principal");
   await app.evaluar(`location.hash = ${JSON.stringify(hashPrincipal)}`);
   await app.hasta(
     `location.hash === ${JSON.stringify(hashPrincipal)} && ${tarjetas("principal")} > 0`,
@@ -2028,7 +2029,7 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
   );
   await sinEditar("el diálogo de un puesto, desde Revisión,", EDITAR.puesto);
   await cerrarDialogo("el diálogo del puesto cerrado");
-  sinErrores("hasta recorrer sus vistas");
+  sinErrores("en Revisión del iframe y el diálogo de su puesto");
 
   // Quitar de al lado: la pestaña queda en la barra y la copia se suelta.
   const soltada = () =>
