@@ -94,6 +94,9 @@ const accion = (id: Accion["id"], hacer: () => unknown, etiqueta = t(`revision.a
 });
 const permitidas = (acciones: Accion[]) =>
   org.soloLectura ? acciones.filter((a) => !EDITAN.has(a.id)) : acciones;
+// En solo lectura «Elegir jefatura» y «Asignar titular» solo llevan a la unidad o al puesto: se nombran por eso.
+const soloVer = (clave: "verUnidad" | "verPuesto") =>
+  org.soloLectura ? t(`revision.acciones.${clave}`) : undefined;
 const abrirFicha = (id: string) => accion("abrir", () => ficha.intentarAbrir(id));
 
 function describir(av: Aviso): { texto: string; detalle?: string } {
@@ -139,7 +142,9 @@ function filas(av: Aviso): Fila[] {
     case "sinJefatura": {
       const id = av.fila.unidadId;
       // La unidad se abre en el árbol completo, seleccionada y centrada, con su panel para elegir la jefatura.
-      return [fila(accion("jefatura", () => router.push({ path: "/", query: { ver: id } })))];
+      return [
+        fila(accion("jefatura", () => router.push({ path: "/", query: { ver: id } }), soloVer("verUnidad"))),
+      ];
     }
     case "vacias": {
       const id = av.fila.unidadId;
@@ -148,7 +153,7 @@ function filas(av: Aviso): Fila[] {
     case "vacantesLargas":
     case "vacantesRecientes": {
       const id = av.fila.puestoId;
-      return [fila(accion("asignar", () => puesto.abrir(id)))];
+      return [fila(accion("asignar", () => puesto.abrir(id), soloVer("verPuesto")))];
     }
     case "sinPuesto":
       return [fila(abrirFicha(av.fila.personaId))];

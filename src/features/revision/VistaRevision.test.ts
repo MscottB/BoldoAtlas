@@ -98,5 +98,10 @@ describe("Revisión de datos", () => {
     for (const id of EDICION) expect(s).not.toContain(`data-accion="${id}"`);
     expect(s).toContain('data-accion="jefatura"');
     expect(s).toContain('data-accion="asignar"');
+    // Solo abren el puesto o la unidad: se nombran por lo que hacen.
+    expect(s).not.toContain(t("revision.acciones.asignar"));
+    expect(s).not.toContain(t("revision.acciones.jefatura"));
+    expect(s).toContain(`aria-label="${t("revision.acciones.verPuesto")}: `);
+    expect(s).toContain(`aria-label="${t("revision.acciones.verUnidad")}: Raíz"`);
   });
 });
