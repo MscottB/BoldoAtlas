@@ -19,3 +19,15 @@ export function usePanel(): InfoPanel {
     }
   );
 }
+
+/** Atributos de cada panel de la vista dividida: con un foco o un clic dentro, pasa a ser el panel con foco y se marca. */
+export function propsPanel(p: Panel) {
+  const pestanas = usePestanas();
+  const enfocar = () => pestanas.enfocarPanel(p);
+  return {
+    "data-panel": p,
+    "aria-current": pestanas.lado && pestanas.conFoco === p ? ("true" as const) : undefined,
+    onFocusin: enfocar,
+    onPointerdown: enfocar,
+  };
+}

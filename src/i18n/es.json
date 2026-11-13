@@ -874,7 +874,11 @@
     "ultima": "La última pestaña no se cierra.",
     "noAbre": "Eso no se puede abrir en una pestaña.",
     "movida": "{titulo}: posición {posicion} de {total}",
-    "ayudaTeclado": "Enter abre la pestaña, Supr la cierra, Control+Mayús+flechas la mueven."
+    "ayudaTeclado": "Enter abre la pestaña, Supr la cierra, Control+Mayús+flechas la mueven.",
+    "ladoALado": "Lado a lado",
+    "unaSobreOtra": "Una sobre otra",
+    "cerrarDivision": "Cerrar la vista dividida",
+    "divisor": "Tamaño de los paneles"
   },
   "bienvenida": {
     "titulo": "Te damos la bienvenida a BoldoAtlas",

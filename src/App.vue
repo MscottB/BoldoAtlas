@@ -41,7 +41,7 @@ import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { ponerTitulo } from "@/app/ventana";
 import BarraPestanas from "@/features/pestanas/BarraPestanas.vue";
-import PestanaSinAbrir from "@/features/pestanas/PestanaSinAbrir.vue";
+import VistaDividida from "@/features/pestanas/VistaDividida.vue";
 import {
   ID_AREA,
   abrirEnPestanaNueva,
@@ -243,7 +243,6 @@ function escEnBarra(e: KeyboardEvent) {
       <div class="flex min-w-0 flex-1 flex-col">
         <BarraSuperior @buscar="paletaAbierta = true" />
         <BarraPestanas v-if="conPestanas" />
-        <!-- La key es la pestaña: cambiar de pestaña monta su vista de cero (solo la activa está montada). -->
         <main
           :id="ID_AREA"
           tabindex="-1"
@@ -251,19 +250,7 @@ function escEnBarra(e: KeyboardEvent) {
           :role="conPestanas ? 'tabpanel' : undefined"
           :aria-labelledby="conPestanas ? idPestana(pestanas.activa) : undefined"
         >
-          <!-- Sin la vista mientras se cambia: se desmonta y guarda su estado antes de que la base cambie. -->
-          <p v-if="organizaciones.cambiando" role="status" class="p-6 text-sm text-muted-foreground">
-            {{ t("organizaciones.cambiando") }}
-          </p>
-          <PestanaSinAbrir
-            v-else-if="sinAbrirActiva"
-            :id="pestanas.activa"
-            :key="pestanas.activa"
-            :motivo="sinAbrirActiva"
-          />
-          <RouterView v-else v-slot="{ Component: vista }">
-            <component :is="vista" :key="pestanas.activa" />
-          </RouterView>
+          <VistaDividida />
         </main>
       </div>
     </div>

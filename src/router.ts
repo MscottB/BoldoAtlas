@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import VistaArbol from "@/features/arbol/VistaArbol.vue";
 
 declare module "vue-router" {
@@ -8,58 +8,61 @@ declare module "vue-router" {
   }
 }
 
+/** Las rutas de la app: las usa el router principal y el de cada panel de al lado. */
+export const rutas: RouteRecordRaw[] = [
+  { path: "/", name: "arbol", component: VistaArbol },
+  {
+    path: "/arboles",
+    name: "arboles",
+    component: () => import("@/features/arboles/VistaArboles.vue"),
+  },
+  {
+    path: "/directorio",
+    name: "directorio",
+    component: () => import("@/features/directorio/VistaDirectorio.vue"),
+  },
+  {
+    path: "/revision",
+    name: "revision",
+    component: () => import("@/features/revision/VistaRevision.vue"),
+  },
+  {
+    path: "/importar-exportar",
+    name: "importarExportar",
+    component: () => import("@/features/intercambio/VistaIntercambio.vue"),
+  },
+  {
+    path: "/comparar",
+    name: "comparar",
+    component: () => import("@/features/comparar/VistaComparar.vue"),
+  },
+  {
+    path: "/configuracion",
+    name: "configuracion",
+    component: () => import("@/vistas/VistaConfiguracion.vue"),
+  },
+  {
+    path: "/configuracion/mantenedores",
+    name: "mantenedores",
+    component: () => import("@/vistas/VistaMantenedores.vue"),
+  },
+  {
+    path: "/ayuda/:pagina?",
+    name: "ayuda",
+    component: () => import("@/vistas/VistaAyuda.vue"),
+  },
+  { path: "/acerca", name: "acerca", component: () => import("@/vistas/VistaAcerca.vue") },
+  {
+    path: "/bienvenida",
+    name: "bienvenida",
+    component: () => import("@/vistas/VistaBienvenida.vue"),
+    meta: { sinMarco: true },
+  },
+];
+
 export const router = createRouter({
   history: createWebHashHistory(),
   // Solo para los enlaces con ancla (p. ej. Configuración › Respaldos); el resto conserva el comportamiento por defecto.
   scrollBehavior: (to) => (to.hash ? { el: to.hash, behavior: "smooth" } : undefined),
-  routes: [
-    { path: "/", name: "arbol", component: VistaArbol },
-    {
-      path: "/arboles",
-      name: "arboles",
-      component: () => import("@/features/arboles/VistaArboles.vue"),
-    },
-    {
-      path: "/directorio",
-      name: "directorio",
-      component: () => import("@/features/directorio/VistaDirectorio.vue"),
-    },
-    {
-      path: "/revision",
-      name: "revision",
-      component: () => import("@/features/revision/VistaRevision.vue"),
-    },
-    {
-      path: "/importar-exportar",
-      name: "importarExportar",
-      component: () => import("@/features/intercambio/VistaIntercambio.vue"),
-    },
-    {
-      path: "/comparar",
-      name: "comparar",
-      component: () => import("@/features/comparar/VistaComparar.vue"),
-    },
-    {
-      path: "/configuracion",
-      name: "configuracion",
-      component: () => import("@/vistas/VistaConfiguracion.vue"),
-    },
-    {
-      path: "/configuracion/mantenedores",
-      name: "mantenedores",
-      component: () => import("@/vistas/VistaMantenedores.vue"),
-    },
-    {
-      path: "/ayuda/:pagina?",
-      name: "ayuda",
-      component: () => import("@/vistas/VistaAyuda.vue"),
-    },
-    { path: "/acerca", name: "acerca", component: () => import("@/vistas/VistaAcerca.vue") },
-    {
-      path: "/bienvenida",
-      name: "bienvenida",
-      component: () => import("@/vistas/VistaBienvenida.vue"),
-      meta: { sinMarco: true },
-    },
-  ],
+  routes: rutas,
 });
