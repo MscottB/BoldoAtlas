@@ -80,7 +80,7 @@ const tam = computed(() => {
 });
 
 // Con una fecha elegida el organigrama es de solo lectura: no se renombra ni se agregan subunidades.
-const soloLectura = computed(() => !!org.fechaVista);
+const soloLectura = computed(() => org.soloLectura);
 const seleccionada = computed(() => seleccionadas.value.has(props.id));
 // Los botones de la tarjeta son de la selección simple; con varias, mandan la barra y sus atajos.
 const sola = computed(() => seleccionada.value && seleccionadas.value.size === 1);

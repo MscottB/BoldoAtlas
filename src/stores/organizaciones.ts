@@ -28,6 +28,7 @@ import {
 } from "@/features/respaldos/respaldos";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
+import { MODO_LADO } from "@/lado/modo";
 import {
   alSoltarDatos,
   BaseCambiada,
@@ -102,8 +103,8 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   watch(
     () => org.org.nombre,
     () => {
-      // un cambio ya deja la lista al día: aquí solo un nombre editado
-      if (cambiando.value) return;
+      // un cambio ya deja la lista al día: aquí solo un nombre editado. En el iframe de al lado solo se carga, y no se escribe.
+      if (cambiando.value || MODO_LADO) return;
       sincronizarOrganizacion()
         .then(cargarLista)
         .catch((e: unknown) => {

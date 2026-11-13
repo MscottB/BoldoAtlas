@@ -1,3 +1,4 @@
+import { MODO_LADO } from "@/lado/modo";
 import { baseActual } from "./baseActiva";
 
 const PREFIJO = "boldo:";
@@ -12,7 +13,9 @@ export function leerPreferencia<T>(clave: string, porDefecto: T): T {
   }
 }
 
+// El panel de al lado muestra otra organización como la dejó quien la usa: lee sus preferencias, no las escribe.
 export function guardarPreferencia(clave: string, valor: unknown): void {
+  if (MODO_LADO) return;
   try {
     localStorage.setItem(PREFIJO + clave, JSON.stringify(valor));
   } catch {
@@ -44,7 +47,7 @@ const POR_ORGANIZACION = /^(vista|vista:[^:]+|directorio|directorio:columnas|per
 
 /** Quita las preferencias de una organización que ya no existe. Las de las demás, y las de cada PC, quedan. */
 export function borrarPreferenciasOrg(id: string): void {
-  if (!id) return;
+  if (!id || MODO_LADO) return;
   const cola = `:${id}`;
   try {
     const claves = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));

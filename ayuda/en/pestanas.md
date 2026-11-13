@@ -63,4 +63,6 @@ A tab is not shown in both panels: if you ask one panel for the tab that is in t
 
 The split view is remembered with your tabs: which one is to the side, the orientation and the size of each panel.
 
+You can also view another organization to the side, without switching the open one: see [View side by side](organizaciones.md#view-side-by-side).
+
 **See also:** [Keyboard shortcuts](atajos.md) · [Directory](directorio.md).

@@ -25,6 +25,7 @@ import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
+import { MODO_LADO } from "@/lado/modo";
 import { claseSelect, cn } from "@/lib/utils";
 import {
   FILTROS_PLEGADOS,
@@ -176,7 +177,9 @@ const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipo
       </Tooltip>
     </header>
 
-    <p v-if="sinDatos" class="text-sm text-muted-foreground">{{ t("directorio.vacio") }}</p>
+    <p v-if="sinDatos" class="text-sm text-muted-foreground">{{
+      t(MODO_LADO ? "directorio.vacioLado" : "directorio.vacio")
+    }}</p>
     <template v-else>
       <form
         class="flex flex-wrap items-center gap-2"

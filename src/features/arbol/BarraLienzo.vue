@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
@@ -76,7 +77,8 @@ async function guardarEnArboles() {
   <!-- @container: bajo 62rem de ancho, «Ver en otra fecha» y «Más» se acortan y la búsqueda queda en su mínimo (la fila cabe en la ventana mínima). -->
   <div class="@container border-b">
     <div class="flex flex-wrap items-center gap-2 p-2">
-      <Button size="sm" :disabled="!!org.fechaVista" @click="nueva">
+      <!-- Viendo una fecha, deshabilitado; al lado (otra organización), ni se ofrece. -->
+      <Button v-if="!MODO_LADO" size="sm" :disabled="org.soloLectura" @click="nueva">
         <Plus aria-hidden="true" />
         {{ t("arbol.nuevaUnidad") }}
       </Button>
@@ -116,8 +118,8 @@ async function guardarEnArboles() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-60">
-          <template v-if="aGuardar">
-            <DropdownMenuItem :disabled="guardada || !!org.fechaVista" @select="guardarEnArboles">
+          <template v-if="aGuardar && !MODO_LADO">
+            <DropdownMenuItem :disabled="guardada || org.soloLectura" @select="guardarEnArboles">
               <component :is="guardada ? BookmarkCheck : Bookmark" aria-hidden="true" />
               {{ t(guardada ? "arboles.guardado" : "arboles.guardarEnArboles") }}
             </DropdownMenuItem>

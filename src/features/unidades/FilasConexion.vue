@@ -63,7 +63,7 @@ const oculta = (id: string) => porQueNoSeVe(mostradas.value, colapsados.value, i
         <!-- Solo si abrir la rama la deja a la vista: apagado el interruptor o fuera de la rama enfocada, no serviría. Abrir
              ramas no cambia datos, pero a una fecha el fieldset del panel deshabilita todo: ahí no se ofrece. -->
         <button
-          v-if="!pulsable && oculta(f.otro.id) === 'plegada' && config.relacionesLaterales && !org.fechaVista"
+          v-if="!pulsable && oculta(f.otro.id) === 'plegada' && config.relacionesLaterales && !org.soloLectura"
           type="button"
           class="justify-self-start rounded text-xs font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-ring"
           :aria-label="t('unidad.verConexion', { nombre: f.otro.nombre })"

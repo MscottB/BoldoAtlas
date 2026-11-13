@@ -1,12 +1,19 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   PREFERENCIAS_VIEJAS,
   VISTA_DE_LA_ORGANIZACION,
   VISTA_GENERAL,
+  EDITAR,
   centroDelClic,
-  etiquetaComparar,
+  constantesActuales,
+  constantesSugeridas,
+  etiquetaPaleta,
+  huellas,
   eventosTecla,
-  lineaDivision,
+  lineaMedida,
   mediana,
   problemasDeActualizacion,
   problemasDeMigracion,
@@ -150,11 +157,41 @@ describe("mediana", () => {
   });
 });
 
-describe("etiquetaComparar", () => {
+describe("etiquetaPaleta", () => {
   it("arma la de la paleta desde es.json, con el nombre y sin la llave", () => {
-    const etiqueta = etiquetaComparar("Aparte del arnés");
-    expect(etiqueta).toContain("Aparte del arnés");
-    expect(etiqueta).not.toContain("{");
+    for (const accion of ["comparar", "verAlLado"]) {
+      const etiqueta = etiquetaPaleta(accion, "Aparte del arnés");
+      expect(etiqueta).toContain("Aparte del arnés");
+      expect(etiqueta).not.toContain("{");
+    }
+  });
+
+  it("una acción sin {nombre} lanza", () => {
+    expect(() => etiquetaPaleta("ayuda", "x")).toThrow("{nombre}");
+  });
+});
+
+describe("EDITAR", () => {
+  it("cada acción de editar tiene su texto en es.json, sin llaves que rellenar", () => {
+    for (const clave of Object.values(EDITAR).flat()) expect(textoEs(clave), clave).not.toContain("{");
+  });
+
+  it("cada superficie que el recorrido abre tiene las suyas: el panel de la unidad, la ficha y el puesto", () => {
+    expect(Object.keys(EDITAR).sort()).toEqual(["arbol", "arboles", "ficha", "puesto"]);
+    for (const clave of [
+      "unidad.eliminar",
+      "unidad.quitarMarca",
+      "unidad.agregarEtiqueta",
+      "puesto.nuevoPuesto",
+    ])
+      expect(EDITAR.arbol).toContain(clave);
+    // el menú contextual de la tarjeta elegida, que el recorrido abre con Mayús+F10
+    for (const clave of ["arbol.menu.renombrar", "arbol.menu.eliminar"])
+      expect(EDITAR.arbol).toContain(clave);
+    expect(EDITAR.ficha).toContain("ficha.eliminar");
+    expect(EDITAR.puesto).toContain("puesto.eliminar");
+    // la vista guardada solo está en un menú que el recorrido no abre
+    expect(Object.values(EDITAR).flat()).not.toContain("arbol.vistas.guardar");
   });
 });
 
@@ -169,18 +206,67 @@ describe("textoEs", () => {
   });
 });
 
-describe("lineaDivision", () => {
+describe("lineaMedida", () => {
   const MB = 2 ** 20;
 
   it("la mediana de las aperturas y lo que creció la memoria, en MB con un decimal", () => {
-    expect(lineaDivision([1500.4, 900, 1200], 100 * MB, 130.46 * MB)).toBe(
+    expect(lineaMedida("dividir", [1500.4, 900, 1200], 100 * MB, 130.46 * MB)).toBe(
       "dividir: 1200 ms, memoria: +30.5 MB",
     );
+    expect(lineaMedida("ver al lado", [2000], 0, 150 * MB)).toBe("ver al lado: 2000 ms, memoria: +150.0 MB");
   });
 
   it("si la memoria bajó lleva el signo menos, y sin performance.memory lo dice", () => {
-    expect(lineaDivision([800], 50 * MB, 48 * MB)).toBe("dividir: 800 ms, memoria: -2.0 MB");
-    expect(lineaDivision([800, 1000], null, null)).toBe("dividir: 900 ms, memoria: sin medir");
+    expect(lineaMedida("dividir", [800], 50 * MB, 48 * MB)).toBe("dividir: 800 ms, memoria: -2.0 MB");
+    expect(lineaMedida("dividir", [800, 1000], null, null)).toBe("dividir: 900 ms, memoria: sin medir");
+  });
+});
+
+describe("constantesActuales", () => {
+  it("lee de memoriaLado.ts las tres constantes, en bytes", () => {
+    const { BASE_LADO, POR_PERSONA, POR_UNIDAD } = constantesActuales();
+    for (const n of [BASE_LADO, POR_PERSONA, POR_UNIDAD]) expect(n).toBeGreaterThan(0);
+    expect(BASE_LADO % 2 ** 20).toBe(0);
+  });
+
+  it("si una no se escribe <n> * 2 ** <k>, lanza en vez de sugerir sobre otra cosa", () => {
+    expect(() => constantesActuales("export const BASE_LADO = 5;")).toThrow("BASE_LADO");
+  });
+});
+
+describe("constantesSugeridas", () => {
+  const MB = 2 ** 20;
+  const KB = 2 ** 10;
+  const actuales = { BASE_LADO: 120 * MB, POR_PERSONA: 8 * KB, POR_UNIDAD: 4 * KB };
+  const grande = { personas: 10_000, unidades: 2_000 };
+  const estimado = (c: typeof actuales) => c.BASE_LADO + 10_000 * c.POR_PERSONA + 2_000 * c.POR_UNIDAD;
+
+  it("escala las de ahora para que la grande estime el 50 % sobre lo medido", () => {
+    expect(constantesSugeridas((estimado(actuales) * 2) / 3, grande, actuales)).toEqual({
+      BASE_LADO: "120 * 2 ** 20",
+      POR_PERSONA: "8 * 2 ** 10",
+      POR_UNIDAD: "4 * 2 ** 10",
+    });
+  });
+
+  it("sin una medida útil (cero o menos), no sugiere nada", () => {
+    expect(constantesSugeridas(0, grande, actuales)).toBeNull();
+    expect(constantesSugeridas(-3 * MB, grande, actuales)).toBeNull();
+  });
+
+  it("redondea hacia arriba: lo sugerido nunca queda bajo el 50 % de margen", () => {
+    const medido = 37.3 * MB;
+    const s = constantesSugeridas(medido, grande, actuales)!;
+    const enBytes = (x: string) => {
+      const [n, k] = x.split(" * 2 ** ").map(Number);
+      return n! * 2 ** k!;
+    };
+    const sugeridas = {
+      BASE_LADO: enBytes(s.BASE_LADO),
+      POR_PERSONA: enBytes(s.POR_PERSONA),
+      POR_UNIDAD: enBytes(s.POR_UNIDAD),
+    };
+    expect(estimado(sugeridas)).toBeGreaterThanOrEqual(1.5 * medido);
   });
 });
 
@@ -196,8 +282,37 @@ describe("eventosTecla", () => {
     ]);
   });
 
+  it("con Ctrl, una letra lleva su código de tecla y el modificador 2", () => {
+    expect(eventosTecla("w", false, true)[0]).toEqual({
+      type: "rawKeyDown",
+      key: "w",
+      code: "KeyW",
+      windowsVirtualKeyCode: 87,
+      modifiers: 2,
+    });
+  });
+
   it("una tecla sin código lanza", () => {
     expect(() => eventosTecla("Hyper")).toThrow("Hyper");
+  });
+});
+
+describe("huellas", () => {
+  it("cada archivo con su sha256; una carpeta al lado se anota como tal, sin leerla", () => {
+    const carpeta = mkdtempSync(join(tmpdir(), "boldo-huellas-"));
+    try {
+      writeFileSync(join(carpeta, "boldo.db"), "abc");
+      const antes = huellas(carpeta);
+      expect(antes).toEqual({
+        "boldo.db": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      });
+      mkdirSync(join(carpeta, "respaldos"));
+      const despues = huellas(carpeta);
+      expect(despues).toEqual({ ...antes, respaldos: "carpeta" });
+      expect(JSON.stringify(despues)).not.toBe(JSON.stringify(antes));
+    } finally {
+      rmSync(carpeta, { recursive: true, force: true });
+    }
   });
 });
 
@@ -207,5 +322,11 @@ describe("centroDelClic", () => {
     expect(centroDelClic(null)).toBeNull();
     expect(centroDelClic({ left: 0, top: 0, width: 0, height: 0 })).toBeNull();
     expect(centroDelClic({ left: 5, top: 5, width: 30, height: 0 })).toBeNull();
+  });
+
+  it("si en su centro hay otra cosa (fuera de la barra desplazada, o tapado), null: el clic no lo alcanzaría", () => {
+    const caja = { left: 10, top: 20, width: 100, height: 40 };
+    expect(centroDelClic({ ...caja, alcanza: false })).toBeNull();
+    expect(centroDelClic({ ...caja, alcanza: true })).toEqual({ x: 60, y: 40 });
   });
 });

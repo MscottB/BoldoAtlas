@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { CONTEXTO_LIENZO } from "@/features/arbol/contexto";
 import { useLienzo } from "@/features/arbol/useLienzo";
 import { useVista } from "@/features/arbol/useVista";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import { conexionOculta, excluidasParaConexion, ultimoEnviado } from "./panel";
 import EliminarConexion from "./EliminarConexion.vue";
@@ -25,7 +26,7 @@ const { colapsados, verConexion } = useLienzo();
 const { config } = useVista();
 const { mostradas } = inject(CONTEXTO_LIENZO)!;
 const uid = useId();
-const soloLectura = computed(() => !!org.fechaVista);
+const soloLectura = computed(() => org.soloLectura);
 
 const conexion = computed(() => org.conexiones.find((c) => c.id === props.id));
 const nombre = (id: string) => org.enFecha.porId.get(id)?.nombre ?? org.porId.get(id)?.nombre ?? "";
@@ -103,7 +104,9 @@ const quitando = ref<string | null>(null);
       <p class="text-sm" :class="!conexion.etiqueta && 'text-muted-foreground'">
         {{ conexion.etiqueta || t("conexion.sinDescripcion") }}
       </p>
-      <p class="text-xs text-muted-foreground">{{ t("arbol.fecha.panelSoloLectura") }}</p>
+      <p v-if="org.fechaVista" class="text-xs text-muted-foreground">
+        {{ t("arbol.fecha.panelSoloLectura") }}
+      </p>
     </template>
 
     <template v-else>
@@ -131,7 +134,14 @@ const quitando = ref<string | null>(null);
     </template>
 
     <div class="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="sm" :disabled="soloLectura" @click="invertir">
+      <Button
+        v-if="!MODO_LADO"
+        type="button"
+        variant="outline"
+        size="sm"
+        :disabled="soloLectura"
+        @click="invertir"
+      >
         <ArrowLeftRight aria-hidden="true" />
         {{ t("conexion.invertir") }}
       </Button>

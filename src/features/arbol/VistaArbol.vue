@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type { Etiqueta, Unidad } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   dotacionPorUnidad,
@@ -799,7 +800,7 @@ async function mover() {
 function alTerminarRecuadro() {
   const ids = getSelectedNodes.value.filter((n) => n.type === "unidad").map((n) => n.id);
   removeSelectedElements();
-  if (!org.fechaVista) sumarVarias(ids);
+  if (!org.soloLectura) sumarVarias(ids);
 }
 
 // Panel de la unidad seleccionada. Al cerrarlo con el teclado o su botón, el foco vuelve a la tarjeta.
@@ -907,8 +908,8 @@ function verCompleto() {
             :nodes="nodos"
             :edges="aristas"
             :min-zoom="0.05"
-            :nodes-draggable="!org.fechaVista"
-            :elements-selectable="!org.fechaVista"
+            :nodes-draggable="!org.soloLectura"
+            :elements-selectable="!org.soloLectura"
             :select-nodes-on-drag="false"
             :nodes-connectable="false"
             :nodes-focusable="false"
@@ -948,7 +949,7 @@ function verCompleto() {
         </MenuLienzo>
         <PreviaMover :previa="previa" />
         <div
-          v-if="seleccionadas.size >= 2 && !org.fechaVista && !arrastrando"
+          v-if="seleccionadas.size >= 2 && !org.soloLectura && !arrastrando"
           class="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-center"
         >
           <BarraSeleccion class="pointer-events-auto" />
@@ -968,7 +969,9 @@ function verCompleto() {
         >
           <Network class="size-10 text-muted-foreground" aria-hidden="true" />
           <h1 class="text-lg font-semibold">{{ t("arbol.vacioTitulo") }}</h1>
-          <p class="max-w-sm text-sm text-muted-foreground">{{ t("arbol.vacioTexto") }}</p>
+          <p class="max-w-sm text-sm text-muted-foreground">{{
+            t(MODO_LADO ? "arbol.vacioTextoLado" : "arbol.vacioTexto")
+          }}</p>
         </div>
       </div>
 

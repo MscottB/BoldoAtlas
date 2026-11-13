@@ -29,6 +29,27 @@ export function usePanel(): InfoPanel {
 /** El panel donde se montó quien llama; fuera de los paneles, el principal. Para el estado del lienzo de cada panel. */
 export const panelPropio = (): Panel => (hasInjectionContext() && inject(PANEL, null)?.panel) || "principal";
 
+/**
+ * Lo que usa los datos de la abierta (una unidad, una persona o una vacante de la paleta) no actúa en el panel de otra
+ * organización: con el foco ahí, pasa al principal.
+ */
+export function alPanelDeLaAbierta(): void {
+  const pestanas = usePestanas();
+  if (pestanas.otraConFoco()) pestanas.enfocarPanel("principal");
+}
+
+/**
+ * Lleva el foco del teclado al panel `p`. Si muestra otra organización, adentro del iframe: el panel de la ventana no
+ * tiene nada que leer.
+ */
+export function enfocarElPanel(p: Panel): void {
+  const el = document.querySelector<HTMLElement>(`[data-panel="${p}"]`);
+  const marco = el?.querySelector("iframe");
+  if (!marco) return void el?.focus();
+  marco.focus();
+  marco.contentWindow?.focus();
+}
+
 /** El elemento del panel `p`, para buscar dentro de él lo que puede estar en los dos; sin él, el documento. */
 export const raizDelPanel = (p: Panel): ParentNode =>
   document.querySelector(`[data-panel="${p}"]`) ?? document;

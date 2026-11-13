@@ -33,6 +33,7 @@ test("la prueba de palabras prohibidas detecta cada una", () => {
 test("ninguna novedad se quita: novedades.json acumula", () => {
   const ids = novedades.map((n) => n.id);
   for (const id of [
+    "ver-al-lado",
     "vista-dividida",
     "varias-organizaciones",
     "zonas",
@@ -118,6 +119,17 @@ test("la vista dividida: «Dividir» abre al lado la misma vista, y la otra se e
   assert.match(n.en.texto, /the same view/);
   assert.doesNotMatch(n.es.texto, /al lado del Directorio/);
   assert.doesNotMatch(n.en.texto, /beside the Directory/);
+});
+
+test("otra organización al lado: se ve sin modificarla, en la sección de Organizaciones", () => {
+  const n = novedades.find((x) => x.id === "ver-al-lado");
+  assert.equal(n.pagina, "organizaciones");
+  assert.equal(n.es.titulo, "Otra organización al lado");
+  assert.equal(n.en.titulo, "Another organization side by side");
+  assert.equal(n.es.ancla, "ver-al-lado");
+  assert.equal(n.en.ancla, "view-side-by-side");
+  assert.match(n.es.texto, /sin modificarla/);
+  assert.match(n.en.texto, /without changing it/);
 });
 
 test("la imagen, si hay, existe en la ayuda de los dos idiomas y lleva texto alternativo", () => {

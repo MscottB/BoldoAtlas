@@ -5,6 +5,7 @@ mod db;
 mod fotos;
 mod inicio;
 mod intercambio;
+mod lado;
 mod organizaciones;
 mod respaldos;
 mod rutas;
@@ -44,6 +45,7 @@ pub fn run() {
         .manage(salida::Cierre::default())
         .manage(intercambio::Sesiones::default())
         .manage(comparar_organizaciones::Comparaciones::default())
+        .manage(lado::Lado::default())
         .register_asynchronous_uri_scheme_protocol(fotos::ESQUEMA, |ctx, pedido, responder| {
             fotos::atender(ctx.app_handle().clone(), pedido, responder)
         })
@@ -51,11 +53,12 @@ pub fn run() {
             ventana
                 .state::<intercambio::Sesiones>()
                 .al_cargar_pagina(carga.event());
-            // recargar la página suelta la comparación y su temporal, como a las sesiones
+            // recargar la página suelta la comparación, la de al lado y sus temporales, como a las sesiones
             if carga.event() == tauri::webview::PageLoadEvent::Started {
                 ventana
                     .state::<comparar_organizaciones::Comparaciones>()
                     .cerrar();
+                ventana.state::<lado::Lado>().cerrar();
             }
             if carga.event() == tauri::webview::PageLoadEvent::Finished {
                 salida::mostrar_al_arrancar(ventana.app_handle());
@@ -190,6 +193,8 @@ pub fn run() {
             comandos::comparacion_detalle,
             comandos::comparacion_cancelar,
             comandos::comparacion_cerrar,
+            lado::lado_abrir,
+            lado::lado_cerrar,
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
             actualizar::cancelar_actualizacion,
@@ -213,6 +218,7 @@ pub fn run() {
                 app.state::<intercambio::Sesiones>().cancelar_todo();
                 app.state::<comparar_organizaciones::Comparaciones>()
                     .cerrar();
+                app.state::<lado::Lado>().cerrar();
             }
             // el Dock de macOS: abrir la app ya abierta no pasa por la instancia única
             #[cfg(target_os = "macos")]

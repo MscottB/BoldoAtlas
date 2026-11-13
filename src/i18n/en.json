@@ -65,6 +65,7 @@
   "arbol": {
     "vacioTitulo": "There are no units yet",
     "vacioTexto": "Once you add divisions, areas or sub-areas, the org chart will appear here.",
+    "vacioTextoLado": "This organization has no divisions, areas or sub-areas yet.",
     "nuevaUnidad": "New unit",
     "nuevaSubunidad": "New sub-unit",
     "sinTiposActivos": "There are no active unit types.",
@@ -199,6 +200,7 @@
     "vistas": {
       "titulo": "Saved views",
       "sinArbol": "This branch is not saved in Trees. Save it there to have views of its own.",
+      "sinArbolLado": "This branch is not saved in Trees: it has no views of its own.",
       "nombre": "View name",
       "guardar": "Save current view",
       "sinVistas": "There are no saved views in this tree yet.",
@@ -312,6 +314,7 @@
     "ordenarUnidad": "Sort by unit",
     "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",
+    "vacioLado": "There are no positions or people yet.",
     "sinResultados": "No rows match the filters.",
     "filtrosBoton": "Filters",
     "filtrosActivos": "{n} active filter | {n} active filters",
@@ -429,6 +432,7 @@
     "tituloPersona": "Person record",
     "nuevaPersona": "New person",
     "descripcion": "Changes are saved when you leave each field, if they are valid.",
+    "descripcionSoloLectura": "Person from another organization: read only.",
     "nombre": "Name",
     "tipoContrato": "Contract type",
     "sede": "Site",
@@ -740,7 +744,8 @@
       "ayuda": "Help",
       "dividir": "Split the view",
       "abrirOtra": "Open another organization: {nombre}",
-      "comparar": "Compare with “{nombre}”"
+      "comparar": "Compare with “{nombre}”",
+      "verAlLado": "View “{nombre}” side by side"
     }
   },
   "organizaciones": {
@@ -883,7 +888,12 @@
     "divisor": "Panel size",
     "abrirAlLado": "Open to the side",
     "quitarDeAlLado": "Remove from the side",
-    "alLado": "(to the side)"
+    "alLado": "(to the side)",
+    "verAlLado": "View side by side",
+    "soloLectura": "Read-only",
+    "copiando": "Copying the organization…",
+    "sinMemoria": "There may not be enough memory for both. Open anyway?",
+    "abrirIgual": "Open anyway"
   },
   "bienvenida": {
     "titulo": "Welcome to BoldoAtlas",
@@ -1084,6 +1094,7 @@
       "esquema_nuevo": "This backup was made with a newer version of BoldoAtlas. Update BoldoAtlas to restore it.",
       "en_uso": "Another BoldoAtlas window is using the data. Close it and try again; nothing was changed.",
       "otra_base": "BoldoAtlas ran into an internal problem and nothing was changed. Reload the window to continue.",
+      "solo_lectura": "This organization is open for viewing only.",
       "lista_protegida": "The list of organizations could not be read, or it comes from a newer version of BoldoAtlas, and it can't be updated. You're still in the same organization. Restart or update BoldoAtlas.",
       "sin_espacio": "There's no space left on the disk. Free up some space and try again; nothing was changed.",
       "abierta": "That organization is the one that's open. Switch to another before removing it from the list.",
@@ -1118,7 +1129,8 @@
     "cerrar": "Close",
     "avisos": "Notifications",
     "recargar": "Reload",
-    "suprimir": "Del"
+    "suprimir": "Del",
+    "no": "No"
   },
   "inicio": {
     "organizacion": "Your organization",

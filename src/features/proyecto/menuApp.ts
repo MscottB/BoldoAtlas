@@ -54,6 +54,9 @@ export const entradasComparar = (lista: Organizacion[], activa: string): { id: s
     activa,
   );
 
+/** «Ver al lado» en la paleta: las mismas que «Comparar con…», también en el orden de la lista. */
+export const entradasVerAlLado = entradasComparar;
+
 /**
  * `de` es la abierta al pedirla: si al volver a la vista ya es otra, la comparación no vale y no se rehace sola. `force`:
  * pedir la misma comparación que se está viendo vuelve a comparar.

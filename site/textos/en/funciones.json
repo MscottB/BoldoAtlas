@@ -77,6 +77,7 @@
         "With more than one, Home shows up to 8 recently opened, and one click opens the one you want.",
         "When you open more than one organization, each tab carries the color dot and the name of its own.",
         "Compare the open one with another: which units, people and positions are only in one or differ, without touching the other.",
+        "View another organization next to the open one, read-only and without changing it.",
         "Deleting one asks you to type its name, and can keep a copy first."
       ],
       "imagen": {

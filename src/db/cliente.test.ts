@@ -42,6 +42,7 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["compararOrganizaciones", () => c.compararOrganizaciones("otra", "t")],
   ["comparacionPagina", () => c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })],
   ["comparacionDetalle", () => c.comparacionDetalle("tabla", "id")],
+  ["ladoAbrir", () => c.ladoAbrir("otra")],
 ];
 
 beforeEach(() => {
@@ -66,6 +67,8 @@ describe("baseId", () => {
     expect(invoke).toHaveBeenLastCalledWith("comparacion_cancelar", { trabajo: "t" });
     await c.comparacionCerrar();
     expect(invoke).toHaveBeenLastCalledWith("comparacion_cerrar");
+    await c.ladoCerrar();
+    expect(invoke).toHaveBeenLastCalledWith("lado_cerrar");
   });
 
   it("fotosGuardar arma el cuerpo con la base con que se pidió y lo manda tal cual", async () => {

@@ -5,6 +5,7 @@
 
 use crate::comandos::Estado;
 use crate::db;
+use crate::lado::{Lado, leer_en};
 use crate::organizaciones::{OTRA_BASE, es_id_valido};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
@@ -101,9 +102,14 @@ pub fn servir(c: &Connection, metodo: &Method, ruta: &str) -> Response<Vec<u8>> 
     }
 }
 
-/// La ruta es `/<baseId>/<id>`. Solo responde con los datos de la base abierta: la foto de otra base es un 404 (sin
-/// `Cache-Control`, para que nada de ella quede guardado) y sin base abierta, un 503.
-pub fn respuesta_de(estado: &Estado, metodo: &Method, ruta: &str) -> Response<Vec<u8>> {
+/// La ruta es `/<baseId>/<id>`. Solo responde con los datos de la base abierta o de la de al lado: la foto de otra base es un
+/// 404 (sin `Cache-Control`, para que nada de ella quede guardado) y sin base abierta, un 503.
+pub fn respuesta_de(
+    estado: &Estado,
+    lado: &Lado,
+    metodo: &Method,
+    ruta: &str,
+) -> Response<Vec<u8>> {
     if metodo != Method::GET {
         return sin_cuerpo(StatusCode::METHOD_NOT_ALLOWED);
     }
@@ -114,8 +120,8 @@ pub fn respuesta_de(estado: &Estado, metodo: &Method, ruta: &str) -> Response<Ve
         return sin_cuerpo(StatusCode::BAD_REQUEST);
     }
     // `servir` quiere `/<id>` y revisa que sea solo un id
-    let r = estado.con_conexion(base_id, |c| {
-        Ok::<_, String>(servir(c, metodo, &format!("/{id}")))
+    let r = leer_en(estado, lado, base_id, |c| {
+        Ok(servir(c, metodo, &format!("/{id}")))
     });
     match r {
         Ok(r) => r,
@@ -131,8 +137,12 @@ pub fn atender(
     responder: tauri::UriSchemeResponder,
 ) {
     tauri::async_runtime::spawn_blocking(move || {
-        let estado = app.state::<Estado>();
-        responder.respond(respuesta_de(&estado, pedido.method(), pedido.uri().path()));
+        responder.respond(respuesta_de(
+            &app.state::<Estado>(),
+            &app.state::<Lado>(),
+            pedido.method(),
+            pedido.uri().path(),
+        ));
     });
 }
 
@@ -244,14 +254,16 @@ fn compactar(c: &Connection) -> rusqlite::Result<()> {
     c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
 }
 
+/// Solo en la abierta: con el id de la de al lado da `otra_base`.
+fn compactar_en(estado: &Estado, base_id: &str) -> Result<(), String> {
+    estado.con_conexion(base_id, |c| compactar(c).map_err(|e| e.to_string()))
+}
+
 #[tauri::command]
 pub async fn fotos_compactar(app: AppHandle, base_id: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>()
-            .con_conexion(&base_id, |c| compactar(c).map_err(|e| e.to_string()))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || compactar_en(&app.state::<Estado>(), &base_id))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
@@ -287,8 +299,12 @@ mod tests {
     }
 
     fn lote(filas: &[(&str, &str, i64, &[u8])]) -> Vec<u8> {
+        lote_de("A", filas)
+    }
+
+    fn lote_de(base_id: &str, filas: &[(&str, &str, i64, &[u8])]) -> Vec<u8> {
         let meta = serde_json::json!({
-            "base_id": "A",
+            "base_id": base_id,
             "version_app": "1.0",
             "filas": filas.iter().map(|(id, v, p, img)| serde_json::json!(
                 { "id": id, "version": v, "previos": p, "largo": img.len() }
@@ -422,7 +438,12 @@ mod tests {
     #[test]
     fn foto_con_su_base_se_sirve() {
         let e = estado_con_foto(true);
-        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana"));
+        let r = respuesta_de(
+            &e,
+            &Lado::default(),
+            &Method::GET,
+            &format!("/{BASE_A}/ana"),
+        );
         assert_eq!(r.status(), StatusCode::OK);
         assert_eq!(r.body().as_slice(), JPEG);
         assert!(
@@ -436,7 +457,12 @@ mod tests {
     #[test]
     fn foto_de_a_con_b_abierta_da_404() {
         let e = estado_con_foto(true);
-        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_B}/ana"));
+        let r = respuesta_de(
+            &e,
+            &Lado::default(),
+            &Method::GET,
+            &format!("/{BASE_B}/ana"),
+        );
         assert_eq!(r.status(), StatusCode::NOT_FOUND);
         assert!(r.body().is_empty());
         assert!(r.headers().get(header::CACHE_CONTROL).is_none());
@@ -453,19 +479,29 @@ mod tests {
             "/a/b/c",
             &format!("/{BASE_A}"),
         ] {
-            let r = respuesta_de(&e, &Method::GET, ruta);
+            let r = respuesta_de(&e, &Lado::default(), &Method::GET, ruta);
             assert_eq!(r.status(), StatusCode::BAD_REQUEST, "{ruta}");
             assert!(r.body().is_empty());
         }
         // la base va bien, el resto no es un id
-        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana/otro"));
+        let r = respuesta_de(
+            &e,
+            &Lado::default(),
+            &Method::GET,
+            &format!("/{BASE_A}/ana/otro"),
+        );
         assert_eq!(r.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]
     fn con_la_base_cerrada_da_503() {
         let e = estado_con_foto(false);
-        let r = respuesta_de(&e, &Method::GET, &format!("/{BASE_A}/ana"));
+        let r = respuesta_de(
+            &e,
+            &Lado::default(),
+            &Method::GET,
+            &format!("/{BASE_A}/ana"),
+        );
         assert_eq!(r.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert!(r.body().is_empty());
     }
@@ -473,7 +509,12 @@ mod tests {
     #[test]
     fn la_ruta_con_base_tambien_es_solo_get() {
         let e = estado_con_foto(true);
-        let r = respuesta_de(&e, &Method::POST, &format!("/{BASE_A}/ana"));
+        let r = respuesta_de(
+            &e,
+            &Lado::default(),
+            &Method::POST,
+            &format!("/{BASE_A}/ana"),
+        );
         assert_eq!(r.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
@@ -620,6 +661,66 @@ mod tests {
         assert_eq!(guardar(&mut c, &cuerpo).unwrap_err(), "lote_invalido");
         let cuerpo = armar(&[usize::MAX], JPEG);
         assert_eq!(guardar(&mut c, &cuerpo).unwrap_err(), "lote_invalido");
+    }
+
+    const FECHA: &str = "2026-11-01T12:00:00.000Z";
+
+    /// B con la foto de `ana`, que no está en A ni en C.
+    fn tres_con_foto() -> crate::lado::prueba::Tres {
+        crate::lado::prueba::tres(&format!(
+            "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at)
+             VALUES ('ana', 'Ana', '{}', '{FECHA}', '{FECHA}');",
+            STANDARD.encode(JPEG)
+        ))
+    }
+
+    #[test]
+    fn foto_del_lado_se_sirve_y_la_de_otra_base_da_404() {
+        let d = tres_con_foto();
+        d.abrir_lado();
+        let pedir = |base: &str| respuesta_de(&d.e, &d.lado, &Method::GET, &format!("/{base}/ana"));
+        let r = pedir(&d.b.id);
+        assert_eq!(r.status(), StatusCode::OK);
+        assert_eq!(r.body().as_slice(), JPEG);
+        for otra in [&d.c.id, &d.a.id] {
+            let r = pedir(otra);
+            assert_eq!(r.status(), StatusCode::NOT_FOUND, "{otra}");
+            assert!(r.headers().get(header::CACHE_CONTROL).is_none());
+        }
+        d.lado.cerrar();
+        assert_eq!(pedir(&d.b.id).status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn lado_no_escribe() {
+        let d = tres_con_foto();
+        let bd = crate::organizaciones::ruta_de(&d.r, &d.b);
+        let (antes, fecha) = (
+            std::fs::read(&bd).unwrap(),
+            std::fs::metadata(&bd).unwrap().modified().unwrap(),
+        );
+        d.abrir_lado();
+        let id = d.b.id.as_str();
+        // `db_lote`, `fotos_guardar` y `fotos_compactar` solo pasan por la abierta
+        let lote_bd = crate::comandos::db_lote_en(&d.e, id, &[], "t");
+        assert_eq!(lote_bd.unwrap_err(), "otra_base");
+        let cuerpo = lote_de(id, &[("ana", FECHA, 10, JPEG)]);
+        assert_eq!(guardar_lote(&d.e, &cuerpo).unwrap_err(), "otra_base");
+        assert_eq!(compactar_en(&d.e, id).unwrap_err(), "otra_base");
+        // `db_consultar` sí llega al lado, y ahí nada escribe
+        let insertar = "INSERT INTO meta (clave, valor) VALUES ('x', 'y')";
+        let consultada =
+            crate::lado::leer_en(&d.e, &d.lado, id, |c| db::consultar(c, insertar, &[]));
+        assert!(consultada.is_err());
+        let solo_consulta = d.lado.con_lectura(id, |c| {
+            assert!(c.execute(insertar, []).is_err());
+            c.pragma_query_value(None, "query_only", |f| f.get::<_, i64>(0))
+                .map_err(|e| e.to_string())
+        });
+        assert_eq!(solo_consulta.unwrap(), 1);
+        d.lado.cerrar();
+        assert_eq!(std::fs::read(&bd).unwrap(), antes);
+        assert_eq!(std::fs::metadata(&bd).unwrap().modified().unwrap(), fecha);
     }
 
     #[test]

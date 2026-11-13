@@ -49,6 +49,24 @@ Si una organización no viene de la otra, por ejemplo porque se crearon por sepa
 
 Las personas sin correo, o con un correo que se repite, no se emparejan: cuentan como solo en su organización.
 
+## Ver al lado
+
+Puedes ver otra organización en el panel de al lado, junto a la abierta, sin cambiar de organización. Sirve para mirar una mientras trabajas en la otra.
+
+- En **Inicio › Abierto recientemente**, abre el menú **⋮** de otra organización y pulsa **Ver al lado**. Se abre en su árbol, en una pestaña nueva.
+- En la paleta de comandos (`Ctrl+K`), elige **Ver «nombre» al lado**. También se abre en su árbol, en una pestaña nueva.
+- Con clic derecho sobre una pestaña de otra organización, o con `Mayús` + `F10` si está enfocada, pulsa **Abrir al lado**. Esa pestaña pasa al lado, en su vista.
+
+El encabezado del panel muestra el nombre y el color de esa organización, y **Solo lectura**. Al lado se ven el **Árbol**, **Árboles**, el **Directorio** y **Revisión**; las demás vistas se abren en el panel principal. Puedes recorrer el árbol, buscar y abrir fichas, pero no cambiar nada: solo se edita la organización abierta.
+
+Lo que ves es una foto tomada al abrirla. BoldoAtlas copia la organización a un archivo temporal y la muestra desde esa copia, así que no cambia mientras está al lado, y la organización misma no se modifica. Hay una sola a la vez: al quitarla de al lado o cerrar su pestaña, la copia se suelta.
+
+Si abres esa organización en el panel principal, por ejemplo al pasar a su pestaña, el panel de al lado se vuelve a cargar con sus datos y ya se puede editar. Al revés, si la que estaba abierta queda al lado, pasa a solo lectura. Si eliminas la organización de al lado, se cierra la vista dividida.
+
+Ver dos organizaciones usa más memoria. Si BoldoAtlas calcula que podría no alcanzar, pregunta antes: «Puede que no haya memoria para las dos. ¿Abrir igual?». **Abrir igual** la muestra, y **No** cierra la vista dividida.
+
+El panel, el divisor y `F6` funcionan como en la [vista dividida](pestanas.md#vista-dividida).
+
 ## Qué se guarda aparte
 
 Cada organización tiene su propio archivo, con sus fotos y su logo, y sus propios respaldos. Las preferencias de sus vistas también son suyas: el estado del árbol, los filtros y columnas del Directorio, cómo se ven las personas en el panel de una unidad y el minimapa. El tema, el idioma, el color de acento, el tamaño de la interfaz, la frecuencia de los respaldos y de las actualizaciones, la barra lateral y lo que pasa al cerrar valen para todas tus organizaciones.

@@ -63,4 +63,6 @@ Una pestaña no se muestra en los dos paneles: si pides en un panel la que está
 
 La vista dividida se recuerda con las pestañas: cuál está al lado, la orientación y el tamaño de cada panel.
 
+Al lado también puedes ver otra organización, sin cambiar la abierta: ver [Ver al lado](organizaciones.md#ver-al-lado).
+
 **Ver también:** [Atajos de teclado](atajos.md) · [Directorio](directorio.md).

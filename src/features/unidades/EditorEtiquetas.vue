@@ -6,6 +6,7 @@ import { Plus, X } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { textoSobre } from "@/features/tema/tema";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { claseSelect } from "@/lib/utils";
 
@@ -60,6 +61,7 @@ async function crear() {
       >
         {{ e.nombre }}
         <button
+          v-if="!MODO_LADO"
           type="button"
           class="grid size-4 place-items-center rounded-full hover:bg-black/20 focus-visible:outline-2 focus-visible:outline-ring"
           :aria-label="t('unidad.quitarEtiqueta', { nombre: e.nombre })"
@@ -70,7 +72,8 @@ async function crear() {
       </li>
     </ul>
     <p v-else class="text-sm text-muted-foreground">{{ t("unidad.sinEtiquetas") }}</p>
-    <select :class="claseSelect" :aria-label="t('unidad.agregarEtiqueta')" @change="elegir">
+    <!-- Al lado (otra organización) las etiquetas solo se ven. -->
+    <select v-if="!MODO_LADO" :class="claseSelect" :aria-label="t('unidad.agregarEtiqueta')" @change="elegir">
       <option value="">{{ t("unidad.agregarEtiqueta") }}</option>
       <option v-for="e in libres" :key="e.id" :value="e.id">{{ e.nombre }}</option>
       <option :value="NUEVA">{{ t("unidad.nuevaEtiqueta") }}</option>

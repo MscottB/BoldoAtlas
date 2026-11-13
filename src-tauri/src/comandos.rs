@@ -4,6 +4,7 @@ use crate::comparar_organizaciones::{
 use crate::db::{self, Sentencia};
 use crate::intercambio::validar::{para_leer, solo_lectura_cerrada};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
+use crate::lado::{Lado, leer_en};
 use crate::organizaciones::{
     self, Abierta, ArchivoAgregado, Base, ESPERA_ARRANQUE, ESPERA_CAMBIO, EliminadaVista, Entrada,
     Lista, OTRA_BASE, OrganizacionVista, abrir_base, abrir_entrada, abrir_principal_libre,
@@ -918,6 +919,20 @@ impl Estado {
             .as_ref()
             .ok_or_else(|| "No se ubicó la carpeta de datos.".to_string().into())
     }
+
+    /// La entrada de `id` en la lista, con las rutas: para copiar otra organización sin abrirla.
+    pub(crate) fn entrada(&self, id: &str) -> Result<(&Rutas, Entrada), Fallo> {
+        let r = self.rutas()?;
+        let e = {
+            let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+            cargar_lista(r)
+        }
+        .organizaciones
+        .into_iter()
+        .find(|o| o.id == id)
+        .ok_or_else(|| Fallo::de("desconocido", id))?;
+        Ok((r, e))
+    }
 }
 
 #[derive(Serialize)]
@@ -948,6 +963,7 @@ pub async fn abrir_organizacion(app: AppHandle, id: String) -> Result<Organizaci
         abrir_en(
             &app.state::<Estado>(),
             &app.state::<Comparaciones>(),
+            &app.state::<Lado>(),
             &id,
             &|| sesiones.ocupada(),
             db::MIGRACIONES,
@@ -977,15 +993,26 @@ pub async fn crear_organizacion(
 /// congelaría la ventana.
 #[tauri::command]
 pub async fn quitar_organizacion(app: AppHandle, id: String) -> Result<(), Fallo> {
-    tauri::async_runtime::spawn_blocking(move || app.state::<Estado>().quitar(&id))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        quitar_en(&app.state::<Estado>(), &app.state::<Lado>(), &id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
-/// Sin la otra, o sin su base, la comparación ya no vale.
+/// La quitada deja de estar al lado: su copia se suelta, con su temporal.
+fn quitar_en(estado: &Estado, lado: &Lado, id: &str) -> Result<(), Fallo> {
+    estado.quitar(id)?;
+    lado.soltar_si(id);
+    Ok(())
+}
+
+/// Sin la otra, o sin su base, la comparación ya no vale. La eliminada, o la que pasa a ser la abierta, deja de estar al lado.
+#[allow(clippy::too_many_arguments)]
 fn eliminar_en(
     estado: &Estado,
     k: &Comparaciones,
+    lado: &Lado,
     id: &str,
     guardar_copia: bool,
     borrar_archivo: bool,
@@ -995,6 +1022,10 @@ fn eliminar_en(
     let hecho = estado.eliminar(id, guardar_copia, borrar_archivo, ocupada, migraciones)?;
     let abierta = estado.base_abierta().map(|b| b.id);
     k.soltar_vencida(abierta.as_deref(), Some(id));
+    lado.soltar_si(id);
+    if let Some(a) = &abierta {
+        lado.soltar_si(a);
+    }
     Ok(hecho)
 }
 
@@ -1011,6 +1042,7 @@ pub async fn eliminar_organizacion(
         eliminar_en(
             &app.state::<Estado>(),
             &app.state::<Comparaciones>(),
+            &app.state::<Lado>(),
             &id,
             guardar_copia,
             borrar_archivo,
@@ -1121,7 +1153,8 @@ pub fn info_app(estado: State<Estado>) -> InfoApp {
 }
 
 // En `spawn_blocking`: ni el hilo principal ni los trabajadores de tokio quedan esperando la conexión mientras un respaldo
-// o una importación la tienen. El orden de los lotes lo guarda `colaLotes` en src/db/cliente.ts.
+// o una importación la tienen. El orden de los lotes lo guarda `colaLotes` en src/db/cliente.ts. Es la única que también lee
+// la organización de al lado: las demás, `db_lote` incluida, pasan solo por la abierta.
 #[tauri::command]
 pub async fn db_consultar(
     app: AppHandle,
@@ -1130,8 +1163,12 @@ pub async fn db_consultar(
     params: Vec<Value>,
 ) -> Result<Vec<Map<String, Value>>, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>()
-            .con_conexion(&base_id, |c| db::consultar(c, &sql, &params))
+        leer_en(
+            &app.state::<Estado>(),
+            &app.state::<Lado>(),
+            &base_id,
+            |c| db::consultar(c, &sql, &params),
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -1145,11 +1182,20 @@ pub async fn db_lote(
     version_app: String,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>()
-            .con_conexion(&base_id, |c| db::lote(c, &sentencias, &version_app))
+        db_lote_en(&app.state::<Estado>(), &base_id, &sentencias, &version_app)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Solo en la abierta: con el id de la de al lado da `otra_base`.
+pub(crate) fn db_lote_en(
+    estado: &Estado,
+    base_id: &str,
+    sentencias: &[Sentencia],
+    version_app: &str,
+) -> Result<(), String> {
+    estado.con_conexion(base_id, |c| db::lote(c, sentencias, version_app))
 }
 
 #[tauri::command]
@@ -1758,22 +1804,15 @@ fn comparar_en(
     mut avisar: impl FnMut(u64, u64),
     migraciones: &[&str],
 ) -> Result<ResumenComparacion, Fallo> {
-    let r = estado.rutas()?;
+    estado.rutas()?;
     estado.base(base_id)?;
     // una a la vez: la anterior y su temporal se sueltan ya, no cuando esta termine
     k.cerrar();
     if !k.sigue(trabajo) {
         return Err(Fallo::de("cancelado", ""));
     }
-    let e = {
-        let _lista = estado.lista.lock().unwrap_or_else(|p| p.into_inner());
-        cargar_lista(r)
-    }
-    .organizaciones
-    .into_iter()
-    .find(|o| o.id == otra_id)
-    .ok_or_else(|| Fallo::de("desconocido", otra_id))?;
-    let copia = comparar_organizaciones::copiar_otra(r, &e, base_id, migraciones)?;
+    let (r, e) = estado.entrada(otra_id)?;
+    let copia = comparar_organizaciones::copiar_otra(r, &e, base_id, migraciones, "comparar")?;
     // con `conn` tomado hasta guardarla: un cambio de organización espera, y nunca queda una de otra base
     estado.con_conexion(base_id, |c| {
         let a = comparar_organizaciones::comparar(c, base_id, copia, |hecho, total| {
@@ -1793,16 +1832,19 @@ fn pagina_en(
     estado.con_conexion(base_id, |c| k.pagina(c, base_id, filtro))
 }
 
-/// Pasar a otra organización suelta la comparación de la anterior, y su temporal.
+/// Pasar a otra organización suelta la comparación de la anterior, y su temporal. La que pasa a ser la abierta deja de estar
+/// al lado.
 fn abrir_en(
     estado: &Estado,
     k: &Comparaciones,
+    lado: &Lado,
     id: &str,
     ocupada: &dyn Fn() -> bool,
     migraciones: &[&str],
 ) -> Result<OrganizacionVista, Fallo> {
     let v = estado.cambiar_a(id, ocupada, migraciones)?;
     k.soltar_vencida(Some(&v.id), None);
+    lado.soltar_si(&v.id);
     Ok(v)
 }
 
@@ -5988,7 +6030,15 @@ mod comparar {
     fn cambiar_de_organizacion_suelta_la_comparacion() {
         let d = dos();
         comparar(&d, &d.a.id, "t", |_, _| {}).unwrap();
-        abrir_en(&d.e, &d.k, &d.b.id, &|| false, db::MIGRACIONES).unwrap();
+        abrir_en(
+            &d.e,
+            &d.k,
+            &Lado::default(),
+            &d.b.id,
+            &|| false,
+            db::MIGRACIONES,
+        )
+        .unwrap();
         assert!(temporales(&d.r).is_empty());
         assert_eq!(
             pagina(&d, &d.b.id).unwrap_err().codigo,
@@ -6004,6 +6054,7 @@ mod comparar {
         eliminar_en(
             &d.e,
             &d.k,
+            &Lado::default(),
             &d.b.id,
             false,
             false,
@@ -6030,5 +6081,116 @@ mod comparar {
             "comparacion_vencida"
         );
         assert!(temporales(&d.r).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod lado {
+    use super::*;
+    use crate::lado::prueba::tres;
+
+    #[test]
+    fn lado_consulta_la_otra_y_no_la_abierta() {
+        let d = tres("");
+        d.abrir_lado();
+        assert_eq!(d.db_id(&d.a.id).unwrap(), d.a.id);
+        assert_eq!(d.db_id(&d.b.id).unwrap(), d.b.id);
+        assert_eq!(d.db_id(&d.c.id).unwrap_err(), "otra_base");
+    }
+
+    #[test]
+    fn abrir_la_del_lado_la_suelta() {
+        let d = tres("");
+        d.abrir_lado();
+        let k = Comparaciones::default();
+        abrir_en(&d.e, &k, &d.lado, &d.b.id, &|| false, db::MIGRACIONES).unwrap();
+        assert_eq!(
+            d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
+            "otra_base"
+        );
+        assert_eq!(d.temporales(), 0);
+        // ahora responde la abierta
+        assert_eq!(d.db_id(&d.b.id).unwrap(), d.b.id);
+    }
+
+    #[test]
+    fn quitar_la_del_lado_la_suelta() {
+        let d = tres("");
+        d.abrir_lado();
+        quitar_en(&d.e, &d.lado, &d.b.id).unwrap();
+        assert_eq!(
+            d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
+            "otra_base"
+        );
+        assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
+    fn quitar_otra_no_suelta_la_del_lado() {
+        let d = tres("");
+        d.abrir_lado();
+        quitar_en(&d.e, &d.lado, &d.c.id).unwrap();
+        assert!(d.lado.con_lectura(&d.b.id, |_| Ok(())).is_ok());
+        assert_eq!(d.temporales(), 1);
+    }
+
+    #[test]
+    fn eliminar_la_del_lado_la_suelta() {
+        let d = tres("");
+        d.abrir_lado();
+        let k = Comparaciones::default();
+        eliminar_en(
+            &d.e,
+            &k,
+            &d.lado,
+            &d.b.id,
+            false,
+            false,
+            &|| false,
+            db::MIGRACIONES,
+        )
+        .unwrap();
+        assert_eq!(
+            d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
+            "otra_base"
+        );
+        assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
+    fn eliminar_la_abierta_pasa_a_la_del_lado_y_la_suelta() {
+        let d = tres("");
+        d.abrir_lado();
+        let k = Comparaciones::default();
+        let nueva = eliminar_en(
+            &d.e,
+            &k,
+            &d.lado,
+            &d.a.id,
+            false,
+            false,
+            &|| false,
+            db::MIGRACIONES,
+        )
+        .unwrap();
+        assert_eq!(nueva.unwrap().id, d.b.id);
+        assert_eq!(
+            d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
+            "otra_base"
+        );
+        assert_eq!(d.temporales(), 0);
+        assert_eq!(d.db_id(&d.b.id).unwrap(), d.b.id);
+    }
+
+    #[test]
+    fn cambiar_a_una_tercera_no_suelta_el_lado() {
+        let d = tres("");
+        d.abrir_lado();
+        let k = Comparaciones::default();
+        abrir_en(&d.e, &k, &d.lado, &d.c.id, &|| false, db::MIGRACIONES).unwrap();
+        assert_eq!(d.db_id(&d.b.id).unwrap(), d.b.id);
+        assert_eq!(d.db_id(&d.c.id).unwrap(), d.c.id);
+        assert_eq!(d.db_id(&d.a.id).unwrap_err(), "otra_base");
+        assert_eq!(d.temporales(), 1);
     }
 }

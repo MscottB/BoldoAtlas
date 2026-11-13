@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
 import type { Organizacion } from "@/db/cliente";
-import { entradasAbrirOtra, entradasComparar, rutaComparar } from "./menuApp";
+import { entradasAbrirOtra, entradasComparar, entradasVerAlLado, rutaComparar } from "./menuApp";
 
 // localStorage simulado desde antes de importar: hay módulos que leen sus preferencias al cargarse.
 vi.hoisted(() =>
@@ -21,6 +21,15 @@ describe("entradasAbrirOtra", () => {
 
   it("con solo la abierta no ofrece nada", () => {
     expect(entradasAbrirOtra([org("A")], "A")).toEqual([]);
+  });
+});
+
+describe("entradasVerAlLado", () => {
+  it("deja fuera la abierta y las que perdieron su archivo, y conserva el orden de la lista", () => {
+    expect(entradasVerAlLado([org("C"), org("A"), org("D", false), org("B")], "A")).toEqual([
+      { id: "C", nombre: "Org C" },
+      { id: "B", nombre: "Org B" },
+    ]);
   });
 });
 

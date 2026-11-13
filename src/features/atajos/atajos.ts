@@ -46,6 +46,13 @@ export interface TeclaAtajo {
   enPanel?: boolean;
   /** Hay vista dividida: F6 pasa al otro panel. */
   dividida?: boolean;
+  /** La otra organización, en el iframe de al lado: F6 vuelve al principal, aunque el iframe no tenga vista dividida. */
+  lado?: boolean;
+  /**
+   * En la ventana, con el foco en el panel de otra organización: solo valen las pestañas, la paleta y F6. Lo del lienzo y
+   * lo de editar actuaría sobre la abierta, que no se ve ahí.
+   */
+  otraAlLado?: boolean;
 }
 
 const FLECHAS: Record<string, [vertical: Navegacion, horizontal: Navegacion]> = {
@@ -63,8 +70,22 @@ const PANEL = "[data-panel-unidad]";
  */
 export const dentroDelPanel = (el: Element | null) => !!el?.closest(PANEL) && !el.matches(PANEL);
 
+const DE_LA_VENTANA = new Set<Atajo>([
+  "paleta",
+  "nuevaPestana",
+  "cerrarPestana",
+  "pestanaSiguiente",
+  "pestanaAnterior",
+  "otroPanel",
+]);
+
 /** Qué atajo (si alguno) es esta pulsación. Pura: quien la llama mide el foco, los diálogos y la fecha. */
 export function resolverAtajo(e: TeclaAtajo): Atajo | null {
+  const atajo = resolver(e);
+  return e.otraAlLado && atajo && !DE_LA_VENTANA.has(atajo) ? null : atajo;
+}
+
+function resolver(e: TeclaAtajo): Atajo | null {
   if (e.modalAbierto) return null;
   const tecla = e.key.toLowerCase();
   const conControl = e.ctrlKey || e.metaKey;
@@ -79,7 +100,7 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";
   if (e.ctrlKey && !e.altKey && e.key === "Tab") return e.shiftKey ? "pestanaAnterior" : "pestanaSiguiente";
   // Como en Windows, también desde un campo. Con dos paneles, adelante y atrás llevan al mismo.
-  if (e.key === "F6" && !conControl && !e.altKey) return e.dividida ? "otroPanel" : null;
+  if (e.key === "F6" && !conControl && !e.altKey) return e.dividida || e.lado ? "otroPanel" : null;
   if (conControl && tecla === "d" && !e.altKey)
     return e.enCampoDeTexto || e.soloLectura || e.enPanel ? null : "duplicar";
   if (conControl || e.altKey || e.enCampoDeTexto || e.enPanel) return null;

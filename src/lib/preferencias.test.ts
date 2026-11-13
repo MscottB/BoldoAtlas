@@ -185,3 +185,24 @@ describe("migrarPreferencias", () => {
     expect(datos.has("boldo:vista:completo:A:B")).toBe(false);
   });
 });
+
+describe("en el panel de al lado", () => {
+  const LADO = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
+  afterEach(() => vi.resetModules());
+
+  it("preferencias_no_se_escriben_en_modo_lado", async () => {
+    const inicial = { [`boldo:vista:${LADO}`]: "1", "boldo:tema": '"claro"' };
+    const datos = simularAlmacen(inicial);
+    vi.stubGlobal("location", { search: `?lado=${LADO}` });
+    vi.resetModules();
+    const p = await import("./preferencias");
+    (await import("./baseActiva")).fijarBase(LADO);
+    p.guardarPreferencia("tema", "oscuro");
+    p.guardarPreferenciaOrg("vista", 2);
+    p.borrarPreferenciasOrg(LADO);
+    expect(Object.fromEntries(datos)).toEqual(inicial);
+    // se leen: la otra organización se ve como la dejó quien la usa
+    expect(p.leerPreferenciaOrg("vista", 0)).toBe(1);
+    expect(p.leerPreferencia("tema", "")).toBe("claro");
+  });
+});

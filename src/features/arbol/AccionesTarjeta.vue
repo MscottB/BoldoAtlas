@@ -15,7 +15,7 @@ const org = useOrganizacion();
 const { viewport } = useVueFlow();
 const { colapsados, nuevaUnidad, renombrar, alternarRama, conectarDesde } = useLienzo();
 
-const soloLectura = computed(() => !!org.fechaVista);
+const soloLectura = computed(() => org.soloLectura);
 const plegada = computed(() => colapsados.value.has(props.id));
 // Alejado, los botones no se achican hasta volverse imposibles de pulsar; con el tope, la barra cabe en la franja de arriba (64 px).
 const escala = computed(() => Math.min(1.75, Math.max(1, 0.9 / viewport.value.zoom)));

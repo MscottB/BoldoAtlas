@@ -26,6 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Asignacion } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { rutaPorTipo } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
@@ -49,8 +50,9 @@ const puesto = computed(() =>
 // Un puesto que ya no existe (borrado) no ofrece acciones: el diálogo se cierra.
 watch([ctl.abierta, puesto], ([a, p]) => a?.id && !p && ctl.cerrar());
 
-// Con una fecha elegida se ve el puesto de ese día (titular, reemplazo e historial completo) y no se puede cambiar nada.
-const soloLectura = computed(() => !!org.fechaVista);
+// Con una fecha elegida se ve el puesto de ese día (titular, reemplazo e historial completo) y no se puede cambiar nada;
+// al lado, tampoco.
+const soloLectura = computed(() => org.soloLectura);
 const unidad = computed(() =>
   org.enFecha.porId.get(puesto.value?.unidad_id ?? ctl.abierta.value?.unidadId ?? ""),
 );
@@ -180,7 +182,7 @@ async function verPersona(id: string) {
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
         <DialogDescription>{{ ubicacion }}</DialogDescription>
-        <p v-if="soloLectura" class="text-sm text-muted-foreground">
+        <p v-if="org.fechaVista" class="text-sm text-muted-foreground">
           {{ t("arbol.fecha.dialogoSoloLectura", { fecha: fecha(org.fechaVista!) }) }}
         </p>
       </DialogHeader>
@@ -240,6 +242,7 @@ async function verPersona(id: string) {
                   {{ t("puesto.desdeFecha", { fecha: fecha(vigentes[tipo]!.desde) }) }}
                 </p>
                 <Button
+                  v-if="!MODO_LADO"
                   type="button"
                   size="sm"
                   variant="outline"
@@ -258,7 +261,8 @@ async function verPersona(id: string) {
             </div>
           </section>
 
-          <div class="flex flex-wrap gap-2">
+          <!-- Viendo una fecha, deshabilitados; al lado (otra organización), ni se ofrecen. -->
+          <div v-if="!MODO_LADO" class="flex flex-wrap gap-2">
             <Button type="button" size="sm" :disabled="soloLectura" @click="abrirForm('titular')">{{
               t("puesto.accion.titular")
             }}</Button>
@@ -327,7 +331,7 @@ async function verPersona(id: string) {
 
       <DialogFooter>
         <Button
-          v-if="puesto"
+          v-if="puesto && !MODO_LADO"
           type="button"
           variant="destructive"
           class="sm:mr-auto"
@@ -337,7 +341,7 @@ async function verPersona(id: string) {
           <Trash2 aria-hidden="true" />
           {{ t("puesto.eliminar") }}
         </Button>
-        <Button v-else type="button" @click="crear">{{ t("puesto.crear") }}</Button>
+        <Button v-else-if="!puesto" type="button" @click="crear">{{ t("puesto.crear") }}</Button>
         <DialogClose as-child>
           <Button type="button" variant="outline">{{ t("ficha.cerrar") }}</Button>
         </DialogClose>

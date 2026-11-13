@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { consultar } from "@/db/cliente";
 import { SQL_NOTAS } from "@/db/repos/trabajadores";
 import type { TablaCatalogo, Trabajador } from "@/db/tipos";
+import { MODO_LADO } from "@/lado/modo";
 import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { asignacionesDePersona, formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { usePuesto } from "@/features/puestos/usePuesto";
@@ -54,6 +55,8 @@ const { t, locale } = useI18n();
 const org = useOrganizacion();
 const ficha = useFicha();
 const puesto = usePuesto();
+// Al lado, la otra organización: la ficha se lee, no se cambia. Viendo una fecha sí se edita: la persona no depende del día.
+const alLado = MODO_LADO;
 
 type CampoCatalogo = "tipo_contrato_id" | "sede_id" | "jornada_id";
 const CATALOGOS: { campo: CampoCatalogo; tabla: TablaCatalogo; etiqueta: string }[] = [
@@ -372,7 +375,9 @@ const alAbrir = (e: Event) => {
     >
       <DialogHeader>
         <DialogTitle>{{ titulo }}</DialogTitle>
-        <DialogDescription>{{ t("ficha.descripcion") }}</DialogDescription>
+        <DialogDescription>{{
+          t(alLado ? "ficha.descripcionSoloLectura" : "ficha.descripcion")
+        }}</DialogDescription>
       </DialogHeader>
 
       <p v-if="errores.general" role="alert" class="text-sm text-destructive">{{ errores.general }}</p>
@@ -384,6 +389,7 @@ const alAbrir = (e: Event) => {
             id="ficha-nombre"
             v-model="form.nombre"
             autocomplete="off"
+            :disabled="alLado"
             :aria-invalid="!!errores.nombre"
             :aria-describedby="describe('nombre')"
             @blur="alSalir"
@@ -400,6 +406,7 @@ const alAbrir = (e: Event) => {
             v-model="form.correo"
             type="email"
             autocomplete="off"
+            :disabled="alLado"
             :aria-invalid="!!errores.correo"
             :aria-describedby="describe('correo')"
             @input="delete fallidos.correo"
@@ -412,7 +419,14 @@ const alAbrir = (e: Event) => {
 
         <div class="grid gap-1.5">
           <Label for="ficha-telefono">{{ t("ficha.telefono") }}</Label>
-          <Input id="ficha-telefono" v-model="form.telefono" type="tel" autocomplete="off" @blur="alSalir" />
+          <Input
+            id="ficha-telefono"
+            v-model="form.telefono"
+            type="tel"
+            autocomplete="off"
+            :disabled="alLado"
+            @blur="alSalir"
+          />
         </div>
 
         <div v-if="id" class="grid gap-1 sm:col-span-2">
@@ -473,6 +487,7 @@ const alAbrir = (e: Event) => {
                 :id="`ficha-${c.campo}`"
                 :tabla="c.tabla"
                 :model-value="form[c.campo]"
+                :disabled="alLado"
                 @update:model-value="cambiar(c.campo, $event)"
               />
             </div>
@@ -482,7 +497,7 @@ const alAbrir = (e: Event) => {
               <Textarea
                 id="ficha-notas"
                 v-model="form.notas"
-                :disabled="notasGuardadas === undefined"
+                :disabled="alLado || notasGuardadas === undefined"
                 @blur="alSalir"
               />
               <p v-if="errorNotas" role="alert" class="text-xs text-destructive">
@@ -499,29 +514,31 @@ const alAbrir = (e: Event) => {
                   alt=""
                   class="size-12 rounded-full object-cover"
                 />
-                <input
-                  ref="inputFoto"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  class="hidden"
-                  tabindex="-1"
-                  @change="elegirFoto"
-                />
-                <Button type="button" size="sm" variant="outline" @click="inputFoto?.click()">
-                  <ImagePlus aria-hidden="true" />
-                  {{ t("ficha.elegirFoto") }}
-                </Button>
-                <Button
-                  v-if="vistaFoto"
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  :disabled="procesandoFoto > 0"
-                  @click="cambiar('foto_png', null)"
-                >
-                  <X aria-hidden="true" />
-                  {{ t("ficha.quitarFoto") }}
-                </Button>
+                <template v-if="!alLado">
+                  <input
+                    ref="inputFoto"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    class="hidden"
+                    tabindex="-1"
+                    @change="elegirFoto"
+                  />
+                  <Button type="button" size="sm" variant="outline" @click="inputFoto?.click()">
+                    <ImagePlus aria-hidden="true" />
+                    {{ t("ficha.elegirFoto") }}
+                  </Button>
+                  <Button
+                    v-if="vistaFoto"
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    :disabled="procesandoFoto > 0"
+                    @click="cambiar('foto_png', null)"
+                  >
+                    <X aria-hidden="true" />
+                    {{ t("ficha.quitarFoto") }}
+                  </Button>
+                </template>
               </div>
               <p v-if="procesandoFoto" role="status" class="text-xs text-muted-foreground">
                 {{ t("ficha.procesandoFoto") }}
@@ -533,7 +550,13 @@ const alAbrir = (e: Event) => {
       </div>
 
       <DialogFooter>
-        <Button v-if="id" type="button" variant="destructive" class="sm:mr-auto" @click="eliminar">
+        <Button
+          v-if="id && !alLado"
+          type="button"
+          variant="destructive"
+          class="sm:mr-auto"
+          @click="eliminar"
+        >
           <Trash2 aria-hidden="true" />
           {{ t("ficha.eliminar") }}
         </Button>

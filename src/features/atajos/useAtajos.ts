@@ -4,8 +4,10 @@ import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { abrirMenuContextual, nodoEn, useLienzo } from "@/features/arbol/useLienzo";
 import { esVistaCerrable } from "@/app/estructura";
+import { alPadre, type TeclaLado } from "@/lado/mensajes";
+import { MODO_LADO } from "@/lado/modo";
 import { useCerrarVista } from "@/app/useCerrarVista";
-import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
+import { enfocarElPanel, raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { RUTA_INICIO } from "@/features/pestanas/pestanas";
 import { routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
@@ -31,8 +33,8 @@ const MODAL =
 const LIENZO_O_PANEL = ".vue-flow, [data-panel-unidad]";
 
 /**
- * Atajos de teclado de la app. Se registra una sola vez, en App.vue. Con la vista dividida actúan en el panel con foco:
- * su ruta, su lienzo y lo que se busca, dentro de él.
+ * Atajos de teclado de la app. Se registra una sola vez, en App.vue (y en AppLado, el iframe de al lado). Con la vista
+ * dividida actúan en el panel con foco: su ruta, su lienzo y lo que se busca, dentro de él.
  */
 export function useAtajos() {
   const org = useOrganizacion();
@@ -68,12 +70,19 @@ export function useAtajos() {
       enCampoDeTexto: !!destino?.closest(CAMPO),
       enPanel: dentroDelPanel(destino),
       modalAbierto: !!document.querySelector(MODAL),
-      soloLectura: !!org.fechaVista,
+      soloLectura: org.soloLectura,
       horizontal: config.value.direccion === "horizontal",
       dividida: !!pestanas.lado,
+      lado: MODO_LADO,
+      otraAlLado: pestanas.otraConFoco(),
     });
     if (!atajo) return;
 
+    // En el iframe de al lado, F6, las pestañas y la paleta son de la ventana: ella los atiende como en ese panel.
+    if (MODO_LADO && (atajo === "paleta" || atajo === "otroPanel" || ATAJOS_PESTANAS.has(atajo))) {
+      e.preventDefault();
+      return alPadre({ tipo: "boldo-lado-tecla", tecla: atajo === "otroPanel" ? "F6" : (atajo as TeclaLado) });
+    }
     if (atajo === "paleta") {
       e.preventDefault();
       paletaAbierta.value = true;
@@ -93,7 +102,7 @@ export function useAtajos() {
       e.preventDefault();
       const otro = panel === "lado" ? "principal" : "lado";
       pestanas.enfocarPanel(otro);
-      document.querySelector<HTMLElement>(`[data-panel="${otro}"]`)?.focus();
+      enfocarElPanel(otro);
       return;
     }
     // La pantalla del motivo tapa la vista: la ruta sigue siendo de la abierta, y lo demás escribiría en ella sin verse.

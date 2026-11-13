@@ -209,7 +209,7 @@ watch(trazados, async () => {
           </p>
         </section>
         <ListaUnidades
-          v-if="!org.fechaVista"
+          v-if="!org.soloLectura"
           class="min-h-0"
           :excluidas="excluidasParaConexion(org.conexiones, conectar.origen)"
           @elegir="elegir"

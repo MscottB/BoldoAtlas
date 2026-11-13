@@ -300,7 +300,7 @@ export function useLienzo(panel: Panel = panelPropio()) {
 
   /** Crea una subunidad de `padre` (o una raíz) con nombre provisorio y la deja seleccionada y en edición. */
   async function nuevaUnidad(padre: Unidad | null) {
-    if (org.fechaVista) return; // solo lectura
+    if (org.soloLectura) return; // solo lectura
     const hermanos = padre ? hijos(org.unidades, padre.id) : org.raices;
     const tipo_id = tipoHijo(org.catalogos.tipos_unidad, padre?.tipo_id ?? null);
     if (!tipo_id) return void toast.error(i18n.global.t("arbol.sinTiposActivos"));
@@ -352,7 +352,7 @@ export function useLienzo(panel: Panel = panelPropio()) {
 
   /** Mayús+flecha: suma la unidad a la selección, la revela y pide centrarla. */
   function extender(id: string) {
-    if (org.fechaVista) return; // solo lectura: no hay selección múltiple
+    if (org.soloLectura) return; // solo lectura: no hay selección múltiple
     abrirRuta(id);
     aplicar(sumar(seleccionadas.value, id, false));
     centrarEn.value = id;
@@ -360,7 +360,7 @@ export function useLienzo(panel: Panel = panelPropio()) {
 
   /** Copia la rama y deja la copia seleccionada y centrada. */
   async function duplicar(id: string) {
-    if (org.fechaVista) return; // solo lectura
+    if (org.soloLectura) return; // solo lectura
     const r = await org.duplicarRama(id);
     if (!r.ok) return void toast.error(r.mensaje);
     revelar(r.id!);

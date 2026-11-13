@@ -1,5 +1,19 @@
 [
   {
+    "id": "ver-al-lado",
+    "pagina": "organizaciones",
+    "es": {
+      "titulo": "Otra organización al lado",
+      "texto": "Mira otra organización junto a la abierta, sin pasar de una a otra: elige Ver al lado en Inicio o en la paleta. La ves sin modificarla, con su árbol, su Directorio y su Revisión tal como estaban al abrirla.",
+      "ancla": "ver-al-lado"
+    },
+    "en": {
+      "titulo": "Another organization side by side",
+      "texto": "Look at another organization next to the open one, without switching between them: choose View side by side in Home or in the palette. You see it without changing it, with its tree, its Directory and its Review as they were when you opened it.",
+      "ancla": "view-side-by-side"
+    }
+  },
+  {
     "id": "vista-dividida",
     "pagina": "pestanas",
     "es": {

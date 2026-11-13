@@ -65,6 +65,7 @@
   "arbol": {
     "vacioTitulo": "Aún no hay unidades",
     "vacioTexto": "Cuando agregues gerencias, áreas o subáreas, el organigrama aparecerá aquí.",
+    "vacioTextoLado": "Esta organización aún no tiene gerencias, áreas ni subáreas.",
     "nuevaUnidad": "Nueva unidad",
     "nuevaSubunidad": "Nueva subunidad",
     "sinTiposActivos": "No hay tipos de unidad activos.",
@@ -199,6 +200,7 @@
     "vistas": {
       "titulo": "Vistas guardadas",
       "sinArbol": "Esta rama no está guardada en Árboles. Guárdala allí para tener vistas propias.",
+      "sinArbolLado": "Esta rama no está guardada en Árboles: no tiene vistas propias.",
       "nombre": "Nombre de la vista",
       "guardar": "Guardar vista actual",
       "sinVistas": "Aún no hay vistas guardadas en este árbol.",
@@ -312,6 +314,7 @@
     "ordenarUnidad": "Ordenar por unidad",
     "exportar": "Exportar esta lista a Excel",
     "vacio": "Aún no hay puestos ni personas. Crea unidades y puestos en el árbol.",
+    "vacioLado": "Aún no hay puestos ni personas.",
     "sinResultados": "Ninguna fila coincide con los filtros.",
     "filtrosBoton": "Filtros",
     "filtrosActivos": "{n} filtro activo | {n} filtros activos",
@@ -429,6 +432,7 @@
     "tituloPersona": "Ficha de persona",
     "nuevaPersona": "Nueva persona",
     "descripcion": "Los cambios se guardan al salir de cada campo, si son válidos.",
+    "descripcionSoloLectura": "Persona de otra organización: solo lectura.",
     "nombre": "Nombre",
     "tipoContrato": "Tipo de contrato",
     "sede": "Sede",
@@ -740,7 +744,8 @@
       "ayuda": "Ayuda",
       "dividir": "Dividir la vista",
       "abrirOtra": "Abrir otra organización: {nombre}",
-      "comparar": "Comparar con «{nombre}»"
+      "comparar": "Comparar con «{nombre}»",
+      "verAlLado": "Ver «{nombre}» al lado"
     }
   },
   "organizaciones": {
@@ -883,7 +888,12 @@
     "divisor": "Tamaño de los paneles",
     "abrirAlLado": "Abrir al lado",
     "quitarDeAlLado": "Quitar de al lado",
-    "alLado": "(al lado)"
+    "alLado": "(al lado)",
+    "verAlLado": "Ver al lado",
+    "soloLectura": "Solo lectura",
+    "copiando": "Copiando la organización…",
+    "sinMemoria": "Puede que no haya memoria para las dos. ¿Abrir igual?",
+    "abrirIgual": "Abrir igual"
   },
   "bienvenida": {
     "titulo": "Te damos la bienvenida a BoldoAtlas",
@@ -1084,6 +1094,7 @@
       "esquema_nuevo": "Este respaldo se hizo con una versión más nueva de BoldoAtlas. Actualiza BoldoAtlas para restaurarlo.",
       "en_uso": "Otra ventana de BoldoAtlas está usando los datos. Ciérrala e inténtalo de nuevo; no se cambió nada.",
       "otra_base": "BoldoAtlas tuvo un problema interno y no se cambió nada. Recarga la ventana para seguir.",
+      "solo_lectura": "Esta organización está abierta solo para mirar.",
       "lista_protegida": "No se pudo leer la lista de organizaciones, o es de una versión más nueva de BoldoAtlas, y no se puede actualizar. Sigues en la misma organización. Reinicia BoldoAtlas o actualízalo.",
       "sin_espacio": "No queda espacio en el disco. Libera espacio e inténtalo de nuevo; no se cambió nada.",
       "abierta": "Esa organización es la que está abierta. Pasa a otra antes de quitarla de la lista.",
@@ -1118,7 +1129,8 @@
     "cerrar": "Cerrar",
     "avisos": "Avisos",
     "recargar": "Recargar",
-    "suprimir": "Supr"
+    "suprimir": "Supr",
+    "no": "No"
   },
   "inicio": {
     "organizacion": "Tu organización",
