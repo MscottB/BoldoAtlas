@@ -9,12 +9,9 @@ import { registrarRouter } from "@/features/pestanas/routerConFoco";
 import { useOrganizacion } from "@/stores/organizacion";
 import PantallaError from "@/vistas/PantallaError.vue";
 import AppLado from "./AppLado.vue";
+import { alPadre } from "./mensajes";
 import { VISTAS_LADO, idLado } from "./modo";
 import { instalarPuente } from "./puente";
-
-/** Mismo origen que el padre: el mensaje no sale de la app. */
-const alPadre = (mensaje: { tipo: string; ruta: string }) =>
-  window.parent.postMessage(mensaje, location.origin);
 
 /**
  * Solo las vistas de trabajo navegan aquí. Lo demás (Configuración, Importar y exportar, Ayuda…) se pide al padre, que

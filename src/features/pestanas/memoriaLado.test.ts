@@ -19,14 +19,14 @@ describe("caben", () => {
   it("la estimación crece con las personas y las unidades", () => {
     const limite = 1000 * 2 ** 20;
     const usado = 0.8 * limite - BASE_LADO - 10;
-    expect(caben({ id: "B", personas: 0, unidades: 0 }, { usedJSHeapSize: usado, jsHeapSizeLimit: limite })).toBe(
-      true,
-    );
-    expect(caben({ id: "B", personas: 1, unidades: 0 }, { usedJSHeapSize: usado, jsHeapSizeLimit: limite })).toBe(
-      false,
-    );
-    expect(caben({ id: "B", personas: 0, unidades: 1 }, { usedJSHeapSize: usado, jsHeapSizeLimit: limite })).toBe(
-      false,
-    );
+    expect(
+      caben({ id: "B", personas: 0, unidades: 0 }, { usedJSHeapSize: usado, jsHeapSizeLimit: limite }),
+    ).toBe(true);
+    expect(
+      caben({ id: "B", personas: 1, unidades: 0 }, { usedJSHeapSize: usado, jsHeapSizeLimit: limite }),
+    ).toBe(false);
+    expect(
+      caben({ id: "B", personas: 0, unidades: 1 }, { usedJSHeapSize: usado, jsHeapSizeLimit: limite }),
+    ).toBe(false);
   });
 });

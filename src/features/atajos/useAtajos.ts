@@ -4,6 +4,7 @@ import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { abrirMenuContextual, nodoEn, useLienzo } from "@/features/arbol/useLienzo";
 import { esVistaCerrable } from "@/app/estructura";
+import { alPadre, type TeclaLado } from "@/lado/mensajes";
 import { MODO_LADO } from "@/lado/modo";
 import { useCerrarVista } from "@/app/useCerrarVista";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
@@ -76,6 +77,11 @@ export function useAtajos() {
     });
     if (!atajo) return;
 
+    // En el iframe de al lado, F6, las pestañas y la paleta son de la ventana: ella los atiende como en ese panel.
+    if (MODO_LADO && (atajo === "paleta" || atajo === "otroPanel" || ATAJOS_PESTANAS.has(atajo))) {
+      e.preventDefault();
+      return alPadre({ tipo: "boldo-lado-tecla", tecla: atajo === "otroPanel" ? "F6" : (atajo as TeclaLado) });
+    }
     if (atajo === "paleta") {
       e.preventDefault();
       paletaAbierta.value = true;
@@ -93,9 +99,6 @@ export function useAtajos() {
     // F6: el foco del teclado pasa al otro panel (el panel mismo lo recibe; desde ahí valen las flechas del lienzo).
     if (atajo === "otroPanel") {
       e.preventDefault();
-      // En el iframe de al lado el otro panel es de la ventana: el padre le pasa el foco (mismo origen).
-      if (MODO_LADO)
-        return window.parent.postMessage({ tipo: "boldo-lado-tecla", tecla: "F6" }, location.origin);
       const otro = panel === "lado" ? "principal" : "lado";
       pestanas.enfocarPanel(otro);
       document.querySelector<HTMLElement>(`[data-panel="${otro}"]`)?.focus();

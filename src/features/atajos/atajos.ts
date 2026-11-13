@@ -46,7 +46,7 @@ export interface TeclaAtajo {
   enPanel?: boolean;
   /** Hay vista dividida: F6 pasa al otro panel. */
   dividida?: boolean;
-  /** La otra organización, en el iframe de al lado: sin pestañas ni paleta (son de la ventana); F6 vuelve al principal. */
+  /** La otra organización, en el iframe de al lado: F6 vuelve al principal, aunque el iframe no tenga vista dividida. */
   lado?: boolean;
 }
 
@@ -70,17 +70,16 @@ export function resolverAtajo(e: TeclaAtajo): Atajo | null {
   if (e.modalAbierto) return null;
   const tecla = e.key.toLowerCase();
   const conControl = e.ctrlKey || e.metaKey;
-  if (conControl && tecla === "k") return e.lado ? null : "paleta";
+  if (conControl && tecla === "k") return "paleta";
   if (e.key === "Escape") return "cerrar";
   if (e.ctrlKey && e.key === "0") return "encuadrar";
   // Escribiendo, Ctrl+± queda para el campo (o el navegador).
   if (e.ctrlKey && !e.altKey && (e.key === "=" || e.key === "+" || e.key === "-"))
     return e.enCampoDeTexto ? null : e.key === "-" ? "alejar" : "acercar";
   // Pestañas: valen también escribiendo en un campo (no tienen otro uso ahí), como Ctrl+K.
-  if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return e.lado ? null : "nuevaPestana";
-  if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return e.lado ? null : "cerrarPestana";
-  if (e.ctrlKey && !e.altKey && e.key === "Tab")
-    return e.lado ? null : e.shiftKey ? "pestanaAnterior" : "pestanaSiguiente";
+  if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return "nuevaPestana";
+  if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";
+  if (e.ctrlKey && !e.altKey && e.key === "Tab") return e.shiftKey ? "pestanaAnterior" : "pestanaSiguiente";
   // Como en Windows, también desde un campo. Con dos paneles, adelante y atrás llevan al mismo.
   if (e.key === "F6" && !conControl && !e.altKey) return e.dividida || e.lado ? "otroPanel" : null;
   if (conControl && tecla === "d" && !e.altKey)

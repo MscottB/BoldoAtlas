@@ -216,15 +216,15 @@ describe("resolverAtajo: vista dividida", () => {
 describe("resolverAtajo: al lado (otra organización, en el iframe)", () => {
   const lado = { lado: true, soloLectura: true };
 
-  it("sin pestañas ni paleta: Ctrl+K, Ctrl+T, Ctrl+W y Ctrl+Tab no hacen nada", () => {
-    for (const [key, extra] of [
-      ["k", { ctrlKey: true }],
-      ["t", { ctrlKey: true }],
-      ["w", { ctrlKey: true }],
-      ["Tab", { ctrlKey: true }],
-      ["Tab", { ctrlKey: true, shiftKey: true }],
+  it("Ctrl+K, Ctrl+T, Ctrl+W y Ctrl+Tab se reconocen: el iframe se los pasa a la ventana", () => {
+    for (const [key, extra, atajo] of [
+      ["k", { ctrlKey: true }, "paleta"],
+      ["t", { ctrlKey: true }, "nuevaPestana"],
+      ["w", { ctrlKey: true }, "cerrarPestana"],
+      ["Tab", { ctrlKey: true }, "pestanaSiguiente"],
+      ["Tab", { ctrlKey: true, shiftKey: true }, "pestanaAnterior"],
     ] as const)
-      expect(resolverAtajo(tecla(key, { ...lado, ...extra })), key).toBeNull();
+      expect(resolverAtajo(tecla(key, { ...lado, ...extra })), key).toBe(atajo);
   });
 
   it("F6 vuelve al panel principal, aunque el iframe no tenga vista dividida", () => {

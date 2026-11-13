@@ -998,6 +998,42 @@ describe("usePestanas con la vista dividida", () => {
     expect(baseActual()).toBe("A");
   });
 
+  it("Ctrl+T o «abrir en pestaña nueva» con foco en una de otra organización abre otra de ella al lado", async () => {
+    const p = await arrancar(conOtra("a", "x"));
+    conB();
+    p.enfocarPanel("lado");
+    expect(p.abrirNueva("/").ok).toBe(true);
+    expect(p.lista.find((x) => x.id === p.lado)).toMatchObject({ org: "B", ruta: "/" });
+    expect(p.abrirNueva("/directorio").ok).toBe(true);
+    expect(p.lista.find((x) => x.id === p.lado)).toMatchObject({ org: "B", ruta: "/directorio" });
+    expect(p.lista).toHaveLength(5);
+    expect(p.activa).toBe("a");
+    expect(baseActual()).toBe("A");
+    expect(rutaActual()).toBe("/");
+    // Lo que no va al lado se abre en el principal, de la abierta.
+    expect(p.abrirNueva("/ayuda").ok).toBe(true);
+    await esperar();
+    expect(p.lista.find((x) => x.id === p.activa)).toMatchObject({ org: "A", ruta: "/ayuda" });
+  });
+
+  it("quitar de la lista la organización de al lado cierra la vista dividida; sin la lista al día, no", async () => {
+    const p = await arrancar(conOtra("a", "x"));
+    conB();
+    const organizaciones = useOrganizaciones();
+    // Al arrancar, antes de leer la lista, la de al lado se queda.
+    organizaciones.lista = [{ id: "A", nombre: "Org A", existe: true }] as Organizacion[];
+    await esperar();
+    expect(p.lado).toBe("x");
+    organizaciones.listaAlDia = true;
+    conB();
+    await esperar();
+    expect(p.lado).toBe("x");
+    organizaciones.lista = [{ id: "A", nombre: "Org A", existe: true }] as Organizacion[];
+    await esperar();
+    expect(p.lado).toBeNull();
+    expect(p.lista.map((x) => x.id)).toEqual(["a", "b", "x"]); // sigue en la barra, con su motivo al activarla
+  });
+
   it("dividir con una de otra organización activa no abre aunque esté en la lista", async () => {
     const p = await arrancar(conOtra("a", null));
     conB();

@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import DialogoPuesto from "@/features/puestos/DialogoPuesto.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
 import { useAtajos } from "@/features/atajos/useAtajos";
+import { useRouter } from "vue-router";
+import { escucharPadre } from "./mensajes";
 
 /** La app en el iframe del panel de al lado: solo la vista, sin barras ni pestañas (esas son del padre). */
 defineProps<{
@@ -14,8 +16,13 @@ defineProps<{
   motivo: string;
 }>();
 const { t } = useI18n();
-// Leer con el teclado (flechas, F, menú, zoom) y F6 de vuelta al panel principal. Al montar: escucha la ventana del iframe.
-onMounted(useAtajos);
+const router = useRouter();
+// Leer con el teclado (flechas, F, menú, zoom); F6 y los atajos de pestañas y de la paleta van a la ventana. Al montar:
+// escucha la ventana del iframe, y lo que la ventana le pide (navegar) y le avisa (el foco entró aquí).
+onMounted(() => {
+  useAtajos();
+  escucharPadre(router);
+});
 </script>
 
 <template>

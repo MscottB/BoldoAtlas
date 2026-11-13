@@ -71,14 +71,24 @@ describe("Los atajos en el panel de al lado", () => {
     expect(e.preventDefault).toHaveBeenCalled();
   });
 
-  it("sin paleta ni pestañas", () => {
+  it("la paleta y las pestañas son de la ventana: se le pasan, y aquí no hacen nada", () => {
     const pestanas = usePestanas();
     const abrirNueva = vi.spyOn(pestanas, "abrirNueva");
     const cerrar = vi.spyOn(pestanas, "cerrar");
-    tecla("k", true);
+    for (const [key, teclaLado] of [
+      ["k", "paleta"],
+      ["t", "nuevaPestana"],
+      ["w", "cerrarPestana"],
+      ["Tab", "pestanaSiguiente"],
+    ] as const) {
+      const e = tecla(key, true);
+      expect(alPadre).toHaveBeenLastCalledWith(
+        { tipo: "boldo-lado-tecla", tecla: teclaLado },
+        "http://tauri.localhost",
+      );
+      expect(e.preventDefault).toHaveBeenCalled();
+    }
     expect(paletaAbierta.value).toBe(false);
-    tecla("t", true);
-    tecla("w", true);
     expect(abrirNueva).not.toHaveBeenCalled();
     expect(cerrar).not.toHaveBeenCalled();
   });

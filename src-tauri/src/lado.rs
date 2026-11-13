@@ -113,27 +113,28 @@ pub fn leer_en<T>(
     }
 }
 
-/// Copia `otra_id` a un temporal y la deja al lado. `base_id` es la abierta, como en todo comando con datos.
+/// Copia `otra_id` a un temporal y la deja al lado, si `pedido` sigue siendo el último. `base_id` es la abierta, como en
+/// todo comando con datos.
 fn lado_en(
     estado: &Estado,
     lado: &Lado,
+    pedido: u64,
     base_id: &str,
     otra_id: &str,
     migraciones: &[&str],
 ) -> Result<InfoLado, Fallo> {
-    let copiada = copiar(estado, lado, base_id, otra_id, migraciones)?;
+    let copiada = copiar(estado, pedido, base_id, otra_id, migraciones)?;
     dejar(estado, lado, base_id, copiada)
 }
 
 fn copiar(
     estado: &Estado,
-    lado: &Lado,
+    pedido: u64,
     base_id: &str,
     otra_id: &str,
     migraciones: &[&str],
 ) -> Result<Copiada, Fallo> {
     estado.base(base_id)?;
-    let pedido = lado.pedir();
     let (r, e) = estado.entrada(otra_id)?;
     let copia = copiar_otra(r, &e, base_id, migraciones, "lado")?;
     Ok(Copiada { pedido, copia })
@@ -156,10 +157,13 @@ pub async fn lado_abrir(
     base_id: String,
     otra_id: String,
 ) -> Result<InfoLado, Fallo> {
+    // El pedido, al llegar y antes del hilo: un `lado_cerrar` posterior lo deja sin efecto aunque la copia no haya empezado.
+    let pedido = app.state::<Lado>().pedir();
     tauri::async_runtime::spawn_blocking(move || {
         lado_en(
             &app.state::<Estado>(),
             &app.state::<Lado>(),
+            pedido,
             &base_id,
             &otra_id,
             db::MIGRACIONES,
@@ -223,7 +227,15 @@ pub(crate) mod prueba {
     impl Tres {
         /// B al lado, pedida desde A.
         pub fn abrir_lado(&self) -> InfoLado {
-            lado_en(&self.e, &self.lado, &self.a.id, &self.b.id, MIGRACIONES).unwrap()
+            lado_en(
+                &self.e,
+                &self.lado,
+                self.lado.pedir(),
+                &self.a.id,
+                &self.b.id,
+                MIGRACIONES,
+            )
+            .unwrap()
         }
 
         pub fn temporales(&self) -> usize {
@@ -261,7 +273,7 @@ mod tests {
     #[test]
     fn lado_abrir_consigo_misma_da_misma() {
         let d = tres("");
-        let r = lado_en(&d.e, &d.lado, &d.a.id, &d.a.id, MIGRACIONES);
+        let r = lado_en(&d.e, &d.lado, d.lado.pedir(), &d.a.id, &d.a.id, MIGRACIONES);
         assert_eq!(r.unwrap_err().codigo, "misma");
         assert_eq!(d.temporales(), 0);
     }
@@ -269,7 +281,7 @@ mod tests {
     #[test]
     fn lado_abrir_desde_otra_base_no_deja_nada() {
         let d = tres("");
-        let r = lado_en(&d.e, &d.lado, &d.c.id, &d.b.id, MIGRACIONES);
+        let r = lado_en(&d.e, &d.lado, d.lado.pedir(), &d.c.id, &d.b.id, MIGRACIONES);
         assert_eq!(r.unwrap_err().codigo, "otra_base");
         assert_eq!(
             d.lado.con_lectura(&d.b.id, |_| Ok(())).unwrap_err(),
@@ -300,8 +312,8 @@ mod tests {
     #[test]
     fn el_ultimo_pedido_gana_aunque_su_copia_termine_antes() {
         let d = tres("");
-        let primero = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
-        let segundo = copiar(&d.e, &d.lado, &d.a.id, &d.c.id, MIGRACIONES).unwrap();
+        let primero = copiar(&d.e, d.lado.pedir(), &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        let segundo = copiar(&d.e, d.lado.pedir(), &d.a.id, &d.c.id, MIGRACIONES).unwrap();
         dejar(&d.e, &d.lado, &d.a.id, segundo).unwrap();
         let tarde = dejar(&d.e, &d.lado, &d.a.id, primero);
         assert_eq!(tarde.unwrap_err().codigo, "cancelado");
@@ -313,7 +325,7 @@ mod tests {
     #[test]
     fn cerrar_deja_sin_efecto_la_copia_en_curso() {
         let d = tres("");
-        let copiada = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        let copiada = copiar(&d.e, d.lado.pedir(), &d.a.id, &d.b.id, MIGRACIONES).unwrap();
         d.lado.cerrar();
         let r = dejar(&d.e, &d.lado, &d.a.id, copiada);
         assert_eq!(r.unwrap_err().codigo, "cancelado");
@@ -324,7 +336,7 @@ mod tests {
     #[test]
     fn eliminada_mientras_se_copiaba_no_queda_al_lado() {
         let d = tres("");
-        let copiada = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        let copiada = copiar(&d.e, d.lado.pedir(), &d.a.id, &d.b.id, MIGRACIONES).unwrap();
         d.e.eliminar(&d.b.id, false, false, &|| false, MIGRACIONES)
             .unwrap();
         let r = dejar(&d.e, &d.lado, &d.a.id, copiada);
@@ -336,7 +348,7 @@ mod tests {
     #[test]
     fn cambio_de_base_mientras_se_copiaba_no_deja_nada() {
         let d = tres("");
-        let copiada = copiar(&d.e, &d.lado, &d.a.id, &d.b.id, MIGRACIONES).unwrap();
+        let copiada = copiar(&d.e, d.lado.pedir(), &d.a.id, &d.b.id, MIGRACIONES).unwrap();
         d.e.cambiar_a(&d.c.id, &|| false, MIGRACIONES).unwrap();
         let r = dejar(&d.e, &d.lado, &d.a.id, copiada);
         assert_eq!(r.unwrap_err().codigo, "otra_base");
@@ -345,10 +357,23 @@ mod tests {
     }
 
     #[test]
+    fn cerrar_antes_de_empezar_la_copia_la_deja_sin_efecto() {
+        // El pedido se toma al llegar el comando, antes del hilo: un cierre que llega después lo cancela aunque la copia
+        // aún no empiece.
+        let d = tres("");
+        let pedido = d.lado.pedir();
+        d.lado.cerrar();
+        let r = lado_en(&d.e, &d.lado, pedido, &d.a.id, &d.b.id, MIGRACIONES);
+        assert_eq!(r.unwrap_err().codigo, "cancelado");
+        assert_eq!(d.db_id(&d.b.id).unwrap_err(), "otra_base");
+        assert_eq!(d.temporales(), 0);
+    }
+
+    #[test]
     fn abrir_otra_reemplaza_la_anterior_y_cerrar_la_suelta() {
         let d = tres("");
         d.abrir_lado();
-        lado_en(&d.e, &d.lado, &d.a.id, &d.c.id, MIGRACIONES).unwrap();
+        lado_en(&d.e, &d.lado, d.lado.pedir(), &d.a.id, &d.c.id, MIGRACIONES).unwrap();
         assert_eq!(d.temporales(), 1);
         assert_eq!(d.db_id(&d.b.id).unwrap_err(), "otra_base");
         assert_eq!(d.db_id(&d.c.id).unwrap(), d.c.id);

@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useLadoOtra } from "./ladoOtra";
+import { useLadoOtra } from "./useLadoOtra";
 import { usePestanas } from "./usePestanas";
 
 // El panel de al lado con otra organización: una copia de solo lectura, en un iframe con la app en modo lado (decisión 2).
