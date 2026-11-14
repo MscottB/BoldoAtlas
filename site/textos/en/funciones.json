@@ -27,7 +27,8 @@
         "Branches fold away, and one button per real level (or − and + when there are many) and All choose how many levels you see.",
         "Lateral connections between units: dotted lines with their description, through the free space between cards.",
         "Several trees in one database, and any branch opens as a tree of its own.",
-        "Saved views, and highlighting by tag or by text."
+        "Saved views, and highlighting by tag or by text.",
+      "Colors by mark, by legend, by time in position or by people reporting, with the value written on each card."
       ],
       "imagen": {
         "nombre": "arbol",
