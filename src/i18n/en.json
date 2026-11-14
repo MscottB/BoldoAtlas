@@ -181,7 +181,32 @@
       "avanzado": "Advanced",
       "enPuestos": "On position cards",
       "restablecer": "Reset",
-      "filaLeyenda": "Colors: {titulo}"
+      "filaLeyenda": "Colors: {titulo}",
+      "antiguedad": "Time in position",
+      "aCargo": "People reporting",
+      "anios": "< 1 year | 1 year | {n} years",
+      "aCargoValor": "{n} reporting",
+      "rangos": {
+        "antiguedad": {
+          "0": "Less than 1 year",
+          "1": "1 to 3 years",
+          "2": "3 to 5 years",
+          "3": "5 to 10 years",
+          "4": "10 years or more"
+        },
+        "aCargo": {
+          "0": "1 to 5",
+          "1": "6 to 15",
+          "2": "16 to 50",
+          "3": "51 to 200",
+          "4": "More than 200"
+        }
+      },
+      "aparte": {
+        "vacante": "Vacant",
+        "sinJefatura": "No head",
+        "sinPersonas": "No one reporting"
+      }
     },
     "resaltar": {
       "titulo": "Highlight",

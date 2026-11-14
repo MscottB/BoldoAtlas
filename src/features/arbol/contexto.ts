@@ -1,5 +1,6 @@
 import type { ComputedRef, InjectionKey } from "vue";
 import type { Leyenda, Unidad, Zona } from "@/db/tipos";
+import type { ValorEscala } from "./escala";
 import type { Marca } from "./jerarquia";
 import type { Caja, Trazado } from "./lateral";
 
@@ -14,6 +15,8 @@ export interface ContextoLienzo {
   rutas: ComputedRef<Map<string, Unidad[]> | null>;
   /** Entradas de leyenda por id, cuando se colorea por la leyenda del puesto; si no, null. */
   leyendas: ComputedRef<Map<string, Leyenda> | null>;
+  /** Valor de cada tarjeta (unidad o puesto, por id) cuando se colorea con escala (antigüedad, a cargo); si no, null. */
+  escala: ComputedRef<Map<string, ValorEscala> | null>;
   /** Zonas que se ven como marca de color en la tarjeta (las que como recuadro cubrirían a otras), por unidad. */
   zonas: ComputedRef<ReadonlyMap<string, Zona[]> | null>;
   /** Tarjetas ligeras: alejado y con muchas tarjetas (rendimiento.ts). */

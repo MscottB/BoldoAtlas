@@ -40,7 +40,7 @@ export interface ConfigVista {
   mostrarPersona: boolean;
   /** Tipos de unidad cuyo superior más cercano se muestra en cada tarjeta. */
   rutaTipos: string[];
-  /** Criterio de color: "ninguno", "marca:<tipoId>" o "leyenda" (la leyenda del puesto). */
+  /** Criterio de color: "ninguno", "marca:<tipoId>", "leyenda" (la leyenda del puesto), "antiguedad" o "aCargo" (escala.ts). */
   colorearPor: string;
   /** Leyenda flotante visible (solo se dibuja si hay criterio de color). */
   leyenda: boolean;
@@ -182,7 +182,8 @@ export function leerVista(crudo: unknown): ConfigVista {
         ? c.rutaTipos
         : d.rutaTipos,
     colorearPor:
-      typeof c.colorearPor === "string" && /^(ninguno|leyenda|marca:.+)$/.test(c.colorearPor)
+      typeof c.colorearPor === "string" &&
+      /^(ninguno|leyenda|antiguedad|aCargo|marca:.+)$/.test(c.colorearPor)
         ? c.colorearPor
         : d.colorearPor,
     leyenda: bool(c, d, "leyenda"),
