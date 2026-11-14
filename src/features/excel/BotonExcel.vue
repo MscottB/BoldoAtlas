@@ -19,6 +19,7 @@ import { hoyISO } from "@/features/puestos/puestos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { escribirAparte } from "./aparte";
+import { crearAviso } from "./aviso";
 import { exportar, type Lista } from "./exportar";
 import { hojaInformacion, nombreArchivo } from "./libro";
 
@@ -31,9 +32,9 @@ const org = useOrganizacion();
 
 const abierto = ref(false);
 const ocupado = ref(false);
-let responder: (acepta: boolean) => void = () => {};
+const aviso = crearAviso((v) => (abierto.value = v));
 // Cerrar el aviso de cualquier forma (Cancelar, Esc, clic fuera) es no aceptarlo. «Exportar» responde antes.
-watch(abierto, (v) => v || responder(false));
+watch(abierto, (v) => v || aviso.cerrado());
 
 async function armar() {
   const [meta, info] = await Promise.all([leerMeta(), infoApp()]);
@@ -52,6 +53,7 @@ async function armar() {
     fecha: l.fecha ?? hoy,
     filtros: l.filtros,
     orden: l.orden,
+    logo: org.org.logo,
   };
   return { nombre: nombreArchivo(org.org.nombre, hoy, revision), hojas: [l.hoja, hojaInformacion(datos, t)] };
 }
@@ -61,11 +63,7 @@ async function pulsar() {
   ocupado.value = true;
   try {
     const nombre = await exportar({
-      aceptar: () =>
-        new Promise((r) => {
-          responder = r;
-          abierto.value = true;
-        }),
+      aceptar: aviso.preguntar,
       armar,
       escribir: escribirAparte,
       guardar: excelGuardar,
@@ -99,7 +97,7 @@ async function pulsar() {
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel>{{ t("excel.aviso.cancelar") }}</AlertDialogCancel>
-        <AlertDialogAction @click="responder(true)">{{ t("excel.aviso.aceptar") }}</AlertDialogAction>
+        <AlertDialogAction @click="aviso.aceptar()">{{ t("excel.aviso.aceptar") }}</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>

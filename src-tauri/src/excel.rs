@@ -6,6 +6,7 @@ use crate::intercambio;
 use crate::respaldos::Fallo;
 use serde::Deserialize;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use tauri::ipc::{InvokeBody, Request};
@@ -34,12 +35,19 @@ fn desarmar(cuerpo: &[u8]) -> Result<(Pedido, &[u8]), Fallo> {
     Ok((pedido, libro))
 }
 
-/// Pasando por un nombre aparte: un corte a mitad nunca deja un Excel a medias con ese nombre.
+/// Pasando por un nombre aparte: un corte a mitad nunca deja un Excel a medias con ese nombre. El temporal lleva un id
+/// nuevo y se crea con `create_new`: nunca pisa (ni borra al fallar) un archivo que ya estuviera.
 fn escribir(destino: &Path, libro: &[u8]) -> Result<(), Fallo> {
     let mut parcial = destino.as_os_str().to_owned();
-    parcial.push(".tmp");
+    parcial.push(format!(".{}.tmp", uuid::Uuid::now_v7().simple()));
     let parcial = PathBuf::from(parcial);
-    let hecho = fs::write(&parcial, libro).and_then(|_| fs::rename(&parcial, destino));
+    let mut archivo = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&parcial)?;
+    let hecho = archivo.write_all(libro);
+    drop(archivo); // cerrado antes de renombrar: Windows no renombra un archivo abierto
+    let hecho = hecho.and_then(|_| fs::rename(&parcial, destino));
     if hecho.is_err() {
         let _ = fs::remove_file(&parcial);
     }
@@ -133,6 +141,16 @@ mod tests {
         );
     }
 
+    /// Lo que hay en la carpeta, sin contar `destino`.
+    fn otros(d: &Path) -> Vec<String> {
+        let mut v: Vec<String> = fs::read_dir(d)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        v.sort();
+        v
+    }
+
     #[test]
     fn escribe_sin_dejar_el_temporal_y_pisa_lo_que_el_dialogo_pregunto() {
         let d = tempfile::tempdir().unwrap();
@@ -140,14 +158,29 @@ mod tests {
         fs::write(&destino, "anterior").unwrap();
         escribir(&destino, b"nuevo").unwrap();
         assert_eq!(fs::read(&destino).unwrap(), b"nuevo");
-        assert!(!d.path().join("lista.xlsx.tmp").exists());
+        assert_eq!(otros(d.path()), ["lista.xlsx"]);
     }
 
     #[test]
-    fn un_fallo_al_escribir_no_deja_nada() {
+    fn no_toca_un_archivo_del_usuario_con_el_nombre_del_temporal() {
         let d = tempfile::tempdir().unwrap();
-        let destino = d.path().join("no-existe").join("lista.xlsx");
+        let destino = d.path().join("lista.xlsx");
+        let suyo = d.path().join("lista.xlsx.tmp");
+        fs::write(&suyo, "del usuario").unwrap();
+        escribir(&destino, b"nuevo").unwrap();
+        assert_eq!(fs::read(&suyo).unwrap(), b"del usuario");
+        assert_eq!(fs::read(&destino).unwrap(), b"nuevo");
+        assert_eq!(otros(d.path()), ["lista.xlsx", "lista.xlsx.tmp"]);
+    }
+
+    #[test]
+    fn si_falla_al_renombrar_borra_el_temporal_y_deja_el_destino_como_estaba() {
+        // el temporal se escribe bien, pero en el destino hay una carpeta: renombrar falla
+        let d = tempfile::tempdir().unwrap();
+        let destino = d.path().join("lista.xlsx");
+        fs::create_dir(&destino).unwrap();
         assert!(escribir(&destino, b"x").is_err());
-        assert!(!destino.exists());
+        assert!(destino.is_dir());
+        assert_eq!(otros(d.path()), ["lista.xlsx"]);
     }
 }

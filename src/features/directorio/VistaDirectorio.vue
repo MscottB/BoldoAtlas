@@ -47,6 +47,7 @@ import {
   SIN_FILTROS,
   candidatasDirectorio,
   columnaVisible,
+  filasDelArbol,
   filtrarYOrdenar,
   leerColumnas,
   leerEstadoDirectorio,
@@ -177,8 +178,8 @@ function quitarPersona() {
 }
 const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipoId === tipoId)?.nombre;
 
-// «Exportar esta lista a Excel»: las filas de la lista con sus filtros, su orden y sus columnas a la vista (también en
-// Árbol, que muestra los mismos puestos).
+// «Exportar esta lista a Excel»: las filas de la lista con sus filtros, su orden y sus columnas a la vista. En Árbol, las
+// mismas sin las personas sin puesto, que el árbol no muestra.
 function listaExcel(): Lista {
   const f = filtros.value;
   const nombreDe = (id: string | null, opciones: readonly { id: string; nombre: string }[]) =>
@@ -197,7 +198,7 @@ function listaExcel(): Lista {
   return {
     nombre: t("nav.directorio"),
     hoja: hojaDirectorio(
-      filas.value,
+      vista.value === "arbol" ? filasDelArbol(filas.value) : filas.value,
       {
         reemplazo: ver("reemplazo"),
         tipos: tiposVisibles.value,

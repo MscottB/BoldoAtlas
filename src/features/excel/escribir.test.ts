@@ -77,4 +77,28 @@ describe("escribir el libro", () => {
     const libro = await leer(await escribirLibro([lista, lista]));
     expect(libro.worksheets.map((h) => h.name)).toEqual(["Directorio", "Directorio (2)"]);
   });
+
+  it("el logo va como imagen a la derecha de los datos, sin taparlos; sin logo no hay imagen", async () => {
+    const png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==";
+    const info: Hoja = { nombre: "Información", columnas: ["Dato", "Valor"], filas: [["A", "b"]] };
+    const con = (await leer(await escribirLibro([{ ...info, imagen: { png } }]))).getWorksheet(
+      "Información",
+    )!;
+    const imagenes = con.getImages();
+    expect(imagenes).toHaveLength(1);
+    expect(imagenes[0]!.range.tl.col).toBeGreaterThanOrEqual(info.columnas.length);
+    const sin = (await leer(await escribirLibro([info]))).getWorksheet("Información")!;
+    expect(sin.getImages()).toHaveLength(0);
+  });
+
+  it("un logo que no es PNG no se pone (ni rompe el libro)", async () => {
+    const h: Hoja = {
+      nombre: "I",
+      columnas: ["A"],
+      filas: [],
+      imagen: { png: "/9j/4AAQSkZJRgABAQAAAQABAAD" },
+    };
+    expect((await leer(await escribirLibro([h]))).getWorksheet("I")!.getImages()).toHaveLength(0);
+  });
 });

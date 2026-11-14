@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { anchos, fechaExcel, hojaInformacion, momentoExcel, nombreArchivo, nombreHoja } from "./libro";
+import {
+  anchos,
+  fechaExcel,
+  hojaInformacion,
+  medidasPng,
+  momentoExcel,
+  nombreArchivo,
+  nombreHoja,
+} from "./libro";
 
-const t = (clave: string) => `[${clave}]`;
+const t = (clave: string, valores?: Record<string, unknown>) =>
+  valores ? `[${clave}:${Object.values(valores).join(",")}]` : `[${clave}]`;
+
+// Un PNG de 1 × 1 (gris), como lo guarda la app en `meta.logo_png`: solo el base64.
+const PNG_1X1 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==";
 
 describe("nombre del archivo", () => {
   it("es Organizacion_AAAA-MM-DD_rN.xlsx, sin lo que un sistema de archivos no acepta", () => {
@@ -63,9 +76,15 @@ describe("hoja Información", () => {
       ["[excel.info.revision]", 37],
       ["[excel.info.dbId]", "0193-abc"],
       ["[excel.info.lista]", "Directorio"],
-      ["Unidad", "Operaciones"],
+      ["[excel.info.filtro:Unidad]", "Operaciones"],
       ["[excel.info.orden]", "Persona (ascendente)"],
     ]);
+    expect(h.imagen).toBeUndefined();
+  });
+
+  it("con logo, la hoja lo lleva como imagen", () => {
+    expect(hojaInformacion({ ...datos, logo: PNG_1X1 }, t).imagen).toEqual({ png: PNG_1X1 });
+    expect(hojaInformacion({ ...datos, logo: null }, t).imagen).toBeUndefined();
   });
 
   it("sin filtros lo dice; sin orden que elegir, no lo menciona", () => {
@@ -90,5 +109,17 @@ describe("anchos de columna", () => {
 
   it("una fecha mide lo que se ve (AAAA-MM-DD)", () => {
     expect(anchos({ nombre: "x", columnas: ["F"], filas: [[fechaExcel("2026-11-14")]] })).toEqual([12]);
+  });
+});
+
+describe("medidas de un PNG", () => {
+  it("lee ancho y alto de su cabecera", () => {
+    expect(medidasPng(PNG_1X1)).toEqual({ ancho: 1, alto: 1 });
+  });
+
+  it("lo que no es PNG no tiene medidas", () => {
+    expect(medidasPng("")).toBeNull();
+    expect(medidasPng("/9j/4AAQSkZJRgABAQAAAQABAAD")).toBeNull(); // JPEG
+    expect(medidasPng("no es base64 ###")).toBeNull();
   });
 });

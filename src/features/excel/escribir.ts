@@ -1,11 +1,13 @@
 // Pasa las hojas a un .xlsx con el formato de spec §11: encabezado con el color de la marca y fijo, filtro, anchos
 // ajustados, números y fechas como tales y el texto siempre como texto. ExcelJS se carga solo al exportar, en el worker
 // de escribir.worker.ts.
-import { anchos, nombreHoja, textoFecha, type Hoja } from "./libro";
+import { anchos, medidasPng, nombreHoja, textoFecha, type Hoja } from "./libro";
 
 // --marca y --marca-foreground de los estilos: el texto oscuro sobre el cobre es el que contrasta.
 const MARCA = "FFC8743F";
 const SOBRE_MARCA = "FF111827";
+/** Lado mayor del logo en la hoja, en píxeles. */
+const LOGO_MAX = 120;
 
 /** El nombre de cada hoja, sin repetir: Excel no abre un libro con dos hojas iguales (sin mirar mayúsculas). */
 function sinRepetir(nombre: string, usados: Set<string>): string {
@@ -44,6 +46,16 @@ export async function escribirLibro(hojas: Hoja[]): Promise<Uint8Array> {
       from: { row: 1, column: 1 },
       to: { row: h.filas.length + 1, column: h.columnas.length },
     };
+    // El logo, a la derecha de los datos con una columna libre en medio: no tapa nada ni queda bajo el filtro.
+    const medidas = h.imagen && medidasPng(h.imagen.png);
+    if (h.imagen && medidas) {
+      const escala = Math.min(1, LOGO_MAX / Math.max(medidas.ancho, medidas.alto));
+      hoja.addImage(libro.addImage({ base64: h.imagen.png, extension: "png" }), {
+        tl: { col: h.columnas.length + 1, row: 0 },
+        ext: { width: Math.round(medidas.ancho * escala), height: Math.round(medidas.alto * escala) },
+        editAs: "oneCell",
+      });
+    }
   }
   return new Uint8Array(await libro.xlsx.writeBuffer());
 }

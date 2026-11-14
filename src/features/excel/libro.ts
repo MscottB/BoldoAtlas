@@ -8,10 +8,27 @@ export interface Hoja {
   nombre: string;
   columnas: string[];
   filas: Celda[][];
+  /** Una imagen junto a los datos (el logo en Información): base64 de un PNG, como `meta.logo_png`. */
+  imagen?: { png: string };
 }
 
 /** Lo que traduce los títulos: `t` de vue-i18n. */
-export type Traducir = (clave: string) => string;
+export type Traducir = (clave: string, valores?: Record<string, unknown>) => string;
+
+/** Ancho y alto de un PNG (base64) según su cabecera; null si no es un PNG. */
+export function medidasPng(base64: string): { ancho: number; alto: number } | null {
+  let b: string;
+  try {
+    b = atob(base64.slice(0, 32)); // 24 bytes: firma, largo y tipo de IHDR, ancho y alto
+  } catch {
+    return null;
+  }
+  if (b.length < 24 || !b.startsWith("\x89PNG\r\n\x1a\n") || b.slice(12, 16) !== "IHDR") return null;
+  const u32 = (i: number) => [0, 1, 2, 3].reduce((n, k) => n * 256 + b.charCodeAt(i + k), 0);
+  const ancho = u32(16);
+  const alto = u32(20);
+  return ancho && alto ? { ancho, alto } : null;
+}
 
 /** Para el nombre del archivo: como `nombre_limpio` de Rust (el `.boldo`), sin lo que un sistema de archivos no acepta. */
 const limpio = (nombre: string) => nombre.trim().replace(/[^\p{L}\p{N}]/gu, "_");
@@ -59,6 +76,8 @@ export interface DatosInformacion {
   filtros: [string, string][];
   /** El orden de la lista, ya traducido, si se puede elegir. */
   orden?: string;
+  /** El logo de la organización (base64 de `meta.logo_png`); sin él, la hoja no lleva imagen. */
+  logo?: string | null;
 }
 
 /** La hoja Información (siempre incluida). Sin escenarios todavía: no tiene fila de escenario. */
@@ -76,9 +95,13 @@ export function hojaInformacion(d: DatosInformacion, t: Traducir): Hoja {
       fila("revision", d.revision),
       fila("dbId", d.dbId),
       fila("lista", d.lista),
-      ...(d.filtros.length ? d.filtros : [[t("excel.info.filtros"), t("excel.info.sinFiltros")]]),
+      // «Filtro: Unidad»: que no se lean como datos de la organización
+      ...(d.filtros.length
+        ? d.filtros.map(([que, valor]) => [t("excel.info.filtro", { que }), valor])
+        : [[t("excel.info.filtros"), t("excel.info.sinFiltros")]]),
       ...(d.orden ? [fila("orden", d.orden)] : []),
     ],
+    ...(d.logo ? { imagen: { png: d.logo } } : {}),
   };
 }
 

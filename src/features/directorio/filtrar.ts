@@ -231,6 +231,10 @@ export function filtrarYOrdenar(c: Candidatas, f: Filtros, orden: Orden): FilaDi
 export const filtrarDirectorio = (e: EstadoDirectorio, f: Filtros, orden: Orden) =>
   filtrarYOrdenar(candidatasDirectorio(e), f, orden);
 
+/** Las filas que muestra el árbol: las de la lista sin las personas sin puesto vigente (el árbol va por puestos). */
+export const filasDelArbol = (filas: FilaDirectorio[]): FilaDirectorio[] =>
+  filas.filter((f) => f.estado !== "sinPuesto");
+
 /** Los filtros que van dentro de «Filtros» (el texto, la unidad y la persona quedan a la vista). */
 export const FILTROS_PLEGADOS = [
   "cargo_id",

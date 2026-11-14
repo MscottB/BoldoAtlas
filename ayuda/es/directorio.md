@@ -53,14 +53,14 @@ Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona
 
 ## Exportar a Excel
 
-**Exportar esta lista a Excel**, junto al título, guarda en un archivo de Excel lo que se ve: las filas que dejan la búsqueda y los filtros, en el mismo orden y con las mismas columnas (las que elegiste en **Columnas**). Con **Árbol** se exportan las mismas personas y vacantes, como lista.
+**Exportar esta lista a Excel**, junto al título, guarda en un archivo de Excel lo que se ve: las filas que dejan la búsqueda y los filtros, en el mismo orden y con las mismas columnas (las que elegiste en **Columnas**). Con **Árbol** se exportan, como lista, las personas y vacantes que muestra el árbol: sin las personas sin puesto vigente.
 
 1. Pulsa **Exportar esta lista a Excel**.
 2. Lee el aviso y pulsa **Acepto, exportar**. El archivo no va cifrado: cualquiera que lo abra verá lo que contiene, y quien lo genera responde por dónde lo guarda y con quién lo comparte. El aviso aparece cada vez que exportas; con **Cancelar** no se genera nada.
 3. Elige dónde guardarlo. El nombre propuesto lleva la organización, la fecha y la revisión de los datos.
 4. Al terminar, **Abrir carpeta** muestra el archivo en su carpeta.
 
-El archivo trae una hoja con la lista y otra, **Información**, con la organización, la fecha de generación, la fecha de los datos, las versiones de BoldoAtlas y de los datos, y los filtros y el orden aplicados. Los títulos de las columnas quedan fijos y con filtro; las cifras y fechas son números y fechas de Excel, y el texto queda como texto aunque empiece con `=`, `+`, `-` o `@`.
+El archivo trae una hoja con la lista y otra, **Información**, con la organización, la fecha de generación, la fecha de los datos, las versiones de BoldoAtlas y de los datos, y los filtros (cada uno como «Filtro: …») y el orden aplicados. Si la organización tiene logo, va en esa hoja, a la derecha de los datos. Los títulos de las columnas quedan fijos y con filtro; las cifras y fechas son números y fechas de Excel, y el texto queda como texto aunque empiece con `=`, `+`, `-` o `@`.
 
 La misma opción está en **Revisión de datos**, en cada lista de **Mantenedores** y en la pestaña **Personas** del panel de una unidad.
 

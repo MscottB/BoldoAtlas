@@ -14,6 +14,7 @@ import {
   columnaVisible,
   filtrarDirectorio,
   filtrarYOrdenar,
+  filasDelArbol,
   leerColumnas,
   leerEstadoDirectorio,
   pulsarFila,
@@ -339,5 +340,15 @@ describe("pulsarFila (lista y árbol del directorio)", () => {
     }
     const derecho = pulsar(clic({ type: "auxclick", button: 2 }), persona);
     expect(derecho.ficha).not.toHaveBeenCalled();
+  });
+});
+
+describe("filasDelArbol", () => {
+  it("las de la lista sin las personas sin puesto, que el árbol no muestra, en el mismo orden", () => {
+    const filas = filtrarDirectorio(estado, sinFiltros, porPersona);
+    const delArbol = filasDelArbol(filas);
+    expect(delArbol).toHaveLength(8);
+    expect(delArbol.some((f) => f.estado === "sinPuesto")).toBe(false);
+    expect(delArbol).toEqual(filas.filter((f) => f.puestoId));
   });
 });
