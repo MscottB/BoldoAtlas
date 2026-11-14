@@ -2,12 +2,23 @@
    rótulos «FIG» en monoespaciada), con el cobre de BoldoAtlas (#c8743f, --marca en src/styles/main.css) de acento. */
 
 /* Inter (OFL), Instrument Serif cursiva (OFL) y Cascadia Mono (OFL): subconjuntos en public/fuentes/, junto a sus
-   licencias. La monoespaciada va con otro nombre porque «Cascadia Code» es nombre reservado de su licencia. */
+   licencias. La monoespaciada va con otro nombre porque «Cascadia Code» es nombre reservado de su licencia; su
+   subconjunto sale de Cascadia Mono con latín, latín extendido A, puntuación y flechas (las mayúsculas con tilde de
+   los rótulos). */
 @font-face {
   font-family: "Inter";
   src: url("/fuentes/inter.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
+}
+/* El subconjunto de Tramtai no trae el signo menos («−» de los niveles): sale de la Inter del proyecto
+   (@fontsource-variable/inter), recortada a ese signo. Se declara después para que el navegador la pruebe primero. */
+@font-face {
+  font-family: "Inter";
+  src: url("/fuentes/inter-signos.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+2212;
 }
 @font-face {
   font-family: "Instrument Serif";
