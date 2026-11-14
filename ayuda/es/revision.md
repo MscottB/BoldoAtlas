@@ -62,6 +62,10 @@ El filtro **Rama** muestra una unidad y todo lo que hay debajo de ella.
 
 Para volver a verlo todo, elige **Toda la organización**.
 
+## Exportar a Excel
+
+**Exportar esta lista a Excel**, arriba a la derecha, guarda los avisos que se ven (con la rama elegida) en un archivo de Excel: una fila por aviso, con su sección, su nivel y su detalle, más **Reemplazos vigentes** y **Marcados como bien**. En los grupos de correos y nombres, cada persona va en su propia fila. Antes de guardar hay que aceptar un aviso, porque el archivo no va cifrado; el detalle está en [Exportar a Excel](directorio.md#exportar-a-excel).
+
 ## A una fecha y al lado
 
 Si miras una fecha, o si ves otra organización al lado, solo puedes mirar y abrir. Los botones de las vacantes y de las unidades dicen **Ver puesto** y **Ver unidad**. **Así está bien**, **Volver a avisar**, **Eliminar** y **Desactivar** no aparecen.

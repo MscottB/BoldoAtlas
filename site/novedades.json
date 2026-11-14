@@ -1,5 +1,19 @@
 [
   {
+    "id": "exportar-lista-excel",
+    "pagina": "directorio",
+    "es": {
+      "titulo": "Exporta a Excel la lista que ves",
+      "texto": "Exportar esta lista a Excel guarda el Directorio, la Revisión de datos, una lista de Mantenedores o las personas de una unidad tal como se ven: sus filtros, su orden y sus columnas. Trae una hoja Información con la organización, la fecha y los filtros. Como el archivo no va cifrado, antes de guardarlo un aviso lo dice.",
+      "ancla": "exportar-a-excel"
+    },
+    "en": {
+      "titulo": "Export the list you see to Excel",
+      "texto": "Export this list to Excel saves the Directory, Data review, a list in Lists or the people in a unit just as you see them: their filters, their order and their columns. It has an Information sheet with the organization, the date and the filters. As the file is not encrypted, a notice says so before it is saved.",
+      "ancla": "export-to-excel"
+    }
+  },
+  {
     "id": "directorio-arbol",
     "pagina": "directorio",
     "es": {

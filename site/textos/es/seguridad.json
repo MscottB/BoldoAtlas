@@ -39,7 +39,8 @@
       "parrafos": [
         "Para llevar tu organización, o solo una rama, a otro computador, la exportas a un archivo .boldo. Va cifrado con XChaCha20-Poly1305 y una clave derivada de un código de un solo uso (Argon2id), que se muestra una sola vez y no se guarda en ninguna parte.",
         "El archivo lleva datos personales: envía el archivo y el código por canales distintos, por ejemplo el archivo por correo y el código por teléfono. De quienes ya no están, una rama lleva solo el nombre y el correo.",
-        "Al importar, el contenido no se da por seguro aunque el código sea correcto: se abre de solo lectura y se compara con el esquema esperado antes de aplicar nada. Si el código no corresponde o el archivo se alteró, tu base no se toca."
+        "Al importar, el contenido no se da por seguro aunque el código sea correcto: se abre de solo lectura y se compara con el esquema esperado antes de aplicar nada. Si el código no corresponde o el archivo se alteró, tu base no se toca.",
+        "Un Excel exportado no va cifrado: antes de generarlo, cada vez, un aviso lo dice y recuerda que quien genera el archivo responde por él, y hay que aceptarlo para seguir."
       ],
       "enlace": { "texto": "Cómo exportar e importar", "href": "/manual/exportar-importar" }
     },
@@ -85,7 +86,7 @@
       "id": "cumplir",
       "titulo": "Te ayuda a cumplir con los datos personales",
       "parrafos": [
-        "Los datos quedan en tu computador y los archivos que compartes van cifrados: eso te ayuda a cumplir las reglas sobre datos personales que te apliquen.",
+        "Los datos quedan en tu computador, los archivos .boldo que compartes van cifrados y antes de exportar a Excel, que no se cifra, un aviso te lo recuerda: eso te ayuda a cumplir las reglas sobre datos personales que te apliquen.",
         "Tratarlos conforme a la ley es responsabilidad de quien usa la app."
       ],
       "enlace": {

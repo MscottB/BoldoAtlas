@@ -685,3 +685,20 @@ export function fotosGuardar(armar: (baseId: string) => Promise<Uint8Array>): Pr
 export function fotosCompactar(): Promise<void> {
   return conBase("fotos_compactar");
 }
+
+// Excel: el libro se arma en la ventana; «Guardar como» y la escritura quedan en Rust (src-tauri/src/excel.rs).
+/** Cuerpo binario: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el libro. El nombre del
+ * archivo guardado, o null si no se eligió un lugar. */
+export function excelGuardar(nombre: string, libro: Uint8Array): Promise<string | null> {
+  const pedido = new TextEncoder().encode(JSON.stringify({ nombre }));
+  const cuerpo = new Uint8Array(4 + pedido.length + libro.length);
+  new DataView(cuerpo.buffer).setUint32(0, pedido.length, true);
+  cuerpo.set(pedido, 4);
+  cuerpo.set(libro, 4 + pedido.length);
+  return invoke<string | null>("excel_guardar", cuerpo);
+}
+
+/** La carpeta del último Excel guardado; Rust conoce la ruta. */
+export function excelAbrirCarpeta(): Promise<void> {
+  return invoke("excel_abrir_carpeta");
+}

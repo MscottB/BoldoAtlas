@@ -255,6 +255,7 @@ The **People** tab lists who holds the positions: current holders and replacemen
 - The search box (name, job title, unit or email, ignoring accents and case) and the order **By name**, **By job title** or **By unit**.
 - **Include sub-units** (on when the tab opens): adds the people of the whole branch, like the card's headcount. Off, only the unit's own positions.
 - **Copy emails**: copies the emails of the list you see (with the search applied), without repeats and separated by `; `, ready to paste into an email.
+- **Export this list to Excel**: saves the list you see, with its search and its order and for the day the org chart shows, to an Excel file (see “Export to Excel” in the [Directory](directorio.md#export-to-excel)).
 - **View in the directory**: opens the Directory filtered by this unit and its branch.
 - **Summary by job title** (expands when pressed): how many positions of each job title there are and how many are vacant (no holder); in brackets, the vacancies covered by a replacement.
 

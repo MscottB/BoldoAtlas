@@ -315,7 +315,6 @@
     "reemplazo": "Replacement",
     "correo": "Email",
     "ordenarUnidad": "Sort by unit",
-    "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",
     "vacioLado": "There are no positions or people yet.",
     "sinResultados": "No rows match the filters.",
@@ -1168,7 +1167,8 @@
       "muy_pesado": "The file is larger than BoldoAtlas allows. Nothing was changed.",
       "misma": "You can't compare an organization with itself.",
       "comparacion_vencida": "This comparison is out of date. Compare again.",
-      "fallo": "The operation could not be completed: {detalle}"
+      "fallo": "The operation could not be completed: {detalle}",
+      "ya_existe": "A file with that name already exists. Choose another name."
     },
     "ultimo": "Last backup: {fecha}",
     "verLista": "View and restore backups",
@@ -1772,5 +1772,55 @@
     "verTodas": "Show all",
     "cargando": "Loading…",
     "editadaEn": "Last edited in {nombre}"
+  },
+  "excel": {
+    "exportar": "Export this list to Excel",
+    "aviso": {
+      "titulo": "The file is not encrypted",
+      "texto": "The Excel file is not encrypted: anyone who opens it can see what it contains. Whoever creates the file is responsible for where it is stored and who it is shared with.",
+      "cancelar": "Cancel",
+      "aceptar": "I accept, export"
+    },
+    "guardado": "Saved {nombre}",
+    "abrirCarpeta": "Open folder",
+    "info": {
+      "hoja": "Information",
+      "dato": "Item",
+      "valor": "Value",
+      "organizacion": "Organization",
+      "generado": "Generated on",
+      "datosAl": "Data as of",
+      "versionApp": "App version",
+      "versionEsquema": "Schema version",
+      "revision": "Revision",
+      "dbId": "Database id (db_id)",
+      "lista": "List",
+      "filtros": "Filters",
+      "sinFiltros": "None",
+      "orden": "Sort order"
+    },
+    "filtro": {
+      "texto": "Search",
+      "ascendente": "{campo}, A to Z",
+      "descendente": "{campo}, Z to A",
+      "si": "Yes",
+      "no": "No"
+    },
+    "revision": {
+      "seccion": "Section",
+      "nivel": "Level",
+      "aviso": "Warning",
+      "detalle": "Detail"
+    },
+    "personas": {
+      "lista": "People in {unidad}",
+      "nombre": "Name",
+      "cargo": "Job title",
+      "tipo": "Type",
+      "unidad": "Unit"
+    },
+    "mantenedores": {
+      "lista": "Lists: {lista}"
+    }
   }
 }

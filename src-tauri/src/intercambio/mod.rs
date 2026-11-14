@@ -295,15 +295,15 @@ const META_CONOCIDAS: &[&str] = &[
 ];
 
 /// Con la extensión puesta. Si hubo que agregarla, el diálogo preguntó por otro nombre: lo que ya tenga este no se pisa.
-pub fn con_extension(destino: PathBuf) -> Result<PathBuf, Fallo> {
+pub fn con_extension(destino: PathBuf, extension: &str) -> Result<PathBuf, Fallo> {
     if destino
         .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("boldo"))
+        .is_some_and(|e| e.eq_ignore_ascii_case(extension))
     {
         return Ok(destino);
     }
     let mut con = destino.into_os_string();
-    con.push(".boldo");
+    con.push(format!(".{extension}"));
     let con = PathBuf::from(con);
     if con.exists() {
         return Err(Fallo::de("ya_existe", ""));
@@ -1566,14 +1566,14 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let sin = d.path().join("copia");
         assert_eq!(
-            con_extension(sin.clone()).unwrap(),
+            con_extension(sin.clone(), "boldo").unwrap(),
             d.path().join("copia.boldo")
         );
         fs::write(d.path().join("copia.boldo"), "mío").unwrap();
-        assert_eq!(con_extension(sin).unwrap_err().codigo, "ya_existe");
+        assert_eq!(con_extension(sin, "boldo").unwrap_err().codigo, "ya_existe");
         // si ya venía con la extensión, el diálogo sí preguntó
         let con = d.path().join("copia.BOLDO");
-        assert_eq!(con_extension(con.clone()).unwrap(), con);
+        assert_eq!(con_extension(con.clone(), "boldo").unwrap(), con);
     }
 
     #[test]

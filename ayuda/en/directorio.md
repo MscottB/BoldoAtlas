@@ -51,4 +51,17 @@ Press a row (or Tab to the name and Enter) to open the person's record; on a vac
 - Press a person, or a head's name, to open their record, and a vacancy to open its position, as in the list; `Ctrl` + click or middle click on a person opens them in a new tab. The locate icon, at the end of the row, shows them in the org chart.
 - With the keyboard, `↑` and `↓` move through the rows, `→` opens a unit or goes into it, `←` closes it or goes up to its parent, `Home` and `End` go to the first and the last. `Enter` does the same as pressing the row, `Shift+Enter` opens the record of the unit's head and `Tab` goes to the row's locate icon.
 
+## Export to Excel
+
+**Export this list to Excel**, next to the title, saves what you see to an Excel file: the rows left by the search and the filters, in the same order and with the same columns (the ones you chose in **Columns**). In **Tree**, the same people and vacancies are exported, as a list.
+
+1. Press **Export this list to Excel**.
+2. Read the notice and press **I accept, export**. The file is not encrypted: anyone who opens it can see what it contains, and whoever creates it is responsible for where it is stored and who it is shared with. The notice appears every time you export; **Cancel** creates nothing.
+3. Choose where to save it. The suggested name has the organization, the date and the data revision.
+4. When it is done, **Open folder** shows the file in its folder.
+
+The file has one sheet with the list and another, **Information**, with the organization, when it was generated, the date of the data, the BoldoAtlas and data versions, and the filters and sort order applied. Column titles stay fixed and have filters; figures and dates are Excel numbers and dates, and text stays as text even if it starts with `=`, `+`, `-` or `@`.
+
+The same option is in **Data review**, in each list of **Lists** and in the **People** tab of a unit's panel.
+
 **See also:** [Person records](fichas.md) · [Work tabs](pestanas.md).

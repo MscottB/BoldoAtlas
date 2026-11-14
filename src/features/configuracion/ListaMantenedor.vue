@@ -9,6 +9,9 @@ import type { TablaOrdenable } from "@/db/repos/catalogos";
 import type { ValorCatalogo } from "@/db/tipos";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
+import BotonExcel from "@/features/excel/BotonExcel.vue";
+import type { Lista } from "@/features/excel/exportar";
+import { hojaMantenedor } from "@/features/excel/listas";
 import { moverEn } from "./orden";
 
 // Un mantenedor: lista los valores (también los desactivados) con cuánto se usan y permite agregar, renombrar,
@@ -93,6 +96,28 @@ const alternar = (f: Fila) =>
   ).then(avisar);
 
 const valorDe = (e: Event) => (e.target as HTMLInputElement).value;
+
+// «Exportar esta lista a Excel»: los valores en su orden, también los desactivados, como se ven.
+const listaExcel = (): Lista => {
+  const lista = t(`mantenedores.tabs.${props.tabla}`);
+  return {
+    nombre: t("excel.mantenedores.lista", { lista }),
+    hoja: hojaMantenedor(
+      lista,
+      t(`mantenedores.usos.${props.tabla}`),
+      filas.value.map((f) => ({
+        nombre: f.nombre,
+        usos: org.usos(props.tabla, f.id),
+        activo: !f.deleted_at,
+        color: f.color,
+        descripcion: f.descripcion,
+      })),
+      esLeyenda.value,
+      t,
+    ),
+    filtros: [],
+  };
+};
 </script>
 
 <template>
@@ -124,6 +149,7 @@ const valorDe = (e: Event) => (e.target as HTMLInputElement).value;
         <Plus aria-hidden="true" />
         {{ t("mantenedores.agregar") }}
       </Button>
+      <BotonExcel v-if="filas.length" class="ml-auto" :lista="listaExcel" />
     </form>
 
     <p v-if="!filas.length" class="text-sm text-muted-foreground">{{ t("mantenedores.vacio") }}</p>

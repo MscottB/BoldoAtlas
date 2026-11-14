@@ -82,6 +82,20 @@ describe("baseId", () => {
     await expect(p).resolves.toBe(3);
     expect(invoke).toHaveBeenCalledWith("fotos_guardar", cuerpo);
   });
+
+  it("excelGuardar manda el largo del pedido, el pedido con el nombre y el libro, en un solo cuerpo", async () => {
+    invoke.mockResolvedValue("Ñuñoa_2026-11-14_r3.xlsx");
+    await expect(c.excelGuardar("Ñuñoa_2026-11-14_r3.xlsx", new Uint8Array([0x50, 0x4b]))).resolves.toBe(
+      "Ñuñoa_2026-11-14_r3.xlsx",
+    );
+    const cuerpo = invoke.mock.lastCall![1] as Uint8Array;
+    expect(invoke.mock.lastCall![0]).toBe("excel_guardar");
+    const largo = new DataView(cuerpo.buffer).getUint32(0, true);
+    expect(JSON.parse(new TextDecoder().decode(cuerpo.slice(4, 4 + largo)))).toEqual({
+      nombre: "Ñuñoa_2026-11-14_r3.xlsx",
+    });
+    expect([...cuerpo.slice(4 + largo)]).toEqual([0x50, 0x4b]);
+  });
 });
 
 describe("el seguro", () => {

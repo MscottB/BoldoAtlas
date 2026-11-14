@@ -1920,6 +1920,11 @@ async function medirLado({ carpeta, exe, datos }, { relacionada, aparte }) {
     `lado a lado: con el foco al lado, «Directorio» del menú lateral navega el iframe, que encuentra a «${personaDe(o)}»; el principal sigue en su vista`,
     `${enRuta("/directorio")} && ${EN_MARCO}.body.innerText.includes(${JSON.stringify(personaDe(o))})`,
   );
+  await verQue(
+    app,
+    "lado a lado: el Directorio del iframe no ofrece «Exportar esta lista a Excel» (es otra organización, solo para mirar)",
+    `!${EN_MARCO}.body.innerText.includes(${JSON.stringify(textoEs("excel.exportar"))})`,
+  );
   // La ficha de esa persona, desde su fila
   const fila = `[...(${EN_MARCO}?.querySelectorAll("tbody tr") ?? [])].find((f) => f.innerText.includes(${JSON.stringify(personaDe(o))}))?.querySelector("button")`;
   await app.hasta(`Boolean(${fila})`, `la fila de «${personaDe(o)}» en el Directorio del iframe`);

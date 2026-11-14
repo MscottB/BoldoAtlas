@@ -2,6 +2,7 @@ mod actualizar;
 mod comandos;
 mod comparar_organizaciones;
 mod db;
+mod excel;
 mod fotos;
 mod inicio;
 mod intercambio;
@@ -46,6 +47,7 @@ pub fn run() {
         .manage(intercambio::Sesiones::default())
         .manage(comparar_organizaciones::Comparaciones::default())
         .manage(lado::Lado::default())
+        .manage(excel::UltimoExcel::default())
         .register_asynchronous_uri_scheme_protocol(fotos::ESQUEMA, |ctx, pedido, responder| {
             fotos::atender(ctx.app_handle().clone(), pedido, responder)
         })
@@ -171,6 +173,8 @@ pub fn run() {
             comandos::exportar_preparar,
             comandos::exportar_elegir_destino,
             comandos::exportar_guardar,
+            excel::excel_guardar,
+            excel::excel_abrir_carpeta,
             comandos::importar_elegir,
             comandos::importar_abrir,
             comandos::importar_agregar,

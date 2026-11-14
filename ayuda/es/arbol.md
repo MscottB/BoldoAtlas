@@ -255,6 +255,7 @@ La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reempla
 - El buscador (nombre, cargo, unidad o correo, sin importar tildes ni mayúsculas) y el orden **Por nombre**, **Por cargo** o **Por unidad**.
 - **Incluir subunidades** (encendido al abrir la pestaña): suma a las personas de toda la rama, como la dotación de la tarjeta. Apagado, solo los puestos de la propia unidad.
 - **Copiar correos**: copia los correos de la lista que se ve (con la búsqueda aplicada), sin repetir y separados por `; `, listos para pegar en un correo.
+- **Exportar esta lista a Excel**: guarda la lista que se ve, con su búsqueda y su orden y del día que muestra el organigrama, en un archivo de Excel (ver «Exportar a Excel» en el [Directorio](directorio.md#exportar-a-excel)).
 - **Ver en el directorio**: abre el Directorio filtrado por esta unidad y su rama.
 - **Resumen por cargo** (se despliega al pulsarlo): cuántos puestos de cada cargo hay y cuántos están vacantes (sin titular); entre paréntesis, las vacantes que cubre un reemplazo.
 
