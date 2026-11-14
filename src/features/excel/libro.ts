@@ -112,6 +112,17 @@ export function hojaInformacion(d: DatosInformacion, t: Traducir): Hoja {
   };
 }
 
+/** Lo más largo que Excel acepta en una celda; más, y el archivo no abre bien. */
+export const LARGO_MAXIMO = 32_767;
+
+/** Un texto demasiado largo (notas, descripciones) se corta y termina en «…»; lo demás queda igual. */
+export function celdaExcel(c: Celda): Celda {
+  if (typeof c !== "string" || c.length <= LARGO_MAXIMO) return c;
+  let corte = LARGO_MAXIMO - 1;
+  if (/[\uD800-\uDBFF]/.test(c[corte - 1]!)) corte--; // no deja la primera mitad de un emoji
+  return `${c.slice(0, corte)}…`;
+}
+
 const ANCHO_MIN = 8;
 const ANCHO_MAX = 60;
 

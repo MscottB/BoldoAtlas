@@ -107,7 +107,7 @@ If you leave the code screen without copying the code, BoldoAtlas keeps showing 
 To work with the records in a spreadsheet: **Export to Excel**, in **Import/Export** and in the app menu, saves the organization, or a branch, to an Excel workbook with one sheet per kind of record.
 
 1. Choose the **Scope**: **Whole organization**, a division or any unit. A unit takes everything under it.
-2. Tick the sheets and, in each one, its columns. All come ticked except **ID** (the internal identifier of each record, to match with another file) and people's **Notes**. What you tick is remembered on this computer.
+2. Tick the sheets and, in each one, its columns. All come ticked except **ID** (the internal identifier of each record, to match with another file) and people's **Notes**. What you tick is remembered on this computer. At least one sheet with one column is needed.
 3. Press **Export to Excel**, read the notice and press **I accept, export**: the file is not encrypted (see [Export to Excel](directorio.md#export-to-excel) in the Directory).
 4. Choose where to save it. When it is done, **Open folder** shows the file.
 
@@ -118,7 +118,7 @@ To work with the records in a spreadsheet: **Export to Excel**, in **Import/Expo
 | Assignments | Person, email, job title, unit, type (holder or substitute), from, to and reason: the history too |
 | Connections | From, to and label of the side lines with at least one end in the scope |
 | People | Name, email, phone, contract type, site, work schedule, and their current job titles, units, paths and heads (with several positions, separated by “ · ”) |
-| Lists | Each active value of job titles, contract types, sites, work schedules, unit types and tags, with how many times it is used in the scope |
+| Lists | Each value of job titles, contract types, sites, work schedules, unit types and tags, with how many times it is used in the scope and whether it is active (deactivated ones are included too, because positions and people keep them) |
 | Zones | One row per zone and unit, with its color and the unit's full path |
 
 The **Information** sheet is always included: organization, dates, versions, revision, scope and sheets, and the logo if the organization has one. With a branch, **People** has only those with a current position in it; with the whole organization, also those without a position.

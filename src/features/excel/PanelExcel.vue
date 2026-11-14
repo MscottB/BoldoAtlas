@@ -13,7 +13,7 @@ import BotonExcel from "./BotonExcel.vue";
 import { armarCompleta } from "./completa";
 import type { Lista } from "./exportar";
 import type { Hoja } from "./libro";
-import { claveColumna, HOJAS, ID_HOJAS, leerSeleccion } from "./seleccion";
+import { claveColumna, columnasElegidas, HOJAS, ID_HOJAS, leerSeleccion } from "./seleccion";
 
 // La exportación completa (spec §11): alcance, hojas y columnas. Lo marcado se recuerda por PC; el alcance, no (es de
 // cada exportación). Sigue a «Organigrama a una fecha», como el lienzo.
@@ -26,9 +26,17 @@ const sel = ref(leerSeleccion(leerPreferencia<unknown>(PREFERENCIA, null)));
 watch(sel, (s) => guardarPreferencia(PREFERENCIA, s), { deep: true });
 
 const NINGUNA = new Set<string>();
-const alcance = ref<string | null>(null);
+// Sin ninguna hoja con alguna columna, el archivo solo traería Información: no se ofrece.
+const nada = computed(
+  () => !ID_HOJAS.some((h) => sel.value[h].incluida && columnasElegidas(sel.value, h).length),
+);
+const elegida = ref<string | null>(null);
+// Se elige entre las unidades del día que se ve; si se cambia de fecha y la elegida no existía, vuelve a ser toda.
+const alcance = computed(() =>
+  elegida.value && org.enFecha.porId.has(elegida.value) ? elegida.value : null,
+);
 const textoAlcance = computed(() => {
-  const u = alcance.value && (org.enFecha.porId.get(alcance.value) ?? org.porId.get(alcance.value));
+  const u = alcance.value && org.enFecha.porId.get(alcance.value);
   if (!u) return t("excel.completa.toda");
   const tipo = org.catalogos.tipos_unidad.find((x) => x.id === u.tipo_id)?.nombre ?? "";
   return t("excel.completa.rama", { unidad: u.nombre, tipo });
@@ -87,7 +95,8 @@ async function lista(): Promise<Lista> {
           :excluidas="NINGUNA"
           :texto="textoAlcance"
           :ninguna="t('excel.completa.toda')"
-          @elegir="alcance = $event"
+          :unidades="org.enFecha.unidades"
+          @elegir="elegida = $event"
         />
       </div>
       <p id="excel-alcance-ayuda" class="text-sm text-muted-foreground">
@@ -122,11 +131,19 @@ async function lista(): Promise<Lista> {
       </div>
     </fieldset>
 
-    <div class="flex gap-2">
-      <BotonExcel variant="default" size="default" :lista="lista" :texto="t('excel.completa.boton')" />
+    <div class="flex flex-wrap items-center gap-2">
+      <BotonExcel
+        variant="default"
+        size="default"
+        :lista="lista"
+        :texto="t('excel.completa.boton')"
+        :desactivado="nada"
+        :aria-describedby="nada ? 'excel-nada' : undefined"
+      />
       <Button type="button" variant="outline" @click="emit('terminar')">{{
         t("intercambio.cancelar")
       }}</Button>
+      <p v-if="nada" id="excel-nada" class="text-sm text-muted-foreground">{{ t("excel.completa.nada") }}</p>
     </div>
   </div>
 </template>

@@ -1836,6 +1836,7 @@
     "completa": {
       "titulo": "Exportar a Excel",
       "boton": "Exportar a Excel",
+      "nada": "Marca al menos una hoja con una columna para exportar.",
       "lista": "Exportación completa",
       "alcance": "Alcance",
       "toda": "Toda la organización",
@@ -1911,7 +1912,8 @@
         "mantenedores": {
           "catalogo": "Catálogo",
           "nombre": "Nombre",
-          "usos": "Usos"
+          "usos": "Usos",
+          "activo": "Activo"
         },
         "zonas": {
           "zona": "Zona",

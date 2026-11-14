@@ -107,7 +107,7 @@ Si te vas de la pantalla del código sin copiarlo, BoldoAtlas lo sigue mostrando
 Para trabajar los registros en una planilla: **Exportar a Excel**, en **Importar/Exportar** y en el menú de la app, guarda la organización, o una rama, en un libro de Excel con una hoja por tipo de registro.
 
 1. Elige el **Alcance**: **Toda la organización**, una gerencia o cualquier unidad. Una unidad lleva todo lo que depende de ella.
-2. Marca las hojas y, en cada una, sus columnas. Vienen todas marcadas salvo **ID** (el identificador interno de cada registro, para cruzar con otro archivo) y **Notas** de las personas. Lo que marques se recuerda en este computador.
+2. Marca las hojas y, en cada una, sus columnas. Vienen todas marcadas salvo **ID** (el identificador interno de cada registro, para cruzar con otro archivo) y **Notas** de las personas. Lo que marques se recuerda en este computador. Hace falta al menos una hoja con una columna.
 3. Pulsa **Exportar a Excel**, lee el aviso y pulsa **Acepto, exportar**: el archivo no va cifrado (ver [Exportar a Excel](directorio.md#exportar-a-excel) en el Directorio).
 4. Elige dónde guardarlo. Al terminar, **Abrir carpeta** muestra el archivo.
 
@@ -118,7 +118,7 @@ Para trabajar los registros en una planilla: **Exportar a Excel**, en **Importar
 | Asignaciones | Persona, correo, cargo, unidad, tipo (titular o reemplazo), desde, hasta y motivo: también el historial |
 | Conexiones | Origen, destino y etiqueta de las líneas laterales con al menos una punta en el alcance |
 | Trabajadores | Nombre, correo, teléfono, tipo de contrato, sede, jornada, y sus cargos, unidades, rutas y jefes vigentes (si tiene varios puestos, separados por « · ») |
-| Mantenedores | Cada valor activo de cargos, tipos de contrato, sedes, jornadas, tipos de unidad y etiquetas, con cuántas veces se usa en el alcance |
+| Mantenedores | Cada valor de cargos, tipos de contrato, sedes, jornadas, tipos de unidad y etiquetas, con cuántas veces se usa en el alcance y si está activo (los desactivados también salen, porque puestos y personas los conservan) |
 | Zonas | Una fila por zona y unidad, con su color y la ruta completa de la unidad |
 
 La hoja **Información** va siempre: organización, fechas, versiones, revisión, alcance y hojas, y el logo si la organización tiene. Con una rama, **Trabajadores** lleva solo a quienes tienen un puesto vigente en ella; con toda la organización, también a quienes no tienen puesto.

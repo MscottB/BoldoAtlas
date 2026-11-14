@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   anchos,
+  celdaExcel,
+  LARGO_MAXIMO,
   fechaExcel,
   hojaInformacion,
   medidasPng,
@@ -127,6 +129,22 @@ describe("anchos de columna", () => {
 
   it("una fecha mide lo que se ve (AAAA-MM-DD)", () => {
     expect(anchos({ nombre: "x", columnas: ["F"], filas: [[fechaExcel("2026-11-14")]] })).toEqual([12]);
+  });
+});
+
+describe("celdas largas", () => {
+  it("un texto de más de 32.767 caracteres se corta y termina en «…»; lo demás queda igual", () => {
+    expect(LARGO_MAXIMO).toBe(32_767);
+    const corto = celdaExcel("x".repeat(40_000)) as string;
+    expect(corto).toHaveLength(LARGO_MAXIMO);
+    expect(corto.endsWith("x…")).toBe(true);
+    expect(celdaExcel("x".repeat(LARGO_MAXIMO))).toBe("x".repeat(LARGO_MAXIMO));
+    for (const v of ["Ana", 3, null, fechaExcel("2026-11-14")]) expect(celdaExcel(v)).toBe(v);
+  });
+
+  it("no parte un carácter de dos mitades (un emoji) al cortar", () => {
+    const texto = `${"x".repeat(LARGO_MAXIMO - 2)}😀${"y".repeat(10)}`;
+    expect(celdaExcel(texto)).toBe(`${"x".repeat(LARGO_MAXIMO - 2)}…`);
   });
 });
 

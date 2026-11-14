@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, type Trabajador, type ValorCatalogo } from "@/db/tipos";
 import { a, p, tipos, u } from "@/features/arbol/fixture";
-import { dotacionPorUnidad } from "@/features/arbol/jerarquia";
+import { dotacionPorUnidad, instantaneaEn, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { armarCompleta as armar, type DatosCompleta } from "./completa";
 import type { Hoja } from "./libro";
 import { leerSeleccion, type Seleccion } from "./seleccion";
@@ -159,12 +159,22 @@ describe("exportación completa", () => {
       "Gabi",
       "Inés",
     ]);
-    // un valor desactivado no sale; el resto, en el orden del mantenedor (aquí todos con el mismo, por nombre)
+    // también los desactivados, que puestos y personas conservan, dicho en «Activo»; en el orden del mantenedor (aquí
+    // todos con el mismo, por nombre)
     expect(
       filas(hojas, "mantenedores")
         .filter((f) => f.catalogo === "cargos")
-        .map((f) => f.nombre),
-    ).toEqual(["Analista", "Gerente", "Jefe", "Técnico"]);
+        .map((f) => [f.nombre, f.activo]),
+    ).toEqual([
+      ["Analista", "si"],
+      ["Gerente", "si"],
+      ["Jefe", "si"],
+      ["Técnico", "si"],
+      ["Viejo", "no"],
+    ]);
+    expect(filas(hojas, "mantenedores").find((f) => f.catalogo === "etiquetas")).toMatchObject({
+      activo: "si",
+    });
   });
 
   it("Unidades: superior, ruta completa, jefe, etiquetas y la dotación que calcula la app", () => {
@@ -264,6 +274,36 @@ describe("exportación completa", () => {
     expect(col(hojas, "trabajadores", "nombre")).not.toContain("Hugo"); // eliminado antes
     expect(col(hojas, "trabajadores", "nombre")).not.toContain("Inés"); // creada después
     expect(col(hojas, "trabajadores", "nombre")).toContain("Gabi"); // creada después, pero con un puesto ese día
+  });
+
+  it("a una fecha: quien se eliminó después sigue en su puesto en todas las hojas, como en el lienzo", () => {
+    // Dani y su asignación se eliminaron en agosto (eliminarTrabajador marca también sus asignaciones).
+    const d = datos();
+    const baja = "2025-08-01T12:00:00.000Z";
+    const h = {
+      unidades: d.unidades,
+      puestos: d.puestos,
+      asignaciones: d.asignaciones.map((x) => (x.id === "a4" ? { ...x, deleted_at: baja } : x)),
+      trabajadores: d.trabajadores.map((w) => (w.id === "w4" ? { ...w, deleted_at: baja } : w)),
+    };
+    const fecha = "2025-03-01";
+    const foto = instantaneaEn(h, fecha); // lo que da `enFecha` al store
+    const hojas = armarCompleta({ ...d, ...foto, fechaVista: fecha }, null, todas, t);
+
+    expect(filas(hojas, "puestos").find((f) => f.cargo === "Analista")).toMatchObject({
+      titular: "Dani",
+      vacante: "no",
+      diasVacante: null,
+    });
+    const fin = filas(hojas, "unidades").find((f) => f.nombre === "Finanzas")!;
+    const delStore = dotacionPorUnidad(foto.unidades, foto.puestos, foto.asignaciones, fecha).get("fin")!;
+    expect([fin.dotacionDirecta, fin.dotacionTotal, fin.vacantes]).toEqual([1, 1, 0]);
+    expect([delStore.directa, delStore.total, delStore.vacantes]).toEqual([1, 1, 0]);
+    expect(vigentesPorPuesto(foto.asignaciones, fecha).get("pfin")?.titular?.trabajador_id).toBe("w4");
+    expect(filas(hojas, "trabajadores").find((f) => f.nombre === "Dani")).toMatchObject({
+      cargos: "Analista",
+    });
+    expect(filas(hojas, "asignaciones").find((f) => f.persona === "Dani")).toMatchObject({ hasta: null });
   });
 
   it("las fechas van como fechas", () => {

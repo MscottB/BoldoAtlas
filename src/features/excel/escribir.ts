@@ -1,7 +1,7 @@
 // Pasa las hojas a un .xlsx con el formato de spec §11: encabezado con el color de la marca y fijo, filtro, anchos
 // ajustados, números y fechas como tales y el texto siempre como texto. ExcelJS se carga solo al exportar, en el worker
 // de escribir.worker.ts.
-import { anchos, medidasPng, nombreHoja, textoFecha, type Hoja } from "./libro";
+import { anchos, celdaExcel, medidasPng, nombreHoja, textoFecha, type Hoja } from "./libro";
 
 // --marca y --marca-foreground de los estilos: el texto oscuro sobre el cobre es el que contrasta.
 const MARCA = "FFC8743F";
@@ -34,7 +34,7 @@ export async function escribirLibro(hojas: Hoja[]): Promise<Uint8Array> {
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: MARCA } };
     });
     // Un string de ExcelJS se escribe siempre como texto (nunca como fórmula): «=», «+», «-» o «@» no se evalúan.
-    hoja.addRows(h.filas);
+    hoja.addRows(h.filas.map((f) => f.map(celdaExcel)));
     h.filas.forEach((fila, i) =>
       fila.forEach((valor, j) => {
         if (valor instanceof Date)

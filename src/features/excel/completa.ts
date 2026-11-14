@@ -53,13 +53,18 @@ export interface DatosCompleta {
 const SEP = " · ";
 
 /**
- * Las asignaciones como se veían el día `fecha`: sin las que empezaron después, y las que terminaron después siguen
- * abiertas (como en la vista previa de la persona). Así lo de hoy (`hasta` vacío) sirve igual para una fecha.
+ * Las asignaciones como se veían el día `fecha`: sin las que empezaron después ni las eliminadas ese día o antes; las
+ * que terminaron o se eliminaron después siguen abiertas y vivas (como en `instantaneaEn` y en la vista previa de la
+ * persona). Así lo de hoy (`hasta` vacío, sin `deleted_at`) sirve igual para una fecha, en todas las hojas.
  */
-const alDia = (asignaciones: Asignacion[], fecha: string): Asignacion[] =>
+const alDia = (asignaciones: (Asignacion & { deleted_at?: string | null })[], fecha: string): Asignacion[] =>
   asignaciones
-    .filter((x) => x.desde <= fecha)
-    .map((x) => (x.hasta !== null && x.hasta > fecha ? { ...x, hasta: null, motivo: null } : x));
+    .filter((x) => x.desde <= fecha && existiaEn({ deleted_at: x.deleted_at }, fecha))
+    .map((x) => ({
+      ...x,
+      deleted_at: null,
+      ...(x.hasta !== null && x.hasta > fecha ? { hasta: null, motivo: null } : {}),
+    }));
 
 /** Las unidades del alcance, de la raíz a las hojas en el orden del árbol, con su ruta completa. */
 function unidadesDelAlcance(unidades: Unidad[], alcance: string | null): { unidad: Unidad; ruta: string }[] {
@@ -125,6 +130,7 @@ export function* armarCompleta(
   const cargo = nombre(d.catalogos.cargos);
   const personas = new Map(d.trabajadores.map((x) => [x.id, x]));
   const quien = (x: Asignacion | null | undefined) => (x && personas.get(x.trabajador_id)) || null;
+  const [si, no] = [t("excel.filtro.si"), t("excel.filtro.no")]; // una vez, no por fila
 
   // Los puestos del alcance, unidad por unidad en el orden del árbol (y en su orden dentro de cada una).
   const puestosDe = new Map<string, Puesto[]>();
@@ -186,7 +192,6 @@ export function* armarCompleta(
     },
     puestos: () => {
       const leyenda = nombre(d.leyendas);
-      const [si, no] = [t("excel.filtro.si"), t("excel.filtro.no")]; // una vez, no por fila
       const dias = new Map(
         puestosVacantes({ ...d, puestos, asignaciones }, hoy).map((x) => [x.puestoId, x.dias]),
       );
@@ -271,7 +276,8 @@ export function* armarCompleta(
           };
         });
     },
-    // Los valores activos de cada catálogo; sus usos, dentro del alcance y del día.
+    // Todos los valores de cada catálogo, también los desactivados (puestos y personas los conservan, y salen en sus
+    // hojas), como la lista de Mantenedores; sus usos, dentro del alcance y del día.
     mantenedores: () => {
       const contar = (ids: (string | null)[]) => {
         const n = new Map<string, number>();
@@ -286,7 +292,7 @@ export function* armarCompleta(
         tipos_unidad: contar(enAlcance.map((x) => x.unidad.tipo_id)),
         etiquetas: contar(d.unidadEtiquetas.filter((x) => rutaDe.has(x.unidad_id)).map((x) => x.etiqueta_id)),
       };
-      const valores = (c: TablaCatalogo) => d.catalogos[c].filter((x) => !x.deleted_at).sort(porOrden);
+      const valores = (c: TablaCatalogo) => [...d.catalogos[c]].sort(porOrden);
       return (
         ["cargos", "tipos_contrato", "sedes", "jornadas", "tipos_unidad", "etiquetas"] as const
       ).flatMap((c) =>
@@ -295,6 +301,7 @@ export function* armarCompleta(
           catalogo: t(`excel.completa.catalogos.${c}`),
           nombre: x.nombre,
           usos: usos[c].get(x.id) ?? 0,
+          activo: "deleted_at" in x && x.deleted_at ? no : si,
         })),
       );
     },

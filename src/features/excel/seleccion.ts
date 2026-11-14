@@ -43,7 +43,7 @@ export const HOJAS = {
     "jefes",
     "notas",
   ],
-  mantenedores: ["id", "catalogo", "nombre", "usos"],
+  mantenedores: ["id", "catalogo", "nombre", "usos", "activo"],
   zonas: ["id", "zona", "color", "unidad", "ruta"],
 } as const;
 

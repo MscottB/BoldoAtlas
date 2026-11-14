@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { Search } from "@lucide/vue";
 import { ListboxFilter } from "reka-ui";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import type { Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { buscarUnidades } from "./panel";
 
@@ -12,6 +13,8 @@ const props = defineProps<{
   excluidas: Set<string>;
   /** Ofrece esta opción (devuelve null), por ejemplo «Sin superior (raíz)». */
   ninguna?: string;
+  /** De dónde elegir; sin ellas, las de hoy (p. ej. la exportación a Excel ofrece las del día que se ve). */
+  unidades?: Unidad[];
 }>();
 const emit = defineEmits<{ elegir: [id: string | null] }>();
 
@@ -19,7 +22,9 @@ const { t } = useI18n();
 const org = useOrganizacion();
 
 const busqueda = ref("");
-const opciones = computed(() => buscarUnidades(org.unidades, props.excluidas, busqueda.value));
+const opciones = computed(() =>
+  buscarUnidades(props.unidades ?? org.unidades, props.excluidas, busqueda.value),
+);
 </script>
 
 <template>

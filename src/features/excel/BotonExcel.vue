@@ -30,6 +30,8 @@ const props = defineProps<{
   lista: () => Lista | Promise<Lista>;
   /** El texto del botón; sin él, «Exportar esta lista a Excel». */
   texto?: string;
+  /** No hay nada que exportar (quien lo usa dice por qué junto al botón). */
+  desactivado?: boolean;
 }>();
 const { t } = useI18n();
 const org = useOrganizacion();
@@ -94,7 +96,14 @@ async function pulsar() {
 </script>
 
 <template>
-  <Button type="button" variant="outline" size="sm" v-bind="$attrs" :disabled="ocupado" @click="pulsar">
+  <Button
+    type="button"
+    variant="outline"
+    size="sm"
+    v-bind="$attrs"
+    :disabled="ocupado || desactivado"
+    @click="pulsar"
+  >
     <FileSpreadsheet aria-hidden="true" />
     {{ texto ?? t("excel.exportar") }}
   </Button>

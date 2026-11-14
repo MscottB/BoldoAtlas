@@ -1836,6 +1836,7 @@
     "completa": {
       "titulo": "Export to Excel",
       "boton": "Export to Excel",
+      "nada": "Tick at least one sheet with one column to export.",
       "lista": "Full export",
       "alcance": "Scope",
       "toda": "Whole organization",
@@ -1911,7 +1912,8 @@
         "mantenedores": {
           "catalogo": "List",
           "nombre": "Name",
-          "usos": "Uses"
+          "usos": "Uses",
+          "activo": "Active"
         },
         "zonas": {
           "zona": "Zone",

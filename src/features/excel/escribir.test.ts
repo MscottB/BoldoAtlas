@@ -101,4 +101,11 @@ describe("escribir el libro", () => {
     };
     expect((await leer(await escribirLibro([h]))).getWorksheet("I")!.getImages()).toHaveLength(0);
   });
+
+  it("una celda de texto más larga de lo que Excel acepta se corta con «…»", async () => {
+    const h = { nombre: "Notas", columnas: ["Notas"], filas: [["n".repeat(50_000)]] };
+    const celda = (await leer(await escribirLibro([h]))).getWorksheet("Notas")!.getCell(2, 1).value as string;
+    expect(celda).toHaveLength(32_767);
+    expect(celda.endsWith("…")).toBe(true);
+  });
 });
