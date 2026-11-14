@@ -315,7 +315,6 @@
     "reemplazo": "Replacement",
     "correo": "Email",
     "ordenarUnidad": "Sort by unit",
-    "exportar": "Export this list to Excel",
     "vacio": "There are no positions or people yet. Create units and positions in the tree.",
     "vacioLado": "There are no positions or people yet.",
     "sinResultados": "No rows match the filters.",
@@ -1168,7 +1167,11 @@
       "muy_pesado": "The file is larger than BoldoAtlas allows. Nothing was changed.",
       "misma": "You can't compare an organization with itself.",
       "comparacion_vencida": "This comparison is out of date. Compare again.",
-      "fallo": "The operation could not be completed: {detalle}"
+      "fallo": "The operation could not be completed: {detalle}",
+      "ya_existe": "A file with that name already exists. Choose another name.",
+      "pedido_invalido": "BoldoAtlas had an internal problem saving the file and nothing was saved. Try again.",
+      "sin_excel": "There is no Excel file saved in this session whose folder to open.",
+      "excel_libro": "The Excel file could not be built and nothing was saved. Detail: {detalle}"
     },
     "ultimo": "Last backup: {fecha}",
     "verLista": "View and restore backups",
@@ -1214,6 +1217,7 @@
     "ejemplo": "Explore the example…",
     "boldo": "Open .boldo file",
     "exportar": "Export to a .boldo file",
+    "excelCompleto": "Export to Excel…",
     "excel": "Import Excel",
     "respaldos": "Backups",
     "configuracion": "Settings",
@@ -1333,7 +1337,7 @@
     "actualizacionSigue": "If you keep it in the tray, the update continues and BoldoAtlas restarts on its own once installed."
   },
   "intercambio": {
-    "ayuda": "Take your organization, or just part of it, to another computer in a file protected with a code.",
+    "ayuda": "Take your organization, or just part of it, to another computer in a file protected with a code, or take its records to Excel.",
     "cancelar": "Cancel",
     "continuar": "Continue",
     "listo": "Done",
@@ -1423,6 +1427,10 @@
       "agregarEn": "Add what is new to “{nombre}”",
       "revisarEn": "Review and decide on “{nombre}”",
       "reemplazarEn": "Replace all of “{nombre}”"
+    },
+    "excel": {
+      "titulo": "Export to Excel",
+      "texto": "Units, positions, people, connections, lists and zones in an Excel workbook, to filter and calculate."
     },
     "etapa": {
       "copiando": "Preparing the copy of your data…",
@@ -1772,5 +1780,156 @@
     "verTodas": "Show all",
     "cargando": "Loading…",
     "editadaEn": "Last edited in {nombre}"
+  },
+  "excel": {
+    "exportar": "Export this list to Excel",
+    "aviso": {
+      "titulo": "The file is not encrypted",
+      "texto": "The Excel file is not encrypted: anyone who opens it can see what it contains. Whoever creates the file is responsible for where it is stored and who it is shared with.",
+      "cancelar": "Cancel",
+      "aceptar": "I accept, export"
+    },
+    "guardado": "Saved {nombre}",
+    "abrirCarpeta": "Open folder",
+    "info": {
+      "hoja": "Information",
+      "dato": "Item",
+      "valor": "Value",
+      "organizacion": "Organization",
+      "generado": "Generated on",
+      "datosAl": "Data as of",
+      "versionApp": "App version",
+      "versionEsquema": "Schema version",
+      "revision": "Revision",
+      "dbId": "Database id (db_id)",
+      "lista": "List",
+      "alcance": "Scope",
+      "hojas": "Sheets",
+      "filtro": "Filter: {que}",
+      "filtros": "Filters",
+      "sinFiltros": "None",
+      "orden": "Sort order"
+    },
+    "filtro": {
+      "texto": "Search",
+      "ascendente": "{campo}, A to Z",
+      "descendente": "{campo}, Z to A",
+      "si": "Yes",
+      "no": "No"
+    },
+    "revision": {
+      "seccion": "Section",
+      "nivel": "Level",
+      "aviso": "Warning",
+      "detalle": "Detail"
+    },
+    "personas": {
+      "lista": "People in {unidad}",
+      "nombre": "Name",
+      "cargo": "Job title",
+      "tipo": "Type",
+      "unidad": "Unit"
+    },
+    "mantenedores": {
+      "lista": "Lists: {lista}"
+    },
+    "completa": {
+      "titulo": "Export to Excel",
+      "boton": "Export to Excel",
+      "nada": "Tick at least one sheet with one column to export.",
+      "lista": "Full export",
+      "alcance": "Scope",
+      "toda": "Whole organization",
+      "rama": "{unidad} ({tipo}) and everything under it",
+      "alcanceAyuda": "Choose a division, or any unit, to take only that branch.",
+      "fecha": "The chart as of {fecha} is exported, the date you are viewing.",
+      "hojasTitulo": "Sheets and columns",
+      "informacion": "Information: organization, date, scope and sheets (always included)",
+      "columnasDe": "{hoja} columns",
+      "id": "ID",
+      "hojas": {
+        "unidades": "Units",
+        "puestos": "Positions",
+        "asignaciones": "Assignments",
+        "conexiones": "Connections",
+        "trabajadores": "People",
+        "mantenedores": "Lists",
+        "zonas": "Zones"
+      },
+      "columnas": {
+        "unidades": {
+          "tipo": "Type",
+          "nombre": "Name",
+          "descripcion": "Description",
+          "superior": "Parent unit",
+          "ruta": "Full path",
+          "jefe": "Head",
+          "correoJefe": "Head email",
+          "etiquetas": "Tags",
+          "dotacionDirecta": "Direct headcount",
+          "dotacionTotal": "Total headcount",
+          "vacantes": "Vacancies"
+        },
+        "puestos": {
+          "unidad": "Unit",
+          "ruta": "Full path",
+          "cargo": "Job title",
+          "descripcion": "Description",
+          "leyenda": "Legend",
+          "titular": "Holder",
+          "reemplazo": "Current substitute",
+          "vacante": "Vacant",
+          "diasVacante": "Days vacant"
+        },
+        "asignaciones": {
+          "persona": "Person",
+          "correo": "Email",
+          "cargo": "Job title",
+          "unidad": "Unit",
+          "tipo": "Type",
+          "desde": "From",
+          "hasta": "To",
+          "motivo": "Reason"
+        },
+        "conexiones": {
+          "origen": "From",
+          "destino": "To",
+          "etiqueta": "Label"
+        },
+        "trabajadores": {
+          "nombre": "Name",
+          "correo": "Email",
+          "telefono": "Phone",
+          "tipoContrato": "Contract type",
+          "sede": "Site",
+          "jornada": "Work schedule",
+          "cargos": "Current job titles",
+          "unidades": "Current units",
+          "rutas": "Full paths",
+          "jefes": "Heads",
+          "notas": "Notes"
+        },
+        "mantenedores": {
+          "catalogo": "List",
+          "nombre": "Name",
+          "usos": "Uses",
+          "activo": "Active"
+        },
+        "zonas": {
+          "zona": "Zone",
+          "color": "Color",
+          "unidad": "Unit",
+          "ruta": "Full path"
+        }
+      },
+      "catalogos": {
+        "cargos": "Job title",
+        "tipos_contrato": "Contract type",
+        "sedes": "Site",
+        "jornadas": "Work schedule",
+        "tipos_unidad": "Unit type",
+        "etiquetas": "Tag"
+      }
+    }
   }
 }

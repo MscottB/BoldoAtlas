@@ -914,7 +914,7 @@ impl Estado {
         self.rutas.as_ref()
     }
 
-    fn rutas(&self) -> Result<&Rutas, Fallo> {
+    pub(crate) fn rutas(&self) -> Result<&Rutas, Fallo> {
         self.rutas
             .as_ref()
             .ok_or_else(|| "No se ubicó la carpeta de datos.".to_string().into())
@@ -1104,7 +1104,7 @@ pub async fn agregar_archivo_organizacion(
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
         *estado.pendiente.lock().unwrap_or_else(|p| p.into_inner()) = None;
-        let elegido = dialogo_con(&app, "db").blocking_pick_file();
+        let elegido = dialogo_con(&app, "BoldoAtlas", "db").blocking_pick_file();
         let Some(ruta) = elegido.and_then(|f| f.into_path().ok()) else {
             return Ok(None);
         };
@@ -1262,7 +1262,11 @@ pub async fn restaurar_respaldo(
 /// Abre una carpeta en el gestor de archivos. En la portable de Linux, xdg-open se lanza sin las variables que
 /// la app apunta a `datos/` (ver `rutas::entorno_portable`): un gestor de archivos lanzado directamente las
 /// heredaría y pondría su papelera y sus recientes en el pendrive. Quedan sin definir, o sea, las por defecto.
-fn abrir_carpeta(app: &AppHandle, r: &Rutas, carpeta: &std::path::Path) -> Result<(), Fallo> {
+pub(crate) fn abrir_carpeta(
+    app: &AppHandle,
+    r: &Rutas,
+    carpeta: &std::path::Path,
+) -> Result<(), Fallo> {
     #[cfg(target_os = "linux")]
     if r.portable {
         let mut xdg = std::process::Command::new("xdg-open");
@@ -1344,18 +1348,22 @@ fn seguimiento(
 
 /// Diálogo nativo desde Rust: la interfaz nunca ve ni envía una ruta, y no necesita ningún permiso del plugin.
 fn dialogo(app: &AppHandle) -> FileDialogBuilder<tauri::Wry> {
-    dialogo_con(app, "boldo")
+    dialogo_con(app, "BoldoAtlas", "boldo")
 }
 
-fn dialogo_con(app: &AppHandle, extension: &str) -> FileDialogBuilder<tauri::Wry> {
-    let d = app.dialog().file().add_filter("BoldoAtlas", &[extension]);
+pub(crate) fn dialogo_con(
+    app: &AppHandle,
+    filtro: &str,
+    extension: &str,
+) -> FileDialogBuilder<tauri::Wry> {
+    let d = app.dialog().file().add_filter(filtro, &[extension]);
     match app.get_webview_window("main") {
         Some(v) => d.set_parent(&v),
         None => d,
     }
 }
 
-fn nombre_archivo(ruta: &std::path::Path) -> String {
+pub(crate) fn nombre_archivo(ruta: &std::path::Path) -> String {
     ruta.file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default()
@@ -1402,7 +1410,7 @@ pub async fn exportar_elegir_destino(app: AppHandle, trabajo: String) -> Result<
         let Some(destino) = elegido.and_then(|f| f.into_path().ok()) else {
             return Ok(false);
         };
-        sesiones.guardar_destino(&trabajo, intercambio::con_extension(destino)?)?;
+        sesiones.guardar_destino(&trabajo, intercambio::con_extension(destino, "boldo")?)?;
         Ok(true)
     })
     .await

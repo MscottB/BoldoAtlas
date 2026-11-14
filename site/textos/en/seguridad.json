@@ -39,7 +39,8 @@
       "parrafos": [
         "To take your organization, or just one branch, to another computer, you export it to a .boldo file. It is encrypted with XChaCha20-Poly1305 and a key derived from a one-time code (Argon2id), which is shown only once and is not saved anywhere.",
         "The file carries personal data: send the file and the code through different channels, for example the file by email and the code by phone. Of people who are no longer there, a branch carries only the name and email.",
-        "When importing, the content is not trusted even if the code is correct: it is opened read-only and checked against the expected schema before anything is applied. If the code does not match or the file was altered, your database is not touched."
+        "When importing, the content is not trusted even if the code is correct: it is opened read-only and checked against the expected schema before anything is applied. If the code does not match or the file was altered, your database is not touched.",
+        "An exported Excel file is not encrypted: before it is created, every time, a notice says so and reminds you that whoever creates the file is responsible for it, and you must accept it to continue."
       ],
       "enlace": { "texto": "How to export and import", "href": "/en/manual/exportar-importar" }
     },
@@ -85,7 +86,7 @@
       "id": "cumplir",
       "titulo": "It helps you meet personal-data rules",
       "parrafos": [
-        "The data stays on your computer and the files you share are encrypted: that helps you meet the personal-data rules that apply to you.",
+        "The data stays on your computer, the .boldo files you share are encrypted and, before you export to Excel, which is not encrypted, a notice reminds you: that helps you meet the personal-data rules that apply to you.",
         "Handling it lawfully is the responsibility of whoever uses the app."
       ],
       "enlace": {

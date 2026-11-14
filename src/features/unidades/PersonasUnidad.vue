@@ -17,6 +17,10 @@ import { useRetornoFoco } from "@/lib/foco";
 import { urlFoto } from "@/features/trabajadores/foto";
 import FotoPersona from "@/features/trabajadores/FotoPersona.vue";
 import { useOrganizacion } from "@/stores/organizacion";
+import BotonExcel from "@/features/excel/BotonExcel.vue";
+import type { Lista } from "@/features/excel/exportar";
+import { hojaPersonas } from "@/features/excel/listas";
+import { MODO_LADO } from "@/lado/modo";
 import {
   correosUnicos,
   filtrarPersonasUnidad,
@@ -131,6 +135,18 @@ async function copiarCorreos() {
   }
 }
 
+// «Exportar esta lista a Excel»: las filas de la lista (también en Árbol, que muestra las mismas), del día que se ve.
+const listaExcel = (): Lista => ({
+  nombre: t("excel.personas.lista", { unidad: props.unidad.nombre }),
+  hojas: [hojaPersonas(filas.value, props.unidad.nombre, t)],
+  filtros: [
+    [t("personas.incluirSubunidades"), t(conRama.value ? "excel.filtro.si" : "excel.filtro.no")],
+    ...(texto.value.trim() ? [[t("excel.filtro.texto"), texto.value.trim()] as [string, string]] : []),
+  ],
+  orden: t(`personas.orden.${orden.value}`),
+  fecha: org.fechaVista,
+});
+
 // El directorio es de hoy: si la unidad ya no existe, no hay a dónde ir.
 const enDirectorio = computed(() => org.porId.has(props.unidad.id));
 const verEnDirectorio = () => router.push({ name: "directorio", query: { unidad: props.unidad.id } });
@@ -222,6 +238,7 @@ watch(persona, (w) => previa.value && !w && void volver());
           <Mail aria-hidden="true" />
           {{ t("personas.copiarCorreos") }}
         </Button>
+        <BotonExcel v-if="!MODO_LADO && filas.length" :lista="listaExcel" />
         <Button v-if="enDirectorio" type="button" variant="outline" size="sm" @click="verEnDirectorio">
           <Table aria-hidden="true" />
           {{ t("personas.verEnDirectorio") }}

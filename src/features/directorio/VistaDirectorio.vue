@@ -9,7 +9,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   Columns3,
-  Download,
   ListFilter,
   Minus,
   Plus,
@@ -24,7 +23,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TablaCatalogo } from "@/db/tipos";
 import { tiposEnUso, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { MAX_BOTONES_NIVEL, nivelVecino } from "@/features/arbol/niveles";
@@ -39,7 +37,9 @@ import { guardarPreferenciaOrg, leerPreferenciaOrg } from "@/lib/preferencias";
 import { raizDelPanel, usePanel } from "@/features/pestanas/panel";
 import { clicNuevaPestana, useEstadoPestana } from "@/features/pestanas/usePestanas";
 import { useOrganizacion } from "@/stores/organizacion";
-import { MOSTRAR_PROXIMAMENTE } from "@/app/proximamente";
+import BotonExcel from "@/features/excel/BotonExcel.vue";
+import type { Lista } from "@/features/excel/exportar";
+import { hojaDirectorio } from "@/features/excel/listas";
 import { MODO_LADO } from "@/lado/modo";
 import { claseSelect, cn } from "@/lib/utils";
 import {
@@ -47,6 +47,7 @@ import {
   SIN_FILTROS,
   candidatasDirectorio,
   columnaVisible,
+  filasDelArbol,
   filtrarYOrdenar,
   leerColumnas,
   leerEstadoDirectorio,
@@ -177,6 +178,43 @@ function quitarPersona() {
 }
 const delTipo = (f: FilaDirectorio, tipoId: string) => f.ruta.find((r) => r.tipoId === tipoId)?.nombre;
 
+// «Exportar esta lista a Excel»: las filas de la lista con sus filtros, su orden y sus columnas a la vista. En Árbol, las
+// mismas sin las personas sin puesto, que el árbol no muestra.
+function listaExcel(): Lista {
+  const f = filtros.value;
+  const nombreDe = (id: string | null, opciones: readonly { id: string; nombre: string }[]) =>
+    opciones.find((o) => o.id === id)?.nombre ?? "";
+  const activos: [string, string | null][] = [
+    [t("excel.filtro.texto"), f.texto.trim() || null],
+    [t("directorio.unidad"), f.unidad && (org.porId.get(f.unidad)?.nombre ?? "")],
+    [t("directorio.persona"), f.persona && nombrePersona.value],
+    ...selectores.value.map((s): [string, string | null] => [
+      t(s.etiqueta),
+      f[s.campo] && nombreDe(f[s.campo], s.opciones),
+    ]),
+    [t("directorio.estado"), f.estado && t(`directorio.${f.estado}`)],
+  ];
+  const campo = t(`directorio.${orden.value.campo}`);
+  return {
+    nombre: t("nav.directorio"),
+    hojas: [
+      hojaDirectorio(
+        vista.value === "arbol" ? filasDelArbol(filas.value) : filas.value,
+        {
+          reemplazo: ver("reemplazo"),
+          tipos: tiposVisibles.value,
+          tipoContrato: ver("tipoContrato"),
+          sede: ver("sede"),
+          jornada: ver("jornada"),
+        },
+        t,
+      ),
+    ],
+    filtros: activos.filter((x): x is [string, string] => !!x[1]),
+    orden: t(orden.value.asc ? "excel.filtro.ascendente" : "excel.filtro.descendente", { campo }),
+  };
+}
+
 // Lista o árbol: se recuerda por organización, como las columnas (es cómo se ve, no qué se busca).
 const vista = ref(leerPreferenciaOrg<unknown>("directorio:vista", "lista") === "arbol" ? "arbol" : "lista");
 watch(vista, (v) => guardarPreferenciaOrg("directorio:vista", v));
@@ -254,15 +292,7 @@ const verNivel = (n: number) => vistaArbol.value?.hastaNivel(n);
           {{ t(`personas.vista.${o}`) }}
         </Button>
       </div>
-      <Tooltip v-if="MOSTRAR_PROXIMAMENTE">
-        <TooltipTrigger as-child>
-          <Button variant="outline" aria-disabled="true" class="ml-auto cursor-not-allowed text-muted-foreground">
-            <Download aria-hidden="true" />
-            {{ t("directorio.exportar") }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t("barra.llegaFase4") }}</TooltipContent>
-      </Tooltip>
+      <BotonExcel v-if="!sinDatos && !MODO_LADO" class="ml-auto" :lista="listaExcel" />
     </header>
 
     <p v-if="sinDatos" class="text-sm text-muted-foreground">{{

@@ -4,7 +4,7 @@
 Para llevar tu organización, o solo una parte, a otro computador: **Exportar** la guarda en un archivo `.boldo` protegido con un código, e **Importar** abre ese archivo en el otro lado. Aquí ves cómo hacerlo sin pisar los datos que ya tienes.
 :::
 
-Ambas acciones están en **Importar/Exportar**, en la barra lateral, y en el menú de la app. Para abrir un archivo también puedes usar **Abrir un archivo .boldo** en la Bienvenida o **Abrir archivo .boldo** en el menú de la app.
+Ambas acciones están en **Importar/Exportar**, en la barra lateral, y en el menú de la app. Ahí mismo, **Exportar a Excel** pasa los registros a una planilla (ver [Exportar a Excel](#exportar-a-excel)). Para abrir un archivo también puedes usar **Abrir un archivo .boldo** en la Bienvenida o **Abrir archivo .boldo** en el menú de la app.
 
 ## Exportar
 
@@ -101,6 +101,29 @@ Antes de cambiar la organización abierta, BoldoAtlas hace un respaldo: marcado 
 Mientras exporta o importa, cerrar pregunta antes y dice qué trabajo está en curso. **Dejar en la bandeja** no lo interrumpe. **Cerrar la app** sí: lo que estaba a medias nunca queda con el nombre final y tus datos no cambian. Al volver a abrir se borran las copias en claro de la carpeta `datos`. Si un corte deja un archivo `.boldo.tmp` junto al destino, va cifrado y lo puedes borrar a mano.
 
 Si te vas de la pantalla del código sin copiarlo, BoldoAtlas lo sigue mostrando en un aviso hasta que lo copies o decidas cerrarlo.
+
+## Exportar a Excel
+
+Para trabajar los registros en una planilla: **Exportar a Excel**, en **Importar/Exportar** y en el menú de la app, guarda la organización, o una rama, en un libro de Excel con una hoja por tipo de registro.
+
+1. Elige el **Alcance**: **Toda la organización**, una gerencia o cualquier unidad. Una unidad lleva todo lo que depende de ella.
+2. Marca las hojas y, en cada una, sus columnas. Vienen todas marcadas salvo **ID** (el identificador interno de cada registro, para cruzar con otro archivo) y **Notas** de las personas. Lo que marques se recuerda en este computador. Hace falta al menos una hoja con una columna.
+3. Pulsa **Exportar a Excel**, lee el aviso y pulsa **Acepto, exportar**: el archivo no va cifrado (ver [Exportar a Excel](directorio.md#exportar-a-excel) en el Directorio).
+4. Elige dónde guardarlo. Al terminar, **Abrir carpeta** muestra el archivo.
+
+| Hoja | Qué trae |
+|---|---|
+| Unidades | Tipo, nombre, descripción, unidad superior, ruta completa, jefe y su correo, etiquetas, dotación directa y total, y vacantes |
+| Puestos | Unidad, ruta completa, cargo, descripción, leyenda, titular, reemplazo vigente, si está vacante y desde hace cuántos días |
+| Asignaciones | Persona, correo, cargo, unidad, tipo (titular o reemplazo), desde, hasta y motivo: también el historial |
+| Conexiones | Origen, destino y etiqueta de las líneas laterales con al menos una punta en el alcance |
+| Trabajadores | Nombre, correo, teléfono, tipo de contrato, sede, jornada, y sus cargos, unidades, rutas y jefes vigentes (si tiene varios puestos, separados por « · ») |
+| Mantenedores | Cada valor de cargos, tipos de contrato, sedes, jornadas, tipos de unidad y etiquetas, con cuántas veces se usa en el alcance y si está activo (los desactivados también salen, porque puestos y personas los conservan) |
+| Zonas | Una fila por zona y unidad, con su color y la ruta completa de la unidad |
+
+La hoja **Información** va siempre: organización, fechas, versiones, revisión, alcance y hojas, y el logo si la organización tiene. Con una rama, **Trabajadores** lleva solo a quienes tienen un puesto vigente en ella; con toda la organización, también a quienes no tienen puesto.
+
+Si estás viendo el organigrama a una fecha, se exporta ese día: los puestos, titulares, dotaciones y vacantes de entonces. Lo eliminado no sale. Las fotos no se exportan.
 
 ## Versiones distintas
 

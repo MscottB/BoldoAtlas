@@ -15,6 +15,8 @@ export const SQL_TRABAJADORES = `SELECT id, nombre, correo, telefono, tipo_contr
 
 /** Las notas de una persona: se piden al abrir su ficha. */
 export const SQL_NOTAS = "SELECT notas FROM trabajadores WHERE id = ?";
+/** Las de todas, para la exportación completa a Excel si se marca su columna (también de quien se ve en una fecha). */
+export const SQL_NOTAS_EXCEL = "SELECT id, notas FROM trabajadores WHERE notas <> ''";
 
 /** Lo que la ficha escribe. Foto y notas no vienen en la lista: `undefined` significa «no se toca». */
 export type CamposTrabajador = Pick<

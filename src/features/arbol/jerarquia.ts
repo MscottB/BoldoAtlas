@@ -219,7 +219,7 @@ export interface Historico {
   unidades: (Unidad & Vida)[];
   puestos: (Puesto & Vida)[];
   asignaciones: (Asignacion & Vida)[];
-  trabajadores: Trabajador[];
+  trabajadores: (Trabajador & Vida)[];
 }
 
 /**

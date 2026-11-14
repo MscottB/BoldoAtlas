@@ -88,6 +88,11 @@ export const GRUPOS_MENU: EntradaMenu[][] = [
       icono: Download,
       destino: { path: "/importar-exportar", query: { accion: "exportar" } },
     },
+    {
+      id: "excelCompleto",
+      icono: FileSpreadsheet,
+      destino: { path: "/importar-exportar", query: { accion: "excel" } },
+    },
     { id: "excel", icono: FileSpreadsheet, fase: "bienvenida.llegaFase4" },
   ].filter((e) => MOSTRAR_PROXIMAMENTE || !e.fase),
   [

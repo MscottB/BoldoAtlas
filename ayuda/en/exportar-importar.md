@@ -4,7 +4,7 @@
 To take your organization, or just part of it, to another computer: **Export** saves it to a `.boldo` file protected with a code, and **Import** opens that file on the other side. Here you see how to do it without overwriting the data you already have.
 :::
 
-Both actions are in **Import/Export**, in the sidebar, and in the app menu. To open a file you can also use **Open a .boldo file** on the Welcome screen or **Open .boldo file** in the app menu.
+Both actions are in **Import/Export**, in the sidebar, and in the app menu. There too, **Export to Excel** takes the records to a spreadsheet (see [Export to Excel](#export-to-excel)). To open a file you can also use **Open a .boldo file** on the Welcome screen or **Open .boldo file** in the app menu.
 
 ## Export
 
@@ -101,6 +101,29 @@ Before changing the open organization, BoldoAtlas makes a backup: marked **Befor
 While exporting or importing, closing asks first and says which task is in progress. **Keep in the tray** does not interrupt it. **Quit the app** does: what was half done never keeps the final name and your data does not change. When you open the app again, the unencrypted copies in the `datos` folder are deleted. If a cut leaves a `.boldo.tmp` file next to the destination, it is encrypted and you can delete it by hand.
 
 If you leave the code screen without copying the code, BoldoAtlas keeps showing it in a notice until you copy it or decide to close it.
+
+## Export to Excel
+
+To work with the records in a spreadsheet: **Export to Excel**, in **Import/Export** and in the app menu, saves the organization, or a branch, to an Excel workbook with one sheet per kind of record.
+
+1. Choose the **Scope**: **Whole organization**, a division or any unit. A unit takes everything under it.
+2. Tick the sheets and, in each one, its columns. All come ticked except **ID** (the internal identifier of each record, to match with another file) and people's **Notes**. What you tick is remembered on this computer. At least one sheet with one column is needed.
+3. Press **Export to Excel**, read the notice and press **I accept, export**: the file is not encrypted (see [Export to Excel](directorio.md#export-to-excel) in the Directory).
+4. Choose where to save it. When it is done, **Open folder** shows the file.
+
+| Sheet | What it has |
+|---|---|
+| Units | Type, name, description, parent unit, full path, head and their email, tags, direct and total headcount, and vacancies |
+| Positions | Unit, full path, job title, description, legend, holder, current substitute, whether it is vacant and for how many days |
+| Assignments | Person, email, job title, unit, type (holder or substitute), from, to and reason: the history too |
+| Connections | From, to and label of the side lines with at least one end in the scope |
+| People | Name, email, phone, contract type, site, work schedule, and their current job titles, units, paths and heads (with several positions, separated by “ · ”) |
+| Lists | Each value of job titles, contract types, sites, work schedules, unit types and tags, with how many times it is used in the scope and whether it is active (deactivated ones are included too, because positions and people keep them) |
+| Zones | One row per zone and unit, with its color and the unit's full path |
+
+The **Information** sheet is always included: organization, dates, versions, revision, scope and sheets, and the logo if the organization has one. With a branch, **People** has only those with a current position in it; with the whole organization, also those without a position.
+
+If you are viewing the org chart as of a date, that day is exported: the positions, holders, headcounts and vacancies of then. Deleted records are not included. Photos are not exported.
 
 ## Different versions
 

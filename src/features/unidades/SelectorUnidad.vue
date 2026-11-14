@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { ChevronsUpDown } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { Unidad } from "@/db/tipos";
 import ListaUnidades from "./ListaUnidades.vue";
 
 // Combobox con buscador de unidades (superior y destino de una conexión). Los atributos (id, aria-*) van al botón.
@@ -13,6 +14,8 @@ defineProps<{
   texto: string;
   /** Ofrece esta opción (devuelve null), por ejemplo «Sin superior (raíz)». */
   ninguna?: string;
+  /** De dónde elegir; sin ellas, las de hoy. */
+  unidades?: Unidad[];
 }>();
 const emit = defineEmits<{ elegir: [id: string | null] }>();
 
@@ -39,7 +42,7 @@ function elegir(id: string | null) {
       </Button>
     </PopoverTrigger>
     <PopoverContent align="start" class="w-(--reka-popover-trigger-width) min-w-64 p-0">
-      <ListaUnidades :excluidas="excluidas" :ninguna="ninguna" @elegir="elegir" />
+      <ListaUnidades :excluidas="excluidas" :ninguna="ninguna" :unidades="unidades" @elegir="elegir" />
     </PopoverContent>
   </Popover>
 </template>

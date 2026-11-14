@@ -5,10 +5,14 @@ import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import { Label } from "@/components/ui/label";
+import BotonExcel from "@/features/excel/BotonExcel.vue";
+import type { Lista } from "@/features/excel/exportar";
+import { hojaRevision } from "@/features/excel/listas";
 import { formatearFecha } from "@/features/puestos/puestos";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
+import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import DialogoBien from "./DialogoBien.vue";
 import FilasRevision, { type Accion, type Fila } from "./FilasRevision.vue";
@@ -212,6 +216,26 @@ const marcados = computed<Fila[]>(() =>
   })),
 );
 
+// «Exportar esta lista a Excel»: las secciones que se ven, con sus filas, en la rama elegida.
+const listaExcel = (): Lista => ({
+  nombre: t("revision.titulo"),
+  hojas: [
+    hojaRevision(
+      [
+        ...secciones.value.map((s) => ({
+          titulo: t(`revision.${s.tipo}.titulo`),
+          nivel: t(`revision.niveles.${s.nivel}.titulo`),
+          filas: s.filas,
+        })),
+        { titulo: t("revision.reemplazos.titulo"), nivel: null, filas: reemplazos.value },
+        { titulo: t("revision.marcados"), nivel: null, filas: marcados.value },
+      ],
+      t,
+    ),
+  ],
+  filtros: rama.value ? [[t("revision.rama"), org.porId.get(rama.value)?.nombre ?? ""]] : [],
+});
+
 // Desde el resumen: abre la sección (aunque el usuario la haya plegado) y lleva el foco a su título.
 const destino = ref<TipoAviso | null>(null);
 async function ir(tipo: TipoAviso) {
@@ -245,6 +269,7 @@ async function ir(tipo: TipoAviso) {
             @elegir="rama = $event"
           />
         </div>
+        <BotonExcel v-if="!MODO_LADO" class="h-8" :lista="listaExcel" />
       </div>
     </header>
 

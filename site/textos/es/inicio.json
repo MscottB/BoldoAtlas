@@ -71,7 +71,7 @@
       {
         "icono": "candado",
         "titulo": "Te ayuda a cumplir con los datos personales",
-        "texto": "Los datos quedan en tu computador y los archivos que compartes van cifrados: eso te ayuda a cumplir las reglas que te apliquen. Tratarlos conforme a la ley es responsabilidad de quien usa la app.",
+        "texto": "Los datos quedan en tu computador, los archivos .boldo que compartes van cifrados y antes de exportar a Excel, que no se cifra, un aviso te lo recuerda: eso te ayuda a cumplir las reglas que te apliquen. Tratarlos conforme a la ley es responsabilidad de quien usa la app.",
         "enlace": { "texto": "Seguridad y privacidad", "href": "/seguridad#cumplir" }
       }
     ]

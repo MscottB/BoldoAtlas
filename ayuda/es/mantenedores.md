@@ -46,4 +46,6 @@ Para agregar un valor a una lista:
 
 Las **leyendas** suman un color (`#rrggbb`) y una descripción, que se editan en la misma fila. Cómo asignarlas a los puestos está en la página «Leyendas y colores de puestos».
 
+**Exportar esta lista a Excel**, junto a **Agregar**, guarda la lista de la pestaña en un archivo de Excel, en su orden, con sus usos y su estado (también los valores desactivados). Antes de guardar hay que aceptar un aviso, porque el archivo no va cifrado; el detalle está en [Exportar a Excel](directorio.md#exportar-a-excel).
+
 **Ver también:** [Leyendas y colores de puestos](leyendas.md) · [Fichas de personas](fichas.md) · [Respaldos](respaldos.md).

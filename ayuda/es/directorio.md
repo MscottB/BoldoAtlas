@@ -51,4 +51,17 @@ Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona
 - Pulsa una persona, o el nombre de una jefatura, para abrir su ficha, y una vacante para abrir su puesto, como en la lista; `Ctrl` + clic o clic central sobre una persona la abre en una pestaña nueva. El ícono de ubicar, al final de la fila, la muestra en el organigrama.
 - Con el teclado, `↑` y `↓` recorren las filas, `→` abre una unidad o entra en ella, `←` la cierra o sube a su superior, `Inicio` y `Fin` van a la primera y a la última. `Enter` hace lo mismo que pulsar la fila, `Mayús+Enter` abre la ficha de la jefatura de la unidad y `Tab` lleva al ícono de ubicar de la fila.
 
+## Exportar a Excel
+
+**Exportar esta lista a Excel**, junto al título, guarda en un archivo de Excel lo que se ve: las filas que dejan la búsqueda y los filtros, en el mismo orden y con las mismas columnas (las que elegiste en **Columnas**). Con **Árbol** se exportan, como lista, las personas y vacantes que muestra el árbol: sin las personas sin puesto vigente.
+
+1. Pulsa **Exportar esta lista a Excel**.
+2. Lee el aviso y pulsa **Acepto, exportar**. El archivo no va cifrado: cualquiera que lo abra verá lo que contiene, y quien lo genera responde por dónde lo guarda y con quién lo comparte. El aviso aparece cada vez que exportas; con **Cancelar** no se genera nada.
+3. Elige dónde guardarlo. El nombre propuesto lleva la organización, la fecha y la revisión de los datos.
+4. Al terminar, **Abrir carpeta** muestra el archivo en su carpeta.
+
+El archivo trae una hoja con la lista y otra, **Información**, con la organización, la fecha de generación, la fecha de los datos, las versiones de BoldoAtlas y de los datos, y los filtros (cada uno como «Filtro: …») y el orden aplicados. Si la organización tiene logo, va en esa hoja, a la derecha de los datos. Los títulos de las columnas quedan fijos y con filtro; las cifras y fechas son números y fechas de Excel, y el texto queda como texto aunque empiece con `=`, `+`, `-` o `@`.
+
+La misma opción está en **Revisión de datos**, en cada lista de **Mantenedores** y en la pestaña **Personas** del panel de una unidad. Para llevar toda la organización, o una rama, con una hoja por tipo de registro, usa [Exportar a Excel](exportar-importar.md#exportar-a-excel) en **Importar/Exportar**.
+
 **Ver también:** [Fichas de personas](fichas.md) · [Pestañas de trabajo](pestanas.md).

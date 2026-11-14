@@ -71,7 +71,7 @@
       {
         "icono": "candado",
         "titulo": "It helps you meet personal-data rules",
-        "texto": "The data stays on your computer and the files you share are encrypted: that helps you meet the rules that apply to you. Handling it lawfully is the responsibility of whoever uses the app.",
+        "texto": "The data stays on your computer, the .boldo files you share are encrypted and, before you export to Excel, which is not encrypted, a notice reminds you: that helps you meet the rules that apply to you. Handling it lawfully is the responsibility of whoever uses the app.",
         "enlace": { "texto": "Security and privacy", "href": "/en/seguridad#cumplir" }
       }
     ]

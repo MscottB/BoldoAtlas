@@ -46,4 +46,6 @@ To add a value to a list:
 
 **Legends** add a color (`#rrggbb`) and a description, edited in the same row. How to assign them to positions is covered in the page “Legends and position colors”.
 
+**Export this list to Excel**, next to **Add**, saves the tab's list to an Excel file, in its order, with its uses and its status (deactivated values too). Before saving you must accept a notice, because the file is not encrypted; the details are in [Export to Excel](directorio.md#export-to-excel).
+
 **See also:** [Legends and position colors](leyendas.md) · [Person records](fichas.md) · [Backups](respaldos.md).

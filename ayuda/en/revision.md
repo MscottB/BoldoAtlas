@@ -62,6 +62,10 @@ The **Branch** filter shows a unit and everything under it.
 
 To see everything again, choose **Whole organization**.
 
+## Export to Excel
+
+**Export this list to Excel**, at the top right, saves the warnings you see (with the chosen branch) to an Excel file: one row per warning, with its section, its level and its detail, plus **Current replacements** and **Marked as fine**. In the groups of emails and names, each person goes on their own row. Before saving you must accept a notice, because the file is not encrypted; the details are in [Export to Excel](directorio.md#export-to-excel).
+
 ## On a date and side by side
 
 If you are viewing a date, or another organization side by side, you can only look and open. The buttons for vacancies and units read **View position** and **View unit**. **This is fine**, **Warn again**, **Delete** and **Deactivate** do not appear.

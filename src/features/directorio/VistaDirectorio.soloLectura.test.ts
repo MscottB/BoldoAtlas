@@ -52,3 +52,37 @@ describe("El directorio vacío", () => {
     expect(await html()).toContain(t("directorio.vacio"));
   });
 });
+
+describe("Exportar esta lista a Excel", () => {
+  const conPersona = async () => {
+    const { useOrganizacion } = await import("@/stores/organizacion");
+    useOrganizacion().trabajadores = [
+      {
+        id: "t1",
+        nombre: "Ana",
+        correo: null,
+        telefono: null,
+        tipo_contrato_id: null,
+        sede_id: null,
+        jornada_id: null,
+        tiene_foto: 0,
+        updated_at: "",
+      },
+    ];
+  };
+
+  it("se ofrece con datos, también viendo una fecha (no cambia nada)", async () => {
+    lado.activo = false;
+    await conPersona();
+    const { useOrganizacion } = await import("@/stores/organizacion");
+    useOrganizacion().fechaVista = "2026-01-01";
+    expect(useOrganizacion().soloLectura).toBe(true);
+    expect(await html()).toContain(t("excel.exportar"));
+  });
+
+  it("al lado no: es otra organización, solo para mirar", async () => {
+    lado.activo = true;
+    await conPersona();
+    expect(await html()).not.toContain(t("excel.exportar"));
+  });
+});

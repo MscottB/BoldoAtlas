@@ -1,5 +1,19 @@
 [
   {
+    "id": "exportar-excel",
+    "pagina": "exportar-importar",
+    "es": {
+      "titulo": "Tus registros en Excel",
+      "texto": "Exportar a Excel, en Importar/Exportar, guarda la organización o una rama en un libro con una hoja por tipo de registro: unidades, puestos, asignaciones, personas, conexiones, mantenedores y zonas, con las columnas que elijas. Exportar esta lista a Excel guarda el Directorio, la Revisión de datos, una lista de Mantenedores o las personas de una unidad tal como se ven. Como el archivo no va cifrado, antes de guardarlo un aviso lo dice.",
+      "ancla": "exportar-a-excel"
+    },
+    "en": {
+      "titulo": "Your records in Excel",
+      "texto": "Export to Excel, in Import/Export, saves the organization or a branch to a workbook with one sheet per kind of record: units, positions, assignments, people, connections, lists and zones, with the columns you choose. Export this list to Excel saves the Directory, Data review, a list in Lists or the people in a unit just as you see them. As the file is not encrypted, a notice says so before it is saved.",
+      "ancla": "export-to-excel"
+    }
+  },
+  {
     "id": "directorio-arbol",
     "pagina": "directorio",
     "es": {

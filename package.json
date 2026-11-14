@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "elkjs": "^0.12.1",
+    "exceljs": "^4.4.0",
     "markdown-it": "^15.0.3",
     "pinia": "^4.1.0",
     "reka-ui": "^2.11.0",
