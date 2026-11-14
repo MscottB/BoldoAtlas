@@ -5,7 +5,8 @@ import { enlace, fuenteImagen } from "./imagenes";
 import { textos } from "./textos";
 import type { Lang } from "./tipos";
 
-// Portada: el mensaje, las garantías y el botón Descargar a la izquierda; la captura del árbol, inclinada, a la derecha.
+// Portada: el titular (con su parte clave en serifa cursiva), el texto, Descargar y las funciones, las garantías y,
+// debajo, la captura del árbol en su tarjeta con el rótulo «FIG 1».
 const props = defineProps<{ lang: Lang }>();
 
 const t = computed(() => textos(props.lang));
@@ -14,28 +15,35 @@ const TEMAS = ["claro", "oscuro"] as const;
 </script>
 
 <template>
-  <section class="portada">
-    <div class="pieza-contenedor rejilla">
-      <div class="mensaje">
-        <h1>{{ p.titulo }}</h1>
-        <p class="texto">{{ p.texto }}</p>
-        <ul class="garantias" role="list">
-          <li v-for="g in t.comunes.garantias" :key="g">
-            <svg class="trazo" viewBox="0 0 24 24" aria-hidden="true" v-html="ICONOS.si" />{{ g }}
-          </li>
-        </ul>
+  <section class="portada pieza-arranque">
+    <div class="pieza-contenedor">
+      <h1 class="titular">
+        {{ p.titulo }}<br />
+        <em>{{ p.clave }}</em>
+      </h1>
+      <p class="texto">{{ p.texto }}</p>
+      <div class="acciones">
         <a class="pieza-boton marca" :href="enlace(t.comunes.rutas.descargas)">
           <svg class="trazo" viewBox="0 0 24 24" aria-hidden="true" v-html="ICONOS.descargar" />{{
             p.descargar
           }}
         </a>
+        <a class="pieza-boton alt" :href="enlace(t.comunes.rutas.funciones)">{{
+          t.inicio.destacadas.todas
+        }}</a>
       </div>
-      <div class="captura">
+      <ul class="garantias" role="list">
+        <li v-for="g in t.comunes.garantias" :key="g">
+          <svg class="trazo" viewBox="0 0 24 24" aria-hidden="true" v-html="ICONOS.si" />{{ g }}
+        </li>
+      </ul>
+      <figure class="pieza-tarjeta figura">
+        <figcaption class="pieza-etiqueta">{{ p.figura }}</figcaption>
         <template v-if="p.imagen.temas">
           <img
             v-for="tema in TEMAS"
             :key="tema"
-            :class="`solo-${tema}`"
+            :class="`pieza-captura solo-${tema}`"
             :src="fuenteImagen(lang, p.imagen, tema)"
             :alt="p.imagen.alt"
             :width="p.imagen.ancho"
@@ -45,114 +53,81 @@ const TEMAS = ["claro", "oscuro"] as const;
         </template>
         <img
           v-else
+          class="pieza-captura"
           :src="fuenteImagen(lang, p.imagen, 'claro')"
           :alt="p.imagen.alt"
           :width="p.imagen.ancho"
           :height="p.imagen.alto"
           fetchpriority="high"
         />
-      </div>
+      </figure>
     </div>
   </section>
 </template>
 
 <style scoped>
 .portada {
-  overflow: hidden; /* la captura inclinada no debe abrir un desplazamiento horizontal */
-  padding: 48px 0 64px;
-  background:
-    radial-gradient(50% 60% at 85% 40%, rgba(200, 116, 63, 0.14), transparent 70%), var(--producto-fondo);
+  padding: 72px 0 64px;
+  text-align: center;
 }
-.rejilla {
-  display: grid;
-  gap: 48px;
-  align-items: center;
-}
-h1 {
+.titular {
   margin: 0;
-  max-width: 16ch;
-  color: var(--producto-titulo);
-  font-size: clamp(2.5rem, 1rem + 3vw, 3.5rem);
-  line-height: 1.08;
-  font-weight: 750;
-  letter-spacing: -0.025em;
+  color: var(--vp-c-text-1);
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 .texto {
-  margin: 20px 0 0;
-  max-width: 38ch;
+  max-width: 40em;
+  margin: 20px auto 0;
   color: var(--vp-c-text-2);
-  font-size: 1.1875rem;
+  font-size: 1.1rem;
   line-height: 1.6;
+}
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 28px 0 14px;
 }
 .garantias {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
-  margin: 24px 0 32px;
+  justify-content: center;
+  gap: 4px 18px;
+  margin: 0;
   padding: 0;
   list-style: none;
+  color: var(--vp-c-text-2);
+  font-size: 0.875rem;
 }
 .garantias li {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--vp-c-text-1);
-  font-weight: 500;
 }
 .garantias .trazo {
   color: var(--vp-c-brand-1);
 }
-.pieza-boton {
-  padding: 14px 28px;
-  font-size: 1.0625rem;
+.figura {
+  max-width: 1000px;
+  margin: 48px auto 0;
+  text-align: left;
 }
-.mensaje,
-.captura {
-  min-width: 0;
-}
-.captura img {
+.figura img {
   vertical-align: top;
   width: 100%;
   height: auto;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--vp-c-bg);
-  box-shadow:
-    0 1px 2px rgba(17, 24, 39, 0.06),
-    0 24px 48px -16px rgba(30, 42, 56, 0.35);
 }
-.dark .captura img {
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 24px 48px -16px rgba(0, 0, 0, 0.8);
-}
-@media (min-width: 768px) {
+@media (max-width: 639px) {
   .portada {
-    padding: 72px 0 96px;
+    padding: 52px 0 48px;
   }
-  .rejilla {
-    grid-template-columns: 5fr 6fr;
-    gap: 40px;
-  }
-  /* la captura gira hacia el texto; al pasar el puntero se endereza un poco */
-  .captura img {
-    transform: perspective(1600px) rotateY(-14deg) rotateX(4deg);
-    transform-origin: right center;
-    transition: transform 0.4s ease;
-  }
-  .captura:hover img {
-    transform: perspective(1600px) rotateY(-6deg) rotateX(2deg);
-  }
-}
-@media (min-width: 1200px) {
-  .rejilla {
-    gap: 64px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .captura img {
-    transition: none;
+  .figura {
+    margin-top: 36px;
+    padding: 12px;
   }
 }
 </style>

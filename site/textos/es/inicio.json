@@ -1,6 +1,8 @@
 {
   "portada": {
-    "titulo": "Organigramas gigantes, en tu computador",
+    "titulo": "Organigramas gigantes,",
+    "clave": "en tu computador.",
+    "figura": "Fig 1 · El organigrama",
     "texto": "Arma el organigrama de tu organización y la ficha de cada persona. Sin servidor ni cuentas, y sin necesitar internet: tus datos se quedan contigo.",
     "descargar": "Descargar",
     "imagen": {

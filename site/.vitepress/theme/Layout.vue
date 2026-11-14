@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useData, useRoute, useRouter, withBase } from "vitepress";
-import DefaultTheme from "vitepress/theme";
+import DefaultTheme from "vitepress/theme-without-fonts";
 import { computed, onMounted, watch } from "vue";
 import { destinoAncla } from "./anclasViejas";
 import { textos } from "./textos";

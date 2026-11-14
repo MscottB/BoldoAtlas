@@ -26,12 +26,14 @@ const hayMas = novedades.length > PORTADA;
   <main class="inicio">
     <Portada :lang="lang" />
 
-    <section class="seccion alterna" aria-labelledby="por-que">
+    <section class="seccion" aria-labelledby="por-que">
       <div class="pieza-contenedor">
-        <p class="pieza-etiqueta">{{ t.inicio.beneficios.etiqueta }}</p>
-        <h2 id="por-que">{{ t.inicio.beneficios.titulo }}</h2>
+        <header class="pieza-cabeza">
+          <p class="pieza-etiqueta">{{ t.inicio.beneficios.etiqueta }}</p>
+          <h2 id="por-que" class="pieza-h2">{{ t.inicio.beneficios.titulo }}</h2>
+        </header>
         <ul class="beneficios" role="list">
-          <li v-for="b in t.inicio.beneficios.items" :key="b.titulo">
+          <li v-for="b in t.inicio.beneficios.items" :key="b.titulo" class="pieza-tarjeta">
             <h3>{{ b.titulo }}</h3>
             <p>{{ b.texto }}</p>
             <a class="pieza-mas" :href="enlace(b.enlace.href)">{{ b.enlace.texto }} →</a>
@@ -42,8 +44,10 @@ const hayMas = novedades.length > PORTADA;
 
     <section class="seccion" aria-labelledby="funciones">
       <div class="pieza-contenedor">
-        <p class="pieza-etiqueta">{{ t.inicio.destacadas.etiqueta }}</p>
-        <h2 id="funciones">{{ t.inicio.destacadas.titulo }}</h2>
+        <header class="pieza-cabeza">
+          <p class="pieza-etiqueta">{{ t.inicio.destacadas.etiqueta }}</p>
+          <h2 id="funciones" class="pieza-h2">{{ t.inicio.destacadas.titulo }}</h2>
+        </header>
         <div class="destacadas">
           <BloqueFuncion
             v-for="(f, i) in destacadas"
@@ -60,10 +64,12 @@ const hayMas = novedades.length > PORTADA;
       </div>
     </section>
 
-    <section class="seccion alterna lo-nuevo" aria-labelledby="lo-nuevo">
+    <section class="seccion lo-nuevo" aria-labelledby="lo-nuevo">
       <div class="pieza-contenedor">
-        <p class="pieza-etiqueta">{{ t.inicio.nuevo.etiqueta }}</p>
-        <h2 id="lo-nuevo">{{ t.inicio.nuevo.titulo }}</h2>
+        <header class="pieza-cabeza">
+          <p class="pieza-etiqueta">{{ t.inicio.nuevo.etiqueta }}</p>
+          <h2 id="lo-nuevo" class="pieza-h2">{{ t.inicio.nuevo.titulo }}</h2>
+        </header>
         <Novedades :lang="lang" ultimas />
         <a v-if="hayMas" class="pieza-mas todas" :href="enlace(t.comunes.rutas.novedades)"
           >{{ t.inicio.nuevo.todas }} ({{ novedades.length }}) →</a
@@ -79,61 +85,40 @@ const hayMas = novedades.length > PORTADA;
 
 <style scoped>
 .seccion {
-  padding: 64px 0;
-}
-.seccion.alterna {
-  background: var(--producto-fondo-alt);
+  padding: 56px 0;
 }
 @media (min-width: 960px) {
   .seccion {
-    padding: 96px 0;
+    padding: 80px 0;
   }
-}
-h2 {
-  margin: 0;
-  max-width: 28ch;
-  padding: 0;
-  border: 0;
-  color: var(--producto-titulo);
-  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem);
-  line-height: 1.15;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
 }
 .beneficios {
   display: grid;
-  gap: 16px;
-  margin: 40px 0 0;
+  gap: 12px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 @media (min-width: 768px) {
   .beneficios {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
   }
 }
 .beneficios li {
   display: flex;
   flex-direction: column;
-  padding: 24px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--producto-fondo);
 }
 .beneficios h3 {
   margin: 0;
-  color: var(--producto-titulo);
-  font-size: 1.1875rem;
-  line-height: 1.3;
-  font-weight: 650;
+  color: var(--vp-c-text-1);
+  font-size: 1.25rem;
   letter-spacing: -0.01em;
 }
 .beneficios p {
   flex: 1;
   margin: 8px 0 0;
   color: var(--vp-c-text-2);
+  font-size: 0.95rem;
   line-height: 1.6;
 }
 .beneficios .pieza-mas {
@@ -142,7 +127,6 @@ h2 {
 .destacadas {
   display: grid;
   gap: 64px;
-  margin-top: 48px;
 }
 @media (min-width: 960px) {
   .destacadas {

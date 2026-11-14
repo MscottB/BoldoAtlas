@@ -17,11 +17,11 @@ const enlaces = (e?: Enlace | Enlace[]) => (e ? [e].flat() : []);
 
 <template>
   <main class="seguridad">
-    <header class="cabecera">
+    <header class="cabecera pieza-arranque">
       <div class="pieza-contenedor">
         <p class="pieza-etiqueta">{{ s.etiqueta }}</p>
-        <h1>{{ s.titulo }}</h1>
-        <p class="bajada">{{ s.bajada }}</p>
+        <h1 class="pieza-titulo">{{ s.titulo }}</h1>
+        <p class="pieza-bajada">{{ s.bajada }}</p>
       </div>
     </header>
 
@@ -54,25 +54,8 @@ const enlaces = (e?: Enlace | Enlace[]) => (e ? [e].flat() : []);
 }
 @media (min-width: 960px) {
   .cabecera {
-    padding: 96px 0 48px;
+    padding: 88px 0 48px;
   }
-}
-h1 {
-  margin: 0;
-  max-width: 20ch;
-  color: var(--producto-titulo);
-  font-size: clamp(2.5rem, 1.6rem + 3.4vw, 3.5rem);
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-}
-.bajada {
-  max-width: 62ch;
-  margin: 20px 0 0;
-  color: var(--vp-c-text-2);
-  font-size: 1.1875rem;
-  line-height: 1.6;
 }
 .lista {
   padding-bottom: 72px;
@@ -93,10 +76,8 @@ h2 {
   margin: 0;
   padding: 0;
   border: 0;
-  color: var(--producto-titulo);
+  color: var(--vp-c-text-1);
   font-size: 1.5rem;
-  line-height: 1.25;
-  font-weight: 700;
   text-wrap: balance;
   scroll-margin-top: 88px; /* el menú fijo no tapa el título al llegar por un ancla */
 }

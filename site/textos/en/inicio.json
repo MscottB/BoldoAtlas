@@ -1,6 +1,8 @@
 {
   "portada": {
-    "titulo": "Giant org charts, on your computer",
+    "titulo": "Giant org charts,",
+    "clave": "on your computer.",
+    "figura": "Fig 1 · The org chart",
     "texto": "Build your organization's org chart and a record for each person. No server, no accounts, and no need for internet: your data stays with you.",
     "descargar": "Download",
     "imagen": {

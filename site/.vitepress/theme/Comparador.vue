@@ -101,15 +101,19 @@ const NIVELES: Nivel[] = ["si", "parcial", "no", "ni"];
 // Cada marca es favorable para quien usa el producto; la forma cambia además del color.
 const ICONOS: Record<Nivel, string> = {
   si: '<circle cx="8" cy="8" r="6.5"/><path d="M5 8.3l2.2 2.2L11 6"/>',
-  parcial: '<circle cx="8" cy="8" r="6.5"/><path d="M8 1.5a6.5 6.5 0 0 0 0 13z" fill="currentColor" stroke="none"/>',
+  parcial:
+    '<circle cx="8" cy="8" r="6.5"/><path d="M8 1.5a6.5 6.5 0 0 0 0 13z" fill="currentColor" stroke="none"/>',
   no: '<circle cx="8" cy="8" r="6.5"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4"/>',
   ni: '<circle cx="8" cy="8" r="6.5" stroke-dasharray="2.2 2"/><path d="M5.5 8h5"/>',
 };
 const RANGO: Record<Nivel, number> = { si: 3, parcial: 2, no: 1, ni: 0 };
 const celda = (fila: Fila, producto: string) =>
-  (fila.celdas as Record<string, { ni?: boolean; es?: string; en?: string; f?: string[]; nivel: Nivel | null }>)[
-    producto
-  ];
+  (
+    fila.celdas as Record<
+      string,
+      { ni?: boolean; es?: string; en?: string; f?: string[]; nivel: Nivel | null }
+    >
+  )[producto];
 // Se resalta la celda de BoldoAtlas solo si su marca supera a la de cada uno de los demás en esa fila (sin empates).
 const boldoGana = (fila: Fila) => {
   const b = celda(fila, "boldo").nivel;
@@ -126,14 +130,14 @@ const boldoGana = (fila: Fila) => {
 <template>
   <article class="comparador">
     <header class="ancho">
-      <p class="etiqueta">{{ t.etiqueta }}</p>
-      <h1>{{ t.titulo }}</h1>
-      <p class="bajada">{{ t.bajada }}</p>
+      <p class="pieza-etiqueta">{{ t.etiqueta }}</p>
+      <h1 class="pieza-titulo">{{ t.titulo }}</h1>
+      <p class="pieza-bajada">{{ t.bajada }}</p>
       <p class="revisado">{{ t.revisado }} {{ datos.revisado[lang] }}.</p>
     </header>
 
     <div class="ancho resumen">
-      <section aria-labelledby="lo-bueno">
+      <section class="pieza-tarjeta" aria-labelledby="lo-bueno">
         <h2 id="lo-bueno">{{ t.buenoTitulo }}</h2>
         <ul>
           <li v-for="b in t.bueno" :key="b">{{ b }}</li>
@@ -144,7 +148,7 @@ const boldoGana = (fila: Fila) => {
     <section class="ancho" aria-labelledby="producto">
       <h2 id="producto">{{ t.tablaTitulo }}</h2>
       <p class="leer">{{ t.leer }}</p>
-      <ul class="leyenda" :aria-label="t.leyendaTitulo">
+      <ul class="leyenda pieza-tarjeta" :aria-label="t.leyendaTitulo">
         <li v-for="n in NIVELES" :key="n">
           <span class="sello" :class="`n-${n}`"
             ><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" v-html="ICONOS[n]"
@@ -196,7 +200,9 @@ const boldoGana = (fila: Fila) => {
                     <template v-else>
                       {{ celda(fila, p.id)[lang]
                       }}<sup v-for="f in celda(fila, p.id).f" :key="f"
-                        ><a :href="`#fuente-${f}`" :aria-label="`${t.fuente} ${numero(f)}`">{{ numero(f) }}</a></sup
+                        ><a :href="`#fuente-${f}`" :aria-label="`${t.fuente} ${numero(f)}`">{{
+                          numero(f)
+                        }}</a></sup
                       >
                     </template>
                   </span>
@@ -209,8 +215,8 @@ const boldoGana = (fila: Fila) => {
     </section>
 
     <div class="ancho acciones">
-      <a class="boton marca" :href="withBase(t.descargas)">{{ t.descargar }} →</a>
-      <a class="boton alt" :href="withBase(t.inicio)">{{ t.porQue }}</a>
+      <a class="pieza-boton marca" :href="withBase(t.descargas)">{{ t.descargar }} →</a>
+      <a class="pieza-boton alt" :href="withBase(t.inicio)">{{ t.porQue }}</a>
     </div>
 
     <section class="ancho fuentes" aria-labelledby="fuentes">
@@ -252,38 +258,13 @@ const boldoGana = (fila: Fila) => {
     padding: 0 48px;
   }
 }
-.etiqueta {
-  margin: 0 0 8px;
-  color: var(--vp-c-brand-1);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-h1 {
-  margin: 0;
+.pieza-titulo {
   max-width: 24ch;
-  font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--vp-c-text-1);
-  text-wrap: balance;
 }
 h2 {
   margin: 0;
   font-size: 1.5rem;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: -0.01em;
   color: var(--vp-c-text-1);
-}
-.bajada {
-  margin: 16px 0 0;
-  max-width: 64ch;
-  font-size: 1.125rem;
-  line-height: 1.6;
-  color: var(--vp-c-text-2);
 }
 .revisado {
   margin: 12px 0 0;
@@ -294,27 +275,12 @@ h2 {
 a {
   color: var(--vp-c-brand-1);
 }
-a:focus-visible {
-  outline: 2px solid var(--vp-c-brand-1);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
 
 .resumen {
   display: grid;
   gap: 16px;
   margin-top: 40px;
   margin-bottom: 48px;
-}
-.resumen section {
-  padding: 24px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 16px;
-  background: var(--vp-c-bg-soft);
-}
-.resumen section {
-  border-color: var(--vp-c-brand-3);
-  background: var(--vp-c-brand-soft);
 }
 .resumen h2 {
   font-size: 1.25rem;
@@ -397,7 +363,7 @@ thead .nuestra {
 }
 /* marcas: la forma (visto, mitad, equis, raya) dice lo mismo que el color; contraste ≥ 4.2:1 sobre el fondo y sobre el tinte de BoldoAtlas */
 .comparador {
-  --m-si: #1a7f37;
+  --m-si: #17752f;
   --m-parcial: #8a5a00;
   --m-no: #b42318;
   --m-ni: #5f6672;
@@ -465,9 +431,6 @@ td.mejor {
   margin: 16px 0 0;
   padding: 12px 16px;
   list-style: none;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--vp-c-bg-soft);
   font-size: 0.875rem;
   line-height: 1.45;
   color: var(--vp-c-text-1);
@@ -519,8 +482,9 @@ sup a {
   }
   tbody tr {
     margin-top: 12px;
-    border: 1px solid var(--vp-c-divider);
-    border-radius: 12px;
+    border: 1px dashed var(--borde-discontinuo);
+    border-radius: var(--radio);
+    background: var(--superficie);
     overflow: hidden;
   }
   tbody th[scope="row"] {
@@ -552,31 +516,6 @@ sup a {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 32px;
-}
-.boton {
-  display: inline-flex;
-  align-items: center;
-  padding: 12px 24px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background-color 0.2s;
-}
-.boton.marca {
-  background: var(--vp-button-brand-bg);
-  color: var(--vp-button-brand-text);
-}
-.boton.marca:hover {
-  background: var(--vp-button-brand-hover-bg);
-}
-.boton.alt {
-  background: var(--vp-button-alt-bg);
-  color: var(--vp-button-alt-text);
-  border-color: var(--vp-button-alt-border);
-}
-.boton.alt:hover {
-  background: var(--vp-button-alt-hover-bg);
 }
 
 .fuentes {
