@@ -36,7 +36,7 @@ const rutas = computed(() => comunes.value.rutas);
         >{{ funcion.enlace.texto }} →</a
       >
     </div>
-    <figure class="pantalla">
+    <figure class="pantalla pieza-captura">
       <template v-if="funcion.imagen.temas">
         <img
           v-for="tema in TEMAS"
@@ -86,11 +86,8 @@ const rutas = computed(() => comunes.value.rutas);
   margin: 0 0 12px;
   padding: 0;
   border: 0;
-  color: var(--producto-titulo);
+  color: var(--vp-c-text-1);
   font-size: clamp(1.375rem, 1.1rem + 1vw, 1.875rem);
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.015em;
 }
 .descripcion {
   margin: 0;
@@ -121,17 +118,7 @@ const rutas = computed(() => comunes.value.rutas);
   margin: 0;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--vp-c-bg);
-  box-shadow:
-    0 1px 2px rgba(17, 24, 39, 0.06),
-    0 12px 32px -12px rgba(17, 24, 39, 0.22);
-}
-.dark .pantalla {
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  background: var(--superficie);
 }
 .pantalla img {
   vertical-align: top;
@@ -141,7 +128,7 @@ const rutas = computed(() => comunes.value.rutas);
 .pantalla figcaption {
   padding: 8px 16px;
   border-top: 1px solid var(--vp-c-divider);
-  background: var(--vp-c-bg-soft);
+  background: var(--superficie-suave);
   color: var(--vp-c-text-2);
   font-size: 0.8125rem;
 }

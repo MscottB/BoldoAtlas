@@ -1,4 +1,5 @@
-import DefaultTheme from "vitepress/theme";
+// Sin la Inter que trae VitePress: el sitio usa la suya (custom.css, public/fuentes/).
+import DefaultTheme from "vitepress/theme-without-fonts";
 import type { Theme } from "vitepress";
 import Comparador from "./Comparador.vue";
 import Descargas from "./Descargas.vue";

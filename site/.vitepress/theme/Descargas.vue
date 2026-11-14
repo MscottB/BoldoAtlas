@@ -122,7 +122,9 @@ onMounted(async () => {
     <ul class="lista principal">
       <li v-for="s in sistemas" :key="s.portable">
         <span>{{ s.nombre }}</span>
-        <a class="boton" :href="enlace(s.portable)">{{ t.descargar }} <code>{{ s.portable }}</code></a>
+        <a class="boton" :href="enlace(s.portable)"
+          >{{ t.descargar }} <code>{{ s.portable }}</code></a
+        >
       </li>
     </ul>
 
@@ -132,7 +134,9 @@ onMounted(async () => {
       <li v-for="s in sistemas" :key="s.nombre">
         <span>{{ s.nombre }}</span>
         <span class="archivos">
-          <a v-for="f in s.instaladores" :key="f" :href="enlace(f)"><code>{{ f }}</code></a>
+          <a v-for="f in s.instaladores" :key="f" :href="enlace(f)"
+            ><code>{{ f }}</code></a
+          >
         </span>
       </li>
     </ul>
@@ -149,11 +153,12 @@ onMounted(async () => {
 }
 .insignia {
   margin-left: 8px;
-  padding: 1px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
-  background: var(--vp-c-brand-soft);
+  background: var(--acento-suave);
   color: var(--vp-c-brand-1);
   font-size: 0.8125rem;
+  font-weight: 600;
 }
 .lista {
   list-style: none;
@@ -176,15 +181,22 @@ onMounted(async () => {
   gap: 8px 16px;
 }
 .boton {
-  padding: 8px 16px;
-  border-radius: 20px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: var(--vp-button-brand-bg);
   color: var(--vp-button-brand-text);
   font-weight: 600;
   text-decoration: none;
+  transition: border-color 0.15s ease;
 }
 .boton:hover {
-  background: var(--vp-button-brand-hover-bg);
+  border-color: var(--vp-c-text-1);
   color: var(--vp-button-brand-hover-text);
 }
 .boton code {

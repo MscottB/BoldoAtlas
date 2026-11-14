@@ -16,11 +16,11 @@ const f = computed(() => t.value.funciones);
 
 <template>
   <main class="funciones">
-    <header class="cabecera">
+    <header class="cabecera pieza-arranque">
       <div class="pieza-contenedor">
         <p class="pieza-etiqueta">{{ f.etiqueta }}</p>
-        <h1>{{ f.titulo }}</h1>
-        <p class="bajada">{{ f.bajada }}</p>
+        <h1 class="pieza-titulo">{{ f.titulo }}</h1>
+        <p class="pieza-bajada">{{ f.bajada }}</p>
         <dl class="cifras">
           <div v-for="c in f.cifras" :key="c.valor">
             <dt>{{ c.valor }}</dt>
@@ -44,10 +44,12 @@ const f = computed(() => t.value.funciones);
     </section>
 
     <section class="comparar" aria-labelledby="comparar">
-      <div class="pieza-contenedor caja">
-        <h2 id="comparar">{{ f.comparar.titulo }}</h2>
-        <p>{{ f.comparar.texto }}</p>
-        <a class="pieza-mas" :href="enlace(t.comunes.rutas.comparar)">{{ f.comparar.enlace }} →</a>
+      <div class="pieza-contenedor">
+        <div class="pieza-tarjeta caja">
+          <h2 id="comparar">{{ f.comparar.titulo }}</h2>
+          <p>{{ f.comparar.texto }}</p>
+          <a class="pieza-mas" :href="enlace(t.comunes.rutas.comparar)">{{ f.comparar.enlace }} →</a>
+        </div>
       </div>
     </section>
 
@@ -61,52 +63,45 @@ const f = computed(() => t.value.funciones);
 }
 @media (min-width: 960px) {
   .cabecera {
-    padding: 96px 0 64px;
+    padding: 88px 0 64px;
   }
 }
-h1 {
-  margin: 0;
-  max-width: 20ch;
-  color: var(--producto-titulo);
-  font-size: clamp(2.5rem, 1.6rem + 3.4vw, 3.5rem);
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-}
-.bajada {
-  max-width: 62ch;
-  margin: 20px 0 0;
-  color: var(--vp-c-text-2);
-  font-size: 1.1875rem;
-  line-height: 1.6;
-}
+/* las cifras medidas en una franja de borde discontinuo, como las de Tramtai */
 .cifras {
   display: grid;
-  gap: 16px;
   margin: 40px 0 0;
+  border: 1px dashed var(--borde-discontinuo);
+  border-radius: var(--radio);
+  background: var(--superficie);
+}
+.cifras div {
+  padding: 20px 24px;
+}
+.cifras div + div {
+  border-top: 1px dashed var(--borde-discontinuo);
 }
 @media (min-width: 640px) {
   .cifras {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-}
-.cifras div {
-  padding: 20px 24px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--producto-fondo-alt);
+  .cifras div + div {
+    border-top: 0;
+    border-left: 1px dashed var(--borde-discontinuo);
+  }
 }
 .cifras dt {
-  color: var(--producto-titulo);
-  font-size: 2rem;
-  line-height: 1.1;
-  font-weight: 700;
+  color: var(--vp-c-text-1);
+  font-size: 2.5rem;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 .cifras dd {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   color: var(--vp-c-text-2);
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
 .nota {
   max-width: 70ch;
@@ -134,26 +129,20 @@ h1 {
 .comparar {
   padding: 0 0 64px;
 }
-.caja {
-  padding-top: 32px;
-  padding-bottom: 32px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--producto-fondo-alt);
-}
 .caja h2 {
   margin: 0;
   padding: 0;
   border: 0;
-  color: var(--producto-titulo);
+  color: var(--vp-c-text-1);
   font-size: 1.5rem;
-  line-height: 1.25;
-  font-weight: 700;
 }
 .caja p {
   max-width: 62ch;
   margin: 8px 0 0;
   color: var(--vp-c-text-2);
   line-height: 1.6;
+}
+.caja .pieza-mas {
+  margin-top: 12px;
 }
 </style>

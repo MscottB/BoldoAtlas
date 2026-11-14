@@ -1,38 +1,119 @@
-/* Marca de BoldoAtlas: cobre #c8743f y azul pizarra #1e2a38 (--marca y --primary en src/styles/main.css).
-   Como texto, el cobre oscuro (--marca-texto) en claro; sobre fondo oscuro, el cobre tal cual. */
+/* El mismo estilo que el sitio de Tramtai (papel cálido de día, casi negro de noche, tarjetas de borde discontinuo y
+   rótulos «FIG» en monoespaciada), con el cobre de BoldoAtlas (#c8743f, --marca en src/styles/main.css) de acento. */
+
+/* Inter (OFL), Instrument Serif cursiva (OFL) y Cascadia Mono (OFL): subconjuntos en public/fuentes/, junto a sus
+   licencias. La monoespaciada va con otro nombre porque «Cascadia Code» es nombre reservado de su licencia. */
+@font-face {
+  font-family: "Inter";
+  src: url("/fuentes/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/fuentes/instrument-italica.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "BoldoAtlas Mono";
+  src: url("/fuentes/cascadia.woff2") format("woff2");
+  font-weight: 200 700;
+  font-display: swap;
+}
+
+/* Colores. Texto, texto suave y cobre pasan 4,5:1 sobre el fondo y las dos superficies en los dos temas; el borde
+   de los controles, 3:1. El botón cobre lleva texto oscuro (5,1:1; el blanco daría 3,5:1, igual que en la app). */
 :root {
+  --fondo: #f7f5f0;
+  --superficie: #fffdf9;
+  --superficie-suave: #f0ede6;
+  --borde: #e3ded4;
+  --borde-fuerte: #cbc4b6;
+  --borde-discontinuo: #c4bcad;
+  --borde-control: #78715f;
+  --texto: #16191d;
+  --texto-suave: #5b5f66;
+  --rejilla: rgba(22, 25, 29, 0.06);
+  --acento-suave: rgba(200, 116, 63, 0.12);
+  --sombra: 0 1px 2px rgba(22, 25, 29, 0.05), 0 8px 24px rgba(22, 25, 29, 0.06);
+  --radio: 10px;
+  --fuente:
+    "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue",
+    sans-serif;
+  --serifa: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --mono: "BoldoAtlas Mono", "Cascadia Mono", ui-monospace, Consolas, "SF Mono", monospace;
+
+  --vp-c-bg: var(--fondo);
+  --vp-c-bg-alt: var(--superficie-suave);
+  --vp-c-bg-elv: var(--superficie);
+  --vp-c-bg-soft: var(--superficie-suave);
+  --vp-c-divider: var(--borde);
+  --vp-c-border: var(--borde-fuerte);
+  --vp-c-gutter: var(--borde);
+  --vp-c-text-1: var(--texto);
+  --vp-c-text-2: var(--texto-suave);
+  --vp-font-family-base: var(--fuente);
+  --vp-font-family-mono: var(--mono);
+
   --vp-c-brand-1: #9e511e;
   --vp-c-brand-2: #874218;
   --vp-c-brand-3: #c8743f;
   --vp-c-brand-soft: rgba(200, 116, 63, 0.14);
-  /* el blanco sobre el cobre da 3,5:1; el texto oscuro, 5,1:1 (igual que en la app) */
   --vp-button-brand-bg: #c8743f;
   --vp-button-brand-text: #111827;
   --vp-button-brand-hover-bg: #d4854f;
   --vp-button-brand-hover-text: #111827;
   --vp-button-brand-active-bg: #b8672f;
   --vp-button-brand-active-text: #111827;
-  --vp-home-hero-name-color: var(--vp-c-brand-1);
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #c8743f 40%, #1e2a38 60%);
-  --vp-home-hero-image-filter: blur(44px);
 }
+/* De noche, sin sombra: solo el borde. */
 .dark {
+  --fondo: #0b0d10;
+  --superficie: #11151a;
+  --superficie-suave: #161b21;
+  --borde: #1f262e;
+  --borde-fuerte: #2e3742;
+  --borde-discontinuo: #353f4b;
+  --borde-control: #64707c;
+  --texto: #eef1f4;
+  --texto-suave: #9aa3ad;
+  --rejilla: rgba(255, 255, 255, 0.05);
+  --acento-suave: rgba(200, 116, 63, 0.14);
+  --sombra: none;
+
   --vp-c-brand-1: #d98a58;
   --vp-c-brand-2: #c8743f;
   --vp-c-brand-3: #c8743f;
   --vp-c-brand-soft: rgba(200, 116, 63, 0.16);
 }
+body {
+  -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
+}
+/* Foco: contorno de 2 px del cobre separado 2 px; el navegador lo redondea según el elemento. */
+:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 
 /* El azul del logo no se ve sobre fondo oscuro: igual que la app, va sobre un fondo claro (--primary del tema oscuro). */
-.dark .VPImage.logo,
-.dark .VPHero .image-src {
+.dark .VPImage.logo {
   background: #e6ebf1;
   border-radius: 6px;
   padding: 2px;
-}
-.dark .VPHero .image-src {
-  border-radius: 24px;
-  padding: 12px;
 }
 
 /* Figuras del manual (src/lib/markdownAyuda.ts): la captura con su pie; ancho y alto vienen en la imagen. */
@@ -42,8 +123,6 @@
 .vp-doc figure.figura img {
   max-width: 100%;
   height: auto;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
 }
 .vp-doc figure.figura figcaption {
   margin-top: 6px;
@@ -52,35 +131,30 @@
   color: var(--vp-c-text-2);
 }
 
-/* Páginas de producto (todo menos el manual): fondo cálido, azul noche y cuerpo de 17 px.
+/* Títulos en Inter, de peso medio y con las letras algo juntas. */
+.es-producto :is(h1, h2, h3, h4),
+.vp-doc :is(h1, h2, h3) {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.es-producto :is(h1, h2, h3, h4) {
+  line-height: 1.15;
+}
+
+/* Páginas de producto (todo menos el manual): cuerpo de 17 px y la barra translúcida sobre el fondo.
    Layout.vue pone .es-producto o .es-manual en la raíz de la página. */
-:root {
-  --producto-fondo: #f6f3ef;
-  --producto-fondo-alt: #ffffff;
-  --producto-titulo: #1e2a38;
-  --producto-franja: #1e2a38;
-  --producto-franja-titulo: #ffffff;
-  --producto-franja-texto: #c5ccd6;
-  --producto-franja-enlace: #e8a27a;
-}
-.dark {
-  --producto-fondo: #1c1916;
-  --producto-fondo-alt: #24201c;
-  --producto-titulo: var(--vp-c-text-1);
-  --producto-franja: #151c25;
-}
 .es-producto {
-  --vp-nav-bg-color: var(--producto-fondo);
-  --vp-nav-screen-bg-color: var(--producto-fondo);
-  --vp-local-nav-bg-color: var(--producto-fondo);
-  background: var(--producto-fondo);
+  --vp-nav-bg-color: color-mix(in srgb, var(--fondo) 88%, transparent);
+  --vp-nav-screen-bg-color: var(--fondo);
+  --vp-local-nav-bg-color: var(--fondo);
   font-size: 17px;
+}
+.es-producto .VPNavBar {
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 .es-producto.Layout .VPFooter {
   background: transparent;
-}
-.es-producto.Layout .VPDoc .aside-curtain {
-  background: linear-gradient(transparent, var(--producto-fondo) 70%);
 }
 
 /* Menú. En producto no va el buscador (solo busca en el manual); en el manual no va el menú de producto. */
@@ -118,39 +192,26 @@
 .VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"],
 .VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
   margin: auto 0 auto 8px;
-  padding: 0 16px;
-  border-radius: 999px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: var(--vp-button-brand-bg);
   color: var(--vp-button-brand-text);
-  line-height: 36px;
+  line-height: 42px;
   font-weight: 600;
-  transition: background-color 0.25s;
+  transition: border-color 0.15s;
 }
 .VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
   margin: 16px 0 0;
-  border-bottom: 0;
-  line-height: 44px;
   text-align: center;
 }
 .VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"]:hover,
 .VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"]:hover {
-  background: var(--vp-button-brand-hover-bg);
-  color: var(--vp-button-brand-hover-text);
-}
-.VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"]:focus-visible,
-.VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"]:focus-visible {
-  outline: 2px solid var(--vp-c-brand-1);
-  outline-offset: 2px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .volver-sitio,
-  .VPNavBarMenu a.VPNavBarMenuLink[href$="/descargas"],
-  .VPNavScreenMenu a.VPNavScreenMenuLink[href$="/descargas"] {
-    transition: none;
-  }
+  border-color: var(--vp-c-text-1);
+  color: var(--vp-button-brand-text);
 }
 
-/* Piezas comunes de producto: contenedor, etiqueta, enlace «→», botones, iconos de trazo y capturas por tema. */
+/* Piezas comunes de producto. */
 .pieza-contenedor {
   max-width: 1152px;
   margin: 0 auto;
@@ -166,13 +227,95 @@
     padding: 0 64px;
   }
 }
-.pieza-etiqueta {
-  margin: 0 0 8px;
+/* El arranque: la cuadrícula de plano, muy tenue y solo arriba, y el brillo del cobre detrás del titular. */
+.pieza-arranque {
+  position: relative;
+  isolation: isolate;
+}
+.pieza-arranque::before,
+.pieza-arranque::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+.pieza-arranque::before {
+  inset: 0;
+  background:
+    linear-gradient(90deg, var(--rejilla) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(var(--rejilla) 1px, transparent 1px) 0 0 / 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 0%, #000 35%, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 80% at 50% 0%, #000 35%, transparent 80%);
+}
+.pieza-arranque::after {
+  top: -160px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: min(760px, 100%);
+  height: 460px;
+  background: radial-gradient(closest-side, rgba(200, 116, 63, 0.2), transparent);
+}
+/* La parte clave de un titular o de un h2, marcada con <em>: en serifa cursiva y en el cobre. */
+.es-producto h1 em,
+.es-producto h2 em {
+  font-family: var(--serifa);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   color: var(--vp-c-brand-1);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+}
+.pieza-titulo {
+  margin: 0;
+  max-width: 20ch;
+  color: var(--vp-c-text-1);
+  font-size: clamp(2.1rem, 1.4rem + 3vw, 3.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.pieza-h2 {
+  margin: 0;
+  max-width: 28ch;
+  padding: 0;
+  border: 0;
+  color: var(--vp-c-text-1);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  text-wrap: balance;
+}
+.pieza-bajada {
+  max-width: 62ch;
+  margin: 20px 0 0;
+  color: var(--vp-c-text-2);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+.pieza-cabeza {
+  max-width: 44em;
+  margin-bottom: 36px;
+}
+/* El rótulo «FIG» de cada sección y cada figura: mayúsculas pequeñas monoespaciadas. */
+.pieza-etiqueta {
+  display: block;
+  margin: 0 0 10px;
+  color: var(--vp-c-text-2);
+  font: 500 0.72rem/1.4 var(--mono);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+/* Tarjetas: borde fino discontinuo, esquinas de 10 px y sin sombra. */
+.pieza-tarjeta {
+  padding: 22px;
+  border: 1px dashed var(--borde-discontinuo);
+  border-radius: var(--radio);
+  background: var(--superficie);
+}
+/* Capturas de la app: borde con un poco de cobre y la sombra suave (de noche, solo el borde). */
+.pieza-captura,
+.vp-doc figure.figura img {
+  border: 1px solid color-mix(in srgb, var(--vp-c-brand-1) 30%, var(--borde));
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
 }
 .pieza-mas {
   display: inline-block;
@@ -183,40 +326,34 @@
 .pieza-mas:hover {
   text-decoration: underline;
 }
+/* Botones de 44 px de alto: el paso del cursor solo cambia el borde, sin levantarse. */
 .pieza-boton {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 20px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 600;
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: border-color 0.15s ease;
+}
+.pieza-boton:hover {
+  border-color: var(--vp-c-text-1);
 }
 .pieza-boton.marca {
   background: var(--vp-button-brand-bg);
   color: var(--vp-button-brand-text);
 }
-.pieza-boton.marca:hover {
-  background: var(--vp-button-brand-hover-bg);
-}
 .pieza-boton.alt {
-  background: var(--vp-button-alt-bg);
-  color: var(--vp-button-alt-text);
-  border-color: var(--vp-button-alt-border);
+  border: 1px dashed var(--borde-control);
+  background: var(--superficie);
+  color: var(--vp-c-text-1);
 }
 .pieza-boton.alt:hover {
-  background: var(--vp-button-alt-hover-bg);
-}
-.pieza-mas:focus-visible,
-.pieza-boton:focus-visible {
-  outline: 2px solid var(--vp-c-brand-1);
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-.pieza-boton:focus-visible {
-  border-radius: 999px;
+  border-color: var(--vp-c-brand-1);
 }
 .trazo {
   flex: none;
@@ -231,9 +368,4 @@
 .dark .solo-claro,
 :root:not(.dark) .solo-oscuro {
   display: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .pieza-boton {
-    transition: none;
-  }
 }

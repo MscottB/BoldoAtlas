@@ -27,17 +27,31 @@ const nuevas = computed(() =>
 
 <template>
   <ul class="nuevo" role="list">
-    <li v-for="(n, i) in nuevas" :key="n.id" :class="n.imagen ? 'con-imagen' : 'sin-imagen'">
-      <img v-if="n.imagen" :src="n.imagen" :alt="n.alt" width="640" height="400" loading="lazy" decoding="async" />
+    <li
+      v-for="(n, i) in nuevas"
+      :key="n.id"
+      :class="['pieza-tarjeta', n.imagen ? 'con-imagen' : 'sin-imagen']"
+    >
+      <img
+        v-if="n.imagen"
+        :src="n.imagen"
+        :alt="n.alt"
+        width="640"
+        height="400"
+        loading="lazy"
+        decoding="async"
+      />
       <div class="cuerpo">
         <div class="encabezado">
-          <p v-if="i === 0" class="reciente">{{ RECIENTE[lang] }}</p>
+          <p v-if="i === 0" class="pieza-etiqueta">{{ RECIENTE[lang] }}</p>
           <!-- en la portada cuelga de un h2; en su página, del h1 -->
           <component :is="ultimas ? 'h3' : 'h2'" class="titulo">{{ n.titulo }}</component>
         </div>
         <div class="detalle">
           <p class="texto">{{ n.texto }}</p>
-          <a class="mas" :href="withBase(n.href)" :aria-label="`${MAS[lang]}: ${n.titulo}`">{{ MAS[lang] }} →</a>
+          <a class="mas" :href="withBase(n.href)" :aria-label="`${MAS[lang]}: ${n.titulo}`"
+            >{{ MAS[lang] }} →</a
+          >
         </div>
       </div>
     </li>
@@ -48,8 +62,8 @@ const nuevas = computed(() =>
 .nuevo {
   display: flex; /* flex y no grid: la tarjeta que queda sola en su fila ocupa el ancho, sin dejar un hueco */
   flex-wrap: wrap;
-  gap: 20px;
-  margin: 40px 0 0 !important; /* la portada le quita el margen a sus listas */
+  gap: 12px;
+  margin: 24px 0 0 !important; /* la portada le quita el margen a sus listas */
   padding: 0;
   list-style: none;
 }
@@ -59,10 +73,8 @@ const nuevas = computed(() =>
   flex-direction: column;
   min-width: 0;
   margin: 0;
+  padding: 0;
   overflow: hidden;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 16px;
-  background: var(--vp-c-bg);
 }
 .nuevo img {
   display: block;
@@ -76,7 +88,11 @@ const nuevas = computed(() =>
   border-bottom: 1px solid var(--vp-c-divider);
 }
 .nuevo .cuerpo {
-  padding: 24px;
+  padding: 22px;
+}
+.nuevo .pieza-etiqueta {
+  margin: 0 0 8px; /* en su página, el párrafo del manual le pondría otro margen y otro alto de línea */
+  line-height: 1.4;
 }
 .nuevo .titulo {
   margin: 0;
@@ -85,15 +101,7 @@ const nuevas = computed(() =>
   font-size: 1.25rem;
   line-height: 1.3;
   letter-spacing: -0.01em;
-  font-weight: 650;
   color: var(--vp-c-text-1);
-}
-.nuevo .reciente {
-  margin: 0 0 8px;
-  color: var(--vp-c-brand-1);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
 }
 .nuevo .texto {
   margin: 8px 0 0;
@@ -109,11 +117,6 @@ const nuevas = computed(() =>
 }
 .nuevo a.mas:hover {
   text-decoration: underline;
-}
-.nuevo a:focus-visible {
-  outline: 2px solid var(--vp-c-brand-1);
-  outline-offset: 3px;
-  border-radius: 6px;
 }
 .nuevo .sin-imagen {
   flex-basis: 100%;
