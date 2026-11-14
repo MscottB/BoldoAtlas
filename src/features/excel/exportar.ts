@@ -1,12 +1,15 @@
 import type { Hoja } from "./libro";
 
-/** Lo que una lista exporta: lo que se ve en el momento de aceptar el aviso. */
+/** Lo que una lista (o la exportación completa) exporta: lo que se ve en el momento de aceptar el aviso. */
 export interface Lista {
   /** Qué lista es, para la hoja Información. */
   nombre: string;
-  hoja: Hoja;
-  /** Filtros aplicados, ya traducidos: [qué, valor]. Solo los activos. */
-  filtros: [string, string][];
+  /** Sus hojas; Información va al final. */
+  hojas: Hoja[];
+  /** Filtros aplicados, ya traducidos: [qué, valor]. Solo los activos; la exportación completa no tiene. */
+  filtros?: [string, string][];
+  /** Exportación completa: el alcance elegido, ya traducido. Información dice también qué hojas lleva. */
+  alcance?: string;
   orden?: string;
   /** AAAA-MM-DD que muestra la lista si sigue a «Organigrama a una fecha»; si no, hoy. */
   fecha?: string | null;

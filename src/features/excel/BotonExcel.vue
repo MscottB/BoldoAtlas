@@ -23,10 +23,14 @@ import { crearAviso } from "./aviso";
 import { exportar, type Lista } from "./exportar";
 import { hojaInformacion, nombreArchivo } from "./libro";
 
-// «Exportar esta lista a Excel»: la lista da lo que se ve (`lista`, que se lee al aceptar). Antes, en cada exportación,
-// el aviso de spec §11; sin aceptarlo no se genera nada.
+// «Exportar esta lista a Excel» y la exportación completa: `lista` da lo que se ve (se lee al aceptar). Antes, en cada
+// exportación, el aviso de spec §11; sin aceptarlo no se genera nada.
 defineOptions({ inheritAttrs: false });
-const props = defineProps<{ lista: () => Lista }>();
+const props = defineProps<{
+  lista: () => Lista | Promise<Lista>;
+  /** El texto del botón; sin él, «Exportar esta lista a Excel». */
+  texto?: string;
+}>();
 const { t } = useI18n();
 const org = useOrganizacion();
 
@@ -38,7 +42,7 @@ watch(abierto, (v) => v || aviso.cerrado());
 
 async function armar() {
   const [meta, info] = await Promise.all([leerMeta(), infoApp()]);
-  const l = props.lista();
+  const l = await props.lista();
   const generado = new Date();
   const hoy = hoyISO(generado);
   const revision = Number(meta.data_revision ?? 0);
@@ -51,11 +55,16 @@ async function armar() {
     dbId: meta.db_id ?? "",
     lista: l.nombre,
     fecha: l.fecha ?? hoy,
+    alcance: l.alcance,
+    hojas: l.alcance === undefined ? undefined : l.hojas.map((h) => h.nombre),
     filtros: l.filtros,
     orden: l.orden,
     logo: org.org.logo,
   };
-  return { nombre: nombreArchivo(org.org.nombre, hoy, revision), hojas: [l.hoja, hojaInformacion(datos, t)] };
+  return {
+    nombre: nombreArchivo(org.org.nombre, hoy, revision),
+    hojas: [...l.hojas, hojaInformacion(datos, t)],
+  };
 }
 
 async function pulsar() {
@@ -87,7 +96,7 @@ async function pulsar() {
 <template>
   <Button type="button" variant="outline" size="sm" v-bind="$attrs" :disabled="ocupado" @click="pulsar">
     <FileSpreadsheet aria-hidden="true" />
-    {{ t("excel.exportar") }}
+    {{ texto ?? t("excel.exportar") }}
   </Button>
   <AlertDialog v-model:open="abierto">
     <AlertDialogContent data-aviso-excel>

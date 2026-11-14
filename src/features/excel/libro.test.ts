@@ -91,6 +91,24 @@ describe("hoja Información", () => {
     const h = hojaInformacion({ ...datos, filtros: [], orden: undefined }, t);
     expect(h.filas[h.filas.length - 1]).toEqual(["[excel.info.filtros]", "[excel.info.sinFiltros]"]);
   });
+
+  it("la exportación completa dice el alcance y las hojas, y no habla de filtros", () => {
+    const h = hojaInformacion(
+      {
+        ...datos,
+        filtros: undefined,
+        orden: undefined,
+        alcance: "Operaciones",
+        hojas: ["Unidades", "Puestos"],
+      },
+      t,
+    );
+    expect(h.filas.slice(7)).toEqual([
+      ["[excel.info.lista]", "Directorio"],
+      ["[excel.info.alcance]", "Operaciones"],
+      ["[excel.info.hojas]", "Unidades, Puestos"],
+    ]);
+  });
 });
 
 describe("anchos de columna", () => {

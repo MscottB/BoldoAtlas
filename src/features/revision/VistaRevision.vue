@@ -219,18 +219,20 @@ const marcados = computed<Fila[]>(() =>
 // «Exportar esta lista a Excel»: las secciones que se ven, con sus filas, en la rama elegida.
 const listaExcel = (): Lista => ({
   nombre: t("revision.titulo"),
-  hoja: hojaRevision(
-    [
-      ...secciones.value.map((s) => ({
-        titulo: t(`revision.${s.tipo}.titulo`),
-        nivel: t(`revision.niveles.${s.nivel}.titulo`),
-        filas: s.filas,
-      })),
-      { titulo: t("revision.reemplazos.titulo"), nivel: null, filas: reemplazos.value },
-      { titulo: t("revision.marcados"), nivel: null, filas: marcados.value },
-    ],
-    t,
-  ),
+  hojas: [
+    hojaRevision(
+      [
+        ...secciones.value.map((s) => ({
+          titulo: t(`revision.${s.tipo}.titulo`),
+          nivel: t(`revision.niveles.${s.nivel}.titulo`),
+          filas: s.filas,
+        })),
+        { titulo: t("revision.reemplazos.titulo"), nivel: null, filas: reemplazos.value },
+        { titulo: t("revision.marcados"), nivel: null, filas: marcados.value },
+      ],
+      t,
+    ),
+  ],
   filtros: rama.value ? [[t("revision.rama"), org.porId.get(rama.value)?.nombre ?? ""]] : [],
 });
 

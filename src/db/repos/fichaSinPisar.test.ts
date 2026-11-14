@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { cambiosFicha, type DatosFicha } from "@/features/trabajadores/validar";
 import { SQL_HISTORICO } from "./historico";
-import { SQL_NOTAS, SQL_TRABAJADORES, crearTrabajador, editarTrabajador, eliminarTrabajador } from "./trabajadores";
+import {
+  SQL_NOTAS,
+  SQL_NOTAS_EXCEL,
+  SQL_TRABAJADORES,
+  crearTrabajador,
+  editarTrabajador,
+  eliminarTrabajador,
+} from "./trabajadores";
 
 // Contra el esquema real: lo que importa es qué trae la consulta y qué deja en la base una escritura.
 let bd: BasePrueba;
@@ -50,6 +57,12 @@ describe("la lista carga sin foto ni notas", () => {
 
   it("las notas se piden por persona", () => {
     expect(bd.consultar(SQL_NOTAS, [con])).toEqual([{ notas: "una nota" }]);
+  });
+
+  it("la exportación completa a Excel las pide todas juntas, solo las que tienen texto", () => {
+    crear({ nombre: "Sin" });
+    crear({ nombre: "Vacía", notas: "" });
+    expect(bd.consultar(SQL_NOTAS_EXCEL, [])).toEqual([{ id: con, notas: "una nota" }]);
   });
 });
 

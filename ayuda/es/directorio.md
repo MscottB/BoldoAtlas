@@ -62,6 +62,6 @@ Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona
 
 El archivo trae una hoja con la lista y otra, **Información**, con la organización, la fecha de generación, la fecha de los datos, las versiones de BoldoAtlas y de los datos, y los filtros (cada uno como «Filtro: …») y el orden aplicados. Si la organización tiene logo, va en esa hoja, a la derecha de los datos. Los títulos de las columnas quedan fijos y con filtro; las cifras y fechas son números y fechas de Excel, y el texto queda como texto aunque empiece con `=`, `+`, `-` o `@`.
 
-La misma opción está en **Revisión de datos**, en cada lista de **Mantenedores** y en la pestaña **Personas** del panel de una unidad.
+La misma opción está en **Revisión de datos**, en cada lista de **Mantenedores** y en la pestaña **Personas** del panel de una unidad. Para llevar toda la organización, o una rama, con una hoja por tipo de registro, usa [Exportar a Excel](exportar-importar.md#exportar-a-excel) en **Importar/Exportar**.
 
 **Ver también:** [Fichas de personas](fichas.md) · [Pestañas de trabajo](pestanas.md).

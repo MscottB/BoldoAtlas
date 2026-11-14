@@ -2,7 +2,8 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { Download, Upload } from "@lucide/vue";
+import { Download, FileSpreadsheet, Upload } from "@lucide/vue";
+import PanelExcel from "@/features/excel/PanelExcel.vue";
 import PanelExportar from "./PanelExportar.vue";
 import PanelImportar from "./PanelImportar.vue";
 import { organizacionEnCreacion } from "./intercambio";
@@ -11,16 +12,15 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
-// El menú de la app, la paleta y la Bienvenida llegan aquí con ?accion=exportar|importar.
-const accion = computed(() =>
-  route.query.accion === "exportar" || route.query.accion === "importar" ? route.query.accion : null,
-);
-const ir = (a: "exportar" | "importar" | null) =>
-  router.replace({ path: route.path, query: a ? { accion: a } : {} });
+// El menú de la app, la paleta y la Bienvenida llegan aquí con ?accion=exportar|importar|excel.
 const caminos = [
   { id: "exportar", icono: Download },
   { id: "importar", icono: Upload },
+  { id: "excel", icono: FileSpreadsheet },
 ] as const;
+type Accion = (typeof caminos)[number]["id"];
+const accion = computed(() => caminos.find((c) => c.id === route.query.accion)?.id ?? null);
+const ir = (a: Accion | null) => router.replace({ path: route.path, query: a ? { accion: a } : {} });
 </script>
 
 <template>
@@ -34,7 +34,7 @@ const caminos = [
       </p>
     </header>
 
-    <ul v-if="!accion" class="grid gap-3 sm:grid-cols-2">
+    <ul v-if="!accion" class="grid gap-3 sm:grid-cols-3">
       <li v-for="c in caminos" :key="c.id">
         <button
           type="button"
@@ -51,6 +51,7 @@ const caminos = [
     </ul>
 
     <PanelExportar v-else-if="accion === 'exportar'" @terminar="ir(null)" />
+    <PanelExcel v-else-if="accion === 'excel'" @terminar="ir(null)" />
     <PanelImportar v-else @terminar="ir(null)" />
   </section>
 </template>

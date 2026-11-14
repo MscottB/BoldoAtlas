@@ -62,6 +62,6 @@ Press a row (or Tab to the name and Enter) to open the person's record; on a vac
 
 The file has one sheet with the list and another, **Information**, with the organization, when it was generated, the date of the data, the BoldoAtlas and data versions, and the filters (each one as “Filter: …”) and sort order applied. If the organization has a logo, it goes on that sheet, to the right of the data. Column titles stay fixed and have filters; figures and dates are Excel numbers and dates, and text stays as text even if it starts with `=`, `+`, `-` or `@`.
 
-The same option is in **Data review**, in each list of **Lists** and in the **People** tab of a unit's panel.
+The same option is in **Data review**, in each list of **Lists** and in the **People** tab of a unit's panel. To take the whole organization, or a branch, with one sheet per kind of record, use [Export to Excel](exportar-importar.md#export-to-excel) in **Import/Export**.
 
 **See also:** [Person records](fichas.md) · [Work tabs](pestanas.md).

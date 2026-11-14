@@ -72,8 +72,11 @@ export interface DatosInformacion {
   lista: string;
   /** AAAA-MM-DD de los datos: hoy o el día que muestra «Organigrama a una fecha». */
   fecha: string;
-  /** Filtros aplicados, ya traducidos: [qué, valor]. */
-  filtros: [string, string][];
+  /** Exportación completa: el alcance elegido y las hojas que lleva, ya traducidos. */
+  alcance?: string;
+  hojas?: string[];
+  /** Filtros aplicados de una lista, ya traducidos: [qué, valor]. La exportación completa no tiene. */
+  filtros?: [string, string][];
   /** El orden de la lista, ya traducido, si se puede elegir. */
   orden?: string;
   /** El logo de la organización (base64 de `meta.logo_png`); sin él, la hoja no lleva imagen. */
@@ -95,10 +98,14 @@ export function hojaInformacion(d: DatosInformacion, t: Traducir): Hoja {
       fila("revision", d.revision),
       fila("dbId", d.dbId),
       fila("lista", d.lista),
+      ...(d.alcance ? [fila("alcance", d.alcance)] : []),
+      ...(d.hojas ? [fila("hojas", d.hojas.join(", "))] : []),
       // «Filtro: Unidad»: que no se lean como datos de la organización
-      ...(d.filtros.length
-        ? d.filtros.map(([que, valor]) => [t("excel.info.filtro", { que }), valor])
-        : [[t("excel.info.filtros"), t("excel.info.sinFiltros")]]),
+      ...(!d.filtros
+        ? []
+        : d.filtros.length
+          ? d.filtros.map(([que, valor]) => [t("excel.info.filtro", { que }), valor])
+          : [[t("excel.info.filtros"), t("excel.info.sinFiltros")]]),
       ...(d.orden ? [fila("orden", d.orden)] : []),
     ],
     ...(d.logo ? { imagen: { png: d.logo } } : {}),

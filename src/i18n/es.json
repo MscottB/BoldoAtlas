@@ -1217,6 +1217,7 @@
     "ejemplo": "Explorar el ejemplo…",
     "boldo": "Abrir archivo .boldo",
     "exportar": "Exportar a un archivo .boldo",
+    "excelCompleto": "Exportar a Excel…",
     "excel": "Importar Excel",
     "respaldos": "Respaldos",
     "configuracion": "Configuración",
@@ -1336,7 +1337,7 @@
     "actualizacionSigue": "Si la dejas en la bandeja, la actualización continúa y BoldoAtlas se reinicia solo al instalarla."
   },
   "intercambio": {
-    "ayuda": "Lleva tu organización, o solo una parte, a otro computador en un archivo protegido con un código.",
+    "ayuda": "Lleva tu organización, o solo una parte, a otro computador en un archivo protegido con un código, o pasa sus registros a Excel.",
     "cancelar": "Cancelar",
     "continuar": "Continuar",
     "listo": "Listo",
@@ -1426,6 +1427,10 @@
       "agregarEn": "Agregar lo nuevo a «{nombre}»",
       "revisarEn": "Revisar y decidir sobre «{nombre}»",
       "reemplazarEn": "Reemplazar todo «{nombre}»"
+    },
+    "excel": {
+      "titulo": "Exportar a Excel",
+      "texto": "Unidades, puestos, personas, conexiones, mantenedores y zonas en un libro de Excel, para filtrar y calcular."
     },
     "etapa": {
       "copiando": "Preparando la copia de tus datos…",
@@ -1798,6 +1803,8 @@
       "revision": "Revisión",
       "dbId": "Id de la base (db_id)",
       "lista": "Lista",
+      "alcance": "Alcance",
+      "hojas": "Hojas",
       "filtro": "Filtro: {que}",
       "filtros": "Filtros",
       "sinFiltros": "Ninguno",
@@ -1825,6 +1832,102 @@
     },
     "mantenedores": {
       "lista": "Mantenedores: {lista}"
+    },
+    "completa": {
+      "titulo": "Exportar a Excel",
+      "boton": "Exportar a Excel",
+      "lista": "Exportación completa",
+      "alcance": "Alcance",
+      "toda": "Toda la organización",
+      "rama": "{unidad} ({tipo}) y lo que depende de ella",
+      "alcanceAyuda": "Elige una gerencia, o cualquier unidad, para llevar solo esa rama.",
+      "fecha": "Se exporta el organigrama al {fecha}, la fecha que estás viendo.",
+      "hojasTitulo": "Hojas y columnas",
+      "informacion": "Información: organización, fecha, alcance y hojas (va siempre)",
+      "columnasDe": "Columnas de {hoja}",
+      "id": "ID",
+      "hojas": {
+        "unidades": "Unidades",
+        "puestos": "Puestos",
+        "asignaciones": "Asignaciones",
+        "conexiones": "Conexiones",
+        "trabajadores": "Trabajadores",
+        "mantenedores": "Mantenedores",
+        "zonas": "Zonas"
+      },
+      "columnas": {
+        "unidades": {
+          "tipo": "Tipo",
+          "nombre": "Nombre",
+          "descripcion": "Descripción",
+          "superior": "Unidad superior",
+          "ruta": "Ruta completa",
+          "jefe": "Jefe",
+          "correoJefe": "Correo del jefe",
+          "etiquetas": "Etiquetas",
+          "dotacionDirecta": "Dotación directa",
+          "dotacionTotal": "Dotación total",
+          "vacantes": "Vacantes"
+        },
+        "puestos": {
+          "unidad": "Unidad",
+          "ruta": "Ruta completa",
+          "cargo": "Cargo",
+          "descripcion": "Descripción",
+          "leyenda": "Leyenda",
+          "titular": "Titular",
+          "reemplazo": "Reemplazo vigente",
+          "vacante": "Vacante",
+          "diasVacante": "Días vacante"
+        },
+        "asignaciones": {
+          "persona": "Persona",
+          "correo": "Correo",
+          "cargo": "Cargo",
+          "unidad": "Unidad",
+          "tipo": "Tipo",
+          "desde": "Desde",
+          "hasta": "Hasta",
+          "motivo": "Motivo"
+        },
+        "conexiones": {
+          "origen": "Origen",
+          "destino": "Destino",
+          "etiqueta": "Etiqueta"
+        },
+        "trabajadores": {
+          "nombre": "Nombre",
+          "correo": "Correo",
+          "telefono": "Teléfono",
+          "tipoContrato": "Tipo de contrato",
+          "sede": "Sede",
+          "jornada": "Jornada",
+          "cargos": "Cargos vigentes",
+          "unidades": "Unidades vigentes",
+          "rutas": "Rutas completas",
+          "jefes": "Jefes",
+          "notas": "Notas"
+        },
+        "mantenedores": {
+          "catalogo": "Catálogo",
+          "nombre": "Nombre",
+          "usos": "Usos"
+        },
+        "zonas": {
+          "zona": "Zona",
+          "color": "Color",
+          "unidad": "Unidad",
+          "ruta": "Ruta completa"
+        }
+      },
+      "catalogos": {
+        "cargos": "Cargo",
+        "tipos_contrato": "Tipo de contrato",
+        "sedes": "Sede",
+        "jornadas": "Jornada",
+        "tipos_unidad": "Tipo de unidad",
+        "etiquetas": "Etiqueta"
+      }
     }
   }
 }

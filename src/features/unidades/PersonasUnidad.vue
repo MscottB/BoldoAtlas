@@ -138,7 +138,7 @@ async function copiarCorreos() {
 // «Exportar esta lista a Excel»: las filas de la lista (también en Árbol, que muestra las mismas), del día que se ve.
 const listaExcel = (): Lista => ({
   nombre: t("excel.personas.lista", { unidad: props.unidad.nombre }),
-  hoja: hojaPersonas(filas.value, props.unidad.nombre, t),
+  hojas: [hojaPersonas(filas.value, props.unidad.nombre, t)],
   filtros: [
     [t("personas.incluirSubunidades"), t(conRama.value ? "excel.filtro.si" : "excel.filtro.no")],
     ...(texto.value.trim() ? [[t("excel.filtro.texto"), texto.value.trim()] as [string, string]] : []),

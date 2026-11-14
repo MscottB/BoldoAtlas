@@ -102,19 +102,21 @@ const listaExcel = (): Lista => {
   const lista = t(`mantenedores.tabs.${props.tabla}`);
   return {
     nombre: t("excel.mantenedores.lista", { lista }),
-    hoja: hojaMantenedor(
-      lista,
-      t(`mantenedores.usos.${props.tabla}`),
-      filas.value.map((f) => ({
-        nombre: f.nombre,
-        usos: org.usos(props.tabla, f.id),
-        activo: !f.deleted_at,
-        color: f.color,
-        descripcion: f.descripcion,
-      })),
-      esLeyenda.value,
-      t,
-    ),
+    hojas: [
+      hojaMantenedor(
+        lista,
+        t(`mantenedores.usos.${props.tabla}`),
+        filas.value.map((f) => ({
+          nombre: f.nombre,
+          usos: org.usos(props.tabla, f.id),
+          activo: !f.deleted_at,
+          color: f.color,
+          descripcion: f.descripcion,
+        })),
+        esLeyenda.value,
+        t,
+      ),
+    ],
     filtros: [],
   };
 };

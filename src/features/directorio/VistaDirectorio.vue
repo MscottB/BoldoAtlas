@@ -197,17 +197,19 @@ function listaExcel(): Lista {
   const campo = t(`directorio.${orden.value.campo}`);
   return {
     nombre: t("nav.directorio"),
-    hoja: hojaDirectorio(
-      vista.value === "arbol" ? filasDelArbol(filas.value) : filas.value,
-      {
-        reemplazo: ver("reemplazo"),
-        tipos: tiposVisibles.value,
-        tipoContrato: ver("tipoContrato"),
-        sede: ver("sede"),
-        jornada: ver("jornada"),
-      },
-      t,
-    ),
+    hojas: [
+      hojaDirectorio(
+        vista.value === "arbol" ? filasDelArbol(filas.value) : filas.value,
+        {
+          reemplazo: ver("reemplazo"),
+          tipos: tiposVisibles.value,
+          tipoContrato: ver("tipoContrato"),
+          sede: ver("sede"),
+          jornada: ver("jornada"),
+        },
+        t,
+      ),
+    ],
     filtros: activos.filter((x): x is [string, string] => !!x[1]),
     orden: t(orden.value.asc ? "excel.filtro.ascendente" : "excel.filtro.descendente", { campo }),
   };
