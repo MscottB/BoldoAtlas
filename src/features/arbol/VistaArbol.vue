@@ -53,6 +53,7 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
+import { clasesEnUso, colorDeClase, escalaPorTarjeta, esCriterioEscala } from "./escala";
 import { destinoAlSoltar, estadoMover, idLienzo, nodoEn, useLienzo } from "./useLienzo";
 import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
@@ -85,7 +86,7 @@ import MenuLienzo from "./MenuLienzo.vue";
 import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
 import ZoomLienzo from "./ZoomLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
-import { formatearFecha } from "@/features/puestos/puestos";
+import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
 import { useTema } from "@/features/tema/useTema";
 import { leerEstadoArbol, type EstadoArbol } from "@/features/pestanas/pestanas";
 import { usePanel } from "@/features/pestanas/panel";
@@ -435,14 +436,32 @@ const etiquetasDe = computed(() => {
 
 // Lo que muestra cada tarjeta, para todas las que pueden dibujarse: un layout nuevo reutiliza estos objetos y las tarjetas
 // no se vuelven a pintar. Marca, ruta, leyenda y nivel de detalle los lee cada tarjeta del contexto (no rehacen los nodos).
-const datosUnidad = computed(() => {
-  const indice = indiceHijos(mostradas.value);
-  const dotaciones = dotacionPorUnidad(
+const dotaciones = computed(() =>
+  dotacionPorUnidad(
     mostradas.value,
     org.enFecha.puestos,
     org.enFecha.asignaciones,
     org.fechaVista ?? undefined,
-  );
+  ),
+);
+// «Colorear por» antigüedad o personas a cargo: el valor de cada tarjeta a la fecha que se ve (escala.ts).
+const criterioEscala = computed(() =>
+  esCriterioEscala(config.value.colorearPor) ? config.value.colorearPor : null,
+);
+const valoresEscala = computed(() =>
+  criterioEscala.value
+    ? escalaPorTarjeta(
+        criterioEscala.value,
+        mostradas.value,
+        org.enFecha.puestos,
+        org.enFecha.vigentes,
+        dotaciones.value,
+        org.fechaVista ?? hoyISO(),
+      )
+    : null,
+);
+const datosUnidad = computed(() => {
+  const indice = indiceHijos(mostradas.value);
   const vigentes = org.enFecha.vigentes;
   const personas = personasPorUnidad(
     mostradas.value,
@@ -453,7 +472,7 @@ const datosUnidad = computed(() => {
   );
   return new Map(
     mostradas.value.map((u): [string, DatosNodo] => {
-      const { total, vacantes } = dotaciones.get(u.id) ?? { total: 0, vacantes: 0 };
+      const { total, vacantes } = dotaciones.value.get(u.id) ?? { total: 0, vacantes: 0 };
       const jefe = jefeVisible(u, vigentes);
       return [
         u.id,
@@ -589,6 +608,7 @@ provide(CONTEXTO_LIENZO, {
   marcas,
   rutas,
   leyendas: computed(() => (porLeyenda.value ? new Map(org.leyendas.map((l) => [l.id, l])) : null)),
+  escala: valoresEscala,
   zonas: computed(() => zonas.value?.marcas ?? null),
   ligera,
   trazados,
@@ -602,6 +622,16 @@ provide(CONTEXTO_LIENZO, {
 
 const leyenda = computed<EntradaLeyenda[]>(() => {
   if (!vista.value) return [];
+  const c = criterioEscala.value;
+  if (c && valoresEscala.value)
+    return clasesEnUso(valoresEscala.value, [
+      ...vista.value.g.nodos.map((u) => u.id),
+      ...vista.value.g.puestos.map((p) => p.id),
+    ]).map((x) => ({
+      clave: String(x),
+      color: colorDeClase(x),
+      nombre: t(typeof x === "number" ? `arbol.vista.rangos.${c}.${x}` : `arbol.vista.aparte.${x}`),
+    }));
   if (porLeyenda.value)
     return leyendasEnUso(vista.value.g.puestos, org.leyendas).map((l) => ({
       clave: l.id,
@@ -619,9 +649,13 @@ const leyenda = computed<EntradaLeyenda[]>(() => {
     : [];
 });
 const tituloLeyenda = computed(() =>
-  porLeyenda.value
-    ? t("arbol.vista.leyendaPuesto")
-    : t("arbol.vista.marcaDe", { tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "" }),
+  criterioEscala.value
+    ? t(`arbol.vista.${criterioEscala.value}`)
+    : porLeyenda.value
+      ? t("arbol.vista.leyendaPuesto")
+      : t("arbol.vista.marcaDe", {
+          tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "",
+        }),
 );
 // `trazados` ya viene vacío con «Relaciones laterales» apagado. En ligero la línea es continua (ver AristaLateral).
 const leyendaLineas = computed<EntradaLeyenda[]>(() => {

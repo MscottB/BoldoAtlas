@@ -1,5 +1,19 @@
 [
   {
+    "id": "colorear-escala",
+    "pagina": "arbol",
+    "es": {
+      "titulo": "Colores por antigüedad y personas a cargo",
+      "texto": "En Personalizar, Colorear por también ofrece la antigüedad del titular en su puesto y las personas a cargo de cada jefatura. Cada tarjeta toma el color de su rango y escribe el valor («3 años», «12 a cargo»); la leyenda bajo el lienzo muestra los rangos, y las vacantes y unidades sin jefatura van aparte, en gris. Viendo una fecha, se calcula a ese día.",
+      "ancla": "personalizar"
+    },
+    "en": {
+      "titulo": "Colors by time in position and people reporting",
+      "texto": "In Customize, Color by also offers the holder's time in position and the people reporting to each head. Each card takes the color of its range and writes the value (\"3 years\", \"12 reporting\"); the legend below the canvas shows the ranges, and vacancies and units without a head go apart, in gray. When viewing a date, it is worked out for that day.",
+      "ancla": "customize"
+    }
+  },
+  {
     "id": "exportar-excel",
     "pagina": "exportar-importar",
     "es": {

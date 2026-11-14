@@ -8,6 +8,7 @@ import BloquePlegable from "@/components/BloquePlegable.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 import { tiposEnUso } from "./jerarquia";
 import { useVista } from "./useVista";
+import { CRITERIOS_ESCALA, esCriterioEscala } from "./escala";
 import { CRITERIO_LEYENDA, criterioMarca, leerVista, tipoDeMarca } from "./vista";
 import { claseSelect, cn } from "@/lib/utils";
 
@@ -21,7 +22,8 @@ const tipos = computed(() => tiposEnUso(org.unidades, org.catalogos.tipos_unidad
 // Una preferencia guardada con un tipo que ya nadie usa se ve como «ninguno», sin pisar lo guardado.
 const criterio = computed({
   get: () => {
-    if (config.value.colorearPor === CRITERIO_LEYENDA) return CRITERIO_LEYENDA;
+    const c = config.value.colorearPor;
+    if (c === CRITERIO_LEYENDA || esCriterioEscala(c)) return c;
     const id = tipoDeMarca(config.value.colorearPor, tipos.value);
     return id ? criterioMarca(id) : "ninguno";
   },
@@ -102,6 +104,7 @@ const restablecer = () => (config.value = { ...leerVista(null), resaltar: config
         >
           <option value="ninguno">{{ t("arbol.vista.ninguno") }}</option>
           <option :value="CRITERIO_LEYENDA">{{ t("arbol.vista.leyendaPuesto") }}</option>
+          <option v-for="c in CRITERIOS_ESCALA" :key="c" :value="c">{{ t(`arbol.vista.${c}`) }}</option>
           <option v-for="tipo in tipos" :key="tipo.id" :value="criterioMarca(tipo.id)">
             {{ t("arbol.vista.marcaDe", { tipo: tipo.nombre }) }}
           </option>

@@ -16,6 +16,7 @@ import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
 import { rutaSuperiores, type PersonasDeUnidad } from "./jerarquia";
 import { CONTEXTO_LIENZO } from "./contexto";
+import { etiquetaEscala } from "./escala";
 import AccionesTarjeta from "./AccionesTarjeta.vue";
 
 export interface DatosNodo extends PersonasDeUnidad {
@@ -51,8 +52,13 @@ const contexto = inject(CONTEXTO_LIENZO)!;
 const marca = computed(() => contexto.marcas.value?.get(props.id) ?? null);
 const zonas = computed(() => contexto.zonas.value?.get(props.id) ?? []);
 const nombresZonas = computed(() => t("zonas.en", { nombres: zonas.value.map((z) => z.nombre).join(", ") }));
-// Una marca que casi no se distingue de la tarjeta (azul marino en oscuro) lleva contorno en la franja y el código.
-const tenue = computed(() => !!marca.value?.color && marcaTenue(marca.value.color, oscuro.value));
+// Con «Colorear por» antigüedad o a cargo: el color de su rango y el valor escrito al lado (el color nunca va solo).
+const escalaTarjeta = computed(() =>
+  etiquetaEscala(t, config.value.colorearPor, contexto.escala.value?.get(props.id)),
+);
+const color = computed(() => marca.value?.color ?? escalaTarjeta.value?.color ?? null);
+// Un color que casi no se distingue de la tarjeta (azul marino en oscuro) lleva contorno en la franja y el código.
+const tenue = computed(() => !!color.value && marcaTenue(color.value, oscuro.value));
 const ruta = computed(() =>
   contexto.rutas.value
     ? rutaSuperiores(contexto.rutas.value, props.data.unidad)
@@ -149,13 +155,10 @@ async function guardar(e: Event) {
     :class="[
       seleccionada
         ? 'border-marca bg-marca text-marca-foreground ring-8 ring-marca'
-        : !marca?.color && 'bg-card text-card-foreground',
+        : !color && 'bg-card text-card-foreground',
       atenuada && 'opacity-35',
     ]"
-    :style="[
-      tam,
-      marca?.color && !seleccionada ? { background: marca.color, color: textoSobre(marca.color) } : {},
-    ]"
+    :style="[tam, color && !seleccionada ? { background: color, color: textoSobre(color) } : {}]"
     @click="alHacerClic"
     @keydown.enter.self.prevent="seleccionar(id)"
     @keydown.space.self.prevent="seleccionar(id)"
@@ -169,6 +172,8 @@ async function guardar(e: Event) {
       <span v-for="z in zonas" :key="z.id" class="flex-1" :style="{ background: z.color }" />
     </span>
     {{ data.unidad.nombre }}
+    <!-- En ligera el valor no se escribe (no cabe a esa distancia), pero el lector de pantalla lo lee. -->
+    <span v-if="escalaTarjeta" class="sr-only">{{ escalaTarjeta.criterio }}: {{ escalaTarjeta.texto }}</span>
     <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   </div>
   <!-- Nodo liviano: sin sombras ni transiciones (nota de rendimiento). -->
@@ -180,9 +185,9 @@ async function guardar(e: Event) {
       compacta ? 'items-center gap-1.5 px-2' : 'flex-col gap-1 p-2',
       seleccionada && 'border-marca ring-2 ring-marca',
       atenuada && 'opacity-35',
-      marca?.color && 'border-l-4',
+      color && 'border-l-4',
     ]"
-    :style="[tam, marca?.color ? { borderLeftColor: marca.color } : {}]"
+    :style="[tam, color ? { borderLeftColor: color } : {}]"
     @click="alHacerClic"
   >
     <Handle type="target" :position="horizontal ? Position.Left : Position.Top" class="opacity-0" />
@@ -294,6 +299,15 @@ async function guardar(e: Event) {
     </button>
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->
+      <span
+        v-if="escalaTarjeta && !(compacta && sola)"
+        class="shrink-0 rounded px-1 text-[10px] font-semibold whitespace-nowrap"
+        :class="tenue && 'outline-1 outline-muted-foreground'"
+        :style="{ background: escalaTarjeta.color, color: textoSobre(escalaTarjeta.color) }"
+        :title="escalaTarjeta.criterio"
+      >
+        <span class="sr-only">{{ escalaTarjeta.criterio }}: </span>{{ escalaTarjeta.texto }}
+      </span>
       <!-- La dotación abre el panel en la pestaña Personas. -->
       <button
         v-if="config.mostrarDotacion && !(compacta && sola)"

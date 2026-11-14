@@ -126,6 +126,14 @@ describe("leerVista", () => {
     expect(leerVista({ colorearPor: "leyenda" }).colorearPor).toBe("leyenda");
     expect(leerVista({ colorearPor: "leyenda:x" }).colorearPor).toBe("ninguno");
   });
+
+  it("colorearPor: acepta la antigüedad y las personas a cargo, también en una vista guardada", () => {
+    expect(leerVista({ colorearPor: "antiguedad" }).colorearPor).toBe("antiguedad");
+    expect(leerVista({ colorearPor: "aCargo" }).colorearPor).toBe("aCargo");
+    expect(leerVista({ colorearPor: "antiguedad:x" }).colorearPor).toBe("ninguno");
+    const guardada = JSON.stringify({ vista: { colorearPor: "aCargo" }, colapsados: [] });
+    expect(aplicarVista(guardada, new Set()).vista.colorearPor).toBe("aCargo");
+  });
 });
 
 describe("tipoDeMarca", () => {

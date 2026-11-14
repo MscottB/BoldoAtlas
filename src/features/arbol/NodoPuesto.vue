@@ -5,11 +5,13 @@ import { Briefcase } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useEstilo } from "@/features/puestos/useEstilo";
 import { usePuesto } from "@/features/puestos/usePuesto";
+import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamPuesto } from "./vista";
 import { CONTEXTO_LIENZO } from "./contexto";
+import { etiquetaEscala } from "./escala";
 
 export interface DatosPuesto {
   cargo: string;
@@ -23,12 +25,17 @@ const { t } = useI18n();
 const { abrir } = usePuesto();
 const { copiar, pegar } = useEstilo();
 const { config } = useVista();
-const { escala } = useTema();
+const { escala, oscuro } = useTema();
 const contexto = inject(CONTEXTO_LIENZO)!;
 // Entrada de leyenda cuando «Colorear por» es la leyenda del puesto; null = sin color.
 const leyenda = computed(
   () => (props.data.leyendaId && contexto.leyendas.value?.get(props.data.leyendaId)) || null,
 );
+// Con «Colorear por» antigüedad o a cargo: el color de su rango y el valor escrito al lado (el color nunca va solo).
+const escalaTarjeta = computed(() =>
+  etiquetaEscala(t, config.value.colorearPor, contexto.escala.value?.get(props.id)),
+);
+const color = computed(() => leyenda.value?.color ?? escalaTarjeta.value?.color ?? null);
 // Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).
 const raiz = useTemplateRef<HTMLElement>("raiz");
 watch(contexto.ligera, async () => {
@@ -60,9 +67,9 @@ const tam = computed(() => {
     role="button"
     tabindex="0"
     class="nodrag content-center truncate rounded-md border bg-card px-2 text-xl leading-tight font-medium text-card-foreground focus-visible:outline-4 focus-visible:outline-ring"
-    :class="[leyenda && 'border-l-[12px]', ubicado && 'border-marca ring-2 ring-marca']"
+    :class="[color && 'border-l-[12px]', ubicado && 'border-marca ring-2 ring-marca']"
     :aria-current="ubicado || undefined"
-    :style="[tam, leyenda ? { borderColor: leyenda.color } : {}]"
+    :style="[tam, color ? { borderColor: color } : {}]"
     @click.stop="abrir(id)"
     @keydown.enter.prevent="abrir(id)"
     @keydown.space.prevent="abrir(id)"
@@ -70,15 +77,16 @@ const tam = computed(() => {
     @keydown.ctrl.v.exact="pegar(id)"
   >
     {{ data.cargo }}
+    <span v-if="escalaTarjeta" class="sr-only">{{ escalaTarjeta.criterio }}: {{ escalaTarjeta.texto }}</span>
   </div>
   <button
     v-else
     ref="raiz"
     type="button"
     class="nodrag flex items-center gap-2 rounded-md border bg-card px-2 text-left text-xs text-card-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-    :class="[leyenda && 'border-l-[6px]', ubicado && 'border-marca ring-2 ring-marca']"
+    :class="[color && 'border-l-[6px]', ubicado && 'border-marca ring-2 ring-marca']"
     :aria-current="ubicado || undefined"
-    :style="[tam, leyenda ? { borderColor: leyenda.color } : {}]"
+    :style="[tam, color ? { borderColor: color } : {}]"
     :title="leyenda?.nombre"
     @click.stop="abrir(id)"
     @keydown.ctrl.c.exact="copiar(id)"
@@ -96,6 +104,15 @@ const tam = computed(() => {
           {{ t("puesto.reemplazoDe", { nombre: data.reemplazo }) }}
         </span>
       </span>
+    </span>
+    <span
+      v-if="escalaTarjeta"
+      class="ml-auto shrink-0 rounded px-1 text-[10px] font-semibold whitespace-nowrap"
+      :class="marcaTenue(escalaTarjeta.color, oscuro) && 'outline-1 outline-muted-foreground'"
+      :style="{ background: escalaTarjeta.color, color: textoSobre(escalaTarjeta.color) }"
+      :title="escalaTarjeta.criterio"
+    >
+      <span class="sr-only">{{ escalaTarjeta.criterio }}: </span>{{ escalaTarjeta.texto }}
     </span>
   </button>
 </template>
