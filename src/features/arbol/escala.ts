@@ -49,12 +49,13 @@ export function aniosCumplidos(desde: string, fecha: string): number {
  * Valor de cada tarjeta (unidades y puestos, por id) para el criterio, el día `fecha` (hoy o el que se ve).
  * Antigüedad: cada puesto por su titular vigente (un reemplazo no es titular) y la unidad por el titular de su jefatura.
  * A cargo: la dotación total de la rama sin el jefe, en la unidad y en su puesto de jefatura; los demás puestos no van.
- * La jefatura es un puesto de la propia unidad: su titular cuenta en la dotación de la rama.
+ * Al jefe (titular o, si no hay, el reemplazo) se le descuenta cada puesto que la dotación le cuenta en la rama: ninguno
+ * si su jefatura es de otra unidad (los datos importados no lo impiden) o si es un reemplazo de fuera.
  */
 export function escalaPorTarjeta(
   criterio: CriterioEscala,
   unidades: Unidad[],
-  puestos: Puesto[],
+  puestos: (Puesto & { deleted_at?: string | null })[],
   vigentes: Vigentes,
   dotaciones: ReadonlyMap<string, { total: number }>,
   fecha: string,
@@ -72,12 +73,27 @@ export function escalaPorTarjeta(
       res.set(u.id, u.jefe_puesto_id ? delPuesto(u.jefe_puesto_id) : { aparte: "sinJefatura" });
     return res;
   }
+  // Puestos vivos donde cada persona es titular (lo que suma a la dotación) y el superior de cada unidad.
+  const unidadDe = new Map(puestos.filter((p) => !p.deleted_at).map((p) => [p.id, p.unidad_id]));
+  const titularEn = new Map<string, string[]>();
+  for (const [id, v] of vigentes)
+    if (v.titular && unidadDe.has(id))
+      titularEn.set(v.titular.trabajador_id, [...(titularEn.get(v.titular.trabajador_id) ?? []), id]);
+  const padre = new Map(unidades.map((u) => [u.id, u.parent_id]));
+  // Sube desde la unidad del puesto hasta la raíz pedida; el tope de pasos corta un ciclo en los datos.
+  const enRama = (unidad: string | null | undefined, raiz: string) => {
+    for (let pasos = 0; unidad && pasos <= padre.size; pasos++, unidad = padre.get(unidad))
+      if (unidad === raiz) return true;
+    return false;
+  };
   for (const u of unidades) {
-    if (!u.jefe_puesto_id || !jefeVisible(u, vigentes)) {
+    const jefe = u.jefe_puesto_id ? jefeVisible(u, vigentes) : null;
+    if (!u.jefe_puesto_id || !jefe) {
       res.set(u.id, { aparte: "sinJefatura" });
       continue;
     }
-    const n = (dotaciones.get(u.id)?.total ?? 0) - (vigentes.get(u.jefe_puesto_id)?.titular ? 1 : 0);
+    const propios = (titularEn.get(jefe.trabajador_id) ?? []).filter((id) => enRama(unidadDe.get(id), u.id));
+    const n = (dotaciones.get(u.id)?.total ?? 0) - propios.length;
     const v: ValorEscala = n > 0 ? conValor(n) : { aparte: "sinPersonas" };
     res.set(u.id, v);
     res.set(u.jefe_puesto_id, v);
@@ -109,4 +125,21 @@ export function textoEscala(criterio: CriterioEscala, v: ValorEscala): { clave: 
       ? { clave: "arbol.vista.aCargoValor", n: 0 }
       : { clave: `arbol.vista.aparte.${v.aparte}`, n: 0 };
   return { clave: criterio === "antiguedad" ? "arbol.vista.anios" : "arbol.vista.aCargoValor", n: v.valor };
+}
+
+/** El `t` de vue-i18n, con las dos formas que usa la tarjeta. */
+type Traducir = {
+  (clave: string): string;
+  (clave: string, nombrados: Record<string, unknown>, plural: number): string;
+};
+
+/** Lo que dibuja una tarjeta coloreada con escala: su color, el valor escrito y el nombre del criterio; null sin valor. */
+export function etiquetaEscala(t: Traducir, criterio: string, v: ValorEscala | undefined) {
+  if (!v || !esCriterioEscala(criterio)) return null;
+  const { clave, n } = textoEscala(criterio, v);
+  return {
+    color: colorDeClase(claseDe(v)),
+    texto: t(clave, { n }, n),
+    criterio: t(`arbol.vista.${criterio}`),
+  };
 }

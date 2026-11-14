@@ -11,7 +11,7 @@ import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamPuesto } from "./vista";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { claseDe, colorDeClase, esCriterioEscala, textoEscala } from "./escala";
+import { etiquetaEscala } from "./escala";
 
 export interface DatosPuesto {
   cargo: string;
@@ -32,14 +32,10 @@ const leyenda = computed(
   () => (props.data.leyendaId && contexto.leyendas.value?.get(props.data.leyendaId)) || null,
 );
 // Con «Colorear por» antigüedad o a cargo: el color de su rango y el valor escrito al lado (el color nunca va solo).
-const etiquetaEscala = computed(() => {
-  const v = contexto.escala.value?.get(props.id);
-  const c = config.value.colorearPor;
-  if (!v || !esCriterioEscala(c)) return null;
-  const { clave, n } = textoEscala(c, v);
-  return { color: colorDeClase(claseDe(v)), texto: t(clave, { n }, n), criterio: t(`arbol.vista.${c}`) };
-});
-const color = computed(() => leyenda.value?.color ?? etiquetaEscala.value?.color ?? null);
+const escalaTarjeta = computed(() =>
+  etiquetaEscala(t, config.value.colorearPor, contexto.escala.value?.get(props.id)),
+);
+const color = computed(() => leyenda.value?.color ?? escalaTarjeta.value?.color ?? null);
 // Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).
 const raiz = useTemplateRef<HTMLElement>("raiz");
 watch(contexto.ligera, async () => {
@@ -81,6 +77,7 @@ const tam = computed(() => {
     @keydown.ctrl.v.exact="pegar(id)"
   >
     {{ data.cargo }}
+    <span v-if="escalaTarjeta" class="sr-only">{{ escalaTarjeta.criterio }}: {{ escalaTarjeta.texto }}</span>
   </div>
   <button
     v-else
@@ -109,13 +106,13 @@ const tam = computed(() => {
       </span>
     </span>
     <span
-      v-if="etiquetaEscala"
+      v-if="escalaTarjeta"
       class="ml-auto shrink-0 rounded px-1 text-[10px] font-semibold whitespace-nowrap"
-      :class="marcaTenue(etiquetaEscala.color, oscuro) && 'outline-1 outline-muted-foreground'"
-      :style="{ background: etiquetaEscala.color, color: textoSobre(etiquetaEscala.color) }"
-      :title="etiquetaEscala.criterio"
+      :class="marcaTenue(escalaTarjeta.color, oscuro) && 'outline-1 outline-muted-foreground'"
+      :style="{ background: escalaTarjeta.color, color: textoSobre(escalaTarjeta.color) }"
+      :title="escalaTarjeta.criterio"
     >
-      <span class="sr-only">{{ etiquetaEscala.criterio }}: </span>{{ etiquetaEscala.texto }}
+      <span class="sr-only">{{ escalaTarjeta.criterio }}: </span>{{ escalaTarjeta.texto }}
     </span>
   </button>
 </template>

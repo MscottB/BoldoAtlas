@@ -16,7 +16,7 @@ import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
 import { rutaSuperiores, type PersonasDeUnidad } from "./jerarquia";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { claseDe, colorDeClase, esCriterioEscala, textoEscala } from "./escala";
+import { etiquetaEscala } from "./escala";
 import AccionesTarjeta from "./AccionesTarjeta.vue";
 
 export interface DatosNodo extends PersonasDeUnidad {
@@ -53,14 +53,10 @@ const marca = computed(() => contexto.marcas.value?.get(props.id) ?? null);
 const zonas = computed(() => contexto.zonas.value?.get(props.id) ?? []);
 const nombresZonas = computed(() => t("zonas.en", { nombres: zonas.value.map((z) => z.nombre).join(", ") }));
 // Con «Colorear por» antigüedad o a cargo: el color de su rango y el valor escrito al lado (el color nunca va solo).
-const etiquetaEscala = computed(() => {
-  const v = contexto.escala.value?.get(props.id);
-  const c = config.value.colorearPor;
-  if (!v || !esCriterioEscala(c)) return null;
-  const { clave, n } = textoEscala(c, v);
-  return { color: colorDeClase(claseDe(v)), texto: t(clave, { n }, n), criterio: t(`arbol.vista.${c}`) };
-});
-const color = computed(() => marca.value?.color ?? etiquetaEscala.value?.color ?? null);
+const escalaTarjeta = computed(() =>
+  etiquetaEscala(t, config.value.colorearPor, contexto.escala.value?.get(props.id)),
+);
+const color = computed(() => marca.value?.color ?? escalaTarjeta.value?.color ?? null);
 // Un color que casi no se distingue de la tarjeta (azul marino en oscuro) lleva contorno en la franja y el código.
 const tenue = computed(() => !!color.value && marcaTenue(color.value, oscuro.value));
 const ruta = computed(() =>
@@ -176,6 +172,8 @@ async function guardar(e: Event) {
       <span v-for="z in zonas" :key="z.id" class="flex-1" :style="{ background: z.color }" />
     </span>
     {{ data.unidad.nombre }}
+    <!-- En ligera el valor no se escribe (no cabe a esa distancia), pero el lector de pantalla lo lee. -->
+    <span v-if="escalaTarjeta" class="sr-only">{{ escalaTarjeta.criterio }}: {{ escalaTarjeta.texto }}</span>
     <Handle type="source" :position="horizontal ? Position.Right : Position.Bottom" class="opacity-0" />
   </div>
   <!-- Nodo liviano: sin sombras ni transiciones (nota de rendimiento). -->
@@ -302,13 +300,13 @@ async function guardar(e: Event) {
     <div class="flex items-center gap-1.5" :class="compacta ? 'ml-auto' : 'mt-auto'">
       <!-- Seleccionada y compacta: el lugar es de los botones. -->
       <span
-        v-if="etiquetaEscala && !(compacta && sola)"
+        v-if="escalaTarjeta && !(compacta && sola)"
         class="shrink-0 rounded px-1 text-[10px] font-semibold whitespace-nowrap"
         :class="tenue && 'outline-1 outline-muted-foreground'"
-        :style="{ background: etiquetaEscala.color, color: textoSobre(etiquetaEscala.color) }"
-        :title="etiquetaEscala.criterio"
+        :style="{ background: escalaTarjeta.color, color: textoSobre(escalaTarjeta.color) }"
+        :title="escalaTarjeta.criterio"
       >
-        <span class="sr-only">{{ etiquetaEscala.criterio }}: </span>{{ etiquetaEscala.texto }}
+        <span class="sr-only">{{ escalaTarjeta.criterio }}: </span>{{ escalaTarjeta.texto }}
       </span>
       <!-- La dotación abre el panel en la pestaña Personas. -->
       <button

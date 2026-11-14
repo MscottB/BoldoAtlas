@@ -9,6 +9,7 @@ import {
   LIMITES,
   aniosCumplidos,
   clasesEnUso,
+  etiquetaEscala,
   escalaPorTarjeta,
   rango,
   textoEscala,
@@ -114,6 +115,42 @@ describe("escalaPorTarjeta: personas a cargo", () => {
     );
     expect(r.get("x")).toEqual({ aparte: "sinPersonas" });
   });
+
+  const aCargo = (us: ReturnType<typeof u>[], ps: ReturnType<typeof p>[], as: ReturnType<typeof a>[]) =>
+    escalaPorTarjeta("aCargo", us, ps, vigentesPorPuesto(as), dotacionPorUnidad(us, ps, as), "2026-11-14");
+
+  it("el jefe en reemplazo que es titular de otro puesto de la rama no se cuenta bajo sí mismo", () => {
+    // 4 analistas; la jefatura está vacante y la cubre t1, titular de uno de esos puestos.
+    const us = [{ ...u("x", "t", "X", null), jefe_puesto_id: "jx" }, u("hija", "t", "Hija", "x")];
+    const ps = [p("jx", "x"), p("p1", "x"), p("p2", "x"), p("p3", "hija"), p("p4", "hija")];
+    const as = [
+      a("r", "jx", "t1", "reemplazo"),
+      a("a1", "p1", "t1"),
+      a("a2", "p2", "t2"),
+      a("a3", "p3", "t3"),
+      a("a4", "p4", "t4"),
+    ];
+    expect(aCargo(us, ps, as).get("x")).toEqual({ valor: 3, rango: 0 });
+  });
+
+  it("con la jefatura en un puesto de otra unidad, solo se descuenta al jefe si está en la dotación de la rama", () => {
+    const us = [
+      { ...u("y", "t", "Y", null), jefe_puesto_id: "jz" },
+      u("z", "t", "Z", null),
+      { ...u("w", "t", "W", null), jefe_puesto_id: "jw" },
+    ];
+    const ps = [p("jz", "z"), p("p1", "y"), p("p2", "y"), p("jw", "z"), p("p3", "w")];
+    const as = [
+      a("a0", "jz", "t0"),
+      a("a1", "p1", "t1"),
+      a("a2", "p2", "t2"),
+      a("aw", "jw", "tw"),
+      a("a3", "p3", "t3"),
+    ];
+    const r = aCargo(us, ps, as);
+    expect(r.get("y")).toEqual({ valor: 2, rango: 0 });
+    expect(r.get("w")).toEqual({ valor: 1, rango: 0 }); // una sola persona en la rama: no queda «sin personas a cargo»
+  });
 });
 
 describe("clasesEnUso", () => {
@@ -180,5 +217,21 @@ describe("textoEscala", () => {
       clave: "arbol.vista.aCargoValor",
       n: 0,
     });
+  });
+});
+
+describe("etiquetaEscala", () => {
+  const t = ((clave: string, nombrados?: Record<string, unknown>) =>
+    nombrados ? `${clave}:${String(nombrados.n)}` : clave) as Parameters<typeof etiquetaEscala>[0];
+
+  it("color del rango, valor escrito y nombre del criterio; sin valor o con otro criterio, nada", () => {
+    expect(etiquetaEscala(t, "aCargo", { valor: 12, rango: 1 })).toEqual({
+      color: COLORES_ESCALA[1],
+      texto: "arbol.vista.aCargoValor:12",
+      criterio: "arbol.vista.aCargo",
+    });
+    expect(etiquetaEscala(t, "antiguedad", { aparte: "vacante" })?.color).toBe(COLOR_NEUTRO);
+    expect(etiquetaEscala(t, "antiguedad", undefined)).toBeNull();
+    expect(etiquetaEscala(t, "leyenda", { valor: 1, rango: 0 })).toBeNull();
   });
 });

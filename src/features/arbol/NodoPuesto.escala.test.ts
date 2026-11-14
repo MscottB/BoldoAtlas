@@ -25,15 +25,18 @@ beforeEach(() => {
   setActivePinia(pinia);
 });
 
-async function html(valor: ValorEscala | undefined) {
+async function html(valor: ValorEscala | undefined, ligera = false) {
   const contexto = {
     leyendas: computed(() => null),
     escala: computed(() => (valor ? new Map([["px", valor]]) : null)),
-    ligera: computed(() => false),
+    ligera: computed(() => ligera),
   } as unknown as ContextoLienzo;
   const app = createSSRApp({
     render: () =>
-      h(NodoPuesto, { id: "px", data: { cargo: "Analista", titular: "Ana", reemplazo: null, leyendaId: null } }),
+      h(NodoPuesto, {
+        id: "px",
+        data: { cargo: "Analista", titular: "Ana", reemplazo: null, leyendaId: null },
+      }),
   });
   app.use(pinia).use(i18n).provide(CONTEXTO_LIENZO, contexto);
   return renderToString(app);
@@ -45,6 +48,14 @@ describe("NodoPuesto coloreado con escala", () => {
     const s = await html({ valor: 3, rango: 2 });
     expect(s).toContain(i18n.global.t("arbol.vista.anios", { n: 3 }, 3));
     expect(s).toContain(i18n.global.t("arbol.vista.antiguedad"));
+    expect(s.toLowerCase()).toContain(COLORES_ESCALA[2]);
+  });
+
+  it("ligera (alejado): el color y, para el lector de pantalla, el criterio y el valor", async () => {
+    useVista().config.value.colorearPor = "antiguedad";
+    const s = await html({ valor: 3, rango: 2 }, true);
+    const valor = i18n.global.t("arbol.vista.anios", { n: 3 }, 3);
+    expect(s).toContain(`<span class="sr-only">${i18n.global.t("arbol.vista.antiguedad")}: ${valor}</span>`);
     expect(s.toLowerCase()).toContain(COLORES_ESCALA[2]);
   });
 
