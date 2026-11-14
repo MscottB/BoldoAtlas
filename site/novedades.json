@@ -1,5 +1,19 @@
 [
   {
+    "id": "directorio-arbol",
+    "pagina": "directorio",
+    "es": {
+      "titulo": "El Directorio como árbol",
+      "texto": "Pasa el Directorio de Lista a Árbol y ve quién depende de quién, con foto, cargo y cuántas personas tiene cada rama. Pliégalo hasta el nivel que quieras; al buscar, se ve la cadena hasta cada persona. El ícono de cada fila dice a quién muestra en el organigrama.",
+      "ancla": "lista-o-arbol"
+    },
+    "en": {
+      "titulo": "The Directory as a tree",
+      "texto": "Switch the Directory from List to Tree and see who reports to whom, with photo, job title and how many people each branch has. Fold it down to the level you want; when you search, you see the chain down to each person. The icon on each row says who it shows in the org chart.",
+      "ancla": "list-or-tree"
+    }
+  },
+  {
     "id": "niveles-reales",
     "pagina": "arbol",
     "es": {

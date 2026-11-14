@@ -4,7 +4,7 @@
 The Directory is a table with every person and position in the organization: use it to search, filter, sort and open each record.
 :::
 
-The Directory is a table with every position and every person in the organization. Use it to search, filter and compare without walking the tree.
+The Directory is a table with every position and every person in the organization. Use it to search, filter and compare without walking the tree. With **Tree**, at the top, it shows the same as an outline of who reports to whom (see "List or tree").
 
 ## What each row shows
 
@@ -39,6 +39,16 @@ To find a person:
 
 Press the **Person**, **Job title** or first visible unit column header (it sorts by the full unit path) to sort; press again to reverse. Empty cells always stay at the end.
 
-Press a row (or Tab to the name and Enter) to open the person's record; on a vacancy, the position opens. The locate icon, next to the name, shows that position in the org chart (`Ctrl` + click: in a new tab); for a person with no current position it is disabled.
+Press a row (or Tab to the name and Enter) to open the person's record; on a vacancy, the position opens. The locate icon, next to the name, shows that position in the org chart (`Ctrl` + click: in a new tab); when you hover over it or Tab to it, it says who it shows ("Show … in the org chart"). For a person with no current position it is disabled.
+
+## List or tree
+
+**List** and **Tree**, next to the title, change how the Directory looks; your choice is remembered on this computer, for each organization. The **tree** shows who reports to whom: it starts at the organization's root (or at each root, if there are several) or, with a **Unit** chosen, at that unit.
+
+- Each unit shows its name, its type, its head (photo or initials, name and job title) and how many people its branch has (the holders, the same number as on the card). Below it come its other people, with photo and job title (replacements, marked), its positions with nobody as **Vacant** and then its sub-units. A person with two positions appears twice, once in each position; people with no current position are not in the tree (if the filters leave only people like that, the tree says so). Next to the title, the tree counts its people and vacancies.
+- When it opens you see the first level under the root. Press a unit (or its arrow) to open or close it. The numbered buttons, to the right of the filters, show the units down to that level, as on the canvas: there is one for each level the organization has; if there are many, **−** and **+** go down or up one at a time. The one for the level in view is marked, also when you open or close units by hand. **All** opens every unit.
+- The search and the filters leave the same positions as the list, with the chain of units down to them already open, and highlight the text found.
+- Press a person, or a head's name, to open their record, and a vacancy to open its position, as in the list; `Ctrl` + click or middle click on a person opens them in a new tab. The locate icon, at the end of the row, shows them in the org chart.
+- With the keyboard, `↑` and `↓` move through the rows, `→` opens a unit or goes into it, `←` closes it or goes up to its parent, `Home` and `End` go to the first and the last. `Enter` does the same as pressing the row, `Shift+Enter` opens the record of the unit's head and `Tab` goes to the row's locate icon.
 
 **See also:** [Person records](fichas.md) · [Work tabs](pestanas.md).

@@ -4,7 +4,7 @@
 El Directorio es una tabla con todas las personas y puestos de la organización: sirve para buscar, filtrar, ordenar y abrir la ficha de cada uno.
 :::
 
-El Directorio es una tabla con todos los puestos y todas las personas de la organización. Sirve para buscar, filtrar y comparar sin recorrer el árbol.
+El Directorio es una tabla con todos los puestos y todas las personas de la organización. Sirve para buscar, filtrar y comparar sin recorrer el árbol. Con **Árbol**, arriba, muestra lo mismo como un esquema de quién depende de quién (ver «Lista o árbol»).
 
 ## Qué muestra cada fila
 
@@ -39,6 +39,16 @@ Para encontrar a una persona:
 
 Pulsa el encabezado de **Persona**, **Cargo** o de la primera columna de unidad a la vista (ordena por la ruta completa) para ordenar; pulsa otra vez para invertir. Las celdas vacías siempre quedan al final.
 
-Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona; en una vacante se abre el puesto. El ícono de ubicar, junto al nombre, muestra ese puesto en el organigrama (`Ctrl` + clic: en una pestaña nueva); en una persona sin puesto vigente queda deshabilitado.
+Pulsa una fila (o Tab hasta el nombre y Enter) para abrir la ficha de la persona; en una vacante se abre el puesto. El ícono de ubicar, junto al nombre, muestra ese puesto en el organigrama (`Ctrl` + clic: en una pestaña nueva); al pasar el mouse o llegar a él con Tab dice a quién muestra («Ver a … en el organigrama»). En una persona sin puesto vigente queda deshabilitado.
+
+## Lista o árbol
+
+**Lista** y **Árbol**, junto al título, cambian cómo se ve el Directorio; la elección se recuerda en este computador, para cada organización. El **árbol** muestra quién depende de quién: parte de la raíz de la organización (o de cada raíz, si hay varias) o, con **Unidad** elegida, de esa unidad.
+
+- Cada unidad muestra su nombre, su tipo, su jefatura (foto o iniciales, nombre y cargo) y cuántas personas tiene su rama (los titulares, la misma cifra de la tarjeta). Debajo van sus demás personas, con foto y cargo (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Una persona con dos puestos aparece dos veces, una en cada puesto; las personas sin puesto vigente no aparecen en el árbol (si los filtros solo dejan personas así, el árbol lo dice). Junto al título, el árbol cuenta sus personas y vacantes.
+- Al abrirlo se ve el primer nivel bajo la raíz. Pulsa una unidad (o su flecha) para abrirla o cerrarla. Los botones con números, a la derecha de los filtros, dejan ver las unidades hasta ese nivel, como en el lienzo: hay uno por cada nivel que tiene la organización; si son muchos, **−** y **+** bajan o suben de a uno. El del nivel que se ve queda marcado, también si abres o cierras unidades a mano. **Todo** abre todas las unidades.
+- La búsqueda y los filtros dejan los mismos puestos que la lista, con la cadena de unidades hasta ellos ya abierta, y resaltan el texto encontrado.
+- Pulsa una persona, o el nombre de una jefatura, para abrir su ficha, y una vacante para abrir su puesto, como en la lista; `Ctrl` + clic o clic central sobre una persona la abre en una pestaña nueva. El ícono de ubicar, al final de la fila, la muestra en el organigrama.
+- Con el teclado, `↑` y `↓` recorren las filas, `→` abre una unidad o entra en ella, `←` la cierra o sube a su superior, `Inicio` y `Fin` van a la primera y a la última. `Enter` hace lo mismo que pulsar la fila, `Mayús+Enter` abre la ficha de la jefatura de la unidad y `Tab` lleva al ícono de ubicar de la fila.
 
 **Ver también:** [Fichas de personas](fichas.md) · [Pestañas de trabajo](pestanas.md).
