@@ -17,13 +17,14 @@ test("las anclas viejas de la portada llevan a su lugar nuevo, en los dos idioma
   assert.equal(destinoAncla("/", "#otra"), null);
 });
 
-test("el menú: Producto ▾ con sus 4 páginas, luego Manual, Acerca de y Descargar, en los dos idiomas", () => {
+test("el menú: Inicio, Producto ▾ con sus 4 páginas, luego Manual, Acerca de y Descargar, en los dos idiomas", () => {
   const textos = (bloque) => [...bloque.matchAll(/text: "([^"]+)"/g)].map((m) => m[1]);
   const nav = (lang) => {
     const inicio = config.indexOf("nav: [", lang === "es" ? 0 : config.indexOf("en: {"));
     return config.slice(inicio, config.indexOf("\n        ],", inicio));
   };
   assert.deepEqual(textos(nav("es")), [
+    "Inicio",
     "Producto",
     "Funciones",
     "Seguridad y privacidad",
@@ -34,6 +35,7 @@ test("el menú: Producto ▾ con sus 4 páginas, luego Manual, Acerca de y Desca
     "Descargar",
   ]);
   assert.deepEqual(textos(nav("en")), [
+    "Home",
     "Product",
     "Features",
     "Security and privacy",
@@ -43,6 +45,7 @@ test("el menú: Producto ▾ con sus 4 páginas, luego Manual, Acerca de y Desca
     "About",
     "Download",
   ]);
+  assert.match(nav("es"), /text: "Inicio", link: "\/"/);
   assert.match(nav("es"), /link: "\/descargas"/);
   assert.match(nav("en"), /link: "\/en\/descargas"/);
   for (const enlace of nav("en").matchAll(/link: "([^"]+)"/g)) assert.match(enlace[1], /^\/en\//);
