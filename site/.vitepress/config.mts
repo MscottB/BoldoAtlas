@@ -47,6 +47,7 @@ export default defineConfig({
         "Organigramas gigantes, fichas de personas y vacantes. App de escritorio local y portable para Windows, Linux y macOS.",
       themeConfig: {
         nav: [
+          { text: "Inicio", link: "/" },
           {
             text: "Producto",
             items: [
@@ -81,6 +82,7 @@ export default defineConfig({
         "Giant org charts, people records and vacancies. A local, portable desktop app for Windows, Linux and macOS.",
       themeConfig: {
         nav: [
+          { text: "Home", link: "/en/" },
           {
             text: "Product",
             items: [
