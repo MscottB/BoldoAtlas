@@ -1590,6 +1590,50 @@ mod tests {
         assert_eq!(e.codigo, "muy_pesado");
         assert!(temporales(d.path()).is_empty());
     }
+
+    #[test]
+    fn reemplazar_no_revive_a_la_suprimida() {
+        let (d, origen) = base_con_datos();
+        let (archivo, codigo) = exportar(&origen, d.path(), None);
+        let (dd, bd, respaldos, mut conn) = destino();
+        conn.execute(
+            "INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at) VALUES ('ana', 'Ana', 'ana@x.cl', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        crate::supresion::suprimir(
+            &mut conn,
+            "ana",
+            "Persona suprimida",
+            "2026-11-01T00:00:00.000Z",
+        )
+        .unwrap();
+        // una suprimida que el archivo no trae: su id igual se conserva
+        let sin_fila = crate::supresion::Suprimida {
+            id: "sin-fila".into(),
+            fecha: "2026-11-02T00:00:00.000Z".into(),
+        };
+        crate::supresion::reaplicar(&mut conn, &[sin_fila], "Persona suprimida").unwrap();
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        let mut slot = Some(conn);
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        let c = db::abrir(&bd).unwrap();
+        let (nombre, correo, borrada): (String, Option<String>, Option<String>) = c
+            .query_row(
+                "SELECT nombre, correo, deleted_at FROM trabajadores WHERE id = 'ana'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(nombre, "Persona suprimida");
+        assert!(correo.is_none() && borrada.is_some());
+        let ids: Vec<String> = crate::supresion::leer(&c)
+            .unwrap()
+            .into_iter()
+            .map(|s| s.id)
+            .collect();
+        assert_eq!(ids, ["ana", "sin-fila"]);
+    }
 }
 
 #[cfg(test)]

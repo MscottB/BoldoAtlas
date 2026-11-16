@@ -236,6 +236,11 @@ export function respaldarAhora(): Promise<string> {
   return conBase<string>("respaldar_ahora");
 }
 
+/** Borra los respaldos que aún guardan a una persona suprimida hace más de 30 días; devuelve cuántos. */
+export function podarRespaldosSuprimidas(): Promise<number> {
+  return conBase<number>("podar_respaldos_suprimidas");
+}
+
 /** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
 export function respaldarAntesDeOptimizar(): Promise<string> {
   return conBase<string>("respaldar_antes_de_optimizar");

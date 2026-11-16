@@ -1,6 +1,7 @@
 use crate::db::{self, SIN_ESPACIO};
 use crate::intercambio::validar;
 use crate::organizaciones::{Base, OTRA_BASE};
+use crate::supresion::{self, Suprimida};
 use rusqlite::{Connection, ErrorCode, OpenFlags};
 use serde::Serialize;
 use std::fs;
@@ -8,9 +9,9 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 const PREFIJO: &str = "boldo-";
-/// Copia de la base actual que se hace antes de restaurar: se lista (para poder deshacer) pero nunca se poda.
+/// Copia de la base actual que se hace antes de restaurar: se lista (para poder deshacer); quedan las últimas `CONSERVAR_SEGURIDAD`.
 const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
-/// Copia que se hace antes de reemplazar los datos por una organización nueva o el ejemplo: tampoco se poda.
+/// Copia que se hace antes de reemplazar los datos por una organización nueva o el ejemplo: también quedan las últimas `CONSERVAR_SEGURIDAD`.
 const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
 /// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: de estas quedan las últimas `CONSERVAR_IMPORTAR`.
 const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
@@ -20,6 +21,10 @@ const SUFIJO_TEMPORAL: &str = ".tmp";
 /// Lo que `db.rs` deja antes de migrar, con el nombre de ahora (`.db`) o de versiones anteriores (`.boldo`).
 const PREFIJO_MIGRACION: &str = "antes-migracion-";
 pub const CONSERVAR: usize = 10;
+/// Cuántos `boldo-antes-de-restaurar-` y cuántos `boldo-antes-de-reemplazar-` quedan al crear uno nuevo, cada tipo aparte.
+pub const CONSERVAR_SEGURIDAD: usize = 10;
+/// A los cuántos días de suprimir a una persona se borran los respaldos hechos antes de la supresión.
+pub const PLAZO_SUPRESION_DIAS: i64 = 30;
 /// Cuántos `boldo-antes-de-importar-` quedan al crear uno nuevo.
 pub const CONSERVAR_IMPORTAR: usize = 20;
 /// Pocos: cada uno guarda las fotos sin reducir, y puede pesar cientos de MB.
@@ -310,6 +315,71 @@ pub fn respaldar_antes_de_optimizar(
     Ok(nombre)
 }
 
+/// Tras un respaldo de seguridad: quedan los últimos `CONSERVAR_SEGURIDAD` de su tipo, y el recién hecho nunca se va.
+fn podar_seguridad(dir: &Path, prefijo: &str, nuevo: &str) {
+    // el respaldo ya está hecho: si la poda falla, se reintenta la próxima vez
+    for viejo in entradas(dir)
+        .unwrap_or_default()
+        .iter()
+        .filter(|e| e.nombre.starts_with(prefijo) && e.nombre != nuevo)
+        .skip(CONSERVAR_SEGURIDAD - 1)
+    {
+        let _ = fs::remove_file(dir.join(&viejo.nombre));
+    }
+}
+
+/// Borra los respaldos de `dir` (de cualquier tipo, también `antes-migracion-*`) hechos antes de la supresión más nueva que ya
+/// cumplió `PLAZO_SUPRESION_DIAS` a `ahora` (ISO-8601 UTC). Antes de ese plazo no borra nada. Devuelve cuántos borró.
+pub fn podar_por_supresiones(
+    dir: &Path,
+    suprimidas: &[Suprimida],
+    ahora: &str,
+) -> Result<usize, Fallo> {
+    // las fechas las calcula SQLite: así no hace falta una librería de calendario
+    let c = Connection::open_in_memory()?;
+    let (mut utc, mut local) = (String::new(), String::new());
+    for s in suprimidas {
+        let (u, l, vencida): (Option<String>, Option<String>, Option<bool>) = c.query_row(
+            "SELECT strftime('%Y%m%d%H%M%S', ?1), strftime('%Y%m%d%H%M%S', ?1, 'localtime'),
+                    strftime('%Y%m%d%H%M%S', ?1) <= strftime('%Y%m%d%H%M%S', ?2, ?3)",
+            (&s.fecha, ahora, format!("-{PLAZO_SUPRESION_DIAS} days")),
+            |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
+        )?;
+        if let (Some(u), Some(l), Some(true)) = (u, l, vencida) {
+            utc = utc.max(u);
+            local = local.max(l);
+        }
+    }
+    if utc.is_empty() {
+        return Ok(0);
+    }
+    // los sellos de los respaldos son de la hora local; los de `antes-migracion-` son UTC
+    let mut viejos: Vec<String> = entradas(dir)?
+        .into_iter()
+        .filter(|e| format!("{}00", e.sello.replace('-', "")) < local)
+        .map(|e| e.nombre)
+        .collect();
+    for f in fs::read_dir(dir)? {
+        let f = f?;
+        let nombre = f.file_name().to_string_lossy().into_owned();
+        let sello = nombre
+            .strip_prefix(PREFIJO_MIGRACION)
+            .and_then(|r| r.split('-').nth(1));
+        if let Some(sello) = sello
+            && sello.len() == 14
+            && sello.bytes().all(|c| c.is_ascii_digit())
+            && sello < utc.as_str()
+            && f.file_type()?.is_file()
+        {
+            viejos.push(nombre);
+        }
+    }
+    Ok(viejos
+        .into_iter()
+        .filter(|n| fs::remove_file(dir.join(n)).is_ok())
+        .count())
+}
+
 fn revision(ruta: &Path) -> Option<i64> {
     let c = Connection::open_with_flags(ruta, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
     c.query_row(
@@ -512,11 +582,26 @@ fn cambiar_base(
     // Se prepara (y migra) una copia aparte: la base actual no se toca hasta el reemplazo final.
     let copia = copia_de_base(base);
     let mut reemplazar = || -> Result<(), Fallo> {
+        // las suprimidas de la base que se va no vuelven con lo que llega (decisión 6)
+        let (previas, relleno) = match conexion.as_ref() {
+            Some(a) => {
+                let previas = supresion::leer(a)?;
+                let relleno = supresion::relleno_de(a, &previas);
+                (
+                    previas,
+                    relleno.unwrap_or_else(|| supresion::RELLENO.into()),
+                )
+            }
+            None => return Err(Fallo::de("fallo", "la base no está abierta")),
+        };
         borrar_bd(&copia)?;
         fs::copy(origen, &copia)?;
         let mut c = db::abrir(&copia)?;
         db::migrar_con(&mut c, migraciones, dir)?;
         db::asegurar_meta(&c)?;
+        if !previas.is_empty() {
+            supresion::reaplicar(&mut c, &previas, &relleno)?;
+        }
         // la identidad es de la base, no de lo que llega: de ella cuelgan sus pestañas y preferencias
         c.execute(
             "UPDATE meta SET valor = ?1 WHERE clave = 'db_id'",
@@ -550,7 +635,11 @@ fn cambiar_base(
         // si no se reemplazó, la copia «antes de restaurar» sobra (y contaría como último respaldo)
         cambiar().inspect_err(|_| {
             let _ = fs::remove_file(&seguridad);
-        })
+        })?;
+        if let Some(nuevo) = seguridad.file_name().and_then(|n| n.to_str()) {
+            podar_seguridad(dir, prefijo_seguridad, nuevo);
+        }
+        Ok(())
     };
     let resultado = reemplazar();
     let _ = borrar_bd(&copia);
@@ -1282,5 +1371,123 @@ mod tests {
             quedan(&reemplazo) && quedan(&comun),
             "los demás tipos no se tocan"
         );
+    }
+
+    fn crear(dir: &Path, nombres: &[&str]) {
+        for n in nombres {
+            fs::write(dir.join(n), b"").unwrap();
+        }
+    }
+
+    fn cuantos(dir: &Path, prefijo: &str) -> usize {
+        archivos(dir)
+            .iter()
+            .filter(|n| n.starts_with(prefijo))
+            .count()
+    }
+
+    #[test]
+    fn seguridad_quedan_diez() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, respaldos, conn) = base(dir.path());
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        let falsos = |prefijo: &str, n: usize| -> Vec<String> {
+            (1..=n)
+                .map(|d| format!("{prefijo}202001{d:02}-0000.db"))
+                .collect()
+        };
+        let restaurar_viejos = falsos(PREFIJO_SEGURIDAD, 13);
+        let reemplazar_viejos = falsos(PREFIJO_REEMPLAZO, 12);
+        for n in restaurar_viejos.iter().chain(&reemplazar_viejos) {
+            fs::write(respaldos.join(n), b"").unwrap();
+        }
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        assert_eq!(cuantos(&respaldos, PREFIJO_SEGURIDAD), CONSERVAR_SEGURIDAD);
+        assert_eq!(
+            cuantos(&respaldos, PREFIJO_REEMPLAZO),
+            12,
+            "cada tipo aparte"
+        );
+        // el recién hecho nunca se va, y se van los más viejos
+        assert!(!respaldos.join(&restaurar_viejos[0]).exists());
+        assert!(respaldos.join(&restaurar_viejos[12]).exists());
+
+        let mut slot = Some(db::abrir(&b.bd).unwrap());
+        reemplazar_antes_respaldando(&mut slot, &b, &respaldos.join(&nombre), MIGRACIONES).unwrap();
+        assert_eq!(cuantos(&respaldos, PREFIJO_REEMPLAZO), CONSERVAR_SEGURIDAD);
+        assert_eq!(cuantos(&respaldos, PREFIJO_SEGURIDAD), CONSERVAR_SEGURIDAD);
+    }
+
+    #[test]
+    fn poda_por_supresion_respeta_el_plazo() {
+        let dir = tempfile::tempdir().unwrap();
+        let d = dir.path();
+        let viejos = [
+            "boldo-antes-de-restaurar-20261015-1000.db",
+            "boldo-antes-de-reemplazar-20261015-1000.db",
+            "antes-migracion-5-20261015100000-abcd1234.db",
+        ];
+        let nuevos = [
+            "boldo-antes-de-restaurar-20261115-1000.db",
+            "boldo-antes-de-reemplazar-20261115-1000.db",
+            "antes-migracion-5-20261115100000-abcd1234.db",
+            "boldo-20261201-1000.db",
+        ];
+        crear(d, &viejos);
+        crear(d, &nuevos);
+        let sup = [supresion::Suprimida {
+            id: "t1".into(),
+            fecha: "2026-11-01T00:00:00.000Z".into(),
+        }];
+        assert_eq!(
+            podar_por_supresiones(d, &sup, "2026-11-20T00:00:00.000Z").unwrap(),
+            0
+        );
+        assert_eq!(archivos(d).len(), 7, "aún no pasan 30 días");
+        assert_eq!(
+            podar_por_supresiones(d, &sup, "2026-12-02T00:00:00.000Z").unwrap(),
+            3
+        );
+        assert!(viejos.iter().all(|n| !d.join(n).exists()));
+        assert!(nuevos.iter().all(|n| d.join(n).exists()));
+        assert_eq!(
+            podar_por_supresiones(d, &[], "2027-01-01T00:00:00.000Z").unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn restaurar_no_revive_a_la_suprimida() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, respaldos, mut conn) = base(dir.path());
+        conn.execute(
+            "INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at) VALUES ('t1', 'Ana', 'ana@x.cl', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        supresion::suprimir(
+            &mut conn,
+            "t1",
+            "Persona suprimida",
+            "2026-11-01T00:00:00.000Z",
+        )
+        .unwrap();
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        let c = db::abrir(&b.bd).unwrap();
+        let (n, correo, borrada): (String, Option<String>, Option<String>) = c
+            .query_row(
+                "SELECT nombre, correo, deleted_at FROM trabajadores WHERE id = 't1'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(n, "Persona suprimida");
+        assert!(correo.is_none() && borrada.is_some());
+        let lista = supresion::leer(&c).unwrap();
+        assert_eq!(lista.len(), 1);
+        assert_eq!(lista[0].id, "t1");
     }
 }

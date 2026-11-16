@@ -11,6 +11,7 @@ use super::fusion::{self, CATALOGOS, Lugares, Tabla};
 use super::validar::{self, MetaArchivo};
 use crate::db;
 use crate::respaldos::{self, Fallo};
+use crate::supresion;
 use rusqlite::types::Value;
 use rusqlite::{Connection, ErrorCode, OptionalExtension, TransactionBehavior, params_from_iter};
 use serde::{Deserialize, Serialize};
@@ -192,6 +193,8 @@ pub struct Bloqueo {
 
 pub struct Revision {
     pub casos: Vec<Decidido>,
+    /// Las filas de personas suprimidas (y sus asignaciones): lo borrado aquí que el archivo trae vivo no revive nunca.
+    intocables: HashSet<(&'static str, String)>,
     unidos: HashMap<(&'static str, String), String>,
     rivales: HashMap<String, String>,
     resumidas: HashSet<String>,
@@ -534,6 +537,7 @@ impl Revision {
             .collect();
         Revision {
             casos,
+            intocables: HashSet::new(),
             unidos: c.unidos,
             rivales: c.rivales,
             resumidas: c.resumidas,
@@ -551,6 +555,19 @@ impl Revision {
             restablecidas: 0,
             limite_pasadas: MAX_PASADAS,
         }
+    }
+
+    /// Marca como no restaurables las filas de las personas de `meta.suprimidas`: ni «Restaurar todo» ni elegirlo una a una.
+    fn proteger_suprimidas(&mut self, conn: &Connection) -> Result<(), Fallo> {
+        let mut asignaciones =
+            conn.prepare("SELECT id FROM asignaciones WHERE trabajador_id = ?1")?;
+        for s in supresion::leer(conn)? {
+            for id in asignaciones.query_map([&s.id], |f| f.get::<_, String>(0))? {
+                self.intocables.insert(("asignaciones", id?));
+            }
+            self.intocables.insert(("trabajadores", s.id));
+        }
+        Ok(())
     }
 
     /// Comparar de nuevo: lo decidido sigue en las filas que no cambiaron.
@@ -728,7 +745,13 @@ impl Revision {
                         Decision::Campos(mascara)
                     }
                     Eleccion::Borrar if borrado => Decision::Borrar,
-                    Eleccion::Mantener if borrado => Decision::Mantener,
+                    Eleccion::Mantener
+                        if borrado
+                            && !(self.casos[k].caso.borrado_aqui
+                                && self.intocables.contains(&(tabla, id.to_string()))) =>
+                    {
+                        Decision::Mantener
+                    }
                     Eleccion::Pendiente if duplicado => Decision::Pendiente,
                     Eleccion::UnirMio if duplicado => Decision::UnirMio,
                     Eleccion::UnirArchivo if duplicado => Decision::UnirArchivo,
@@ -770,6 +793,7 @@ impl Revision {
             A::ResolverRotas => self.resolver_rotas = true,
             A::NoResolverRotas => self.resolver_rotas = false,
             accion => {
+                let intocables = &self.intocables;
                 for x in &mut self.casos {
                     let c = &x.caso;
                     if let Some(t) = m.tipo
@@ -797,7 +821,9 @@ impl Revision {
                         (
                             A::RestaurarTodo,
                             TipoCaso::BorradoVsEditado | TipoCaso::BorradoSinConflicto,
-                        ) if c.borrado_aqui => Decision::Mantener,
+                        ) if c.borrado_aqui && !intocables.contains(&(c.tabla, c.id.clone())) => {
+                            Decision::Mantener
+                        }
                         (
                             A::BorrarTodo,
                             TipoCaso::BorradoVsEditado | TipoCaso::BorradoSinConflicto,
@@ -2103,6 +2129,7 @@ pub fn abrir(
         esquema.insert(tabla, fusion::describir(&imp, tabla)?);
     }
     let mut r = Revision::nueva(c, lugares, esquema);
+    r.proteger_suprimidas(conn)?;
     if let Some(a) = anterior {
         r.heredar(a, conn)?;
     }
@@ -5362,5 +5389,41 @@ mod tests {
         );
         let puestos = opciones(&b.local, "puestos", "jefe").unwrap();
         assert!(puestos.iter().any(|x| x.nombre.contains("Rama")));
+    }
+
+    #[test]
+    fn restaurar_todo_salta_a_la_suprimida() {
+        let mut b = banco();
+        b.archivo(&format!(
+            "UPDATE trabajadores SET nombre = 'Ana del archivo', updated_at = '{F2}' WHERE id = 'ana';"
+        ));
+        b.mia(&format!(
+            "UPDATE trabajadores SET nombre = 'Persona suprimida', correo = NULL, deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'ana';
+             INSERT INTO meta (clave, valor) VALUES ('suprimidas', '[{{\"id\":\"ana\",\"fecha\":\"{F1}\"}}]');"
+        ));
+        let mut r = b.abrir();
+        let c = caso(&r, "trabajadores", "ana");
+        assert_eq!(
+            (c.caso.tipo, c.caso.borrado_aqui),
+            (TipoCaso::BorradoVsEditado, true)
+        );
+        assert_eq!(c.decision, Decision::Borrar);
+        r.masivo(Masivo {
+            accion: AccionMasiva::RestaurarTodo,
+            tipo: Some(TipoCaso::BorradoVsEditado),
+        });
+        assert_eq!(caso(&r, "trabajadores", "ana").decision, Decision::Borrar);
+        assert!(
+            r.decidir("trabajadores", "ana", Eleccion::Mantener)
+                .is_err()
+        );
+        assert_eq!(caso(&r, "trabajadores", "ana").decision, Decision::Borrar);
+        b.aplicar(&mut r);
+        assert!(!b.viva("trabajadores", "ana"));
+        assert_eq!(
+            b.uno("SELECT nombre FROM trabajadores WHERE id = 'ana'")
+                .unwrap(),
+            "Persona suprimida"
+        );
     }
 }

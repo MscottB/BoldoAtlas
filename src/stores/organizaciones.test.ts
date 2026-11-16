@@ -27,6 +27,7 @@ const c = vi.hoisted(() => ({
   leerMeta: vi.fn(),
   listarOrganizaciones: vi.fn(),
   listarRespaldos: vi.fn(),
+  podarRespaldosSuprimidas: vi.fn(),
   lote: vi.fn(),
   quitarOrganizacion: vi.fn(),
   respaldarAhora: vi.fn(),
@@ -77,6 +78,7 @@ beforeEach(() => {
   c.leerMeta.mockResolvedValue({});
   c.listarOrganizaciones.mockResolvedValue([]);
   c.listarRespaldos.mockResolvedValue([]);
+  c.podarRespaldosSuprimidas.mockResolvedValue(0);
   c.respaldarAhora.mockResolvedValue("x");
   c.sincronizarOrganizacion.mockResolvedValue(undefined);
   c.infoApp.mockResolvedValue({ baseId: "A", error: null });

@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const listarRespaldos = vi.hoisted(() => vi.fn());
 const respaldarAhora = vi.hoisted(() => vi.fn());
-vi.mock("@/db/cliente", () => ({ listarRespaldos, respaldarAhora }));
+const podarRespaldosSuprimidas = vi.hoisted(() => vi.fn());
+vi.mock("@/db/cliente", () => ({ listarRespaldos, respaldarAhora, podarRespaldosSuprimidas }));
 vi.mock("vue-sonner", () => ({ toast: vi.fn() }));
 
 const REVISION = 15 * 60_000;
@@ -31,6 +32,8 @@ beforeEach(() => {
   });
   listarRespaldos.mockReset();
   respaldarAhora.mockReset();
+  podarRespaldosSuprimidas.mockReset();
+  podarRespaldosSuprimidas.mockResolvedValue(0);
   respaldarAhora.mockResolvedValue("boldo.db");
 });
 afterEach(() => {
@@ -52,6 +55,16 @@ describe("respaldo automático con la app abierta", () => {
     expect(respaldarAhora).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(REVISION * 8);
     expect(respaldarAhora).toHaveBeenCalledTimes(1);
+  });
+
+  it("poda lo de las suprimidas en cada revisión, sea cual sea la frecuencia, y un fallo no la detiene", async () => {
+    frecuencia = "nunca";
+    podarRespaldosSuprimidas.mockRejectedValueOnce({ codigo: "fallo", detalle: "x" });
+    await iniciar(100);
+    expect(podarRespaldosSuprimidas).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(REVISION * 2);
+    expect(podarRespaldosSuprimidas).toHaveBeenCalledTimes(3);
+    expect(respaldarAhora).not.toHaveBeenCalled();
   });
 
   it("«Nunca» no respalda", async () => {

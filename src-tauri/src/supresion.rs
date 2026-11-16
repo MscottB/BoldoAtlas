@@ -2,10 +2,12 @@
 //! Así los respaldos viejos y los `.boldo` no la traen de vuelta (decisiones 5 a 7).
 
 use crate::respaldos::Fallo;
-use rusqlite::{Connection, TransactionBehavior};
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 
 const CLAVE: &str = "suprimidas";
+/// El nombre que queda si no hay otra suprimida de donde tomar el que puso la app.
+pub const RELLENO: &str = "Persona suprimida";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Suprimida {
@@ -13,29 +15,51 @@ pub struct Suprimida {
     pub fecha: String,
 }
 
-/// Lista vacía si no hay clave o el JSON no se entiende.
+/// Lista vacía si no hay clave o el JSON no se entiende; un error de SQL sí se propaga.
 pub fn leer(conn: &Connection) -> Result<Vec<Suprimida>, Fallo> {
     let texto: Option<String> = conn
         .query_row("SELECT valor FROM meta WHERE clave = ?1", [CLAVE], |f| {
             f.get(0)
         })
-        .ok();
+        .optional()?;
     Ok(texto
         .and_then(|t| serde_json::from_str(&t).ok())
         .unwrap_or_default())
 }
 
-/// Todo en una transacción. Repetirla no falla ni duplica: conserva la fecha de la primera vez.
-pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> Result<(), Fallo> {
+/// Suma a `meta.suprimidas` las que aún no estén. Se llama dentro de una transacción.
+fn anotar(conn: &Connection, nuevas: &[Suprimida]) -> Result<(), Fallo> {
     let mut lista = leer(conn)?;
-    if !lista.iter().any(|s| s.id == id) {
-        lista.push(Suprimida {
-            id: id.to_string(),
-            fecha: fecha.to_string(),
-        });
+    let antes = lista.len();
+    for n in nuevas {
+        if !lista.iter().any(|s| s.id == n.id) {
+            lista.push(n.clone());
+        }
+    }
+    if lista.len() == antes {
+        return Ok(());
     }
     let json = serde_json::to_string(&lista).map_err(|e| Fallo::de("fallo", e))?;
+    conn.execute(
+        "INSERT INTO meta (clave, valor) VALUES (?1, ?2)
+         ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+        (CLAVE, json),
+    )?;
+    Ok(())
+}
+
+/// Todo en una transacción. Repetirla no falla ni duplica: conserva la fecha de la primera vez.
+/// Si el id no tiene fila en `trabajadores`, no hace nada.
+pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> Result<(), Fallo> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let existe: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM trabajadores WHERE id = ?1)",
+        [id],
+        |f| f.get(0),
+    )?;
+    if !existe {
+        return Ok(());
+    }
     tx.execute(
         "UPDATE trabajadores SET nombre = ?2, correo = NULL, telefono = NULL, tipo_contrato_id = NULL,
              sede_id = NULL, jornada_id = NULL, foto_png = NULL, notas = NULL,
@@ -48,10 +72,12 @@ pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> 
          WHERE trabajador_id = ?1",
         (id, fecha),
     )?;
-    tx.execute(
-        "INSERT INTO meta (clave, valor) VALUES (?1, ?2)
-         ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
-        (CLAVE, json),
+    anotar(
+        &tx,
+        &[Suprimida {
+            id: id.to_string(),
+            fecha: fecha.to_string(),
+        }],
     )?;
     tx.execute(
         "UPDATE meta SET valor = CAST(CAST(valor AS INTEGER) + 1 AS TEXT) WHERE clave = 'data_revision'",
@@ -60,20 +86,27 @@ pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> 
     Ok(tx.commit()?)
 }
 
-/// Después de restaurar o reemplazar: vuelve a suprimir a las de la base que se fue, si su fila existe en la nueva.
-#[allow(dead_code)] // lo usan restaurar y reemplazar (Task 2)
-pub fn reaplicar(conn: &mut Connection, previas: &[Suprimida], relleno: &str) -> Result<(), Fallo> {
-    for p in previas {
-        let existe: bool = conn.query_row(
-            "SELECT EXISTS(SELECT 1 FROM trabajadores WHERE id = ?1)",
+/// Lo que se puso en lugar del nombre de la primera suprimida que tenga fila; `None` si no hay ninguna.
+pub fn relleno_de(conn: &Connection, previas: &[Suprimida]) -> Option<String> {
+    previas.iter().find_map(|p| {
+        conn.query_row(
+            "SELECT nombre FROM trabajadores WHERE id = ?1",
             [&p.id],
             |f| f.get(0),
-        )?;
-        if existe {
-            suprimir(conn, &p.id, relleno, &p.fecha)?;
-        }
+        )
+        .ok()
+    })
+}
+
+/// Después de restaurar o reemplazar: vuelve a suprimir a las de la base que se fue si su fila existe en la nueva, y une
+/// las listas (también los ids sin fila: si llegan después por otra vía, siguen reconocidos).
+pub fn reaplicar(conn: &mut Connection, previas: &[Suprimida], relleno: &str) -> Result<(), Fallo> {
+    for p in previas {
+        suprimir(conn, &p.id, relleno, &p.fecha)?;
     }
-    Ok(())
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    anotar(&tx, previas)?;
+    Ok(tx.commit()?)
 }
 
 #[cfg(test)]
@@ -219,6 +252,60 @@ mod tests {
             })
             .unwrap();
         assert_eq!(nombre, RELLENO);
-        assert_eq!(leer(&c).unwrap(), vec![previas[0].clone()]);
+        // también el id sin fila: si llega después por otra vía, sigue reconocido como suprimido
+        assert_eq!(leer(&c).unwrap(), previas);
+    }
+
+    #[test]
+    fn reaplicar_une_con_lo_que_ya_tenia_la_base_nueva() {
+        let (_d, _r, mut c) = base();
+        persona(&c, "t1", "Ana", "a@x.cl", "n");
+        c.execute("INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('t2', 'Beto', 'x', 'x')", [])
+            .unwrap();
+        suprimir(&mut c, "t2", RELLENO, FECHA).unwrap();
+        let previas = vec![Suprimida {
+            id: "t1".into(),
+            fecha: "2026-10-01T00:00:00.000Z".into(),
+        }];
+        reaplicar(&mut c, &previas, RELLENO).unwrap();
+        let ids: Vec<String> = leer(&c).unwrap().into_iter().map(|s| s.id).collect();
+        assert_eq!(ids, ["t2", "t1"]);
+    }
+
+    #[test]
+    fn leer_propaga_un_error_de_sql_en_vez_de_dar_lista_vacia() {
+        let (_d, _r, c) = base();
+        c.execute_batch("DROP TABLE meta; CREATE TABLE meta (clave TEXT);")
+            .unwrap();
+        assert!(leer(&c).is_err());
+    }
+
+    #[test]
+    fn leer_da_lista_vacia_sin_clave_o_con_json_ilegible() {
+        let (_d, _r, c) = base();
+        assert!(leer(&c).unwrap().is_empty());
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('suprimidas', 'no es json')",
+            [],
+        )
+        .unwrap();
+        assert!(leer(&c).unwrap().is_empty());
+    }
+
+    #[test]
+    fn suprimir_un_id_que_no_existe_no_anota_ni_sube_la_revision() {
+        let (_d, _r, mut c) = base();
+        let rev = |c: &Connection| -> String {
+            c.query_row(
+                "SELECT valor FROM meta WHERE clave = 'data_revision'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap()
+        };
+        let antes = rev(&c);
+        suprimir(&mut c, "fantasma", RELLENO, FECHA).unwrap();
+        assert!(leer(&c).unwrap().is_empty());
+        assert_eq!(rev(&c), antes);
     }
 }

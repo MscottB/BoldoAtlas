@@ -165,6 +165,7 @@ pub fn run() {
             fotos::fotos_guardar,
             fotos::fotos_compactar,
             comandos::suprimir_persona,
+            comandos::podar_respaldos_suprimidas,
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
             comandos::respaldar_antes_de_optimizar,
