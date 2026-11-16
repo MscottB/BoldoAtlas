@@ -11,6 +11,7 @@ mod organizaciones;
 mod respaldos;
 mod rutas;
 mod salida;
+mod supresion;
 
 use tauri::Manager;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
@@ -163,6 +164,7 @@ pub fn run() {
             fotos::foto_bytes,
             fotos::fotos_guardar,
             fotos::fotos_compactar,
+            comandos::suprimir_persona,
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
             comandos::respaldar_antes_de_optimizar,

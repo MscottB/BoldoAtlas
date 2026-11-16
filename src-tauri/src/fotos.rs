@@ -249,7 +249,7 @@ pub async fn fotos_guardar(app: AppHandle, request: Request<'_>) -> Result<usize
 
 /// Sin esto, lo que ocupaban las fotos queda como páginas libres y el archivo de la base no baja de tamaño. Con WAL, el
 /// VACUUM queda en el -wal: solo el checkpoint recorta el archivo.
-fn compactar(c: &Connection) -> rusqlite::Result<()> {
+pub(crate) fn compactar(c: &Connection) -> rusqlite::Result<()> {
     c.execute_batch("VACUUM")?;
     c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
 }
