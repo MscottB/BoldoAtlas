@@ -1090,6 +1090,10 @@
     "mantenedores": {
       "texto": "Job titles, contract types, sites, schedules, unit types and legends.",
       "abrir": "Manage lists"
+    },
+    "eliminados": {
+      "texto": "Deleted people, units and positions, to see and restore them.",
+      "abrir": "Open deleted"
     }
   },
   "mantenedores": {
@@ -1957,5 +1961,21 @@
         "etiquetas": "Tag"
       }
     }
+  },
+  "eliminados": {
+    "titulo": "Deleted",
+    "listas": "Deleted items",
+    "vacio": "Nothing deleted here.",
+    "tabs": {
+      "persona": "People",
+      "unidad": "Units",
+      "puesto": "Positions"
+    },
+    "eliminadoEl": "Deleted on {fecha}",
+    "restaurar": "Restore",
+    "vuelveVacia": "Comes back empty: what it had was moved to its parent when it was deleted.",
+    "primeroUnidad": "Restore the unit “{unidad}” first.",
+    "restaurado": "“{nombre}” was restored.",
+    "correoEnUso": "“{nombre}” was not restored: another person already uses their email."
   }
 }

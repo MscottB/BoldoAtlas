@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Check, ImagePlus, ListChecks, X } from "@lucide/vue";
+import { ArchiveRestore, Check, ImagePlus, ListChecks, X } from "@lucide/vue";
 import BotonCerrarVista from "@/components/BotonCerrarVista.vue";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import { Button } from "@/components/ui/button";
@@ -206,6 +206,17 @@ const quitarLogo = async () => {
         <RouterLink to="/configuracion/mantenedores">
           <ListChecks aria-hidden="true" />
           {{ t("config.mantenedores.abrir") }}
+        </RouterLink>
+      </Button>
+    </section>
+
+    <section class="grid gap-2" aria-labelledby="cfg-eliminados">
+      <h2 id="cfg-eliminados" class="font-medium">{{ t("eliminados.titulo") }}</h2>
+      <p class="text-sm text-muted-foreground">{{ t("config.eliminados.texto") }}</p>
+      <Button as-child variant="outline" class="w-fit">
+        <RouterLink to="/configuracion/eliminados">
+          <ArchiveRestore aria-hidden="true" />
+          {{ t("config.eliminados.abrir") }}
         </RouterLink>
       </Button>
     </section>

@@ -47,6 +47,11 @@ export const rutas: RouteRecordRaw[] = [
     component: () => import("@/vistas/VistaMantenedores.vue"),
   },
   {
+    path: "/configuracion/eliminados",
+    name: "eliminados",
+    component: () => import("@/vistas/VistaEliminados.vue"),
+  },
+  {
     path: "/ayuda/:pagina?",
     name: "ayuda",
     component: () => import("@/vistas/VistaAyuda.vue"),

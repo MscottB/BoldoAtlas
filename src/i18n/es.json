@@ -1090,6 +1090,10 @@
     "mantenedores": {
       "texto": "Cargos, tipos de contrato, sedes, jornadas, tipos de unidad y leyendas.",
       "abrir": "Abrir mantenedores"
+    },
+    "eliminados": {
+      "texto": "Personas, unidades y puestos eliminados, para verlos y restaurarlos.",
+      "abrir": "Abrir eliminados"
     }
   },
   "mantenedores": {
@@ -1957,5 +1961,21 @@
         "etiquetas": "Etiqueta"
       }
     }
+  },
+  "eliminados": {
+    "titulo": "Eliminados",
+    "listas": "Lo eliminado",
+    "vacio": "No hay nada eliminado aquí.",
+    "tabs": {
+      "persona": "Personas",
+      "unidad": "Unidades",
+      "puesto": "Puestos"
+    },
+    "eliminadoEl": "Eliminado el {fecha}",
+    "restaurar": "Restaurar",
+    "vuelveVacia": "Vuelve vacía: lo que tenía se movió a su superior al eliminarla.",
+    "primeroUnidad": "Primero restaura la unidad «{unidad}».",
+    "restaurado": "Se restauró «{nombre}».",
+    "correoEnUso": "No se restauró a «{nombre}»: otra persona ya usa su correo."
   }
 }

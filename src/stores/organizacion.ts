@@ -33,6 +33,7 @@ import * as P from "@/db/repos/puestos";
 import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
 import { SQL_HISTORICO } from "@/db/repos/historico";
+import type { Eliminado } from "@/features/eliminados/eliminados";
 import { guardarMeta } from "@/db/repos/meta";
 import { leerMarcas, type Marcas } from "@/features/revision/marcas";
 import { TIPOS_SEMILLA } from "@/db/repos/reemplazo";
@@ -393,6 +394,22 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => T.eliminarTrabajador(id),
       () => (ultimoBorrado.value = { tipo: "trabajador", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
+
+  /** Restaura desde la lista Eliminados. La unidad vuelve vacía (lo suyo ya se movió a su superior al eliminarla). */
+  async function restaurarEliminado(e: Eliminado): Promise<Resultado> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    const r = await escribir(() =>
+      e.tipo === "persona"
+        ? T.restaurarTrabajador(e.id)
+        : e.tipo === "puesto"
+          ? P.restaurarPuesto(e.id)
+          : U.restaurarUnidad(e.id, { hijos: [], puestos: [] }),
+    );
+    // el lote es una transacción: si el correo ya es de otra persona, no quedó nada a medias
+    return !r.ok && r.mensaje === traducirError("ux_trabajadores_correo")
+      ? { ...r, codigo: "correo_en_uso" }
+      : r;
+  }
 
   /** `comoJefatura`: el puesto nuevo queda de una vez como jefatura de su unidad (mismo lote: o se hace todo o nada). */
   const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0], comoJefatura = false) =>
@@ -982,6 +999,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     crearTrabajador,
     editarTrabajador,
     eliminarTrabajador,
+    restaurarEliminado,
     crearPuesto,
     editarPuesto,
     eliminarPuesto,

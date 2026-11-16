@@ -157,6 +157,45 @@ describe("trabajadores", () => {
     expect(s.error).toBe("Ya existe una persona con ese correo.");
   });
 
+  it("restaurarEliminado: si otra persona usa su correo, avisa con correo_en_uso y no cambia nada", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana", "ana@x.cl");
+    await s.eliminarTrabajador(ana);
+    await persona(s, "Otra", "ana@x.cl");
+    const antes = revision();
+    const r = await s.restaurarEliminado({
+      tipo: "persona",
+      id: ana,
+      nombre: "Ana",
+      fecha: "",
+      bloqueo: null,
+    });
+    expect(r).toMatchObject({
+      ok: false,
+      codigo: "correo_en_uso",
+      mensaje: "Ya existe una persona con ese correo.",
+    });
+    expect(revision()).toBe(antes);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Otra"]);
+    expect(
+      h.bd!.consultar("SELECT 1 FROM trabajadores WHERE id = ? AND deleted_at IS NOT NULL", [ana]),
+    ).toHaveLength(1);
+  });
+
+  it("restaurarEliminado: restaura a la persona; en solo lectura da el rechazo de siempre", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    await s.eliminarTrabajador(ana);
+    const e = { tipo: "persona" as const, id: ana, nombre: "Ana", fecha: "", bloqueo: null };
+    await s.verAFecha("2020-01-01");
+    const rechazo = await s.restaurarEliminado(e);
+    expect(rechazo).toEqual({ ok: false, mensaje: s.error });
+    expect(s.trabajadores).toHaveLength(0);
+    await s.verAFecha(null);
+    expect((await s.restaurarEliminado(e)).ok).toBe(true);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Ana"]);
+  });
+
   it("deshacer no hace nada una vez vencido", async () => {
     const s = nuevo();
     const ana = await persona(s, "Ana");
