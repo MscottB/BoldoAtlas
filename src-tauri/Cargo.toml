@@ -26,7 +26,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # ya lo usa Tauri: la carpeta de datos del usuario en cada sistema, antes de crear la app
 dirs = "7"
-rusqlite = { version = "0.41.0", features = ["bundled"] }
+rusqlite = { version = "0.42.0", features = ["bundled"] }
 uuid = { version = "1.29.0", features = ["v7"] }
 # la misma versión que ya trae Tauri: las fotos se guardan en base64 (src/fotos.rs)
 base64 = "0.23"
