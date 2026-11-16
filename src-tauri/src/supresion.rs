@@ -313,4 +313,91 @@ mod tests {
         assert!(leer(&c).unwrap().is_empty());
         assert_eq!(rev(&c), antes);
     }
+
+    fn revision(c: &Connection) -> i64 {
+        c.query_row(
+            "SELECT CAST(valor AS INTEGER) FROM meta WHERE clave = 'data_revision'",
+            [],
+            |f| f.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn suprimir_a_alguien_ya_eliminado_conserva_su_fecha_de_eliminacion() {
+        let (_d, _r, mut c) = base();
+        persona(&c, "t1", "Ana", "a@x.cl", "n");
+        let antes = "2026-10-01T00:00:00.000Z";
+        c.execute_batch(&format!(
+            "UPDATE trabajadores SET deleted_at = '{antes}' WHERE id = 't1';
+             UPDATE asignaciones SET deleted_at = '{antes}' WHERE trabajador_id = 't1';"
+        ))
+        .unwrap();
+        let rev = revision(&c);
+        suprimir(&mut c, "t1", RELLENO, FECHA).unwrap();
+        let (borrada, actualizada): (String, String) = c
+            .query_row(
+                "SELECT deleted_at, updated_at FROM trabajadores WHERE id = 't1'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(borrada, antes);
+        assert_eq!(actualizada, FECHA);
+        let (motivo, borrada): (Option<String>, String) = c
+            .query_row(
+                "SELECT motivo, deleted_at FROM asignaciones WHERE trabajador_id = 't1'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?)),
+            )
+            .unwrap();
+        assert!(motivo.is_none());
+        assert_eq!(borrada, antes);
+        assert_eq!(leer(&c).unwrap()[0].fecha, FECHA);
+        assert_eq!(revision(&c), rev + 1);
+    }
+
+    #[test]
+    fn suprimir_trata_todas_las_asignaciones_de_la_persona() {
+        let (_d, _r, mut c) = base();
+        persona(&c, "t1", "Ana", "a@x.cl", "n");
+        c.execute_batch(
+            "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('t2', 'Beto', 'x', 'x');
+             INSERT INTO puestos (id, unidad_id, cargo_id, created_at, updated_at) VALUES ('p2', 'u1', 'c1', 'x', 'x');
+             INSERT INTO asignaciones (id, trabajador_id, puesto_id, tipo, desde, motivo, created_at, updated_at)
+               VALUES ('a-t2', 't2', 'p2', 'titular', '2026-01-01', 'motivo de Beto', 'x', 'x');",
+        )
+        .unwrap();
+        let antes = "2026-10-01T00:00:00.000Z";
+        c.execute_batch(&format!(
+            "INSERT INTO asignaciones (id, trabajador_id, puesto_id, tipo, desde, hasta, motivo, created_at, updated_at)
+               VALUES ('a-fin', 't1', 'p1', 'titular', '2020-01-01', '2020-12-31', 'motivo fin', 'x', 'x');
+             INSERT INTO asignaciones (id, trabajador_id, puesto_id, tipo, desde, motivo, deleted_at, created_at, updated_at)
+               VALUES ('a-borrada', 't1', 'p1', 'titular', '2019-01-01', 'motivo borrada', '{antes}', 'x', 'x');"
+        ))
+        .unwrap();
+        suprimir(&mut c, "t1", RELLENO, FECHA).unwrap();
+        let filas = |id: &str| -> Vec<(String, Option<String>, Option<String>)> {
+            c.prepare(
+                "SELECT id, motivo, deleted_at FROM asignaciones WHERE trabajador_id = ?1 ORDER BY id",
+            )
+            .unwrap()
+            .query_map([id], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+        };
+        let de_t1 = filas("t1");
+        assert_eq!(de_t1.len(), 3);
+        assert!(de_t1.iter().all(|(_, motivo, _)| motivo.is_none()));
+        let borrada = |id: &str| de_t1.iter().find(|f| f.0 == id).unwrap().2.clone();
+        // vigente y terminada quedan eliminadas ahora; la que ya estaba eliminada conserva su fecha
+        assert_eq!(borrada("a-t1").as_deref(), Some(FECHA));
+        assert_eq!(borrada("a-fin").as_deref(), Some(FECHA));
+        assert_eq!(borrada("a-borrada").as_deref(), Some(antes));
+        // otra persona: intacta
+        let de_t2 = filas("t2");
+        assert_eq!(de_t2.len(), 1);
+        assert!(de_t2[0].1.is_some() && de_t2[0].2.is_none());
+    }
 }

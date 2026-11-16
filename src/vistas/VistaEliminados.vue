@@ -57,7 +57,12 @@ async function suprimir() {
 async function restaurar(e: Eliminado) {
   const r = await org.restaurarEliminado(e);
   if (!r.ok) {
-    toast.error(r.codigo === "correo_en_uso" ? t("eliminados.correoEnUso", { nombre: e.nombre }) : r.mensaje);
+    const claves: Record<string, string> = {
+      correo_en_uso: "eliminados.correoEnUso",
+      puesto_ocupado: "eliminados.puestoOcupado",
+    };
+    const clave = r.codigo ? claves[r.codigo] : undefined;
+    toast.error(clave ? t(clave, { nombre: e.nombre }) : r.mensaje);
     return;
   }
   toast(t("eliminados.restaurado", { nombre: e.nombre }));

@@ -34,7 +34,7 @@ Para llevarte una copia a otro lugar, pulsa **Abrir carpeta** y copia el archivo
 
 ## Antes de reemplazar los datos
 
-Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. De los de reemplazar y de restaurar se conservan los últimos 10 de cada tipo (antes se guardaban todos). Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
+Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. De los de reemplazar y de restaurar se conservan los últimos 10 de cada tipo. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
 
 ## Restaurar
 
@@ -53,7 +53,7 @@ Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la l
 
 ## Personas borradas definitivamente
 
-Al [borrar definitivamente](fichas.md#borrar-definitivamente) a alguien, sus datos siguen en los respaldos hechos antes. Por eso, a los **30 días** se borran los respaldos de esa organización hechos antes de ese borrado, de todo tipo.
+Al [borrar definitivamente](fichas.md#borrar-definitivamente) a alguien, sus datos siguen en los respaldos hechos antes. Por eso, a los **30 días**, la próxima vez que se abra la organización, se borran los respaldos de esa organización hechos antes de ese borrado, de todo tipo.
 
 - La limpieza corre mientras esa organización está abierta. Si no la abres, sus respaldos viejos esperan a la próxima vez que se abra.
 - Si restauras uno de esos respaldos antes de los 30 días, o usas **Reemplazar todo** con un `.boldo` viejo, la persona no vuelve: la app la borra otra vez.

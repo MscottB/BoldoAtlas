@@ -89,6 +89,23 @@ describe("unidades", () => {
     expect(bd.consultar("SELECT id FROM puestos WHERE unidad_id = ?", [u.id])).toHaveLength(3);
   });
 
+  it("restaurarUnidad vacía la jefatura si su puesto ya no es de la unidad", () => {
+    const { u, contenido } = arbolConContenido();
+    bd.aplicar(asignarJefe(u.id, contenido.puestos[0]));
+    bd.aplicar(eliminarUnidad(unidad(u.id), contenido));
+    bd.aplicar(restaurarUnidad(u.id, { hijos: [], puestos: [] }));
+    expect(unidad(u.id).deleted_at).toBeNull();
+    expect(unidad(u.id).jefe_puesto_id).toBeNull();
+  });
+
+  it("restaurarUnidad conserva la jefatura si sus puestos vuelven con ella", () => {
+    const { u, contenido } = arbolConContenido();
+    bd.aplicar(asignarJefe(u.id, contenido.puestos[0]));
+    bd.aplicar(eliminarUnidad(unidad(u.id), contenido));
+    bd.aplicar(restaurarUnidad(u.id, contenido));
+    expect(unidad(u.id).jefe_puesto_id).toBe(contenido.puestos[0]);
+  });
+
   it("eliminar una unidad sin contenido emite solo su baja y la de sus zonas", () => {
     const { u } = arbolConContenido();
     expect(eliminarUnidad(unidad(u.id), { hijos: [], puestos: [] })).toHaveLength(2);

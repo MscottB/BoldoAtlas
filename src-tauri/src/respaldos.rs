@@ -597,7 +597,13 @@ fn cambiar_base(
         borrar_bd(&copia)?;
         fs::copy(origen, &copia)?;
         let mut c = db::abrir(&copia)?;
-        db::migrar_con(&mut c, migraciones, dir)?;
+        // la copia previa a migrar sobra (el respaldo de origen sigue en su carpeta) y guardaría a la persona suprimida:
+        // va a una carpeta que se descarta, no a la de respaldos
+        let temporal = con_sufijo(&copia, ".migrando");
+        fs::create_dir_all(&temporal)?;
+        let migrada = db::migrar_con(&mut c, migraciones, &temporal);
+        let _ = fs::remove_dir_all(&temporal);
+        migrada?;
         db::asegurar_meta(&c)?;
         if !previas.is_empty() {
             supresion::reaplicar(&mut c, &previas, &relleno)?;
@@ -1007,6 +1013,46 @@ mod tests {
             .unwrap();
         assert_eq!(v, MIGRACIONES.len() as i64 + 1);
         c.execute("INSERT INTO extra VALUES (1)", []).unwrap();
+    }
+
+    #[test]
+    fn restaurar_con_migracion_no_deja_copia_de_la_suprimida_en_respaldos() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, respaldos, mut conn) = base(dir.path());
+        conn.execute_batch(
+            "INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at)
+               VALUES ('t1', 'Zacarías Únicoapellido', 'zz-unico@ejemplo.cl', 'x', 'x');",
+        )
+        .unwrap();
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        supresion::suprimir(
+            &mut conn,
+            "t1",
+            "Persona suprimida",
+            "2026-11-01T00:00:00.000Z",
+        )
+        .unwrap();
+        let antes = archivos(&respaldos);
+        let otra = [MIGRACIONES, &["CREATE TABLE extra (x INTEGER);"]].concat();
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, &otra).unwrap();
+        let despues = archivos(&respaldos);
+        // solo se suma la copia «antes de restaurar» (ya sin la persona); ninguna `antes-migracion-`
+        assert!(
+            despues.iter().all(|n| !n.starts_with(PREFIJO_MIGRACION)),
+            "{despues:?}"
+        );
+        assert_eq!(despues.len(), antes.len() + 1, "{despues:?}");
+        assert!(archivos(dir.path()).iter().all(|n| !n.contains("migrando")));
+        sin_rastro(&b.bd, &["Zacarías Únicoapellido", "zz-unico@ejemplo.cl"]);
+        for n in despues {
+            if n != nombre {
+                sin_rastro(
+                    &respaldos.join(n),
+                    &["Zacarías Únicoapellido", "zz-unico@ejemplo.cl"],
+                );
+            }
+        }
     }
 
     #[test]

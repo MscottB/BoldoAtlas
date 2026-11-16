@@ -1681,6 +1681,7 @@
       "revivir": "Restaurar con los datos del archivo",
       "sigueBorrada": "Que siga eliminado",
       "suprimida": "Borrada definitivamente: no se puede restaurar.",
+      "suprimidaNueva": "De una persona borrada definitivamente: no se agrega.",
       "borradaAqui": "Lo eliminaste en tu base; en el archivo sigue.",
       "borradaArchivo": "El archivo lo trae eliminado; en tu base sigue.",
       "reciente": {
@@ -1992,6 +1993,7 @@
     "primeroUnidad": "Primero restaura la unidad «{unidad}».",
     "restaurado": "Se restauró «{nombre}».",
     "correoEnUso": "No se restauró a «{nombre}»: otra persona ya usa su correo.",
+    "puestoOcupado": "No se restauró a «{nombre}»: su puesto ya lo ocupa otra persona.",
     "errorCargar": "No se pudo leer la lista de eliminados."
   },
   "suprimir": {
@@ -1999,7 +2001,7 @@
     "titulo": "¿Borrar definitivamente a «{nombre}»?",
     "queSeBorra": "Se borran su nombre, correo, teléfono, notas, foto y los demás datos de su ficha. Donde ocupó un puesto queda «Persona suprimida».",
     "noSeDeshace": "Esto no se puede deshacer.",
-    "respaldos": "Los respaldos anteriores que la guardan se borran solos a los 30 días.",
+    "respaldos": "Los respaldos anteriores que la guardan se borran solos a los 30 días, la próxima vez que se abra esta organización.",
     "escribe": "Para confirmar, escribe el nombre: {nombre}",
     "cancelar": "Cancelar",
     "confirmar": "Borrar definitivamente",

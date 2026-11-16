@@ -76,7 +76,9 @@ const verDatos = computed(() => props.fila.tipo !== "union");
     </div>
     <p v-if="explicacion && fila.restaurable" class="text-muted-foreground">{{ explicacion }}</p>
 
-    <p v-if="!fila.restaurable" class="text-muted-foreground">{{ t("intercambio.revisar.suprimida") }}</p>
+    <p v-if="!fila.restaurable" class="text-muted-foreground">
+      {{ t(fila.tipo === "nuevo" ? "intercambio.revisar.suprimidaNueva" : "intercambio.revisar.suprimida") }}
+    </p>
     <fieldset v-else class="flex flex-wrap items-center gap-x-4 gap-y-1">
       <legend class="sr-only">{{ t("intercambio.revisar.queHacerCon", { nombre }) }}</legend>
 

@@ -18,7 +18,7 @@ In **Settings** (at the bottom of the menu) you adjust:
 
 ## Deleted
 
-**Settings › Open deleted** shows what you deleted, in the **People**, **Units** and **Positions** tabs, from the most recent to the oldest. **Restore** brings it back.
+In **Settings › Deleted**, **Open deleted** shows what you deleted, in the **People**, **Units** and **Positions** tabs, from the most recent to the oldest. **Restore** brings it back.
 
 - A unit comes back empty: what it had was moved to its parent when it was deleted.
 - A position or a subunit is not restored while its parent unit is still deleted: restore that unit first.

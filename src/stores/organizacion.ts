@@ -435,10 +435,12 @@ export const useOrganizacion = defineStore("organizacion", () => {
           ? P.restaurarPuesto(e.id)
           : U.restaurarUnidad(e.id, { hijos: [], puestos: [] }),
     );
-    // el lote es una transacción: si el correo ya es de otra persona, no quedó nada a medias
-    return !r.ok && r.mensaje === traducirError("ux_trabajadores_correo")
-      ? { ...r, codigo: "correo_en_uso" }
-      : r;
+    // el lote es una transacción: si el correo ya es de otra persona o su puesto ya lo ocupa otra, no quedó nada a medias
+    if (r.ok) return r;
+    if (r.mensaje === traducirError("ux_trabajadores_correo")) return { ...r, codigo: "correo_en_uso" };
+    if (r.mensaje === traducirError("UNIQUE constraint failed: asignaciones.puesto_id"))
+      return { ...r, codigo: "puesto_ocupado" };
+    return r;
   }
 
   /** `comoJefatura`: el puesto nuevo queda de una vez como jefatura de su unidad (mismo lote: o se hace todo o nada). */

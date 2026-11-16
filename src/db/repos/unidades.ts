@@ -87,6 +87,17 @@ export function eliminarUnidad(u: Unidad, contenido: Contenido, destino = u.pare
   return [...reubicar(destino, contenido), fijarBorrado("unidades", u.id, true), bajaConUnidad(u.id)];
 }
 
+/** Si el puesto de jefatura ya no es de la unidad (al eliminarla se movió al superior), la jefatura queda vacía. */
 export function restaurarUnidad(id: string, contenido: Contenido): Sentencia[] {
-  return [vuelveConUnidad(id), fijarBorrado("unidades", id, false), ...reubicar(id, contenido)];
+  return [
+    vuelveConUnidad(id),
+    fijarBorrado("unidades", id, false),
+    ...reubicar(id, contenido),
+    {
+      sql: `UPDATE unidades SET jefe_puesto_id = NULL, updated_at = ?
+            WHERE id = ? AND jefe_puesto_id IS NOT NULL
+              AND jefe_puesto_id NOT IN (SELECT id FROM puestos WHERE unidad_id = ?)`,
+      params: [ahora(), id, id],
+    },
+  ];
 }

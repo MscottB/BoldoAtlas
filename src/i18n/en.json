@@ -1681,6 +1681,7 @@
       "revivir": "Restore with the file's data",
       "sigueBorrada": "Leave it deleted",
       "suprimida": "Permanently erased: it cannot be restored.",
+      "suprimidaNueva": "Belongs to a permanently erased person: it is not added.",
       "borradaAqui": "You deleted it in your database; it is still in the file.",
       "borradaArchivo": "The file has it deleted; it is still in your database.",
       "reciente": {
@@ -1992,6 +1993,7 @@
     "primeroUnidad": "Restore the unit “{unidad}” first.",
     "restaurado": "“{nombre}” was restored.",
     "correoEnUso": "“{nombre}” was not restored: another person already uses their email.",
+    "puestoOcupado": "“{nombre}” was not restored: another person already holds their position.",
     "errorCargar": "The list of deleted items could not be read."
   },
   "suprimir": {
@@ -1999,7 +2001,7 @@
     "titulo": "Delete “{nombre}” permanently?",
     "queSeBorra": "Their name, email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”.",
     "noSeDeshace": "This cannot be undone.",
-    "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days.",
+    "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days, the next time this organization is opened.",
     "escribe": "To confirm, type the name: {nombre}",
     "cancelar": "Cancel",
     "confirmar": "Delete permanently",

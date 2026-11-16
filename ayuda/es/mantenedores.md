@@ -18,7 +18,7 @@ En **Configuración** (abajo en el menú) ajustas:
 
 ## Eliminados
 
-**Configuración › Abrir eliminados** muestra lo que eliminaste, en las pestañas **Personas**, **Unidades** y **Puestos**, de lo más reciente a lo más antiguo. **Restaurar** lo devuelve.
+En **Configuración › Eliminados**, **Abrir eliminados** muestra lo que eliminaste, en las pestañas **Personas**, **Unidades** y **Puestos**, de lo más reciente a lo más antiguo. **Restaurar** lo devuelve.
 
 - Una unidad vuelve vacía: lo que tenía se movió a su superior al eliminarla.
 - Un puesto o una subunidad no se restaura mientras su unidad superior siga eliminada: primero restaura esa unidad.

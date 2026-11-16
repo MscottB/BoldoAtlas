@@ -5,11 +5,11 @@ import type { FilaCaso } from "@/db/cliente";
 import { i18n } from "@/i18n";
 import FilaCasoVue from "./FilaCaso.vue";
 
-const fila = (restaurable: boolean): FilaCaso => ({
+const fila = (restaurable: boolean, tipo: FilaCaso["tipo"] = "borrado_vs_editado"): FilaCaso => ({
   tabla: "trabajadores",
   id: "t1",
   nombre: "Persona suprimida",
-  tipo: "borrado_vs_editado",
+  tipo,
   columnas: [],
   eleccion: { que: "borrar" },
   preseleccionada: { que: "borrar" },
@@ -30,6 +30,13 @@ describe("fila de la revisión", () => {
     const s = await html(fila(false));
     expect(s).not.toContain('type="radio"');
     expect(s).toContain(i18n.global.t("intercambio.revisar.suprimida"));
+  });
+
+  it("la nueva de una suprimida dice que no se agrega, no que no se restaura", async () => {
+    const s = await html(fila(false, "nuevo"));
+    expect(s).not.toContain('type="checkbox"');
+    expect(s).toContain(i18n.global.t("intercambio.revisar.suprimidaNueva"));
+    expect(s).not.toContain(i18n.global.t("intercambio.revisar.suprimida"));
   });
 
   it("la restaurable sigue con sus opciones", async () => {

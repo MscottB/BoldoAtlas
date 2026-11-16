@@ -562,14 +562,15 @@ impl Revision {
     /// Marca como no restaurables las filas de las personas de `meta.suprimidas`: ni «Restaurar todo» ni elegirlo una a una.
     fn proteger_suprimidas(&mut self, conn: &Connection, imp: &Connection) -> Result<(), Fallo> {
         // las de aquí y las que trae el archivo: una asignación nueva de una suprimida tampoco entra
+        let suprimidas = supresion::leer(conn)?;
         for base in [conn, imp] {
             let mut asignaciones =
                 base.prepare("SELECT id FROM asignaciones WHERE trabajador_id = ?1")?;
-            for s in supresion::leer(conn)? {
+            for s in &suprimidas {
                 for id in asignaciones.query_map([&s.id], |f| f.get::<_, String>(0))? {
                     self.intocables.insert(("asignaciones", id?));
                 }
-                self.intocables.insert(("trabajadores", s.id));
+                self.intocables.insert(("trabajadores", s.id.clone()));
             }
         }
         for x in &mut self.casos {
@@ -2155,10 +2156,11 @@ pub fn abrir(
         esquema.insert(tabla, fusion::describir(&imp, tabla)?);
     }
     let mut r = Revision::nueva(c, lugares, esquema);
-    r.proteger_suprimidas(conn, &imp)?;
     if let Some(a) = anterior {
         r.heredar(a, conn)?;
     }
+    // después de heredar: un «Agregar» elegido antes de suprimir a la persona no debe sobrevivir a comparar de nuevo
+    r.proteger_suprimidas(conn, &imp)?;
     let v = verificar(conn, i, &r, || seguir(1, 1))?;
     r.anotar_verificacion(v);
     Ok(r)
@@ -5520,5 +5522,31 @@ mod tests {
         );
         b.aplicar(&mut r);
         assert!(!b.hay("asignaciones", "as-nueva"));
+    }
+
+    #[test]
+    fn comparar_de_nuevo_no_hereda_un_agregar_de_alguien_suprimido_despues() {
+        let mut b = banco();
+        b.archivo(
+            "INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, hasta, motivo, created_at, updated_at)
+             VALUES ('as-nueva', 'p-hija', 'ana', 'titular', '2019-01-01', '2019-06-01', 'motivo-nuevo', 'x', 'x');",
+        );
+        let mut r = b.abrir();
+        r.decidir("asignaciones", "as-nueva", Eleccion::Agregar)
+            .unwrap();
+        assert_eq!(
+            caso(&r, "asignaciones", "as-nueva").decision,
+            Decision::Agregar
+        );
+        // entre una revisión y la otra, se la borra definitivamente
+        b.mia(&format!(
+            "UPDATE trabajadores SET nombre = 'Persona suprimida', correo = NULL, deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'ana';
+             INSERT INTO meta (clave, valor) VALUES ('suprimidas', '[{{\"id\":\"ana\",\"fecha\":\"{F1}\"}}]');"
+        ));
+        let r2 = abrir(&mut b.local, &b.i, Lugares::new(), Some(&r), |_, _| true).unwrap();
+        assert_eq!(
+            caso(&r2, "asignaciones", "as-nueva").decision,
+            Decision::Omitir
+        );
     }
 }

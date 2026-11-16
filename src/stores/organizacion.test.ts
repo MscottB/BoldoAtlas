@@ -194,6 +194,30 @@ describe("trabajadores", () => {
     ).toHaveLength(1);
   });
 
+  it("restaurarEliminado: si su puesto ya lo ocupa otra persona, avisa con puesto_ocupado y no restaura nada", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    const beto = await persona(s, "Beto");
+    await s.asignarTitular(p, ana, "2026-01-01");
+    await s.eliminarTrabajador(ana);
+    expect((await s.asignarTitular(p, beto, "2026-02-01")).ok).toBe(true);
+    const antes = revision();
+    const r = await s.restaurarEliminado({
+      tipo: "persona",
+      id: ana,
+      nombre: "Ana",
+      fecha: "",
+      bloqueo: null,
+    });
+    expect(r).toMatchObject({ ok: false, codigo: "puesto_ocupado" });
+    expect(revision()).toBe(antes);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Beto"]);
+    expect(
+      h.bd!.consultar("SELECT 1 FROM asignaciones WHERE trabajador_id = ? AND deleted_at IS NULL", [ana]),
+    ).toHaveLength(0);
+  });
+
   it("restaurarEliminado: restaura a la persona; en solo lectura da el rechazo de siempre", async () => {
     const s = nuevo();
     const ana = await persona(s, "Ana");

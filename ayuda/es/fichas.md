@@ -73,7 +73,7 @@ En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es t
 
 - Borra su nombre, correo, teléfono, notas, foto y los demás datos de su ficha, y el motivo de sus cambios de puesto.
 - Donde ocupó un puesto queda «Persona suprimida»: el organigrama a una fecha y las vacantes no cambian.
-- **No se puede deshacer** y no hace un respaldo antes. Los respaldos anteriores que la guardan se borran solos a los 30 días (ver [Respaldos](respaldos.md#personas-borradas-definitivamente)).
+- **No se puede deshacer** y no hace un respaldo antes. Los respaldos anteriores que la guardan se borran solos a los 30 días, la próxima vez que se abra la organización (ver [Respaldos](respaldos.md#personas-borradas-definitivamente)).
 
 ## Exportar sus datos
 
