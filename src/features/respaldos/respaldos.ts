@@ -1,5 +1,11 @@
 import { toast } from "vue-sonner";
-import { listarRespaldos, podarRespaldosSuprimidas, respaldarAhora, type AvanceEliminar, type FalloRespaldo } from "@/db/cliente";
+import {
+  listarRespaldos,
+  podarRespaldosSuprimidas,
+  respaldarAhora,
+  type AvanceEliminar,
+  type FalloRespaldo,
+} from "@/db/cliente";
 import { i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
 import { leerPreferencia } from "@/lib/preferencias";

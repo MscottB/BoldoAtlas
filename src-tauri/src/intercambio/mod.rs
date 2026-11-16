@@ -1594,6 +1594,13 @@ mod tests {
     #[test]
     fn reemplazar_no_revive_a_la_suprimida() {
         let (d, origen) = base_con_datos();
+        origen
+            .execute_batch(
+                "UPDATE trabajadores SET nombre = 'Zacarías Únicoapellido', correo = 'zz-unico@ejemplo.cl',
+                        notas = 'nota-secreta-123', foto_png = 'Zm90by11bmljbw==' WHERE id = 'ana';
+                 UPDATE asignaciones SET motivo = 'motivo-privado-456' WHERE trabajador_id = 'ana';",
+            )
+            .unwrap();
         let (archivo, codigo) = exportar(&origen, d.path(), None);
         let (dd, bd, respaldos, mut conn) = destino();
         conn.execute(
@@ -1627,12 +1634,36 @@ mod tests {
             .unwrap();
         assert_eq!(nombre, "Persona suprimida");
         assert!(correo.is_none() && borrada.is_some());
+        let motivos: i64 = c
+            .query_row(
+                "SELECT count(*) FROM asignaciones WHERE trabajador_id = 'ana' AND (motivo IS NOT NULL OR deleted_at IS NULL)",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(motivos, 0);
         let ids: Vec<String> = crate::supresion::leer(&c)
             .unwrap()
             .into_iter()
             .map(|s| s.id)
             .collect();
         assert_eq!(ids, ["ana", "sin-fila"]);
+        drop(c);
+        for a in [bd.clone(), respaldos::con_sufijo(&bd, "-wal")] {
+            let Ok(bytes) = fs::read(&a) else { continue };
+            for t in [
+                "Zacarías Únicoapellido",
+                "zz-unico@ejemplo.cl",
+                "Zm90by11bmljbw==",
+                "nota-secreta-123",
+                "motivo-privado-456",
+            ] {
+                assert!(
+                    !bytes.windows(t.len()).any(|w| w == t.as_bytes()),
+                    "{t} sigue en {a:?}"
+                );
+            }
+        }
     }
 }
 

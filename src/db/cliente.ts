@@ -451,6 +451,8 @@ export interface FilaCaso {
   dudosa: boolean;
   masReciente: Lado;
   borradoAqui: boolean;
+  /** Falso si es de una persona suprimida: no se puede restaurar ni agregar. */
+  restaurable: boolean;
 }
 
 export interface ValorCampo {

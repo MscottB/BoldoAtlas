@@ -322,6 +322,8 @@ pub struct FilaPagina {
     pub dudosa: bool,
     pub mas_reciente: Lado,
     pub borrado_aqui: bool,
+    /// Falso si es de una persona suprimida: no se puede restaurar ni agregar, y la interfaz no lo ofrece.
+    pub restaurable: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -558,16 +560,31 @@ impl Revision {
     }
 
     /// Marca como no restaurables las filas de las personas de `meta.suprimidas`: ni «Restaurar todo» ni elegirlo una a una.
-    fn proteger_suprimidas(&mut self, conn: &Connection) -> Result<(), Fallo> {
-        let mut asignaciones =
-            conn.prepare("SELECT id FROM asignaciones WHERE trabajador_id = ?1")?;
-        for s in supresion::leer(conn)? {
-            for id in asignaciones.query_map([&s.id], |f| f.get::<_, String>(0))? {
-                self.intocables.insert(("asignaciones", id?));
+    fn proteger_suprimidas(&mut self, conn: &Connection, imp: &Connection) -> Result<(), Fallo> {
+        // las de aquí y las que trae el archivo: una asignación nueva de una suprimida tampoco entra
+        for base in [conn, imp] {
+            let mut asignaciones =
+                base.prepare("SELECT id FROM asignaciones WHERE trabajador_id = ?1")?;
+            for s in supresion::leer(conn)? {
+                for id in asignaciones.query_map([&s.id], |f| f.get::<_, String>(0))? {
+                    self.intocables.insert(("asignaciones", id?));
+                }
+                self.intocables.insert(("trabajadores", s.id));
             }
-            self.intocables.insert(("trabajadores", s.id));
+        }
+        for x in &mut self.casos {
+            if x.caso.tipo == TipoCaso::Nuevo
+                && self.intocables.contains(&(x.caso.tabla, x.caso.id.clone()))
+            {
+                x.decision = Decision::Omitir;
+            }
         }
         Ok(())
+    }
+
+    /// Lo que no se puede traer del archivo: ni restaurar, ni agregar.
+    fn intocable(&self, c: &Caso) -> bool {
+        self.intocables.contains(&(c.tabla, c.id.clone()))
     }
 
     /// Comparar de nuevo: lo decidido sigue en las filas que no cambiaron.
@@ -726,7 +743,11 @@ impl Revision {
                 );
                 let duplicado = tipo == TipoCaso::DuplicadoPersona;
                 let decision = match otra {
-                    Eleccion::Agregar if tipo == TipoCaso::Nuevo => Decision::Agregar,
+                    Eleccion::Agregar
+                        if tipo == TipoCaso::Nuevo && !self.intocable(&self.casos[k].caso) =>
+                    {
+                        Decision::Agregar
+                    }
                     Eleccion::Omitir if tipo == TipoCaso::Nuevo => Decision::Omitir,
                     Eleccion::Campos { archivo } if tipo == TipoCaso::Diferente => {
                         let d = self.esquema.get(tabla).ok_or_else(desconocido)?;
@@ -748,7 +769,7 @@ impl Revision {
                     Eleccion::Mantener
                         if borrado
                             && !(self.casos[k].caso.borrado_aqui
-                                && self.intocables.contains(&(tabla, id.to_string()))) =>
+                                && self.intocable(&self.casos[k].caso)) =>
                     {
                         Decision::Mantener
                     }
@@ -805,7 +826,11 @@ impl Revision {
                         (A::Recientes, TipoCaso::Diferente) => preseleccion(c),
                         (A::TodoMio, TipoCaso::Diferente) => Decision::Campos(0),
                         (A::TodoArchivo, TipoCaso::Diferente) => Decision::Campos(c.columnas),
-                        (A::AgregarTodo, TipoCaso::Nuevo) => Decision::Agregar,
+                        (A::AgregarTodo, TipoCaso::Nuevo)
+                            if !intocables.contains(&(c.tabla, c.id.clone())) =>
+                        {
+                            Decision::Agregar
+                        }
                         (A::OmitirTodo, TipoCaso::Nuevo) => Decision::Omitir,
                         // «Mantener»: todo como en esta base. Lo borrado aquí no revive sin decirlo.
                         (
@@ -1026,6 +1051,7 @@ impl Revision {
                     dudosa: c.dudosa,
                     mas_reciente: c.mas_reciente,
                     borrado_aqui: c.borrado_aqui,
+                    restaurable: !self.intocable(c),
                 })
             })
             .collect::<Result<_, Fallo>>()?;
@@ -2129,7 +2155,7 @@ pub fn abrir(
         esquema.insert(tabla, fusion::describir(&imp, tabla)?);
     }
     let mut r = Revision::nueva(c, lugares, esquema);
-    r.proteger_suprimidas(conn)?;
+    r.proteger_suprimidas(conn, &imp)?;
     if let Some(a) = anterior {
         r.heredar(a, conn)?;
     }
@@ -5401,6 +5427,13 @@ mod tests {
             "UPDATE trabajadores SET nombre = 'Persona suprimida', correo = NULL, deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'ana';
              INSERT INTO meta (clave, valor) VALUES ('suprimidas', '[{{\"id\":\"ana\",\"fecha\":\"{F1}\"}}]');"
         ));
+        // sus asignaciones también: aquí eliminadas y sin motivo, y el archivo las trae editadas con motivo
+        b.archivo(&format!(
+            "UPDATE asignaciones SET motivo = 'motivo-del-archivo', updated_at = '{F2}' WHERE id = 'as-rama';"
+        ));
+        b.mia(&format!(
+            "UPDATE asignaciones SET motivo = NULL, deleted_at = '{F1}', updated_at = '{F1}' WHERE trabajador_id = 'ana';"
+        ));
         let mut r = b.abrir();
         let c = caso(&r, "trabajadores", "ana");
         assert_eq!(
@@ -5408,11 +5441,37 @@ mod tests {
             (TipoCaso::BorradoVsEditado, true)
         );
         assert_eq!(c.decision, Decision::Borrar);
+        let a = caso(&r, "asignaciones", "as-rama");
+        assert_eq!(
+            (a.caso.tipo, a.caso.borrado_aqui),
+            (TipoCaso::BorradoVsEditado, true)
+        );
         r.masivo(Masivo {
             accion: AccionMasiva::RestaurarTodo,
             tipo: Some(TipoCaso::BorradoVsEditado),
         });
         assert_eq!(caso(&r, "trabajadores", "ana").decision, Decision::Borrar);
+        assert_eq!(
+            caso(&r, "asignaciones", "as-rama").decision,
+            Decision::Borrar
+        );
+        assert!(
+            r.decidir("asignaciones", "as-rama", Eleccion::Mantener)
+                .is_err()
+        );
+        let filtro = Filtro {
+            tipo: None,
+            tabla: None,
+            solo_dudosas: false,
+            desde: 0,
+            cuantos: 100,
+        };
+        let p = r
+            .pagina(&b.local, &b.i.solo_lectura().unwrap(), &filtro)
+            .unwrap();
+        // la persona y sus asignaciones: ninguna se puede restaurar
+        assert_eq!(p.filas.len(), 3);
+        assert!(p.filas.iter().all(|f| !f.restaurable));
         assert!(
             r.decidir("trabajadores", "ana", Eleccion::Mantener)
                 .is_err()
@@ -5420,10 +5479,46 @@ mod tests {
         assert_eq!(caso(&r, "trabajadores", "ana").decision, Decision::Borrar);
         b.aplicar(&mut r);
         assert!(!b.viva("trabajadores", "ana"));
+        assert!(!b.viva("asignaciones", "as-rama"));
         assert_eq!(
             b.uno("SELECT nombre FROM trabajadores WHERE id = 'ana'")
                 .unwrap(),
             "Persona suprimida"
         );
+        assert_eq!(
+            b.uno("SELECT motivo FROM asignaciones WHERE id = 'as-rama'"),
+            None
+        );
+    }
+
+    #[test]
+    fn una_asignacion_nueva_de_la_suprimida_no_entra() {
+        let mut b = banco();
+        b.archivo(
+            "INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, hasta, motivo, created_at, updated_at)
+             VALUES ('as-nueva', 'p-hija', 'ana', 'titular', '2019-01-01', '2019-06-01', 'motivo-nuevo', 'x', 'x');",
+        );
+        b.mia(&format!(
+            "UPDATE trabajadores SET nombre = 'Persona suprimida', correo = NULL, deleted_at = '{F1}', updated_at = '{F1}' WHERE id = 'ana';
+             INSERT INTO meta (clave, valor) VALUES ('suprimidas', '[{{\"id\":\"ana\",\"fecha\":\"{F1}\"}}]');"
+        ));
+        let mut r = b.abrir();
+        let c = caso(&r, "asignaciones", "as-nueva");
+        assert_eq!(c.caso.tipo, TipoCaso::Nuevo);
+        assert_eq!(c.decision, Decision::Omitir);
+        r.masivo(Masivo {
+            accion: AccionMasiva::AgregarTodo,
+            tipo: Some(TipoCaso::Nuevo),
+        });
+        assert_eq!(
+            caso(&r, "asignaciones", "as-nueva").decision,
+            Decision::Omitir
+        );
+        assert!(
+            r.decidir("asignaciones", "as-nueva", Eleccion::Agregar)
+                .is_err()
+        );
+        b.aplicar(&mut r);
+        assert!(!b.hay("asignaciones", "as-nueva"));
     }
 }

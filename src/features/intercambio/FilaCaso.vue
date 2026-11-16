@@ -26,9 +26,7 @@ async function verDetalle() {
 const nombre = computed(() => props.fila.nombre || t("intercambio.revisar.sinNombre"));
 
 // Diferente: qué columnas se toman del archivo
-const delArchivo = computed(() =>
-  props.fila.eleccion.que === "campos" ? props.fila.eleccion.archivo : [],
-);
+const delArchivo = computed(() => (props.fila.eleccion.que === "campos" ? props.fila.eleccion.archivo : []));
 const ladoEntero = computed(() => {
   const d = delArchivo.value.length;
   if (d === 0) return "mio";
@@ -76,9 +74,10 @@ const verDatos = computed(() => props.fila.tipo !== "union");
         {{ t("intercambio.revisar.fechaDudosa") }}
       </span>
     </div>
-    <p v-if="explicacion" class="text-muted-foreground">{{ explicacion }}</p>
+    <p v-if="explicacion && fila.restaurable" class="text-muted-foreground">{{ explicacion }}</p>
 
-    <fieldset class="flex flex-wrap items-center gap-x-4 gap-y-1">
+    <p v-if="!fila.restaurable" class="text-muted-foreground">{{ t("intercambio.revisar.suprimida") }}</p>
+    <fieldset v-else class="flex flex-wrap items-center gap-x-4 gap-y-1">
       <legend class="sr-only">{{ t("intercambio.revisar.queHacerCon", { nombre }) }}</legend>
 
       <template v-if="fila.tipo === 'nuevo'">
@@ -98,7 +97,12 @@ const verDatos = computed(() => props.fila.tipo !== "union");
           {{ t("intercambio.revisar.lo_mio") }}
         </label>
         <label class="flex items-center gap-2">
-          <input type="radio" :name="grupo" :checked="ladoEntero === 'archivo'" @change="fila_entera('archivo')" />
+          <input
+            type="radio"
+            :name="grupo"
+            :checked="ladoEntero === 'archivo'"
+            @change="fila_entera('archivo')"
+          />
           {{ t("intercambio.revisar.lo_del_archivo") }}
         </label>
         <span v-if="ladoEntero === 'mezcla'" class="text-muted-foreground">
@@ -200,7 +204,11 @@ const verDatos = computed(() => props.fila.tipo !== "union");
       </dl>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <caption class="sr-only">{{ t("intercambio.revisar.camposDe", { nombre }) }}</caption>
+          <caption class="sr-only">
+            {{
+              t("intercambio.revisar.camposDe", { nombre })
+            }}
+          </caption>
           <thead>
             <tr class="border-b text-xs text-muted-foreground">
               <th scope="col" class="py-1 pr-3 font-medium">{{ t("intercambio.revisar.campo") }}</th>
@@ -226,7 +234,9 @@ const verDatos = computed(() => props.fila.tipo !== "union");
                   <span class="min-w-0 break-words">{{ textoValor(c.columna, c.mio) }}</span>
                 </label>
                 <span v-else>{{ textoValor(c.columna, c.mio) }}</span>
-                <span v-if="c.mio.cortado" class="text-xs text-muted-foreground"> {{ t("intercambio.revisar.cortado") }}</span>
+                <span v-if="c.mio.cortado" class="text-xs text-muted-foreground">
+                  {{ t("intercambio.revisar.cortado") }}</span
+                >
               </td>
               <td class="py-1 pr-3 break-words">
                 <label v-if="fila.tipo === 'diferente'" class="flex items-start gap-2">
@@ -241,7 +251,9 @@ const verDatos = computed(() => props.fila.tipo !== "union");
                   <span class="min-w-0 break-words">{{ textoValor(c.columna, c.archivo) }}</span>
                 </label>
                 <span v-else>{{ textoValor(c.columna, c.archivo) }}</span>
-                <span v-if="c.archivo.cortado" class="text-xs text-muted-foreground"> {{ t("intercambio.revisar.cortado") }}</span>
+                <span v-if="c.archivo.cortado" class="text-xs text-muted-foreground">
+                  {{ t("intercambio.revisar.cortado") }}</span
+                >
               </td>
             </tr>
           </tbody>

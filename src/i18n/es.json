@@ -1674,6 +1674,7 @@
       "borrar": "Borrar",
       "revivir": "Restaurar con los datos del archivo",
       "sigueBorrada": "Que siga eliminado",
+      "suprimida": "Borrada definitivamente: no se puede restaurar.",
       "borradaAqui": "Lo eliminaste en tu base; en el archivo sigue.",
       "borradaArchivo": "El archivo lo trae eliminado; en tu base sigue.",
       "reciente": {

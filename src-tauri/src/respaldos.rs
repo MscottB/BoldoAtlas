@@ -586,7 +586,7 @@ fn cambiar_base(
         let (previas, relleno) = match conexion.as_ref() {
             Some(a) => {
                 let previas = supresion::leer(a)?;
-                let relleno = supresion::relleno_de(a, &previas);
+                let relleno = supresion::relleno_de(a, &previas)?;
                 (
                     previas,
                     relleno.unwrap_or_else(|| supresion::RELLENO.into()),
@@ -601,6 +601,8 @@ fn cambiar_base(
         db::asegurar_meta(&c)?;
         if !previas.is_empty() {
             supresion::reaplicar(&mut c, &previas, &relleno)?;
+            // los UPDATE dejan los datos en páginas libres: se compacta antes de que sea la base viva
+            crate::fotos::compactar(&c)?;
         }
         // la identidad es de la base, no de lo que llega: de ella cuelgan sus pestañas y preferencias
         c.execute(
@@ -1457,13 +1459,32 @@ mod tests {
         );
     }
 
+    /// Que ningún dato único de la persona siga en el archivo de la base ni en su WAL.
+    fn sin_rastro(bd: &Path, textos: &[&str]) {
+        for a in [bd.to_path_buf(), con_sufijo(bd, "-wal")] {
+            let Ok(bytes) = fs::read(&a) else { continue };
+            for t in textos {
+                assert!(
+                    !bytes.windows(t.len()).any(|w| w == t.as_bytes()),
+                    "{t} sigue en {a:?}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn restaurar_no_revive_a_la_suprimida() {
         let dir = tempfile::tempdir().unwrap();
         let (b, respaldos, mut conn) = base(dir.path());
-        conn.execute(
-            "INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at) VALUES ('t1', 'Ana', 'ana@x.cl', 'x', 'x')",
-            [],
+        conn.execute_batch(
+            "INSERT INTO trabajadores (id, nombre, correo, telefono, foto_png, notas, created_at, updated_at)
+               VALUES ('t1', 'Zacarías Únicoapellido', 'zz-unico@ejemplo.cl', '+56 9 7777 8888', 'Zm90by11bmljbw==', 'nota-secreta-123', 'x', 'x');
+             INSERT INTO unidades (id, tipo_id, nombre, created_at, updated_at)
+               VALUES ('u1', '00000000-0000-7000-8000-000000000001', 'U', 'x', 'x');
+             INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c1', 'C', 'x', 'x');
+             INSERT INTO puestos (id, unidad_id, cargo_id, created_at, updated_at) VALUES ('p1', 'u1', 'c1', 'x', 'x');
+             INSERT INTO asignaciones (id, trabajador_id, puesto_id, tipo, desde, motivo, created_at, updated_at)
+               VALUES ('a1', 't1', 'p1', 'titular', '2026-01-01', 'motivo-privado-456', 'x', 'x');",
         )
         .unwrap();
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
@@ -1477,17 +1498,39 @@ mod tests {
         let mut slot = Some(conn);
         restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
         let c = db::abrir(&b.bd).unwrap();
-        let (n, correo, borrada): (String, Option<String>, Option<String>) = c
+        let (n, nulos, borrada): (String, i64, Option<String>) = c
             .query_row(
-                "SELECT nombre, correo, deleted_at FROM trabajadores WHERE id = 't1'",
+                "SELECT nombre, (correo IS NULL) + (telefono IS NULL) + (foto_png IS NULL) + (notas IS NULL), deleted_at
+                 FROM trabajadores WHERE id = 't1'",
                 [],
                 |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
             )
             .unwrap();
         assert_eq!(n, "Persona suprimida");
-        assert!(correo.is_none() && borrada.is_some());
+        assert_eq!(nulos, 4);
+        assert!(borrada.is_some());
+        let (motivo, borrada): (Option<String>, Option<String>) = c
+            .query_row(
+                "SELECT motivo, deleted_at FROM asignaciones WHERE id = 'a1'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?)),
+            )
+            .unwrap();
+        assert!(motivo.is_none() && borrada.is_some());
         let lista = supresion::leer(&c).unwrap();
         assert_eq!(lista.len(), 1);
         assert_eq!(lista[0].id, "t1");
+        drop(c);
+        sin_rastro(
+            &b.bd,
+            &[
+                "Zacarías Únicoapellido",
+                "zz-unico@ejemplo.cl",
+                "+56 9 7777 8888",
+                "Zm90by11bmljbw==",
+                "nota-secreta-123",
+                "motivo-privado-456",
+            ],
+        );
     }
 }

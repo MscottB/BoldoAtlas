@@ -1674,6 +1674,7 @@
       "borrar": "Delete",
       "revivir": "Restore with the file's data",
       "sigueBorrada": "Leave it deleted",
+      "suprimida": "Permanently erased: it cannot be restored.",
       "borradaAqui": "You deleted it in your database; it is still in the file.",
       "borradaArchivo": "The file has it deleted; it is still in your database.",
       "reciente": {

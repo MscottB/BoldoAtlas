@@ -87,15 +87,20 @@ pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> 
 }
 
 /// Lo que se puso en lugar del nombre de la primera suprimida que tenga fila; `None` si no hay ninguna.
-pub fn relleno_de(conn: &Connection, previas: &[Suprimida]) -> Option<String> {
-    previas.iter().find_map(|p| {
-        conn.query_row(
-            "SELECT nombre FROM trabajadores WHERE id = ?1",
-            [&p.id],
-            |f| f.get(0),
-        )
-        .ok()
-    })
+pub fn relleno_de(conn: &Connection, previas: &[Suprimida]) -> Result<Option<String>, Fallo> {
+    for p in previas {
+        let nombre = conn
+            .query_row(
+                "SELECT nombre FROM trabajadores WHERE id = ?1",
+                [&p.id],
+                |f| f.get(0),
+            )
+            .optional()?;
+        if nombre.is_some() {
+            return Ok(nombre);
+        }
+    }
+    Ok(None)
 }
 
 /// Después de restaurar o reemplazar: vuelve a suprimir a las de la base que se fue si su fila existe en la nueva, y une
