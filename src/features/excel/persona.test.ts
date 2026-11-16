@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { celdaExcel } from "./libro";
 import { hojasPersona, type AsignacionHistorica } from "./persona";
 
 const t = (clave: string) => `[${clave}]`;
@@ -92,9 +93,9 @@ describe("hojasPersona", () => {
       nombres,
       t,
     );
-    const notas = datos!.filas[6]![1];
-    expect(notas).toBe("=1+1");
-    expect(typeof notas).toBe("string");
-    expect(puestos!.filas[0]![5]).toBe("@x");
+    // lo que escribir.ts hace con cada celda: un string va como texto, nunca como fórmula
+    const celdas = [datos!.filas[6]![1], puestos!.filas[0]![5]].map(celdaExcel);
+    expect(celdas).toEqual(["=1+1", "@x"]);
+    expect(celdas.every((c) => typeof c === "string")).toBe(true);
   });
 });

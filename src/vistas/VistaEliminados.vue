@@ -19,6 +19,7 @@ import {
 } from "@/features/eliminados/eliminados";
 import ListaEliminados from "@/features/eliminados/ListaEliminados.vue";
 import DialogoSuprimir from "@/features/trabajadores/DialogoSuprimir.vue";
+import { usarSuprimirPendiente } from "@/features/trabajadores/suprimir";
 import { useOrganizacion } from "@/stores/organizacion";
 
 const TIPOS: TipoEliminado[] = ["persona", "unidad", "puesto"];
@@ -43,13 +44,10 @@ async function cargar() {
   }
 }
 
-const porSuprimir = ref<Eliminado | null>(null);
-const confirmando = computed({
-  get: () => porSuprimir.value !== null,
-  set: (v) => v || (porSuprimir.value = null),
-});
+const { pendiente: porSuprimir, abierto: confirmando, pedir } = usarSuprimirPendiente<Eliminado>();
 async function suprimir() {
-  const e = porSuprimir.value!;
+  const e = porSuprimir.value;
+  if (!e) return;
   const r = await org.suprimirPersona(e.id);
   if (!r.ok) return void toast.error(r.mensaje);
   toast(t("suprimir.suprimida", { nombre: e.nombre }), { duration: 8000 });
@@ -90,7 +88,7 @@ onMounted(cargar);
           :filas="deTipo(tipo)"
           :solo-lectura="org.soloLectura"
           @restaurar="restaurar"
-          @suprimir="porSuprimir = $event"
+          @suprimir="pedir"
         />
       </TabsContent>
     </Tabs>
