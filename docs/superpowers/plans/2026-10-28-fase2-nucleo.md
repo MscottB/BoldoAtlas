@@ -635,9 +635,12 @@ Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase públ
 ### Task 22b: Revisar y decidir (spec §9, modo C)
 - Comparar lo importado con lo local, decidir por registro o por campo, y resolver duplicados, referencias rotas y ciclos antes de aplicar, en una sola transacción. La comparación vive en Rust (`src-tauri/src/intercambio/comparar.rs`).
 
-### Task 19b: Borrado definitivo y datos de una persona
-- Suprimir a una persona de verdad, también de los respaldos antiguos tras un plazo, y del historial de la 19c. Exportar los datos de una persona (acceso y portabilidad).
-- Decisión pendiente del autor: cuántos respaldos `boldo-antes-de-*` conservar.
+### Task 19b: Eliminados, borrado definitivo y datos de una persona
+- **Dos maneras de borrar (pedido del autor, 2026-11-15).** «Eliminar» sigue siendo borrado lógico, como hoy (`deleted_at`): se puede recuperar. «Borrar definitivamente» es la supresión de verdad. Hay que elegir con conocimiento: el diálogo de cada una dice qué pasa con los datos.
+- **Eliminados:** una lista para ver lo eliminado (personas, unidades y puestos), con quién y cuándo, y **Restaurar** más allá de los 8 segundos de «Deshacer». Restaurar a una persona devuelve sus asignaciones borradas con ella (`restaurarTrabajador` ya lo hace). La marca de borrado se sigue usando en `.boldo` y en la fusión para que lo eliminado no reaparezca al importar.
+- **Borrar definitivamente**, desde Eliminados o desde la ficha, escribiendo el nombre para confirmar: quita de la base nombre, correo, teléfono, notas, foto y valores de su ficha, y los quita del historial de la 19c. Sus asignaciones pasadas quedan como «Persona suprimida» para que el organigrama a una fecha y las vacantes no cambien. Los respaldos con sus datos se borran tras un plazo, y el diálogo lo dice.
+- Exportar los datos de una persona (acceso y portabilidad).
+- Decisión pendiente del autor: cuántos respaldos `boldo-antes-de-*` conservar y el plazo para que se borren los que guardan a una persona suprimida.
 
 ### Task 19c: Historial de cambios
 - Triggers que guardan antes y después por lote. Bitácora, deshacer y rehacer persistentes (Ctrl+Z, Ctrl+Y) y panel «volver a este punto». Deshacer una acción antigua solo si nada posterior tocó esas filas; si no, avisar. Con retención, y sale antes que la 19d.
@@ -649,7 +652,8 @@ Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase públ
 - Impide ver y editar sin contraseña; agregar, cambiar y quitar. Si se olvida, se recupera con la contraseña de la base. Solo protege de verdad junto con la base cifrada, y así se explica.
 
 ### Task 19e: Página «Seguridad y privacidad» (al final)
-- En el sitio y la ayuda, es y en: «te ayuda a cumplir» Ley 21.719 y RGPD, tabla honesta de lo que hace la app y lo que le toca a la organización, y nota de que no es asesoría legal. Revisar el estado de la ley chilena al publicar: rige el 1 de diciembre de 2026 salvo que se apruebe el proyecto que la posterga.
+- En el sitio y la ayuda, es y en: «te ayuda a cumplir» Ley 21.719 y RGPD, tabla honesta de lo que hace la app y lo que le toca a la organización, y nota de que no es asesoría legal.
+- Explicar las dos maneras de borrar de la 19b: «Eliminar» oculta y se puede recuperar, así que los datos siguen en el archivo y en los respaldos; para atender una solicitud de supresión se usa «Borrar definitivamente». Decidir cuánto tiempo conservar los datos le toca a la organización. Los niveles de exportación sin personas de la 23b sirven para compartir la estructura sin datos personales. Revisar el estado de la ley chilena al publicar: rige el 1 de diciembre de 2026 salvo que se apruebe el proyecto que la posterga.
 
 ---
 
@@ -667,7 +671,8 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 
 ### Task 23b: Capturas y PDF para organigramas grandes (spec §11 "Capturas" y "PDF")
 - Es la base de la Fase 4: `treeSvg.ts`, SVG, PNG y PDF con `pdfmake`, con tamaño de hoja, orientación y reparto en varias páginas con marcas de continuación. Probarlo con la organización grande.
-- PPTX después, en su propia entrega.
+- **Niveles de detalle y formatos (pedido del autor, 2026-11-15),** en spec §11 "Niveles de detalle": Estructura, Presentación y Como en pantalla; PNG (fondo blanco o transparente, 1x a 4x), JPG, SVG y PDF, y **Copiar imagen** para pegar en PowerPoint o en un correo. Funciones puras con pruebas para lo que lleva cada nivel; prueba obligatoria: Estructura no tiene ningún nombre, correo ni foto de una persona.
+- PPTX editable en la 23i.
 - Incluir zonas y `zona_unidades` en el SVG, el PNG y el PDF.
 
 ### Task 23c: Manual de organización y funciones (spec §11 "PDF")
@@ -681,14 +686,17 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 - La primera migración con `ALTER TABLE` necesita una prueba de la comparación exacta del esquema de `.boldo` y `restaurar`, porque SQLite reescribe el texto guardado: entre una base nueva y una migrada, y entre archivos de versiones anteriores.
 - Comprobar que el campo viaja y se revisa en `.boldo` y en la fusión (22a y 22b). La diferencia de costo en la comparación llega con los escenarios (Fase 5); el indicador, con la Fase 3.
 
-### Task 23f: Archivos de otros sistemas en la carga masiva (spec §10)
-- Necesita la carga masiva (Task 25a) y archivos reales de Buk y Talana; sin ellos no se implementa.
+### Task 23f: Archivos de otros sistemas en la carga masiva (quitada)
+- Quitada por decisión del autor (2026-11-15): no hay acceso a Buk ni a Talana para conseguir archivos de muestra. La reemplaza «Asignar columnas» de la 25a, que sirve para el Excel o CSV de cualquier sistema sin prometer formatos que no se han visto.
 
 ### Task 23g: Colorear por antigüedad y personas a cargo (spec §8 "Personalizar el diagrama")
 - Funciones puras con pruebas para los rangos, y leyenda a la vista. No depende de otras fases.
 
 ### Task 23h: Notas por cambio en un escenario (spec §8 "Escenarios")
 - Con los escenarios (Tasks 26a y 26b): tabla `escenario_notas`, edición en el escenario, y las notas en la comparación y en su Excel.
+
+### Task 23i: PPTX editable (spec §11 "Niveles de detalle")
+- Después de la 23b: el organigrama como formas y conectores de PowerPoint que se pueden mover y cambiar, una diapositiva por rama, con los mismos niveles de detalle. Probar que abre en PowerPoint y en LibreOffice Impress, y con la organización grande.
 
 ---
 
@@ -705,7 +713,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 2. 23a y 23g: Excel y colorear. El autor acepta que el Excel salga antes que la seguridad restante, con la aceptación obligatoria de spec §11.
 3. 19b, 19c, 19d, 19f y 19e: seguridad y privacidad.
 4. 23b, 23c, 23d y luego 23e: PDF, manual, visor y costo por puesto (dato delicado, después de la base cifrada).
-5. 25a: carga masiva. 23f, cuando haya archivos reales de Buk y Talana.
+5. 25a: carga masiva, con asignar columnas para archivos de otros sistemas. 23i: PPTX editable.
 6. 24a, 24b y 24c: procesos, RACI e indicadores.
 7. 26a, 26b y 23h: escenarios, comparación y notas.
 
@@ -770,6 +778,7 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 ### Task 25a: Carga masiva desde Excel y CSV (spec §10)
 - Plantilla con `Unidades`, `Trabajadores` y `Puestos`, validación en `src/features/carga/validar.ts`, vista previa obligatoria con errores por fila y archivo de errores, respaldo y una sola transacción. Reutiliza `exceljs` de la 23a.
 - El archivo no es confiable: límites de tamaño y de filas, y el texto nunca se interpreta como fórmula.
+- **Asignar columnas (2026-11-15, reemplaza la 23f):** si los encabezados no son los de la plantilla, la vista previa propone a qué columna va cada una por parecido del nombre y se corrige a mano; las que no se usan se ignoran. Función pura con pruebas, también con encabezados repetidos, vacíos o con tildes distintas.
 
 ### Task 26a: Escenarios (spec §8 "Escenarios")
 - Guardar como escenario, abrir, insignia en la barra y volver a la base principal. La portable los guarda dentro de su carpeta. Definir con la 19d cómo van cifrados: la spec los describe sin cifrar, y hay que corregirla.
@@ -782,7 +791,7 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 **Varias organizaciones:** spec `docs/superpowers/specs/2026-11-02-varias-organizaciones-design.md`, con su propio plan.
 
 **Lo que falta y no se muestra en la web** (el autor: «eso es interno»). Sin orden decidido, salvo lo que ya tiene tarea:
-- Crear o cargar desde una planilla: Task 25a. Archivos de Buk y Talana: Task 23f.
+- Crear o cargar desde una planilla: Task 25a, que también asigna las columnas del archivo de otro sistema.
 - Exportar a PDF, PNG y SVG: Task 23b. Excel: Task 23a.
 - Cifrado y permisos locales: Tasks 19b a 19f, según su alcance.
 - Colaboración en línea, usuarios y permisos compartidos: fuera de alcance en la spec (§1); la Pro con Vorsync es el lugar previsto. Sin tarea.
