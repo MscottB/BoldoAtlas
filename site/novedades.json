@@ -4,12 +4,12 @@
     "pagina": "fichas",
     "es": {
       "titulo": "Eliminados y borrado definitivo",
-      "texto": "En Configuración, Eliminados lista las personas, unidades y puestos que eliminaste, y Restaurar los devuelve. Para quitar a una persona de verdad, Borrar definitivamente borra sus datos y deja «Persona suprimida» donde ocupó un puesto; no se puede deshacer. Exportar sus datos guarda en Excel lo de su ficha y sus puestos. Los respaldos anteriores que la guardan se borran solos a los 30 días, la próxima vez que se abra esta organización.",
+      "texto": "En Configuración, Eliminados lista las personas, unidades y puestos que eliminaste, y Restaurar los devuelve. Para quitar a una persona de verdad, Borrar definitivamente borra sus datos y deja «Persona suprimida» donde ocupó un puesto; no se puede deshacer. Exportar sus datos guarda en Excel lo de su ficha y sus puestos. Los respaldos anteriores que la guardan se borran solos a los 30 días, cuando esa organización esté abierta.",
       "ancla": "borrar-definitivamente"
     },
     "en": {
       "titulo": "Deleted items and permanent deletion",
-      "texto": "In Settings, Deleted lists the people, units and positions you deleted, and Restore brings them back. To remove a person for good, Delete permanently erases their data and leaves \"Deleted person\" where they held a position; it cannot be undone. Export their data saves their record and positions to Excel. Earlier backups that still hold them are deleted automatically after 30 days, the next time this organization is opened.",
+      "texto": "In Settings, Deleted lists the people, units and positions you deleted, and Restore brings them back. To remove a person for good, Delete permanently erases their data and leaves \"Deleted person\" where they held a position; it cannot be undone. Export their data saves their record and positions to Excel. Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open.",
       "ancla": "delete-permanently"
     }
   },

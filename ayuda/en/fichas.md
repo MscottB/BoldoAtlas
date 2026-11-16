@@ -73,7 +73,7 @@ Optimizing does not change the person's modification date: it is the same photo 
 
 - It erases their name, email, phone, notes, photo and the rest of their record, and the reason for their position changes.
 - Where they held a position it shows "Deleted person": the chart at a date and the vacancies do not change.
-- It **cannot be undone** and no backup is made first. Earlier backups that still hold them are deleted automatically after 30 days, the next time the organization is opened (see [Backups](respaldos.md#people-deleted-permanently)).
+- It **cannot be undone** and no backup is made first. Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open (see [Backups](respaldos.md#people-deleted-permanently)).
 
 ## Export their data
 

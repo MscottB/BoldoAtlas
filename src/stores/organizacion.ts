@@ -63,7 +63,7 @@ import { EJEMPLO } from "./ejemplo";
 
 /** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
-  | { ok: true; id?: string }
+  | { ok: true; id?: string; aviso?: string }
   | { ok: false; mensaje: string; codigo?: string; detalle?: string; avance?: AvanceEliminar };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
@@ -408,11 +408,18 @@ export const useOrganizacion = defineStore("organizacion", () => {
     if (!cargado.value) return rechazar(t("store.sinCargar"));
     pendientes.value++;
     try {
-      await suprimir(id, t("store.personaSuprimida"));
+      // si Rust ya la borró pero no pudo compactar el archivo, cuenta como hecho, con aviso
+      let aviso: string | undefined;
+      try {
+        await suprimir(id, t("store.personaSuprimida"));
+      } catch (e) {
+        if ((e as { codigo?: string } | null)?.codigo !== "sin_compactar") throw e;
+        aviso = t("suprimir.sinCompactar");
+      }
       // ya no hay a quién deshacerle nada
       if (ultimoBorrado.value?.id === id) ultimoBorrado.value = null;
       const r = await cargar();
-      return r.ok || !r.mensaje ? { ok: true } : r;
+      return r.ok || !r.mensaje ? { ok: true, aviso } : r;
     } catch (e) {
       const r = fallo(e);
       if (!(e instanceof BaseCambiada)) {

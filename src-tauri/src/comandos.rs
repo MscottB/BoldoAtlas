@@ -1222,7 +1222,8 @@ pub async fn suprimir_persona(
                     f.get(0)
                 })?;
             crate::supresion::suprimir(c, &id, &relleno, &fecha)?;
-            Ok(crate::fotos::compactar(c)?)
+            // la supresión ya se guardó: si no se pudo compactar, quien llama lo sabe por su propio código
+            crate::fotos::compactar(c).map_err(|e| Fallo::de("sin_compactar", e))
         })
     })
     .await

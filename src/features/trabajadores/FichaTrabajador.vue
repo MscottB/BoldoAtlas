@@ -189,7 +189,8 @@ async function guardarAhora() {
       form.id = r.id!;
       notasGuardadas.value = datos.notas;
       if (form.foto_png === datos.foto_png) form.foto_png = undefined; // ya guardada: ahora la sirve Rust
-    } else fallidos.value = { [r.mensaje === t("errores.correoDuplicado") ? "correo" : "general"]: r.mensaje };
+    } else
+      fallidos.value = { [r.mensaje === t("errores.correoDuplicado") ? "correo" : "general"]: r.mensaje };
     return;
   }
   const guardado = org.trabajadores.find((x) => x.id === id.value);
@@ -357,7 +358,8 @@ async function suprimir() {
   const r = await org.suprimirPersona(id.value!);
   if (!r.ok) return void toast.error(r.mensaje);
   ficha.cerrar();
-  toast(t("suprimir.suprimida", { nombre }), { duration: 8000 }); // sin Deshacer: no vuelve
+  // sin Deshacer: no vuelve
+  toast(r.aviso ?? t("suprimir.suprimida", { nombre }), { duration: 8000 });
 }
 
 /** Lo que se exporta de esta persona: lo guardado (no lo que está a medio escribir), con notas y todo su historial. */
@@ -534,12 +536,7 @@ const alAbrir = (e: Event) => {
             <div class="grid gap-1.5 sm:col-span-2">
               <p class="text-sm font-medium">{{ t("ficha.foto") }}</p>
               <div class="flex items-center gap-2">
-                <img
-                  v-if="vistaFoto"
-                  :src="vistaFoto"
-                  alt=""
-                  class="size-12 rounded-full object-cover"
-                />
+                <img v-if="vistaFoto" :src="vistaFoto" alt="" class="size-12 rounded-full object-cover" />
                 <template v-if="!alLado">
                   <input
                     ref="inputFoto"

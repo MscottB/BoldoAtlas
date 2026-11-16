@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
   antesDeLote: null as (() => Promise<void>) | null,
   antesDeMeta: null as (() => Promise<void>) | null,
   suprimidas: [] as [string, string][],
+  sinCompactar: false,
 }));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
@@ -36,6 +37,8 @@ vi.mock("@/db/cliente", () => ({
         params: [relleno, id],
       },
     ]);
+    // Rust ya la borró, pero el checkpoint quedó ocupado
+    if (h.sinCompactar) throw { codigo: "sin_compactar", detalle: "wal_checkpoint no terminó" };
   },
   leerMeta: async () => {
     await h.antesDeMeta?.();
@@ -255,6 +258,21 @@ describe("trabajadores", () => {
     expect(s.trabajadores).toHaveLength(0);
     expect(s.ultimoBorrado).toBeNull();
     expect((await s.deshacer()).ok).toBe(false);
+  });
+
+  it("suprimirPersona: si Rust la borró pero no pudo compactar, es ok con aviso y recarga", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    h.suprimidas.length = 0;
+    h.sinCompactar = true;
+    try {
+      const r = await s.suprimirPersona(ana);
+      expect(r).toEqual({ ok: true, aviso: i18n.global.t("suprimir.sinCompactar") });
+      expect(s.error).toBeNull();
+      expect(s.trabajadores).toHaveLength(0);
+    } finally {
+      h.sinCompactar = false;
+    }
   });
 
   it("deshacer no hace nada una vez vencido", async () => {

@@ -50,7 +50,7 @@ async function suprimir() {
   if (!e) return;
   const r = await org.suprimirPersona(e.id);
   if (!r.ok) return void toast.error(r.mensaje);
-  toast(t("suprimir.suprimida", { nombre: e.nombre }), { duration: 8000 });
+  toast(r.aviso ?? t("suprimir.suprimida", { nombre: e.nombre }), { duration: 8000 });
   await cargar();
 }
 

@@ -581,6 +581,11 @@ fn cambiar_base(
     let (bd, dir) = (&base.bd, &base.respaldos);
     // Se prepara (y migra) una copia aparte: la base actual no se toca hasta el reemplazo final.
     let copia = copia_de_base(base);
+    let temporal = con_sufijo(&copia, ".migrando");
+    // lo que dejó una restauración interrumpida: puede guardar a una suprimida y la poda no llega a esta carpeta
+    if temporal.exists() {
+        fs::remove_dir_all(&temporal)?;
+    }
     let mut reemplazar = || -> Result<(), Fallo> {
         // las suprimidas de la base que se va no vuelven con lo que llega (decisión 6)
         let (previas, relleno) = match conexion.as_ref() {
@@ -599,11 +604,12 @@ fn cambiar_base(
         let mut c = db::abrir(&copia)?;
         // la copia previa a migrar sobra (el respaldo de origen sigue en su carpeta) y guardaría a la persona suprimida:
         // va a una carpeta que se descarta, no a la de respaldos
-        let temporal = con_sufijo(&copia, ".migrando");
         fs::create_dir_all(&temporal)?;
         let migrada = db::migrar_con(&mut c, migraciones, &temporal);
-        let _ = fs::remove_dir_all(&temporal);
+        // si no se puede borrar, falla (la base no se toca): ahí no la alcanza ninguna poda, y el próximo intento la quita
+        let quitada = fs::remove_dir_all(&temporal);
         migrada?;
+        quitada?;
         db::asegurar_meta(&c)?;
         if !previas.is_empty() {
             supresion::reaplicar(&mut c, &previas, &relleno)?;
@@ -1053,6 +1059,23 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn restaurar_borra_un_migrando_que_quedo_de_antes() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, respaldos, conn) = base(dir.path());
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        let viejo = con_sufijo(&copia_de_base(&b), ".migrando");
+        fs::create_dir_all(&viejo).unwrap();
+        fs::write(
+            viejo.join("antes-migracion-1-20260101000000-abcd1234.db"),
+            b"x",
+        )
+        .unwrap();
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        assert!(!viejo.exists());
     }
 
     #[test]

@@ -53,9 +53,9 @@ Before replacing anything, BoldoAtlas backs up your current data: it appears in 
 
 ## People deleted permanently
 
-When you [delete someone permanently](fichas.md#delete-permanently), their data is still in the backups made before. That is why, after **30 days**, the next time the organization is opened, the backups of that organization made before that deletion are erased, of every kind.
+When you [delete someone permanently](fichas.md#delete-permanently), their data is still in the backups made before. That is why, after **30 days**, the backups of that organization made before that deletion are erased, of every kind.
 
-- The cleanup runs while that organization is open. If you do not open it, its old backups wait until the next time it is opened.
+- The cleanup runs while that organization is open (it is checked every few minutes). If you do not open it, its old backups wait until the next time it is opened.
 - If you restore one of those backups before the 30 days, or use **Replace everything** with an old `.boldo`, the person does not come back: the app deletes them again.
 
 **See also:** [Getting started](inicio.md) · [Updates](actualizaciones.md).

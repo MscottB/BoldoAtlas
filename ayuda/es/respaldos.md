@@ -53,9 +53,9 @@ Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la l
 
 ## Personas borradas definitivamente
 
-Al [borrar definitivamente](fichas.md#borrar-definitivamente) a alguien, sus datos siguen en los respaldos hechos antes. Por eso, a los **30 días**, la próxima vez que se abra la organización, se borran los respaldos de esa organización hechos antes de ese borrado, de todo tipo.
+Al [borrar definitivamente](fichas.md#borrar-definitivamente) a alguien, sus datos siguen en los respaldos hechos antes. Por eso, a los **30 días**, se borran los respaldos de esa organización hechos antes de ese borrado, de todo tipo.
 
-- La limpieza corre mientras esa organización está abierta. Si no la abres, sus respaldos viejos esperan a la próxima vez que se abra.
+- La limpieza corre mientras esa organización está abierta (se revisa cada pocos minutos). Si no la abres, sus respaldos viejos esperan a la próxima vez que se abra.
 - Si restauras uno de esos respaldos antes de los 30 días, o usas **Reemplazar todo** con un `.boldo` viejo, la persona no vuelve: la app la borra otra vez.
 
 **Ver también:** [Inicio](inicio.md) · [Actualizaciones](actualizaciones.md).
