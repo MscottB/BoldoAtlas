@@ -16,6 +16,15 @@ In **Settings** (at the bottom of the menu) you adjust:
 
 ![Settings screen with the organization name, the logo, the list of organizations, the theme, the language and the Manage lists button.](../img/en/mantenedores-config.webp "Settings. 1: organization name. 2: logo. 3: organizations. 4: theme. 5: language. 6: open the lists."){width=760 height=922}
 
+## Deleted
+
+**Settings › Open deleted** shows what you deleted, in the **People**, **Units** and **Positions** tabs, from the most recent to the oldest. **Restore** brings it back.
+
+- A unit comes back empty: what it had was moved to its parent when it was deleted.
+- A position or a subunit is not restored while its parent unit is still deleted: restore that unit first.
+- If the person's email is already used by someone else, it tells you and does not restore them.
+- People deleted permanently do not show up here (see [Delete permanently](fichas.md#delete-permanently)).
+
 ## Lists
 
 The **lists** hold the values you pick from (job titles, contract types, sites…) in person records and the tree. Open them from **Settings › Manage lists**; each one has its own tab:

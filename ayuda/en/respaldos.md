@@ -34,7 +34,7 @@ To take a copy elsewhere, press **Open folder** and copy the `.db` file you want
 
 ## Before replacing your data
 
-When you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. The ones made before replacing and before restoring are never deleted automatically. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
+When you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. For the ones made before replacing and before restoring, the last 10 of each kind are kept (before, all of them were kept). If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
 
 ## Restore
 
@@ -45,10 +45,17 @@ Restoring replaces the open organization's data with the backup's and restarts t
 1. Under **View and restore backups**, press **Restore** on the row of the backup you want to recover.
 2. Confirm with **Restore and restart**.
 
-Before replacing anything, BoldoAtlas backs up your current data: it appears in the list marked **Before restore** and is never deleted automatically. If you picked the wrong backup, restore that one. Then your data is replaced with the backup and the app restarts.
+Before replacing anything, BoldoAtlas backs up your current data: it appears in the list marked **Before restore**; the last 10 of these are kept. If you picked the wrong backup, restore that one. Then your data is replaced with the backup and the app restarts.
 
 - A backup made with an older version of BoldoAtlas is updated when restored. One made with a **newer** version cannot be restored until you update BoldoAtlas.
 - If another BoldoAtlas window is open with the same data, close it first.
 - If anything fails, your current data stays as it was.
+
+## People deleted permanently
+
+When you [delete someone permanently](fichas.md#delete-permanently), their data is still in the backups made before. That is why, after **30 days**, the backups of that organization made before that deletion are erased, of every kind.
+
+- The cleanup runs while that organization is open. If you do not open it, its old backups wait until the next time it is opened.
+- If you restore one of those backups before the 30 days, or use **Replace everything** with an old `.boldo`, the person does not come back: the app deletes them again.
 
 **See also:** [Getting started](inicio.md) · [Updates](actualizaciones.md).

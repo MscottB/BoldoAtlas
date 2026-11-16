@@ -16,6 +16,15 @@ En **Configuración** (abajo en el menú) ajustas:
 
 ![Pantalla de Configuración con el nombre de la organización, el logo, la lista de organizaciones, el tema, el idioma y el botón Abrir mantenedores.](../img/es/mantenedores-config.webp "Configuración. 1: nombre de la organización. 2: logo. 3: organizaciones. 4: tema. 5: idioma. 6: abrir los mantenedores."){width=760 height=922}
 
+## Eliminados
+
+**Configuración › Abrir eliminados** muestra lo que eliminaste, en las pestañas **Personas**, **Unidades** y **Puestos**, de lo más reciente a lo más antiguo. **Restaurar** lo devuelve.
+
+- Una unidad vuelve vacía: lo que tenía se movió a su superior al eliminarla.
+- Un puesto o una subunidad no se restaura mientras su unidad superior siga eliminada: primero restaura esa unidad.
+- Si el correo de la persona ya lo usa otra, avisa y no la restaura.
+- Las personas borradas definitivamente no salen aquí (ver [Borrar definitivamente](fichas.md#borrar-definitivamente)).
+
 ## Mantenedores
 
 Los **mantenedores** son las listas controladas que usan las fichas y el árbol. Se abren desde **Configuración › Abrir mantenedores** y tienen una pestaña cada uno:
