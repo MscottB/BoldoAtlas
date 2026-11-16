@@ -502,7 +502,8 @@
     "puestoInexistente": "El puesto ya no existe.",
     "nadaQuePegar": "No hay un estilo copiado que se pueda pegar.",
     "ultimoTipoUnidad": "Debe quedar al menos un tipo de unidad activo.",
-    "soloLectura": "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo."
+    "soloLectura": "Estás viendo el organigrama a una fecha: es de solo lectura. Vuelve a hoy para cambiarlo.",
+    "personaSuprimida": "Persona suprimida"
   },
   "ficha": {
     "tituloPersona": "Ficha de persona",
@@ -555,7 +556,8 @@
     "historialPuestos": "Historial ({n})",
     "puestoVigente": "{cargo} · {unidad} · {tipo} · desde {desde}",
     "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} a {hasta}",
-    "masDatos": "Más datos"
+    "masDatos": "Más datos",
+    "exportarDatos": "Exportar sus datos"
   },
   "puesto": {
     "nuevo": "Nuevo puesto",
@@ -1960,6 +1962,19 @@
         "tipos_unidad": "Tipo de unidad",
         "etiquetas": "Etiqueta"
       }
+    },
+    "persona": {
+      "lista": "Datos de {nombre}",
+      "datos": "Datos",
+      "puestos": "Puestos",
+      "campo": "Dato",
+      "valor": "Valor",
+      "unidad": "Unidad",
+      "cargo": "Cargo",
+      "tipo": "Tipo",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "motivo": "Motivo"
     }
   },
   "eliminados": {
@@ -1976,6 +1991,18 @@
     "vuelveVacia": "Vuelve vacía: lo que tenía se movió a su superior al eliminarla.",
     "primeroUnidad": "Primero restaura la unidad «{unidad}».",
     "restaurado": "Se restauró «{nombre}».",
-    "correoEnUso": "No se restauró a «{nombre}»: otra persona ya usa su correo."
+    "correoEnUso": "No se restauró a «{nombre}»: otra persona ya usa su correo.",
+    "errorCargar": "No se pudo leer la lista de eliminados."
+  },
+  "suprimir": {
+    "boton": "Borrar definitivamente",
+    "titulo": "¿Borrar definitivamente a «{nombre}»?",
+    "queSeBorra": "Se borran su nombre, correo, teléfono, notas, foto y los demás datos de su ficha. Donde ocupó un puesto queda «Persona suprimida».",
+    "noSeDeshace": "Esto no se puede deshacer.",
+    "respaldos": "Los respaldos anteriores que la guardan se borran solos a los 30 días.",
+    "escribe": "Para confirmar, escribe el nombre: {nombre}",
+    "cancelar": "Cancelar",
+    "confirmar": "Borrar definitivamente",
+    "suprimida": "Se borró definitivamente a «{nombre}»"
   }
 }

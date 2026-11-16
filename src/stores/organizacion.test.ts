@@ -4,9 +4,10 @@ import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { BaseCambiada, soltarDatos } from "@/lib/baseActiva";
 import * as U from "@/db/repos/unidades";
 import * as X from "@/db/repos/conexiones";
+import { SQL_ASIGNACIONES_PERSONA } from "@/db/repos/trabajadores";
 import { useOrganizacion } from "./organizacion";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
-import { cambiarIdioma } from "@/i18n";
+import { cambiarIdioma, i18n } from "@/i18n";
 import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { useAvisos } from "@/features/revision/useAvisos";
 import { desmarcar, marcar } from "@/features/revision/marcas";
@@ -16,6 +17,7 @@ const h = vi.hoisted(() => ({
   bd: null as BasePrueba | null,
   antesDeLote: null as (() => Promise<void>) | null,
   antesDeMeta: null as (() => Promise<void>) | null,
+  suprimidas: [] as [string, string][],
 }));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
@@ -24,6 +26,16 @@ vi.mock("@/db/cliente", () => ({
   lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => {
     await h.antesDeLote?.();
     h.bd!.aplicar(s);
+  },
+  // Rust vacía la fila; aquí basta con dejarla eliminada y apuntar la llamada
+  suprimirPersona: async (id: string, relleno: string) => {
+    h.suprimidas.push([id, relleno]);
+    h.bd!.aplicar([
+      {
+        sql: "UPDATE trabajadores SET nombre = ?, deleted_at = '2026-01-01T00:00:00Z' WHERE id = ?",
+        params: [relleno, id],
+      },
+    ]);
   },
   leerMeta: async () => {
     await h.antesDeMeta?.();
@@ -196,6 +208,31 @@ describe("trabajadores", () => {
     expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Ana"]);
   });
 
+  it("suprimirPersona: en solo lectura se rechaza y no llama al comando", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    h.suprimidas.length = 0;
+    await s.verAFecha("2020-01-01");
+    const r = await s.suprimirPersona(ana);
+    expect(r).toEqual({ ok: false, mensaje: s.error });
+    expect(h.suprimidas).toEqual([]);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Ana"]);
+  });
+
+  it("suprimirPersona: llama al comando con el relleno, recarga y el Deshacer de esa persona ya no la revive", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    h.suprimidas.length = 0;
+    await s.eliminarTrabajador(ana);
+    expect(s.ultimoBorrado?.id).toBe(ana);
+    const r = await s.suprimirPersona(ana);
+    expect(r.ok).toBe(true);
+    expect(h.suprimidas).toEqual([[ana, i18n.global.t("store.personaSuprimida")]]);
+    expect(s.trabajadores).toHaveLength(0);
+    expect(s.ultimoBorrado).toBeNull();
+    expect((await s.deshacer()).ok).toBe(false);
+  });
+
   it("deshacer no hace nada una vez vencido", async () => {
     const s = nuevo();
     const ana = await persona(s, "Ana");
@@ -272,6 +309,17 @@ describe("puestos y asignaciones", () => {
       [ana, "2026-03-01"],
       [beto, null],
     ]);
+  });
+
+  it("SQL_ASIGNACIONES_PERSONA trae también lo terminado, con nombre de unidad y cargo, y nada de otra persona", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    const beto = await persona(s, "Beto");
+    await s.asignarTitular(p, ana, "2024-01-01");
+    await s.asignarTitular(p, beto, "2026-03-01");
+    const filas = h.bd!.consultar<{ unidad: string; hasta: string | null }>(SQL_ASIGNACIONES_PERSONA, [ana]);
+    expect(filas).toMatchObject([{ unidad: "Raíz", cargo: "Cargo 1", tipo: "titular", hasta: "2026-03-01" }]);
   });
 
   it("un segundo reemplazo vigente se rechaza con el mensaje traducido; terminar el primero lo permite", async () => {

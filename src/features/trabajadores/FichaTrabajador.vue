@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { ImagePlus, Trash2, X } from "@lucide/vue";
+import { Eraser, ImagePlus, Trash2, X } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { consultar } from "@/db/cliente";
-import { SQL_NOTAS } from "@/db/repos/trabajadores";
+import { SQL_ASIGNACIONES_PERSONA, SQL_NOTAS } from "@/db/repos/trabajadores";
 import type { TablaCatalogo, Trabajador } from "@/db/tipos";
 import { MODO_LADO } from "@/lado/modo";
 import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
@@ -37,6 +37,9 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
+import BotonExcel from "@/features/excel/BotonExcel.vue";
+import { hojasPersona, type AsignacionHistorica } from "@/features/excel/persona";
+import DialogoSuprimir from "./DialogoSuprimir.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
 import { prepararFoto, procesarFoto, urlFoto } from "./foto";
 import { useFicha } from "./useFicha";
@@ -347,6 +350,29 @@ async function eliminar() {
   });
 }
 
+const suprimiendo = ref(false);
+const nombreGuardado = computed(() => org.trabajadores.find((x) => x.id === id.value)?.nombre ?? "");
+async function suprimir() {
+  const nombre = nombreGuardado.value;
+  const r = await org.suprimirPersona(id.value!);
+  if (!r.ok) return void toast.error(r.mensaje);
+  ficha.cerrar();
+  toast(t("suprimir.suprimida", { nombre }), { duration: 8000 }); // sin Deshacer: no vuelve
+}
+
+/** Lo que se exporta de esta persona: lo guardado (no lo que está a medio escribir), con notas y todo su historial. */
+async function datosPersona() {
+  const w = org.trabajadores.find((x) => x.id === id.value)!;
+  const [notas, asignaciones] = await Promise.all([
+    consultar<{ notas: string | null }>(SQL_NOTAS, [w.id]),
+    consultar<AsignacionHistorica>(SQL_ASIGNACIONES_PERSONA, [w.id]),
+  ]);
+  return {
+    nombre: t("excel.persona.lista", { nombre: w.nombre }),
+    hojas: hojasPersona({ ...w, notas: notas[0]?.notas ?? null }, asignaciones, org.catalogos, t),
+  };
+}
+
 // «Más datos» se abre solo si ya tiene algo adentro o un error (la foto, o lo que la base rechazó de esos campos).
 const conMasDatos = computed(
   () =>
@@ -550,22 +576,24 @@ const alAbrir = (e: Event) => {
       </div>
 
       <DialogFooter>
-        <Button
-          v-if="id && !alLado"
-          type="button"
-          variant="destructive"
-          class="sm:mr-auto"
-          @click="eliminar"
-        >
-          <Trash2 aria-hidden="true" />
-          {{ t("ficha.eliminar") }}
-        </Button>
+        <div v-if="id && !alLado" class="flex flex-wrap gap-2 sm:mr-auto">
+          <Button type="button" variant="destructive" @click="eliminar">
+            <Trash2 aria-hidden="true" />
+            {{ t("ficha.eliminar") }}
+          </Button>
+          <Button type="button" variant="destructive" @click="suprimiendo = true">
+            <Eraser aria-hidden="true" />
+            {{ t("suprimir.boton") }}
+          </Button>
+          <BotonExcel :lista="datosPersona" :texto="t('ficha.exportarDatos')" />
+        </div>
         <DialogClose as-child>
           <Button type="button" variant="outline">{{ t("ficha.cerrar") }}</Button>
         </DialogClose>
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  <DialogoSuprimir v-model:open="suprimiendo" :nombre="nombreGuardado" @confirmar="suprimir" />
   <AlertDialog v-model:open="confirmando">
     <AlertDialogContent>
       <AlertDialogHeader>

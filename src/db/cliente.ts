@@ -241,6 +241,11 @@ export function podarRespaldosSuprimidas(): Promise<number> {
   return conBase<number>("podar_respaldos_suprimidas");
 }
 
+/** Borrado definitivo: vacía a la persona y compacta la base. `relleno`: el nombre que queda («Persona suprimida»). */
+export function suprimirPersona(id: string, relleno: string): Promise<void> {
+  return conBase<void>("suprimir_persona", { id, relleno });
+}
+
 /** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
 export function respaldarAntesDeOptimizar(): Promise<string> {
   return conBase<string>("respaldar_antes_de_optimizar");

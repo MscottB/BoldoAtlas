@@ -1,6 +1,13 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
-import { leerMeta, lote, consultar, type AvanceEliminar, type Sentencia } from "@/db/cliente";
+import {
+  leerMeta,
+  lote,
+  consultar,
+  suprimirPersona as suprimir,
+  type AvanceEliminar,
+  type Sentencia,
+} from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import { MODO_LADO } from "@/lado/modo";
 import {
@@ -394,6 +401,29 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => T.eliminarTrabajador(id),
       () => (ultimoBorrado.value = { tipo: "trabajador", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
+
+  /** Borrado definitivo: Rust vacía a la persona (y la deja eliminada) y compacta la base; aquí se recarga. */
+  async function suprimirPersona(id: string): Promise<Resultado> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    if (!cargado.value) return rechazar(t("store.sinCargar"));
+    pendientes.value++;
+    try {
+      await suprimir(id, t("store.personaSuprimida"));
+      // ya no hay a quién deshacerle nada
+      if (ultimoBorrado.value?.id === id) ultimoBorrado.value = null;
+      const r = await cargar();
+      return r.ok || !r.mensaje ? { ok: true } : r;
+    } catch (e) {
+      const r = fallo(e);
+      if (!(e instanceof BaseCambiada)) {
+        await cargar();
+        error.value = r.mensaje;
+      }
+      return r;
+    } finally {
+      pendientes.value--;
+    }
+  }
 
   /** Restaura desde la lista Eliminados. La unidad vuelve vacía (lo suyo ya se movió a su superior al eliminarla). */
   async function restaurarEliminado(e: Eliminado): Promise<Resultado> {
@@ -999,6 +1029,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     crearTrabajador,
     editarTrabajador,
     eliminarTrabajador,
+    suprimirPersona,
     restaurarEliminado,
     crearPuesto,
     editarPuesto,

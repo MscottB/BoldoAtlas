@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { ArchiveRestore } from "@lucide/vue";
+import { ArchiveRestore, Eraser } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import type { Eliminado } from "./eliminados";
 
 defineProps<{ filas: Eliminado[]; soloLectura: boolean }>();
-defineEmits<{ restaurar: [e: Eliminado] }>();
+defineEmits<{ restaurar: [e: Eliminado]; suprimir: [e: Eliminado] }>();
 const { t, locale } = useI18n();
 const fecha = (f: string) =>
   new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(f));
@@ -31,10 +31,16 @@ const fecha = (f: string) =>
           {{ t("eliminados.primeroUnidad", { unidad: e.bloqueo }) }}
         </span>
       </div>
-      <Button v-if="!soloLectura" variant="outline" :disabled="!!e.bloqueo" @click="$emit('restaurar', e)">
-        <ArchiveRestore aria-hidden="true" />
-        {{ t("eliminados.restaurar") }}
-      </Button>
+      <div v-if="!soloLectura" class="flex shrink-0 flex-wrap justify-end gap-2">
+        <Button variant="outline" :disabled="!!e.bloqueo" @click="$emit('restaurar', e)">
+          <ArchiveRestore aria-hidden="true" />
+          {{ t("eliminados.restaurar") }}
+        </Button>
+        <Button v-if="e.tipo === 'persona'" variant="outline" @click="$emit('suprimir', e)">
+          <Eraser aria-hidden="true" />
+          {{ t("suprimir.boton") }}
+        </Button>
+      </div>
     </li>
   </ul>
 </template>

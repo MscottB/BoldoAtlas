@@ -502,7 +502,8 @@
     "puestoInexistente": "The position no longer exists.",
     "nadaQuePegar": "There is no copied style that can be pasted.",
     "ultimoTipoUnidad": "At least one unit type must stay active.",
-    "soloLectura": "You are viewing the org chart at a past date: it is read-only. Go back to today to change it."
+    "soloLectura": "You are viewing the org chart at a past date: it is read-only. Go back to today to change it.",
+    "personaSuprimida": "Deleted person"
   },
   "ficha": {
     "tituloPersona": "Person record",
@@ -555,7 +556,8 @@
     "historialPuestos": "History ({n})",
     "puestoVigente": "{cargo} · {unidad} · {tipo} · since {desde}",
     "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}",
-    "masDatos": "More details"
+    "masDatos": "More details",
+    "exportarDatos": "Export their data"
   },
   "puesto": {
     "nuevo": "New position",
@@ -1960,6 +1962,19 @@
         "tipos_unidad": "Unit type",
         "etiquetas": "Tag"
       }
+    },
+    "persona": {
+      "lista": "Data of {nombre}",
+      "datos": "Data",
+      "puestos": "Positions",
+      "campo": "Field",
+      "valor": "Value",
+      "unidad": "Unit",
+      "cargo": "Job title",
+      "tipo": "Type",
+      "desde": "From",
+      "hasta": "Until",
+      "motivo": "Reason"
     }
   },
   "eliminados": {
@@ -1976,6 +1991,18 @@
     "vuelveVacia": "Comes back empty: what it had was moved to its parent when it was deleted.",
     "primeroUnidad": "Restore the unit “{unidad}” first.",
     "restaurado": "“{nombre}” was restored.",
-    "correoEnUso": "“{nombre}” was not restored: another person already uses their email."
+    "correoEnUso": "“{nombre}” was not restored: another person already uses their email.",
+    "errorCargar": "The list of deleted items could not be read."
+  },
+  "suprimir": {
+    "boton": "Delete permanently",
+    "titulo": "Delete “{nombre}” permanently?",
+    "queSeBorra": "Their name, email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”.",
+    "noSeDeshace": "This cannot be undone.",
+    "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days.",
+    "escribe": "To confirm, type the name: {nombre}",
+    "cancelar": "Cancel",
+    "confirmar": "Delete permanently",
+    "suprimida": "“{nombre}” was deleted permanently"
   }
 }

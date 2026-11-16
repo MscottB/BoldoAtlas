@@ -18,6 +18,7 @@ import {
   type TipoEliminado,
 } from "@/features/eliminados/eliminados";
 import ListaEliminados from "@/features/eliminados/ListaEliminados.vue";
+import DialogoSuprimir from "@/features/trabajadores/DialogoSuprimir.vue";
 import { useOrganizacion } from "@/stores/organizacion";
 
 const TIPOS: TipoEliminado[] = ["persona", "unidad", "puesto"];
@@ -28,13 +29,31 @@ const lista = ref<Eliminado[]>([]);
 const deTipo = computed(() => (tipo: TipoEliminado) => lista.value.filter((e) => e.tipo === tipo));
 
 async function cargar() {
-  const [persona, unidad, puesto, meta] = await Promise.all([
-    consultar<FilaEliminado>(SQL_ELIMINADOS_PERSONAS),
-    consultar<FilaEliminado>(SQL_ELIMINADOS_UNIDADES),
-    consultar<FilaEliminado>(SQL_ELIMINADOS_PUESTOS),
-    leerMeta(),
-  ]);
-  lista.value = armarEliminados({ persona, unidad, puesto }, leerSuprimidas(meta));
+  try {
+    const [persona, unidad, puesto, meta] = await Promise.all([
+      consultar<FilaEliminado>(SQL_ELIMINADOS_PERSONAS),
+      consultar<FilaEliminado>(SQL_ELIMINADOS_UNIDADES),
+      consultar<FilaEliminado>(SQL_ELIMINADOS_PUESTOS),
+      leerMeta(),
+    ]);
+    lista.value = armarEliminados({ persona, unidad, puesto }, leerSuprimidas(meta));
+  } catch (e) {
+    console.error(e);
+    toast.error(t("eliminados.errorCargar"));
+  }
+}
+
+const porSuprimir = ref<Eliminado | null>(null);
+const confirmando = computed({
+  get: () => porSuprimir.value !== null,
+  set: (v) => v || (porSuprimir.value = null),
+});
+async function suprimir() {
+  const e = porSuprimir.value!;
+  const r = await org.suprimirPersona(e.id);
+  if (!r.ok) return void toast.error(r.mensaje);
+  toast(t("suprimir.suprimida", { nombre: e.nombre }), { duration: 8000 });
+  await cargar();
 }
 
 async function restaurar(e: Eliminado) {
@@ -67,8 +86,14 @@ onMounted(cargar);
         </TabsTrigger>
       </TabsList>
       <TabsContent v-for="tipo in TIPOS" :key="tipo" :value="tipo" class="pt-4">
-        <ListaEliminados :filas="deTipo(tipo)" :solo-lectura="org.soloLectura" @restaurar="restaurar" />
+        <ListaEliminados
+          :filas="deTipo(tipo)"
+          :solo-lectura="org.soloLectura"
+          @restaurar="restaurar"
+          @suprimir="porSuprimir = $event"
+        />
       </TabsContent>
     </Tabs>
+    <DialogoSuprimir v-model:open="confirmando" :nombre="porSuprimir?.nombre ?? ''" @confirmar="suprimir" />
   </section>
 </template>
