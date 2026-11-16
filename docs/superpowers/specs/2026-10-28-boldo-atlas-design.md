@@ -74,7 +74,7 @@ detectar el modo portable, resolver rutas (sección 12) y un puente mínimo con 
 - Todas las tablas de negocio tienen:
   - `id TEXT PRIMARY KEY` — UUID v7 generado en el frontend (nunca autoincremental).
   - `created_at TEXT NOT NULL`, `updated_at TEXT NOT NULL` — ISO-8601 UTC.
-  - `deleted_at TEXT NULL` — borrado lógico; nunca `DELETE` en tablas de negocio. Las consultas normales filtran `deleted_at IS NULL`.
+  - `deleted_at TEXT NULL` — borrado lógico; nunca `DELETE` en tablas de negocio. Las consultas normales filtran `deleted_at IS NULL`. Lo eliminado se ve y se restaura en la lista Eliminados. La única excepción es **Borrar definitivamente** a una persona (Task 19b), que quita sus datos de verdad y deja sus asignaciones pasadas como «Persona suprimida».
   - Los índices únicos son parciales (`WHERE deleted_at IS NULL`).
 
 ### `meta` (clave/valor)
@@ -428,7 +428,7 @@ Limitación aceptada: sin una base común de referencia, «Diferente» no distin
 - **Vista previa obligatoria:** resumen (unidades a crear, personas a crear/actualizar, puestos a crear, vacantes y titulares que cambian) y tabla de errores por fila con hoja, fila, columna y mensaje (p. ej. "tipo 'gerncia' no válido", "unidad 'X' no existe y no tiene ruta completa", "correo repetido en el archivo"). Con errores no se puede aplicar; se puede descargar el archivo de errores para corregir.
 - Al aplicar: respaldo automático, una sola transacción, `data_revision` +1.
 - Validación en función pura `src/features/carga/validar.ts`.
-- **Archivos de otros sistemas (pedido del autor, 2026-11-01):** la carga reconoce por sus encabezados los Excel que exportan sistemas de RR.HH. como Buk y Talana, y propone cómo asignar sus columnas a las de `Trabajadores`; se puede corregir a mano y sigue pasando por la misma vista previa. Es de una sola vía y sin API. Antes de implementarlo hay que conseguir archivos reales: sus formatos no están verificados.
+- **Asignar columnas (decisión del autor, 2026-11-15):** si los encabezados del archivo no son los de la plantilla, la vista previa propone a qué columna de BoldoAtlas va cada una, por parecido del nombre, y se corrige a mano; las columnas que no se usan se ignoran. Así sirve el Excel o CSV que exporte cualquier sistema de RR.HH., de una sola vía y sin API. No se reconocen formatos de sistemas concretos (como Buk o Talana): no hay archivos de muestra para verificarlos.
 
 ## 11. Capturas, PDF, Excel y visor
 
@@ -438,8 +438,20 @@ Todas las exportaciones comparten un **selector de alcance**: toda la organizaci
 
 ### Capturas (SVG/PNG)
 **Renderizador propio de SVG** (`src/features/export/treeSvg.ts`): a partir de las posiciones de elkjs dibuja tarjetas (nombre, jefe, dotación, etiquetas), aristas y conexiones con la paleta de exportación (siempre fondo claro), más logo, título y fecha. Se usa para SVG, PNG y PDF, así todo se ve igual y el PDF queda vectorial. (No se usa `html-to-image`: genera `foreignObject`, que pdfmake no renderiza.)
-- **SVG:** directo.
-- **PNG:** el mismo SVG rasterizado vía `canvas` a 2x/3x/4x.
+- **SVG:** directo. Vectorial: se agranda sin perder nitidez y PowerPoint lo convierte en formas.
+- **PNG:** el mismo SVG rasterizado vía `canvas` a 1x/2x/3x/4x, con fondo blanco o transparente (para ponerlo sobre una diapositiva de color).
+- **JPG:** fondo blanco, más liviano para un correo o un chat.
+- **Copiar imagen:** el PNG al portapapeles, para pegarlo directo en PowerPoint, Word o un correo.
+
+### Niveles de detalle (pedido del autor, 2026-11-15)
+Las capturas, el PDF y el PPTX se exportan en uno de tres niveles, elegido junto al alcance:
+- **Estructura:** solo las unidades y sus líneas, sin ningún dato de personas (ni nombres, ni correos, ni fotos). Para mostrar la forma de la organización o compartirla fuera sin datos personales.
+- **Presentación:** cada unidad con su jefatura (nombre y cargo), letra más grande y sin dotación, vacantes ni colores. Pensado para una diapositiva 16:9.
+- **Como en pantalla:** lo que muestra el lienzo con la configuración actual de Personalizar (datos de la tarjeta, colorear por y su leyenda, zonas y etiquetas). Las fotos van solo si se marca la casilla.
+
+**PPTX editable** (entrega aparte): las tarjetas y las líneas como formas y conectores de PowerPoint que se pueden mover y editar, una diapositiva por rama, con los mismos tres niveles.
+
+El diálogo de aceptación obligatoria se pide en todos los niveles: la estructura de una organización también puede ser reservada.
 
 ### PDF (pdfmake)
 Opciones: alcance + secciones a incluir (diagrama, indicadores, procesos con SIPOC, actividades con RACI, personas).
@@ -450,7 +462,7 @@ Opciones: alcance + secciones a incluir (diagrama, indicadores, procesos con SIP
 5. Una sección por unidad: nombre destacado, ruta Gerencia › Área › Subárea, jefe, indicadores de la unidad, diagrama de su rama, procesos (atributos + SIPOC en tabla de 4 columnas), actividades con su RACI, y personas.
 6. Pie en cada página: logo pequeño, página N de M, versiones.
 
-**Organigramas grandes (pedido del autor, 2026-11-01):** tamaño de hoja (carta, oficio, A4, A3 y A2) y orientación; el diagrama se puede ajustar a una página o repartir en varias, con marcas de continuación que indican en qué página sigue cada rama. Imprimir solo una rama ya lo cubre el selector de alcance. El mismo diagrama se puede exportar a **PPTX** (una diapositiva por rama), en una entrega posterior.
+**Organigramas grandes (pedido del autor, 2026-11-01):** tamaño de hoja (carta, oficio, A4, A3 y A2) y orientación; el diagrama se puede ajustar a una página o repartir en varias, con marcas de continuación que indican en qué página sigue cada rama. Imprimir solo una rama ya lo cubre el selector de alcance. El mismo diagrama se puede exportar a **PPTX** editable (una diapositiva por rama), en una entrega posterior; ver «Niveles de detalle».
 
 **Manual de organización y funciones (pedido del autor, 2026-11-01):** una plantilla de este PDF con todas las secciones activas y, en cada unidad, sus puestos con su `descripcion`, titular y vacantes. No agrega datos nuevos: ordena en un documento formal lo que ya está en la base.
 
