@@ -645,6 +645,7 @@ Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase públ
 ### Task 19c: Historial de cambios
 - Triggers que guardan antes y después por lote. Bitácora, deshacer y rehacer persistentes (Ctrl+Z, Ctrl+Y) y panel «volver a este punto». Deshacer una acción antigua solo si nada posterior tocó esas filas; si no, avisar. Con retención, y sale antes que la 19d.
 - Las personas de `meta.suprimidas` (19b) no se guardan en el historial y se quitan de lo ya guardado.
+- Diseño aprobado por el autor (2026-11-17): `docs/superpowers/specs/2026-11-17-historial-design.md`.
 
 ### Task 19d: Base cifrada
 - Mostrar el diseño al autor antes de implementar: SQLCipher con rusqlite, contraseña al abrir, respaldos y portable cifrados, recuperación, y convivencia con los `.boldo`.
