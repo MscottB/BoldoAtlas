@@ -4,6 +4,7 @@ mod comparar_organizaciones;
 mod db;
 mod excel;
 mod fotos;
+mod historial;
 mod inicio;
 mod intercambio;
 mod lado;
