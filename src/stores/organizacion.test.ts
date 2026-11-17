@@ -4,9 +4,10 @@ import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { BaseCambiada, soltarDatos } from "@/lib/baseActiva";
 import * as U from "@/db/repos/unidades";
 import * as X from "@/db/repos/conexiones";
+import { SQL_ASIGNACIONES_PERSONA } from "@/db/repos/trabajadores";
 import { useOrganizacion } from "./organizacion";
 import { TIPO_AREA, TIPO_GERENCIA, TIPO_OTRA, TIPO_SUBAREA } from "@/db/tipos";
-import { cambiarIdioma } from "@/i18n";
+import { cambiarIdioma, i18n } from "@/i18n";
 import { vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { useAvisos } from "@/features/revision/useAvisos";
 import { desmarcar, marcar } from "@/features/revision/marcas";
@@ -16,6 +17,8 @@ const h = vi.hoisted(() => ({
   bd: null as BasePrueba | null,
   antesDeLote: null as (() => Promise<void>) | null,
   antesDeMeta: null as (() => Promise<void>) | null,
+  suprimidas: [] as [string, string][],
+  sinCompactar: false,
 }));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
@@ -24,6 +27,18 @@ vi.mock("@/db/cliente", () => ({
   lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => {
     await h.antesDeLote?.();
     h.bd!.aplicar(s);
+  },
+  // Rust vacía la fila; aquí basta con dejarla eliminada y apuntar la llamada
+  suprimirPersona: async (id: string, relleno: string) => {
+    h.suprimidas.push([id, relleno]);
+    h.bd!.aplicar([
+      {
+        sql: "UPDATE trabajadores SET nombre = ?, deleted_at = '2026-01-01T00:00:00Z' WHERE id = ?",
+        params: [relleno, id],
+      },
+    ]);
+    // Rust ya la borró, pero el checkpoint quedó ocupado
+    if (h.sinCompactar) throw { codigo: "sin_compactar", detalle: "wal_checkpoint no terminó" };
   },
   leerMeta: async () => {
     await h.antesDeMeta?.();
@@ -157,6 +172,109 @@ describe("trabajadores", () => {
     expect(s.error).toBe("Ya existe una persona con ese correo.");
   });
 
+  it("restaurarEliminado: si otra persona usa su correo, avisa con correo_en_uso y no cambia nada", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana", "ana@x.cl");
+    await s.eliminarTrabajador(ana);
+    await persona(s, "Otra", "ana@x.cl");
+    const antes = revision();
+    const r = await s.restaurarEliminado({
+      tipo: "persona",
+      id: ana,
+      nombre: "Ana",
+      fecha: "",
+      bloqueo: null,
+    });
+    expect(r).toMatchObject({
+      ok: false,
+      codigo: "correo_en_uso",
+      mensaje: "Ya existe una persona con ese correo.",
+    });
+    expect(revision()).toBe(antes);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Otra"]);
+    expect(
+      h.bd!.consultar("SELECT 1 FROM trabajadores WHERE id = ? AND deleted_at IS NOT NULL", [ana]),
+    ).toHaveLength(1);
+  });
+
+  it("restaurarEliminado: si su puesto ya lo ocupa otra persona, avisa con puesto_ocupado y no restaura nada", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    const beto = await persona(s, "Beto");
+    await s.asignarTitular(p, ana, "2026-01-01");
+    await s.eliminarTrabajador(ana);
+    expect((await s.asignarTitular(p, beto, "2026-02-01")).ok).toBe(true);
+    const antes = revision();
+    const r = await s.restaurarEliminado({
+      tipo: "persona",
+      id: ana,
+      nombre: "Ana",
+      fecha: "",
+      bloqueo: null,
+    });
+    expect(r).toMatchObject({ ok: false, codigo: "puesto_ocupado" });
+    expect(revision()).toBe(antes);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Beto"]);
+    expect(
+      h.bd!.consultar("SELECT 1 FROM asignaciones WHERE trabajador_id = ? AND deleted_at IS NULL", [ana]),
+    ).toHaveLength(0);
+  });
+
+  it("restaurarEliminado: restaura a la persona; en solo lectura da el rechazo de siempre", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    await s.eliminarTrabajador(ana);
+    const e = { tipo: "persona" as const, id: ana, nombre: "Ana", fecha: "", bloqueo: null };
+    await s.verAFecha("2020-01-01");
+    const rechazo = await s.restaurarEliminado(e);
+    expect(rechazo).toEqual({ ok: false, mensaje: s.error });
+    expect(s.trabajadores).toHaveLength(0);
+    await s.verAFecha(null);
+    expect((await s.restaurarEliminado(e)).ok).toBe(true);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Ana"]);
+  });
+
+  it("suprimirPersona: en solo lectura se rechaza y no llama al comando", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    h.suprimidas.length = 0;
+    await s.verAFecha("2020-01-01");
+    const r = await s.suprimirPersona(ana);
+    expect(r).toEqual({ ok: false, mensaje: s.error });
+    expect(h.suprimidas).toEqual([]);
+    expect(s.trabajadores.map((t) => t.nombre)).toEqual(["Ana"]);
+  });
+
+  it("suprimirPersona: llama al comando con el relleno, recarga y el Deshacer de esa persona ya no la revive", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    h.suprimidas.length = 0;
+    await s.eliminarTrabajador(ana);
+    expect(s.ultimoBorrado?.id).toBe(ana);
+    const r = await s.suprimirPersona(ana);
+    expect(r.ok).toBe(true);
+    expect(h.suprimidas).toEqual([[ana, i18n.global.t("store.personaSuprimida")]]);
+    expect(s.trabajadores).toHaveLength(0);
+    expect(s.ultimoBorrado).toBeNull();
+    expect((await s.deshacer()).ok).toBe(false);
+  });
+
+  it("suprimirPersona: si Rust la borró pero no pudo compactar, es ok con aviso y recarga", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    h.suprimidas.length = 0;
+    h.sinCompactar = true;
+    try {
+      const r = await s.suprimirPersona(ana);
+      expect(r).toEqual({ ok: true, aviso: i18n.global.t("suprimir.sinCompactar") });
+      expect(s.error).toBeNull();
+      expect(s.trabajadores).toHaveLength(0);
+    } finally {
+      h.sinCompactar = false;
+    }
+  });
+
   it("deshacer no hace nada una vez vencido", async () => {
     const s = nuevo();
     const ana = await persona(s, "Ana");
@@ -233,6 +351,17 @@ describe("puestos y asignaciones", () => {
       [ana, "2026-03-01"],
       [beto, null],
     ]);
+  });
+
+  it("SQL_ASIGNACIONES_PERSONA trae también lo terminado, con nombre de unidad y cargo, y nada de otra persona", async () => {
+    const s = nuevo();
+    const p = await puesto(s, await unidad(s, "Raíz"));
+    const ana = await persona(s, "Ana");
+    const beto = await persona(s, "Beto");
+    await s.asignarTitular(p, ana, "2024-01-01");
+    await s.asignarTitular(p, beto, "2026-03-01");
+    const filas = h.bd!.consultar<{ unidad: string; hasta: string | null }>(SQL_ASIGNACIONES_PERSONA, [ana]);
+    expect(filas).toMatchObject([{ unidad: "Raíz", cargo: "Cargo 1", tipo: "titular", hasta: "2026-03-01" }]);
   });
 
   it("un segundo reemplazo vigente se rechaza con el mensaje traducido; terminar el primero lo permite", async () => {

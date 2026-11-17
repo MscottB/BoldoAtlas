@@ -34,7 +34,7 @@ Para llevarte una copia a otro lugar, pulsa **Abrir carpeta** y copia el archivo
 
 ## Antes de reemplazar los datos
 
-Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. El de reemplazar y el de restaurar nunca se borran solos. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
+Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. De los de reemplazar y de restaurar se conservan los últimos 10 de cada tipo. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
 
 ## Restaurar
 
@@ -45,10 +45,17 @@ Restaurar reemplaza los datos de la organización abierta por los del respaldo y
 1. En **Ver respaldos y restaurar**, pulsa **Restaurar** en la fila del respaldo que quieres recuperar.
 2. Confirma con **Restaurar y reiniciar**.
 
-Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la lista marcados **Antes de restaurar** y nunca se borran solos. Si te equivocaste de respaldo, restaura ese. Luego los datos se reemplazan por los del respaldo y la app se reinicia.
+Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la lista marcados **Antes de restaurar**; de estos se conservan los últimos 10. Si te equivocaste de respaldo, restaura ese. Luego los datos se reemplazan por los del respaldo y la app se reinicia.
 
 - Un respaldo hecho con una versión anterior de BoldoAtlas se actualiza al restaurarlo. Uno hecho con una versión **más nueva** no se puede restaurar hasta que actualices BoldoAtlas.
 - Si hay otra ventana de BoldoAtlas abierta con los mismos datos, ciérrala antes.
 - Si algo falla, tus datos actuales quedan como estaban.
+
+## Personas borradas definitivamente
+
+Al [borrar definitivamente](fichas.md#borrar-definitivamente) a alguien, sus datos siguen en los respaldos hechos antes. Por eso, a los **30 días**, se borran los respaldos de esa organización hechos antes de ese borrado, de todo tipo.
+
+- La limpieza corre mientras esa organización está abierta (se revisa cada pocos minutos). Si no la abres, sus respaldos viejos esperan a la próxima vez que se abra.
+- Si restauras uno de esos respaldos antes de los 30 días, o usas **Reemplazar todo** con un `.boldo` viejo, la persona no vuelve: la app la borra otra vez.
 
 **Ver también:** [Inicio](inicio.md) · [Actualizaciones](actualizaciones.md).

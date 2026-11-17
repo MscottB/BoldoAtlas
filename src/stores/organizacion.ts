@@ -1,6 +1,13 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
-import { leerMeta, lote, consultar, type AvanceEliminar, type Sentencia } from "@/db/cliente";
+import {
+  leerMeta,
+  lote,
+  consultar,
+  suprimirPersona as suprimir,
+  type AvanceEliminar,
+  type Sentencia,
+} from "@/db/cliente";
 import { traducirError } from "@/db/errores";
 import { MODO_LADO } from "@/lado/modo";
 import {
@@ -33,6 +40,7 @@ import * as P from "@/db/repos/puestos";
 import * as A from "@/db/repos/asignaciones";
 import * as L from "@/db/repos/leyendas";
 import { SQL_HISTORICO } from "@/db/repos/historico";
+import type { Eliminado } from "@/features/eliminados/eliminados";
 import { guardarMeta } from "@/db/repos/meta";
 import { leerMarcas, type Marcas } from "@/features/revision/marcas";
 import { TIPOS_SEMILLA } from "@/db/repos/reemplazo";
@@ -55,7 +63,7 @@ import { EJEMPLO } from "./ejemplo";
 
 /** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
-  | { ok: true; id?: string }
+  | { ok: true; id?: string; aviso?: string }
   | { ok: false; mensaje: string; codigo?: string; detalle?: string; avance?: AvanceEliminar };
 export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: string; existente?: string };
 
@@ -393,6 +401,54 @@ export const useOrganizacion = defineStore("organizacion", () => {
       () => T.eliminarTrabajador(id),
       () => (ultimoBorrado.value = { tipo: "trabajador", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
     );
+
+  /** Borrado definitivo: Rust vacía a la persona (y la deja eliminada) y compacta la base; aquí se recarga. */
+  async function suprimirPersona(id: string): Promise<Resultado> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    if (!cargado.value) return rechazar(t("store.sinCargar"));
+    pendientes.value++;
+    try {
+      // si Rust ya la borró pero no pudo compactar el archivo, cuenta como hecho, con aviso
+      let aviso: string | undefined;
+      try {
+        await suprimir(id, t("store.personaSuprimida"));
+      } catch (e) {
+        if ((e as { codigo?: string } | null)?.codigo !== "sin_compactar") throw e;
+        aviso = t("suprimir.sinCompactar");
+      }
+      // ya no hay a quién deshacerle nada
+      if (ultimoBorrado.value?.id === id) ultimoBorrado.value = null;
+      const r = await cargar();
+      return r.ok || !r.mensaje ? { ok: true, aviso } : r;
+    } catch (e) {
+      const r = fallo(e);
+      if (!(e instanceof BaseCambiada)) {
+        await cargar();
+        error.value = r.mensaje;
+      }
+      return r;
+    } finally {
+      pendientes.value--;
+    }
+  }
+
+  /** Restaura desde la lista Eliminados. La unidad vuelve vacía (lo suyo ya se movió a su superior al eliminarla). */
+  async function restaurarEliminado(e: Eliminado): Promise<Resultado> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    const r = await escribir(() =>
+      e.tipo === "persona"
+        ? T.restaurarTrabajador(e.id)
+        : e.tipo === "puesto"
+          ? P.restaurarPuesto(e.id)
+          : U.restaurarUnidad(e.id, { hijos: [], puestos: [] }),
+    );
+    // el lote es una transacción: si el correo ya es de otra persona o su puesto ya lo ocupa otra, no quedó nada a medias
+    if (r.ok) return r;
+    if (r.mensaje === traducirError("ux_trabajadores_correo")) return { ...r, codigo: "correo_en_uso" };
+    if (r.mensaje === traducirError("UNIQUE constraint failed: asignaciones.puesto_id"))
+      return { ...r, codigo: "puesto_ocupado" };
+    return r;
+  }
 
   /** `comoJefatura`: el puesto nuevo queda de una vez como jefatura de su unidad (mismo lote: o se hace todo o nada). */
   const crearPuesto = (datos: Parameters<typeof P.crearPuesto>[0], comoJefatura = false) =>
@@ -982,6 +1038,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     crearTrabajador,
     editarTrabajador,
     eliminarTrabajador,
+    suprimirPersona,
+    restaurarEliminado,
     crearPuesto,
     editarPuesto,
     eliminarPuesto,

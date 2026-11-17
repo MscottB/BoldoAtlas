@@ -249,9 +249,17 @@ pub async fn fotos_guardar(app: AppHandle, request: Request<'_>) -> Result<usize
 
 /// Sin esto, lo que ocupaban las fotos queda como páginas libres y el archivo de la base no baja de tamaño. Con WAL, el
 /// VACUUM queda en el -wal: solo el checkpoint recorta el archivo.
-fn compactar(c: &Connection) -> rusqlite::Result<()> {
+pub(crate) fn compactar(c: &Connection) -> rusqlite::Result<()> {
     c.execute_batch("VACUUM")?;
-    c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
+    // `busy` = 1 si algo lo impidió (otra conexión leyendo): el WAL sigue con los datos y no se puede dar por compactado
+    let ocupado: i64 = c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |f| f.get(0))?;
+    if ocupado != 0 {
+        return Err(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+            Some("wal_checkpoint no terminó".into()),
+        ));
+    }
+    Ok(())
 }
 
 /// Solo en la abierta: con el id de la de al lado da `otra_base`.
@@ -638,6 +646,24 @@ mod tests {
             .unwrap();
         compactar(&c).unwrap();
         assert!(std::fs::metadata(&ruta).unwrap().len() < antes / 10);
+    }
+
+    #[test]
+    fn compactar_falla_si_el_checkpoint_no_pudo_terminar() {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("b.db");
+        let c = db::abrir(&ruta).unwrap();
+        c.execute_batch("CREATE TABLE t (x TEXT); INSERT INTO t VALUES ('a');")
+            .unwrap();
+        // un lector con la transacción abierta impide recortar el WAL
+        let lector = db::abrir(&ruta).unwrap();
+        lector.execute_batch("BEGIN; SELECT * FROM t;").unwrap();
+        c.execute("INSERT INTO t VALUES ('b')", []).unwrap();
+        c.busy_timeout(std::time::Duration::from_millis(50))
+            .unwrap();
+        assert!(compactar(&c).is_err());
+        lector.execute_batch("COMMIT").unwrap();
+        compactar(&c).unwrap();
     }
 
     #[test]

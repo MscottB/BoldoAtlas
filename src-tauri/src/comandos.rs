@@ -1207,6 +1207,51 @@ pub async fn listar_respaldos(app: AppHandle, base_id: String) -> Result<Vec<Res
     .map_err(|e| e.to_string())?
 }
 
+/// Borrado definitivo: vacía a la persona y compacta el archivo para que no queden restos. La fecha es la de ahora, UTC.
+#[tauri::command]
+pub async fn suprimir_persona(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+    relleno: String,
+) -> Result<(), Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
+            let fecha: String =
+                c.query_row("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')", [], |f| {
+                    f.get(0)
+                })?;
+            crate::supresion::suprimir(c, &id, &relleno, &fecha)?;
+            // la supresión ya se guardó: si no se pudo compactar, quien llama lo sabe por su propio código
+            crate::fotos::compactar(c).map_err(|e| Fallo::de("sin_compactar", e))
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Borra los respaldos que aún guardan a una persona suprimida hace más de 30 días. Devuelve cuántos borró.
+#[tauri::command]
+pub async fn podar_respaldos_suprimidas(app: AppHandle, base_id: String) -> Result<usize, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let dir = estado.base(&base_id)?.respaldos;
+        estado.con_conexion(&base_id, |c| {
+            let suprimidas = crate::supresion::leer(c)?;
+            if suprimidas.is_empty() {
+                return Ok(0);
+            }
+            let ahora: String =
+                c.query_row("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')", [], |f| {
+                    f.get(0)
+                })?;
+            respaldos::podar_por_supresiones(&dir, &suprimidas, &ahora)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Antes de optimizar las fotos: conserva las originales, y de estos quedan los últimos 3.
 #[tauri::command]
 pub async fn respaldar_antes_de_optimizar(

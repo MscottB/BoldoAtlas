@@ -1,5 +1,11 @@
 import { toast } from "vue-sonner";
-import { listarRespaldos, respaldarAhora, type AvanceEliminar, type FalloRespaldo } from "@/db/cliente";
+import {
+  listarRespaldos,
+  podarRespaldosSuprimidas,
+  respaldarAhora,
+  type AvanceEliminar,
+  type FalloRespaldo,
+} from "@/db/cliente";
 import { i18n } from "@/i18n";
 import { BaseCambiada } from "@/lib/baseActiva";
 import { leerPreferencia } from "@/lib/preferencias";
@@ -99,6 +105,8 @@ export const soloRespaldoAutomatico = (): Promise<unknown> | null =>
 export async function respaldoAutomatico(alAbrir = true): Promise<void> {
   const aviso = deLaAbierta(i18n.global.t("respaldos.automaticoFallo"));
   try {
+    // sea cual sea la frecuencia: lo que guarda a una suprimida vence a los 30 días. Si falla, se reintenta en la próxima revisión.
+    await podarRespaldosSuprimidas().catch(() => undefined);
     const frecuencia = leerPreferencia<string>(PREFERENCIA, FRECUENCIA_POR_DEFECTO);
     if (tocaRespaldar(frecuencia, ultimoRespaldo(await listarRespaldos()), new Date(), alAbrir)) {
       const este = respaldar();

@@ -292,6 +292,8 @@ const META_CONOCIDAS: &[&str] = &[
     "db_creada",
     "data_revision",
     "app_version_ultima",
+    // para que una persona borrada definitivamente no vuelva con un archivo que llega después
+    "suprimidas",
 ];
 
 /// Con la extensión puesta. Si hubo que agregarla, el diálogo preguntó por otro nombre: lo que ya tenga este no se pisa.
@@ -1262,6 +1264,28 @@ mod tests {
         }
 
         #[test]
+        fn la_nueva_trae_la_lista_de_suprimidas() {
+            let (d, mut origen) = base_con_datos();
+            crate::supresion::suprimir(
+                &mut origen,
+                "ana",
+                "Persona suprimida",
+                "2026-11-01T00:00:00.000Z",
+            )
+            .unwrap();
+            let (_exe, r) = rutas();
+            let i = importacion(d.path(), &origen, &r.datos);
+            let id = como_nueva(&i, &r).unwrap();
+            let c = validar::solo_lectura_cerrada(&bd_de(&r, &id)).unwrap();
+            let ids: Vec<String> = crate::supresion::leer(&c)
+                .unwrap()
+                .into_iter()
+                .map(|s| s.id)
+                .collect();
+            assert_eq!(ids, ["ana"]);
+        }
+
+        #[test]
         fn de_meta_queda_lo_conocido_y_el_origen() {
             let (_d, archivo, codigo) =
                 hostil("INSERT INTO meta (clave, valor) VALUES ('ajena', 'x');");
@@ -1589,6 +1613,105 @@ mod tests {
         let e = alcance::preparar(copia, d.path(), None).unwrap_err();
         assert_eq!(e.codigo, "muy_pesado");
         assert!(temporales(d.path()).is_empty());
+    }
+
+    #[test]
+    fn reemplazar_trae_la_lista_de_suprimidas_del_archivo() {
+        let (d, mut origen) = base_con_datos();
+        crate::supresion::suprimir(
+            &mut origen,
+            "ana",
+            "Persona suprimida",
+            "2026-11-01T00:00:00.000Z",
+        )
+        .unwrap();
+        let (archivo, codigo) = exportar(&origen, d.path(), None);
+        let (dd, bd, respaldos, conn) = destino();
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        let mut slot = Some(conn);
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        let c = db::abrir(&bd).unwrap();
+        let ids: Vec<String> = crate::supresion::leer(&c)
+            .unwrap()
+            .into_iter()
+            .map(|s| s.id)
+            .collect();
+        assert_eq!(ids, ["ana"]);
+    }
+
+    #[test]
+    fn reemplazar_no_revive_a_la_suprimida() {
+        let (d, origen) = base_con_datos();
+        origen
+            .execute_batch(
+                "UPDATE trabajadores SET nombre = 'Zacarías Únicoapellido', correo = 'zz-unico@ejemplo.cl',
+                        notas = 'nota-secreta-123', foto_png = 'Zm90by11bmljbw==' WHERE id = 'ana';
+                 UPDATE asignaciones SET motivo = 'motivo-privado-456' WHERE trabajador_id = 'ana';",
+            )
+            .unwrap();
+        let (archivo, codigo) = exportar(&origen, d.path(), None);
+        let (dd, bd, respaldos, mut conn) = destino();
+        conn.execute(
+            "INSERT INTO trabajadores (id, nombre, correo, created_at, updated_at) VALUES ('ana', 'Ana', 'ana@x.cl', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        crate::supresion::suprimir(
+            &mut conn,
+            "ana",
+            "Persona suprimida",
+            "2026-11-01T00:00:00.000Z",
+        )
+        .unwrap();
+        // una suprimida que el archivo no trae: su id igual se conserva
+        let sin_fila = crate::supresion::Suprimida {
+            id: "sin-fila".into(),
+            fecha: "2026-11-02T00:00:00.000Z".into(),
+        };
+        crate::supresion::reaplicar(&mut conn, &[sin_fila], "Persona suprimida").unwrap();
+        let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+        let mut slot = Some(conn);
+        reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+        let c = db::abrir(&bd).unwrap();
+        let (nombre, correo, borrada): (String, Option<String>, Option<String>) = c
+            .query_row(
+                "SELECT nombre, correo, deleted_at FROM trabajadores WHERE id = 'ana'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(nombre, "Persona suprimida");
+        assert!(correo.is_none() && borrada.is_some());
+        let motivos: i64 = c
+            .query_row(
+                "SELECT count(*) FROM asignaciones WHERE trabajador_id = 'ana' AND (motivo IS NOT NULL OR deleted_at IS NULL)",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(motivos, 0);
+        let ids: Vec<String> = crate::supresion::leer(&c)
+            .unwrap()
+            .into_iter()
+            .map(|s| s.id)
+            .collect();
+        assert_eq!(ids, ["ana", "sin-fila"]);
+        drop(c);
+        for a in [bd.clone(), respaldos::con_sufijo(&bd, "-wal")] {
+            let Ok(bytes) = fs::read(&a) else { continue };
+            for t in [
+                "Zacarías Únicoapellido",
+                "zz-unico@ejemplo.cl",
+                "Zm90by11bmljbw==",
+                "nota-secreta-123",
+                "motivo-privado-456",
+            ] {
+                assert!(
+                    !bytes.windows(t.len()).any(|w| w == t.as_bytes()),
+                    "{t} sigue en {a:?}"
+                );
+            }
+        }
     }
 }
 

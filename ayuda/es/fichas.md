@@ -65,6 +65,18 @@ En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es t
 
 ## Eliminar
 
-**Eliminar** cierra la ficha y muestra un aviso con **Deshacer** durante 8 segundos.
+**Eliminar** cierra la ficha y muestra un aviso con **Deshacer** durante 8 segundos. Después, la persona sigue en **Configuración › Eliminados**, donde la restauras (ver [Eliminados](mantenedores.md#eliminados)). Eliminar solo la oculta: sus datos siguen guardados.
+
+## Borrar definitivamente
+
+**Borrar definitivamente** está en la ficha y en **Configuración › Eliminados**. Pide escribir el nombre de la persona para confirmar.
+
+- Borra su nombre, correo, teléfono, notas, foto y los demás datos de su ficha, y el motivo de sus cambios de puesto.
+- Donde ocupó un puesto queda «Persona suprimida»: el organigrama a una fecha y las vacantes no cambian.
+- **No se puede deshacer** y no hace un respaldo antes. Los respaldos anteriores que la guardan se borran solos a los 30 días, cuando esa organización esté abierta (ver [Respaldos](respaldos.md#personas-borradas-definitivamente)).
+
+## Exportar sus datos
+
+**Exportar sus datos**, en la ficha, guarda un Excel con dos hojas: los datos de la persona y sus puestos, también los que ya terminaron. No lleva la foto. Como el archivo no va cifrado, antes pide aceptar el aviso de siempre.
 
 **Ver también:** [Puestos y reemplazos](puestos.md) · [Directorio](directorio.md) · [Configuración y mantenedores](mantenedores.md).

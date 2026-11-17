@@ -236,6 +236,16 @@ export function respaldarAhora(): Promise<string> {
   return conBase<string>("respaldar_ahora");
 }
 
+/** Borra los respaldos que aún guardan a una persona suprimida hace más de 30 días; devuelve cuántos. */
+export function podarRespaldosSuprimidas(): Promise<number> {
+  return conBase<number>("podar_respaldos_suprimidas");
+}
+
+/** Borrado definitivo: vacía a la persona y compacta la base. `relleno`: el nombre que queda («Persona suprimida»). */
+export function suprimirPersona(id: string, relleno: string): Promise<void> {
+  return conBase<void>("suprimir_persona", { id, relleno });
+}
+
 /** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
 export function respaldarAntesDeOptimizar(): Promise<string> {
   return conBase<string>("respaldar_antes_de_optimizar");
@@ -446,6 +456,8 @@ export interface FilaCaso {
   dudosa: boolean;
   masReciente: Lado;
   borradoAqui: boolean;
+  /** Falso si es de una persona suprimida: no se puede restaurar ni agregar. */
+  restaurable: boolean;
 }
 
 export interface ValorCampo {

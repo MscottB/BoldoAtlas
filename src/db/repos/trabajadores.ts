@@ -18,6 +18,12 @@ export const SQL_NOTAS = "SELECT notas FROM trabajadores WHERE id = ?";
 /** Las de todas, para la exportación completa a Excel si se marca su columna (también de quien se ve en una fecha). */
 export const SQL_NOTAS_EXCEL = "SELECT id, notas FROM trabajadores WHERE notas <> ''";
 
+/** Todo el historial de una persona (también lo terminado y lo de puestos o unidades ya eliminados), para exportar sus datos. */
+export const SQL_ASIGNACIONES_PERSONA = `SELECT u.nombre AS unidad, c.nombre AS cargo, a.tipo, a.desde, a.hasta, a.motivo
+  FROM asignaciones a JOIN puestos p ON p.id = a.puesto_id
+  LEFT JOIN unidades u ON u.id = p.unidad_id LEFT JOIN cargos c ON c.id = p.cargo_id
+  WHERE a.trabajador_id = ? AND a.deleted_at IS NULL ORDER BY a.desde, a.created_at`;
+
 /** Lo que la ficha escribe. Foto y notas no vienen en la lista: `undefined` significa «no se toca». */
 export type CamposTrabajador = Pick<
   Trabajador,

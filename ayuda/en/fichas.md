@@ -65,6 +65,18 @@ Optimizing does not change the person's modification date: it is the same photo 
 
 ## Delete
 
-**Delete** closes the record and shows a notice with **Undo** for 8 seconds.
+**Delete** closes the record and shows a notice with **Undo** for 8 seconds. After that, the person stays in **Settings › Deleted**, where you restore them (see [Deleted](mantenedores.md#deleted)). Deleting only hides them: their data is still stored.
+
+## Delete permanently
+
+**Delete permanently** is in the record and in **Settings › Deleted**. It asks you to type the person's name to confirm.
+
+- It erases their name, email, phone, notes, photo and the rest of their record, and the reason for their position changes.
+- Where they held a position it shows "Deleted person": the chart at a date and the vacancies do not change.
+- It **cannot be undone** and no backup is made first. Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open (see [Backups](respaldos.md#people-deleted-permanently)).
+
+## Export their data
+
+**Export their data**, in the record, saves an Excel file with two sheets: the person's data and their positions, including the ones that have ended. It has no photo. As the file is not encrypted, it first asks you to accept the usual notice.
 
 **See also:** [Positions and replacements](puestos.md) · [Directory](directorio.md) · [Settings and lists](mantenedores.md).

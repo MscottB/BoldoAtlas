@@ -74,6 +74,8 @@ For two copies that kept working separately: you compare the file with your data
 | **Reference to something that will not be there** | Something points to what you chose not to bring or to what will end up deleted | Nothing: it stops **Apply** | Reassign, leave empty if allowed, or discard the record. **Resolve all references** does it at once |
 | **Would end up inside itself** | With what you chose, a unit ends up hanging from itself | Nothing: it stops **Apply** | Change its parent unit or leave it without one |
 
+A person you deleted permanently here does not come back with a file (see [Delete permanently](fichas.md#delete-permanently)). In the review, their row says they cannot be restored, and their new assignments do not come in.
+
 When you revert the deletion of a zone, its former members do not come back on their own: each one shows as its own case, and they are restored row by row.
 
 What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. For people who are no longer there, a branch carries only name and email: what comes empty does not erase their data in your database. A photo or a view's settings are compared without being shown, and it says how much they weigh.

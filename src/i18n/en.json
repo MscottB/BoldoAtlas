@@ -502,7 +502,8 @@
     "puestoInexistente": "The position no longer exists.",
     "nadaQuePegar": "There is no copied style that can be pasted.",
     "ultimoTipoUnidad": "At least one unit type must stay active.",
-    "soloLectura": "You are viewing the org chart at a past date: it is read-only. Go back to today to change it."
+    "soloLectura": "You are viewing the org chart at a past date: it is read-only. Go back to today to change it.",
+    "personaSuprimida": "Deleted person"
   },
   "ficha": {
     "tituloPersona": "Person record",
@@ -555,7 +556,8 @@
     "historialPuestos": "History ({n})",
     "puestoVigente": "{cargo} · {unidad} · {tipo} · since {desde}",
     "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}",
-    "masDatos": "More details"
+    "masDatos": "More details",
+    "exportarDatos": "Export their data"
   },
   "puesto": {
     "nuevo": "New position",
@@ -1090,6 +1092,10 @@
     "mantenedores": {
       "texto": "Job titles, contract types, sites, schedules, unit types and legends.",
       "abrir": "Manage lists"
+    },
+    "eliminados": {
+      "texto": "Deleted people, units and positions, to see and restore them.",
+      "abrir": "Open deleted"
     }
   },
   "mantenedores": {
@@ -1674,6 +1680,8 @@
       "borrar": "Delete",
       "revivir": "Restore with the file's data",
       "sigueBorrada": "Leave it deleted",
+      "suprimida": "Permanently erased: it cannot be restored.",
+      "suprimidaNueva": "Belongs to a permanently erased person: it is not added.",
       "borradaAqui": "You deleted it in your database; it is still in the file.",
       "borradaArchivo": "The file has it deleted; it is still in your database.",
       "reciente": {
@@ -1955,6 +1963,49 @@
         "tipos_unidad": "Unit type",
         "etiquetas": "Tag"
       }
+    },
+    "persona": {
+      "lista": "Data of {nombre}",
+      "datos": "Data",
+      "puestos": "Positions",
+      "campo": "Field",
+      "valor": "Value",
+      "unidad": "Unit",
+      "cargo": "Job title",
+      "tipo": "Type",
+      "desde": "From",
+      "hasta": "Until",
+      "motivo": "Reason"
     }
+  },
+  "eliminados": {
+    "titulo": "Deleted",
+    "listas": "Deleted items",
+    "vacio": "Nothing deleted here.",
+    "tabs": {
+      "persona": "People",
+      "unidad": "Units",
+      "puesto": "Positions"
+    },
+    "eliminadoEl": "Deleted on {fecha}",
+    "restaurar": "Restore",
+    "vuelveVacia": "Comes back empty: what it had was moved to its parent when it was deleted.",
+    "primeroUnidad": "Restore the unit “{unidad}” first.",
+    "restaurado": "“{nombre}” was restored.",
+    "correoEnUso": "“{nombre}” was not restored: another person already uses their email.",
+    "puestoOcupado": "“{nombre}” was not restored: another person already holds their position.",
+    "errorCargar": "The list of deleted items could not be read."
+  },
+  "suprimir": {
+    "boton": "Delete permanently",
+    "titulo": "Delete “{nombre}” permanently?",
+    "queSeBorra": "Their name, email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”.",
+    "sinCompactar": "The person was deleted, but the file could not be compacted yet. Close and reopen the organization to finish.",
+    "noSeDeshace": "This cannot be undone.",
+    "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open.",
+    "escribe": "To confirm, type the name: {nombre}",
+    "cancelar": "Cancel",
+    "confirmar": "Delete permanently",
+    "suprimida": "“{nombre}” was deleted permanently"
   }
 }
