@@ -19,7 +19,7 @@ Aprobado por el autor por partes el 2026-11-17. Detalla la Task 19c del Anexo 6 
 
 ## Modelo de datos (migración 0003)
 
-- `historial_acciones`: `id` (UUID v7), `fecha` (ISO UTC), `tipo` (clave de la frase, por ejemplo `unidad.renombrar`), `datos` (JSON solo con ids y conteos, **nunca nombres**), `origen` (`app`, `importar`, `revisar`, `suprimir`), `estado` (`hecha`, `deshecha`) y `rehacible` (si está en la pila de Ctrl+Y).
+- `historial_acciones`: `id` (UUID v7), `fecha` (ISO UTC), `datos` (JSON solo con ids y conteos, **nunca nombres**), `origen` (`app`, `importar`, `revisar`, `suprimir`), `estado` (`hecha`, `deshecha`) y `rehacible` (si está en la pila de Ctrl+Y).
 - `historial_filas`: `accion_id`, `orden`, `tabla`, `fila_id` (la clave primaria de la fila; en `meta`, la `clave`), `op` (`insert`, `update`, `delete`), `antes` y `despues` (JSON). En un `update` solo van **los campos que cambiaron**. En un `insert` va la fila entera en `despues` y en un `delete` físico, la fila entera en `antes`.
 - `historial_en_curso`: una sola fila con la acción abierta, o `NULL`. Es una tabla normal y no `TEMP`, porque un trigger de la base principal no puede leer tablas temporales.
 - **Triggers** `AFTER INSERT`, `AFTER UPDATE` y `AFTER DELETE` en cada tabla de negocio, con `WHEN` la acción abierta no es `NULL`. En `meta` solo anotan `org_nombre`, `logo_png`, `revision_bien` y `historial_plazo_dias`.
@@ -28,7 +28,7 @@ Aprobado por el autor por partes el 2026-11-17. Detalla la Task 19c del Anexo 6 
 
 ## Cómo se anota
 
-- `db::lote` recibe además `tipo` y `datos`. Abre la acción, la pone en `historial_en_curso`, ejecuta las sentencias, la cierra y hace commit, todo en la misma transacción. Si algo falla, no queda nada.
+- La frase se deduce de las filas (tabla, operación y campos), sin un tipo guardado. `db::lote` abre la acción, la pone en `historial_en_curso`, ejecuta las sentencias, la cierra y hace commit, todo en la misma transacción. Si algo falla, no queda nada.
 - Al anotar una acción nueva de la app, las que estaban en la pila de Ctrl+Y dejan de ser rehacibles con Ctrl+Y (como en Word). Siguen en la bitácora como deshechas.
 - **Importar con «Agregar lo nuevo»** (`fusion::fusionar`) y **aplicar «Revisar y decidir»** (`revision_aplicar`) abren una acción cada uno: «Importaste ventas.boldo: 12 cambios».
 - **Las pasadas de prueba que se deshacen** (`revisar`, la verificación de la revisión) no abren acción. Si los triggers corrieran, igual se revierten con la transacción.
