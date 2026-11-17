@@ -15,6 +15,7 @@ Aprobado por el autor por partes el 2026-11-17. Detalla la Task 19c del Anexo 6 
 2. **Conflicto al deshacer una acción antigua:** si una acción posterior, todavía hecha, tocó las mismas filas, la app lo dice, nombra esas acciones y ofrece deshacerlas junto con ella en un solo paso. Si no se acepta, no cambia nada.
 3. **Camino A:** triggers de SQLite anotan los cambios; Rust deshace, rehace y vuelve a un punto.
 4. La vista, lo que se anota y la entrega en dos PR, como se describe abajo.
+5. **El nombre de una persona borrada definitivamente se queda en la bitácora** (decisión del autor, 2026-11-17). Del historial sale todo lo demás: correo, teléfono, foto, notas, valores de su ficha y motivos de sus asignaciones. El borrado definitivo deja de ser completo y se dice así: su diálogo y la ayuda avisan que el nombre queda en el historial hasta que venza el plazo de retención; la página de la 19e lo explica.
 
 ## Modelo de datos (migración 0003)
 
@@ -31,7 +32,7 @@ Aprobado por el autor por partes el 2026-11-17. Detalla la Task 19c del Anexo 6 
 - Al anotar una acción nueva de la app, las que estaban en la pila de Ctrl+Y dejan de ser rehacibles con Ctrl+Y (como en Word). Siguen en la bitácora como deshechas.
 - **Importar con «Agregar lo nuevo»** (`fusion::fusionar`) y **aplicar «Revisar y decidir»** (`revision_aplicar`) abren una acción cada uno: «Importaste ventas.boldo: 12 cambios».
 - **Las pasadas de prueba que se deshacen** (`revisar`, la verificación de la revisión) no abren acción. Si los triggers corrieran, igual se revierten con la transacción.
-- **Borrado definitivo** (`supresion::suprimir`): no se anota lo que vacía. Deja una acción `suprimir`, sin filas ni nombre, que no se puede deshacer, y purga el historial (abajo).
+- **Borrado definitivo** (`supresion::suprimir`): no se anota lo que vacía. Deja una acción `suprimir` con el id de la persona, que no se puede deshacer («Borraste definitivamente a Juan Pérez»), y limpia el historial (abajo).
 - **«Reemplazar todo»** deja la base nueva con el historial vacío, porque los `.boldo` no lo llevan. Su aviso lo dice; el historial anterior queda en el respaldo previo. **Restaurar un respaldo** devuelve el historial de ese respaldo.
 - `INSERT OR REPLACE` no dispara el trigger de borrado salvo con `recursive_triggers`. El plan revisa cada `REPLACE` del código y lo cambia por `ON CONFLICT DO UPDATE` o activa ese pragma, con una prueba.
 
@@ -49,13 +50,18 @@ Aprobado por el autor por partes el 2026-11-17. Detalla la Task 19c del Anexo 6 
 ## Retención y borrado definitivo
 
 - **Al abrir la organización** se borran las acciones con `fecha` más antigua que el plazo, con sus filas.
-- **Al suprimir a una persona,** en la misma transacción se borran de `historial_filas`:
-  - las filas de `trabajadores` con su id;
-  - las de `asignaciones` y `actividad_roles` cuyo `antes` o `despues` tenga su `trabajador_id`.
+- **Al suprimir a una persona,** en la misma transacción se limpia `historial_filas`:
+  - en las filas de `trabajadores` con su id, `antes` y `despues` quedan solo con `nombre`; los demás campos se quitan;
+  - en las de `asignaciones` con su `trabajador_id`, se quita `motivo`;
+  - `actividad_roles` no guarda datos de la persona aparte del id, y queda igual.
 
-  Las acciones que quedan sin filas se conservan, marcadas para que no se puedan deshacer. Luego se compacta como hoy.
-- Como la bitácora no guarda frases escritas, sino que las arma al mostrarlas con lo que queda en `historial_filas`, tras la purga se lee «una persona suprimida».
-- Los respaldos anteriores con el historial viejo se podan con el plazo de 30 días de la 19b, sin cambios.
+  Las acciones que tocaron a esa persona se marcan para que no se puedan deshacer, porque ya no tienen sus datos. Luego se compacta como hoy.
+- La bitácora no guarda frases escritas: las arma al mostrarlas con lo que hay en `historial_filas`. Por eso el nombre de la persona sigue apareciendo.
+- El nombre sale del historial cuando vence el plazo de retención de esas acciones; con «sin límite», no sale.
+- Los respaldos anteriores con sus datos completos se podan con el plazo de 30 días de la 19b, sin cambios.
+- **Textos que cambian de la 19b:**
+  - el diálogo de «Borrar definitivamente» dice que el nombre queda en el historial de cambios;
+  - `ayuda/{es,en}/fichas.md` dice lo mismo.
 
 ## La vista «Historial»
 
@@ -95,7 +101,7 @@ Aprobado por el autor por partes el 2026-11-17. Detalla la Task 19c del Anexo 6 
   - purga al suprimir;
   - exportar sin historial e importar un archivo con historial (se rechaza);
   - `REPLACE`.
-- **TypeScript:** las frases por tipo (con persona suprimida), la pila de Ctrl+Y en el store, los atajos que no actúan en un campo de texto y la vista con `renderToString`.
+- **TypeScript:** las frases por tipo (con una persona suprimida, que mantiene el nombre), la pila de Ctrl+Y en el store, los atajos que no actúan en un campo de texto y la vista con `renderToString`.
 - **Arnés en la app real** (CI de Windows):
   - hacer un cambio, Ctrl+Z, cerrar y abrir, Ctrl+Y;
   - volver a un punto;

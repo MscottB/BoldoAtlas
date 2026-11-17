@@ -638,13 +638,13 @@ Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase públ
 ### Task 19b: Eliminados, borrado definitivo y datos de una persona
 - **Dos maneras de borrar (pedido del autor, 2026-11-15).** «Eliminar» sigue siendo borrado lógico, como hoy (`deleted_at`): se puede recuperar. «Borrar definitivamente» es la supresión de verdad. Hay que elegir con conocimiento: el diálogo de cada una dice qué pasa con los datos.
 - **Eliminados:** una lista para ver lo eliminado (personas, unidades y puestos), con quién y cuándo, y **Restaurar** más allá de los 8 segundos de «Deshacer». Restaurar a una persona devuelve sus asignaciones borradas con ella (`restaurarTrabajador` ya lo hace). La marca de borrado se sigue usando en `.boldo` y en la fusión para que lo eliminado no reaparezca al importar.
-- **Borrar definitivamente**, desde Eliminados o desde la ficha, escribiendo el nombre para confirmar: quita de la base nombre, correo, teléfono, notas, foto y valores de su ficha, y los quita del historial de la 19c. Sus asignaciones pasadas quedan como «Persona suprimida» para que el organigrama a una fecha y las vacantes no cambien. Los respaldos con sus datos se borran tras un plazo, y el diálogo lo dice.
+- **Borrar definitivamente**, desde Eliminados o desde la ficha, escribiendo el nombre para confirmar: quita de la base nombre, correo, teléfono, notas, foto y valores de su ficha. Del historial de la 19c quita todo menos el nombre, que queda hasta que vence la retención (decisión del autor, 2026-11-17). Sus asignaciones pasadas quedan como «Persona suprimida» para que el organigrama a una fecha y las vacantes no cambien. Los respaldos con sus datos se borran tras un plazo, y el diálogo lo dice.
 - Exportar los datos de una persona (acceso y portabilidad).
 - Decisión pendiente del autor: cuántos respaldos `boldo-antes-de-*` conservar y el plazo para que se borren los que guardan a una persona suprimida.
 
 ### Task 19c: Historial de cambios
 - Triggers que guardan antes y después por lote. Bitácora, deshacer y rehacer persistentes (Ctrl+Z, Ctrl+Y) y panel «volver a este punto». Deshacer una acción antigua solo si nada posterior tocó esas filas; si no, avisar. Con retención, y sale antes que la 19d.
-- Las personas de `meta.suprimidas` (19b) no se guardan en el historial y se quitan de lo ya guardado.
+- De las personas de `meta.suprimidas` (19b) el historial conserva solo el nombre (decisión del autor, 2026-11-17); lo demás se quita de lo ya guardado.
 - Diseño aprobado por el autor (2026-11-17): `docs/superpowers/specs/2026-11-17-historial-design.md`.
 
 ### Task 19d: Base cifrada
@@ -655,7 +655,7 @@ Orden decidido por el autor: 22a y 22b antes que 19b en adelante. La frase públ
 
 ### Task 19e: Página «Seguridad y privacidad» (al final)
 - En el sitio y la ayuda, es y en: «te ayuda a cumplir» Ley 21.719 y RGPD, tabla honesta de lo que hace la app y lo que le toca a la organización, y nota de que no es asesoría legal.
-- Explicar las dos maneras de borrar de la 19b: «Eliminar» oculta y se puede recuperar, así que los datos siguen en el archivo y en los respaldos; para atender una solicitud de supresión se usa «Borrar definitivamente». Decidir cuánto tiempo conservar los datos le toca a la organización. Los niveles de exportación sin personas de la 23b sirven para compartir la estructura sin datos personales. Revisar el estado de la ley chilena al publicar: rige el 1 de diciembre de 2026 salvo que se apruebe el proyecto que la posterga.
+- Explicar las dos maneras de borrar de la 19b: «Eliminar» oculta y se puede recuperar, así que los datos siguen en el archivo y en los respaldos; para atender una solicitud de supresión se usa «Borrar definitivamente», que deja el nombre en el historial de cambios hasta que vence su plazo. Decidir cuánto tiempo conservar los datos le toca a la organización. Los niveles de exportación sin personas de la 23b sirven para compartir la estructura sin datos personales. Revisar el estado de la ley chilena al publicar: rige el 1 de diciembre de 2026 salvo que se apruebe el proyecto que la posterga.
 
 ---
 
