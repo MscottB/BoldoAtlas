@@ -1289,13 +1289,20 @@ pub async fn historial_pagina(
     antes_de: Option<String>,
     cuantas: u32,
 ) -> Result<Vec<historial::AccionBreve>, Fallo> {
+    // también la organización de al lado, que solo se lee
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>().con_conexion(&base_id, |c| {
-            historial::pagina(c, &filtro, antes_de.as_deref(), cuantas)
-        })
+        leer_en(
+            &app.state::<Estado>(),
+            &app.state::<Lado>(),
+            &base_id,
+            |c| {
+                historial::pagina(c, &filtro, antes_de.as_deref(), cuantas).map_err(|e| e.detalle)
+            },
+        )
     })
     .await
     .map_err(|e| e.to_string())?
+    .map_err(Fallo::from)
 }
 
 #[tauri::command]
@@ -1305,8 +1312,43 @@ pub async fn historial_detalle(
     id: String,
 ) -> Result<Vec<historial::FilaDetalle>, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
+        leer_en(
+            &app.state::<Estado>(),
+            &app.state::<Lado>(),
+            &base_id,
+            |c| historial::detalle(c, &id).map_err(|e| e.detalle),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(Fallo::from)
+}
+
+/// Las acciones pedidas, para nombrar las que van juntas en un conflicto.
+#[tauri::command]
+pub async fn historial_breves(
+    app: AppHandle,
+    base_id: String,
+    ids: Vec<String>,
+) -> Result<Vec<historial::AccionBreve>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
-            .con_conexion(&base_id, |c| historial::detalle(c, &id))
+            .con_conexion(&base_id, |c| historial::breves(c, &ids))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Cuántas acciones desharía «Volver a este punto» en `id`.
+#[tauri::command]
+pub async fn historial_posteriores(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+) -> Result<u32, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::posteriores(c, &id))
     })
     .await
     .map_err(|e| e.to_string())?

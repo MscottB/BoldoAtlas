@@ -1,7 +1,7 @@
 import { idLado } from "./modo";
 
 /** Los únicos comandos de Rust que el iframe del lado alcanza. */
-export const PERMITIDOS = ["db_consultar"] as const;
+export const PERMITIDOS = ["db_consultar", "historial_pagina", "historial_detalle"] as const;
 
 /**
  * Con qué argumentos sale `cmd` desde el panel de al lado: los mismos, con el id del lado como `baseId`; null si no se

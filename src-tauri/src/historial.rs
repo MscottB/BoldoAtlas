@@ -14,7 +14,9 @@ mod lectura;
 use lectura::breve;
 #[cfg(test)]
 pub use lectura::nombre_de;
-pub use lectura::{AccionBreve, FilaDetalle, Filtro, Punteros, detalle, pagina, punteros};
+pub use lectura::{
+    AccionBreve, FilaDetalle, Filtro, Punteros, breves, detalle, pagina, posteriores, punteros,
+};
 
 /// `(tabla, fila_id, op, antes, despues)` de `historial_filas`.
 type Fila = (String, String, String, Option<String>, Option<String>);

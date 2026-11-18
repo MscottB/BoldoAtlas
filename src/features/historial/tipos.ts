@@ -27,6 +27,25 @@ export interface AccionBreve {
   muestra: FilaBreve[];
 }
 
+/** Una fila de una acción, campo por campo. */
+export interface FilaDetalle {
+  tabla: string;
+  fila_id: string;
+  op: "insert" | "update" | "delete";
+  nombre: string | null;
+  /** `[campo, antes, después]`. */
+  campos: [string, unknown, unknown][];
+}
+
+/** Lo que pide `historial_pagina`. `desde` y `hasta` son instantes UTC (desde incluido, hasta excluido). */
+export interface Filtro {
+  texto?: string;
+  desde?: string;
+  hasta?: string;
+  /** `[tabla, fila_id]`. */
+  fila?: [string, string];
+}
+
 export interface Punteros {
   deshacer: AccionBreve | null;
   rehacer: AccionBreve | null;

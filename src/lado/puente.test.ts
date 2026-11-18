@@ -4,7 +4,15 @@ import { i18n } from "@/i18n";
 
 const LADO = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 const ABIERTA = "0190a1b2-c3d4-7e5f-8a9b-ffffffffffff";
-const VEDADOS = ["db_lote", "foto_bytes", "info_app", "info_proyecto", "plugin:event|listen"];
+const VEDADOS = [
+  "db_lote",
+  "foto_bytes",
+  "info_app",
+  "info_proyecto",
+  "plugin:event|listen",
+  "historial_deshacer",
+  "historial_volver_a",
+];
 
 vi.stubGlobal("__APP_VERSION__", "prueba");
 afterEach(() => {
@@ -35,13 +43,19 @@ function internosTauri(respuesta: unknown = [{ id: "u1" }]) {
 }
 
 describe("filtrarLado", () => {
-  it("solo deja db_consultar, con el id del lado aunque se pida con otro", async () => {
+  it("solo deja las lecturas, con el id del lado aunque se pida con otro", async () => {
     const { filtrarLado } = await enLado();
     for (const cmd of VEDADOS) expect(filtrarLado(cmd, { baseId: LADO }), cmd).toBeNull();
     expect(filtrarLado("db_consultar", { baseId: ABIERTA, sql: "SELECT 1" })).toEqual({
       baseId: LADO,
       sql: "SELECT 1",
     });
+    // el historial se ve al lado, sin botones
+    expect(filtrarLado("historial_pagina", { baseId: ABIERTA, cuantas: 50 })).toEqual({
+      baseId: LADO,
+      cuantas: 50,
+    });
+    expect(filtrarLado("historial_detalle", { baseId: ABIERTA, id: "a" })).toEqual({ baseId: LADO, id: "a" });
   });
 });
 

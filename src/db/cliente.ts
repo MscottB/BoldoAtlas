@@ -3,7 +3,7 @@ import { invoke as invocar, type InvokeArgs } from "@tauri-apps/api/core";
 import { MODO_LADO } from "@/lado/modo";
 import { filtrarLado } from "@/lado/puente";
 import { BaseCambiada, baseActual, enCambio } from "@/lib/baseActiva";
-import type { AccionBreve, Punteros } from "@/features/historial/tipos";
+import type { AccionBreve, FilaDetalle, Filtro, Punteros } from "@/features/historial/tipos";
 
 /** Toda llamada a Rust sale de aquí. En el panel de al lado solo salen las lecturas, con su id; lo demás, `solo_lectura`. */
 const invoke: typeof invocar = MODO_LADO
@@ -210,6 +210,35 @@ export function historialRehacerUltima(): Promise<AccionBreve | null> {
 /** Lo que harían Ctrl+Z y Ctrl+Y, después de lo que está en la cola. */
 export function historialPunteros(): Promise<Punteros> {
   return enCola("historial_punteros");
+}
+
+/** Deshace todo lo hecho después de `id` (que debe estar hecha), en una transacción. Devuelve las que deshizo. */
+export function historialVolverA(id: string): Promise<string[]> {
+  return enCola("historial_volver_a", { id, versionApp: __APP_VERSION__ });
+}
+
+/** Las acciones que van junto con `id` al deshacerla o rehacerla, sin ella. No cambia nada. */
+export function historialConflictos(id: string, sentido: "deshacer" | "rehacer"): Promise<string[]> {
+  return enCola("historial_conflictos", { id, sentido });
+}
+
+// Lecturas: no esperan a la cola, como `consultar`. Página y detalle también se leen en la organización de al lado.
+/** Hasta `cuantas` (como mucho 200), de la más nueva a la más antigua, las que siguen a `antesDe`. */
+export function historialPagina(filtro: Filtro, antesDe: string | null, cuantas: number): Promise<AccionBreve[]> {
+  return conBase("historial_pagina", { filtro, antesDe, cuantas });
+}
+
+export function historialDetalle(id: string): Promise<FilaDetalle[]> {
+  return conBase("historial_detalle", { id });
+}
+
+export function historialBreves(ids: string[]): Promise<AccionBreve[]> {
+  return conBase("historial_breves", { ids });
+}
+
+/** Cuántas desharía «Volver a este punto» en `id`. */
+export function historialPosteriores(id: string): Promise<number> {
+  return conBase("historial_posteriores", { id });
 }
 
 /** Espera a que salgan todos los lotes, también los que entren mientras tanto. Nunca falla. */

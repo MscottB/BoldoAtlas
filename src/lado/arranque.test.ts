@@ -44,6 +44,7 @@ vi.mock("@/features/arbol/VistaArbol.vue", () => vacia);
 vi.mock("@/features/arboles/VistaArboles.vue", () => vacia);
 vi.mock("@/features/directorio/VistaDirectorio.vue", () => vacia);
 vi.mock("@/features/revision/VistaRevision.vue", () => vacia);
+vi.mock("@/vistas/VistaHistorial.vue", () => vacia);
 vi.mock("@/features/intercambio/VistaIntercambio.vue", () => vacia);
 vi.mock("@/features/comparar/VistaComparar.vue", () => vacia);
 vi.mock("@/vistas/VistaConfiguracion.vue", () => vacia);
@@ -97,12 +98,12 @@ describe("el router del lado", () => {
   });
 
   it("deja las vistas de trabajo y avisa al padre a cuál llegó", async () => {
-    for (const ruta of ["/", "/arboles", "/revision", "/directorio"]) {
+    for (const ruta of ["/", "/arboles", "/revision", "/directorio", "/historial"]) {
       await router.push(ruta);
       expect(router.currentRoute.value.fullPath).toBe(ruta);
       expect(alPadre).toHaveBeenLastCalledWith({ tipo: "boldo-lado-ruta", ruta }, "http://tauri.localhost");
     }
-    expect(VISTAS_LADO).toEqual(["arbol", "arboles", "directorio", "revision"]);
+    expect(VISTAS_LADO).toEqual(["arbol", "arboles", "directorio", "revision", "historial"]);
   });
 });
 

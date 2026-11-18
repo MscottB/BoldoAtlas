@@ -171,6 +171,8 @@ pub fn run() {
             comandos::historial_pagina,
             comandos::historial_detalle,
             comandos::historial_volver_a,
+            comandos::historial_breves,
+            comandos::historial_posteriores,
             fotos::foto_bytes,
             fotos::fotos_guardar,
             fotos::fotos_compactar,

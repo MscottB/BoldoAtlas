@@ -233,7 +233,7 @@ pub fn pagina(
         .as_deref()
         .map(|t| normalizar_nombre(t).trim().to_string())
         .filter(|t| !t.is_empty());
-    let dia = |d: &Option<String>| d.as_deref().filter(|d| !d.is_empty()).map(String::from);
+    let instante = |d: &Option<String>| d.as_deref().filter(|d| !d.is_empty()).map(String::from);
     let (tabla, fila_id) = match &f.fila {
         Some((t, i)) => (Some(t.as_str()), Some(i.as_str())),
         None => (None, None),
@@ -249,8 +249,8 @@ pub fn pagina(
     )?;
     let mut ids = st.query(params![
         antes_de,
-        dia(&f.desde),
-        dia(&f.hasta),
+        instante(&f.desde),
+        instante(&f.hasta),
         tabla,
         fila_id
     ])?;
@@ -289,6 +289,21 @@ fn toca(c: &Connection, id: &str, buscado: &str, nombres: &mut Nombres) -> Resul
         }
     }
     Ok(false)
+}
+
+/// Las acciones pedidas, en ese orden: el diálogo de conflicto nombra las que van juntas.
+pub fn breves(c: &Connection, ids: &[String]) -> Result<Vec<AccionBreve>, Fallo> {
+    let mut nombres = Nombres::new();
+    ids.iter().map(|id| breve_con(c, id, &mut nombres)).collect()
+}
+
+/// Cuántas hechas hay después de `id`: las que «Volver a este punto» desharía.
+pub fn posteriores(c: &Connection, id: &str) -> Result<u32, Fallo> {
+    Ok(c.query_row(
+        "SELECT count(*) FROM historial_acciones WHERE id > ?1 AND estado = 'hecha'",
+        [id],
+        |f| f.get(0),
+    )?)
 }
 
 #[derive(Debug, Serialize)]
@@ -771,6 +786,27 @@ mod tests {
         };
         let p = medir(&c, &f, LIMITE_BUSCAR, "busqueda rara entre 5000");
         assert_eq!(ids(&p), ["00000017"]);
+    }
+
+    #[test]
+    fn breves_en_su_orden_y_posteriores_cuenta_las_hechas() {
+        let mut c = base();
+        let a: Vec<String> = ["A", "B", "C"]
+            .iter()
+            .map(|n| {
+                lote(
+                    &mut c,
+                    &[&format!("UPDATE unidades SET nombre = '{n}' WHERE id = 'u1'")],
+                )
+                .unwrap()
+            })
+            .collect();
+        let pedidas = [a[2].clone(), a[0].clone()];
+        assert_eq!(ids(&breves(&c, &pedidas).unwrap()), [&a[2], &a[0]]);
+        assert_eq!(posteriores(&c, &a[0]).unwrap(), 2);
+        deshacer(&mut c, std::slice::from_ref(&a[2]), "t").unwrap();
+        assert_eq!(posteriores(&c, &a[0]).unwrap(), 1);
+        assert_eq!(posteriores(&c, &a[2]).unwrap(), 0);
     }
 
     #[test]
