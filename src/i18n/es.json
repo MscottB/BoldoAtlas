@@ -1470,7 +1470,7 @@
       "hecho": "Listo. Esto se agregó a tu base:",
       "ver": "Ver mi organización",
       "confirmarTitulo": "¿Reemplazar todo?",
-      "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración.",
+      "confirmarTexto": "Los datos de «{nombre}» se cambian por los del archivo y la app se reinicia. Antes se hace un respaldo, que puedes restaurar desde Configuración. El historial de cambios empieza de cero: el de antes queda solo en ese respaldo.",
       "nadaDisponible": "No disponible: {motivo}. Como este archivo trae solo una parte, tampoco se puede reemplazar.",
       "revisarAyuda": "Compara el archivo con tus datos y decides qué se queda: nuevos, distintos, borrados y lo que choca.",
       "revisarNada": "Comparar no cambia nada: tus datos se escriben solo cuando apliques lo decidido.",
@@ -2031,7 +2031,7 @@
   "suprimir": {
     "boton": "Borrar definitivamente",
     "titulo": "¿Borrar definitivamente a «{nombre}»?",
-    "queSeBorra": "Se borran su nombre, correo, teléfono, notas, foto y los demás datos de su ficha. Donde ocupó un puesto queda «Persona suprimida».",
+    "queSeBorra": "Se borran su correo, teléfono, notas, foto y los demás datos de su ficha. Donde ocupó un puesto queda «Persona suprimida». Su nombre queda en el historial de cambios hasta que venza el plazo de ese historial.",
     "sinCompactar": "Se borró a la persona, pero el archivo no se pudo compactar todavía. Cierra y vuelve a abrir la organización para terminar.",
     "noSeDeshace": "Esto no se puede deshacer.",
     "respaldos": "Los respaldos anteriores que la guardan se borran solos a los 30 días, cuando esa organización esté abierta.",

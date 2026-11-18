@@ -1470,7 +1470,7 @@
       "hecho": "Done. This was added to your database:",
       "ver": "See my organization",
       "confirmarTitulo": "Replace everything?",
-      "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings.",
+      "confirmarTexto": "The data of “{nombre}” is swapped for the file's and the app restarts. A backup is made first, which you can restore from Settings. The change history starts from zero: the previous one stays only in that backup.",
       "nadaDisponible": "Not available: {motivo}. Since this file carries only a part, it cannot replace your data either.",
       "revisarAyuda": "Compares the file with your data and you decide what stays: new, different, deleted and what clashes.",
       "revisarNada": "Comparing changes nothing: your data is written only when you apply what you decided.",
@@ -2031,7 +2031,7 @@
   "suprimir": {
     "boton": "Delete permanently",
     "titulo": "Delete “{nombre}” permanently?",
-    "queSeBorra": "Their name, email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”.",
+    "queSeBorra": "Their email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out.",
     "sinCompactar": "The person was deleted, but the file could not be compacted yet. Close and reopen the organization to finish.",
     "noSeDeshace": "This cannot be undone.",
     "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open.",

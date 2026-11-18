@@ -71,7 +71,8 @@ Optimizing does not change the person's modification date: it is the same photo 
 
 **Delete permanently** is in the record and in **Settings › Deleted**. It asks you to type the person's name to confirm.
 
-- It erases their name, email, phone, notes, photo and the rest of their record, and the reason for their position changes.
+- It erases their email, phone, notes, photo and the rest of their record, and the reason for their position changes, also from the change history.
+- Their **name** stays in the change history until the period set in **Settings › Change history** runs out (1 year if you do not change it); after that it is erased too.
 - Where they held a position it shows "Deleted person": the chart at a date and the vacancies do not change.
 - It **cannot be undone** and no backup is made first. Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open (see [Backups](respaldos.md#people-deleted-permanently)).
 

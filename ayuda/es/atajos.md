@@ -13,6 +13,8 @@ Atajos propios de BoldoAtlas:
 | `F`                                       | Va al campo **Buscar unidad o persona** de la barra del lienzo                                                                                                  |
 | `Supr`                                    | Elimina lo seleccionado (hay 8 segundos para deshacer); con varias unidades seleccionadas, las elimina todas a la vez                                         |
 | `Esc`                                     | Cierra el panel o el diálogo abierto; con varias unidades seleccionadas, quita la selección; mientras arrastras una tarjeta, lo cancela                       |
+| `Ctrl` + `Z`                              | Deshace el último cambio que hiciste; se puede seguir hacia atrás, también después de cerrar y abrir la app                                                    |
+| `Ctrl` + `Y` / `Ctrl` + `Mayús` + `Z`     | Rehace lo que deshiciste                                                                                                                                      |
 | `Ctrl` + `0`                              | Encuadra todo el árbol en la ventana                                                                                                                          |
 | `Ctrl` + `=` / `Ctrl` + `+`               | Acerca el lienzo                                                                                                                                              |
 | `Ctrl` + `-`                              | Aleja el lienzo                                                                                                                                               |
@@ -36,6 +38,10 @@ La paleta funciona incluso mientras escribes en un campo: úsala para saltar a c
 :::
 
 `N`, `F`, `Supr`, `Ctrl` + `D`, `Ctrl` + `=` / `+` / `-`, `F2`, `Mayús` + `F10` y las flechas (también con `Mayús`) solo actúan en el árbol, cuando no estás escribiendo en un campo de texto ni hay un diálogo abierto. Salvo el zoom, tampoco actúan con el foco en un botón, una fila u otro control dentro del panel de la unidad, para que una tecla no elimine ni cree nada por sorpresa; sí actúan con el foco en el panel mismo, como justo después de abrirlo. Viendo el organigrama a una fecha, `N`, `Supr`, `Ctrl` + `D` y `F2` no hacen nada (es solo lectura) y tampoco hay selección múltiple. `Ctrl` + `D` solo duplica cuando hay una única unidad seleccionada. Con `Supr`, una unidad con contenido pide confirmación antes de eliminarse; varias unidades seleccionadas siempre la piden.
+
+`Ctrl` + `Z` y `Ctrl` + `Y` no hacen nada mientras escribes en un campo de texto (ahí deshacen el texto del campo), con un diálogo abierto, viendo el organigrama a una fecha ni en la organización que se muestra al lado. Un aviso dice qué se deshizo y ofrece **Rehacer**. Si lo que quieres deshacer ya fue cambiado por otra cosa, no se deshace y un aviso lo explica. Se guardan según el plazo de **Configuración › Historial de cambios** (1 año si no lo cambias).
+
+`Ctrl` + `Z` y `Ctrl` + `Y` no hacen nada mientras escribes en un campo de texto (ahí deshacen el texto del campo), con un diálogo abierto, viendo el organigrama a una fecha ni en la organización que se muestra al lado. Un aviso dice qué se deshizo y ofrece **Rehacer**. Si lo que quieres deshacer ya fue cambiado por otra cosa, no se deshace y un aviso lo explica. Los cambios se guardan el plazo que elijas en **Configuración › Historial de cambios** (1 año si no lo cambias).
 
 En la barra de pestañas (aparece desde la segunda): `←` `→` recorren las pestañas, `Enter` abre la enfocada, `Supr` la cierra y `Ctrl` + `Mayús` + `←` `→` la mueven. Con la vista dividida, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` y las teclas del árbol actúan en el panel con foco. Más en la página «Pestañas de trabajo».
 

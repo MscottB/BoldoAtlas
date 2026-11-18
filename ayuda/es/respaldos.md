@@ -32,6 +32,8 @@ En **Configuración › Respaldos** se ve la fecha del **último respaldo** junt
 Para llevarte una copia a otro lugar, pulsa **Abrir carpeta** y copia el archivo `.db` que quieras, por ejemplo a un pendrive.
 :::
 
+Los respaldos guardan también el historial de cambios; los archivos `.boldo` no (ver [Exportar e importar](exportar-importar.md#reemplazar-todo)).
+
 ## Antes de reemplazar los datos
 
 Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. De los de reemplazar y de restaurar se conservan los últimos 10 de cada tipo. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.

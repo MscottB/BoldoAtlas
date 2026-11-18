@@ -94,6 +94,8 @@ Decisions last as long as the review. **Cancel** and **Back to the options** war
 
 The open organization's data is swapped for the file's and the app restarts, back in that organization. It only works with a file of **the whole database**: with a part you would erase the rest. You are asked to confirm.
 
+`.boldo` files do not carry the change history. So after replacing everything the history starts from zero: you cannot undo earlier changes with `Ctrl` + `Z`. The previous history stays in the **Before replacing** backup.
+
 ::: tip Tip
 Before changing the open organization, BoldoAtlas makes a backup: marked **Before importing** when adding or reviewing and deciding, and **Before replacing** when replacing everything. If you change your mind, restore it from [Backups](respaldos.md). If anything fails while applying, nothing is written.
 :::

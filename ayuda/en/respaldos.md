@@ -32,6 +32,8 @@ In **Settings › Backups** you see the date of the **last backup** next to **Ba
 To take a copy elsewhere, press **Open folder** and copy the `.db` file you want, for example to a USB drive.
 :::
 
+Backups also keep the change history; `.boldo` files do not (see [Export and import](exportar-importar.md#replace-everything)).
+
 ## Before replacing your data
 
 When you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. For the ones made before replacing and before restoring, the last 10 of each kind are kept. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.

@@ -13,6 +13,8 @@ BoldoAtlas's own shortcuts:
 | `F`                                       | Goes to the **Search unit or person** field in the canvas bar                                                                                                             |
 | `Del`                                     | Deletes the selection (you have 8 seconds to undo); with several units selected, deletes them all at once                                                              |
 | `Esc`                                     | Closes the open panel or dialog; with several units selected, clears the selection; while dragging a card, cancels it                                                  |
+| `Ctrl` + `Z`                              | Undoes the last change you made; you can keep going back, even after closing and reopening the app                                                                      |
+| `Ctrl` + `Y` / `Ctrl` + `Shift` + `Z`     | Redoes what you undid                                                                                                                                                   |
 | `Ctrl` + `0`                              | Fits the whole tree in the window                                                                                                                                      |
 | `Ctrl` + `=` / `Ctrl` + `+`               | Zooms the canvas in                                                                                                                                                    |
 | `Ctrl` + `-`                              | Zooms the canvas out                                                                                                                                                   |
@@ -36,6 +38,8 @@ The palette works even while you type in a field: use it to jump to any unit, pe
 :::
 
 `N`, `F`, `Del`, `Ctrl` + `D`, `Ctrl` + `=` / `+` / `-`, `F2`, `Shift` + `F10` and the arrow keys (also with `Shift`) only act on the tree, when you are not typing in a text field and no dialog is open. Except for zoom, they also do not act with focus on a button, a row or another control inside the unit panel, so a key press never deletes or creates anything by surprise; they do act with focus on the panel itself, as right after it opens. While viewing the chart at a past date, `N`, `Del`, `Ctrl` + `D` and `F2` do nothing (read-only) and there is no multiple selection. `Ctrl` + `D` only duplicates when exactly one unit is selected. With `Del`, a unit that has content asks for confirmation before it is deleted; several selected units always ask for it.
+
+`Ctrl` + `Z` and `Ctrl` + `Y` do nothing while you type in a text field (there they undo the field's text), with a dialog open, while viewing the chart at a date, or in the organization shown beside. A notice says what was undone and offers **Redo**. If what you want to undo was since changed by something else, it is not undone and a notice explains why. Changes are kept for the period set in **Settings › Change history** (1 year if you do not change it).
 
 In the tab bar (shown from the second tab on): `←` `→` move between tabs, `Enter` opens the focused one, `Del` closes it and `Ctrl` + `Shift` + `←` `→` move it. With the split view, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` and the tree keys act on the focused panel. More on the “Work tabs” page.
 
