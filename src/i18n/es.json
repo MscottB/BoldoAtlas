@@ -2031,7 +2031,7 @@
   "suprimir": {
     "boton": "Borrar definitivamente",
     "titulo": "¿Borrar definitivamente a «{nombre}»?",
-    "queSeBorra": "Se borran su correo, teléfono, notas, foto y los demás datos de su ficha. Donde ocupó un puesto queda «Persona suprimida». Su nombre queda en el historial de cambios hasta que venza el plazo de ese historial.",
+    "queSeBorra": "Se borran su correo, teléfono, notas, foto y los demás datos de su ficha. Donde ocupó un puesto queda «Persona suprimida». Su nombre queda en el historial de cambios hasta que venza el plazo de ese historial; con «Sin límite», se queda.",
     "sinCompactar": "Se borró a la persona, pero el archivo no se pudo compactar todavía. Cierra y vuelve a abrir la organización para terminar.",
     "noSeDeshace": "Esto no se puede deshacer.",
     "respaldos": "Los respaldos anteriores que la guardan se borran solos a los 30 días, cuando esa organización esté abierta.",

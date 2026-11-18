@@ -72,7 +72,7 @@ En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es t
 **Borrar definitivamente** está en la ficha y en **Configuración › Eliminados**. Pide escribir el nombre de la persona para confirmar.
 
 - Borra su correo, teléfono, notas, foto y los demás datos de su ficha, y el motivo de sus cambios de puesto, también del historial de cambios.
-- Su **nombre** queda en el historial de cambios hasta que venza el plazo de **Configuración › Historial de cambios** (1 año si no lo cambias); después se borra también.
+- Su **nombre** queda en el historial de cambios hasta que venza el plazo de **Configuración › Historial de cambios** (1 año si no lo cambias); después se borra también. Con **Sin límite**, nunca vence y el nombre se queda.
 - Donde ocupó un puesto queda «Persona suprimida»: el organigrama a una fecha y las vacantes no cambian.
 - **No se puede deshacer** y no hace un respaldo antes. Los respaldos anteriores que la guardan se borran solos a los 30 días, cuando esa organización esté abierta (ver [Respaldos](respaldos.md#personas-borradas-definitivamente)).
 

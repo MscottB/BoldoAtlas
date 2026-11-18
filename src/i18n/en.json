@@ -2031,7 +2031,7 @@
   "suprimir": {
     "boton": "Delete permanently",
     "titulo": "Delete “{nombre}” permanently?",
-    "queSeBorra": "Their email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out.",
+    "queSeBorra": "Their email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out; with “No limit”, it stays.",
     "sinCompactar": "The person was deleted, but the file could not be compacted yet. Close and reopen the organization to finish.",
     "noSeDeshace": "This cannot be undone.",
     "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open.",
