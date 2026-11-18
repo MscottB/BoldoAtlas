@@ -148,6 +148,26 @@ describe("traducirError", () => {
     expect(traducirError(new Error("database is locked"))).toBe("database is locked");
   });
 
+  it.each([
+    ["historial_conflicto", "a2,a3", "Otros cambios posteriores dependen de este: deshazlos primero."],
+    ["historial_bloqueada", "a1", "Ese cambio ya no se puede deshacer."],
+    ["historial_ya_aplicada", "a1", "Ya estaba deshecho."],
+    ["historial_no_se_pudo", "referencias", "No se puede deshacer: otro cambio depende de este."],
+    ["historial_no_se_pudo", "ciclo", "No se puede deshacer: una unidad quedaría dentro de sí misma."],
+    ["historial_no_se_pudo", "posterior:a2", "Una acción posterior cambió lo mismo: deshazla primero."],
+    [
+      "historial_no_se_pudo",
+      "UNIQUE constraint failed: index 'ux_trabajadores_correo'",
+      "No se pudo: Ya existe una persona con ese correo.",
+    ],
+  ])("traduce el fallo del historial %s (%s)", (codigo, detalle, esperado) => {
+    expect(traducirError({ codigo, detalle })).toBe(esperado);
+  });
+
+  it("de otro fallo de Rust muestra su detalle, no [object Object]", () => {
+    expect(traducirError({ codigo: "fallo", detalle: "disco lleno" })).toBe("disco lleno");
+  });
+
   it("convierte cualquier otro valor con String", () => {
     expect(traducirError(42)).toBe("42");
   });

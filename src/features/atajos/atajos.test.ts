@@ -276,6 +276,42 @@ describe("resolverAtajo: con el foco en el panel de otra organización, en la ve
   });
 });
 
+describe("resolverAtajo: deshacer y rehacer", () => {
+  it("Ctrl+Z deshace; Ctrl+Y y Ctrl+Mayús+Z rehacen; en Mac con Cmd", () => {
+    expect(resolverAtajo(tecla("z", { ctrlKey: true }))).toBe("deshacer");
+    expect(resolverAtajo(tecla("y", { ctrlKey: true }))).toBe("rehacer");
+    expect(resolverAtajo(tecla("Z", { ctrlKey: true, shiftKey: true }))).toBe("rehacer");
+    expect(resolverAtajo(tecla("z", { metaKey: true }))).toBe("deshacer");
+    expect(resolverAtajo(tecla("z", { metaKey: true, shiftKey: true }))).toBe("rehacer");
+    // sin Control, o con Alt (AltGr), no
+    expect(resolverAtajo(tecla("z"))).toBeNull();
+    expect(resolverAtajo(tecla("z", { ctrlKey: true, altKey: true }))).toBeNull();
+  });
+
+  it("no actúan escribiendo, con un diálogo, viendo una fecha, al lado ni con el foco en otra organización", () => {
+    for (const extra of [
+      { enCampoDeTexto: true },
+      { modalAbierto: true },
+      { soloLectura: true },
+      { lado: true, soloLectura: true },
+      { otraAlLado: true, dividida: true },
+    ])
+      for (const [key, shiftKey] of [
+        ["z", false],
+        ["y", false],
+        ["Z", true],
+      ] as const)
+        expect(
+          resolverAtajo(tecla(key, { ctrlKey: true, shiftKey, ...extra })),
+          `${key} ${JSON.stringify(extra)}`,
+        ).toBeNull();
+  });
+
+  it("dentro del panel de la unidad, fuera de un campo, sí", () => {
+    expect(resolverAtajo(tecla("z", { ctrlKey: true, enPanel: true }))).toBe("deshacer");
+  });
+});
+
 describe("resolverAtajo: renombrar", () => {
   it("F2 renombra la unidad seleccionada, fuera de campos, sin modificadores ni diálogos, y no viendo una fecha", () => {
     expect(resolverAtajo(tecla("F2"))).toBe("renombrar");

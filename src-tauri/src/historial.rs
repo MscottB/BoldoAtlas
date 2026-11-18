@@ -49,6 +49,9 @@ pub struct FilaBreve {
     pub campos: Vec<String>,
     pub nombre: Option<String>,
     pub nombre_antes: Option<String>,
+    pub nombre_despues: Option<String>,
+    /// Un `update` que deja `deleted_at` con fecha: eliminar, y no restaurar.
+    pub elimina: bool,
 }
 
 /// Cuántos días se guarda el historial si `meta.historial_plazo_dias` no dice otra cosa.
@@ -250,28 +253,38 @@ fn breve(c: &Connection, id: &str) -> Result<AccionBreve, Fallo> {
         |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?, f.get(5)?)),
     )?;
     let crudas: Vec<Fila> = c
-        .prepare("SELECT tabla, fila_id, op, antes, despues FROM historial_filas WHERE accion_id = ?1 ORDER BY orden LIMIT 3")?
-        .query_map([id], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?)))?
+        // primero lo que crea, elimina o restaura: es lo que nombra la acción (eliminar una unidad mueve antes su contenido)
+        .prepare(
+            "SELECT tabla, fila_id, op, antes, despues FROM historial_filas WHERE accion_id = ?1
+             ORDER BY json_type(despues, '$.deleted_at') IS NULL, orden LIMIT 3",
+        )?
+        .query_map([id], |f| {
+            Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?))
+        })?
         .collect::<rusqlite::Result<_>>()?;
     let mut muestra = Vec::new();
     for (tabla, fila_id, op, antes, despues) in crudas {
         let antes = objeto(antes.as_deref())?;
-        let campos = if op == "update" {
-            objeto(despues.as_deref())?.keys().cloned().collect()
+        let despues = objeto(despues.as_deref())?;
+        let es_update = op == "update";
+        let campos = if es_update {
+            despues.keys().cloned().collect()
         } else {
             Vec::new()
         };
-        let nombre_antes = match (op.as_str(), antes.get("nombre")) {
-            ("update", Some(Value::String(n))) => Some(n.clone()),
+        let nombre = |m: &Map<String, Value>| match (es_update, m.get("nombre")) {
+            (true, Some(Value::String(n))) => Some(n.clone()),
             _ => None,
         };
         muestra.push(FilaBreve {
             nombre: nombre_de(c, &tabla, &fila_id)?,
+            nombre_antes: nombre(&antes),
+            nombre_despues: nombre(&despues),
+            elimina: es_update && despues.get("deleted_at").is_some_and(|v| !v.is_null()),
             tabla,
             fila_id,
             op,
             campos,
-            nombre_antes,
         });
     }
     Ok(AccionBreve {
@@ -1216,6 +1229,47 @@ mod tests {
             Some("Jefe")
         );
         assert_eq!(nombre_de(&c, "no_existe", "p1").unwrap(), None);
+    }
+
+    #[test]
+    fn la_muestra_pone_primero_la_baja_y_dice_el_nombre_nuevo() {
+        let mut c = base();
+        lote(&mut c, &[&unidad("u2", Some("u1"))]).unwrap();
+        // como eliminar una unidad: primero se mueve su contenido y después se marca borrada
+        let a = lote(
+            &mut c,
+            &[
+                "UPDATE unidades SET parent_id = NULL WHERE id = 'u2'",
+                "UPDATE unidades SET deleted_at = 'y' WHERE id = 'u1'",
+            ],
+        )
+        .unwrap();
+        let f = &breve(&c, &a).unwrap().muestra[0];
+        assert_eq!((f.fila_id.as_str(), f.elimina), ("u1", true));
+        deshacer(&mut c, &[a.clone()], "t").unwrap();
+        lote(
+            &mut c,
+            &["UPDATE unidades SET deleted_at = 'y' WHERE id = 'u2'"],
+        )
+        .unwrap();
+        let a = lote(
+            &mut c,
+            &["UPDATE unidades SET deleted_at = NULL WHERE id = 'u2'"],
+        )
+        .unwrap();
+        assert!(!breve(&c, &a).unwrap().muestra[0].elimina);
+        // deshecho, el renombre dice igual a qué nombre fue
+        let a = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
+        )
+        .unwrap();
+        deshacer(&mut c, &[a.clone()], "t").unwrap();
+        let f = &breve(&c, &a).unwrap().muestra[0];
+        assert_eq!(
+            (f.nombre_antes.as_deref(), f.nombre_despues.as_deref()),
+            (Some("Ventas"), Some("Norte"))
+        );
     }
 
     fn unidad(id: &str, padre: Option<&str>) -> String {

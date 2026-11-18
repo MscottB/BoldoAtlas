@@ -3,7 +3,7 @@ import { abrirBasePrueba, type BasePrueba } from "@/db/prueba/sqlite";
 import { TIPO_AREA, TIPO_GERENCIA, type Vista } from "@/db/tipos";
 import { crearUnidad, eliminarUnidad } from "./unidades";
 import { guardarSubarbol, quitarSubarbol } from "./subarboles";
-import { eliminarVista, guardarVista, renombrarVista, restaurarVista, SQL_VISTAS } from "./vistas";
+import { eliminarVista, guardarVista, renombrarVista, SQL_VISTAS } from "./vistas";
 
 let bd: BasePrueba;
 let rama: string; // id del subárbol guardado
@@ -44,17 +44,12 @@ describe("vistas guardadas", () => {
     expect(leer().map((v) => v.nombre)).toEqual(["Dos", "Tres"]);
   });
 
-  it("elimina de forma lógica y restaura; restaurar choca si el nombre se reutilizó", () => {
+  it("elimina de forma lógica", () => {
     const a = guardarVista(null, "Uno", {});
     bd.aplicar(a.sentencias);
     bd.aplicar(eliminarVista(a.id));
     expect(leer()).toEqual([]);
     expect(bd.consultar("SELECT id FROM vistas")).toHaveLength(1);
-    bd.aplicar(restaurarVista(a.id));
-    expect(leer()).toHaveLength(1);
-    bd.aplicar(eliminarVista(a.id));
-    bd.aplicar(guardarVista(null, "uno", {}).sentencias);
-    expect(() => bd.aplicar(restaurarVista(a.id))).toThrow(/UNIQUE/);
   });
 
   it("la lectura omite las de un subárbol quitado", () => {

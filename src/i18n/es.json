@@ -487,7 +487,14 @@
     "sinAppdata": "No se encontró la carpeta de datos del usuario.",
     "sinCarpeta": "No se encontró la carpeta de datos de BoldoAtlas.",
     "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas.",
-    "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo y su carpeta tengan permiso de escritura."
+    "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo y su carpeta tengan permiso de escritura.",
+    "historial_conflicto": "Otros cambios posteriores dependen de este: deshazlos primero.",
+    "historial_bloqueada": "Ese cambio ya no se puede deshacer.",
+    "historial_ya_aplicada": "Ya estaba deshecho.",
+    "historial_referencias": "No se puede deshacer: otro cambio depende de este.",
+    "historial_ciclo": "No se puede deshacer: una unidad quedaría dentro de sí misma.",
+    "historial_posterior": "Una acción posterior cambió lo mismo: deshazla primero.",
+    "historial_no_se_pudo": "No se pudo: {motivo}"
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
@@ -824,7 +831,9 @@
       "dividir": "Dividir la vista",
       "abrirOtra": "Abrir otra organización: {nombre}",
       "comparar": "Comparar con «{nombre}»",
-      "verAlLado": "Ver «{nombre}» al lado"
+      "verAlLado": "Ver «{nombre}» al lado",
+      "deshacer": "Deshacer el último cambio",
+      "rehacer": "Rehacer"
     }
   },
   "organizaciones": {
@@ -1096,6 +1105,17 @@
     "eliminados": {
       "texto": "Personas, unidades y puestos eliminados, para verlos y restaurarlos.",
       "abrir": "Abrir eliminados"
+    },
+    "historial": {
+      "titulo": "Historial de cambios",
+      "plazo": "Guardar los cambios durante",
+      "ayuda": "Ctrl+Z deshace y Ctrl+Y rehace, aunque hayas cerrado la app. Los cambios más antiguos que este plazo se borran al abrir la organización.",
+      "opciones": {
+        "0": "Sin límite",
+        "30": "30 días",
+        "90": "90 días",
+        "365": "1 año"
+      }
     }
   },
   "mantenedores": {
@@ -2007,5 +2027,43 @@
     "cancelar": "Cancelar",
     "confirmar": "Borrar definitivamente",
     "suprimida": "Se borró definitivamente a «{nombre}»"
+  },
+  "historial": {
+    "deshecho": "Deshecho: {frase}",
+    "rehecho": "Rehecho: {frase}",
+    "rehacer": "Rehacer",
+    "nada": {
+      "deshacer": "No hay nada que deshacer.",
+      "rehacer": "No hay nada que rehacer."
+    },
+    "elemento": "un elemento",
+    "cosa": {
+      "unidades": "la unidad {nombre}",
+      "trabajadores": "a {nombre}",
+      "puestos": "el puesto {nombre}",
+      "asignaciones": "la asignación de {nombre}",
+      "conexiones": "una conexión",
+      "etiquetas": "la etiqueta {nombre}",
+      "zonas": "la zona {nombre}",
+      "vistas": "la vista {nombre}",
+      "leyendas": "la leyenda {nombre}",
+      "valor": "el valor {nombre}",
+      "unidad_etiquetas": "una etiqueta de una unidad",
+      "zona_unidades": "una unidad de una zona",
+      "subarboles_guardados": "una rama guardada",
+      "meta": "los datos de la organización",
+      "otra": "{nombre}"
+    },
+    "frase": {
+      "crear": "Creaste {cosa}",
+      "eliminar": "Eliminaste {cosa}",
+      "restaurar": "Restauraste {cosa}",
+      "mover": "Moviste {nombre}",
+      "renombrar": "Renombraste {antes} a {despues}",
+      "cambiar": "Cambiaste {nombre}",
+      "mas": "{frase} y {n} cambio más | {frase} y {n} cambios más",
+      "importar": "Importaste {archivo}: {n} cambio | Importaste {archivo}: {n} cambios",
+      "suprimir": "Borraste definitivamente a {nombre}"
+    }
   }
 }

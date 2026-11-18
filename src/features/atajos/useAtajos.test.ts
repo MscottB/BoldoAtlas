@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { usePestanas } from "@/features/pestanas/usePestanas";
 import { fijarBase } from "@/lib/baseActiva";
 import type { Organizacion } from "@/db/cliente";
+import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 import { useAtajos } from "./useAtajos";
 
@@ -103,6 +104,25 @@ describe("useAtajos con una pestaña sin abrir", () => {
     expect(marco.focus).toHaveBeenCalled();
     expect(ventana.focus).toHaveBeenCalled();
     expect(seccion.focus).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Z y Ctrl+Y van al historial de la abierta; con el foco en otra organización, no", () => {
+    const org = useOrganizacion();
+    const nada = { ok: false as const, mensaje: "" };
+    const deshacer = vi.spyOn(org, "deshacerUltima").mockResolvedValue(nada);
+    const rehacer = vi.spyOn(org, "rehacerUltima").mockResolvedValue(nada);
+    expect(tecla("z", true).preventDefault).toHaveBeenCalled();
+    tecla("y", true);
+    expect([deshacer.mock.calls.length, rehacer.mock.calls.length]).toEqual([1, 1]);
+    const pestanas = usePestanas();
+    useOrganizaciones().lista = [
+      { id: "A", nombre: "A", existe: true },
+      { id: "B", nombre: "B", existe: true },
+    ] as Organizacion[];
+    pestanas.verAlLado("B");
+    pestanas.enfocarPanel("lado");
+    tecla("z", true);
+    expect(deshacer).toHaveBeenCalledOnce();
   });
 
   it("con motivo, los atajos de pestañas siguen valiendo", () => {

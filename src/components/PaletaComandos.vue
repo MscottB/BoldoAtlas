@@ -12,7 +12,9 @@ import {
   Network,
   Palette,
   Plus,
+  Redo2,
   Search,
+  Undo2,
   User,
   UserRoundX,
   Users,
@@ -45,6 +47,7 @@ import { useFicha } from "@/features/trabajadores/useFicha";
 import { alPanelDeLaAbierta, usePanel } from "@/features/pestanas/panel";
 import { irConFoco as ir, routerConFoco } from "@/features/pestanas/routerConFoco";
 import { abrirEnPestanaNueva, usePestanas } from "@/features/pestanas/usePestanas";
+import { deshacerORehacer } from "@/features/atajos/useAtajos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
 
@@ -105,6 +108,15 @@ const acciones = computed<AccionPaleta[]>(() => [
           },
         },
       ]
+    : []),
+  // Como Ctrl+Z y Ctrl+Y: en cualquier vista de la abierta, sin ver una fecha.
+  ...(!conMotivo.value && !org.soloLectura && !pestanas.otraConFoco()
+    ? (["deshacer", "rehacer"] as const).map((sentido) => ({
+        id: sentido,
+        etiqueta: t(`paleta.acciones.${sentido}`),
+        icono: sentido === "deshacer" ? Undo2 : Redo2,
+        ejecutar: () => deshacerORehacer(sentido),
+      }))
     : []),
   {
     id: "directorio",

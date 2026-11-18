@@ -1,5 +1,7 @@
 import { ref } from "vue";
 import { useEventListener } from "@vueuse/core";
+import { toast } from "vue-sonner";
+import { i18n } from "@/i18n";
 import { useVista } from "@/features/arbol/useVista";
 import { unidadesDeRama } from "@/features/arbol/layout";
 import { abrirMenuContextual, nodoEn, useLienzo } from "@/features/arbol/useLienzo";
@@ -17,6 +19,25 @@ import { dentroDelPanel, destinoNavegacion, resolverAtajo, type Atajo, type Nave
 
 /** Si la paleta de comandos (Ctrl+K) está abierta. La abren el atajo y el botón de la barra superior. */
 export const paletaAbierta = ref(false);
+
+/**
+ * Ctrl+Z o Ctrl+Y, con su aviso: «Deshecho: …» ofrece rehacer. El store es uno: los dos paneles de una organización
+ * dividida ven la recarga.
+ */
+export async function deshacerORehacer(sentido: "deshacer" | "rehacer"): Promise<void> {
+  const org = useOrganizacion();
+  const r = await (sentido === "deshacer" ? org.deshacerUltima() : org.rehacerUltima());
+  const t = i18n.global.t;
+  if (!r.ok) {
+    // sin mensaje: la base cambió mientras tanto
+    if (r.mensaje) (r.codigo === "nada" ? toast.info : toast.error)(r.mensaje);
+    return;
+  }
+  if (sentido === "rehacer") return void toast(t("historial.rehecho", { frase: r.frase }));
+  toast(t("historial.deshecho", { frase: r.frase }), {
+    action: { label: t("historial.rehacer"), onClick: () => void deshacerORehacer("rehacer") },
+  });
+}
 
 const ATAJOS_PESTANAS = new Set<Atajo>([
   "nuevaPestana",
@@ -107,6 +128,12 @@ export function useAtajos() {
     }
     // La pantalla del motivo tapa la vista: la ruta sigue siendo de la abierta, y lo demás escribiría en ella sin verse.
     if (organizaciones.sinAbrir.has(conFoco.pestana())) return;
+    // En cualquier vista de la abierta.
+    if (atajo === "deshacer" || atajo === "rehacer") {
+      e.preventDefault();
+      void deshacerORehacer(atajo);
+      return;
+    }
     // Esc en Configuración, Ayuda o Acerca de las cierra (salvo que se esté escribiendo; los diálogos ya mandaron arriba).
     if (atajo === "cerrar" && esVistaCerrable(route.name)) {
       if (!destino?.closest(CAMPO)) {

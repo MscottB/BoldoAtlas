@@ -44,7 +44,21 @@ const nativos: [RegExp, string][] = [
   [/modo solo lectura/, "errores.baseSoloLectura"],
 ];
 
+type Fallo = { codigo: string; detalle: string };
+const esFallo = (e: unknown): e is Fallo => typeof e === "object" && e !== null && "codigo" in e;
+
+/** Por qué no se pudo deshacer o rehacer (src-tauri/src/historial.rs). */
+function deHistorial({ codigo, detalle }: Fallo): string {
+  const t = i18n.global.t;
+  if (codigo !== "historial_no_se_pudo") return t(`errores.${codigo}`);
+  if (detalle === "referencias" || detalle === "ciclo") return t(`errores.historial_${detalle}`);
+  if (detalle.startsWith("posterior:")) return t("errores.historial_posterior");
+  return t("errores.historial_no_se_pudo", { motivo: traducirError(detalle) }); // lo que dijo SQLite
+}
+
 export function traducirError(e: unknown): string {
+  if (esFallo(e))
+    return e.codigo.startsWith("historial_") ? deHistorial(e) : traducirError(e.detalle || e.codigo);
   const texto = typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
   const clave = reglas.find(([coincide]) => coincide(texto))?.[1];
   if (clave) return i18n.global.t(clave);

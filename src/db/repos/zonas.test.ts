@@ -8,7 +8,6 @@ import {
   editarZona,
   eliminarZona,
   quitarDeZona,
-  restaurarZona,
   SQL_ZONAS,
   SQL_ZONA_UNIDADES,
 } from "./zonas";
@@ -89,15 +88,12 @@ describe("zonas", () => {
     expect(pertenencias()).toEqual([]);
   });
 
-  it("eliminar la zona da de baja sus pertenencias; restaurarla devuelve solo esas", () => {
+  it("eliminar la zona da de baja sus pertenencias", () => {
     paso([...agregarAZona(z, a), ...agregarAZona(z, b)]);
     paso(quitarDeZona(z, b));
     paso(eliminarZona(z));
     expect(bd.consultar(SQL_ZONAS)).toEqual([]);
     expect(bd.consultar("SELECT id FROM zona_unidades WHERE deleted_at IS NULL")).toEqual([]);
-    paso(restaurarZona(z));
-    expect(bd.consultar(SQL_ZONAS)).toHaveLength(1);
-    expect(pertenencias()).toEqual([a]);
   });
 
   it("la lectura omite las pertenencias de una zona o unidad eliminada aunque la fila siga viva", () => {

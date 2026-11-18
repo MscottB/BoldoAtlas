@@ -19,6 +19,8 @@ const h = vi.hoisted(() => ({
   antesDeMeta: null as (() => Promise<void>) | null,
   suprimidas: [] as [string, string][],
   sinCompactar: false,
+  /** Lo que se pidió deshacer o rehacer en el historial. */
+  movidas: [] as [string, string[]][],
 }));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
@@ -26,7 +28,35 @@ vi.mock("@/db/cliente", () => ({
   consultar: async (sql: string, params?: unknown[]) => h.bd!.consultar(sql, params),
   lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => {
     await h.antesDeLote?.();
-    h.bd!.aplicar(s);
+    return h.bd!.aplicar(s);
+  },
+  // Como Rust: lo que choca no cambia nada y se dice con el error de SQLite
+  ...Object.fromEntries(
+    (["deshacer", "rehacer"] as const).map((sentido) => [
+      sentido === "deshacer" ? "historialDeshacer" : "historialRehacer",
+      async (ids: string[]) => {
+        h.movidas.push([sentido, ids]);
+        try {
+          h.bd!.mover(ids, sentido);
+        } catch (e) {
+          throw { codigo: "historial_no_se_pudo", detalle: (e as Error).message };
+        }
+      },
+    ]),
+  ),
+  historialPunteros: async () => {
+    const breve = (sql: string) => {
+      const id = h.bd!.consultar<{ id: string }>(sql)[0]?.id;
+      return id ? { id, origen: "app", datos: {}, filas: 1, muestra: [] } : null;
+    };
+    return {
+      deshacer: breve(
+        "SELECT id FROM historial_acciones WHERE estado = 'hecha' AND bloqueada = 0 ORDER BY id DESC LIMIT 1",
+      ),
+      rehacer: breve(
+        "SELECT id FROM historial_acciones WHERE estado = 'deshecha' AND rehacible IS NOT NULL ORDER BY rehacible DESC LIMIT 1",
+      ),
+    };
   },
   // Rust vacía la fila; aquí basta con dejarla eliminada y apuntar la llamada
   suprimirPersona: async (id: string, relleno: string) => {
@@ -89,6 +119,7 @@ beforeEach(() => {
   h.bd = abrirBasePrueba();
   h.antesDeLote = null;
   h.antesDeMeta = null;
+  h.movidas = [];
 });
 afterEach(() => vi.useRealTimers());
 
@@ -295,7 +326,7 @@ describe("trabajadores", () => {
     await s.eliminarTrabajador(ana);
     await persona(s, "Ana bis", "ana@x.cl");
     const r = await s.deshacer();
-    expect(r).toEqual({ ok: false, mensaje: "Ya existe una persona con ese correo." });
+    expect(r).toEqual({ ok: false, mensaje: "No se pudo: Ya existe una persona con ese correo." });
     expect(s.trabajadores).toHaveLength(1);
   });
 });
@@ -859,6 +890,62 @@ describe("organización, etiquetas y conexiones", () => {
     expect(s.conexiones).toHaveLength(1);
     await s.eliminarConexion(c.id);
     expect(s.conexiones).toHaveLength(0);
+  });
+});
+
+describe("historial", () => {
+  it("el Deshacer del aviso deshace en el historial la acción de esa baja", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    await s.eliminarTrabajador(ana);
+    const accion = s.ultimoBorrado?.accion;
+    expect(accion).toEqual(expect.any(String));
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(h.movidas).toEqual([["deshacer", [accion]]]);
+    expect(s.ultimoBorrado).toBeNull();
+    expect(s.trabajadores.map((w) => w.id)).toEqual([ana]);
+  });
+
+  it("una baja que no cambió nada no tiene qué deshacer", async () => {
+    const s = nuevo();
+    s.ultimoBorrado = { tipo: "trabajador", id: "x", accion: null, vence: Date.now() + 8000 };
+    expect(await s.deshacer()).toEqual({ ok: false, mensaje: "Ya no se puede deshacer." });
+    expect(h.movidas).toEqual([]);
+  });
+
+  it("deshacerUltima y rehacerUltima recargan los datos y dan la frase", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Ventas");
+    await s.editarUnidad(u, { nombre: "Norte" });
+    const r = await s.deshacerUltima();
+    expect(r).toMatchObject({ ok: true, frase: expect.any(String) });
+    expect(s.porId.get(u)?.nombre).toBe("Ventas");
+    expect((await s.rehacerUltima()).ok).toBe(true);
+    expect(s.porId.get(u)?.nombre).toBe("Norte");
+    expect(h.movidas.map(([sentido]) => sentido)).toEqual(["deshacer", "rehacer"]);
+  });
+
+  it("sin nada que deshacer o rehacer lo dice, sin escribir", async () => {
+    const s = nuevo();
+    const nada = (mensaje: string) => ({ ok: false, codigo: "nada", mensaje });
+    expect(await s.deshacerUltima()).toEqual(nada("No hay nada que deshacer."));
+    expect(await s.rehacerUltima()).toEqual(nada("No hay nada que rehacer."));
+    expect(h.movidas).toEqual([]);
+  });
+
+  it("Ctrl+Z sobre la baja del aviso deja el aviso sin nada que deshacer", async () => {
+    const s = nuevo();
+    await s.eliminarTrabajador(await persona(s, "Ana"));
+    expect((await s.deshacerUltima()).ok).toBe(true);
+    expect(s.ultimoBorrado).toBeNull();
+  });
+
+  it("viendo una fecha, Ctrl+Z no escribe", async () => {
+    const s = nuevo();
+    await unidad(s, "Ventas");
+    await s.verAFecha("2020-01-01");
+    expect((await s.deshacerUltima()).ok).toBe(false);
+    expect(h.movidas).toEqual([]);
   });
 });
 

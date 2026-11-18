@@ -4,6 +4,9 @@ import {
   leerMeta,
   lote,
   consultar,
+  historialDeshacer,
+  historialRehacer,
+  historialPunteros,
   suprimirPersona as suprimir,
   type AvanceEliminar,
   type Sentencia,
@@ -60,6 +63,7 @@ import { tiposARenombrar } from "@/features/configuracion/semillas";
 import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
+import { frase } from "@/features/historial/frases";
 
 /** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
@@ -70,21 +74,19 @@ export type ResultadoValor = { ok: true; id: string } | { ok: false; mensaje: st
 export type ResultadoEliminar =
   { ok: true; eliminadas: number; omitidas: number } | { ok: false; mensaje: string };
 
-type Contenido = { hijos: string[]; puestos: string[] };
-
 export interface Borrado {
   tipo: "unidad" | "unidades" | "trabajador" | "puesto" | "vista" | "zona" | "conexion";
   id: string;
+  /** La acción del historial que la eliminó; null si el lote no cambió nada. */
+  accion: string | null;
   /** `conexion`: entre quiénes era: al restaurarla no debe duplicar otra creada mientras tanto. */
   extremos?: [string, string];
-  contenido?: Contenido;
-  /** `unidades`: lo que contenía cada una de las eliminadas en el mismo lote. */
-  lote?: { id: string; contenido: Contenido }[];
   /** Epoch en ms hasta el que se puede deshacer. */
   vence: number;
 }
 
 const VIGENCIA_DESHACER_MS = 8000;
+const PLAZO_POR_DEFECTO = "365"; // como historial::PLAZO_POR_DEFECTO_DIAS
 const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
 // El cargo es del puesto y el tipo, de la unidad; los demás valores, de la persona.
 const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos" | "tipos_unidad">, keyof Trabajador> = {
@@ -118,6 +120,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const org = ref<{ nombre: string; logo: string | null }>({ nombre: "", logo: null });
   /** Texto crudo de `meta.revision_bien` (las marcas «Así está bien»); `leerMarcas` lo interpreta. */
   const marcasRevision = ref("");
+  /** `meta.historial_plazo_dias`: días que se guarda el historial; "0" es sin límite. */
+  const plazoHistorial = ref(PLAZO_POR_DEFECTO);
   const cargado = ref(false);
   const pendientes = ref(0);
   const guardando = computed(() => pendientes.value > 0);
@@ -259,6 +263,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       cambios.value = null;
       org.value = { nombre: meta.org_nombre ?? "", logo: meta.logo_png || null };
       marcasRevision.value = meta.revision_bien ?? "";
+      plazoHistorial.value = meta.historial_plazo_dias || PLAZO_POR_DEFECTO;
       cargado.value = true;
       error.value = null;
       return { ok: true };
@@ -285,6 +290,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     catalogos.value = catalogosVacios();
     org.value = { nombre: "", logo: null };
     marcasRevision.value = "";
+    plazoHistorial.value = PLAZO_POR_DEFECTO;
     cargado.value = false;
     error.value = null;
     ultimoBorrado.value = null;
@@ -296,20 +302,26 @@ export const useOrganizacion = defineStore("organizacion", () => {
   alSoltarDatos(soltar);
 
   // shortcut: recarga todo tras cada escritura; si una org de 2.000 unidades se siente lenta, aplicar el cambio en memoria.
-  /** Un lote (una transacción) y recarga. Si falla, recarga igual para no mostrar datos viejos. */
-  async function aplicar(
+  /** Un lote (una transacción) y recarga. `alExito` recibe la acción que anotó en el historial. */
+  const aplicar = (
     hacer: () => Sentencia[] | { id: string; sentencias: Sentencia[] },
-    alExito?: () => void,
-  ): Promise<Resultado> {
+    alExito?: (accion: string | null) => void,
+  ): Promise<Resultado> =>
+    conRecarga(async () => {
+      const plan = hacer();
+      const accion = await lote(Array.isArray(plan) ? plan : plan.sentencias);
+      alExito?.(accion);
+      return Array.isArray(plan) ? undefined : plan.id;
+    });
+
+  /** Escribe y recarga. Si falla, recarga igual para no mostrar datos viejos. */
+  async function conRecarga(escribirla: () => Promise<string | void>): Promise<Resultado> {
     pendientes.value++;
     try {
-      const plan = hacer();
-      const sentencias = Array.isArray(plan) ? plan : plan.sentencias;
-      await lote(sentencias);
-      alExito?.();
+      const id = (await escribirla()) ?? undefined;
       const r = await cargar();
       // sin mensaje: la recarga llegó con otra base, y el lote ya se guardó
-      return r.ok || !r.mensaje ? { ok: true, id: Array.isArray(plan) ? undefined : plan.id } : r;
+      return r.ok || !r.mensaje ? { ok: true, id } : r;
     } catch (e) {
       const r = fallo(e);
       // recargar aquí le quitaría su turno a la carga del cambio, que es la que dice cuándo están los datos
@@ -336,6 +348,10 @@ export const useOrganizacion = defineStore("organizacion", () => {
   /** Única vía de escritura. Sin los datos cargados no: lo escrito se calcularía sobre lo que no se leyó. */
   const escribir = async (...args: Parameters<typeof aplicar>): Promise<Resultado> =>
     cargado.value ? aplicar(...args) : rechazar(t("store.sinCargar"));
+
+  /** Para `alExito`: deja la baja a mano del aviso de Deshacer. */
+  const anotarBorrado = (b: Omit<Borrado, "accion" | "vence">) => (accion: string | null) =>
+    void (ultimoBorrado.value = { ...b, accion, vence: Date.now() + VIGENCIA_DESHACER_MS });
 
   const crearUnidad = (datos: Parameters<typeof U.crearUnidad>[0]) => escribir(() => U.crearUnidad(datos));
   const crearArbol = (nombre: string, tipo_id: string) => crearUnidad({ tipo_id, nombre });
@@ -364,13 +380,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     if (!bajas.length) return rechazar(t("store.raizConContenido"));
     const r = await escribir(
       () => bajas.flatMap((b) => U.eliminarUnidad(porId.value.get(b.id)!, b.contenido, b.destino)),
-      () =>
-        (ultimoBorrado.value = {
-          tipo: "unidades",
-          id: bajas[0].id,
-          lote: bajas.map(({ id, contenido }) => ({ id, contenido })),
-          vence: Date.now() + VIGENCIA_DESHACER_MS,
-        }),
+      anotarBorrado({ tipo: "unidades", id: bajas[0].id }),
     );
     return r.ok ? { ok: true, eliminadas: bajas.length, omitidas: omitidas.length } : r;
   }
@@ -385,11 +395,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     // Una raíz no tiene superior al que pasar su contenido (quedaría unidad_id NULL).
     if (u.parent_id === null && (contenido.hijos.length || contenido.puestos.length))
       return rechazar(t("store.raizConContenido"));
-    return escribir(
-      () => U.eliminarUnidad(u, contenido),
-      () =>
-        (ultimoBorrado.value = { tipo: "unidad", id, contenido, vence: Date.now() + VIGENCIA_DESHACER_MS }),
-    );
+    return escribir(() => U.eliminarUnidad(u, contenido), anotarBorrado({ tipo: "unidad", id }));
   }
 
   const crearTrabajador = (datos: Parameters<typeof T.crearTrabajador>[0]) =>
@@ -397,10 +403,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const editarTrabajador = (id: string, cambios: Parameters<typeof T.editarTrabajador>[1]) =>
     escribir(() => T.editarTrabajador(id, cambios));
   const eliminarTrabajador = (id: string) =>
-    escribir(
-      () => T.eliminarTrabajador(id),
-      () => (ultimoBorrado.value = { tipo: "trabajador", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
-    );
+    escribir(() => T.eliminarTrabajador(id), anotarBorrado({ tipo: "trabajador", id }));
 
   /** Borrado definitivo: Rust vacía a la persona (y la deja eliminada) y compacta la base; aquí se recarga. */
   async function suprimirPersona(id: string): Promise<Resultado> {
@@ -462,10 +465,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   const editarPuesto = (id: string, cambios: Parameters<typeof P.editarPuesto>[1]) =>
     escribir(() => P.editarPuesto(id, cambios));
   const eliminarPuesto = (id: string) =>
-    escribir(
-      () => P.eliminarPuesto(id),
-      () => (ultimoBorrado.value = { tipo: "puesto", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
-    );
+    escribir(() => P.eliminarPuesto(id), anotarBorrado({ tipo: "puesto", id }));
   const asignarLeyenda = (puestoId: string, leyendaId: string | null) =>
     escribir(() => P.editarPuesto(puestoId, { leyenda_id: leyendaId }));
   const asignarTitular = (puestoId: string, trabajadorId: string, desde: string) =>
@@ -492,21 +492,11 @@ export const useOrganizacion = defineStore("organizacion", () => {
         })
       : Promise.resolve(rechazar(t("store.nombreVacio")));
 
-  const RESTAURAR = {
-    unidad: (b: Borrado) => U.restaurarUnidad(b.id, b.contenido!),
-    unidades: (b: Borrado) => b.lote!.flatMap((x) => U.restaurarUnidad(x.id, x.contenido)),
-    trabajador: (b: Borrado) => T.restaurarTrabajador(b.id),
-    puesto: (b: Borrado) => P.restaurarPuesto(b.id),
-    vista: (b: Borrado) => V.restaurarVista(b.id),
-    zona: (b: Borrado) => Z.restaurarZona(b.id),
-    conexion: (b: Borrado) => X.restaurarConexion(b.id),
-  };
-
   /** `id`: la baja a la que se refiere el aviso; si después hubo otra, ese aviso ya no restaura nada. */
   async function deshacer(id?: string): Promise<Resultado> {
     const b = ultimoBorrado.value;
     if (b && id && b.id !== id) return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
-    if (!b || Date.now() >= b.vence) {
+    if (!b?.accion || Date.now() >= b.vence) {
       ultimoBorrado.value = null;
       return { ok: false, mensaje: t("store.noSePuedeDeshacer") };
     }
@@ -515,11 +505,35 @@ export const useOrganizacion = defineStore("organizacion", () => {
       return rechazar(t("store.soloLectura"));
     const motivo = b.extremos && conexionRechazada(b.extremos[0], b.extremos[1], conexiones.value);
     if (motivo) return rechazar(motivo);
-    return escribir(
-      () => RESTAURAR[b.tipo](b),
-      () => (ultimoBorrado.value = null),
-    );
+    const accion = b.accion;
+    return cargado.value
+      ? conRecarga(async () => {
+          await historialDeshacer([accion]);
+          ultimoBorrado.value = null;
+        })
+      : rechazar(t("store.sinCargar"));
   }
+
+  /** Ctrl+Z y Ctrl+Y: la última acción hecha, o la última deshecha. `frase`, para el aviso. */
+  async function moverHistorial(sentido: "deshacer" | "rehacer"): Promise<Resultado & { frase?: string }> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    if (!cargado.value) return rechazar(t("store.sinCargar"));
+    let a;
+    try {
+      a = (await historialPunteros())[sentido];
+    } catch (e) {
+      return fallo(e);
+    }
+    if (!a) return { ok: false, codigo: "nada", mensaje: t(`historial.nada.${sentido}`) };
+    const id = a.id;
+    const r = await conRecarga(async () => {
+      await (sentido === "deshacer" ? historialDeshacer : historialRehacer)([id]);
+      if (ultimoBorrado.value?.accion === id) ultimoBorrado.value = null; // ya no hay qué deshacer desde su aviso
+    });
+    return r.ok ? { ok: true, frase: frase(a, t) } : r;
+  }
+  const deshacerUltima = () => moverHistorial("deshacer");
+  const rehacerUltima = () => moverHistorial("rehacer");
 
   const etiquetar = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));
@@ -607,10 +621,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
   async function eliminarZona(id: string): Promise<Resultado> {
     if (soloLectura.value) return rechazarSoloLectura();
-    return escribir(
-      () => Z.eliminarZona(id),
-      () => (ultimoBorrado.value = { tipo: "zona", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
-    );
+    return escribir(() => Z.eliminarZona(id), anotarBorrado({ tipo: "zona", id }));
   }
 
   /** Lo que la base no impide o no explica: consigo misma, una unidad eliminada y dos conexiones entre las mismas unidades. */
@@ -670,13 +681,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     if (!c) return rechazar(t("store.conexionInexistente"));
     return escribir(
       () => X.eliminarConexion(id),
-      () =>
-        (ultimoBorrado.value = {
-          tipo: "conexion",
-          id,
-          extremos: [c.origen_id, c.destino_id],
-          vence: Date.now() + VIGENCIA_DESHACER_MS,
-        }),
+      anotarBorrado({ tipo: "conexion", id, extremos: [c.origen_id, c.destino_id] }),
     );
   }
 
@@ -711,10 +716,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       ? escribir(() => V.renombrarVista(id, nombre))
       : Promise.resolve(rechazar(t("store.nombreVacio")));
   const eliminarVista = (id: string) =>
-    escribir(
-      () => V.eliminarVista(id),
-      () => (ultimoBorrado.value = { tipo: "vista", id, vence: Date.now() + VIGENCIA_DESHACER_MS }),
-    );
+    escribir(() => V.eliminarVista(id), anotarBorrado({ tipo: "vista", id }));
 
   /** Fila de escrituras de marcas: cada una parte de lo que dejó la anterior (el store recarga al escribir). */
   let filaMarcas: Promise<unknown> = Promise.resolve();
@@ -732,6 +734,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
   const guardarOrg = (nombre: string, logo: string | null) =>
     escribir(() => [...guardarMeta("org_nombre", nombre), ...guardarMeta("logo_png", logo ?? "")]);
+  /** Rust borra lo más antiguo al abrir la organización (`historial::podar`). */
+  const guardarPlazoHistorial = (dias: string) => escribir(() => guardarMeta("historial_plazo_dias", dias));
 
   async function crearValor(tabla: TablaCatalogo, nombre: string): Promise<ResultadoValor> {
     if (!nombre.trim()) return rechazar(t("store.nombreVacio"));
@@ -1009,6 +1013,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     org,
     marcasRevision,
     cambiarMarcasRevision,
+    plazoHistorial,
+    guardarPlazoHistorial,
     cargado,
     guardando,
     error,
@@ -1069,6 +1075,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     eliminarVista,
     guardarOrg,
     deshacer,
+    deshacerUltima,
+    rehacerUltima,
     sentenciasNueva,
     crearValor,
     renombrarValor,

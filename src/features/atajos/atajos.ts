@@ -26,6 +26,9 @@ export type Atajo =
   | "pestanaAnterior"
   /** F6 (o Mayús+F6) con la vista dividida: el foco pasa al otro panel. */
   | "otroPanel"
+  /** Ctrl+Z, y Ctrl+Y o Ctrl+Mayús+Z: el historial de la organización abierta. */
+  | "deshacer"
+  | "rehacer"
   /** Mayús+flecha: suma a la selección la unidad a la que iría la flecha. */
   | `extender:${Navegacion}`;
 
@@ -95,6 +98,9 @@ function resolver(e: TeclaAtajo): Atajo | null {
   // Escribiendo, Ctrl+± queda para el campo (o el navegador).
   if (e.ctrlKey && !e.altKey && (e.key === "=" || e.key === "+" || e.key === "-"))
     return e.enCampoDeTexto ? null : e.key === "-" ? "alejar" : "acercar";
+  // Escribiendo, Ctrl+Z es el deshacer del campo. A una fecha o al lado no se escribe.
+  if (conControl && !e.altKey && (tecla === "z" || tecla === "y"))
+    return e.enCampoDeTexto || e.soloLectura ? null : tecla === "y" || e.shiftKey ? "rehacer" : "deshacer";
   // Pestañas: valen también escribiendo en un campo (no tienen otro uso ahí), como Ctrl+K.
   if (conControl && !e.altKey && !e.shiftKey && tecla === "t") return "nuevaPestana";
   if (conControl && !e.altKey && !e.shiftKey && tecla === "w") return "cerrarPestana";

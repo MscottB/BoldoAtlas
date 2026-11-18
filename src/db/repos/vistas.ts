@@ -32,4 +32,3 @@ export const renombrarVista = (id: string, nombre: string): Sentencia[] =>
   actualizar("vistas", id, { nombre: nombre.trim() }, ["nombre"]);
 
 export const eliminarVista = (id: string): Sentencia[] => [fijarBorrado("vistas", id, true)];
-export const restaurarVista = (id: string): Sentencia[] => [fijarBorrado("vistas", id, false)];

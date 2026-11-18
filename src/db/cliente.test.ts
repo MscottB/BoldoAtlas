@@ -43,6 +43,9 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["comparacionPagina", () => c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })],
   ["comparacionDetalle", () => c.comparacionDetalle("tabla", "id")],
   ["ladoAbrir", () => c.ladoAbrir("otra")],
+  ["historialDeshacer", () => c.historialDeshacer(["a"])],
+  ["historialRehacer", () => c.historialRehacer(["a"])],
+  ["historialPunteros", () => c.historialPunteros()],
 ];
 
 beforeEach(() => {
@@ -271,6 +274,36 @@ describe("lote", () => {
     void consultar("SELECT 1");
     await lote([{ sql: "a" }]);
     expect(invoke.mock.calls.map((c) => c[0])).toEqual(["db_consultar", "db_lote"]);
+  });
+
+  it("devuelve la acción del historial que anotó Rust", async () => {
+    invoke.mockResolvedValueOnce("acc-1").mockResolvedValueOnce(null);
+    expect(await lote([{ sql: "a" }])).toBe("acc-1");
+    expect(await lote([{ sql: "b" }])).toBeNull();
+  });
+
+  it("deshacer y rehacer esperan en la misma cola: no se adelantan a un cambio ya pedido", async () => {
+    const pendientes: (() => void)[] = [];
+    invoke.mockImplementation(() => new Promise<void>((r) => pendientes.push(r)));
+    const a = lote([{ sql: "a" }]);
+    const d = c.historialDeshacer(["acc-1"]);
+    const r = c.historialRehacer(["acc-1"]);
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(invoke.mock.calls.map((x) => x[0])).toEqual(["db_lote"]);
+    pendientes.shift()!();
+    await a;
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
+    expect(invoke.mock.lastCall).toEqual([
+      "historial_deshacer",
+      { ids: ["acc-1"], versionApp: "prueba", baseId: "A" },
+    ]);
+    pendientes.shift()!();
+    await d;
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(3));
+    expect(invoke.mock.lastCall?.[0]).toBe("historial_rehacer");
+    pendientes.shift()!();
+    await r;
   });
 
   it("un lote que falla da su error a quien lo pidió y no detiene al siguiente", async () => {
