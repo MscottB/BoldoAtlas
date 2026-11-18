@@ -1,10 +1,12 @@
-// Uso: node scripts/generar-historial.mjs > src-tauri/migrations/NNNN_historial.sql (esquema del historial + triggers de cada tabla de negocio).
-// Una migración futura que cambie columnas vuelve a generar sus triggers con este script.
+// Uso: node scripts/generar-historial.mjs > src-tauri/migrations/NNNN_historial.sql (esquema del historial + triggers de cada tabla de negocio),
+// o con --tablas a,b solo los triggers de esas tablas (DROP + CREATE), para la migración futura que les cambie columnas.
 import { DatabaseSync } from "node:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 
 const CARPETA = new URL("../src-tauri/migrations/", import.meta.url);
-const previas = readdirSync(CARPETA).sort().filter((f) => !f.includes("_historial"));
+const previas = readdirSync(CARPETA)
+  .sort()
+  .filter((f) => !f.includes("_historial"));
 const db = new DatabaseSync(":memory:");
 for (const f of previas) db.exec(readFileSync(new URL(f, CARPETA), "utf8"));
 
@@ -39,12 +41,28 @@ const ORDEN = `COALESCE((SELECT max(orden) FROM historial_filas WHERE accion_id 
 const CLAVES_META = "'org_nombre','logo_png','revision_bien','historial_plazo_dias'";
 const objeto = (fila, cols) => `json_object(${cols.map((c) => `'${c}', ${fila}.${c}`).join(", ")})`;
 
-const salida = [ESQUEMA];
+const i = process.argv.indexOf("--tablas");
+const solo = i >= 0 ? (process.argv[i + 1] ?? "").split(",").filter(Boolean) : null;
 const tablas = db
   .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-  .all();
-for (const { name: t } of tablas) {
-  const cols = db.prepare("SELECT name FROM pragma_table_info(?)").all(t).map((c) => c.name);
+  .all()
+  .map((x) => x.name);
+const desconocida = solo?.find((t) => !tablas.includes(t));
+if (solo?.length === 0 || desconocida) {
+  process.stderr.write(`--tablas: ${desconocida ? `no existe la tabla ${desconocida}` : "falta la lista"}\n`);
+  process.exit(1);
+}
+
+const salida = solo ? [] : [ESQUEMA];
+for (const t of solo ?? tablas) {
+  if (solo)
+    salida.push(
+      ...["insert", "update", "delete"].map((op) => `DROP TRIGGER IF EXISTS historial_${t}_${op};`),
+    );
+  const cols = db
+    .prepare("SELECT name FROM pragma_table_info(?)")
+    .all(t)
+    .map((c) => c.name);
   const idCol = t === "meta" ? "clave" : "id";
   const cuando = (fila) =>
     `WHEN ${ACCION} IS NOT NULL` + (t === "meta" ? ` AND ${fila}.clave IN (${CLAVES_META})` : "");

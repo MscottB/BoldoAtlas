@@ -44,20 +44,26 @@ const nativos: [RegExp, string][] = [
   [/modo solo lectura/, "errores.baseSoloLectura"],
 ];
 
-/** `sentido`: lo agrega la ventana al rehacer; Rust no lo dice. */
-type Fallo = { codigo: string; detalle: string; sentido?: "deshacer" | "rehacer" };
+/** `sentido` y `frase` los agrega el store en Ctrl+Z y Ctrl+Y; Rust no los dice. `frase`: la acción pedida, cuando la
+ * que no se puede mover es otra. */
+type Fallo = { codigo: string; detalle: string; sentido?: "deshacer" | "rehacer"; frase?: string };
 export const esFallo = (e: unknown): e is Fallo => typeof e === "object" && e !== null && "codigo" in e;
 
 // Lo que se dice distinto al deshacer y al rehacer.
-const POR_SENTIDO = new Set(["conflicto", "bloqueada", "ya_aplicada", "referencias", "ciclo"]);
+const POR_SENTIDO = new Set(["conflicto", "bloqueada", "ya_aplicada", "referencias", "ciclo", "fallo"]);
 
 /** Por qué no se pudo deshacer o rehacer (src-tauri/src/historial.rs). */
-function deHistorial({ codigo, detalle, sentido = "deshacer" }: Fallo): string {
+function deHistorial({ codigo, detalle, sentido = "deshacer", frase }: Fallo): string {
   const t = i18n.global.t;
   const motivo = codigo === "historial_no_se_pudo" ? detalle : codigo.slice("historial_".length);
+  if (motivo === "bloqueada" && frase) return t(`errores.historial.${sentido}.bloqueada_otra`, { frase });
   if (POR_SENTIDO.has(motivo)) return t(`errores.historial.${sentido}.${motivo}`);
   if (motivo.startsWith("posterior:")) return t("errores.historial.posterior");
-  return t("errores.historial.no_se_pudo", { motivo: traducirError(detalle) }); // lo que dijo SQLite
+  // lo que dijo SQLite, solo si se sabe traducir: nunca el texto en inglés de SQLite
+  const clave = reglas.find(([coincide]) => coincide(detalle))?.[1];
+  return clave
+    ? t("errores.historial.no_se_pudo", { motivo: t(clave) })
+    : t(`errores.historial.${sentido}.datos`);
 }
 
 export function traducirError(e: unknown): string {

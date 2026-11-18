@@ -5,7 +5,8 @@ import {
   lote,
   consultar,
   historialDeshacer,
-  historialRehacer,
+  historialDeshacerUltima,
+  historialRehacerUltima,
   historialPunteros,
   suprimirPersona as suprimir,
   type AvanceEliminar,
@@ -64,6 +65,7 @@ import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 import { frase } from "@/features/historial/frases";
+import type { AccionBreve } from "@/features/historial/tipos";
 
 /** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
@@ -87,6 +89,8 @@ export interface Borrado {
 
 const VIGENCIA_DESHACER_MS = 8000;
 const PLAZO_POR_DEFECTO = "365"; // como historial::PLAZO_POR_DEFECTO_DIAS
+/** Como `historial::podar`: lo que no es un número de días («abc», «-5») vale el plazo por defecto. */
+const plazoValido = (v = "") => (/^\d+$/.test(v.trim()) ? v.trim() : PLAZO_POR_DEFECTO);
 const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
 // El cargo es del puesto y el tipo, de la unidad; los demás valores, de la persona.
 const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos" | "tipos_unidad">, keyof Trabajador> = {
@@ -263,7 +267,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
       cambios.value = null;
       org.value = { nombre: meta.org_nombre ?? "", logo: meta.logo_png || null };
       marcasRevision.value = meta.revision_bien ?? "";
-      plazoHistorial.value = meta.historial_plazo_dias || PLAZO_POR_DEFECTO;
+      plazoHistorial.value = plazoValido(meta.historial_plazo_dias);
       cargado.value = true;
       error.value = null;
       return { ok: true };
@@ -514,35 +518,37 @@ export const useOrganizacion = defineStore("organizacion", () => {
       : rechazar(t("store.sinCargar"));
   }
 
-  /** Ctrl+Z y Ctrl+Y: la última acción hecha, o la última deshecha. `frase`, para el aviso. */
+  /** Ctrl+Z y Ctrl+Y: la última acción hecha, o la última deshecha. Rust la busca y la mueve de una vez: ni otro Ctrl+Z ni
+   * un lote se cuelan entre medio. `frase`, para el aviso. */
   async function moverHistorial(sentido: "deshacer" | "rehacer"): Promise<Resultado & { frase?: string }> {
     if (soloLectura.value) return rechazarSoloLectura();
     if (!cargado.value) return rechazar(t("store.sinCargar"));
-    let a;
-    try {
-      a = (await historialPunteros())[sentido];
-    } catch (e) {
-      return fallo(e);
-    }
-    if (!a) return { ok: false, codigo: "nada", mensaje: t(`historial.nada.${sentido}`) };
-    const id = a.id;
+    let a = null as AccionBreve | null;
     const r = await conRecarga(async () => {
-      await (sentido === "deshacer" ? historialDeshacer : historialRehacer)([id]).catch((e: unknown) => {
-        throw esFallo(e) ? { ...e, sentido } : e; // para que el aviso diga «rehacer» cuando corresponde
-      });
-      if (ultimoBorrado.value?.accion === id) ultimoBorrado.value = null; // ya no hay qué deshacer desde su aviso
+      a = await (sentido === "deshacer" ? historialDeshacerUltima : historialRehacerUltima)().catch(
+        async (e: unknown) => {
+          if (!esFallo(e)) throw e;
+          // si la que no se puede mover es otra (una posterior bloqueada), el aviso nombra la pedida: sigue siendo la última
+          const pedida =
+            e.codigo === "historial_bloqueada"
+              ? await historialPunteros().then(
+                  (p) => p[sentido],
+                  () => null,
+                )
+              : null;
+          const otra = pedida && pedida.id !== e.detalle ? frase(pedida, t) : undefined;
+          throw { ...e, sentido, frase: otra }; // para que el aviso diga «rehacer» cuando corresponde
+        },
+      );
+      if (a && ultimoBorrado.value?.accion === a.id) ultimoBorrado.value = null; // ya no hay qué deshacer desde su aviso
     });
-    return r.ok ? { ok: true, frase: frase(a, t) } : r;
+    if (!r.ok) return r;
+    return a
+      ? { ok: true, frase: frase(a, t) }
+      : { ok: false, codigo: "nada", mensaje: t(`historial.nada.${sentido}`) };
   }
-  // Dos Ctrl+Z seguidos: el segundo lee los punteros cuando el primero ya terminó, y no repite la misma acción.
-  let filaHistorial: Promise<unknown> = Promise.resolve();
-  function enFilaHistorial(sentido: "deshacer" | "rehacer") {
-    const paso = filaHistorial.then(() => moverHistorial(sentido));
-    filaHistorial = paso.catch(() => undefined);
-    return paso;
-  }
-  const deshacerUltima = () => enFilaHistorial("deshacer");
-  const rehacerUltima = () => enFilaHistorial("rehacer");
+  const deshacerUltima = () => moverHistorial("deshacer");
+  const rehacerUltima = () => moverHistorial("rehacer");
 
   const etiquetar = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));

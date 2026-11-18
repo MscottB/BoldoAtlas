@@ -3,7 +3,7 @@ import { invoke as invocar, type InvokeArgs } from "@tauri-apps/api/core";
 import { MODO_LADO } from "@/lado/modo";
 import { filtrarLado } from "@/lado/puente";
 import { BaseCambiada, baseActual, enCambio } from "@/lib/baseActiva";
-import type { Punteros } from "@/features/historial/tipos";
+import type { AccionBreve, Punteros } from "@/features/historial/tipos";
 
 /** Toda llamada a Rust sale de aquí. En el panel de al lado solo salen las lecturas, con su id; lo demás, `solo_lectura`. */
 const invoke: typeof invocar = MODO_LADO
@@ -194,6 +194,17 @@ export function historialDeshacer(ids: string[]): Promise<void> {
 
 export function historialRehacer(ids: string[]): Promise<void> {
   return enCola("historial_rehacer", { ids, versionApp: __APP_VERSION__ });
+}
+
+/** Ctrl+Z: Rust busca la última acción y la deshace en la misma transacción. La devuelve como era antes, o null si no
+ * había nada. */
+export function historialDeshacerUltima(): Promise<AccionBreve | null> {
+  return enCola("historial_deshacer_ultima", { versionApp: __APP_VERSION__ });
+}
+
+/** Ctrl+Y: como `historialDeshacerUltima`, con la última deshecha. */
+export function historialRehacerUltima(): Promise<AccionBreve | null> {
+  return enCola("historial_rehacer_ultima", { versionApp: __APP_VERSION__ });
 }
 
 /** Lo que harían Ctrl+Z y Ctrl+Y, después de lo que está en la cola. */

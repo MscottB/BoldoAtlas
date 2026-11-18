@@ -494,14 +494,20 @@
         "bloqueada": "This change can no longer be undone.",
         "ya_aplicada": "It was already undone.",
         "referencias": "Can't undo: another change depends on this one.",
-        "ciclo": "Can't undo: a unit would end up inside itself."
+        "ciclo": "Can't undo: a unit would end up inside itself.",
+        "bloqueada_otra": "Can't undo “{frase}”: a later change can no longer be undone.",
+        "datos": "Can't undo: it clashes with the current data.",
+        "fallo": "This change couldn't be undone."
       },
       "rehacer": {
         "conflicto": "Earlier changes are also undone: redo them first.",
         "bloqueada": "This change can no longer be redone.",
         "ya_aplicada": "It was already redone.",
         "referencias": "Can't redo: another change prevents it.",
-        "ciclo": "Can't redo: a unit would end up inside itself."
+        "ciclo": "Can't redo: a unit would end up inside itself.",
+        "bloqueada_otra": "Can't redo “{frase}”: an earlier change can no longer be redone.",
+        "datos": "Can't redo: it clashes with the current data.",
+        "fallo": "This change couldn't be redone."
       },
       "posterior": "A later action changed the same thing: undo it first.",
       "no_se_pudo": "It couldn't be done: {motivo}"

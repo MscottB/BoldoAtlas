@@ -494,14 +494,20 @@
         "bloqueada": "Ese cambio ya no se puede deshacer.",
         "ya_aplicada": "Ya estaba deshecho.",
         "referencias": "No se puede deshacer: otro cambio depende de este.",
-        "ciclo": "No se puede deshacer: una unidad quedaría dentro de sí misma."
+        "ciclo": "No se puede deshacer: una unidad quedaría dentro de sí misma.",
+        "bloqueada_otra": "No se puede deshacer «{frase}»: un cambio posterior ya no se puede deshacer.",
+        "datos": "No se puede deshacer: choca con los datos que hay ahora.",
+        "fallo": "No se pudo deshacer este cambio."
       },
       "rehacer": {
         "conflicto": "Hay cambios anteriores que también están deshechos: rehazlos primero.",
         "bloqueada": "Ese cambio ya no se puede rehacer.",
         "ya_aplicada": "Ya estaba rehecho.",
         "referencias": "No se puede rehacer: otro cambio lo impide.",
-        "ciclo": "No se puede rehacer: una unidad quedaría dentro de sí misma."
+        "ciclo": "No se puede rehacer: una unidad quedaría dentro de sí misma.",
+        "bloqueada_otra": "No se puede rehacer «{frase}»: un cambio anterior ya no se puede rehacer.",
+        "datos": "No se puede rehacer: choca con los datos que hay ahora.",
+        "fallo": "No se pudo rehacer este cambio."
       },
       "posterior": "Una acción posterior cambió lo mismo: deshazla primero.",
       "no_se_pudo": "No se pudo: {motivo}"

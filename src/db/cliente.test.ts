@@ -46,6 +46,8 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["historialDeshacer", () => c.historialDeshacer(["a"])],
   ["historialRehacer", () => c.historialRehacer(["a"])],
   ["historialPunteros", () => c.historialPunteros()],
+  ["historialDeshacerUltima", () => c.historialDeshacerUltima()],
+  ["historialRehacerUltima", () => c.historialRehacerUltima()],
 ];
 
 beforeEach(() => {
@@ -215,11 +217,15 @@ describe("comparación", () => {
   it("una comparación vencida, o consigo misma, se dice en palabras", async () => {
     const vencida = { codigo: "comparacion_vencida", detalle: "" };
     invoke.mockRejectedValue(vencida);
-    const e: unknown = await c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 }).catch((x) => x);
+    const e: unknown = await c
+      .comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })
+      .catch((x) => x);
     expect(e).toBe(vencida);
     expect(mensajeFallo(e)).toBe("Esta comparación ya no vale. Compara de nuevo.");
     expect(traducirError("comparacion_vencida")).toBe("Esta comparación ya no vale. Compara de nuevo.");
-    expect(mensajeFallo({ codigo: "misma", detalle: "x" })).toBe("No puedes comparar una organización consigo misma.");
+    expect(mensajeFallo({ codigo: "misma", detalle: "x" })).toBe(
+      "No puedes comparar una organización consigo misma.",
+    );
     expect(traducirError("misma")).toBe("No puedes comparar una organización consigo misma.");
   });
 });
@@ -304,6 +310,17 @@ describe("lote", () => {
     expect(invoke.mock.lastCall?.[0]).toBe("historial_rehacer");
     pendientes.shift()!();
     await r;
+  });
+
+  it("Ctrl+Z y Ctrl+Y piden a Rust buscar y mover de una vez", async () => {
+    invoke.mockResolvedValue(null);
+    expect(await c.historialDeshacerUltima()).toBeNull();
+    expect(invoke.mock.lastCall).toEqual([
+      "historial_deshacer_ultima",
+      { versionApp: "prueba", baseId: "A" },
+    ]);
+    await c.historialRehacerUltima();
+    expect(invoke.mock.lastCall?.[0]).toBe("historial_rehacer_ultima");
   });
 
   it("un lote que falla da su error a quien lo pidió y no detiene al siguiente", async () => {

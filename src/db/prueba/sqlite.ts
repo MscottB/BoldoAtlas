@@ -83,6 +83,8 @@ export function abrirBasePrueba(): BasePrueba {
         db.prepare("UPDATE historial_en_curso SET accion_id = ?").run(id);
         for (const s of sentencias) {
           soloPermitidas(s.sql, ["INSERT", "UPDATE", "DELETE", "REPLACE", "WITH"]);
+          if (s.sql.toLowerCase().includes("historial_"))
+            throw new Error("Sentencia no permitida: historial"); // como db::lote
           db.prepare(s.sql).run(...((s.params ?? []) as SQLInputValue[]));
         }
         db.exec("UPDATE historial_en_curso SET accion_id = NULL");
