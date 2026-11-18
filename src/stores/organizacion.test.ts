@@ -21,6 +21,8 @@ const h = vi.hoisted(() => ({
   sinCompactar: false,
   /** Lo que se pidió deshacer o rehacer en el historial. */
   movidas: [] as [string, string[]][],
+  /** Si está, el próximo deshacer o rehacer falla con esto, como un fallo de Rust. */
+  falloMover: null as unknown,
 }));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
@@ -36,6 +38,9 @@ vi.mock("@/db/cliente", () => ({
       sentido === "deshacer" ? "historialDeshacer" : "historialRehacer",
       async (ids: string[]) => {
         h.movidas.push([sentido, ids]);
+        const fallo = h.falloMover;
+        h.falloMover = null;
+        if (fallo) throw fallo;
         try {
           h.bd!.mover(ids, sentido);
         } catch (e) {
@@ -120,6 +125,7 @@ beforeEach(() => {
   h.antesDeLote = null;
   h.antesDeMeta = null;
   h.movidas = [];
+  h.falloMover = null;
 });
 afterEach(() => vi.useRealTimers());
 
@@ -931,6 +937,31 @@ describe("historial", () => {
     expect(await s.deshacerUltima()).toEqual(nada("No hay nada que deshacer."));
     expect(await s.rehacerUltima()).toEqual(nada("No hay nada que rehacer."));
     expect(h.movidas).toEqual([]);
+  });
+
+  it("dos Ctrl+Z seguidos deshacen dos acciones, no la misma dos veces", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Ventas");
+    await s.editarUnidad(u, { nombre: "Norte" });
+    const [a, b] = await Promise.all([s.deshacerUltima(), s.deshacerUltima()]);
+    expect([a.ok, b.ok]).toEqual([true, true]);
+    const [[, primera], [, segunda]] = h.movidas;
+    expect(primera).not.toEqual(segunda);
+    expect(s.porId.has(u)).toBe(false);
+    const [c, d] = await Promise.all([s.rehacerUltima(), s.rehacerUltima()]);
+    expect([c.ok, d.ok]).toEqual([true, true]);
+    expect(s.porId.get(u)?.nombre).toBe("Norte");
+  });
+
+  it("al rehacer, el fallo habla de rehacer", async () => {
+    const s = nuevo();
+    await unidad(s, "Ventas");
+    await s.deshacerUltima();
+    h.falloMover = { codigo: "historial_bloqueada", detalle: "a1" };
+    expect(await s.rehacerUltima()).toEqual({ ok: false, mensaje: "Ese cambio ya no se puede rehacer." });
+    h.falloMover = { codigo: "historial_bloqueada", detalle: "a1" };
+    await unidad(s, "Otra");
+    expect(await s.deshacerUltima()).toEqual({ ok: false, mensaje: "Ese cambio ya no se puede deshacer." });
   });
 
   it("Ctrl+Z sobre la baja del aviso deja el aviso sin nada que deshacer", async () => {

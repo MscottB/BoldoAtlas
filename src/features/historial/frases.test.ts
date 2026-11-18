@@ -53,6 +53,15 @@ describe("frase", () => {
     expect(de({ tabla: "conexiones", campos: ["etiqueta"], nombre: null })).toBe("Cambiaste una conexión");
   });
 
+  it("sin nombre, el sustantivo solo", () => {
+    expect(de({ op: "insert", nombre: null })).toBe("Creaste una unidad");
+    expect(de({ campos: ["color"], nombre: null })).toBe("Cambiaste una unidad");
+    expect(de({ op: "insert", tabla: "cargos", nombre: null })).toBe("Creaste un valor");
+    expect(de({ op: "insert", tabla: "procesos", nombre: null })).toBe("Creaste un elemento");
+    cambiarIdioma("en");
+    expect(de({ op: "insert", tabla: "trabajadores", nombre: null })).toBe("You created a person");
+  });
+
   it("con varias filas, cuántas más", () => {
     expect(frase(accion([fila({ op: "insert" })], { filas: 4 }), t)).toBe(
       "Creaste la unidad Ventas y 3 cambios más",
@@ -66,6 +75,9 @@ describe("frase", () => {
     const a = accion([fila()], { origen: "importar", datos: { archivo: "ventas.boldo" }, filas: 12 });
     expect(frase(a, t)).toBe("Importaste ventas.boldo: 12 cambios");
     expect(frase({ ...a, origen: "revisar" }, t)).toBe("Importaste ventas.boldo: 12 cambios");
+    expect(frase({ ...a, datos: {} }, t)).toBe("Importaste un archivo: 12 cambios");
+    cambiarIdioma("en");
+    expect(frase({ ...a, datos: {} }, t)).toBe("You imported a file: 12 changes");
   });
 
   it("suprimir conserva el nombre real, no el relleno", () => {

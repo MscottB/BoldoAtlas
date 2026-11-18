@@ -98,7 +98,9 @@ describe("useAtajos con una pestaña sin abrir", () => {
     const ventana = { focus: vi.fn() };
     const marco = { focus: vi.fn(), contentWindow: ventana };
     const seccion = { focus: vi.fn(), querySelector: (s: string) => (s === "iframe" ? marco : null) };
-    vi.stubGlobal("document", { querySelector: (s: string) => (s === '[data-panel="lado"]' ? seccion : null) });
+    vi.stubGlobal("document", {
+      querySelector: (s: string) => (s === '[data-panel="lado"]' ? seccion : null),
+    });
     tecla("F6");
     expect(pestanas.conFoco).toBe("lado");
     expect(marco.focus).toHaveBeenCalled();

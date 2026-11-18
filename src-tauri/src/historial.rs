@@ -253,10 +253,13 @@ fn breve(c: &Connection, id: &str) -> Result<AccionBreve, Fallo> {
         |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?, f.get(5)?)),
     )?;
     let crudas: Vec<Fila> = c
-        // primero lo que crea, elimina o restaura: es lo que nombra la acción (eliminar una unidad mueve antes su contenido)
+        // primero lo que crea, elimina o restaura (eliminar una unidad mueve antes su contenido), y de eso las tablas
+        // principales antes que las de unión (restaurar una unidad devuelve antes sus zonas): es lo que nombra la acción
         .prepare(
             "SELECT tabla, fila_id, op, antes, despues FROM historial_filas WHERE accion_id = ?1
-             ORDER BY json_type(despues, '$.deleted_at') IS NULL, orden LIMIT 3",
+             ORDER BY json_type(despues, '$.deleted_at') IS NULL,
+                      tabla IN ('zona_unidades', 'unidad_etiquetas', 'asignaciones', 'actividad_roles'), orden
+             LIMIT 3",
         )?
         .query_map([id], |f| {
             Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?, f.get(4)?))
@@ -1269,6 +1272,32 @@ mod tests {
         assert_eq!(
             (f.nombre_antes.as_deref(), f.nombre_despues.as_deref()),
             (Some("Ventas"), Some("Norte"))
+        );
+    }
+
+    #[test]
+    fn la_muestra_nombra_la_unidad_restaurada_y_no_su_zona() {
+        let mut c = base();
+        c.execute_batch(
+            "INSERT INTO zonas (id, nombre, color, created_at, updated_at) VALUES ('z1', 'Norte', '#000000', 'x', 'x');
+             INSERT INTO zona_unidades (id, zona_id, unidad_id, created_at, updated_at, deleted_at)
+               VALUES ('zu1', 'z1', 'u1', 'x', 'x', 'y');
+             UPDATE unidades SET deleted_at = 'y' WHERE id = 'u1';",
+        )
+        .unwrap();
+        // como restaurarUnidad: primero vuelven sus pertenencias, después la unidad
+        let a = lote(
+            &mut c,
+            &[
+                "UPDATE zona_unidades SET deleted_at = NULL WHERE id = 'zu1'",
+                "UPDATE unidades SET deleted_at = NULL WHERE id = 'u1'",
+            ],
+        )
+        .unwrap();
+        let m = breve(&c, &a).unwrap().muestra;
+        assert_eq!(
+            m.iter().map(|f| f.tabla.as_str()).collect::<Vec<_>>(),
+            ["unidades", "zona_unidades"]
         );
     }
 

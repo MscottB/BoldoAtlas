@@ -150,6 +150,16 @@ describe("traducirError", () => {
 
   it.each([
     ["historial_conflicto", "a2,a3", "Otros cambios posteriores dependen de este: deshazlos primero."],
+    [
+      "historial_conflicto",
+      "a1",
+      "Hay cambios anteriores que también están deshechos: rehazlos primero.",
+      "rehacer",
+    ],
+    ["historial_bloqueada", "a1", "Ese cambio ya no se puede rehacer.", "rehacer"],
+    ["historial_ya_aplicada", "a1", "Ya estaba rehecho.", "rehacer"],
+    ["historial_no_se_pudo", "referencias", "No se puede rehacer: otro cambio lo impide.", "rehacer"],
+    ["historial_no_se_pudo", "ciclo", "No se puede rehacer: una unidad quedaría dentro de sí misma.", "rehacer"],
     ["historial_bloqueada", "a1", "Ese cambio ya no se puede deshacer."],
     ["historial_ya_aplicada", "a1", "Ya estaba deshecho."],
     ["historial_no_se_pudo", "referencias", "No se puede deshacer: otro cambio depende de este."],
@@ -160,12 +170,14 @@ describe("traducirError", () => {
       "UNIQUE constraint failed: index 'ux_trabajadores_correo'",
       "No se pudo: Ya existe una persona con ese correo.",
     ],
-  ])("traduce el fallo del historial %s (%s)", (codigo, detalle, esperado) => {
-    expect(traducirError({ codigo, detalle })).toBe(esperado);
+  ])("traduce el fallo del historial %s (%s)", (codigo, detalle, esperado, sentido?: string) => {
+    expect(traducirError({ codigo, detalle, sentido })).toBe(esperado);
   });
 
-  it("de otro fallo de Rust muestra su detalle, no [object Object]", () => {
+  it("de otro fallo de Rust traduce su código; si no lo conoce o es «fallo», muestra el detalle", () => {
+    expect(traducirError({ codigo: "sin_espacio", detalle: "os error 112" })).toMatch(/No queda espacio/);
     expect(traducirError({ codigo: "fallo", detalle: "disco lleno" })).toBe("disco lleno");
+    expect(traducirError({ codigo: "raro", detalle: "algo pasó" })).toBe("algo pasó");
   });
 
   it("convierte cualquier otro valor con String", () => {

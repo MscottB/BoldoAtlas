@@ -17,10 +17,25 @@ const COSAS = new Set([
   "meta",
 ]);
 const VALORES = new Set(["cargos", "sedes", "jornadas", "tipos_contrato", "tipos_unidad"]);
+// Los que llevan el nombre; sin él se dice solo el sustantivo («una unidad»). Los demás nunca lo llevan.
+const CON_NOMBRE = new Set([
+  "unidades",
+  "trabajadores",
+  "puestos",
+  "asignaciones",
+  "etiquetas",
+  "zonas",
+  "vistas",
+  "leyendas",
+  "valor",
+  "otra",
+]);
 
 function cosa(f: FilaBreve | undefined, t: Traducir): string {
   const grupo = !f ? "otra" : COSAS.has(f.tabla) ? f.tabla : VALORES.has(f.tabla) ? "valor" : "otra";
-  return t(`historial.cosa.${grupo}`, { nombre: f?.nombre ?? t("historial.elemento") });
+  return !f?.nombre && CON_NOMBRE.has(grupo)
+    ? t(`historial.sinNombre.${grupo}`)
+    : t(`historial.cosa.${grupo}`, { nombre: f?.nombre });
 }
 
 function deFila(f: FilaBreve, t: Traducir): string {
@@ -37,7 +52,11 @@ function deFila(f: FilaBreve, t: Traducir): string {
 /** La frase de una acción, armada con sus filas: Rust no guarda textos. La nombra su primera fila de la muestra. */
 export function frase(a: AccionBreve, t: Traducir): string {
   if (a.origen === "importar" || a.origen === "revisar")
-    return t("historial.frase.importar", { archivo: a.datos.archivo ?? "", n: a.filas }, a.filas);
+    return t(
+      "historial.frase.importar",
+      { archivo: a.datos.archivo || t("historial.unArchivo"), n: a.filas },
+      a.filas,
+    );
   const f = a.muestra[0];
   // el nombre de antes: el de ahora es el relleno
   if (a.origen === "suprimir")

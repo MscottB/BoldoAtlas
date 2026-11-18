@@ -488,13 +488,24 @@
     "sinCarpeta": "No se encontró la carpeta de datos de BoldoAtlas.",
     "baseNoDisponible": "La base de datos no está disponible. Cierra y vuelve a abrir BoldoAtlas.",
     "baseSoloLectura": "La base de datos está en modo solo lectura: revisa que el archivo y su carpeta tengan permiso de escritura.",
-    "historial_conflicto": "Otros cambios posteriores dependen de este: deshazlos primero.",
-    "historial_bloqueada": "Ese cambio ya no se puede deshacer.",
-    "historial_ya_aplicada": "Ya estaba deshecho.",
-    "historial_referencias": "No se puede deshacer: otro cambio depende de este.",
-    "historial_ciclo": "No se puede deshacer: una unidad quedaría dentro de sí misma.",
-    "historial_posterior": "Una acción posterior cambió lo mismo: deshazla primero.",
-    "historial_no_se_pudo": "No se pudo: {motivo}"
+    "historial": {
+      "deshacer": {
+        "conflicto": "Otros cambios posteriores dependen de este: deshazlos primero.",
+        "bloqueada": "Ese cambio ya no se puede deshacer.",
+        "ya_aplicada": "Ya estaba deshecho.",
+        "referencias": "No se puede deshacer: otro cambio depende de este.",
+        "ciclo": "No se puede deshacer: una unidad quedaría dentro de sí misma."
+      },
+      "rehacer": {
+        "conflicto": "Hay cambios anteriores que también están deshechos: rehazlos primero.",
+        "bloqueada": "Ese cambio ya no se puede rehacer.",
+        "ya_aplicada": "Ya estaba rehecho.",
+        "referencias": "No se puede rehacer: otro cambio lo impide.",
+        "ciclo": "No se puede rehacer: una unidad quedaría dentro de sí misma."
+      },
+      "posterior": "Una acción posterior cambió lo mismo: deshazla primero.",
+      "no_se_pudo": "No se pudo: {motivo}"
+    }
   },
   "store": {
     "nombreVacio": "Escribe un nombre.",
@@ -1115,7 +1126,8 @@
         "30": "30 días",
         "90": "90 días",
         "365": "1 año"
-      }
+      },
+      "dias": "{n} día | {n} días"
     }
   },
   "mantenedores": {
@@ -2036,7 +2048,6 @@
       "deshacer": "No hay nada que deshacer.",
       "rehacer": "No hay nada que rehacer."
     },
-    "elemento": "un elemento",
     "cosa": {
       "unidades": "la unidad {nombre}",
       "trabajadores": "a {nombre}",
@@ -2064,6 +2075,19 @@
       "mas": "{frase} y {n} cambio más | {frase} y {n} cambios más",
       "importar": "Importaste {archivo}: {n} cambio | Importaste {archivo}: {n} cambios",
       "suprimir": "Borraste definitivamente a {nombre}"
-    }
+    },
+    "sinNombre": {
+      "unidades": "una unidad",
+      "trabajadores": "una persona",
+      "puestos": "un puesto",
+      "asignaciones": "una asignación",
+      "etiquetas": "una etiqueta",
+      "zonas": "una zona",
+      "vistas": "una vista",
+      "leyendas": "una leyenda",
+      "valor": "un valor",
+      "otra": "un elemento"
+    },
+    "unArchivo": "un archivo"
   }
 }

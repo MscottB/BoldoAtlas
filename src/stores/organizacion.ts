@@ -11,7 +11,7 @@ import {
   type AvanceEliminar,
   type Sentencia,
 } from "@/db/cliente";
-import { traducirError } from "@/db/errores";
+import { esFallo, traducirError } from "@/db/errores";
 import { MODO_LADO } from "@/lado/modo";
 import {
   TABLAS_CATALOGO,
@@ -527,13 +527,22 @@ export const useOrganizacion = defineStore("organizacion", () => {
     if (!a) return { ok: false, codigo: "nada", mensaje: t(`historial.nada.${sentido}`) };
     const id = a.id;
     const r = await conRecarga(async () => {
-      await (sentido === "deshacer" ? historialDeshacer : historialRehacer)([id]);
+      await (sentido === "deshacer" ? historialDeshacer : historialRehacer)([id]).catch((e: unknown) => {
+        throw esFallo(e) ? { ...e, sentido } : e; // para que el aviso diga «rehacer» cuando corresponde
+      });
       if (ultimoBorrado.value?.accion === id) ultimoBorrado.value = null; // ya no hay qué deshacer desde su aviso
     });
     return r.ok ? { ok: true, frase: frase(a, t) } : r;
   }
-  const deshacerUltima = () => moverHistorial("deshacer");
-  const rehacerUltima = () => moverHistorial("rehacer");
+  // Dos Ctrl+Z seguidos: el segundo lee los punteros cuando el primero ya terminó, y no repite la misma acción.
+  let filaHistorial: Promise<unknown> = Promise.resolve();
+  function enFilaHistorial(sentido: "deshacer" | "rehacer") {
+    const paso = filaHistorial.then(() => moverHistorial(sentido));
+    filaHistorial = paso.catch(() => undefined);
+    return paso;
+  }
+  const deshacerUltima = () => enFilaHistorial("deshacer");
+  const rehacerUltima = () => enFilaHistorial("rehacer");
 
   const etiquetar = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));

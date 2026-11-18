@@ -14,6 +14,7 @@ import SeccionFotos from "@/features/configuracion/SeccionFotos.vue";
 import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
 import SeccionActualizaciones from "@/features/actualizaciones/SeccionActualizaciones.vue";
 import SeccionInicioSistema from "@/features/configuracion/SeccionInicioSistema.vue";
+import SeccionHistorial from "@/features/configuracion/SeccionHistorial.vue";
 import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
@@ -43,9 +44,6 @@ const alCerrarVigente = computed(() =>
 const avisar = (r: Resultado) => {
   if (!r.ok) toast.error(r.mensaje);
 };
-// Días que se guarda el historial; "0" es sin límite (historial::podar).
-const PLAZOS = ["30", "90", "365", "0"];
-const guardarPlazo = async (dias: string) => avisar(await org.guardarPlazoHistorial(dias));
 
 // El nombre se guarda al salir del campo o con Enter: no hay botón «Guardar».
 const nombre = ref(org.org.nombre);
@@ -224,20 +222,7 @@ const quitarLogo = async () => {
       </Button>
     </section>
 
-    <section class="grid gap-1.5" aria-labelledby="cfg-historial">
-      <h2 id="cfg-historial" class="font-medium">{{ t("config.historial.titulo") }}</h2>
-      <Label for="cfg-plazo">{{ t("config.historial.plazo") }}</Label>
-      <select
-        id="cfg-plazo"
-        :class="cn(claseSelect, 'w-fit')"
-        aria-describedby="cfg-plazo-ayuda"
-        :value="org.plazoHistorial"
-        @change="guardarPlazo(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="d in PLAZOS" :key="d" :value="d">{{ t(`config.historial.opciones.${d}`) }}</option>
-      </select>
-      <p id="cfg-plazo-ayuda" class="text-sm text-muted-foreground">{{ t("config.historial.ayuda") }}</p>
-    </section>
+    <SeccionHistorial />
 
     <SeccionRespaldos />
 

@@ -44,21 +44,29 @@ const nativos: [RegExp, string][] = [
   [/modo solo lectura/, "errores.baseSoloLectura"],
 ];
 
-type Fallo = { codigo: string; detalle: string };
-const esFallo = (e: unknown): e is Fallo => typeof e === "object" && e !== null && "codigo" in e;
+/** `sentido`: lo agrega la ventana al rehacer; Rust no lo dice. */
+type Fallo = { codigo: string; detalle: string; sentido?: "deshacer" | "rehacer" };
+export const esFallo = (e: unknown): e is Fallo => typeof e === "object" && e !== null && "codigo" in e;
+
+// Lo que se dice distinto al deshacer y al rehacer.
+const POR_SENTIDO = new Set(["conflicto", "bloqueada", "ya_aplicada", "referencias", "ciclo"]);
 
 /** Por qué no se pudo deshacer o rehacer (src-tauri/src/historial.rs). */
-function deHistorial({ codigo, detalle }: Fallo): string {
+function deHistorial({ codigo, detalle, sentido = "deshacer" }: Fallo): string {
   const t = i18n.global.t;
-  if (codigo !== "historial_no_se_pudo") return t(`errores.${codigo}`);
-  if (detalle === "referencias" || detalle === "ciclo") return t(`errores.historial_${detalle}`);
-  if (detalle.startsWith("posterior:")) return t("errores.historial_posterior");
-  return t("errores.historial_no_se_pudo", { motivo: traducirError(detalle) }); // lo que dijo SQLite
+  const motivo = codigo === "historial_no_se_pudo" ? detalle : codigo.slice("historial_".length);
+  if (POR_SENTIDO.has(motivo)) return t(`errores.historial.${sentido}.${motivo}`);
+  if (motivo.startsWith("posterior:")) return t("errores.historial.posterior");
+  return t("errores.historial.no_se_pudo", { motivo: traducirError(detalle) }); // lo que dijo SQLite
 }
 
 export function traducirError(e: unknown): string {
-  if (esFallo(e))
-    return e.codigo.startsWith("historial_") ? deHistorial(e) : traducirError(e.detalle || e.codigo);
+  if (esFallo(e)) {
+    if (e.codigo.startsWith("historial_")) return deHistorial(e);
+    // el código, si se conoce; si no (o es el genérico «fallo»), lo que dice el detalle
+    const conocido = e.codigo !== "fallo" && reglas.some(([coincide]) => coincide(e.codigo));
+    return traducirError(conocido ? e.codigo : e.detalle || e.codigo);
+  }
   const texto = typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
   const clave = reglas.find(([coincide]) => coincide(texto))?.[1];
   if (clave) return i18n.global.t(clave);
