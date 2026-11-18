@@ -687,6 +687,31 @@ mod tests {
     }
 
     #[test]
+    fn abrir_rechaza_un_boldo_cifrado_con_historial() {
+        for sql in [
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app')",
+            "UPDATE historial_en_curso SET accion_id = 'fantasma'",
+        ] {
+            let (d, origen) = base_con_datos();
+            let copia = alcance::copiar(&origen, d.path()).unwrap();
+            let (t, _) = alcance::preparar(copia, d.path(), None).unwrap();
+            Connection::open(t.ruta())
+                .unwrap()
+                .execute_batch(sql)
+                .unwrap();
+            let archivo = d.path().join("con_historial.boldo");
+            let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+            let (dd, ..) = destino();
+            let e = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap_err();
+            assert_eq!(
+                (e.codigo, e.detalle.as_str()),
+                ("contenido_invalido", "historial")
+            );
+            assert!(temporales(dd.path()).is_empty());
+        }
+    }
+
+    #[test]
     fn el_nombre_sugerido_no_lleva_caracteres_problematicos() {
         let (d, origen) = base_con_datos();
         let copia = alcance::copiar(&origen, d.path()).unwrap();

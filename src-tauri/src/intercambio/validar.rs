@@ -510,7 +510,8 @@ fn revisar_con_tope(ruta: &Path, migraciones: &[&str], max_bytes: i64) -> Result
     // `revisar_topes` y `revisar_tipos` no miran `historial_%`: un .boldo no lo lleva, y una base local sí (no pasa por aquí)
     if r.version >= 3
         && c.query_row(
-            "SELECT EXISTS (SELECT 1 FROM historial_acciones) OR EXISTS (SELECT 1 FROM historial_filas)",
+            "SELECT EXISTS (SELECT 1 FROM historial_acciones) OR EXISTS (SELECT 1 FROM historial_filas)
+             OR EXISTS (SELECT 1 FROM historial_en_curso WHERE accion_id IS NOT NULL)",
             [],
             |f| f.get::<_, bool>(0),
         )
@@ -981,6 +982,8 @@ mod tests {
     fn un_boldo_con_historial_se_rechaza() {
         for sql in [
             "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app')",
+            // una acción abierta sin filas: los triggers anotarían todo en una acción que no existe
+            "UPDATE historial_en_curso SET accion_id = 'fantasma'",
             "UPDATE historial_en_curso SET accion_id = NULL; INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app');
              INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op) VALUES ('a', 1, 'cargos', 'c', 'insert')",
         ] {
