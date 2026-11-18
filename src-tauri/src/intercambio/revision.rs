@@ -5140,8 +5140,23 @@ mod tests {
             "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('nueva', 'Nueva', '{F1}', '{F1}');"
         );
 
+        // revisar y verificar hacen la pasada entera y la deshacen: si abrieran una acción, esto las haría fallar
+        let espia = |b: &Banco, poner: bool| {
+            b.local
+                .execute_batch(if poner {
+                    "CREATE TEMP TRIGGER espia BEFORE INSERT ON historial_acciones BEGIN SELECT RAISE(ABORT, 'accion_abierta'); END;"
+                } else {
+                    "DROP TRIGGER temp.espia;"
+                })
+                .unwrap()
+        };
+
         let mut b = banco();
         b.archivo(&nueva);
+        espia(&b, true);
+        let resumen = super::super::revisar(&mut b.local, &b.i).unwrap();
+        assert!(resumen.informe.is_some(), "{:?}", resumen.motivo_revision);
+        espia(&b, false);
         let dir = b.dir.path().join("respaldos");
         std::fs::create_dir_all(&dir).unwrap();
         super::super::agregar(&mut b.local, &dir, &b.i, &b.lugares, "1").unwrap();
@@ -5154,13 +5169,10 @@ mod tests {
 
         let mut b = banco();
         b.archivo(&nueva);
+        espia(&b, true);
         let mut r = b.abrir();
-        // revisar y verificar no dejan acción
-        let vacia: i64 = b
-            .local
-            .query_row("SELECT count(*) FROM historial_acciones", [], |f| f.get(0))
-            .unwrap();
-        assert_eq!(vacia, 0);
+        b.verificar(&mut r);
+        espia(&b, false);
         b.aplicar(&mut r);
         let (origen, archivo, filas) = accion(&b);
         assert_eq!(

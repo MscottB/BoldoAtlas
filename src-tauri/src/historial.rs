@@ -97,13 +97,13 @@ pub fn rehacer(c: &mut Connection, ids: &[String], version_app: &str) -> Result<
 pub fn conflictos(c: &mut Connection, id: &str, sentido: Sentido) -> Result<Vec<String>, Fallo> {
     let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let solo = BTreeSet::from([id.to_string()]);
-    Ok(conjunto(&mut tx, solo, sentido)?
+    Ok(revisar(&mut tx, solo, sentido)?
         .into_iter()
         .filter(|x| x != id)
         .collect())
 }
 
-/// Ctrl+Z: la última hecha. Ctrl+Y: la deshecha con `rehacible` mayor.
+/// Ctrl+Z: la última hecha que se puede deshacer (no se atasca tras un borrado definitivo). Ctrl+Y: la deshecha con `rehacible` mayor.
 pub fn punteros(c: &Connection) -> Result<Punteros, Fallo> {
     let buscar = |sql: &str| -> Result<Option<AccionBreve>, Fallo> {
         match c.query_row(sql, [], |f| f.get::<_, String>(0)).optional()? {
@@ -113,7 +113,7 @@ pub fn punteros(c: &Connection) -> Result<Punteros, Fallo> {
     };
     Ok(Punteros {
         deshacer: buscar(
-            "SELECT id FROM historial_acciones WHERE estado = 'hecha' ORDER BY id DESC LIMIT 1",
+            "SELECT id FROM historial_acciones WHERE estado = 'hecha' AND bloqueada = 0 ORDER BY id DESC LIMIT 1",
         )?,
         rehacer: buscar(
             "SELECT id FROM historial_acciones WHERE estado = 'deshecha' AND rehacible IS NOT NULL ORDER BY rehacible DESC LIMIT 1",
@@ -121,8 +121,8 @@ pub fn punteros(c: &Connection) -> Result<Punteros, Fallo> {
     })
 }
 
-/// El último `nombre` anotado para esa fila o, si no hay, el de su tabla. Un puesto se nombra por su cargo y una
-/// asignación por su persona.
+/// El último `nombre` anotado en una acción hecha; si no hay, el de antes de un borrado definitivo; si no, el de su tabla.
+/// Un puesto se nombra por su cargo y una asignación por su persona.
 pub fn nombre_de(c: &Connection, tabla: &str, fila_id: &str) -> Result<Option<String>, Fallo> {
     let (tabla, fila_id, columna) = match tabla {
         "puestos" | "asignaciones" => {
@@ -141,8 +141,8 @@ pub fn nombre_de(c: &Connection, tabla: &str, fila_id: &str) -> Result<Option<St
     ultimo(c, tabla, &fila_id, columna)
 }
 
-/// El valor más nuevo de `columna` en el historial de la fila, o el actual. Lo de una acción `suprimir` cuenta como antes:
-/// después solo tiene el relleno.
+/// El valor más nuevo de `columna` en las acciones hechas de esa fila; si no hay, el `antes` de una acción `suprimir` (su
+/// después es el relleno); si no, el actual. Lo deshecho no cuenta: ya no es lo que hay.
 fn ultimo(
     c: &Connection,
     tabla: &str,
@@ -154,10 +154,11 @@ fn ultimo(
         .query_row(
             "SELECT v FROM (
                SELECT CASE WHEN a.origen = 'suprimir' THEN json_extract(f.antes, ?3)
-                      ELSE coalesce(json_extract(f.despues, ?3), json_extract(f.antes, ?3)) END AS v, f.accion_id, f.orden
+                      ELSE coalesce(json_extract(f.despues, ?3), json_extract(f.antes, ?3)) END AS v,
+                      a.origen = 'suprimir' AS suprimir, f.accion_id, f.orden
                FROM historial_filas f JOIN historial_acciones a ON a.id = f.accion_id
-               WHERE f.tabla = ?1 AND f.fila_id = ?2)
-             WHERE v IS NOT NULL ORDER BY accion_id DESC, orden DESC LIMIT 1",
+               WHERE f.tabla = ?1 AND f.fila_id = ?2 AND (a.estado = 'hecha' OR a.origen = 'suprimir'))
+             WHERE v IS NOT NULL ORDER BY suprimir, accion_id DESC, orden DESC LIMIT 1",
             params![tabla, fila_id, ruta],
             |f| f.get(0),
         )
@@ -266,18 +267,84 @@ fn mover(
             return Err(Fallo::de("historial_ya_aplicada", id));
         }
     }
-    let todas = conjunto(&mut tx, pedidas.clone(), sentido)?;
+    let todas = revisar(&mut tx, pedidas.clone(), sentido)?;
     let faltan: Vec<&str> = todas.difference(&pedidas).map(String::as_str).collect();
     if !faltan.is_empty() {
         return Err(Fallo::de("historial_conflicto", faltan.join(",")));
     }
     aplicar(&tx, &pedidas, sentido)?;
-    if let Some((motivo, _)) = choques(&tx, &pedidas)? {
+    if let Some((motivo, filas)) = choques(&tx, &pedidas)? {
+        if sentido == Sentido::Rehacer {
+            pisadas(culpables(&tx, &pedidas, &filas, &POSTERIORES)?)?;
+        }
         return Err(Fallo::de("historial_no_se_pudo", motivo));
     }
     db::marcar_cambio(&tx, version_app)?;
     tx.commit()?;
     Ok(())
+}
+
+/// El conjunto que hay que mover junto. Ninguna puede estar bloqueada, y al rehacer nada puede pisar una acción posterior
+/// que sigue hecha.
+fn revisar(
+    tx: &mut Transaction,
+    ids: BTreeSet<String>,
+    sentido: Sentido,
+) -> Result<BTreeSet<String>, Fallo> {
+    let todas = conjunto(tx, ids, sentido)?;
+    let bloqueada: Option<String> = tx
+        .query_row(
+            "SELECT id FROM historial_acciones WHERE bloqueada = 1 AND id IN (SELECT value FROM json_each(?1))
+             ORDER BY id LIMIT 1",
+            [como_json(&todas)],
+            |f| f.get(0),
+        )
+        .optional()?;
+    if let Some(id) = bloqueada {
+        return Err(Fallo::de("historial_bloqueada", id));
+    }
+    if sentido == Sentido::Rehacer {
+        pisadas(mismas_filas(tx, &todas, &POSTERIORES)?)?;
+    }
+    Ok(todas)
+}
+
+/// Rehacer sobre una acción posterior hecha la pisaría sin que quede anotado: no se hace.
+fn pisadas(ids: Vec<String>) -> Result<(), Fallo> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    Err(Fallo::de(
+        "historial_no_se_pudo",
+        format!("posterior:{}", ids.join(",")),
+    ))
+}
+
+/// Con qué acciones se choca: su estado, cómo se ordena una fila compartida y cómo se ordena la acción misma.
+struct Vecinas {
+    estado: &'static str,
+    comparte: &'static str,
+    cerca: &'static str,
+}
+
+/// Las hechas que vinieron después: chocan al deshacer, y al rehacer no se pueden pisar.
+const POSTERIORES: Vecinas = Vecinas {
+    estado: "hecha",
+    comparte: "g.accion_id < a.id",
+    cerca: "a.id > (SELECT min(value) FROM json_each(?1))",
+};
+/// Las deshechas que vinieron antes: hay que rehacerlas primero.
+const ANTERIORES: Vecinas = Vecinas {
+    estado: "deshecha",
+    comparte: "g.accion_id > a.id",
+    cerca: "a.id < (SELECT max(value) FROM json_each(?1))",
+};
+
+fn vecinas(sentido: Sentido) -> &'static Vecinas {
+    match sentido {
+        Sentido::Deshacer => &POSTERIORES,
+        Sentido::Rehacer => &ANTERIORES,
+    }
 }
 
 /// `ids` más las acciones con las que chocan, hasta que no aparecen más: las que comparten filas y, aplicando de prueba,
@@ -288,14 +355,14 @@ fn conjunto(
     sentido: Sentido,
 ) -> Result<BTreeSet<String>, Fallo> {
     loop {
-        let mut nuevas = mismas_filas(tx, &ids, sentido)?;
+        let mut nuevas = mismas_filas(tx, &ids, vecinas(sentido))?;
         if nuevas.is_empty() {
             let prueba = tx.savepoint()?;
             // un fallo aquí (un correo repetido) no es un choque: lo dice el deshacer de verdad
             if aplicar(&prueba, &ids, sentido).is_ok()
                 && let Some((_, filas)) = choques(&prueba, &ids)?
             {
-                nuevas = culpables(&prueba, &ids, &filas, sentido)?;
+                nuevas = culpables(&prueba, &ids, &filas, vecinas(sentido))?;
             }
         }
         if nuevas.is_empty() {
@@ -314,17 +381,9 @@ fn como_json(ids: &BTreeSet<String>) -> String {
     .to_string()
 }
 
-/// Al deshacer: las posteriores hechas que tocaron una fila de alguna de `ids` después de ella. Al rehacer: las anteriores
-/// deshechas que la tocaron antes.
-fn mismas_filas(
-    c: &Connection,
-    ids: &BTreeSet<String>,
-    sentido: Sentido,
-) -> Result<Vec<String>, Fallo> {
-    let (estado, orden) = match sentido {
-        Sentido::Deshacer => ("hecha", "g.accion_id < a.id"),
-        Sentido::Rehacer => ("deshecha", "g.accion_id > a.id"),
-    };
+/// Las `vecinas` fuera de `ids` que comparten una fila con alguna de `ids`, del lado que toca (antes o después de ella).
+fn mismas_filas(c: &Connection, ids: &BTreeSet<String>, v: &Vecinas) -> Result<Vec<String>, Fallo> {
+    let (estado, orden) = (v.estado, v.comparte);
     let sql = format!(
         "SELECT DISTINCT a.id FROM historial_acciones a JOIN historial_filas f ON f.accion_id = a.id
          WHERE a.estado = ?2 AND a.id NOT IN (SELECT value FROM json_each(?1))
@@ -336,17 +395,14 @@ fn mismas_filas(
         .collect::<rusqlite::Result<_>>()?)
 }
 
-/// Las acciones fuera de `ids` que tocaron alguna de `filas`, posteriores al deshacer y anteriores al rehacer.
+/// Las `vecinas` fuera de `ids` que tocaron alguna de `filas`.
 fn culpables(
     c: &Connection,
     ids: &BTreeSet<String>,
     filas: &[(String, String)],
-    sentido: Sentido,
+    v: &Vecinas,
 ) -> Result<Vec<String>, Fallo> {
-    let (estado, orden) = match sentido {
-        Sentido::Deshacer => ("hecha", "a.id > (SELECT min(value) FROM json_each(?1))"),
-        Sentido::Rehacer => ("deshecha", "a.id < (SELECT max(value) FROM json_each(?1))"),
-    };
+    let (estado, orden) = (v.estado, v.cerca);
     let filas = Value::from(
         filas
             .iter()
@@ -464,6 +520,10 @@ fn choques(c: &Connection, ids: &BTreeSet<String>) -> Result<Option<Choque>, Fal
         .collect::<rusqlite::Result<_>>()?;
     let mut filas = Vec::new();
     for (tabla, rowid, padre, fkid) in rotas {
+        // una fila huérfana de historial_filas (de un respaldo) no es asunto de este deshacer
+        if columnas_de(c, &tabla)?.is_none() {
+            continue;
+        }
         let desde: String = c.query_row(
             "SELECT \"from\" FROM pragma_foreign_key_list(?1) WHERE id = ?2",
             params![tabla, fkid],
@@ -1031,5 +1091,203 @@ mod tests {
             Some("Jefe")
         );
         assert_eq!(nombre_de(&c, "no_existe", "p1").unwrap(), None);
+    }
+
+    fn unidad(id: &str, padre: Option<&str>) -> String {
+        let padre = padre.map_or("NULL".into(), |p| format!("'{p}'"));
+        format!(
+            "INSERT INTO unidades (id, tipo_id, nombre, parent_id, created_at, updated_at) VALUES ('{id}', '{{TIPO}}', '{id}', {padre}, 'x', 'x')"
+        )
+    }
+
+    #[test]
+    fn rehacer_con_una_posterior_hecha_sobre_la_misma_fila_no_cambia_nada() {
+        // un cambio de nombre posterior
+        let mut c = base();
+        let a1 = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
+        )
+        .unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a1), "t").unwrap();
+        let a2 = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Sur' WHERE id = 'u1'"],
+        )
+        .unwrap();
+        let antes = volcado(&c);
+        let e = rehacer(&mut c, std::slice::from_ref(&a1), "t").unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle),
+            ("historial_no_se_pudo", format!("posterior:{a2}"))
+        );
+        assert_eq!(volcado(&c), antes);
+        let e = conflictos(&mut c, &a1, Sentido::Rehacer).unwrap_err();
+        assert_eq!(e.detalle, format!("posterior:{a2}"));
+
+        // un borrado posterior
+        let mut c = base();
+        lote(&mut c, &[&unidad("u2", None)]).unwrap();
+        let a1 = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Otra' WHERE id = 'u2'"],
+        )
+        .unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a1), "t").unwrap();
+        let a2 = lote(&mut c, &["DELETE FROM unidades WHERE id = 'u2'"]).unwrap();
+        let antes = volcado(&c);
+        let e = rehacer(&mut c, std::slice::from_ref(&a1), "t").unwrap_err();
+        assert_eq!(e.detalle, format!("posterior:{a2}"));
+        assert_eq!(volcado(&c), antes);
+
+        // una posterior que cuelga de lo que rehacer borraría
+        let mut c = base();
+        c.execute_batch(&unidad("u3", None).replace("{TIPO}", TIPO))
+            .unwrap();
+        let a1 = lote(&mut c, &["DELETE FROM unidades WHERE id = 'u3'"]).unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a1), "t").unwrap();
+        let a2 = lote(&mut c, &[&unidad("u4", Some("u3"))]).unwrap();
+        let antes = volcado(&c);
+        let e = rehacer(&mut c, std::slice::from_ref(&a1), "t").unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle),
+            ("historial_no_se_pudo", format!("posterior:{a2}"))
+        );
+        assert_eq!(volcado(&c), antes);
+    }
+
+    #[test]
+    fn conflicto_al_rehacer_por_dependencia() {
+        let mut c = base();
+        let a = lote(&mut c, &[&unidad("ua", None)]).unwrap();
+        let b = lote(&mut c, &[&unidad("ub", Some("ua"))]).unwrap();
+        deshacer(&mut c, &[a.clone(), b.clone()], "t").unwrap();
+        assert_eq!(
+            conflictos(&mut c, &b, Sentido::Rehacer).unwrap(),
+            [a.as_str()]
+        );
+        let e = rehacer(&mut c, std::slice::from_ref(&b), "t").unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle.as_str()),
+            ("historial_conflicto", a.as_str())
+        );
+        rehacer(&mut c, &[a, b], "t").unwrap();
+        assert_eq!(
+            uno(&c, "SELECT parent_id FROM unidades WHERE id = 'ub'").as_deref(),
+            Some("ua")
+        );
+    }
+
+    #[test]
+    fn deshacer_que_rompe_referencias_o_hace_un_ciclo_no_se_puede() {
+        // la hija se creó sin pasar por el historial: no hay con quién deshacerla
+        let mut c = base();
+        let a = lote(&mut c, &[&unidad("ua", None)]).unwrap();
+        c.execute_batch(&unidad("ub", Some("ua")).replace("{TIPO}", TIPO))
+            .unwrap();
+        let antes = volcado(&c);
+        let e = deshacer(&mut c, std::slice::from_ref(&a), "t").unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle.as_str()),
+            ("historial_no_se_pudo", "referencias")
+        );
+        assert_eq!(volcado(&c), antes);
+
+        // u1 vuelve a colgar de u2, que ahora cuelga de u1
+        let mut c = base();
+        c.execute_batch(&format!(
+            "{}; UPDATE unidades SET parent_id = 'u2' WHERE id = 'u1';",
+            unidad("u2", None).replace("{TIPO}", TIPO)
+        ))
+        .unwrap();
+        let a = lote(
+            &mut c,
+            &["UPDATE unidades SET parent_id = NULL WHERE id = 'u1'"],
+        )
+        .unwrap();
+        c.execute("UPDATE unidades SET parent_id = 'u1' WHERE id = 'u2'", [])
+            .unwrap();
+        let antes = volcado(&c);
+        let e = deshacer(&mut c, std::slice::from_ref(&a), "t").unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle.as_str()),
+            ("historial_no_se_pudo", "ciclo")
+        );
+        assert_eq!(volcado(&c), antes);
+    }
+
+    #[test]
+    fn una_fila_huerfana_del_historial_no_impide_deshacer() {
+        let mut c = base();
+        let a = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
+        )
+        .unwrap();
+        // como desde un respaldo: una fila sin su acción
+        c.pragma_update(None, "foreign_keys", "OFF").unwrap();
+        c.execute(
+            "INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op) VALUES ('nadie', 1, 'unidades', 'u1', 'insert')",
+            [],
+        )
+        .unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a), "t").unwrap();
+        assert_eq!(
+            uno(&c, "SELECT nombre FROM unidades WHERE id = 'u1'").as_deref(),
+            Some("Ventas")
+        );
+    }
+
+    #[test]
+    fn ctrl_z_salta_las_bloqueadas_y_no_se_ofrecen_como_conflicto() {
+        let mut c = base();
+        let a1 = lote(&mut c, &[&unidad("u2", None)]).unwrap();
+        let a2 = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Otra' WHERE id = 'u2'"],
+        )
+        .unwrap();
+        c.execute(
+            "UPDATE historial_acciones SET bloqueada = 1 WHERE id = ?1",
+            [&a2],
+        )
+        .unwrap();
+        assert_eq!(punteros(&c).unwrap().deshacer.unwrap().id, a1);
+        let e = conflictos(&mut c, &a1, Sentido::Deshacer).unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle.as_str()),
+            ("historial_bloqueada", a2.as_str())
+        );
+        let e = deshacer(&mut c, std::slice::from_ref(&a1), "t").unwrap_err();
+        assert_eq!(e.codigo, "historial_bloqueada");
+    }
+
+    #[test]
+    fn nombre_de_ignora_lo_deshecho_y_guarda_el_nombre_suprimido() {
+        let mut c = base();
+        let a = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
+        )
+        .unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a), "t").unwrap();
+        assert_eq!(
+            nombre_de(&c, "unidades", "u1").unwrap().as_deref(),
+            Some("Ventas")
+        );
+
+        // como la acción que deja el borrado definitivo: en la tabla queda el relleno
+        c.execute_batch(
+            "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('x', 'Relleno', 'x', 'x');
+             INSERT INTO historial_acciones (id, fecha, origen, bloqueada) VALUES ('ffffffff', 'x', 'suprimir', 1);
+             INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues)
+               VALUES ('ffffffff', 1, 'trabajadores', 'x', 'update', '{\"nombre\":\"Juan\"}', '{\"nombre\":\"Relleno\"}');",
+        )
+        .unwrap();
+        assert_eq!(
+            nombre_de(&c, "trabajadores", "x").unwrap().as_deref(),
+            Some("Juan")
+        );
     }
 }
