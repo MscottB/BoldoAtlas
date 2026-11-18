@@ -888,8 +888,22 @@ mod tests {
         fs::copy(i.temporal.ruta(), &antigua).unwrap();
         drop(i);
         let c = Connection::open(&antigua).unwrap();
-        c.execute_batch("DROP TABLE zona_unidades; DROP TABLE zonas; PRAGMA user_version = 1;")
-            .unwrap();
+        // el esquema 1 no tiene zonas, historial ni triggers
+        let triggers: Vec<String> = c
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+            .unwrap()
+            .query_map([], |f| f.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        for t in triggers {
+            c.execute_batch(&format!("DROP TRIGGER {t}")).unwrap();
+        }
+        c.execute_batch(
+            "DROP TABLE zona_unidades; DROP TABLE zonas; DROP TABLE historial_filas;
+             DROP TABLE historial_acciones; DROP TABLE historial_en_curso; PRAGMA user_version = 1;",
+        )
+        .unwrap();
         c.close().unwrap();
         let archivo = d.join("antigua.boldo");
         let codigo = guardar(&antigua, &archivo, SIGUE).unwrap();
@@ -907,7 +921,7 @@ mod tests {
         let v: i64 = c
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .unwrap();
-        assert_eq!(v, 2);
+        assert_eq!(v, MIGRACIONES.len() as i64);
         let n = |sql: &str| -> i64 { c.query_row(sql, [], |f| f.get(0)).unwrap() };
         assert_eq!(n("SELECT count(*) FROM zonas"), 0);
         assert_eq!(n("SELECT count(*) FROM zona_unidades"), 0);

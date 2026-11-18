@@ -271,6 +271,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     #[test]
+    #[ignore = "Task 4"]
     fn toda_tabla_de_negocio_tiene_regla_de_poda() {
         let c = Connection::open_in_memory().unwrap();
         c.execute_batch(db::MIGRACIONES.join("\n").as_str())

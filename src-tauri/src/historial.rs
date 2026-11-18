@@ -67,7 +67,10 @@ mod tests {
                     )
                     .unwrap_or_else(|_| panic!("falta historial_{t}_{op}"));
                 for col in &columnas {
-                    assert!(sql.contains(col.as_str()), "historial_{t}_{op} no nombra {col}");
+                    assert!(
+                        sql.contains(col.as_str()),
+                        "historial_{t}_{op} no nombra {col}"
+                    );
                 }
             }
         }
@@ -76,7 +79,8 @@ mod tests {
     #[test]
     fn sin_accion_abierta_no_anota() {
         let c = base();
-        c.execute("UPDATE unidades SET nombre = 'Otro'", []).unwrap();
+        c.execute("UPDATE unidades SET nombre = 'Otro'", [])
+            .unwrap();
         assert!(filas(&c).is_empty());
     }
 
@@ -84,8 +88,11 @@ mod tests {
     fn un_update_guarda_solo_lo_que_cambio() {
         let c = base();
         abrir_accion(&c);
-        c.execute("UPDATE unidades SET nombre = 'Ventas Norte' WHERE id = 'u1'", [])
-            .unwrap();
+        c.execute(
+            "UPDATE unidades SET nombre = 'Ventas Norte' WHERE id = 'u1'",
+            [],
+        )
+        .unwrap();
         let f = filas(&c);
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].1, "update");
@@ -103,33 +110,52 @@ mod tests {
     fn un_update_sin_cambios_no_anota() {
         let c = base();
         abrir_accion(&c);
-        c.execute("UPDATE unidades SET nombre = 'Ventas'", []).unwrap();
+        c.execute("UPDATE unidades SET nombre = 'Ventas'", [])
+            .unwrap();
         assert!(filas(&c).is_empty());
     }
 
     #[test]
     fn replace_en_meta_anota_borrado_e_insercion() {
         let c = base();
-        c.execute("INSERT INTO meta (clave, valor) VALUES ('org_nombre', 'A')", [])
-            .unwrap();
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('org_nombre', 'A')",
+            [],
+        )
+        .unwrap();
         abrir_accion(&c);
-        c.execute("INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', 'B')", [])
-            .unwrap();
+        c.execute(
+            "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', 'B')",
+            [],
+        )
+        .unwrap();
         let f = filas(&c);
         let ops: Vec<&str> = f.iter().map(|x| x.1.as_str()).collect();
         assert_eq!(ops, ["delete", "insert"]);
-        assert_eq!(f[0].2.as_deref(), Some(r#"{"clave":"org_nombre","valor":"A"}"#));
-        assert_eq!(f[1].3.as_deref(), Some(r#"{"clave":"org_nombre","valor":"B"}"#));
+        assert_eq!(
+            f[0].2.as_deref(),
+            Some(r#"{"clave":"org_nombre","valor":"A"}"#)
+        );
+        assert_eq!(
+            f[1].3.as_deref(),
+            Some(r#"{"clave":"org_nombre","valor":"B"}"#)
+        );
     }
 
     #[test]
     fn meta_solo_anota_sus_claves() {
         let c = base();
         abrir_accion(&c);
-        c.execute("INSERT INTO meta (clave, valor) VALUES ('data_revision', '1')", [])
-            .unwrap();
-        c.execute("UPDATE meta SET valor = '2' WHERE clave = 'data_revision'", [])
-            .unwrap();
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('data_revision', '1')",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "UPDATE meta SET valor = '2' WHERE clave = 'data_revision'",
+            [],
+        )
+        .unwrap();
         assert!(filas(&c).is_empty());
     }
 }

@@ -234,7 +234,7 @@ const CARGADAS_CON_ELIMINADAS: &[&str] = &[
 fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), Fallo> {
     let tablas: Vec<String> = c
         .prepare(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'historial_%'",
         )?
         .query_map([], |f| f.get(0))?
         .collect::<rusqlite::Result<_>>()?;
@@ -310,7 +310,7 @@ fn revisar_topes(c: &Connection, max_filas: i64, max_bytes: i64) -> Result<(), F
 fn revisar_tipos(c: &Connection) -> rusqlite::Result<bool> {
     let tablas: Vec<String> = c
         .prepare(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'historial_%'",
         )?
         .query_map([], |f| f.get(0))?
         .collect::<rusqlite::Result<_>>()?;
@@ -972,7 +972,7 @@ mod tests {
         assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), 1);
         migrar_copia(&ruta, 1, MIGRACIONES).unwrap();
         // comparar sqlite_master acepta lo migrado: es lo mismo que una base creada con las dos migraciones
-        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), 2);
+        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), MIGRACIONES.len());
         let c = solo_lectura(&ruta).unwrap();
         let unidades: i64 = c
             .query_row("SELECT count(*) FROM unidades", [], |f| f.get(0))
@@ -983,7 +983,7 @@ mod tests {
             .unwrap();
         assert_eq!(zonas, 0);
         // con el esquema de la app no hace nada
-        migrar_copia(&ruta, 2, MIGRACIONES).unwrap();
+        migrar_copia(&ruta, MIGRACIONES.len(), MIGRACIONES).unwrap();
     }
 
     #[test]
