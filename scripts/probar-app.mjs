@@ -536,6 +536,15 @@ async function reapertura(exe, carpeta, primera) {
 const conCtrl = (tecla) =>
   `document.body.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(tecla)}, ctrlKey: true, bubbles: true, cancelable: true }))`;
 
+/** Al abrir, la app muestra Inicio, que no atiende atajos: se pasa al árbol. @param {Awaited<ReturnType<typeof abrirApp>>} app */
+const alArbol = async (app) => {
+  await app.evaluar(`location.hash = "#/"`);
+  await app.hasta(
+    `location.hash === "#/" && !!document.querySelector(".vue-flow")`,
+    "que la app muestre el árbol",
+  );
+};
+
 /**
  * Deshacer y rehacer que sobreviven a cerrar la app: se renombra una unidad, Ctrl+Z devuelve el nombre anterior y, ya con
  * la app cerrada y vuelta a abrir, Ctrl+Y vuelve a poner el nuevo. `revisarBase` comprueba `rutaBd` antes de cada escritura.
@@ -543,11 +552,13 @@ const conCtrl = (tecla) =>
  */
 async function historialPersistente(exe, carpeta) {
   const nombreDe = (/** @type {Awaited<ReturnType<typeof abrirApp>>} */ app, /** @type {string} */ baseId) =>
-    app.llamar("db_consultar", {
-      baseId,
-      sql: "SELECT nombre FROM unidades WHERE nombre IN (?1, ?2)",
-      params: [RAIZ, RAIZ_NUEVA],
-    }).then((r) => (r.ok ? (r.valor[0]?.nombre ?? null) : null));
+    app
+      .llamar("db_consultar", {
+        baseId,
+        sql: "SELECT nombre FROM unidades WHERE nombre IN (?1, ?2)",
+        params: [RAIZ, RAIZ_NUEVA],
+      })
+      .then((r) => (r.ok ? (r.valor[0]?.nombre ?? null) : null));
 
   let app = await abrirApp(exe);
   let info = await revisarBase(app, carpeta);
@@ -570,10 +581,18 @@ async function historialPersistente(exe, carpeta) {
     renombrado,
   );
 
+  await alArbol(app);
   await app.evaluar(conCtrl("z"));
   await hasta(RAIZ, "que Ctrl+Z devuelva el nombre anterior").then(
     () => comprobar("Ctrl+Z devuelve el nombre anterior", true),
-    (e) => comprobar("Ctrl+Z devuelve el nombre anterior", false, e.message),
+    async (e) =>
+      comprobar(
+        "Ctrl+Z devuelve el nombre anterior",
+        false,
+        `${e.message}; ruta ${await app.evaluar("location.hash")}; avisos: ${await app.evaluar(
+          `[...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.innerText).join(" | ")`,
+        )}`,
+      ),
   );
   comprobar("la app cierra sola y con código 0 antes de rehacer", (await app.cerrar()) === 0);
 
@@ -581,6 +600,9 @@ async function historialPersistente(exe, carpeta) {
   app = await abrirApp(exe);
   info = await revisarBase(app, carpeta);
   await verTexto(app, ORGANIZACION);
+  // si no, Ctrl+Y «pasaría» sin hacer nada
+  comprobar("tras reabrir la app sigue el nombre deshecho", (await nombreDe(app, info.baseId)) === RAIZ);
+  await alArbol(app);
   await app.evaluar(conCtrl("y"));
   await hasta(RAIZ_NUEVA, "que Ctrl+Y, tras reabrir la app, vuelva a poner el nombre nuevo").then(
     () => comprobar("Ctrl+Y tras cerrar y abrir la app vuelve a poner el nombre nuevo", true),
