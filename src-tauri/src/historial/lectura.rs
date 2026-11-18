@@ -210,15 +210,18 @@ fn nombre_propio(antes: &Map<String, Value>, despues: &Map<String, Value>) -> Op
 pub struct Filtro {
     /// Se busca, sin distinguir mayúsculas ni tildes, en los nombres de lo que tocó cada acción.
     pub texto: Option<String>,
-    /// Día `AAAA-MM-DD`, incluido.
+    /// Instante UTC como se guarda `fecha` (`AAAA-MM-DDTHH:MM:SS.mmmZ`), incluido.
     pub desde: Option<String>,
-    /// Día `AAAA-MM-DD`, incluido.
+    /// Instante UTC como `desde`, excluido.
     pub hasta: Option<String>,
     /// `(tabla, fila_id)`, para «Ver historial» desde una ficha.
     pub fila: Option<(String, String)>,
 }
 
-/// Hasta `cuantas` acciones, de la más nueva a la más antigua, las que siguen a `antes_de` (una página tras otra, sin repetir).
+/// Lo más que devuelve una página.
+const MAX_PAGINA: u32 = 200;
+
+/// Hasta `cuantas` (como mucho 200) acciones, de la más nueva a la más antigua, las que siguen a `antes_de` (una página tras otra, sin repetir).
 pub fn pagina(
     c: &Connection,
     f: &Filtro,
@@ -238,8 +241,8 @@ pub fn pagina(
     let mut st = c.prepare(
         "SELECT a.id FROM historial_acciones a
          WHERE (?1 IS NULL OR a.id < ?1)
-           AND (?2 IS NULL OR substr(a.fecha, 1, 10) >= ?2)
-           AND (?3 IS NULL OR substr(a.fecha, 1, 10) <= ?3)
+           AND (?2 IS NULL OR a.fecha >= ?2)
+           AND (?3 IS NULL OR a.fecha < ?3)
            AND (?4 IS NULL OR EXISTS (SELECT 1 FROM historial_filas g
                                       WHERE g.accion_id = a.id AND g.tabla = ?4 AND g.fila_id = ?5))
          ORDER BY a.id DESC",
@@ -253,7 +256,7 @@ pub fn pagina(
     ])?;
     let mut nombres = Nombres::new();
     let mut pagina = Vec::new();
-    while pagina.len() < cuantas as usize
+    while pagina.len() < cuantas.min(MAX_PAGINA) as usize
         && let Some(fila) = ids.next()?
     {
         let id: String = fila.get(0)?;
@@ -473,6 +476,9 @@ mod tests {
         );
     }
 
+    const LIMITE_UNA_FILA: u64 = 200;
+    const LIMITE_BUSCAR: u64 = 1000;
+
     fn nueva_unidad(c: &mut Connection, id: &str, nombre: &str) -> String {
         lote(
             c,
@@ -570,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn filtro_por_dia_incluye_los_dos_extremos() {
+    fn filtro_por_instante_incluye_desde_y_excluye_hasta() {
         let mut c = base();
         let fechas = [
             "2026-03-01T00:00:00.000Z",
@@ -590,24 +596,33 @@ mod tests {
                 id
             })
             .collect();
-        let entre = |desde: Option<&str>, hasta: Option<&str>| {
+        let t = |x: &str| Some(format!("{x}Z"));
+        let entre = |desde: Option<String>, hasta: Option<String>| {
             let f = Filtro {
-                desde: desde.map(Into::into),
-                hasta: hasta.map(Into::into),
+                desde,
+                hasta,
                 ..Filtro::default()
             };
             pagina(&c, &f, None, 50).unwrap()
         };
+        // desde incluido, hasta excluido
         assert_eq!(
-            ids(&entre(Some("2026-03-01"), Some("2026-03-02"))),
+            ids(&entre(
+                t("2026-03-01T00:00:00.000"),
+                t("2026-03-03T00:00:00.000")
+            )),
             [a[1].as_str(), a[0].as_str()]
         );
         assert_eq!(
-            ids(&entre(Some("2026-03-02"), None)),
+            ids(&entre(t("2026-03-02T23:59:59.000"), None)),
             [a[2].as_str(), a[1].as_str()]
         );
-        assert_eq!(ids(&entre(None, Some("2026-03-01"))), [a[0].as_str()]);
-        assert_eq!(entre(Some(""), Some("")).len(), 3);
+        assert!(entre(None, t("2026-03-01T00:00:00.000")).is_empty());
+        assert_eq!(
+            ids(&entre(None, t("2026-03-01T00:00:00.001"))),
+            [a[0].as_str()]
+        );
+        assert_eq!(entre(Some(String::new()), Some(String::new())).len(), 3);
     }
 
     #[test]
@@ -673,9 +688,8 @@ mod tests {
         assert!(detalle(&c, "no-existe").unwrap().is_empty());
     }
 
-    #[test]
-    fn pagina_con_5000_acciones_bajo_50_ms() {
-        let c = base();
+    /// 5.000 acciones de una fila cada una (o todas de la misma). Los ids van de `00000000` a `00004999`.
+    fn sembrar(c: &Connection, misma_fila: bool) {
         let tx = c.unchecked_transaction().unwrap();
         {
             let mut accion = tx
@@ -684,31 +698,88 @@ mod tests {
                 )
                 .unwrap();
             let mut fila = tx
-                .prepare("INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues) VALUES (?1, 1, 'unidades', ?1, 'update', '{\"nombre\":\"A\"}', '{\"nombre\":\"B\"}')")
+                .prepare("INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues) VALUES (?1, 1, 'unidades', ?2, 'update', '{\"nombre\":\"A\"}', json_object('nombre', ?3))")
                 .unwrap();
             for i in 0..5000 {
                 let id = format!("{i:08}");
                 accion.execute([&id, "2026-03-01T10:00:00.000Z"]).unwrap();
-                fila.execute([&id]).unwrap();
+                let fila_id = if misma_fila {
+                    "u1".to_string()
+                } else {
+                    format!("f{i}")
+                };
+                // un nombre raro solo en la acción 17
+                let nombre = if i == 17 {
+                    "Quimera".to_string()
+                } else {
+                    format!("N{i}")
+                };
+                fila.execute([&id, &fila_id, &nombre]).unwrap();
             }
         }
         tx.commit().unwrap();
-        // con todas las pruebas corriendo a la vez la CPU se reparte y una pasada puede esperar turno: se repite, con
-        // pausas, hasta una que quepa; si ninguna de 100 cabe, es lento de verdad
-        let limite = std::time::Duration::from_millis(50);
-        let mut tardo = std::time::Duration::MAX;
+    }
+
+    /// Con todas las pruebas corriendo a la vez la CPU se reparte y una pasada puede esperar turno: se repite, con pausas,
+    /// hasta una que quepa en `limite`; si ninguna de 100 cabe, es lento de verdad. Devuelve la página y lo que tardó.
+    fn medir(c: &Connection, f: &Filtro, limite_ms: u64, nombre: &str) -> Vec<AccionBreve> {
+        let limite = std::time::Duration::from_millis(limite_ms);
+        let mut mejor = std::time::Duration::MAX;
         let mut p = Vec::new();
         for _ in 0..100 {
             let ahora = std::time::Instant::now();
-            p = pagina(&c, &Filtro::default(), None, 50).unwrap();
-            tardo = tardo.min(ahora.elapsed());
-            if tardo < limite {
+            p = pagina(c, f, None, 50).unwrap();
+            mejor = mejor.min(ahora.elapsed());
+            if mejor < limite {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
-        eprintln!("pagina de 50 entre 5000: {tardo:?}");
+        eprintln!("{nombre}: {mejor:?}");
+        assert!(mejor < limite, "{nombre} tardó {mejor:?}");
+        p
+    }
+
+    #[test]
+    fn pagina_con_5000_acciones_bajo_50_ms() {
+        let c = base();
+        sembrar(&c, false);
+        let p = medir(&c, &Filtro::default(), 50, "pagina de 50 entre 5000");
         assert_eq!((p.len(), p[0].id.as_str()), (50, "00004999"));
-        assert!(tardo < limite, "tardó {tardo:?}");
+    }
+
+    #[test]
+    fn pagina_con_5000_acciones_en_una_fila() {
+        let c = base();
+        sembrar(&c, true);
+        let p = medir(
+            &c,
+            &Filtro::default(),
+            LIMITE_UNA_FILA,
+            "pagina de 50 en una fila",
+        );
+        assert_eq!((p.len(), p[0].id.as_str()), (50, "00004999"));
+    }
+
+    #[test]
+    fn buscar_un_nombre_raro_entre_5000_acciones() {
+        let c = base();
+        sembrar(&c, false);
+        let f = Filtro {
+            texto: Some("quimera".into()),
+            ..Filtro::default()
+        };
+        let p = medir(&c, &f, LIMITE_BUSCAR, "busqueda rara entre 5000");
+        assert_eq!(ids(&p), ["00000017"]);
+    }
+
+    #[test]
+    fn cuantas_tiene_techo() {
+        let c = base();
+        sembrar(&c, false);
+        assert_eq!(
+            pagina(&c, &Filtro::default(), None, 100_000).unwrap().len(),
+            200
+        );
     }
 }

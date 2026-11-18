@@ -186,18 +186,23 @@ fn puntero(sentido: Sentido) -> &'static str {
     }
 }
 
-/// Deja la base como estaba justo después de `id`: deshace, de la más nueva a la más antigua, todas las hechas posteriores,
+/// Deja la base como estaba justo después de `id` (que debe estar hecha): deshace, de la más nueva a la más antigua, todas las hechas posteriores,
 /// en una sola transacción (si una no se puede, no cambia nada). Devuelve las que deshizo.
 pub fn volver_a(c: &mut Connection, id: &str, version_app: &str) -> Result<Vec<String>, Fallo> {
     let mut volver = || -> Result<Vec<String>, Fallo> {
         let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let existe: bool = tx.query_row(
-            "SELECT EXISTS (SELECT 1 FROM historial_acciones WHERE id = ?1)",
-            [id],
-            |f| f.get(0),
-        )?;
-        if !existe {
-            return Err(Fallo::de("fallo", format!("no existe la acción {id}")));
+        let estado: Option<String> = tx
+            .query_row(
+                "SELECT estado FROM historial_acciones WHERE id = ?1",
+                [id],
+                |f| f.get(0),
+            )
+            .optional()?;
+        match estado.as_deref() {
+            None => return Err(Fallo::de("fallo", format!("no existe la acción {id}"))),
+            Some("hecha") => {}
+            // lo que hay no es el estado justo después de una deshecha: no se sabe a dónde volver
+            Some(_) => return Err(Fallo::de("historial_ya_aplicada", id)),
         }
         let ids: Vec<String> = tx
             .prepare("SELECT id FROM historial_acciones WHERE id > ?1 AND estado = 'hecha' ORDER BY id DESC")?
@@ -1572,5 +1577,17 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn volver_a_a_una_deshecha_no_cambia_nada() {
+        let mut c = base();
+        let a1 = lote(&mut c, &[&unidad("u2", None)]).unwrap();
+        lote(&mut c, &[&unidad("u3", None)]).unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a1), "t").unwrap();
+        let antes = volcado(&c);
+        let e = volver_a(&mut c, &a1, "t").unwrap_err();
+        assert_eq!((e.codigo, e.detalle), ("historial_ya_aplicada", a1.clone()));
+        assert_eq!(volcado(&c), antes);
     }
 }
