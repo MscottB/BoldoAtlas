@@ -60,6 +60,26 @@ pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> 
     if !existe {
         return Ok(());
     }
+    // antes de vaciar la fila y sin acción abierta: los triggers no anotan nada y el nombre real queda en `antes`
+    let ya: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM historial_acciones WHERE origen = 'suprimir' AND json_extract(datos, '$.id') = ?1)",
+        [id],
+        |f| f.get(0),
+    )?;
+    if !ya {
+        let accion = uuid::Uuid::now_v7().to_string();
+        tx.execute(
+            "INSERT INTO historial_acciones (id, fecha, origen, datos, bloqueada) VALUES (?1, ?2, 'suprimir', json_object('id', ?3), 1)",
+            (&accion, fecha, id),
+        )?;
+        tx.execute(
+            "INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues)
+             SELECT ?1, 1, 'trabajadores', id, 'update', json_object('nombre', nombre), json_object('nombre', ?3)
+             FROM trabajadores WHERE id = ?2",
+            (&accion, id, relleno),
+        )?;
+    }
+    crate::historial::limpiar_persona(&tx, id)?;
     tx.execute(
         "UPDATE trabajadores SET nombre = ?2, correo = NULL, telefono = NULL, tipo_contrato_id = NULL,
              sede_id = NULL, jornada_id = NULL, foto_png = NULL, notas = NULL,
@@ -155,6 +175,121 @@ mod tests {
         .unwrap();
     }
 
+    use serde_json::json;
+
+    /// Una persona creada con el historial abierto, como lo deja la app.
+    fn persona_con_historial(c: &Connection, id: &str, nombre: &str) {
+        let a = crate::historial::abrir_accion(c, "app", &json!({})).unwrap();
+        persona(c, id, nombre, "ana@x.cl", "notas");
+        crate::historial::cerrar_accion(c, &a).unwrap();
+    }
+
+    fn filas_de(c: &Connection, tabla: &str, id: &str) -> Vec<(Option<String>, Option<String>)> {
+        c.prepare("SELECT antes, despues FROM historial_filas WHERE tabla = ?1 AND fila_id = ?2")
+            .unwrap()
+            .query_map([tabla, id], |f| Ok((f.get(0)?, f.get(1)?)))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    }
+
+    fn acciones_suprimir(c: &Connection) -> i64 {
+        c.query_row(
+            "SELECT count(*) FROM historial_acciones WHERE origen = 'suprimir'",
+            [],
+            |f| f.get(0),
+        )
+        .unwrap()
+    }
+
+    fn historial_limpio(c: &Connection) {
+        assert!(!filas_de(c, "trabajadores", "t1").is_empty());
+        for (a, d) in filas_de(c, "trabajadores", "t1") {
+            for texto in [a, d].into_iter().flatten() {
+                let v: serde_json::Value = serde_json::from_str(&texto).unwrap();
+                assert!(
+                    v.as_object().unwrap().keys().all(|k| k == "nombre"),
+                    "{texto}"
+                );
+            }
+        }
+        assert!(!filas_de(c, "asignaciones", "a-t1").is_empty());
+        for (a, d) in filas_de(c, "asignaciones", "a-t1") {
+            for texto in [a, d].into_iter().flatten() {
+                assert!(!texto.contains("motivo"), "{texto}");
+            }
+        }
+        let sin_bloquear: i64 = c
+            .query_row(
+                "SELECT count(*) FROM historial_acciones WHERE bloqueada = 0",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(sin_bloquear, 0);
+        assert_eq!(acciones_suprimir(c), 1);
+    }
+
+    #[test]
+    fn suprimir_deja_solo_el_nombre_en_el_historial() {
+        let (_d, _r, mut c) = base();
+        persona_con_historial(&c, "t1", "Ana Pérez");
+        suprimir(&mut c, "t1", RELLENO, FECHA).unwrap();
+        historial_limpio(&c);
+        let (antes, despues, bloqueada, estado): (String, String, i64, String) = c
+            .query_row(
+                "SELECT f.antes, f.despues, a.bloqueada, a.estado FROM historial_acciones a
+                 JOIN historial_filas f ON f.accion_id = a.id WHERE a.origen = 'suprimir'",
+                [],
+                |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(antes, r#"{"nombre":"Ana Pérez"}"#);
+        assert_eq!(despues, format!(r#"{{"nombre":"{RELLENO}"}}"#));
+        assert_eq!((bloqueada, estado.as_str()), (1, "hecha"));
+        assert_eq!(
+            crate::historial::nombre_de(&c, "trabajadores", "t1")
+                .unwrap()
+                .as_deref(),
+            Some("Ana Pérez")
+        );
+    }
+
+    #[test]
+    fn suprimir_dos_veces_no_duplica_la_accion() {
+        let (_d, _r, mut c) = base();
+        persona_con_historial(&c, "t1", "Ana");
+        suprimir(&mut c, "t1", RELLENO, FECHA).unwrap();
+        suprimir(&mut c, "t1", RELLENO, "2027-01-01T00:00:00.000Z").unwrap();
+        assert_eq!(acciones_suprimir(&c), 1);
+        let filas: i64 = c
+            .query_row(
+                "SELECT count(*) FROM historial_filas f JOIN historial_acciones a ON a.id = f.accion_id
+                 WHERE a.origen = 'suprimir'",
+                [],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(filas, 1);
+    }
+
+    #[test]
+    fn reaplicar_tras_restaurar_vuelve_a_limpiar() {
+        let (_d, ruta, mut c) = base();
+        persona_con_historial(&c, "t1", "Ana");
+        let copia = ruta.with_file_name("copia.db");
+        c.execute("VACUUM INTO ?1", [copia.to_str().unwrap()])
+            .unwrap();
+        suprimir(&mut c, "t1", RELLENO, FECHA).unwrap();
+        let previas = leer(&c).unwrap();
+        // la «restaurada» trae el historial completo, con el correo y el motivo
+        let mut r = db::abrir(&copia).unwrap();
+        let antes = filas_de(&r, "trabajadores", "t1");
+        assert!(antes[0].1.as_deref().unwrap().contains("correo"));
+        reaplicar(&mut r, &previas, RELLENO).unwrap();
+        historial_limpio(&r);
+    }
+
     #[test]
     fn suprimir_vacia_la_fila_y_conserva_asignaciones() {
         let (_d, _r, mut c) = base();
@@ -223,11 +358,7 @@ mod tests {
         let archivos = [ruta.clone(), ruta.with_file_name("boldo.db-wal")];
         for a in archivos.iter().filter(|a| a.exists()) {
             let bytes = std::fs::read(a).unwrap();
-            for texto in [
-                "Zacarías Únicoapellido",
-                "zz-unico@ejemplo.cl",
-                "nota-secreta-123",
-            ] {
+            for texto in ["zz-unico@ejemplo.cl", "nota-secreta-123"] {
                 assert!(
                     !bytes.windows(texto.len()).any(|w| w == texto.as_bytes()),
                     "{texto} sigue en {a:?}"

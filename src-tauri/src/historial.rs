@@ -51,6 +51,65 @@ pub struct FilaBreve {
     pub nombre_antes: Option<String>,
 }
 
+/// Cuántos días se guarda el historial si `meta.historial_plazo_dias` no dice otra cosa.
+pub const PLAZO_POR_DEFECTO_DIAS: i64 = 365;
+
+/// Borra las acciones más viejas que el plazo, con sus filas (cascada). `"0"` es sin límite. Devuelve cuántas.
+pub fn podar(c: &Connection) -> Result<u64, Fallo> {
+    let dias = c
+        .query_row(
+            "SELECT valor FROM meta WHERE clave = 'historial_plazo_dias'",
+            [],
+            |f| f.get::<_, String>(0),
+        )
+        .optional()?
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .filter(|d| *d >= 0)
+        .unwrap_or(PLAZO_POR_DEFECTO_DIAS);
+    if dias == 0 {
+        return Ok(0);
+    }
+    Ok(c.execute(
+        "DELETE FROM historial_acciones WHERE fecha < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?1)",
+        [format!("-{dias} days")],
+    )? as u64)
+}
+
+/// Lo que dejó esa persona en el historial tras borrarla definitivamente: de `trabajadores` solo el nombre, de `asignaciones`
+/// sin el motivo, y bloquea las acciones que la tocaron. Una fila `update` solo trae lo que cambió, por eso las asignaciones
+/// también se buscan por su fila actual.
+pub fn limpiar_persona(c: &Connection, id: &str) -> Result<(), Fallo> {
+    const DE_ASIGNACION: &str =
+        "tabla = 'asignaciones' AND (json_extract(antes, '$.trabajador_id') = ?1
+        OR json_extract(despues, '$.trabajador_id') = ?1
+        OR fila_id IN (SELECT id FROM asignaciones WHERE trabajador_id = ?1))";
+    c.execute(
+        &format!(
+            "UPDATE historial_acciones SET bloqueada = 1 WHERE id IN (
+               SELECT accion_id FROM historial_filas
+               WHERE (tabla = 'trabajadores' AND fila_id = ?1) OR ({DE_ASIGNACION}))"
+        ),
+        [id],
+    )?;
+    c.execute(
+        "UPDATE historial_filas SET
+           antes = CASE WHEN antes IS NULL THEN NULL WHEN json_extract(antes, '$.nombre') IS NULL THEN '{}'
+                        ELSE json_object('nombre', json_extract(antes, '$.nombre')) END,
+           despues = CASE WHEN despues IS NULL THEN NULL WHEN json_extract(despues, '$.nombre') IS NULL THEN '{}'
+                          ELSE json_object('nombre', json_extract(despues, '$.nombre')) END
+         WHERE tabla = 'trabajadores' AND fila_id = ?1",
+        [id],
+    )?;
+    c.execute(
+        &format!(
+            "UPDATE historial_filas SET antes = json_remove(antes, '$.motivo'), despues = json_remove(despues, '$.motivo')
+             WHERE {DE_ASIGNACION}"
+        ),
+        [id],
+    )?;
+    Ok(())
+}
+
 /// Abre una acción en la transacción de quien llama: desde aquí los triggers anotan en ella.
 pub fn abrir_accion(c: &Connection, origen: &str, datos: &Value) -> Result<String, String> {
     let id = uuid::Uuid::now_v7().to_string();
@@ -616,6 +675,72 @@ mod tests {
             .unwrap()
             .map(Result::unwrap)
             .collect()
+    }
+
+    fn accion_con_fecha(c: &Connection, id: &str, fecha: &str) {
+        c.execute(
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES (?1, ?2, 'app')",
+            [id, fecha],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, despues) VALUES (?1, 1, 'unidades', 'u1', 'update', '{}')",
+            [id],
+        )
+        .unwrap();
+    }
+
+    fn contar(c: &Connection, tabla: &str) -> i64 {
+        c.query_row(&format!("SELECT count(*) FROM {tabla}"), [], |f| f.get(0))
+            .unwrap()
+    }
+
+    fn hace(c: &Connection, dias: i64) -> String {
+        c.query_row(
+            "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?1)",
+            [format!("-{dias} days")],
+            |f| f.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn podar_usa_365_dias_sin_clave() {
+        let c = base();
+        accion_con_fecha(&c, "vieja", &hace(&c, 366));
+        accion_con_fecha(&c, "nueva", &hace(&c, 364));
+        assert_eq!(podar(&c).unwrap(), 1);
+        assert_eq!(contar(&c, "historial_acciones"), 1);
+        assert_eq!(contar(&c, "historial_filas"), 1);
+    }
+
+    #[test]
+    fn podar_con_cero_no_borra_nada() {
+        let c = base();
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('historial_plazo_dias', '0')",
+            [],
+        )
+        .unwrap();
+        accion_con_fecha(&c, "vieja", "2000-01-01T00:00:00.000Z");
+        assert_eq!(podar(&c).unwrap(), 0);
+        assert_eq!(contar(&c, "historial_acciones"), 1);
+    }
+
+    #[test]
+    fn podar_con_30_borra_lo_anterior_con_sus_filas() {
+        let c = base();
+        c.execute(
+            "INSERT INTO meta (clave, valor) VALUES ('historial_plazo_dias', '30')",
+            [],
+        )
+        .unwrap();
+        accion_con_fecha(&c, "a", &hace(&c, 31));
+        accion_con_fecha(&c, "b", &hace(&c, 100));
+        accion_con_fecha(&c, "c", &hace(&c, 29));
+        assert_eq!(podar(&c).unwrap(), 2);
+        assert_eq!(contar(&c, "historial_acciones"), 1);
+        assert_eq!(contar(&c, "historial_filas"), 1);
     }
 
     #[test]

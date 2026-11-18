@@ -298,6 +298,8 @@ const META_CONOCIDAS: &[&str] = &[
     "app_version_ultima",
     // para que una persona borrada definitivamente no vuelva con un archivo que llega después
     "suprimidas",
+    // cuánto se guarda el historial de cambios
+    "historial_plazo_dias",
 ];
 
 /// Con la extensión puesta. Si hubo que agregarla, el diálogo preguntó por otro nombre: lo que ya tenga este no se pisa.
@@ -1728,7 +1730,6 @@ mod tests {
         for a in [bd.clone(), respaldos::con_sufijo(&bd, "-wal")] {
             let Ok(bytes) = fs::read(&a) else { continue };
             for t in [
-                "Zacarías Únicoapellido",
                 "zz-unico@ejemplo.cl",
                 "Zm90by11bmljbw==",
                 "nota-secreta-123",

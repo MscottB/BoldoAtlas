@@ -1050,13 +1050,11 @@ mod tests {
         );
         assert_eq!(despues.len(), antes.len() + 1, "{despues:?}");
         assert!(archivos(dir.path()).iter().all(|n| !n.contains("migrando")));
-        sin_rastro(&b.bd, &["Zacarías Únicoapellido", "zz-unico@ejemplo.cl"]);
+        // el nombre real queda a propósito en la acción `suprimir` del historial: no se busca
+        sin_rastro(&b.bd, &["zz-unico@ejemplo.cl"]);
         for n in despues {
             if n != nombre {
-                sin_rastro(
-                    &respaldos.join(n),
-                    &["Zacarías Únicoapellido", "zz-unico@ejemplo.cl"],
-                );
+                sin_rastro(&respaldos.join(n), &["zz-unico@ejemplo.cl"]);
             }
         }
     }
@@ -1593,7 +1591,6 @@ mod tests {
         sin_rastro(
             &b.bd,
             &[
-                "Zacarías Únicoapellido",
                 "zz-unico@ejemplo.cl",
                 "+56 9 7777 8888",
                 "Zm90by11bmljbw==",
