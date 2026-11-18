@@ -2192,6 +2192,11 @@ pub fn aplicar(
     respaldos::respaldar_antes_de_importar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
     let marca = super::ahora(conn)?;
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let accion = crate::historial::abrir_accion(
+        &tx,
+        "revisar",
+        &serde_json::json!({ "archivo": i.archivo }),
+    )?;
     let s = pasada(&tx, &imp, &i.meta, r, &marca, &mut || true)?;
     if !s.bloqueos.is_empty() {
         return Err(Fallo::de("bloqueada", ""));
@@ -2201,6 +2206,7 @@ pub fn aplicar(
     if es_masivo(masa, r.vivas_locales) && !confirmado {
         return Err(Fallo::de("falta_confirmar", ""));
     }
+    crate::historial::cerrar_accion(&tx, &accion)?;
     db::marcar_cambio(&tx, version_app)?;
     tx.commit()?;
     Ok(InformeRevision {
@@ -2284,7 +2290,11 @@ mod tests {
         Banco {
             dir,
             local,
-            i: Importacion { temporal, meta },
+            i: Importacion {
+                temporal,
+                meta,
+                archivo: "prueba.boldo".into(),
+            },
             lugares: Lugares::new(),
         }
     }
@@ -4567,6 +4577,7 @@ mod tests {
                     organizacion: String::new(),
                     origen: None,
                 },
+                archivo: String::new(),
             },
         );
         s.guardar_importacion("t", i).unwrap();
@@ -5112,6 +5123,53 @@ mod tests {
         assert_eq!(b.revision_datos(), "0");
     }
 
+    /// Del plan de la 19c: vive aquí por el banco de pruebas.
+    #[test]
+    fn agregar_y_aplicar_revision_son_una_accion() {
+        let accion = |b: &Banco| {
+            b.local
+                .query_row(
+                    "SELECT origen, datos ->> '$.archivo', (SELECT count(*) FROM historial_filas WHERE accion_id = a.id)
+                     FROM historial_acciones a",
+                    [],
+                    |f| Ok((f.get::<_, String>(0)?, f.get::<_, String>(1)?, f.get::<_, i64>(2)?)),
+                )
+                .unwrap()
+        };
+        let nueva = format!(
+            "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('nueva', 'Nueva', '{F1}', '{F1}');"
+        );
+
+        let mut b = banco();
+        b.archivo(&nueva);
+        let dir = b.dir.path().join("respaldos");
+        std::fs::create_dir_all(&dir).unwrap();
+        super::super::agregar(&mut b.local, &dir, &b.i, &b.lugares, "1").unwrap();
+        let (origen, archivo, filas) = accion(&b);
+        assert_eq!(
+            (origen.as_str(), archivo.as_str()),
+            ("importar", "prueba.boldo")
+        );
+        assert!(filas > 0);
+
+        let mut b = banco();
+        b.archivo(&nueva);
+        let mut r = b.abrir();
+        // revisar y verificar no dejan acción
+        let vacia: i64 = b
+            .local
+            .query_row("SELECT count(*) FROM historial_acciones", [], |f| f.get(0))
+            .unwrap();
+        assert_eq!(vacia, 0);
+        b.aplicar(&mut r);
+        let (origen, archivo, filas) = accion(&b);
+        assert_eq!(
+            (origen.as_str(), archivo.as_str()),
+            ("revisar", "prueba.boldo")
+        );
+        assert!(filas > 0);
+    }
+
     #[test]
     fn un_fallo_en_medio_no_deja_nada_escrito() {
         let mut b = banco();
@@ -5166,6 +5224,7 @@ mod tests {
                     organizacion: String::new(),
                     origen: None,
                 },
+                archivo: String::new(),
             },
         );
         s.guardar_importacion("t1", i).unwrap();
@@ -5229,7 +5288,11 @@ mod tests {
         let copia = alcance::copiar(&b.local, b.dir.path()).unwrap();
         let (temporal, _) = alcance::preparar(copia, b.dir.path(), None).unwrap();
         let meta = validar::leer_meta(&validar::solo_lectura(temporal.ruta()).unwrap()).unwrap();
-        b.i = Importacion { temporal, meta };
+        b.i = Importacion {
+            temporal,
+            meta,
+            archivo: String::new(),
+        };
         // 20 000 distintas, 5 000 borradas en el archivo, 5 000 nuevas
         let f = Connection::open(b.i.temporal.ruta()).unwrap();
         let tx = f.unchecked_transaction().unwrap();

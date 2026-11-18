@@ -8,6 +8,7 @@ pub mod revision;
 pub mod validar;
 
 use crate::db;
+use crate::historial;
 use crate::organizaciones::{
     Base, CARPETA, Entrada, cargar_lista, color_libre, copiar_a_carpeta, escribir_lista,
     lista_protegida, ruta_interna,
@@ -17,6 +18,7 @@ use crate::rutas::Rutas;
 use fusion::Informe;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 use serde::Serialize;
+use serde_json::json;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -50,6 +52,8 @@ impl Drop for Temporal {
 pub struct Importacion {
     temporal: Temporal,
     meta: MetaArchivo,
+    /// El nombre del archivo, para el historial.
+    archivo: String,
 }
 
 impl Importacion {
@@ -381,7 +385,15 @@ pub fn abrir(
     let version = validar::revisar(temporal.ruta(), migraciones)?;
     validar::migrar_copia(temporal.ruta(), version, migraciones)?;
     let meta = validar::leer_meta(&validar::solo_lectura(temporal.ruta())?)?;
-    Ok(Importacion { temporal, meta })
+    let archivo = archivo
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    Ok(Importacion {
+        temporal,
+        meta,
+        archivo,
+    })
 }
 
 pub(crate) fn ahora(conn: &Connection) -> Result<String, Fallo> {
@@ -426,7 +438,9 @@ pub fn agregar(
     respaldos::respaldar_antes_de_importar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
     let marca = ahora(conn)?;
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let accion = historial::abrir_accion(&tx, "importar", &json!({ "archivo": i.archivo }))?;
     let informe = fusion::fusionar(&tx, &imp, &i.meta, lugares, &marca)?;
+    historial::cerrar_accion(&tx, &accion)?;
     db::marcar_cambio(&tx, version_app)?;
     tx.commit()?;
     Ok(informe)
