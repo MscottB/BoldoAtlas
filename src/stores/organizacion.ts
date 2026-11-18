@@ -89,8 +89,13 @@ export interface Borrado {
 
 const VIGENCIA_DESHACER_MS = 8000;
 const PLAZO_POR_DEFECTO = "365"; // como historial::PLAZO_POR_DEFECTO_DIAS
-/** Como `historial::podar`: lo que no es un número de días («abc», «-5») vale el plazo por defecto. */
-const plazoValido = (v = "") => (/^\d+$/.test(v.trim()) ? v.trim() : PLAZO_POR_DEFECTO);
+/** Como `historial::podar`: un entero de i64 desde 0 (con «+» o ceros delante); lo demás («abc», «-5») vale el plazo por defecto. */
+const plazoValido = (v = "") => {
+  const t = v.trim();
+  if (!/^[+-]?\d+$/.test(t)) return PLAZO_POR_DEFECTO;
+  const n = BigInt(t);
+  return n >= 0n && n <= 9223372036854775807n ? n.toString() : PLAZO_POR_DEFECTO;
+};
 const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
 // El cargo es del puesto y el tipo, de la unidad; los demás valores, de la persona.
 const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos" | "tipos_unidad">, keyof Trabajador> = {

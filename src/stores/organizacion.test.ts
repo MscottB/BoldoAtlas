@@ -987,6 +987,11 @@ describe("historial", () => {
       ["-5", "365"],
       [" 30 ", "30"],
       ["0", "0"],
+      ["+5", "5"],
+      ["007", "7"],
+      ["-0", "0"],
+      ["1.5", "365"],
+      ["99999999999999999999", "365"],
     ]) {
       h.bd!.db.prepare("INSERT OR REPLACE INTO meta (clave, valor) VALUES ('historial_plazo_dias', ?)").run(
         guardado!,
