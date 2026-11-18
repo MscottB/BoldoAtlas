@@ -505,7 +505,19 @@ fn revisar_con_tope(ruta: &Path, migraciones: &[&str], max_bytes: i64) -> Result
     if r.excede_bytes {
         return Err(Fallo::de(PESADO_TOTAL, "bytes"));
     }
-    leer_meta(&solo_lectura_cerrada(ruta)?)?;
+    let c = solo_lectura_cerrada(ruta)?;
+    leer_meta(&c)?;
+    // `revisar_topes` y `revisar_tipos` no miran `historial_%`: un .boldo no lo lleva, y una base local sí (no pasa por aquí)
+    if r.version >= 3
+        && c.query_row(
+            "SELECT EXISTS (SELECT 1 FROM historial_acciones) OR EXISTS (SELECT 1 FROM historial_filas)",
+            [],
+            |f| f.get::<_, bool>(0),
+        )
+        .map_err(invalido)?
+    {
+        return Err(invalido("historial"));
+    }
     Ok(r.version)
 }
 
@@ -963,6 +975,39 @@ mod tests {
             assert_eq!(e.codigo, esperado, "{sql:.60}");
             sin_wal_ni_shm(&ruta);
         }
+    }
+
+    #[test]
+    fn un_boldo_con_historial_se_rechaza() {
+        for sql in [
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app')",
+            "UPDATE historial_en_curso SET accion_id = NULL; INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app');
+             INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op) VALUES ('a', 1, 'cargos', 'c', 'insert')",
+        ] {
+            let (_d, ruta) = copia();
+            alterar(&ruta, sql);
+            let e = revisar(&ruta, MIGRACIONES).unwrap_err();
+            assert_eq!((e.codigo, e.detalle.as_str()), ("contenido_invalido", "historial"));
+            // una organización local sí lo lleva: ahí no se rechaza
+            revisar_organizacion(&ruta, MIGRACIONES, MAX_BYTES_VIVOS).unwrap();
+        }
+    }
+
+    #[test]
+    fn un_boldo_de_esquema_2_se_sigue_importando() {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("copia.db");
+        let mut c = Connection::open(&ruta).unwrap();
+        db::migrar_con(&mut c, &MIGRACIONES[..2], dir.path()).unwrap();
+        db::asegurar_meta(&c).unwrap();
+        c.execute_batch(
+            "INSERT INTO meta (clave, valor) VALUES ('alcance', 'completo'), ('raices', '[]');",
+        )
+        .unwrap();
+        drop(c);
+        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), 2);
+        migrar_copia(&ruta, 2, MIGRACIONES).unwrap();
+        assert_eq!(revisar(&ruta, MIGRACIONES).unwrap(), MIGRACIONES.len());
     }
 
     #[test]
