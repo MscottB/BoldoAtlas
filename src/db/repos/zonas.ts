@@ -71,4 +71,3 @@ export const bajaConUnidad = (unidadId: string) => caenCon(UNIDAD, unidadId);
 export const vuelveConUnidad = (unidadId: string) => vuelvenCon(UNIDAD, unidadId);
 
 export const eliminarZona = (id: string): Sentencia[] => [fijarBorrado("zonas", id, true), caenCon(ZONA, id)];
-export const restaurarZona = (id: string): Sentencia[] => [vuelvenCon(ZONA, id), fijarBorrado("zonas", id, false)];

@@ -55,7 +55,9 @@ describe("traducirError", () => {
   });
 
   it("sin_espacio se traduce", () => {
-    expect(traducirError("sin_espacio")).toBe("No queda espacio en el disco. Libera espacio e inténtalo de nuevo.");
+    expect(traducirError("sin_espacio")).toBe(
+      "No queda espacio en el disco. Libera espacio e inténtalo de nuevo.",
+    );
   });
 
   it("acepta un Error con el texto de SQLite", () => {
@@ -146,6 +148,67 @@ describe("traducirError", () => {
   it("devuelve tal cual un texto desconocido, sin ocultarlo", () => {
     expect(traducirError("disk I/O error")).toBe("disk I/O error");
     expect(traducirError(new Error("database is locked"))).toBe("database is locked");
+  });
+
+  it.each([
+    ["historial_conflicto", "a2,a3", "Otros cambios posteriores dependen de este: deshazlos primero."],
+    [
+      "historial_conflicto",
+      "a1",
+      "Hay cambios anteriores que también están deshechos: rehazlos primero.",
+      "rehacer",
+    ],
+    ["historial_bloqueada", "a1", "Ese cambio ya no se puede rehacer.", "rehacer"],
+    ["historial_ya_aplicada", "a1", "Ya estaba rehecho.", "rehacer"],
+    ["historial_no_se_pudo", "referencias", "No se puede rehacer: otro cambio lo impide.", "rehacer"],
+    [
+      "historial_no_se_pudo",
+      "ciclo",
+      "No se puede rehacer: una unidad quedaría dentro de sí misma.",
+      "rehacer",
+    ],
+    ["historial_bloqueada", "a1", "Ese cambio ya no se puede deshacer."],
+    ["historial_ya_aplicada", "a1", "Ya estaba deshecho."],
+    ["historial_no_se_pudo", "referencias", "No se puede deshacer: otro cambio depende de este."],
+    ["historial_no_se_pudo", "ciclo", "No se puede deshacer: una unidad quedaría dentro de sí misma."],
+    ["historial_no_se_pudo", "posterior:a2", "Una acción posterior cambió lo mismo: deshazla primero."],
+    [
+      "historial_no_se_pudo",
+      "UNIQUE constraint failed: index 'ux_trabajadores_correo'",
+      "No se pudo: Ya existe una persona con ese correo.",
+    ],
+    // sin regla que lo traduzca: nunca el texto de SQLite ni un id
+    [
+      "historial_no_se_pudo",
+      "UNIQUE constraint failed: index 'ux_roles_aprobador'",
+      "No se puede deshacer: choca con los datos que hay ahora.",
+    ],
+    [
+      "historial_no_se_pudo",
+      "UNIQUE constraint failed: index 'ux_roles_aprobador'",
+      "No se puede rehacer: choca con los datos que hay ahora.",
+      "rehacer",
+    ],
+    ["historial_fallo", "no existe la acción 0199a3b2-…", "No se pudo deshacer este cambio."],
+    ["historial_fallo", "tabla desconocida: x", "No se pudo rehacer este cambio.", "rehacer"],
+  ])("traduce el fallo del historial %s (%s)", (codigo, detalle, esperado, sentido?: string) => {
+    expect(traducirError({ codigo, detalle, sentido })).toBe(esperado);
+  });
+
+  it("si la bloqueada es otra, nombra el cambio pedido", () => {
+    const fallo = { codigo: "historial_bloqueada", detalle: "a2", frase: "Creaste el puesto Jefe" };
+    expect(traducirError(fallo)).toBe(
+      "No se puede deshacer «Creaste el puesto Jefe»: un cambio posterior ya no se puede deshacer.",
+    );
+    expect(traducirError({ ...fallo, sentido: "rehacer" })).toBe(
+      "No se puede rehacer «Creaste el puesto Jefe»: un cambio anterior ya no se puede rehacer.",
+    );
+  });
+
+  it("de otro fallo de Rust traduce su código; si no lo conoce o es «fallo», muestra el detalle", () => {
+    expect(traducirError({ codigo: "sin_espacio", detalle: "os error 112" })).toMatch(/No queda espacio/);
+    expect(traducirError({ codigo: "fallo", detalle: "disco lleno" })).toBe("disco lleno");
+    expect(traducirError({ codigo: "raro", detalle: "algo pasó" })).toBe("algo pasó");
   });
 
   it("convierte cualquier otro valor con String", () => {

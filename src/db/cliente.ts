@@ -3,6 +3,7 @@ import { invoke as invocar, type InvokeArgs } from "@tauri-apps/api/core";
 import { MODO_LADO } from "@/lado/modo";
 import { filtrarLado } from "@/lado/puente";
 import { BaseCambiada, baseActual, enCambio } from "@/lib/baseActiva";
+import type { AccionBreve, Punteros } from "@/features/historial/tipos";
 
 /** Toda llamada a Rust sale de aquí. En el panel de al lado solo salen las lecturas, con su id; lo demás, `solo_lectura`. */
 const invoke: typeof invocar = MODO_LADO
@@ -169,19 +170,46 @@ export function consultar<T>(sql: string, params: unknown[] = []): Promise<T[]> 
 // esperan a las cargas, para no perderse al salir; una lectura mezclada se acepta: `escribir` recarga y `ultimaCarga` evita lo viejo.
 let colaLotes: Promise<unknown> = Promise.resolve();
 
-/** Ejecuta todo en una transacción: o se aplican todas las sentencias o ninguna. */
-export function lote(sentencias: Sentencia[]): Promise<void> {
-  const hecho = conBase<void>(
-    "db_lote",
-    {
-      sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
-      versionApp: __APP_VERSION__,
-    },
-    colaLotes,
-  );
+/** Sale cuando termina lo que ya estaba en la cola de escrituras. */
+function enCola<T>(comando: string, args: Record<string, unknown> = {}): Promise<T> {
+  const hecho = conBase<T>(comando, args, colaLotes);
   // un lote que falla no detiene a los siguientes; quien lo pidió ya recibe su error en `hecho`
   colaLotes = hecho.catch(() => undefined);
   return hecho;
+}
+
+/** Ejecuta todo en una transacción: o se aplican todas las sentencias o ninguna. Devuelve la acción del historial, o null si
+ * no cambió nada. */
+export function lote(sentencias: Sentencia[]): Promise<string | null> {
+  return enCola("db_lote", {
+    sentencias: sentencias.map((s) => ({ sql: s.sql, params: s.params ?? [] })),
+    versionApp: __APP_VERSION__,
+  });
+}
+
+// Deshacer y rehacer van por la misma cola: no se adelantan a un cambio ya pedido. Fallan con `historial_*` (src/db/errores.ts).
+export function historialDeshacer(ids: string[]): Promise<void> {
+  return enCola("historial_deshacer", { ids, versionApp: __APP_VERSION__ });
+}
+
+export function historialRehacer(ids: string[]): Promise<void> {
+  return enCola("historial_rehacer", { ids, versionApp: __APP_VERSION__ });
+}
+
+/** Ctrl+Z: Rust busca la última acción y la deshace en la misma transacción. La devuelve como era antes, o null si no
+ * había nada. */
+export function historialDeshacerUltima(): Promise<AccionBreve | null> {
+  return enCola("historial_deshacer_ultima", { versionApp: __APP_VERSION__ });
+}
+
+/** Ctrl+Y: como `historialDeshacerUltima`, con la última deshecha. */
+export function historialRehacerUltima(): Promise<AccionBreve | null> {
+  return enCola("historial_rehacer_ultima", { versionApp: __APP_VERSION__ });
+}
+
+/** Lo que harían Ctrl+Z y Ctrl+Y, después de lo que está en la cola. */
+export function historialPunteros(): Promise<Punteros> {
+  return enCola("historial_punteros");
 }
 
 /** Espera a que salgan todos los lotes, también los que entren mientras tanto. Nunca falla. */

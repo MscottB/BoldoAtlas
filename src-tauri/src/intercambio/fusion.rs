@@ -611,7 +611,7 @@ mod tests {
         c.execute_batch(db::MIGRACIONES.join("\n").as_str())
             .unwrap();
         let reales: BTreeSet<String> = c
-            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'meta'")
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'meta' AND name NOT LIKE 'historial_%'")
             .unwrap()
             .query_map([], |f| f.get(0))
             .unwrap()

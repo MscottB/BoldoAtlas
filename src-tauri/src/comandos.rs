@@ -2,6 +2,7 @@ use crate::comparar_organizaciones::{
     self, Comparaciones, DetalleComparado, FiltroComparacion, PaginaComparada, ResumenComparacion,
 };
 use crate::db::{self, Sentencia};
+use crate::historial;
 use crate::intercambio::validar::{para_leer, solo_lectura_cerrada};
 use crate::intercambio::{self, Sesiones, alcance, fusion, revision};
 use crate::lado::{Lado, leer_en};
@@ -725,7 +726,10 @@ impl Estado {
         // shortcut: si la lista deja de poder escribirse justo entre esa escritura y la de aquí, en `boldo.db` las filas quedan
         // sin listar, y si hay otras entradas no se vuelven a ver; deshacer el lote si llega a pasar
         let llenar = |l: &mut Lista, e: Entrada, c: &mut Connection| -> Result<(), Fallo> {
-            db::lote(c, sentencias, version_app)?;
+            // lo que trae una organización nueva no se deshace con Ctrl+Z; si no se puede quitar, queda como una acción más
+            if let Some(accion) = db::lote(c, sentencias, version_app)? {
+                let _ = c.execute("DELETE FROM historial_acciones WHERE id = ?1", [accion]);
+            }
             anotar_creada(l, e, c, ejemplo);
             escribir_lista(r, l)
         };
@@ -1180,7 +1184,7 @@ pub async fn db_lote(
     base_id: String,
     sentencias: Vec<Sentencia>,
     version_app: String,
-) -> Result<(), String> {
+) -> Result<Option<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         db_lote_en(&app.state::<Estado>(), &base_id, &sentencias, &version_app)
     })
@@ -1188,14 +1192,105 @@ pub async fn db_lote(
     .map_err(|e| e.to_string())?
 }
 
-/// Solo en la abierta: con el id de la de al lado da `otra_base`.
+/// Solo en la abierta: con el id de la de al lado da `otra_base`. Devuelve la acción del historial, si cambió algo.
 pub(crate) fn db_lote_en(
     estado: &Estado,
     base_id: &str,
     sentencias: &[Sentencia],
     version_app: &str,
-) -> Result<(), String> {
+) -> Result<Option<String>, String> {
     estado.con_conexion(base_id, |c| db::lote(c, sentencias, version_app))
+}
+
+#[tauri::command]
+pub async fn historial_deshacer(
+    app: AppHandle,
+    base_id: String,
+    ids: Vec<String>,
+    version_app: String,
+) -> Result<(), Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::deshacer(c, &ids, &version_app))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn historial_rehacer(
+    app: AppHandle,
+    base_id: String,
+    ids: Vec<String>,
+    version_app: String,
+) -> Result<(), Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::rehacer(c, &ids, &version_app))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Ctrl+Z: busca y deshace en una sola transacción. `None`: no había nada.
+#[tauri::command]
+pub async fn historial_deshacer_ultima(
+    app: AppHandle,
+    base_id: String,
+    version_app: String,
+) -> Result<Option<historial::AccionBreve>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
+            historial::mover_ultima(c, historial::Sentido::Deshacer, &version_app)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Ctrl+Y: busca y rehace en una sola transacción. `None`: no había nada.
+#[tauri::command]
+pub async fn historial_rehacer_ultima(
+    app: AppHandle,
+    base_id: String,
+    version_app: String,
+) -> Result<Option<historial::AccionBreve>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
+            historial::mover_ultima(c, historial::Sentido::Rehacer, &version_app)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Las acciones que van junto con `id` al deshacerla o rehacerla, para ofrecerlas antes de intentarlo.
+#[tauri::command]
+pub async fn historial_conflictos(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+    sentido: historial::Sentido,
+) -> Result<Vec<String>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::conflictos(c, &id, sentido))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn historial_punteros(
+    app: AppHandle,
+    base_id: String,
+) -> Result<historial::Punteros, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::punteros(c))
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

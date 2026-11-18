@@ -145,6 +145,10 @@ pub fn abrir_base(
         conn.execute("INSERT INTO meta (clave, valor) VALUES ('db_id', ?1)", [id])?;
     }
     db::asegurar_meta(&conn)?;
+    // aquí se abre toda base escribible, y ninguna de lectura ni la de al lado; que falle no impide abrir
+    if let Err(e) = crate::historial::podar(&conn) {
+        let _ = writeln!(io::stderr(), "No se pudo podar el historial: {e:?}");
+    }
     let id = identidad(&conn)?;
     Ok(Abierta {
         conn,
@@ -305,7 +309,7 @@ pub fn esta_vacia(conn: &Connection) -> rusqlite::Result<bool> {
     let tablas = conn
         .prepare(
             r"SELECT name FROM sqlite_master WHERE type = 'table'
-              AND name NOT IN ('meta', 'tipos_unidad') AND name NOT LIKE 'sqlite\_%' ESCAPE '\'",
+              AND name NOT IN ('meta', 'tipos_unidad', 'historial_en_curso') AND name NOT LIKE 'sqlite\_%' ESCAPE '\'",
         )?
         .query_map([], |f| f.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;

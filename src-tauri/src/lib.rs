@@ -4,6 +4,7 @@ mod comparar_organizaciones;
 mod db;
 mod excel;
 mod fotos;
+mod historial;
 mod inicio;
 mod intercambio;
 mod lado;
@@ -161,6 +162,12 @@ pub fn run() {
             comandos::restaurar_eliminada,
             comandos::db_consultar,
             comandos::db_lote,
+            comandos::historial_deshacer,
+            comandos::historial_rehacer,
+            comandos::historial_deshacer_ultima,
+            comandos::historial_rehacer_ultima,
+            comandos::historial_conflictos,
+            comandos::historial_punteros,
             fotos::foto_bytes,
             fotos::fotos_guardar,
             fotos::fotos_compactar,

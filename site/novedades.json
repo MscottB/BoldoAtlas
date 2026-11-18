@@ -1,5 +1,17 @@
 [
   {
+    "id": "deshacer-y-rehacer",
+    "pagina": "atajos",
+    "es": {
+      "titulo": "Deshacer y rehacer que no se pierden",
+      "texto": "Ctrl+Z deshace el último cambio que hiciste y Ctrl+Y (o Ctrl+Mayús+Z) lo rehace, también después de cerrar y abrir la app. Un aviso dice qué se deshizo y ofrece Rehacer. En Configuración, Historial de cambios eliges cuánto se guarda: 30 días, 90 días, 1 año o sin límite. Los archivos .boldo no llevan ese historial; los respaldos sí. Al borrar definitivamente a una persona, su nombre queda en el historial hasta que venza el plazo (con Sin límite, se queda), y lo demás de su ficha se borra."
+    },
+    "en": {
+      "titulo": "Undo and redo that are not lost",
+      "texto": "Ctrl+Z undoes the last change you made and Ctrl+Y (or Ctrl+Shift+Z) redoes it, even after closing and reopening the app. A notice says what was undone and offers Redo. In Settings, Change history lets you choose how long changes are kept: 30 days, 90 days, 1 year or no limit. .boldo files do not carry that history; backups do. When you delete a person permanently, their name stays in the history until the period runs out (with no limit, it stays), and the rest of their record is erased."
+    }
+  },
+  {
     "id": "eliminados-borrado-definitivo",
     "pagina": "fichas",
     "es": {

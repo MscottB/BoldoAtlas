@@ -43,6 +43,11 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["comparacionPagina", () => c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })],
   ["comparacionDetalle", () => c.comparacionDetalle("tabla", "id")],
   ["ladoAbrir", () => c.ladoAbrir("otra")],
+  ["historialDeshacer", () => c.historialDeshacer(["a"])],
+  ["historialRehacer", () => c.historialRehacer(["a"])],
+  ["historialPunteros", () => c.historialPunteros()],
+  ["historialDeshacerUltima", () => c.historialDeshacerUltima()],
+  ["historialRehacerUltima", () => c.historialRehacerUltima()],
 ];
 
 beforeEach(() => {
@@ -212,11 +217,15 @@ describe("comparación", () => {
   it("una comparación vencida, o consigo misma, se dice en palabras", async () => {
     const vencida = { codigo: "comparacion_vencida", detalle: "" };
     invoke.mockRejectedValue(vencida);
-    const e: unknown = await c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 }).catch((x) => x);
+    const e: unknown = await c
+      .comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })
+      .catch((x) => x);
     expect(e).toBe(vencida);
     expect(mensajeFallo(e)).toBe("Esta comparación ya no vale. Compara de nuevo.");
     expect(traducirError("comparacion_vencida")).toBe("Esta comparación ya no vale. Compara de nuevo.");
-    expect(mensajeFallo({ codigo: "misma", detalle: "x" })).toBe("No puedes comparar una organización consigo misma.");
+    expect(mensajeFallo({ codigo: "misma", detalle: "x" })).toBe(
+      "No puedes comparar una organización consigo misma.",
+    );
     expect(traducirError("misma")).toBe("No puedes comparar una organización consigo misma.");
   });
 });
@@ -271,6 +280,47 @@ describe("lote", () => {
     void consultar("SELECT 1");
     await lote([{ sql: "a" }]);
     expect(invoke.mock.calls.map((c) => c[0])).toEqual(["db_consultar", "db_lote"]);
+  });
+
+  it("devuelve la acción del historial que anotó Rust", async () => {
+    invoke.mockResolvedValueOnce("acc-1").mockResolvedValueOnce(null);
+    expect(await lote([{ sql: "a" }])).toBe("acc-1");
+    expect(await lote([{ sql: "b" }])).toBeNull();
+  });
+
+  it("deshacer y rehacer esperan en la misma cola: no se adelantan a un cambio ya pedido", async () => {
+    const pendientes: (() => void)[] = [];
+    invoke.mockImplementation(() => new Promise<void>((r) => pendientes.push(r)));
+    const a = lote([{ sql: "a" }]);
+    const d = c.historialDeshacer(["acc-1"]);
+    const r = c.historialRehacer(["acc-1"]);
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(invoke.mock.calls.map((x) => x[0])).toEqual(["db_lote"]);
+    pendientes.shift()!();
+    await a;
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
+    expect(invoke.mock.lastCall).toEqual([
+      "historial_deshacer",
+      { ids: ["acc-1"], versionApp: "prueba", baseId: "A" },
+    ]);
+    pendientes.shift()!();
+    await d;
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(3));
+    expect(invoke.mock.lastCall?.[0]).toBe("historial_rehacer");
+    pendientes.shift()!();
+    await r;
+  });
+
+  it("Ctrl+Z y Ctrl+Y piden a Rust buscar y mover de una vez", async () => {
+    invoke.mockResolvedValue(null);
+    expect(await c.historialDeshacerUltima()).toBeNull();
+    expect(invoke.mock.lastCall).toEqual([
+      "historial_deshacer_ultima",
+      { versionApp: "prueba", baseId: "A" },
+    ]);
+    await c.historialRehacerUltima();
+    expect(invoke.mock.lastCall?.[0]).toBe("historial_rehacer_ultima");
   });
 
   it("un lote que falla da su error a quien lo pidió y no detiene al siguiente", async () => {

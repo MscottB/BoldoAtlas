@@ -8,6 +8,7 @@ pub mod revision;
 pub mod validar;
 
 use crate::db;
+use crate::historial;
 use crate::organizaciones::{
     Base, CARPETA, Entrada, cargar_lista, color_libre, copiar_a_carpeta, escribir_lista,
     lista_protegida, ruta_interna,
@@ -17,6 +18,7 @@ use crate::rutas::Rutas;
 use fusion::Informe;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 use serde::Serialize;
+use serde_json::json;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -50,6 +52,8 @@ impl Drop for Temporal {
 pub struct Importacion {
     temporal: Temporal,
     meta: MetaArchivo,
+    /// El nombre del archivo, para el historial.
+    archivo: String,
 }
 
 impl Importacion {
@@ -294,6 +298,8 @@ const META_CONOCIDAS: &[&str] = &[
     "app_version_ultima",
     // para que una persona borrada definitivamente no vuelva con un archivo que llega después
     "suprimidas",
+    // cuánto se guarda el historial de cambios
+    "historial_plazo_dias",
 ];
 
 /// Con la extensión puesta. Si hubo que agregarla, el diálogo preguntó por otro nombre: lo que ya tenga este no se pisa.
@@ -381,7 +387,15 @@ pub fn abrir(
     let version = validar::revisar(temporal.ruta(), migraciones)?;
     validar::migrar_copia(temporal.ruta(), version, migraciones)?;
     let meta = validar::leer_meta(&validar::solo_lectura(temporal.ruta())?)?;
-    Ok(Importacion { temporal, meta })
+    let archivo = archivo
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    Ok(Importacion {
+        temporal,
+        meta,
+        archivo,
+    })
 }
 
 pub(crate) fn ahora(conn: &Connection) -> Result<String, Fallo> {
@@ -426,7 +440,9 @@ pub fn agregar(
     respaldos::respaldar_antes_de_importar(conn, dir_respaldos, &respaldos::sello_local(conn)?)?;
     let marca = ahora(conn)?;
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let accion = historial::abrir_accion(&tx, "importar", &json!({ "archivo": i.archivo }))?;
     let informe = fusion::fusionar(&tx, &imp, &i.meta, lugares, &marca)?;
+    historial::cerrar_accion(&tx, &accion)?;
     db::marcar_cambio(&tx, version_app)?;
     tx.commit()?;
     Ok(informe)
@@ -671,6 +687,31 @@ mod tests {
     }
 
     #[test]
+    fn abrir_rechaza_un_boldo_cifrado_con_historial() {
+        for sql in [
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app')",
+            "UPDATE historial_en_curso SET accion_id = 'fantasma'",
+        ] {
+            let (d, origen) = base_con_datos();
+            let copia = alcance::copiar(&origen, d.path()).unwrap();
+            let (t, _) = alcance::preparar(copia, d.path(), None).unwrap();
+            Connection::open(t.ruta())
+                .unwrap()
+                .execute_batch(sql)
+                .unwrap();
+            let archivo = d.path().join("con_historial.boldo");
+            let codigo = guardar(t.ruta(), &archivo, SIGUE).unwrap();
+            let (dd, ..) = destino();
+            let e = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap_err();
+            assert_eq!(
+                (e.codigo, e.detalle.as_str()),
+                ("contenido_invalido", "historial")
+            );
+            assert!(temporales(dd.path()).is_empty());
+        }
+    }
+
+    #[test]
     fn el_nombre_sugerido_no_lleva_caracteres_problematicos() {
         let (d, origen) = base_con_datos();
         let copia = alcance::copiar(&origen, d.path()).unwrap();
@@ -888,8 +929,22 @@ mod tests {
         fs::copy(i.temporal.ruta(), &antigua).unwrap();
         drop(i);
         let c = Connection::open(&antigua).unwrap();
-        c.execute_batch("DROP TABLE zona_unidades; DROP TABLE zonas; PRAGMA user_version = 1;")
-            .unwrap();
+        // el esquema 1 no tiene zonas, historial ni triggers
+        let triggers: Vec<String> = c
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+            .unwrap()
+            .query_map([], |f| f.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        for t in triggers {
+            c.execute_batch(&format!("DROP TRIGGER {t}")).unwrap();
+        }
+        c.execute_batch(
+            "DROP TABLE zona_unidades; DROP TABLE zonas; DROP TABLE historial_filas;
+             DROP TABLE historial_acciones; DROP TABLE historial_en_curso; PRAGMA user_version = 1;",
+        )
+        .unwrap();
         c.close().unwrap();
         let archivo = d.join("antigua.boldo");
         let codigo = guardar(&antigua, &archivo, SIGUE).unwrap();
@@ -907,7 +962,7 @@ mod tests {
         let v: i64 = c
             .pragma_query_value(None, "user_version", |f| f.get(0))
             .unwrap();
-        assert_eq!(v, 2);
+        assert_eq!(v, MIGRACIONES.len() as i64);
         let n = |sql: &str| -> i64 { c.query_row(sql, [], |f| f.get(0)).unwrap() };
         assert_eq!(n("SELECT count(*) FROM zonas"), 0);
         assert_eq!(n("SELECT count(*) FROM zona_unidades"), 0);
@@ -1700,7 +1755,6 @@ mod tests {
         for a in [bd.clone(), respaldos::con_sufijo(&bd, "-wal")] {
             let Ok(bytes) = fs::read(&a) else { continue };
             for t in [
-                "Zacarías Únicoapellido",
                 "zz-unico@ejemplo.cl",
                 "Zm90by11bmljbw==",
                 "nota-secreta-123",

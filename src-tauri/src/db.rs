@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 pub const MIGRACIONES: &[&str] = &[
     include_str!("../migrations/0001_inicial.sql"),
     include_str!("../migrations/0002_zonas.sql"),
+    include_str!("../migrations/0003_historial.sql"),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -21,7 +22,7 @@ pub struct Sentencia {
 /// Disco lleno, como texto: `errores.ts` lo traduce y `Fallo` lo convierte en su código.
 pub const SIN_ESPACIO: &str = "sin_espacio";
 
-fn texto(e: rusqlite::Error) -> String {
+pub(crate) fn texto(e: rusqlite::Error) -> String {
     match e.sqlite_error_code() {
         Some(ErrorCode::DiskFull) => SIN_ESPACIO.into(),
         Some(ErrorCode::ReadOnly) => "La base de datos está en modo solo lectura: revisa que el archivo y su carpeta tengan permiso de escritura.".into(),
@@ -30,7 +31,7 @@ fn texto(e: rusqlite::Error) -> String {
 }
 
 /// JSON del frontend → valor SQLite. Arreglos y objetos se guardan como texto JSON.
-fn a_sql(v: &Value) -> Sql {
+pub(crate) fn a_sql(v: &Value) -> Sql {
     match v {
         Value::Null => Sql::Null,
         Value::Bool(b) => Sql::Integer(i64::from(*b)),
@@ -58,6 +59,9 @@ pub fn abrir(ruta: &Path) -> Result<Connection, String> {
     let conn = Connection::open(ruta).map_err(texto)?;
     conn.busy_timeout(Duration::from_secs(5)).map_err(texto)?;
     conn.pragma_update(None, "foreign_keys", "ON")
+        .map_err(texto)?;
+    // INSERT OR REPLACE dispara los triggers de borrado solo con esto: el historial lo necesita
+    conn.pragma_update(None, "recursive_triggers", "ON")
         .map_err(texto)?;
     // Cambiar a WAL no pasa por busy_timeout: con varias instancias abriendo a la vez se reintenta hasta 5 s.
     let inicio = Instant::now();
@@ -201,22 +205,29 @@ pub fn consultar(
     Ok(salida)
 }
 
-/// Todo o nada; IMMEDIATE toma el bloqueo de escritura al inicio para que busy_timeout espere en vez de fallar.
+/// Todo o nada; IMMEDIATE toma el bloqueo de escritura al inicio para que busy_timeout espere en vez de fallar. Devuelve la
+/// acción del historial, o `None` si no cambió ninguna fila.
 pub fn lote(
     conn: &mut Connection,
     sentencias: &[Sentencia],
     version_app: &str,
-) -> Result<(), String> {
+) -> Result<Option<String>, String> {
     let tx = conn
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(texto)?;
+    let accion = crate::historial::abrir_accion(&tx, "app", &Value::Object(Map::new()))?;
     for s in sentencias {
         solo_permitidas(&s.sql, &["INSERT", "UPDATE", "DELETE", "REPLACE", "WITH"])?;
+        if s.sql.to_lowercase().contains("historial_") {
+            return Err("Sentencia no permitida: historial".into());
+        }
         tx.execute(&s.sql, params_from_iter(s.params.iter().map(a_sql)))
             .map_err(texto)?;
     }
+    let anotada = crate::historial::cerrar_accion(&tx, &accion)?;
     marcar_cambio(&tx, version_app)?;
-    tx.commit().map_err(texto)
+    tx.commit().map_err(texto)?;
+    Ok(anotada.then_some(accion))
 }
 
 /// Una revisión más por transacción, y con qué versión de la app se hizo.
@@ -370,6 +381,23 @@ mod tests {
     }
 
     #[test]
+    fn lote_no_deja_escribir_en_el_historial() {
+        let (_dir, _, mut conn) = base_nueva();
+        for sql in [
+            "DELETE FROM historial_filas",
+            "UPDATE Historial_En_Curso SET accion_id = 'x'",
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app')",
+        ] {
+            let malo = Sentencia {
+                sql: sql.into(),
+                params: vec![],
+            };
+            let err = lote(&mut conn, &[malo], "1").unwrap_err();
+            assert!(err.contains("historial"), "{sql}: {err}");
+        }
+    }
+
+    #[test]
     fn migrar_base_nueva_deja_la_ultima_version() {
         let (dir, _, mut conn) = base_nueva();
         assert_eq!(version(&conn), ESQUEMA);
@@ -386,11 +414,14 @@ mod tests {
             1
         );
         asegurar_meta(&conn).unwrap();
-        lote(&mut conn, &[insertar_unidad("Sigue aquí")], "1").unwrap();
+        // directo: `lote` anota en el historial, que en el esquema 1 no existe
+        let s = insertar_unidad("Sigue aquí");
+        conn.execute(&s.sql, params_from_iter(s.params.iter().map(a_sql)))
+            .unwrap();
         let respaldos = dir.path().join("respaldos");
         std::fs::create_dir(&respaldos).unwrap();
 
-        assert_eq!(migrar(&mut conn, &respaldos).unwrap(), 2);
+        assert_eq!(migrar(&mut conn, &respaldos).unwrap(), ESQUEMA);
 
         let n = |sql: &str| -> i64 { conn.query_row(sql, [], |f| f.get(0)).unwrap() };
         assert_eq!(
@@ -407,10 +438,10 @@ mod tests {
         let (dir, _, mut conn) = base_nueva();
         let err = migrar_con(&mut conn, &MIGRACIONES[..1], dir.path()).unwrap_err();
         assert!(
-            err.contains("esquema 2; esta app conoce hasta el 1"),
+            err.contains(&format!("esquema {ESQUEMA}; esta app conoce hasta el 1")),
             "{err}"
         );
-        assert_eq!(version(&conn), 2);
+        assert_eq!(version(&conn), ESQUEMA);
     }
 
     #[test]

@@ -94,6 +94,8 @@ Las decisiones duran mientras dura la revisión. **Cancelar** y **Volver a las o
 
 Los datos de la organización abierta se cambian por los del archivo y la app se reinicia, de vuelta en esa organización. Solo se puede con un archivo de **toda la base**: con una parte borrarías el resto. Se pide confirmar.
 
+Los archivos `.boldo` no llevan el historial de cambios. Por eso, al reemplazar todo el historial empieza de cero: no se puede deshacer lo anterior con `Ctrl` + `Z`. El historial de antes queda en el respaldo **Antes de reemplazar**.
+
 ::: tip Consejo
 Antes de cambiar la organización abierta, BoldoAtlas hace un respaldo: marcado **Antes de importar** al agregar o al revisar y decidir, y **Antes de reemplazar** al reemplazar todo. Si te arrepientes, restáuralo desde [Respaldos](respaldos.md). Si algo falla al aplicar, no se escribe nada.
 :::

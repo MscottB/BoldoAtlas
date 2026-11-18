@@ -106,6 +106,9 @@ pub fn copiar(conn: &Connection, datos: &Path) -> Result<Temporal, Fallo> {
     volcar(conn, datos, "exportando")
 }
 
+/// El historial es de cada equipo: un `.boldo` no lo lleva. `accion_id` en NULL para que estos DELETE no se anoten.
+const SIN_HISTORIAL: &str = "DELETE FROM historial_filas; DELETE FROM historial_acciones; UPDATE historial_en_curso SET accion_id = NULL;";
+
 fn poner_meta(c: &Connection, alcance: &str, ramas: &[RamaExportada]) -> Result<(), Fallo> {
     let raices = serde_json::to_string(ramas).map_err(|e| e.to_string())?;
     c.execute(
@@ -223,6 +226,7 @@ fn recortar(copia: Temporal, datos: &Path, raices: &[String]) -> Result<(Tempora
         [],
     )?;
     poner_meta(&tx, "parcial", &ramas)?;
+    tx.execute_batch(SIN_HISTORIAL)?;
     // si esto falla es un error de estas reglas: nunca se entrega una copia con referencias rotas
     if contar(&tx, "SELECT count(*) FROM pragma_foreign_key_check")? != 0 {
         return Err(Fallo::de("fallo", "referencias"));
@@ -242,8 +246,13 @@ pub fn preparar(
     let (temporal, cortes) = match raices {
         Some(r) => recortar(copia, datos, r)?,
         None => {
-            poner_meta(&Connection::open(copia.ruta())?, "completo", &[])?;
-            (copia, Cortes::default())
+            let c = Connection::open(copia.ruta())?;
+            poner_meta(&c, "completo", &[])?;
+            c.execute_batch(SIN_HISTORIAL)?;
+            // otro archivo: lo borrado sigue legible en las páginas libres de la copia
+            let limpia = volcar(&c, datos, "exportando")?;
+            c.close().map_err(|(_, e)| e)?;
+            (limpia, Cortes::default())
         }
     };
     // lo mismo que se le exigirá al abrirlo: mejor saberlo aquí que dejar un archivo que nadie puede importar. Es la base
@@ -276,7 +285,7 @@ mod tests {
         c.execute_batch(db::MIGRACIONES.join("\n").as_str())
             .unwrap();
         let reales: BTreeSet<String> = c
-            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'meta'")
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'meta' AND name NOT LIKE 'historial_%'")
             .unwrap()
             .query_map([], |f| f.get(0))
             .unwrap()
@@ -557,5 +566,73 @@ mod tests {
         assert_eq!(resumen.cortes, Cortes::default());
         let b = std::fs::read(t.ruta()).unwrap();
         assert!(contiene(&b, b"PersonaFuera") && contiene(&b, b"PersonaBorrada"));
+    }
+
+    /// Historial en la base de origen, como el que deja el uso normal.
+    fn con_historial(c: &Connection) {
+        c.execute_batch(
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('h1', 'x', 'app');
+             INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes)
+               VALUES ('h1', 1, 'trabajadores', 'ana', 'update', '{\"nombre\":\"HistorialSecreto\"}');
+             UPDATE historial_en_curso SET accion_id = 'h1';",
+        )
+        .unwrap();
+    }
+
+    fn historial_vacio(ruta: &Path) {
+        let c = Connection::open(ruta).unwrap();
+        for t in ["historial_acciones", "historial_filas"] {
+            let n: i64 = c
+                .query_row(&format!("SELECT count(*) FROM {t}"), [], |f| f.get(0))
+                .unwrap();
+            assert_eq!(n, 0, "{t}");
+        }
+        let en_curso: Option<String> = c
+            .query_row("SELECT accion_id FROM historial_en_curso", [], |f| f.get(0))
+            .unwrap();
+        assert_eq!(en_curso, None);
+    }
+
+    #[test]
+    fn la_copia_completa_no_lleva_historial() {
+        let (dir, conn) = base_con_datos();
+        con_historial(&conn);
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, _) = preparar(copia, dir.path(), None).unwrap();
+        historial_vacio(t.ruta());
+        assert!(!contiene(
+            &std::fs::read(t.ruta()).unwrap(),
+            b"HistorialSecreto"
+        ));
+    }
+
+    #[test]
+    fn la_copia_parcial_no_lleva_historial() {
+        let (dir, conn) = base_con_datos();
+        con_historial(&conn);
+        let copia = copiar(&conn, dir.path()).unwrap();
+        let (t, _) = preparar(copia, dir.path(), Some(&["rama".into()])).unwrap();
+        historial_vacio(t.ruta());
+        assert!(!contiene(
+            &std::fs::read(t.ruta()).unwrap(),
+            b"HistorialSecreto"
+        ));
+    }
+
+    #[test]
+    fn exportar_no_lleva_el_nombre_de_una_suprimida() {
+        let (dir, mut conn) = base_con_datos();
+        for id in ["fuera", "yanoesta"] {
+            crate::supresion::suprimir(&mut conn, id, crate::supresion::RELLENO, "2026-01-01")
+                .unwrap();
+        }
+        for raices in [None, Some(vec!["rama".to_string()])] {
+            let copia = copiar(&conn, dir.path()).unwrap();
+            let (t, _) = preparar(copia, dir.path(), raices.as_deref()).unwrap();
+            let b = std::fs::read(t.ruta()).unwrap();
+            for nombre in ["PersonaFuera", "PersonaYaNoEsta"] {
+                assert!(!contiene(&b, nombre.as_bytes()), "{nombre} {raices:?}");
+            }
+        }
     }
 }

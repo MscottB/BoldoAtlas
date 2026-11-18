@@ -14,6 +14,7 @@ import SeccionFotos from "@/features/configuracion/SeccionFotos.vue";
 import SeccionRespaldos from "@/features/respaldos/SeccionRespaldos.vue";
 import SeccionActualizaciones from "@/features/actualizaciones/SeccionActualizaciones.vue";
 import SeccionInicioSistema from "@/features/configuracion/SeccionInicioSistema.vue";
+import SeccionHistorial from "@/features/configuracion/SeccionHistorial.vue";
 import { ACENTOS, textoSobre, type Acento } from "@/features/tema/tema";
 import { ESCALAS, TEMAS, useTema } from "@/features/tema/useTema";
 import { abrirAlPasar, guardarAbrirAlPasar } from "@/app/barraLateral";
@@ -220,6 +221,8 @@ const quitarLogo = async () => {
         </RouterLink>
       </Button>
     </section>
+
+    <SeccionHistorial />
 
     <SeccionRespaldos />
 

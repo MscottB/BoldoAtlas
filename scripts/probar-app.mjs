@@ -11,6 +11,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // un id válido: el rechazo debe venir de que es otra base, no de su forma
 export const OTRA_BASE = "00000000-0000-4000-8000-000000000000";
 const ORGANIZACION = "Organización de humo";
+const RAIZ = "Raíz de humo";
+const RAIZ_NUEVA = "Raíz renombrada";
 const PERSONA = { id: "humo-foto", nombre: "Persona de humo" };
 // PNG de 1×1
 export const FOTO =
@@ -21,7 +23,7 @@ const ARGUMENTOS_WRY = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProt
 const ARGUMENTOS_HUMO = `--remote-debugging-port=${PUERTO} --remote-allow-origins=*`;
 const ESPERA_ARRANQUE_MS = 8000; // ESPERA_ARRANQUE de organizaciones.rs: una segunda instancia no debe llegar a esperarla
 // Antes de los 5 min del paso de CI: al vencer aquí se imprime el informe; si vence el paso, no queda nada.
-const PLAZO_MS = 240_000;
+const PLAZO_MS = 270_000;
 
 /**
  * Solo un runner de GitHub: uno propio puede ser el equipo de alguien, y ahí la ventana aparecería en su pantalla.
@@ -385,7 +387,7 @@ async function primeraApertura(exe, carpeta) {
       e.dispatchEvent(new Event("input", { bubbles: true }));
     };
     poner("bienvenida-org", ${JSON.stringify(ORGANIZACION)});
-    poner("bienvenida-raiz", "Raíz de humo");
+    poner("bienvenida-raiz", ${JSON.stringify(RAIZ)});
   })()`);
   await app.evaluar(`new Promise((ok) => setTimeout(ok, 100))`); // Vue habilita el botón
   await app.evaluar(`document.getElementById("bienvenida-org").form.requestSubmit()`);
@@ -530,6 +532,85 @@ async function reapertura(exe, carpeta, primera) {
   comprobar("la app reabierta cierra sola y con código 0", codigo === 0, codigo);
 }
 
+/** Una tecla con Ctrl, como la pulsa quien usa la app: llega a `window` por el cuerpo de la página. @param {string} tecla */
+const conCtrl = (tecla) =>
+  `document.body.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(tecla)}, ctrlKey: true, bubbles: true, cancelable: true }))`;
+
+/** Al abrir, la app muestra Inicio, que no atiende atajos: se pasa al árbol. @param {Awaited<ReturnType<typeof abrirApp>>} app */
+const alArbol = async (app) => {
+  await app.evaluar(`location.hash = "#/"`);
+  await app.hasta(
+    `location.hash === "#/" && !!document.querySelector(".vue-flow")`,
+    "que la app muestre el árbol",
+  );
+};
+
+/**
+ * Deshacer y rehacer que sobreviven a cerrar la app: se renombra una unidad, Ctrl+Z devuelve el nombre anterior y, ya con
+ * la app cerrada y vuelta a abrir, Ctrl+Y vuelve a poner el nuevo. `revisarBase` comprueba `rutaBd` antes de cada escritura.
+ * @param {string} exe @param {string} carpeta
+ */
+async function historialPersistente(exe, carpeta) {
+  const nombreDe = (/** @type {Awaited<ReturnType<typeof abrirApp>>} */ app, /** @type {string} */ baseId) =>
+    app
+      .llamar("db_consultar", {
+        baseId,
+        sql: "SELECT nombre FROM unidades WHERE nombre IN (?1, ?2)",
+        params: [RAIZ, RAIZ_NUEVA],
+      })
+      .then((r) => (r.ok ? (r.valor[0]?.nombre ?? null) : null));
+
+  let app = await abrirApp(exe);
+  let info = await revisarBase(app, carpeta);
+  const hasta = (/** @type {string} */ esperado, /** @type {string} */ que) =>
+    esperar(async () => (await nombreDe(app, info.baseId)) === esperado, que);
+  await verTexto(app, ORGANIZACION);
+  const renombrado = await app.llamar("db_lote", {
+    baseId: info.baseId,
+    sentencias: [
+      {
+        sql: "UPDATE unidades SET nombre = ?1, updated_at = ?2 WHERE nombre = ?3",
+        params: [RAIZ_NUEVA, new Date().toISOString(), RAIZ],
+      },
+    ],
+    versionApp: "humo",
+  });
+  comprobar(
+    "renombrar una unidad queda en el historial",
+    renombrado.ok && typeof renombrado.valor === "string",
+    renombrado,
+  );
+
+  await alArbol(app);
+  await app.evaluar(conCtrl("z"));
+  await hasta(RAIZ, "que Ctrl+Z devuelva el nombre anterior").then(
+    () => comprobar("Ctrl+Z devuelve el nombre anterior", true),
+    async (e) =>
+      comprobar(
+        "Ctrl+Z devuelve el nombre anterior",
+        false,
+        `${e.message}; ruta ${await app.evaluar("location.hash")}; avisos: ${await app.evaluar(
+          `[...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.innerText).join(" | ")`,
+        )}`,
+      ),
+  );
+  comprobar("la app cierra sola y con código 0 antes de rehacer", (await app.cerrar()) === 0);
+
+  // otra apertura de verdad: lo deshecho tiene que seguir en la base
+  app = await abrirApp(exe);
+  info = await revisarBase(app, carpeta);
+  await verTexto(app, ORGANIZACION);
+  // si no, Ctrl+Y «pasaría» sin hacer nada
+  comprobar("tras reabrir la app sigue el nombre deshecho", (await nombreDe(app, info.baseId)) === RAIZ);
+  await alArbol(app);
+  await app.evaluar(conCtrl("y"));
+  await hasta(RAIZ_NUEVA, "que Ctrl+Y, tras reabrir la app, vuelva a poner el nombre nuevo").then(
+    () => comprobar("Ctrl+Y tras cerrar y abrir la app vuelve a poner el nombre nuevo", true),
+    (e) => comprobar("Ctrl+Y tras cerrar y abrir la app vuelve a poner el nombre nuevo", false, e.message),
+  );
+  comprobar("la app del historial cierra sola y con código 0", (await app.cerrar()) === 0);
+}
+
 async function correr() {
   const a = artefactos("windows", "");
   const [zip, ...otros] = globSync(`release/*/${a.zip}`);
@@ -540,6 +621,7 @@ async function correr() {
   writeFileSync(exe, conPuertoAbierto(readFileSync(exe)));
   const info = await primeraApertura(exe, carpeta);
   await reapertura(exe, carpeta, info);
+  await historialPersistente(exe, carpeta);
   comprobarInstaladaIntacta();
   exigirSinFallos();
 }

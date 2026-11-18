@@ -19,36 +19,74 @@ const h = vi.hoisted(() => ({
   antesDeMeta: null as (() => Promise<void>) | null,
   suprimidas: [] as [string, string][],
   sinCompactar: false,
+  /** Lo que se pidió deshacer o rehacer en el historial. */
+  movidas: [] as [string, string[]][],
+  /** Si está, el próximo deshacer o rehacer falla con esto, como un fallo de Rust. */
+  falloMover: null as unknown,
 }));
 
 // El store corre SQL real sobre el esquema real (node:sqlite) detrás de la API de cliente.ts.
-vi.mock("@/db/cliente", () => ({
-  consultar: async (sql: string, params?: unknown[]) => h.bd!.consultar(sql, params),
-  lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => {
-    await h.antesDeLote?.();
-    h.bd!.aplicar(s);
-  },
-  // Rust vacía la fila; aquí basta con dejarla eliminada y apuntar la llamada
-  suprimirPersona: async (id: string, relleno: string) => {
-    h.suprimidas.push([id, relleno]);
-    h.bd!.aplicar([
-      {
-        sql: "UPDATE trabajadores SET nombre = ?, deleted_at = '2026-01-01T00:00:00Z' WHERE id = ?",
-        params: [relleno, id],
-      },
-    ]);
-    // Rust ya la borró, pero el checkpoint quedó ocupado
-    if (h.sinCompactar) throw { codigo: "sin_compactar", detalle: "wal_checkpoint no terminó" };
-  },
-  leerMeta: async () => {
-    await h.antesDeMeta?.();
-    return Object.fromEntries(
-      h
-        .bd!.consultar<{ clave: string; valor: string | null }>("SELECT clave, valor FROM meta")
-        .map((f) => [f.clave, f.valor ?? ""]),
-    );
-  },
-}));
+vi.mock("@/db/cliente", () => {
+  type Sentido = "deshacer" | "rehacer";
+  // Como Rust: lo que choca no cambia nada y se dice con el error de SQLite
+  const mover = (sentido: Sentido, ids: string[]) => {
+    h.movidas.push([sentido, ids]);
+    const fallo = h.falloMover;
+    h.falloMover = null;
+    if (fallo) throw fallo;
+    try {
+      h.bd!.mover(ids, sentido);
+    } catch (e) {
+      throw { codigo: "historial_no_se_pudo", detalle: (e as Error).message };
+    }
+  };
+  const puntero = (sentido: Sentido) => {
+    const id = h.bd!.consultar<{ id: string }>(
+      sentido === "deshacer"
+        ? "SELECT id FROM historial_acciones WHERE estado = 'hecha' AND bloqueada = 0 ORDER BY id DESC LIMIT 1"
+        : "SELECT id FROM historial_acciones WHERE estado = 'deshecha' AND rehacible IS NOT NULL ORDER BY rehacible DESC LIMIT 1",
+    )[0]?.id;
+    return id ? { id, origen: "app", datos: {}, filas: 1, muestra: [] } : null;
+  };
+  // Como Rust: busca y mueve sin que nada se cuele entre medio
+  const ultima = (sentido: Sentido) => async () => {
+    const a = puntero(sentido);
+    if (a) mover(sentido, [a.id]);
+    return a;
+  };
+  return {
+    consultar: async (sql: string, params?: unknown[]) => h.bd!.consultar(sql, params),
+    lote: async (s: Parameters<BasePrueba["aplicar"]>[0]) => {
+      await h.antesDeLote?.();
+      return h.bd!.aplicar(s);
+    },
+    historialDeshacer: async (ids: string[]) => mover("deshacer", ids),
+    historialRehacer: async (ids: string[]) => mover("rehacer", ids),
+    historialDeshacerUltima: ultima("deshacer"),
+    historialRehacerUltima: ultima("rehacer"),
+    historialPunteros: async () => ({ deshacer: puntero("deshacer"), rehacer: puntero("rehacer") }),
+    // Rust vacía la fila; aquí basta con dejarla eliminada y apuntar la llamada
+    suprimirPersona: async (id: string, relleno: string) => {
+      h.suprimidas.push([id, relleno]);
+      h.bd!.aplicar([
+        {
+          sql: "UPDATE trabajadores SET nombre = ?, deleted_at = '2026-01-01T00:00:00Z' WHERE id = ?",
+          params: [relleno, id],
+        },
+      ]);
+      // Rust ya la borró, pero el checkpoint quedó ocupado
+      if (h.sinCompactar) throw { codigo: "sin_compactar", detalle: "wal_checkpoint no terminó" };
+    },
+    leerMeta: async () => {
+      await h.antesDeMeta?.();
+      return Object.fromEntries(
+        h
+          .bd!.consultar<{ clave: string; valor: string | null }>("SELECT clave, valor FROM meta")
+          .map((f) => [f.clave, f.valor ?? ""]),
+      );
+    },
+  };
+});
 
 const revision = () =>
   Number(h.bd!.consultar<{ valor: string }>("SELECT valor FROM meta WHERE clave = 'data_revision'")[0].valor);
@@ -89,6 +127,8 @@ beforeEach(() => {
   h.bd = abrirBasePrueba();
   h.antesDeLote = null;
   h.antesDeMeta = null;
+  h.movidas = [];
+  h.falloMover = null;
 });
 afterEach(() => vi.useRealTimers());
 
@@ -295,7 +335,7 @@ describe("trabajadores", () => {
     await s.eliminarTrabajador(ana);
     await persona(s, "Ana bis", "ana@x.cl");
     const r = await s.deshacer();
-    expect(r).toEqual({ ok: false, mensaje: "Ya existe una persona con ese correo." });
+    expect(r).toEqual({ ok: false, mensaje: "No se pudo: Ya existe una persona con ese correo." });
     expect(s.trabajadores).toHaveLength(1);
   });
 });
@@ -859,6 +899,116 @@ describe("organización, etiquetas y conexiones", () => {
     expect(s.conexiones).toHaveLength(1);
     await s.eliminarConexion(c.id);
     expect(s.conexiones).toHaveLength(0);
+  });
+});
+
+describe("historial", () => {
+  it("el Deshacer del aviso deshace en el historial la acción de esa baja", async () => {
+    const s = nuevo();
+    const ana = await persona(s, "Ana");
+    await s.eliminarTrabajador(ana);
+    const accion = s.ultimoBorrado?.accion;
+    expect(accion).toEqual(expect.any(String));
+    expect((await s.deshacer()).ok).toBe(true);
+    expect(h.movidas).toEqual([["deshacer", [accion]]]);
+    expect(s.ultimoBorrado).toBeNull();
+    expect(s.trabajadores.map((w) => w.id)).toEqual([ana]);
+  });
+
+  it("una baja que no cambió nada no tiene qué deshacer", async () => {
+    const s = nuevo();
+    s.ultimoBorrado = { tipo: "trabajador", id: "x", accion: null, vence: Date.now() + 8000 };
+    expect(await s.deshacer()).toEqual({ ok: false, mensaje: "Ya no se puede deshacer." });
+    expect(h.movidas).toEqual([]);
+  });
+
+  it("deshacerUltima y rehacerUltima recargan los datos y dan la frase", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Ventas");
+    await s.editarUnidad(u, { nombre: "Norte" });
+    const r = await s.deshacerUltima();
+    expect(r).toMatchObject({ ok: true, frase: expect.any(String) });
+    expect(s.porId.get(u)?.nombre).toBe("Ventas");
+    expect((await s.rehacerUltima()).ok).toBe(true);
+    expect(s.porId.get(u)?.nombre).toBe("Norte");
+    expect(h.movidas.map(([sentido]) => sentido)).toEqual(["deshacer", "rehacer"]);
+  });
+
+  it("sin nada que deshacer o rehacer lo dice, sin escribir", async () => {
+    const s = nuevo();
+    const nada = (mensaje: string) => ({ ok: false, codigo: "nada", mensaje });
+    expect(await s.deshacerUltima()).toEqual(nada("No hay nada que deshacer."));
+    expect(await s.rehacerUltima()).toEqual(nada("No hay nada que rehacer."));
+    expect(h.movidas).toEqual([]);
+  });
+
+  it("dos Ctrl+Z seguidos deshacen dos acciones, no la misma dos veces", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Ventas");
+    await s.editarUnidad(u, { nombre: "Norte" });
+    const [a, b] = await Promise.all([s.deshacerUltima(), s.deshacerUltima()]);
+    expect([a.ok, b.ok]).toEqual([true, true]);
+    const [[, primera], [, segunda]] = h.movidas;
+    expect(primera).not.toEqual(segunda);
+    expect(s.porId.has(u)).toBe(false);
+    const [c, d] = await Promise.all([s.rehacerUltima(), s.rehacerUltima()]);
+    expect([c.ok, d.ok]).toEqual([true, true]);
+    expect(s.porId.get(u)?.nombre).toBe("Norte");
+  });
+
+  it("al rehacer, el fallo habla de rehacer", async () => {
+    const s = nuevo();
+    const ultima = () =>
+      h.bd!.consultar<{ id: string }>("SELECT max(id) AS id FROM historial_acciones")[0].id;
+    await unidad(s, "Ventas");
+    await s.deshacerUltima();
+    h.falloMover = { codigo: "historial_bloqueada", detalle: ultima() };
+    expect(await s.rehacerUltima()).toEqual({ ok: false, mensaje: "Ese cambio ya no se puede rehacer." });
+    await unidad(s, "Otra");
+    h.falloMover = { codigo: "historial_bloqueada", detalle: ultima() };
+    expect(await s.deshacerUltima()).toEqual({ ok: false, mensaje: "Ese cambio ya no se puede deshacer." });
+  });
+
+  it("si lo que traba Ctrl+Z es otro cambio bloqueado, el aviso nombra el pedido", async () => {
+    const s = nuevo();
+    await unidad(s, "Ventas");
+    h.falloMover = { codigo: "historial_bloqueada", detalle: "otra-accion" };
+    const r = await s.deshacerUltima();
+    expect(r.ok).toBe(false);
+    expect(r.ok || r.mensaje).toMatch(
+      /^No se puede deshacer «.+»: un cambio posterior ya no se puede deshacer\.$/,
+    );
+  });
+
+  it("un plazo guardado que no es un número de días se ve como el de por defecto, como lo usa Rust", async () => {
+    const s = nuevo();
+    for (const [guardado, visto] of [
+      ["abc", "365"],
+      ["-5", "365"],
+      [" 30 ", "30"],
+      ["0", "0"],
+    ]) {
+      h.bd!.db.prepare("INSERT OR REPLACE INTO meta (clave, valor) VALUES ('historial_plazo_dias', ?)").run(
+        guardado!,
+      );
+      await s.cargar();
+      expect(s.plazoHistorial).toBe(visto);
+    }
+  });
+
+  it("Ctrl+Z sobre la baja del aviso deja el aviso sin nada que deshacer", async () => {
+    const s = nuevo();
+    await s.eliminarTrabajador(await persona(s, "Ana"));
+    expect((await s.deshacerUltima()).ok).toBe(true);
+    expect(s.ultimoBorrado).toBeNull();
+  });
+
+  it("viendo una fecha, Ctrl+Z no escribe", async () => {
+    const s = nuevo();
+    await unidad(s, "Ventas");
+    await s.verAFecha("2020-01-01");
+    expect((await s.deshacerUltima()).ok).toBe(false);
+    expect(h.movidas).toEqual([]);
   });
 });
 
