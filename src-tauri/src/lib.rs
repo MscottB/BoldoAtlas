@@ -164,6 +164,8 @@ pub fn run() {
             comandos::db_lote,
             comandos::historial_deshacer,
             comandos::historial_rehacer,
+            comandos::historial_deshacer_ultima,
+            comandos::historial_rehacer_ultima,
             comandos::historial_conflictos,
             comandos::historial_punteros,
             fotos::foto_bytes,

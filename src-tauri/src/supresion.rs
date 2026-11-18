@@ -60,10 +60,12 @@ pub fn suprimir(conn: &mut Connection, id: &str, relleno: &str, fecha: &str) -> 
     if !existe {
         return Ok(());
     }
-    // antes de vaciar la fila y sin acción abierta: los triggers no anotan nada y el nombre real queda en `antes`
+    // antes de vaciar la fila y sin acción abierta: los triggers no anotan nada y el nombre real queda en `antes`. Si ya
+    // tiene el relleno (otra vez, tras reemplazar o restaurar), no hay nombre real que guardar ni «Borraste a Persona suprimida»
     let ya: bool = tx.query_row(
-        "SELECT EXISTS(SELECT 1 FROM historial_acciones WHERE origen = 'suprimir' AND json_extract(datos, '$.id') = ?1)",
-        [id],
+        "SELECT EXISTS(SELECT 1 FROM historial_acciones WHERE origen = 'suprimir' AND json_extract(datos, '$.id') = ?1)
+             OR EXISTS(SELECT 1 FROM trabajadores WHERE id = ?1 AND nombre = ?2)",
+        [id, relleno],
         |f| f.get(0),
     )?;
     if !ya {
@@ -180,7 +182,7 @@ mod tests {
     /// Una persona creada con el historial abierto, como lo deja la app.
     fn persona_con_historial(c: &Connection, id: &str, nombre: &str) {
         let a = crate::historial::abrir_accion(c, "app", &json!({})).unwrap();
-        persona(c, id, nombre, "ana@x.cl", "notas");
+        persona(c, id, nombre, "zz-unico@ejemplo.cl", "nota-secreta-123");
         crate::historial::cerrar_accion(c, &a).unwrap();
     }
 
@@ -346,25 +348,46 @@ mod tests {
     #[test]
     fn el_archivo_no_guarda_los_datos() {
         let (_d, ruta, mut c) = base();
-        persona(
-            &c,
-            "t1",
-            "Zacarías Únicoapellido",
-            "zz-unico@ejemplo.cl",
-            "nota-secreta-123",
-        );
+        // con el historial abierto: sus filas también traen los datos, y la limpieza tiene que salir del archivo
+        persona_con_historial(&c, "t1", "Zacarías Únicoapellido");
         suprimir(&mut c, "t1", RELLENO, FECHA).unwrap();
         crate::fotos::compactar(&c).unwrap();
         let archivos = [ruta.clone(), ruta.with_file_name("boldo.db-wal")];
         for a in archivos.iter().filter(|a| a.exists()) {
             let bytes = std::fs::read(a).unwrap();
-            for texto in ["zz-unico@ejemplo.cl", "nota-secreta-123"] {
+            // el nombre sí queda en el historial (decisión del autor)
+            for texto in [
+                "zz-unico@ejemplo.cl",
+                "nota-secreta-123",
+                "+56 9 1111 2222",
+                "Zm90bw==",
+                "motivo privado",
+            ] {
                 assert!(
                     !bytes.windows(texto.len()).any(|w| w == texto.as_bytes()),
                     "{texto} sigue en {a:?}"
                 );
             }
         }
+    }
+
+    #[test]
+    fn reaplicar_sobre_una_ya_vaciada_no_anota_otra_accion() {
+        let (_d, _r, mut c) = base();
+        // como llega en un .boldo o un respaldo sin su acción: la fila ya tiene el relleno
+        persona(&c, "t1", RELLENO, "a@x.cl", "n");
+        let previas = vec![Suprimida {
+            id: "t1".into(),
+            fecha: FECHA.into(),
+        }];
+        reaplicar(&mut c, &previas, RELLENO).unwrap();
+        assert_eq!(acciones_suprimir(&c), 0);
+        let correo: Option<String> = c
+            .query_row("SELECT correo FROM trabajadores WHERE id = 't1'", [], |f| {
+                f.get(0)
+            })
+            .unwrap();
+        assert_eq!(correo, None);
     }
 
     #[test]

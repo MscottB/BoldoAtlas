@@ -1232,6 +1232,38 @@ pub async fn historial_rehacer(
     .map_err(|e| e.to_string())?
 }
 
+/// Ctrl+Z: busca y deshace en una sola transacción. `None`: no había nada.
+#[tauri::command]
+pub async fn historial_deshacer_ultima(
+    app: AppHandle,
+    base_id: String,
+    version_app: String,
+) -> Result<Option<historial::AccionBreve>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
+            historial::mover_ultima(c, historial::Sentido::Deshacer, &version_app)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Ctrl+Y: busca y rehace en una sola transacción. `None`: no había nada.
+#[tauri::command]
+pub async fn historial_rehacer_ultima(
+    app: AppHandle,
+    base_id: String,
+    version_app: String,
+) -> Result<Option<historial::AccionBreve>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>().con_conexion(&base_id, |c| {
+            historial::mover_ultima(c, historial::Sentido::Rehacer, &version_app)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Las acciones que van junto con `id` al deshacerla o rehacerla, para ofrecerlas antes de intentarlo.
 #[tauri::command]
 pub async fn historial_conflictos(

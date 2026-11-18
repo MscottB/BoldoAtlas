@@ -79,18 +79,23 @@ pub fn podar(c: &Connection) -> Result<u64, Fallo> {
 }
 
 /// Lo que dejó esa persona en el historial tras borrarla definitivamente: de `trabajadores` solo el nombre, de `asignaciones`
-/// sin el motivo, y bloquea las acciones que la tocaron. Una fila `update` solo trae lo que cambió, por eso las asignaciones
-/// también se buscan por su fila actual.
+/// sin el motivo, y bloquea las acciones que la tocaron (también sus roles en actividades). Una fila `update` solo trae lo
+/// que cambió, por eso asignaciones y roles también se buscan por su fila actual.
 pub fn limpiar_persona(c: &Connection, id: &str) -> Result<(), Fallo> {
-    const DE_ASIGNACION: &str =
-        "tabla = 'asignaciones' AND (json_extract(antes, '$.trabajador_id') = ?1
-        OR json_extract(despues, '$.trabajador_id') = ?1
-        OR fila_id IN (SELECT id FROM asignaciones WHERE trabajador_id = ?1))";
+    let de = |tabla: &str| {
+        format!(
+            "tabla = '{tabla}' AND (json_extract(antes, '$.trabajador_id') = ?1
+             OR json_extract(despues, '$.trabajador_id') = ?1
+             OR fila_id IN (SELECT id FROM {tabla} WHERE trabajador_id = ?1))"
+        )
+    };
     c.execute(
         &format!(
             "UPDATE historial_acciones SET bloqueada = 1 WHERE id IN (
                SELECT accion_id FROM historial_filas
-               WHERE (tabla = 'trabajadores' AND fila_id = ?1) OR ({DE_ASIGNACION}))"
+               WHERE (tabla = 'trabajadores' AND fila_id = ?1) OR ({}) OR ({}))",
+            de("asignaciones"),
+            de("actividad_roles")
         ),
         [id],
     )?;
@@ -106,7 +111,8 @@ pub fn limpiar_persona(c: &Connection, id: &str) -> Result<(), Fallo> {
     c.execute(
         &format!(
             "UPDATE historial_filas SET antes = json_remove(antes, '$.motivo'), despues = json_remove(despues, '$.motivo')
-             WHERE {DE_ASIGNACION}"
+             WHERE {}",
+            de("asignaciones")
         ),
         [id],
     )?;
@@ -121,15 +127,22 @@ pub fn abrir_accion(c: &Connection, origen: &str, datos: &Value) -> Result<Strin
         params![id, origen, datos.to_string()],
     )
     .map_err(db::texto)?;
-    c.execute("UPDATE historial_en_curso SET accion_id = ?1", [&id])
-        .map_err(db::texto)?;
+    // con REPLACE y no UPDATE: una base sin la fila de `historial_en_curso` también anota
+    c.execute(
+        "INSERT OR REPLACE INTO historial_en_curso (uno, accion_id) VALUES (1, ?1)",
+        [&id],
+    )
+    .map_err(db::texto)?;
     Ok(id)
 }
 
 /// false: no tenía filas y se borró. Si tenía, la pila de Ctrl+Y se vacía (como en Word); un lote sin cambios no la toca.
 pub fn cerrar_accion(c: &Connection, id: &str) -> Result<bool, String> {
-    c.execute("UPDATE historial_en_curso SET accion_id = NULL", [])
-        .map_err(db::texto)?;
+    c.execute(
+        "INSERT OR REPLACE INTO historial_en_curso (uno, accion_id) VALUES (1, NULL)",
+        [],
+    )
+    .map_err(db::texto)?;
     let hay: bool = c
         .query_row(
             "SELECT EXISTS (SELECT 1 FROM historial_filas WHERE accion_id = ?1)",
@@ -148,39 +161,92 @@ pub fn cerrar_accion(c: &Connection, id: &str) -> Result<bool, String> {
 }
 
 pub fn deshacer(c: &mut Connection, ids: &[String], version_app: &str) -> Result<(), Fallo> {
-    mover(c, ids, Sentido::Deshacer, version_app)
+    mover(c, ids, Sentido::Deshacer, version_app).map_err(propio)
 }
 
 pub fn rehacer(c: &mut Connection, ids: &[String], version_app: &str) -> Result<(), Fallo> {
-    mover(c, ids, Sentido::Rehacer, version_app)
+    mover(c, ids, Sentido::Rehacer, version_app).map_err(propio)
 }
 
-/// Las acciones que hay que deshacer (o rehacer) junto con `id`, sin ella. No cambia nada.
+/// Un fallo sin motivo del historial (texto de SQLite, un id) no se muestra tal cual: la interfaz dice uno genérico.
+fn propio(f: Fallo) -> Fallo {
+    if f.codigo == "fallo" {
+        Fallo {
+            codigo: "historial_fallo",
+            ..f
+        }
+    } else {
+        f
+    }
+}
+
+/// Las acciones que hay que deshacer (o rehacer) junto con `id`, sin ella. No cambia nada: la transacción no se confirma.
+/// Al rehacer también avisa, como `mover`, si pisaría una posterior hecha.
 pub fn conflictos(c: &mut Connection, id: &str, sentido: Sentido) -> Result<Vec<String>, Fallo> {
-    let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let solo = BTreeSet::from([id.to_string()]);
-    Ok(revisar(&mut tx, solo, sentido)?
-        .into_iter()
-        .filter(|x| x != id)
-        .collect())
+    let mut revisadas = || -> Result<Vec<String>, Fallo> {
+        let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let todas = revisar(&mut tx, BTreeSet::from([id.to_string()]), sentido)?;
+        // un fallo al aplicar (un correo repetido) no es un conflicto: lo dice el rehacer de verdad
+        if sentido == Sentido::Rehacer
+            && aplicar(&tx, &todas, sentido).is_ok()
+            && let Some((_, filas)) = choques(&tx, &todas)?
+        {
+            pisadas(culpables(&tx, &todas, &filas, &POSTERIORES)?)?;
+        }
+        Ok(todas.into_iter().filter(|x| x != id).collect())
+    };
+    revisadas().map_err(propio)
 }
 
 /// Ctrl+Z: la última hecha que se puede deshacer (no se atasca tras un borrado definitivo). Ctrl+Y: la deshecha con `rehacible` mayor.
+fn puntero(sentido: Sentido) -> &'static str {
+    match sentido {
+        Sentido::Deshacer => {
+            "SELECT id FROM historial_acciones WHERE estado = 'hecha' AND bloqueada = 0 ORDER BY id DESC LIMIT 1"
+        }
+        Sentido::Rehacer => {
+            "SELECT id FROM historial_acciones WHERE estado = 'deshecha' AND rehacible IS NOT NULL ORDER BY rehacible DESC LIMIT 1"
+        }
+    }
+}
+
 pub fn punteros(c: &Connection) -> Result<Punteros, Fallo> {
-    let buscar = |sql: &str| -> Result<Option<AccionBreve>, Fallo> {
-        match c.query_row(sql, [], |f| f.get::<_, String>(0)).optional()? {
+    let buscar = |sentido| -> Result<Option<AccionBreve>, Fallo> {
+        match c
+            .query_row(puntero(sentido), [], |f| f.get::<_, String>(0))
+            .optional()?
+        {
             Some(id) => Ok(Some(breve(c, &id)?)),
             None => Ok(None),
         }
     };
     Ok(Punteros {
-        deshacer: buscar(
-            "SELECT id FROM historial_acciones WHERE estado = 'hecha' AND bloqueada = 0 ORDER BY id DESC LIMIT 1",
-        )?,
-        rehacer: buscar(
-            "SELECT id FROM historial_acciones WHERE estado = 'deshecha' AND rehacible IS NOT NULL ORDER BY rehacible DESC LIMIT 1",
-        )?,
+        deshacer: buscar(Sentido::Deshacer)?,
+        rehacer: buscar(Sentido::Rehacer)?,
     })
+}
+
+/// Ctrl+Z o Ctrl+Y: busca la acción y la mueve en la misma transacción, para que no se cuele un lote entre medio.
+/// Devuelve la acción como era antes de moverla (para su frase), o `None` si no había nada.
+pub fn mover_ultima(
+    c: &mut Connection,
+    sentido: Sentido,
+    version_app: &str,
+) -> Result<Option<AccionBreve>, Fallo> {
+    let mut ultima = || -> Result<Option<AccionBreve>, Fallo> {
+        let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let Some(id) = tx
+            .query_row(puntero(sentido), [], |f| f.get::<_, String>(0))
+            .optional()?
+        else {
+            return Ok(None);
+        };
+        let a = breve(&tx, &id)?;
+        mover_en(&mut tx, BTreeSet::from([id]), sentido, version_app)?;
+        tx.commit()?;
+        Ok(Some(a))
+    };
+    ultima().map_err(propio)
 }
 
 /// El último `nombre` anotado en una acción hecha; si no hay, el de antes de un borrado definitivo; si no, el de su tabla.
@@ -279,8 +345,12 @@ fn breve(c: &Connection, id: &str) -> Result<AccionBreve, Fallo> {
             (true, Some(Value::String(n))) => Some(n.clone()),
             _ => None,
         };
+        // sin otro nombre (crear algo deshecho: la fila ya no está), el que trae la fila misma
+        let propio = [&despues, &antes]
+            .into_iter()
+            .find_map(|m| m.get("nombre")?.as_str().map(String::from));
         muestra.push(FilaBreve {
-            nombre: nombre_de(c, &tabla, &fila_id)?,
+            nombre: nombre_de(c, &tabla, &fila_id)?.or(propio),
             nombre_antes: nombre(&antes),
             nombre_despues: nombre(&despues),
             elimina: es_update && despues.get("deleted_at").is_some_and(|v| !v.is_null()),
@@ -315,13 +385,24 @@ fn mover(
     sentido: Sentido,
     version_app: &str,
 ) -> Result<(), Fallo> {
-    let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    // lo que se deshace no se anota
-    tx.execute("UPDATE historial_en_curso SET accion_id = NULL", [])?;
     let pedidas: BTreeSet<String> = ids.iter().cloned().collect();
     if pedidas.is_empty() {
         return Ok(());
     }
+    let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    mover_en(&mut tx, pedidas, sentido, version_app)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn mover_en(
+    tx: &mut Transaction,
+    pedidas: BTreeSet<String>,
+    sentido: Sentido,
+    version_app: &str,
+) -> Result<(), Fallo> {
+    // lo que se deshace no se anota
+    tx.execute("UPDATE historial_en_curso SET accion_id = NULL", [])?;
     let esperado = match sentido {
         Sentido::Deshacer => "hecha",
         Sentido::Rehacer => "deshecha",
@@ -342,20 +423,19 @@ fn mover(
             return Err(Fallo::de("historial_ya_aplicada", id));
         }
     }
-    let todas = revisar(&mut tx, pedidas.clone(), sentido)?;
+    let todas = revisar(tx, pedidas.clone(), sentido)?;
     let faltan: Vec<&str> = todas.difference(&pedidas).map(String::as_str).collect();
     if !faltan.is_empty() {
         return Err(Fallo::de("historial_conflicto", faltan.join(",")));
     }
-    aplicar(&tx, &pedidas, sentido)?;
-    if let Some((motivo, filas)) = choques(&tx, &pedidas)? {
+    aplicar(tx, &pedidas, sentido)?;
+    if let Some((motivo, filas)) = choques(tx, &pedidas)? {
         if sentido == Sentido::Rehacer {
-            pisadas(culpables(&tx, &pedidas, &filas, &POSTERIORES)?)?;
+            pisadas(culpables(tx, &pedidas, &filas, &POSTERIORES)?)?;
         }
         return Err(Fallo::de("historial_no_se_pudo", motivo));
     }
-    db::marcar_cambio(&tx, version_app)?;
-    tx.commit()?;
+    db::marcar_cambio(tx, version_app)?;
     Ok(())
 }
 
@@ -395,7 +475,7 @@ fn pisadas(ids: Vec<String>) -> Result<(), Fallo> {
     ))
 }
 
-/// Con qué acciones se choca: su estado, cómo se ordena una fila compartida y cómo se ordena la acción misma.
+/// Con qué acciones se choca: cuáles cuentan, cómo se ordena una fila compartida y cómo se ordena la acción misma.
 struct Vecinas {
     estado: &'static str,
     comparte: &'static str,
@@ -404,13 +484,14 @@ struct Vecinas {
 
 /// Las hechas que vinieron después: chocan al deshacer, y al rehacer no se pueden pisar.
 const POSTERIORES: Vecinas = Vecinas {
-    estado: "hecha",
+    estado: "a.estado = 'hecha'",
     comparte: "g.accion_id < a.id",
     cerca: "a.id > (SELECT min(value) FROM json_each(?1))",
 };
-/// Las deshechas que vinieron antes: hay que rehacerlas primero.
+/// Las deshechas que vinieron antes y siguen en la pila de Ctrl+Y: hay que rehacerlas primero. Una que salió de la pila
+/// (vino un cambio nuevo) no traba a las demás.
 const ANTERIORES: Vecinas = Vecinas {
-    estado: "deshecha",
+    estado: "a.estado = 'deshecha' AND a.rehacible IS NOT NULL",
     comparte: "g.accion_id > a.id",
     cerca: "a.id < (SELECT max(value) FROM json_each(?1))",
 };
@@ -461,12 +542,12 @@ fn mismas_filas(c: &Connection, ids: &BTreeSet<String>, v: &Vecinas) -> Result<V
     let (estado, orden) = (v.estado, v.comparte);
     let sql = format!(
         "SELECT DISTINCT a.id FROM historial_acciones a JOIN historial_filas f ON f.accion_id = a.id
-         WHERE a.estado = ?2 AND a.id NOT IN (SELECT value FROM json_each(?1))
+         WHERE {estado} AND a.id NOT IN (SELECT value FROM json_each(?1))
            AND EXISTS (SELECT 1 FROM historial_filas g WHERE g.accion_id IN (SELECT value FROM json_each(?1))
                        AND {orden} AND g.tabla = f.tabla AND g.fila_id = f.fila_id)"
     );
     Ok(c.prepare(&sql)?
-        .query_map(params![como_json(ids), estado], |f| f.get(0))?
+        .query_map([como_json(ids)], |f| f.get(0))?
         .collect::<rusqlite::Result<_>>()?)
 }
 
@@ -486,14 +567,12 @@ fn culpables(
     );
     let sql = format!(
         "SELECT DISTINCT a.id FROM historial_acciones a JOIN historial_filas f ON f.accion_id = a.id
-         WHERE a.estado = ?2 AND {orden} AND a.id NOT IN (SELECT value FROM json_each(?1))
-           AND EXISTS (SELECT 1 FROM json_each(?3) j
+         WHERE {estado} AND {orden} AND a.id NOT IN (SELECT value FROM json_each(?1))
+           AND EXISTS (SELECT 1 FROM json_each(?2) j
                        WHERE f.tabla = j.value ->> 0 AND f.fila_id = j.value ->> 1)"
     );
     Ok(c.prepare(&sql)?
-        .query_map(params![como_json(ids), estado, filas.to_string()], |f| {
-            f.get(0)
-        })?
+        .query_map(params![como_json(ids), filas.to_string()], |f| f.get(0))?
         .collect::<rusqlite::Result<_>>()?)
 }
 
@@ -760,6 +839,65 @@ mod tests {
     }
 
     #[test]
+    fn podar_con_un_plazo_invalido_usa_365_dias() {
+        for plazo in ["abc", "-5", ""] {
+            let c = base();
+            c.execute(
+                "INSERT INTO meta (clave, valor) VALUES ('historial_plazo_dias', ?1)",
+                [plazo],
+            )
+            .unwrap();
+            accion_con_fecha(&c, "vieja", &hace(&c, 366));
+            accion_con_fecha(&c, "nueva", &hace(&c, 364));
+            assert_eq!(podar(&c).unwrap(), 1, "{plazo:?}");
+            assert_eq!(contar(&c, "historial_acciones"), 1);
+        }
+    }
+
+    #[test]
+    fn limpiar_persona_bloquea_sus_roles_y_tolera_filas_sin_nombre() {
+        let c = base();
+        c.execute_batch(
+            r#"INSERT INTO historial_acciones (id, fecha, origen) VALUES ('rol', 'x', 'app'), ('vacia', 'x', 'app'), ('otra', 'x', 'app');
+             INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues) VALUES
+               ('rol', 1, 'actividad_roles', 'r1', 'insert', NULL, '{"trabajador_id":"t1","rol":"R"}'),
+               ('vacia', 1, 'trabajadores', 't1', 'update', '{}', '{"correo":"a@x.cl"}'),
+               ('otra', 1, 'actividad_roles', 'r2', 'insert', NULL, '{"trabajador_id":"t2"}');"#,
+        )
+        .unwrap();
+        limpiar_persona(&c, "t1").unwrap();
+        let bloqueadas: Vec<String> = c
+            .prepare("SELECT id FROM historial_acciones WHERE bloqueada = 1 ORDER BY id")
+            .unwrap()
+            .query_map([], |f| f.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(bloqueadas, ["rol", "vacia"]);
+        assert_eq!(
+            filas(&c)
+                .into_iter()
+                .filter(|f| f.0 == "trabajadores")
+                .map(|f| (f.2, f.3))
+                .collect::<Vec<_>>(),
+            [(Some("{}".to_string()), Some("{}".to_string()))]
+        );
+    }
+
+    #[test]
+    fn una_base_sin_la_fila_de_en_curso_igual_anota() {
+        let mut c = base();
+        c.execute("DELETE FROM historial_en_curso", []).unwrap();
+        let a = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
+        );
+        assert!(a.is_some());
+        assert_eq!(cuenta(&c, "SELECT count(*) FROM historial_en_curso"), 1);
+        assert_eq!(uno(&c, "SELECT accion_id FROM historial_en_curso"), None);
+    }
+
+    #[test]
     fn toda_tabla_de_negocio_tiene_sus_tres_triggers() {
         let c = base();
         let tablas: Vec<String> = c
@@ -787,10 +925,13 @@ mod tests {
                     )
                     .unwrap_or_else(|_| panic!("falta historial_{t}_{op}"));
                 for col in &columnas {
-                    assert!(
-                        sql.contains(col.as_str()),
-                        "historial_{t}_{op} no nombra {col}"
-                    );
+                    // la clave y el valor de la columna: solo el nombre lo tendría cualquier trigger con `id`
+                    let esperado = match op {
+                        "insert" => format!("'{col}', NEW.{col}"),
+                        "update" => format!("OLD.{col} IS NOT NEW.{col}"),
+                        _ => format!("'{col}', OLD.{col}"),
+                    };
+                    assert!(sql.contains(&esperado), "historial_{t}_{op} no anota {col}");
                 }
             }
         }
@@ -1038,6 +1179,57 @@ mod tests {
             ),
             0
         );
+        // la primera, deshecha y fuera de la pila, no traba el Ctrl+Y de la segunda
+        deshacer(&mut c, std::slice::from_ref(&a2), "t").unwrap();
+        assert!(
+            conflictos(&mut c, &a2, Sentido::Rehacer)
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            mover_ultima(&mut c, Sentido::Rehacer, "t")
+                .unwrap()
+                .unwrap()
+                .id,
+            a2
+        );
+        assert_eq!(
+            uno(&c, "SELECT nombre FROM unidades WHERE id = 'u1'").as_deref(),
+            Some("Sur")
+        );
+    }
+
+    #[test]
+    fn ctrl_z_y_ctrl_y_buscan_y_mueven_juntos() {
+        let mut c = base();
+        assert!(
+            mover_ultima(&mut c, Sentido::Deshacer, "t")
+                .unwrap()
+                .is_none()
+        );
+        let a = lote(&mut c, &[&unidad("u2", None)]).unwrap();
+        let z = mover_ultima(&mut c, Sentido::Deshacer, "t")
+            .unwrap()
+            .unwrap();
+        // la frase se arma con la acción como era antes de moverla
+        assert_eq!((z.id.as_str(), z.estado.as_str()), (a.as_str(), "hecha"));
+        assert_eq!(uno(&c, "SELECT id FROM unidades WHERE id = 'u2'"), None);
+        assert!(
+            mover_ultima(&mut c, Sentido::Deshacer, "t")
+                .unwrap()
+                .is_none()
+        );
+        // deshecha, la unidad ya no está: el nombre sale de la fila misma
+        let y = mover_ultima(&mut c, Sentido::Rehacer, "t")
+            .unwrap()
+            .unwrap();
+        assert_eq!(y.muestra[0].nombre.as_deref(), Some("u2"));
+        assert!(uno(&c, "SELECT id FROM unidades WHERE id = 'u2'").is_some());
+        // un fallo sin motivo del historial no llega tal cual
+        c.execute("UPDATE historial_filas SET tabla = 'no_existe'", [])
+            .unwrap();
+        let e = mover_ultima(&mut c, Sentido::Deshacer, "t").unwrap_err();
+        assert_eq!(e.codigo, "historial_fallo");
     }
 
     #[test]
@@ -1249,7 +1441,7 @@ mod tests {
         .unwrap();
         let f = &breve(&c, &a).unwrap().muestra[0];
         assert_eq!((f.fila_id.as_str(), f.elimina), ("u1", true));
-        deshacer(&mut c, &[a.clone()], "t").unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a), "t").unwrap();
         lote(
             &mut c,
             &["UPDATE unidades SET deleted_at = 'y' WHERE id = 'u2'"],
@@ -1267,7 +1459,7 @@ mod tests {
             &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
         )
         .unwrap();
-        deshacer(&mut c, &[a.clone()], "t").unwrap();
+        deshacer(&mut c, std::slice::from_ref(&a), "t").unwrap();
         let f = &breve(&c, &a).unwrap().muestra[0];
         assert_eq!(
             (f.nombre_antes.as_deref(), f.nombre_despues.as_deref()),
@@ -1357,6 +1549,13 @@ mod tests {
         let a2 = lote(&mut c, &[&unidad("u4", Some("u3"))]).unwrap();
         let antes = volcado(&c);
         let e = rehacer(&mut c, std::slice::from_ref(&a1), "t").unwrap_err();
+        assert_eq!(
+            (e.codigo, e.detalle),
+            ("historial_no_se_pudo", format!("posterior:{a2}"))
+        );
+        assert_eq!(volcado(&c), antes);
+        // no comparten filas: solo aplicando de prueba se ve, y `conflictos` lo anticipa igual que `rehacer`
+        let e = conflictos(&mut c, &a1, Sentido::Rehacer).unwrap_err();
         assert_eq!(
             (e.codigo, e.detalle),
             ("historial_no_se_pudo", format!("posterior:{a2}"))

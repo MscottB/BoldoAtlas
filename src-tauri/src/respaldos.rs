@@ -1543,6 +1543,8 @@ mod tests {
     fn restaurar_no_revive_a_la_suprimida() {
         let dir = tempfile::tempdir().unwrap();
         let (b, respaldos, mut conn) = base(dir.path());
+        // con el historial abierto, como la app: el respaldo trae sus datos también en el historial
+        let accion = crate::historial::abrir_accion(&conn, "app", &serde_json::json!({})).unwrap();
         conn.execute_batch(
             "INSERT INTO trabajadores (id, nombre, correo, telefono, foto_png, notas, created_at, updated_at)
                VALUES ('t1', 'Zacarías Únicoapellido', 'zz-unico@ejemplo.cl', '+56 9 7777 8888', 'Zm90by11bmljbw==', 'nota-secreta-123', 'x', 'x');
@@ -1554,6 +1556,7 @@ mod tests {
                VALUES ('a1', 't1', 'p1', 'titular', '2026-01-01', 'motivo-privado-456', 'x', 'x');",
         )
         .unwrap();
+        assert!(crate::historial::cerrar_accion(&conn, &accion).unwrap());
         let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
         supresion::suprimir(
             &mut conn,

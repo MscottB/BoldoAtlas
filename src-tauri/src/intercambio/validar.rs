@@ -511,7 +511,8 @@ fn revisar_con_tope(ruta: &Path, migraciones: &[&str], max_bytes: i64) -> Result
     if r.version >= 3
         && c.query_row(
             "SELECT EXISTS (SELECT 1 FROM historial_acciones) OR EXISTS (SELECT 1 FROM historial_filas)
-             OR EXISTS (SELECT 1 FROM historial_en_curso WHERE accion_id IS NOT NULL)",
+             OR EXISTS (SELECT 1 FROM historial_en_curso WHERE accion_id IS NOT NULL)
+             OR (SELECT count(*) FROM historial_en_curso) <> 1",
             [],
             |f| f.get::<_, bool>(0),
         )
@@ -984,6 +985,8 @@ mod tests {
             "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app')",
             // una acción abierta sin filas: los triggers anotarían todo en una acción que no existe
             "UPDATE historial_en_curso SET accion_id = 'fantasma'",
+            // sin la fila: el historial no sabría si hay una acción abierta
+            "DELETE FROM historial_en_curso",
             "UPDATE historial_en_curso SET accion_id = NULL; INSERT INTO historial_acciones (id, fecha, origen) VALUES ('a', 'x', 'app');
              INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op) VALUES ('a', 1, 'cargos', 'c', 'insert')",
         ] {
