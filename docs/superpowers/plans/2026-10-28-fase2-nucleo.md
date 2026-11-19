@@ -684,6 +684,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 - Después de la 23b, porque usa `treeSvg.ts`. Prueba obligatoria: un nombre con `</script>` o HTML no se ejecuta, y el archivo no pide nada a la red.
 
 ### Task 23e: Costo por puesto (spec §5 "Costo por puesto" y §8)
+**Pasa a la edición web (Anexo 10).** No se hace en el escritorio.
 - Migración 0002 con `puestos.costo_mensual`, activación en Configuración con la advertencia, edición en el puesto, y totales con vacantes aparte y aviso de puestos sin costo.
 - La primera migración con `ALTER TABLE` necesita una prueba de la comparación exacta del esquema de `.boldo` y `restaurar`, porque SQLite reescribe el texto guardado: entre una base nueva y una migrada, y entre archivos de versiones anteriores.
 - Comprobar que el campo viaja y se revisa en `.boldo` y en la fusión (22a y 22b). La diferencia de costo en la comparación llega con los escenarios (Fase 5); el indicador, con la Fase 3.
@@ -718,6 +719,8 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 5. 25a: carga masiva, con asignar columnas para archivos de otros sistemas. 23i: PPTX editable.
 6. 24a, 24b y 24c: procesos, RACI e indicadores.
 7. 26a, 26b y 23h: escenarios, comparación y notas.
+
+**Orden actualizado por el autor (2026-11-19):** ver el Anexo 10. Manda sobre esta lista.
 
 Cada tarea muestra su entrada oculta por `MOSTRAR_PROXIMAMENTE` cuando la función exista, y actualiza la ayuda en es y en. La prueba de `src/i18n/ayuda.test.ts` deja de prohibir `Excel` en la 23a.
 
@@ -757,6 +760,7 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 - Modo «Árbol» en el Directorio, junto a la lista: quién depende de quién, desde la raíz o la rama elegida. Parte de la vista Árbol de la pestaña Personas (`ArbolPersonas.vue` y `arbolPersonas.ts`: plegar, búsqueda y teclado) y la mejora: cargo y foto en cada fila, cuántas personas tiene a cargo, plegar por niveles como en el lienzo (29d) y la búsqueda que deja ver la cadena hasta la persona. Lista virtual para que la organización grande siga fluida; medir antes de cerrar.
 
 ### Task 27a: Fotos optimizadas al subir (pedido del autor, 2026-11-01)
+**Hecha; la 27c quita las fotos del escritorio (Anexo 10).**
 - Al elegir una foto, la app la reduce con `canvas`, sin dependencias: lado máximo razonable para una ficha y compresión JPEG o WebP, como en `logoComoPng` de `configuracion/logo.ts`. Hoy se guarda una imagen de hasta 1 MiB por persona. Medir peso y nitidez con fotos reales antes de fijar el tamaño. La foto solo es para presentación.
 - En Configuración, «Optimizar fotos existentes» con avance y respaldo previo, solo a pedido. El logo sigue con su transparencia.
 
@@ -786,6 +790,7 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 - Guardar como escenario, abrir, insignia en la barra y volver a la base principal. La portable los guarda dentro de su carpeta. Definir con la 19d cómo van cifrados: la spec los describe sin cifrar, y hay que corregirla.
 
 ### Task 26b: Comparar y lado a lado (spec §8 "Escenarios")
+**En el escritorio, sin la diferencia de costo**, que pasa a la edición web con la 23e (Anexo 10).
 - Comparación en solo lectura con `comparar::comparar` de la 22b (Rust, dos conexiones), diferencia de indicadores (24c) y de costo (23e), exportable a Excel (23a), y lado a lado con encuadre sincronizado.
 
 ## Anexo 9 (decisión del autor, 2026-11-02): varias organizaciones y lista interna de lo que falta
@@ -800,3 +805,37 @@ Decidido por el autor (2026-11-01): una instancia por copia, como funciona hoy e
 - Integración directa con nómina y otros sistemas de RR. HH.: sin tarea.
 - Firma digital del programa (Windows y Apple): requiere comprar certificados, decisión del autor. Sin tarea.
 - Soporte comercial: sin tarea.
+
+## Anexo 10 (decisión del autor, 2026-11-19): escritorio y edición web
+
+**Reparto.** El escritorio es gratis y completo para una persona que trabaja sola. Lo que sirve a una empresa que trabaja en equipo va a una edición web de pago, con su propio diseño y su propio plan:
+- costo por puesto (23e) y la diferencia de costo entre escenarios;
+- las fotos de las personas, guardadas en el servidor (la 27c las quita del escritorio);
+- los escenarios simples (26a, 26b sin costo y 23h) quedan en el escritorio, y la web también los tiene.
+
+El escritorio se lleva a la web exportando un `.boldo`, que la web importará.
+
+**La 1.0 de escritorio** sale con todo este plan, mapa de procesos incluido, salvo lo que pasa a la web: sin costos y sin fotos.
+
+**Nuevo orden del escritorio** (manda sobre el del Anexo 8):
+1. 27c: fotos solo en la edición web.
+2. 23b, 23c y 23d: imagen y PDF, manual y visor.
+3. 25a y 23i: carga masiva y PPTX editable.
+4. 24a, 24b y 24c: procesos, RACI e indicadores.
+5. 26a, 26b y 23h: escenarios simples, comparación sin costo y notas.
+6. 19d, 19f y 19e, al final: base cifrada, candado por árbol y página «Seguridad y privacidad». La 19d también cifra los escenarios; la 19e explica que el escritorio ya no guarda fotos.
+
+### Task 27c: Fotos solo en la edición web (decisión del autor, 2026-11-19)
+- Menos datos personales en el equipo: el escritorio deja de mostrar y de guardar fotos. Las tarjetas, la ficha y el Directorio usan las iniciales, como hoy cuando no hay foto.
+- **Fotos que ya existen:**
+  - al actualizar, si la organización tiene fotos, la app avisa una sola vez y ofrece guardarlas antes en un `.boldo`, para llevarlas a la web;
+  - después las borra de la base y compacta el archivo;
+  - también las quita de lo ya anotado en el historial de la 19c;
+  - los respaldos nuevos ya no las llevan;
+  - los respaldos de seguridad anteriores se borran a los 30 días, como en la 19b.
+  Hay que decidir en su diseño:
+  - qué pasa con varias organizaciones abiertas a la vez;
+  - qué pasa con los archivos externos;
+  - qué pasa con la organización de al lado, que es de solo lectura.
+- **Importar un `.boldo` con fotos** las deja fuera de la base. En el diseño se decide si la columna `foto_png` se queda vacía, por compatibilidad del esquema de `.boldo`, o si sale con una migración.
+- Quitar el código que queda sin uso de la 27a y la 27b, medir antes y después, y actualizar la ayuda (es y en) y el sitio. El sitio deja de mencionar las fotos: no dice que algo falta ni anuncia la edición web antes de que exista.
