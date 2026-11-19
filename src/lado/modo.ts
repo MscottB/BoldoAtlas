@@ -9,4 +9,4 @@ export const MODO_LADO: boolean = id !== "";
 export const idLado = (): string => id;
 
 /** Las vistas que se ven al lado (nombres de ruta). Aquí y no en el arranque: el padre la usa sin cargarlo. */
-export const VISTAS_LADO = ["arbol", "arboles", "directorio", "revision"];
+export const VISTAS_LADO = ["arbol", "arboles", "directorio", "revision", "historial"];

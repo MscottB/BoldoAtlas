@@ -7,6 +7,7 @@ import {
   CircleHelp,
   Columns2,
   FolderOpen,
+  History,
   ListChecks,
   LocateFixed,
   Network,
@@ -133,6 +134,13 @@ const acciones = computed<AccionPaleta[]>(() => [
     ruta: "/revision",
   },
   {
+    id: "historial",
+    etiqueta: t("paleta.acciones.historial"),
+    icono: History,
+    ejecutar: () => ir("/historial"),
+    ruta: "/historial",
+  },
+  {
     id: "tema",
     etiqueta: t("paleta.acciones.tema"),
     icono: Palette,
@@ -230,7 +238,11 @@ function alTeclear(e: KeyboardEvent) {
   conCtrl = false;
 }
 // Unidades, personas y vacantes son de la abierta: con el foco en otra organización al lado, van al principal.
-function elegirDato(accion: () => unknown, ev?: CustomEvent<{ originalEvent: Event }>, ruta?: RouteLocationRaw) {
+function elegirDato(
+  accion: () => unknown,
+  ev?: CustomEvent<{ originalEvent: Event }>,
+  ruta?: RouteLocationRaw,
+) {
   alPanelDeLaAbierta();
   elegir(accion, ev, ruta);
 }

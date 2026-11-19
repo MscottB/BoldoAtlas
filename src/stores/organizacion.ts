@@ -6,8 +6,10 @@ import {
   consultar,
   historialDeshacer,
   historialDeshacerUltima,
+  historialRehacer,
   historialRehacerUltima,
   historialPunteros,
+  historialVolverA,
   suprimirPersona as suprimir,
   type AvanceEliminar,
   type Sentencia,
@@ -65,7 +67,7 @@ import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 import { frase } from "@/features/historial/frases";
-import type { AccionBreve } from "@/features/historial/tipos";
+import type { AccionBreve, Sentido } from "@/features/historial/tipos";
 
 /** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
@@ -89,8 +91,13 @@ export interface Borrado {
 
 const VIGENCIA_DESHACER_MS = 8000;
 const PLAZO_POR_DEFECTO = "365"; // como historial::PLAZO_POR_DEFECTO_DIAS
-/** Como `historial::podar`: lo que no es un número de días («abc», «-5») vale el plazo por defecto. */
-const plazoValido = (v = "") => (/^\d+$/.test(v.trim()) ? v.trim() : PLAZO_POR_DEFECTO);
+/** Como `historial::podar`: un entero de i64 desde 0 (con «+» o ceros delante); lo demás («abc», «-5») vale el plazo por defecto. */
+const plazoValido = (v = "") => {
+  const t = v.trim();
+  if (!/^[+-]?\d+$/.test(t)) return PLAZO_POR_DEFECTO;
+  const n = BigInt(t);
+  return n >= 0n && n <= 9223372036854775807n ? n.toString() : PLAZO_POR_DEFECTO;
+};
 const t = i18n.global.t; // el store vive fuera de los componentes: sin useI18n
 // El cargo es del puesto y el tipo, de la unidad; los demás valores, de la persona.
 const COLUMNA_CATALOGO: Record<Exclude<TablaCatalogo, "cargos" | "tipos_unidad">, keyof Trabajador> = {
@@ -549,6 +556,31 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
   const deshacerUltima = () => moverHistorial("deshacer");
   const rehacerUltima = () => moverHistorial("rehacer");
+
+  /** Desde la vista Historial: `hacer` mueve acciones y dice cuáles; `n`, cuántas. Recarga como Ctrl+Z. */
+  async function desdeHistorial(
+    sentido: Sentido,
+    hacer: () => Promise<string[]>,
+  ): Promise<Resultado & { n?: number }> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    if (!cargado.value) return rechazar(t("store.sinCargar"));
+    let movidas: string[] = [];
+    const r = await conRecarga(async () => {
+      movidas = await hacer().catch((e: unknown) => {
+        throw esFallo(e) ? { ...e, sentido } : e; // para que el aviso diga «rehacer» cuando corresponde
+      });
+      const b = ultimoBorrado.value;
+      if (b?.accion && movidas.includes(b.accion)) ultimoBorrado.value = null;
+    });
+    return r.ok ? { ...r, n: movidas.length } : r;
+  }
+  /** Deshace o rehace `ids` en un solo paso: una acción con las que van junto con ella. */
+  const moverAcciones = (ids: string[], sentido: Sentido) =>
+    desdeHistorial(sentido, () =>
+      (sentido === "deshacer" ? historialDeshacer : historialRehacer)(ids).then(() => ids),
+    );
+  /** «Volver a este punto»: deshace todo lo hecho después de `id`. */
+  const volverA = (id: string) => desdeHistorial("deshacer", () => historialVolverA(id));
 
   const etiquetar = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));
@@ -1092,6 +1124,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     deshacer,
     deshacerUltima,
     rehacerUltima,
+    moverAcciones,
+    volverA,
     sentenciasNueva,
     crearValor,
     renombrarValor,

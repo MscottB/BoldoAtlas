@@ -100,15 +100,33 @@ impl Lado {
     }
 }
 
-/// La abierta primero: un id que es el de ella nunca va al lado. Si no es la abierta ni la del lado, `otra_base`.
-pub fn leer_en<T>(
+/// Un error que dice si vino de otra base: `leer_en` prueba entonces con la de al lado, y si no, lo devuelve tal cual.
+pub trait DeOtraBase: From<String> {
+    fn es_otra_base(&self) -> bool;
+}
+impl DeOtraBase for String {
+    fn es_otra_base(&self) -> bool {
+        self == OTRA_BASE
+    }
+}
+impl DeOtraBase for Fallo {
+    fn es_otra_base(&self) -> bool {
+        self.codigo == OTRA_BASE
+    }
+}
+
+/// La abierta primero: un id que es el de ella nunca va al lado. Si no es la abierta ni la del lado, `otra_base`. El
+/// error de `f` llega como es (con su código, si es un `Fallo`).
+pub fn leer_en<T, E: DeOtraBase>(
     estado: &Estado,
     lado: &Lado,
     id: &str,
-    f: impl Fn(&Connection) -> Result<T, String>,
-) -> Result<T, String> {
+    f: impl Fn(&Connection) -> Result<T, E>,
+) -> Result<T, E> {
     match estado.con_conexion(id, |c| f(c)) {
-        Err(e) if e == OTRA_BASE => lado.con_lectura(id, f),
+        Err(e) if e.es_otra_base() => lado
+            .con_lectura(id, |c| Ok(f(c)))
+            .unwrap_or_else(|e| Err(E::from(e))),
         r => r,
     }
 }
@@ -269,6 +287,23 @@ mod tests {
 
     const FECHA: &str = "2026-11-01T12:00:00.000Z";
     const GERENCIA: &str = "00000000-0000-7000-8000-000000000001";
+
+    #[test]
+    fn leer_en_deja_el_codigo_del_fallo_en_las_dos() {
+        let d = tres("");
+        d.abrir_lado();
+        let fallo = |_: &Connection| -> Result<(), Fallo> { Err(Fallo::de("historial_x", "")) };
+        for id in [&d.a.id, &d.b.id] {
+            assert_eq!(
+                leer_en(&d.e, &d.lado, id, fallo).unwrap_err().codigo,
+                "historial_x"
+            );
+        }
+        assert_eq!(
+            leer_en(&d.e, &d.lado, &d.c.id, fallo).unwrap_err().codigo,
+            OTRA_BASE
+        );
+    }
 
     #[test]
     fn lado_abrir_consigo_misma_da_misma() {

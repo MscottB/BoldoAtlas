@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   DatabaseBackup,
   FileText,
+  History,
   House,
   IdCard,
   Keyboard,
@@ -70,6 +71,7 @@ const ICONOS: Record<string, Component> = {
   respaldos: DatabaseBackup,
   actualizaciones: RefreshCw,
   revision: ClipboardCheck,
+  historial: History,
 };
 
 const titulo = (texto: string) => /^#\s+(.+)$/m.exec(texto)?.[1] ?? "";
@@ -83,7 +85,15 @@ const lista = computed(() =>
     .flatMap(([ruta, texto]) => {
       const [, idioma, slug] = /^\/ayuda\/(\w+)\/(.+)\.md$/.exec(ruta) ?? [];
       return idioma === locale.value
-        ? [{ slug: slug!, titulo: titulo(texto), texto, resumen: resumenDe(texto), icono: ICONOS[slug!] ?? FileText }]
+        ? [
+            {
+              slug: slug!,
+              titulo: titulo(texto),
+              texto,
+              resumen: resumenDe(texto),
+              icono: ICONOS[slug!] ?? FileText,
+            },
+          ]
         : [];
     })
     .sort((a, b) => posicion(a.slug) - posicion(b.slug) || a.slug.localeCompare(b.slug)),
@@ -152,7 +162,10 @@ watch(
       >
         <h1 class="px-2 pb-2 text-lg font-semibold">{{ t("ayuda.titulo") }}</h1>
         <div class="relative mb-3 px-2">
-          <Search class="pointer-events-none absolute left-4.5 top-2 size-4 text-muted-foreground" aria-hidden="true" />
+          <Search
+            class="pointer-events-none absolute left-4.5 top-2 size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             ref="campo"
             v-model="consulta"
@@ -220,7 +233,8 @@ watch(
                 <span class="block text-xs text-muted-foreground">{{ r.pagina }}</span>
                 <span class="block text-sm font-medium">{{ r.encabezado }}</span>
                 <span class="block text-sm text-muted-foreground">
-                  {{ r.extracto[0] }}<mark class="rounded bg-marca/30 px-0.5 text-foreground">{{ r.extracto[1] }}</mark
+                  {{ r.extracto[0]
+                  }}<mark class="rounded bg-marca/30 px-0.5 text-foreground">{{ r.extracto[1] }}</mark
                   >{{ r.extracto[2] }}
                 </span>
               </RouterLink>
@@ -238,7 +252,10 @@ watch(
                 :to="`/ayuda/${p.slug}`"
                 class="flex h-full gap-3 rounded-lg border bg-card p-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
               >
-                <span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted" aria-hidden="true">
+                <span
+                  class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted"
+                  aria-hidden="true"
+                >
                   <component :is="p.icono" class="size-5" />
                 </span>
                 <span class="min-w-0">

@@ -27,6 +27,32 @@ export interface AccionBreve {
   muestra: FilaBreve[];
 }
 
+/** Una fila de una acción, campo por campo. */
+export interface FilaDetalle {
+  tabla: string;
+  fila_id: string;
+  op: "insert" | "update" | "delete";
+  nombre: string | null;
+  /** `[campo, antes, después]`. */
+  campos: [string, unknown, unknown][];
+}
+
+/** Lo que pide `historial_pagina`. `desde` y `hasta` son instantes UTC (desde incluido, hasta excluido). */
+export interface Filtro {
+  texto?: string;
+  desde?: string;
+  hasta?: string;
+  /** `[tabla, fila_id]`. */
+  fila?: [string, string];
+}
+
+export type Sentido = "deshacer" | "rehacer";
+
+/** Lo que el detalle pregunta antes de cambiar nada: las otras acciones que van juntas, o cuántas deshace volver a este punto. */
+export type Pregunta =
+  | { tipo: "juntas"; sentido: Sentido; acciones: AccionBreve[] }
+  | { tipo: "volver"; n: number; bloqueada: boolean };
+
 export interface Punteros {
   deshacer: AccionBreve | null;
   rehacer: AccionBreve | null;

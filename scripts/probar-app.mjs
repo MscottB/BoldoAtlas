@@ -611,6 +611,87 @@ async function historialPersistente(exe, carpeta) {
   comprobar("la app del historial cierra sola y con código 0", (await app.cerrar()) === 0);
 }
 
+/**
+ * «Volver a este punto» en la vista Historial: tres cambios seguidos, se vuelve al primero y los dos siguientes quedan
+ * deshechos. Sigue a `historialPersistente`, que deja la raíz con `RAIZ_NUEVA`. `revisarBase` comprueba `rutaBd` antes de
+ * cada escritura.
+ * @param {string} exe @param {string} carpeta
+ */
+async function historialVolverAPunto(exe, carpeta) {
+  const nombres = ["Raíz uno", "Raíz dos", "Raíz tres"];
+  const app = await abrirApp(exe);
+  const info = await revisarBase(app, carpeta);
+  await verTexto(app, ORGANIZACION);
+  /** @type {string[]} */
+  const acciones = [];
+  let antes = RAIZ_NUEVA;
+  for (const nombre of nombres) {
+    await revisarBase(app, carpeta);
+    const r = await app.llamar("db_lote", {
+      baseId: info.baseId,
+      sentencias: [
+        {
+          sql: "UPDATE unidades SET nombre = ?1, updated_at = ?2 WHERE nombre = ?3",
+          params: [nombre, new Date().toISOString(), antes],
+        },
+      ],
+      versionApp: "humo",
+    });
+    comprobar(`renombrar a «${nombre}» queda en el historial`, r.ok && typeof r.valor === "string", r);
+    acciones.push(r.valor);
+    antes = nombre;
+  }
+
+  const fila = `[data-accion=${JSON.stringify(acciones[0])}]`;
+  const clic = (/** @type {string} */ selector) =>
+    app.evaluar(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const hayUno = (/** @type {string} */ selector, /** @type {string} */ que) =>
+    app.hasta(`!!document.querySelector(${JSON.stringify(selector)})`, que);
+  await revisarBase(app, carpeta);
+  // por el árbol, como los otros pasos: el store queda cargado y «Volver a este punto» no se rechaza con `sinCargar`
+  await alArbol(app);
+  await app.evaluar(`location.hash = "#/historial"`);
+  await hayUno(fila, "el primero de los tres cambios en el Historial");
+  await clic(`${fila} > button`);
+  await hayUno(`${fila} [data-volver]`, "«Volver a este punto» en su detalle");
+  await clic(`${fila} [data-volver]`);
+  await hayUno("[data-confirmar]", "el diálogo que confirma cuántos deshace");
+  await clic("[data-confirmar]");
+
+  const estados = () =>
+    app
+      .llamar("db_consultar", {
+        baseId: info.baseId,
+        sql: "SELECT estado FROM historial_acciones WHERE id IN (?1, ?2, ?3) ORDER BY id",
+        params: acciones,
+      })
+      .then((r) => (r.ok ? r.valor.map((/** @type {{ estado: string }} */ f) => f.estado).join() : null));
+  await esperar(
+    async () => (await estados()) === "hecha,deshecha,deshecha",
+    "que los dos cambios siguientes queden deshechos",
+  ).then(
+    () => comprobar("«Volver a este punto» deshace los dos cambios siguientes", true),
+    async (e) =>
+      comprobar(
+        "«Volver a este punto» deshace los dos cambios siguientes",
+        false,
+        `${e.message}; ${await estados()}`,
+      ),
+  );
+  const nombre = await app.llamar("db_consultar", {
+    baseId: info.baseId,
+    sql: "SELECT nombre FROM unidades WHERE nombre IN (?1, ?2, ?3)",
+    params: nombres,
+  });
+  comprobar(
+    "la raíz vuelve al nombre del primer cambio",
+    nombre.ok && nombre.valor[0]?.nombre === nombres[0],
+    nombre,
+  );
+  await revisarBase(app, carpeta);
+  comprobar("la app de volver a un punto cierra sola y con código 0", (await app.cerrar()) === 0);
+}
+
 async function correr() {
   const a = artefactos("windows", "");
   const [zip, ...otros] = globSync(`release/*/${a.zip}`);
@@ -622,6 +703,7 @@ async function correr() {
   const info = await primeraApertura(exe, carpeta);
   await reapertura(exe, carpeta, info);
   await historialPersistente(exe, carpeta);
+  await historialVolverAPunto(exe, carpeta);
   comprobarInstaladaIntacta();
   exigirSinFallos();
 }

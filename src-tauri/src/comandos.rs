@@ -1280,6 +1280,92 @@ pub async fn historial_conflictos(
     .map_err(|e| e.to_string())?
 }
 
+/// Una página del historial, de la más nueva a la más antigua; `antes_de` es el id de la última que ya se tiene.
+#[tauri::command]
+pub async fn historial_pagina(
+    app: AppHandle,
+    base_id: String,
+    filtro: historial::Filtro,
+    antes_de: Option<String>,
+    cuantas: u32,
+) -> Result<Vec<historial::AccionBreve>, Fallo> {
+    // también la organización de al lado, que solo se lee
+    tauri::async_runtime::spawn_blocking(move || {
+        leer_en(
+            &app.state::<Estado>(),
+            &app.state::<Lado>(),
+            &base_id,
+            |c| historial::pagina(c, &filtro, antes_de.as_deref(), cuantas),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn historial_detalle(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+) -> Result<Vec<historial::FilaDetalle>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        leer_en(
+            &app.state::<Estado>(),
+            &app.state::<Lado>(),
+            &base_id,
+            |c| historial::detalle(c, &id),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Las acciones pedidas, para nombrar las que van juntas en un conflicto.
+#[tauri::command]
+pub async fn historial_breves(
+    app: AppHandle,
+    base_id: String,
+    ids: Vec<String>,
+) -> Result<Vec<historial::AccionBreve>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::breves(c, &ids))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Cuántas acciones desharía «Volver a este punto» en `id`, y si alguna no se puede deshacer.
+#[tauri::command]
+pub async fn historial_posteriores(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+) -> Result<historial::Posteriores, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::posteriores(c, &id))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Deshace todo lo hecho después de `id`, en una sola transacción. Devuelve las acciones deshechas.
+#[tauri::command]
+pub async fn historial_volver_a(
+    app: AppHandle,
+    base_id: String,
+    id: String,
+    version_app: String,
+) -> Result<Vec<String>, Fallo> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<Estado>()
+            .con_conexion(&base_id, |c| historial::volver_a(c, &id, &version_app))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn historial_punteros(
     app: AppHandle,

@@ -27,6 +27,11 @@ export const rutas: RouteRecordRaw[] = [
     component: () => import("@/features/revision/VistaRevision.vue"),
   },
   {
+    path: "/historial",
+    name: "historial",
+    component: () => import("@/vistas/VistaHistorial.vue"),
+  },
+  {
     path: "/importar-exportar",
     name: "importarExportar",
     component: () => import("@/features/intercambio/VistaIntercambio.vue"),

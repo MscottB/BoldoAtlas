@@ -2,8 +2,10 @@
 // columnas a la vista), sin ids internos. Las filas llegan de la vista: lo vivo de hoy o, si la lista la sigue, la
 // fecha que se ve; lo eliminado ya no está en ellas.
 import type { FilaDirectorio } from "@/features/directorio/filtrar";
+import { frase } from "@/features/historial/frases";
+import type { AccionBreve, Traducir as TraducirPlural } from "@/features/historial/tipos";
 import type { FilaPersonaUnidad } from "@/features/unidades/personas";
-import type { Celda, Hoja, Traducir } from "./libro";
+import { momentoExcel, type Celda, type Hoja, type Traducir } from "./libro";
 
 export interface ColumnasDirectorio {
   reemplazo: boolean;
@@ -98,5 +100,20 @@ export function hojaPersonas(filas: FilaPersonaUnidad[], unidad: string, t: Trad
     nombre: unidad,
     columnas: ["nombre", "cargo", "tipo", "unidad"].map((c) => t(`excel.personas.${c}`)),
     filas: filas.map((f) => [f.nombre, f.cargo, t(`puesto.tipo.${f.tipo}`), f.unidad]),
+  };
+}
+
+/** El Historial: una fila por acción, de la más nueva a la más antigua, con su hora local, su frase, su estado y cuántos
+ * elementos tocó. `t` con plural, como lo pide la frase. */
+export function hojaHistorial(filas: AccionBreve[], t: TraducirPlural): Hoja {
+  return {
+    nombre: t("historial.vista.titulo"),
+    columnas: ["fecha", "cambio", "estado", "elementos"].map((c) => t(`excel.historial.${c}`)),
+    filas: filas.map((a) => [
+      momentoExcel(new Date(a.fecha)),
+      frase(a, t),
+      t(`historial.estado.${a.estado}`),
+      a.filas,
+    ]),
   };
 }

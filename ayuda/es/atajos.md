@@ -43,4 +43,4 @@ La paleta funciona incluso mientras escribes en un campo: úsala para saltar a c
 
 En la barra de pestañas (aparece desde la segunda): `←` `→` recorren las pestañas, `Enter` abre la enfocada, `Supr` la cierra y `Ctrl` + `Mayús` + `←` `→` la mueven. Con la vista dividida, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` y las teclas del árbol actúan en el panel con foco. Más en la página «Pestañas de trabajo».
 
-**Ver también:** [Pestañas de trabajo](pestanas.md) · [El árbol](arbol.md).
+**Ver también:** [Pestañas de trabajo](pestanas.md) · [El árbol](arbol.md) · [Historial de cambios](historial.md).

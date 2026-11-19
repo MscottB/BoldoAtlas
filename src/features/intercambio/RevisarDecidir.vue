@@ -24,6 +24,7 @@ import {
   type TipoCaso,
 } from "@/db/cliente";
 import { toast } from "vue-sonner";
+import { usePregunta } from "@/lib/pregunta";
 import { deLaAbierta } from "@/lib/trabajos";
 import GrupoCasos from "./GrupoCasos.vue";
 import ListaBloqueos from "./ListaBloqueos.vue";
@@ -134,11 +135,7 @@ const nadaQueAplicar = computed(() => {
   return a.agregar + a.cambiar + a.borrar + a.revivir + a.vaciar === 0;
 });
 const puedeAplicar = computed(
-  () =>
-    resumen.value.verificada &&
-    bloqueos.value.total === 0 &&
-    !nadaQueAplicar.value &&
-    !baseCambio.value,
+  () => resumen.value.verificada && bloqueos.value.total === 0 && !nadaQueAplicar.value && !baseCambio.value,
 );
 const estado = computed(() => {
   if (baseCambio.value) return "";
@@ -191,15 +188,20 @@ function aplicarConfirmado() {
   emit("aplicar", resumen.value.version, true);
 }
 
-// Salir con decisiones avisa antes: se pierden.
-const saliendo = ref<null | "volver" | "salir">(null);
+// Salir con decisiones avisa antes: se pierden. reka cierra el aviso antes del clic de «perder»: cerrar no olvida a dónde.
+const salida = usePregunta<"volver" | "salir">();
+const saliendo = salida.abierta;
 function pedirSalida(a: "volver" | "salir") {
-  if (resumen.value.decisiones > 0) saliendo.value = a;
+  if (resumen.value.decisiones > 0) salida.preguntar(a);
   else salirYa(a);
+}
+function confirmarSalida() {
+  const a = salida.tomar();
+  if (a) salirYa(a);
 }
 function salirYa(a: "volver" | "salir") {
   revisionConDecisiones(false);
-  saliendo.value = null;
+  salida.tomar();
   if (a === "volver") emit("volver");
   else emit("salir");
 }
@@ -241,7 +243,9 @@ function salirYa(a: "volver" | "salir") {
         {{ t("intercambio.revisar.detenido", bloqueos.total) }}
       </p>
       <ul class="grid list-disc gap-0.5 pl-5">
-        <li v-if="bloqueos.duplicado">{{ t("intercambio.revisar.porResolver.duplicado", bloqueos.duplicado) }}</li>
+        <li v-if="bloqueos.duplicado">
+          {{ t("intercambio.revisar.porResolver.duplicado", bloqueos.duplicado) }}
+        </li>
         <li v-if="bloqueos.unica">{{ t("intercambio.revisar.porResolver.unica", bloqueos.unica) }}</li>
         <li v-if="bloqueos.regla">{{ t("intercambio.revisar.porResolver.regla", bloqueos.regla) }}</li>
         <li v-if="bloqueos.referencia">
@@ -264,7 +268,9 @@ function salirYa(a: "volver" | "salir") {
     />
 
     <div v-if="totalDe('diferente')" class="flex flex-wrap items-center gap-2">
-      <Button type="button" @click="enBloque('recientes')">{{ t("intercambio.revisar.aceptarRecientes") }}</Button>
+      <Button type="button" @click="enBloque('recientes')">{{
+        t("intercambio.revisar.aceptarRecientes")
+      }}</Button>
       <p class="text-sm text-muted-foreground">{{ t("intercambio.revisar.aceptarRecientesAyuda") }}</p>
     </div>
     <p v-if="resumen.dudosas" class="flex items-start gap-2 text-sm">
@@ -325,7 +331,7 @@ function salirYa(a: "volver" | "salir") {
       </AlertDialogContent>
     </AlertDialog>
 
-    <AlertDialog :open="saliendo !== null" @update:open="(v: boolean) => !v && (saliendo = null)">
+    <AlertDialog :open="saliendo" @update:open="(v: boolean) => v || salida.cerrar()">
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{{ t("intercambio.revisar.perderTitulo") }}</AlertDialogTitle>
@@ -335,7 +341,7 @@ function salirYa(a: "volver" | "salir") {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{{ t("intercambio.revisar.seguir") }}</AlertDialogCancel>
-          <AlertDialogAction @click="saliendo && salirYa(saliendo)">
+          <AlertDialogAction @click="confirmarSalida">
             {{ t("intercambio.revisar.perder") }}
           </AlertDialogAction>
         </AlertDialogFooter>
