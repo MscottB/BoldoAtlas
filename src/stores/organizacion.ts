@@ -6,8 +6,10 @@ import {
   consultar,
   historialDeshacer,
   historialDeshacerUltima,
+  historialRehacer,
   historialRehacerUltima,
   historialPunteros,
+  historialVolverA,
   suprimirPersona as suprimir,
   type AvanceEliminar,
   type Sentencia,
@@ -65,7 +67,7 @@ import { i18n, type Idioma } from "@/i18n";
 import { alSoltarDatos, BaseCambiada } from "@/lib/baseActiva";
 import { EJEMPLO } from "./ejemplo";
 import { frase } from "@/features/historial/frases";
-import type { AccionBreve } from "@/features/historial/tipos";
+import type { AccionBreve, Sentido } from "@/features/historial/tipos";
 
 /** `codigo`, `detalle` y `avance`: los de Rust, si el fallo viene de allí y quien llama necesita distinguirlo. */
 export type Resultado =
@@ -554,6 +556,31 @@ export const useOrganizacion = defineStore("organizacion", () => {
   }
   const deshacerUltima = () => moverHistorial("deshacer");
   const rehacerUltima = () => moverHistorial("rehacer");
+
+  /** Desde la vista Historial: `hacer` mueve acciones y dice cuáles; `n`, cuántas. Recarga como Ctrl+Z. */
+  async function desdeHistorial(
+    sentido: Sentido,
+    hacer: () => Promise<string[]>,
+  ): Promise<Resultado & { n?: number }> {
+    if (soloLectura.value) return rechazarSoloLectura();
+    if (!cargado.value) return rechazar(t("store.sinCargar"));
+    let movidas: string[] = [];
+    const r = await conRecarga(async () => {
+      movidas = await hacer().catch((e: unknown) => {
+        throw esFallo(e) ? { ...e, sentido } : e; // para que el aviso diga «rehacer» cuando corresponde
+      });
+      const b = ultimoBorrado.value;
+      if (b?.accion && movidas.includes(b.accion)) ultimoBorrado.value = null;
+    });
+    return r.ok ? { ...r, n: movidas.length } : r;
+  }
+  /** Deshace o rehace `ids` en un solo paso: una acción con las que van junto con ella. */
+  const moverAcciones = (ids: string[], sentido: Sentido) =>
+    desdeHistorial(sentido, () =>
+      (sentido === "deshacer" ? historialDeshacer : historialRehacer)(ids).then(() => ids),
+    );
+  /** «Volver a este punto»: deshace todo lo hecho después de `id`. */
+  const volverA = (id: string) => desdeHistorial("deshacer", () => historialVolverA(id));
 
   const etiquetar = (unidadId: string, etiquetaId: string) =>
     escribir(() => E.etiquetarUnidad(unidadId, etiquetaId));
@@ -1097,6 +1124,8 @@ export const useOrganizacion = defineStore("organizacion", () => {
     deshacer,
     deshacerUltima,
     rehacerUltima,
+    moverAcciones,
+    volverA,
     sentenciasNueva,
     crearValor,
     renombrarValor,

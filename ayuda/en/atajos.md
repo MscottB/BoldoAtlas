@@ -43,4 +43,4 @@ The palette works even while you type in a field: use it to jump to any unit, pe
 
 In the tab bar (shown from the second tab on): `←` `→` move between tabs, `Enter` opens the focused one, `Del` closes it and `Ctrl` + `Shift` + `←` `→` move it. With the split view, `Ctrl` + `T`, `Ctrl` + `W`, `Ctrl` + `Tab` and the tree keys act on the focused panel. More on the “Work tabs” page.
 
-**See also:** [Work tabs](pestanas.md) · [The tree](arbol.md).
+**See also:** [Work tabs](pestanas.md) · [The tree](arbol.md) · [Change history](historial.md).

@@ -2,7 +2,8 @@
 import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Bookmark, BookmarkCheck, Copy, Plus, Trash2, X } from "@lucide/vue";
+import { Bookmark, BookmarkCheck, Copy, History, Plus, Trash2, X } from "@lucide/vue";
+import { useRouter } from "vue-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,7 @@ import type { Unidad } from "@/db/tipos";
 import { MODO_LADO } from "@/lado/modo";
 import { dotacion, jefeVisible } from "@/features/arbol/jerarquia";
 import { useLienzo } from "@/features/arbol/useLienzo";
+import { rutaHistorial } from "@/features/historial/historial";
 import { usePuesto } from "@/features/puestos/usePuesto";
 import { useOrganizacion, type Resultado } from "@/stores/organizacion";
 import BloquePlegable from "@/components/BloquePlegable.vue";
@@ -71,6 +73,7 @@ function cerrar() {
 // Con una fecha elegida el panel muestra los datos de ese día y no deja cambiar nada (deshabilitado); al lado, otra
 // organización, los botones de cambiar ni se ven.
 const soloLectura = computed(() => org.soloLectura);
+const router = useRouter();
 const pestana = ref("resumen");
 // El menú contextual de la tarjeta puede pedir una pestaña («Ver personas»).
 watch(
@@ -422,6 +425,17 @@ async function eliminar() {
             </p>
           </div>
         </fieldset>
+        <!-- Fuera del fieldset: mirar el historial también vale a una fecha y al lado. -->
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          class="mt-3"
+          @click="router.push(rutaHistorial('unidades', unidad.id))"
+        >
+          <History aria-hidden="true" />
+          {{ t("historial.vista.ver") }}
+        </Button>
       </TabsContent>
 
       <TabsContent value="puestos">

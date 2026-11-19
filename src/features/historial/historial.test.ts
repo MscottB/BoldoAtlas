@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { agruparPorDia, destinoDe, instantes, leerVarias, posicionEstasAqui } from "./historial";
+import {
+  agruparPorDia,
+  camposVisibles,
+  destinoDe,
+  instantes,
+  leerVarias,
+  posicionEstasAqui,
+  textoCampo,
+} from "./historial";
 import type { AccionBreve, FilaBreve } from "./tipos";
 
 const accion = (id: string, fecha: string, extra: Partial<AccionBreve> = {}): AccionBreve => ({
@@ -109,5 +117,42 @@ describe("leerVarias", () => {
     // justo las que quedaban: aún no sabe que no hay más; la siguiente vuelta llega vacía
     expect([resto.acciones[0]!.id, resto.acciones.length, resto.fin]).toEqual(["49", 50, false]);
     expect(await leerVarias(pagina, "0", 50)).toEqual({ acciones: [], fin: true });
+  });
+});
+
+describe("el detalle, campo por campo", () => {
+  const t = (clave: string, v?: Record<string, unknown>) =>
+    v ? `[${clave} ${JSON.stringify(v)}]` : `[${clave}]`;
+  const nombreDe = (columna: string, id: string) =>
+    columna === "parent_id" && id === "u1" ? "Ventas" : null;
+  const texto = (columna: string, v: unknown) => textoCampo(columna, v, nombreDe, t);
+
+  it("sin ids ni fechas internas", () => {
+    const f = {
+      tabla: "unidades",
+      fila_id: "u1",
+      op: "insert" as const,
+      nombre: "Ventas",
+      campos: [
+        ["id", null, "u1"],
+        ["nombre", null, "Ventas"],
+        ["created_at", null, "x"],
+        ["updated_at", null, "x"],
+      ] as [string, unknown, unknown][],
+    };
+    expect(camposVisibles(f).map(([c]) => c)).toEqual(["nombre"]);
+  });
+
+  it("cada valor como se lee", () => {
+    expect(texto("nombre", "Norte")).toBe("Norte");
+    expect(texto("nombre", null)).toBe("[intercambio.revisar.vacio]");
+    expect(texto("parent_id", "u1")).toBe("Ventas");
+    expect(texto("parent_id", "borrada")).toBe("[historial.vista.otro]");
+    expect(texto("orden", 2)).toBe('[intercambio.revisar.posicion {"n":3}]');
+    expect(texto("foto_png", "iVBORw0KGgo")).toBe("[historial.vista.imagen]");
+    expect([texto("deleted_at", "2026-11-18T10:00:00.000Z"), texto("deleted_at", null)]).toEqual([
+      "[historial.vista.si]",
+      "[historial.vista.no]",
+    ]);
   });
 });

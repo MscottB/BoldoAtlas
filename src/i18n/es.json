@@ -13,7 +13,8 @@
     "acerca": "Acerca de",
     "llegaFase3": "Llega en la Fase 3",
     "llegaFase5": "Llega en la Fase 5",
-    "comparar": "Comparar"
+    "comparar": "Comparar",
+    "historial": "Historial"
   },
   "barra": {
     "mostrarBarra": "Mostrar barra lateral",
@@ -850,7 +851,8 @@
       "comparar": "Comparar con «{nombre}»",
       "verAlLado": "Ver «{nombre}» al lado",
       "deshacer": "Deshacer el último cambio",
-      "rehacer": "Rehacer"
+      "rehacer": "Rehacer",
+      "historial": "Ir al Historial"
     }
   },
   "organizaciones": {
@@ -2014,6 +2016,12 @@
       "desde": "Desde",
       "hasta": "Hasta",
       "motivo": "Motivo"
+    },
+    "historial": {
+      "fecha": "Fecha",
+      "cambio": "Cambio",
+      "estado": "Estado",
+      "elementos": "Elementos"
     }
   },
   "eliminados": {
@@ -2094,6 +2102,65 @@
       "valor": "un valor",
       "otra": "un elemento"
     },
-    "unArchivo": "un archivo"
+    "unArchivo": "un archivo",
+    "estado": {
+      "hecha": "Hecha",
+      "deshecha": "Deshecha"
+    },
+    "vista": {
+      "titulo": "Historial de cambios",
+      "ver": "Ver historial",
+      "buscar": "Buscar por nombre",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "soloDe": "Solo los cambios de {nombre}",
+      "verTodo": "Ver todo",
+      "estasAqui": "Estás aquí",
+      "elementos": "{n} elemento | {n} elementos",
+      "vacio": "No hay cambios guardados.",
+      "sinResultados": "Ningún cambio coincide con la búsqueda.",
+      "cargando": "Cargando…",
+      "bloqueadaSuprimir": "Un borrado definitivo no se puede deshacer.",
+      "bloqueadaPersona": "No se puede deshacer: tocó a una persona que después se borró definitivamente.",
+      "irA": "Ir a",
+      "deshacer": "Deshacer esta acción",
+      "rehacer": "Rehacer esta acción",
+      "volver": "Volver a este punto",
+      "op": {
+        "insert": "Creado",
+        "update": "Cambiado",
+        "delete": "Borrado"
+      },
+      "eliminado": "Eliminado",
+      "si": "Sí",
+      "no": "No",
+      "imagen": "Una imagen",
+      "otro": "otro elemento",
+      "sinCampos": "No hay datos que mostrar.",
+      "noEsta": "Ya no está: no hay a dónde ir.",
+      "cancelar": "Cancelar",
+      "juntas": {
+        "titulo": {
+          "deshacer": "Deshacer también otras acciones",
+          "rehacer": "Rehacer también otras acciones"
+        },
+        "texto": {
+          "deshacer": "Para deshacer esta acción también hay que deshacer estas:",
+          "rehacer": "Para rehacer esta acción también hay que rehacer estas:"
+        },
+        "boton": {
+          "deshacer": "Deshacer las {n} juntas",
+          "rehacer": "Rehacer las {n} juntas"
+        },
+        "hecho": {
+          "deshacer": "Se deshicieron {n} acciones.",
+          "rehacer": "Se rehicieron {n} acciones."
+        }
+      },
+      "volverTexto": "Se deshace la acción que vino después. Puedes rehacerla desde aquí. | Se deshacen las {n} acciones que vinieron después. Puedes rehacerlas desde aquí.",
+      "nadaDespues": "No hay acciones hechas después de esta.",
+      "volvisteHecho": "Volviste a este punto: se deshizo {n} acción. | Volviste a este punto: se deshicieron {n} acciones.",
+      "cargarMas": "Cargar más"
+    }
   }
 }

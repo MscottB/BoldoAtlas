@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Trash2 } from "@lucide/vue";
+import { History, Trash2 } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,8 @@ import { MODO_LADO } from "@/lado/modo";
 import { rutaPorTipo } from "@/features/arbol/jerarquia";
 import SelectorCatalogo from "@/features/trabajadores/SelectorCatalogo.vue";
 import { useFicha } from "@/features/trabajadores/useFicha";
+import { rutaHistorial } from "@/features/historial/historial";
+import { irConFoco } from "@/features/pestanas/routerConFoco";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
 import EstiloPuesto from "./EstiloPuesto.vue";
@@ -161,6 +163,14 @@ async function eliminar() {
       },
     },
   });
+}
+
+// «Ver historial»: como al cerrar, guarda la descripción y cierra; la vista se abre en el panel con foco.
+async function verHistorial() {
+  const id = puesto.value!.id;
+  if (!(await guardarDescripcion())) return;
+  ctl.cerrar();
+  void irConFoco(rutaHistorial("puestos", id));
 }
 
 // Dos diálogos apilados no se pueden intercambiar: se cierra este y se abre la ficha (con su aviso si tiene cambios sin guardar).
@@ -342,6 +352,10 @@ async function verPersona(id: string) {
           {{ t("puesto.eliminar") }}
         </Button>
         <Button v-else-if="!puesto" type="button" @click="crear">{{ t("puesto.crear") }}</Button>
+        <Button v-if="puesto" type="button" variant="outline" @click="verHistorial">
+          <History aria-hidden="true" />
+          {{ t("historial.vista.ver") }}
+        </Button>
         <DialogClose as-child>
           <Button type="button" variant="outline">{{ t("ficha.cerrar") }}</Button>
         </DialogClose>

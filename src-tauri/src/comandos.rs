@@ -1295,9 +1295,7 @@ pub async fn historial_pagina(
             &app.state::<Estado>(),
             &app.state::<Lado>(),
             &base_id,
-            |c| {
-                historial::pagina(c, &filtro, antes_de.as_deref(), cuantas).map_err(|e| e.detalle)
-            },
+            |c| historial::pagina(c, &filtro, antes_de.as_deref(), cuantas).map_err(|e| e.detalle),
         )
     })
     .await

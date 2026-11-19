@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { FilaDirectorio } from "@/features/directorio/filtrar";
+import { frase } from "@/features/historial/frases";
+import type { AccionBreve } from "@/features/historial/tipos";
 import type { FilaPersonaUnidad } from "@/features/unidades/personas";
-import { hojaDirectorio, hojaMantenedor, hojaPersonas, hojaRevision } from "./listas";
+import { momentoExcel } from "./libro";
+import { hojaDirectorio, hojaHistorial, hojaMantenedor, hojaPersonas, hojaRevision } from "./listas";
 
 const t = (clave: string) => `[${clave}]`;
 
@@ -189,5 +192,38 @@ describe("Personas de una unidad", () => {
       ["Ana", "Jefa", "[puesto.tipo.titular]", "Taller"],
       ["Beto", "Jefa", "[puesto.tipo.reemplazo]", "Taller"],
     ]);
+  });
+});
+
+describe("Historial", () => {
+  const accion = (id: string, fecha: string, estado: AccionBreve["estado"], filas: number): AccionBreve => ({
+    id,
+    fecha,
+    origen: "app",
+    datos: {},
+    estado,
+    bloqueada: false,
+    filas,
+    muestra: [],
+  });
+
+  it("fecha, frase, estado y cuántos, en el orden de la lista y sin ids", () => {
+    const filas = [
+      accion("a2", "2026-11-18T10:30:00.000Z", "deshecha", 3),
+      accion("a1", "2026-11-17T09:00:00.000Z", "hecha", 1),
+    ];
+    const h = hojaHistorial(filas, t);
+    expect(h.nombre).toBe("[historial.vista.titulo]");
+    expect(h.columnas).toEqual([
+      "[excel.historial.fecha]",
+      "[excel.historial.cambio]",
+      "[excel.historial.estado]",
+      "[excel.historial.elementos]",
+    ]);
+    expect(h.filas).toEqual([
+      [momentoExcel(new Date(filas[0]!.fecha)), frase(filas[0]!, t), "[historial.estado.deshecha]", 3],
+      [momentoExcel(new Date(filas[1]!.fecha)), frase(filas[1]!, t), "[historial.estado.hecha]", 1],
+    ]);
+    expect(JSON.stringify(h.filas)).not.toMatch(/"a[12]"/);
   });
 });

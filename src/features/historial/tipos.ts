@@ -46,6 +46,12 @@ export interface Filtro {
   fila?: [string, string];
 }
 
+export type Sentido = "deshacer" | "rehacer";
+
+/** Lo que el detalle pregunta antes de cambiar nada: las otras acciones que van juntas, o cuántas deshace volver a este punto. */
+export type Pregunta =
+  { tipo: "juntas"; sentido: Sentido; acciones: AccionBreve[] } | { tipo: "volver"; n: number };
+
 export interface Punteros {
   deshacer: AccionBreve | null;
   rehacer: AccionBreve | null;

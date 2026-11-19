@@ -1,4 +1,5 @@
-import type { AccionBreve } from "./tipos";
+import type { RouteLocationRaw } from "vue-router";
+import type { AccionBreve, FilaDetalle, Traducir } from "./tipos";
 
 /** Las acciones (de la más nueva a la más antigua) agrupadas por su día en la zona horaria `zona`, AAAA-MM-DD. */
 export function agruparPorDia(a: AccionBreve[], zona: string): { dia: string; acciones: AccionBreve[] }[] {
@@ -11,7 +12,7 @@ export function agruparPorDia(a: AccionBreve[], zona: string): { dia: string; ac
   const grupos: { dia: string; acciones: AccionBreve[] }[] = [];
   for (const x of a) {
     const d = dia.format(new Date(x.fecha));
-    const ultimo = grupos.at(-1);
+    const ultimo = grupos[grupos.length - 1];
     if (ultimo?.dia === d) ultimo.acciones.push(x);
     else grupos.push({ dia: d, acciones: [x] });
   }
@@ -74,9 +75,35 @@ export async function leerVarias(
   const acciones: AccionBreve[] = [];
   for (;;) {
     const pide = Math.min(MAX_PAGINA, n - acciones.length);
-    const p = await pagina(acciones.at(-1)?.id ?? antes, pide);
+    const p = await pagina(acciones[acciones.length - 1]?.id ?? antes, pide);
     acciones.push(...p);
     if (p.length < pide) return { acciones, fin: true };
     if (acciones.length >= n) return { acciones, fin: false };
   }
+}
+
+/** «Ver historial» desde una ficha: la vista filtrada por esa fila. */
+export const rutaHistorial = (tabla: string, id: string): RouteLocationRaw => ({
+  name: "historial",
+  query: { tabla, id },
+});
+
+const INTERNAS = new Set(["id", "created_at", "updated_at"]);
+/** Los campos de una fila del detalle sin los internos (id y fechas de creación y cambio). */
+export const camposVisibles = (f: FilaDetalle) => f.campos.filter(([c]) => !INTERNAS.has(c));
+
+/** Un valor del detalle como se lee. Una referencia (`*_id`) va por el nombre que da `nombreDe`; una imagen, sin sus bytes. */
+export function textoCampo(
+  columna: string,
+  v: unknown,
+  nombreDe: (columna: string, id: string) => string | null,
+  t: Traducir,
+): string {
+  if (columna === "deleted_at") return t(v ? "historial.vista.si" : "historial.vista.no");
+  if (v === null || v === undefined || v === "") return t("intercambio.revisar.vacio");
+  if (columna.endsWith("_png")) return t("historial.vista.imagen");
+  if (columna === "orden" && typeof v === "number") return t("intercambio.revisar.posicion", { n: v + 1 });
+  if (columna.endsWith("_id") && typeof v === "string")
+    return nombreDe(columna, v) ?? t("historial.vista.otro");
+  return typeof v === "object" ? JSON.stringify(v) : String(v);
 }

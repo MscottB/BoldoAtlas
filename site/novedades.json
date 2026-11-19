@@ -1,5 +1,17 @@
 [
   {
+    "id": "historial-de-cambios",
+    "pagina": "historial",
+    "es": {
+      "titulo": "Historial de cambios",
+      "texto": "La vista Historial muestra cada cambio, del más nuevo al más antiguo, agrupado por día. Abre uno para ver campo por campo cómo estaba y cómo quedó, deshacerlo o rehacerlo, o volver a ese punto en un solo paso. Busca por nombre, filtra por fechas y exporta la lista a Excel. Ver historial, en la ficha de una unidad, un puesto o una persona, muestra solo sus cambios."
+    },
+    "en": {
+      "titulo": "Change history",
+      "texto": "The History view shows every change, from newest to oldest, grouped by day. Open one to see field by field how it was and how it ended up, undo or redo it, or go back to that point in one step. Search by name, filter by dates and export the list to Excel. View history, in the record of a unit, a position or a person, shows only its changes."
+    }
+  },
+  {
     "id": "deshacer-y-rehacer",
     "pagina": "atajos",
     "es": {

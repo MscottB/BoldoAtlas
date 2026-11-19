@@ -294,7 +294,9 @@ fn toca(c: &Connection, id: &str, buscado: &str, nombres: &mut Nombres) -> Resul
 /// Las acciones pedidas, en ese orden: el diálogo de conflicto nombra las que van juntas.
 pub fn breves(c: &Connection, ids: &[String]) -> Result<Vec<AccionBreve>, Fallo> {
     let mut nombres = Nombres::new();
-    ids.iter().map(|id| breve_con(c, id, &mut nombres)).collect()
+    ids.iter()
+        .map(|id| breve_con(c, id, &mut nombres))
+        .collect()
 }
 
 /// Cuántas hechas hay después de `id`: las que «Volver a este punto» desharía.
@@ -796,7 +798,9 @@ mod tests {
             .map(|n| {
                 lote(
                     &mut c,
-                    &[&format!("UPDATE unidades SET nombre = '{n}' WHERE id = 'u1'")],
+                    &[&format!(
+                        "UPDATE unidades SET nombre = '{n}' WHERE id = 'u1'"
+                    )],
                 )
                 .unwrap()
             })

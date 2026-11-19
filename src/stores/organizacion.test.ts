@@ -65,6 +65,17 @@ vi.mock("@/db/cliente", () => {
     historialDeshacerUltima: ultima("deshacer"),
     historialRehacerUltima: ultima("rehacer"),
     historialPunteros: async () => ({ deshacer: puntero("deshacer"), rehacer: puntero("rehacer") }),
+    // Como Rust: deshace las hechas posteriores, de la más nueva a la más antigua
+    historialVolverA: async (id: string) => {
+      const ids = h
+        .bd!.consultar<{ id: string }>(
+          "SELECT id FROM historial_acciones WHERE id > ? AND estado = 'hecha' ORDER BY id DESC",
+          [id],
+        )
+        .map((f) => f.id);
+      if (ids.length) mover("deshacer", ids);
+      return ids;
+    },
     // Rust vacía la fila; aquí basta con dejarla eliminada y apuntar la llamada
     suprimirPersona: async (id: string, relleno: string) => {
       h.suprimidas.push([id, relleno]);
@@ -1006,6 +1017,43 @@ describe("historial", () => {
     await s.eliminarTrabajador(await persona(s, "Ana"));
     expect((await s.deshacerUltima()).ok).toBe(true);
     expect(s.ultimoBorrado).toBeNull();
+  });
+
+  it("desde el Historial: deshacer o rehacer varias juntas y volver a un punto recargan los datos", async () => {
+    const s = nuevo();
+    const u = await unidad(s, "Ventas");
+    await s.editarUnidad(u, { nombre: "Norte" });
+    await s.editarUnidad(u, { nombre: "Sur" });
+    const [, norte, sur] = h
+      .bd!.consultar<{ id: string }>("SELECT id FROM historial_acciones ORDER BY id")
+      .map((f) => f.id);
+    expect(await s.volverA(norte!)).toMatchObject({ ok: true, n: 1 });
+    expect(s.porId.get(u)?.nombre).toBe("Norte");
+    expect(await s.moverAcciones([sur!], "rehacer")).toMatchObject({ ok: true, n: 1 });
+    expect(s.porId.get(u)?.nombre).toBe("Sur");
+    expect(await s.moverAcciones([norte!, sur!], "deshacer")).toMatchObject({ ok: true, n: 2 });
+    expect(s.porId.get(u)?.nombre).toBe("Ventas");
+    expect(h.movidas).toEqual([
+      ["deshacer", [sur]],
+      ["rehacer", [sur]],
+      ["deshacer", [norte, sur]],
+    ]);
+    // el fallo habla del sentido pedido
+    h.falloMover = { codigo: "historial_conflicto", detalle: "x" };
+    expect(await s.moverAcciones([norte!], "rehacer")).toEqual({
+      ok: false,
+      mensaje: "Hay cambios anteriores que también están deshechos: rehazlos primero.",
+    });
+  });
+
+  it("viendo una fecha, el Historial no deshace ni vuelve a un punto", async () => {
+    const s = nuevo();
+    await unidad(s, "Ventas");
+    const [id] = h.bd!.consultar<{ id: string }>("SELECT id FROM historial_acciones").map((f) => f.id);
+    await s.verAFecha("2020-01-01");
+    expect((await s.volverA(id!)).ok).toBe(false);
+    expect((await s.moverAcciones([id!], "deshacer")).ok).toBe(false);
+    expect(h.movidas).toEqual([]);
   });
 
   it("viendo una fecha, Ctrl+Z no escribe", async () => {

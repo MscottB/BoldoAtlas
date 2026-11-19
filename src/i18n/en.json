@@ -13,7 +13,8 @@
     "acerca": "About",
     "llegaFase3": "Coming in Phase 3",
     "llegaFase5": "Coming in Phase 5",
-    "comparar": "Compare"
+    "comparar": "Compare",
+    "historial": "History"
   },
   "barra": {
     "mostrarBarra": "Show sidebar",
@@ -850,7 +851,8 @@
       "comparar": "Compare with “{nombre}”",
       "verAlLado": "View “{nombre}” side by side",
       "deshacer": "Undo the last change",
-      "rehacer": "Redo"
+      "rehacer": "Redo",
+      "historial": "Go to History"
     }
   },
   "organizaciones": {
@@ -2014,6 +2016,12 @@
       "desde": "From",
       "hasta": "Until",
       "motivo": "Reason"
+    },
+    "historial": {
+      "fecha": "Date",
+      "cambio": "Change",
+      "estado": "Status",
+      "elementos": "Items"
     }
   },
   "eliminados": {
@@ -2094,6 +2102,65 @@
       "valor": "a value",
       "otra": "an item"
     },
-    "unArchivo": "a file"
+    "unArchivo": "a file",
+    "estado": {
+      "hecha": "Done",
+      "deshecha": "Undone"
+    },
+    "vista": {
+      "titulo": "Change history",
+      "ver": "View history",
+      "buscar": "Search by name",
+      "desde": "From",
+      "hasta": "To",
+      "soloDe": "Only changes to {nombre}",
+      "verTodo": "Show all",
+      "estasAqui": "You are here",
+      "elementos": "{n} item | {n} items",
+      "vacio": "There are no saved changes.",
+      "sinResultados": "No change matches the search.",
+      "cargando": "Loading…",
+      "bloqueadaSuprimir": "A permanent deletion can't be undone.",
+      "bloqueadaPersona": "It can't be undone: it changed a person who was later permanently deleted.",
+      "irA": "Go to",
+      "deshacer": "Undo this action",
+      "rehacer": "Redo this action",
+      "volver": "Go back to this point",
+      "op": {
+        "insert": "Created",
+        "update": "Changed",
+        "delete": "Deleted"
+      },
+      "eliminado": "Deleted",
+      "si": "Yes",
+      "no": "No",
+      "imagen": "An image",
+      "otro": "another item",
+      "sinCampos": "There are no details to show.",
+      "noEsta": "It's no longer there: there is nowhere to go.",
+      "cancelar": "Cancel",
+      "juntas": {
+        "titulo": {
+          "deshacer": "Undo other actions too",
+          "rehacer": "Redo other actions too"
+        },
+        "texto": {
+          "deshacer": "To undo this action, these must be undone too:",
+          "rehacer": "To redo this action, these must be redone too:"
+        },
+        "boton": {
+          "deshacer": "Undo the {n} together",
+          "rehacer": "Redo the {n} together"
+        },
+        "hecho": {
+          "deshacer": "{n} actions were undone.",
+          "rehacer": "{n} actions were redone."
+        }
+      },
+      "volverTexto": "The action that came after is undone. You can redo it from here. | The {n} actions that came after are undone. You can redo them from here.",
+      "nadaDespues": "There are no done actions after this one.",
+      "volvisteHecho": "Back at this point: {n} action was undone. | Back at this point: {n} actions were undone.",
+      "cargarMas": "Load more"
+    }
   }
 }

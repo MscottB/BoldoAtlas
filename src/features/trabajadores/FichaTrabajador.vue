@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Eraser, ImagePlus, Trash2, X } from "@lucide/vue";
+import { Eraser, History, ImagePlus, Trash2, X } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +33,8 @@ import { MODO_LADO } from "@/lado/modo";
 import { jefeVisible, rutaTexto, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import { asignacionesDePersona, formatearFecha, type FilaPersona } from "@/features/puestos/puestos";
 import { usePuesto } from "@/features/puestos/usePuesto";
+import { rutaHistorial } from "@/features/historial/historial";
+import { irConFoco } from "@/features/pestanas/routerConFoco";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
 import BloquePlegable from "@/components/BloquePlegable.vue";
@@ -237,6 +239,10 @@ async function cerrarParaUbicar() {
   if (await hayCambios()) return preguntar();
   ficha.cerrar();
   return true;
+}
+// «Ver historial»: se cierra como para ubicar (con cambios sin guardar, se pregunta) y la vista se abre en el panel con foco.
+async function verHistorial(personaId: string) {
+  if (await cerrarParaUbicar()) void irConFoco(rutaHistorial("trabajadores", personaId));
 }
 // Antes de dejar la organización se pregunta lo mismo; sin cambios no se cierra aquí, porque el cambio aún puede no ocurrir.
 ficha.registrarSoltar(async () => {
@@ -584,6 +590,10 @@ const alAbrir = (e: Event) => {
           </Button>
           <BotonExcel :lista="datosPersona" :texto="t('ficha.exportarDatos')" />
         </div>
+        <Button v-if="id" type="button" variant="outline" @click="verHistorial(id)">
+          <History aria-hidden="true" />
+          {{ t("historial.vista.ver") }}
+        </Button>
         <DialogClose as-child>
           <Button type="button" variant="outline">{{ t("ficha.cerrar") }}</Button>
         </DialogClose>
