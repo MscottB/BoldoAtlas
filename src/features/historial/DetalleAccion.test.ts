@@ -121,7 +121,16 @@ describe("DetalleAccion", () => {
   });
 
   it("volver a este punto confirma con cuántas deshace", async () => {
-    const s = await html({ pregunta: { tipo: "volver", n: 4 } });
+    const s = await html({ pregunta: { tipo: "volver", n: 4, bloqueada: false } });
     expect(s).toContain(i18n.global.t("historial.vista.volverTexto", { n: 4 }, 4));
+    expect(s).toContain("data-confirmar");
+  });
+
+  it("si una posterior no se puede deshacer, dice por qué y no ofrece confirmar", async () => {
+    const s = await html({ pregunta: { tipo: "volver", n: 4, bloqueada: true } });
+    expect(s).toContain(t("historial.vista.volverBloqueada"));
+    expect(s).toContain(t("historial.vista.cerrar"));
+    expect(s).not.toContain("data-confirmar");
+    expect(s).not.toContain(i18n.global.t("historial.vista.volverTexto", { n: 4 }, 4));
   });
 });

@@ -7,7 +7,7 @@
 Abre **Historial** en el menú lateral, justo debajo de **Revisión**. Los cambios se agrupan por día. Cada uno dice la hora, qué hiciste («Renombraste Ventas a Norte») y cuántos elementos tocó. La lista se carga por partes a medida que bajas.
 
 - La línea **Estás aquí** marca hasta dónde llega lo hecho.
-- Lo que está encima de esa línea está deshecho: se ve atenuado y marcado **Deshecha**.
+- Lo deshecho se ve atenuado y marcado **Deshecha**, también un cambio antiguo que deshiciste solo.
 
 ## Ver un cambio
 

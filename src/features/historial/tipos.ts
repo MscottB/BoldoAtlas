@@ -50,7 +50,8 @@ export type Sentido = "deshacer" | "rehacer";
 
 /** Lo que el detalle pregunta antes de cambiar nada: las otras acciones que van juntas, o cuántas deshace volver a este punto. */
 export type Pregunta =
-  { tipo: "juntas"; sentido: Sentido; acciones: AccionBreve[] } | { tipo: "volver"; n: number };
+  | { tipo: "juntas"; sentido: Sentido; acciones: AccionBreve[] }
+  | { tipo: "volver"; n: number; bloqueada: boolean };
 
 export interface Punteros {
   deshacer: AccionBreve | null;

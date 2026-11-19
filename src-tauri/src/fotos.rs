@@ -121,7 +121,7 @@ pub fn respuesta_de(
     }
     // `servir` quiere `/<id>` y revisa que sea solo un id
     let r = leer_en(estado, lado, base_id, |c| {
-        Ok(servir(c, metodo, &format!("/{id}")))
+        Ok::<_, String>(servir(c, metodo, &format!("/{id}")))
     });
     match r {
         Ok(r) => r,

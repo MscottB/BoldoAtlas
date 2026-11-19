@@ -15,7 +15,8 @@ use lectura::breve;
 #[cfg(test)]
 pub use lectura::nombre_de;
 pub use lectura::{
-    AccionBreve, FilaDetalle, Filtro, Punteros, breves, detalle, pagina, posteriores, punteros,
+    AccionBreve, FilaDetalle, Filtro, Posteriores, Punteros, breves, detalle, pagina, posteriores,
+    punteros,
 };
 
 /// `(tabla, fila_id, op, antes, despues)` de `historial_filas`.

@@ -18,13 +18,16 @@ import { camposVisibles, textoCampo } from "./historial";
 import type { AccionBreve, FilaDetalle, Pregunta, Sentido } from "./tipos";
 
 // El detalle de una acción, campo por campo, y lo que se puede hacer con ella. Quien lo usa pide a Rust y llena
-// `pregunta`: el diálogo nombra las acciones que van juntas, o cuántas deshace «Volver a este punto». Cerrarlo es cancelar.
+// `pregunta` (con `usePregunta`): el diálogo nombra las acciones que van juntas, o cuántas deshace «Volver a este punto».
+// Cerrarlo es cancelar. El botón de confirmar también lo cierra, y antes de su propio clic: por eso `preguntando` va aparte
+// y lo preguntado sigue ahí cuando llega `confirmar`.
 const props = defineProps<{
   accion: AccionBreve;
   /** null: aún se está leyendo. */
   filas: FilaDetalle[] | null;
   soloLectura: boolean;
   pregunta?: Pregunta | null;
+  preguntando?: boolean;
   ocupado?: boolean;
   /** Si hay a dónde ir: lo que tocó sigue existiendo. */
   puedeIr?: boolean;
@@ -114,7 +117,7 @@ const valor = (c: string, v: unknown) => textoCampo(c, v, props.nombreDe ?? (() 
       </Button>
     </div>
 
-    <AlertDialog :open="!!pregunta" @update:open="(v: boolean) => v || emit('cancelar')">
+    <AlertDialog :open="preguntando && !!pregunta" @update:open="(v: boolean) => v || emit('cancelar')">
       <AlertDialogContent>
         <template v-if="pregunta?.tipo === 'juntas'">
           <AlertDialogHeader>
@@ -131,6 +134,16 @@ const valor = (c: string, v: unknown) => textoCampo(c, v, props.nombreDe ?? (() 
             <AlertDialogAction data-confirmar @click="emit('confirmar')">
               {{ t(`historial.vista.juntas.boton.${pregunta.sentido}`, { n: pregunta.acciones.length + 1 }) }}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </template>
+        <!-- Una posterior que no se puede deshacer haría fallar todo: se dice por qué y no se ofrece confirmar. -->
+        <template v-else-if="pregunta?.bloqueada">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{{ t("historial.vista.volver") }}</AlertDialogTitle>
+            <AlertDialogDescription>{{ t("historial.vista.volverBloqueada") }}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{{ t("historial.vista.cerrar") }}</AlertDialogCancel>
           </AlertDialogFooter>
         </template>
         <template v-else-if="pregunta">

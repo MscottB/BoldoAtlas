@@ -299,12 +299,25 @@ pub fn breves(c: &Connection, ids: &[String]) -> Result<Vec<AccionBreve>, Fallo>
         .collect()
 }
 
-/// Cuántas hechas hay después de `id`: las que «Volver a este punto» desharía.
-pub fn posteriores(c: &Connection, id: &str) -> Result<u32, Fallo> {
+/// Las hechas después de una acción: las que «Volver a este punto» desharía.
+#[derive(Debug, PartialEq, Serialize)]
+pub struct Posteriores {
+    pub n: u32,
+    /// Alguna no se puede deshacer: `volver_a` fallaría con `historial_bloqueada`.
+    pub bloqueada: bool,
+}
+
+/// Cuántas hechas hay después de `id`, y si alguna está bloqueada.
+pub fn posteriores(c: &Connection, id: &str) -> Result<Posteriores, Fallo> {
     Ok(c.query_row(
-        "SELECT count(*) FROM historial_acciones WHERE id > ?1 AND estado = 'hecha'",
+        "SELECT count(*), coalesce(max(bloqueada), 0) FROM historial_acciones WHERE id > ?1 AND estado = 'hecha'",
         [id],
-        |f| f.get(0),
+        |f| {
+            Ok(Posteriores {
+                n: f.get(0)?,
+                bloqueada: f.get(1)?,
+            })
+        },
     )?)
 }
 
@@ -357,7 +370,7 @@ pub fn detalle(c: &Connection, id: &str) -> Result<Vec<FilaDetalle>, Fallo> {
 #[cfg(test)]
 mod tests {
     use super::super::tests::{base, lote, unidad};
-    use super::super::{deshacer, limpiar_persona};
+    use super::super::{deshacer, limpiar_persona, volver_a};
     use super::*;
 
     #[test]
@@ -791,7 +804,7 @@ mod tests {
     }
 
     #[test]
-    fn breves_en_su_orden_y_posteriores_cuenta_las_hechas() {
+    fn breves_en_su_orden_y_posteriores_cuenta_las_hechas_y_si_hay_bloqueadas() {
         let mut c = base();
         let a: Vec<String> = ["A", "B", "C"]
             .iter()
@@ -807,10 +820,22 @@ mod tests {
             .collect();
         let pedidas = [a[2].clone(), a[0].clone()];
         assert_eq!(ids(&breves(&c, &pedidas).unwrap()), [&a[2], &a[0]]);
-        assert_eq!(posteriores(&c, &a[0]).unwrap(), 2);
+        let p = |n, bloqueada| Posteriores { n, bloqueada };
+        assert_eq!(posteriores(&c, &a[0]).unwrap(), p(2, false));
         deshacer(&mut c, std::slice::from_ref(&a[2]), "t").unwrap();
-        assert_eq!(posteriores(&c, &a[0]).unwrap(), 1);
-        assert_eq!(posteriores(&c, &a[2]).unwrap(), 0);
+        assert_eq!(posteriores(&c, &a[0]).unwrap(), p(1, false));
+        assert_eq!(posteriores(&c, &a[2]).unwrap(), p(0, false));
+        // una posterior hecha que no se puede deshacer: volver a un punto fallaría, y lo dice antes
+        c.execute(
+            "UPDATE historial_acciones SET bloqueada = 1 WHERE id = ?1",
+            [&a[1]],
+        )
+        .unwrap();
+        assert_eq!(posteriores(&c, &a[0]).unwrap(), p(1, true));
+        assert_eq!(
+            volver_a(&mut c, &a[0], "t").unwrap_err().codigo,
+            "historial_bloqueada"
+        );
     }
 
     #[test]

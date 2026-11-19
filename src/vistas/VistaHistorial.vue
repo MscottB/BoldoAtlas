@@ -28,6 +28,7 @@ import type { AccionBreve, FilaDetalle, Filtro, Pregunta, Sentido } from "@/feat
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { MODO_LADO } from "@/lado/modo";
 import { BaseCambiada } from "@/lib/baseActiva";
+import { usePregunta } from "@/lib/pregunta";
 import { useOrganizacion } from "@/stores/organizacion";
 
 // Historial: las acciones de la más nueva a la más antigua, por partes desde Rust. Deshacer, rehacer y volver a un punto
@@ -60,7 +61,14 @@ const filtrando = computed(
 const acciones = ref<AccionBreve[]>([]);
 const abierta = ref<string | null>(null);
 const detalle = ref<FilaDetalle[] | null>(null);
-const pregunta = ref<Pregunta | null>(null);
+// reka cierra el diálogo antes del clic de confirmar: cerrar no borra lo preguntado, confirmar lo toma
+const {
+  valor: pregunta,
+  abierta: preguntando,
+  preguntar,
+  cerrar: cerrarPregunta,
+  tomar: tomarPregunta,
+} = usePregunta<Pregunta>();
 const fin = ref(false);
 const cargando = ref(false);
 const error = ref<string | null>(null);
@@ -123,7 +131,7 @@ async function leerDetalle() {
 }
 watch(abierta, () => {
   detalle.value = null;
-  pregunta.value = null;
+  tomarPregunta();
   void leerDetalle();
 });
 
@@ -194,22 +202,21 @@ function pedirMover(sentido: Sentido) {
   void trabajar(sentido, async () => {
     const otras = await historialConflictos(a.id, sentido);
     if (!otras.length) return mover(a, [a.id], sentido);
-    pregunta.value = { tipo: "juntas", sentido, acciones: await historialBreves(otras) };
+    preguntar({ tipo: "juntas", sentido, acciones: await historialBreves(otras) });
   });
 }
 function pedirVolver() {
   const a = accion.value;
   if (!a) return;
   void trabajar("deshacer", async () => {
-    const n = await historialPosteriores(a.id);
-    if (n) pregunta.value = { tipo: "volver", n };
+    const { n, bloqueada } = await historialPosteriores(a.id);
+    if (n) preguntar({ tipo: "volver", n, bloqueada });
     else toast(t("historial.vista.nadaDespues"));
   });
 }
 function confirmar() {
-  const [p, a] = [pregunta.value, accion.value];
-  pregunta.value = null;
-  if (!p || !a) return;
+  const [p, a] = [tomarPregunta(), accion.value];
+  if (!p || !a || (p.tipo === "volver" && p.bloqueada)) return;
   const sentido = p.tipo === "juntas" ? p.sentido : "deshacer";
   void trabajar(sentido, async () => {
     if (p.tipo === "juntas") return mover(a, [a.id, ...p.acciones.map((x) => x.id)], p.sentido);
@@ -226,7 +233,7 @@ async function listaExcel(): Promise<Lista> {
   if (filtro.value.texto) filtros.push([t("historial.vista.buscar"), filtro.value.texto]);
   if (desde.value) filtros.push([t("historial.vista.desde"), desde.value]);
   if (hasta.value) filtros.push([t("historial.vista.hasta"), hasta.value]);
-  if (fila.value) filtros.push([t("historial.vista.ver"), nombreFila(fila.value)]);
+  if (fila.value) filtros.push([t("historial.vista.filtroElemento"), nombreFila(fila.value)]);
   return { nombre: t("historial.vista.titulo"), hojas: [hojaHistorial(todas, t)], filtros };
 }
 </script>
@@ -280,6 +287,7 @@ async function listaExcel(): Promise<Lista> {
       :abierta="abierta"
       :filas="detalle"
       :pregunta="pregunta"
+      :preguntando="preguntando"
       :ocupado="ocupado"
       :puede-ir="!!destino"
       :nombre-de="nombreDe"
@@ -288,7 +296,7 @@ async function listaExcel(): Promise<Lista> {
       @mover="pedirMover"
       @volver="pedirVolver"
       @confirmar="confirmar"
-      @cancelar="pregunta = null"
+      @cancelar="cerrarPregunta"
     />
 
     <p v-if="cargando" role="status" class="text-sm text-muted-foreground">

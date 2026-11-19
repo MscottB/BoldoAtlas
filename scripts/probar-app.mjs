@@ -648,6 +648,8 @@ async function historialVolverAPunto(exe, carpeta) {
   const hayUno = (/** @type {string} */ selector, /** @type {string} */ que) =>
     app.hasta(`!!document.querySelector(${JSON.stringify(selector)})`, que);
   await revisarBase(app, carpeta);
+  // por el árbol, como los otros pasos: el store queda cargado y «Volver a este punto» no se rechaza con `sinCargar`
+  await alArbol(app);
   await app.evaluar(`location.hash = "#/historial"`);
   await hayUno(fila, "el primero de los tres cambios en el Historial");
   await clic(`${fila} > button`);

@@ -2160,7 +2160,10 @@
       "volverTexto": "Se deshace la acción que vino después. Puedes rehacerla desde aquí. | Se deshacen las {n} acciones que vinieron después. Puedes rehacerlas desde aquí.",
       "nadaDespues": "No hay acciones hechas después de esta.",
       "volvisteHecho": "Volviste a este punto: se deshizo {n} acción. | Volviste a este punto: se deshicieron {n} acciones.",
-      "cargarMas": "Cargar más"
+      "cargarMas": "Cargar más",
+      "volverBloqueada": "No se puede volver a este punto: un cambio posterior ya no se puede deshacer.",
+      "cerrar": "Cerrar",
+      "filtroElemento": "Solo los cambios de"
     }
   }
 }

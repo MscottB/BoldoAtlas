@@ -1295,12 +1295,11 @@ pub async fn historial_pagina(
             &app.state::<Estado>(),
             &app.state::<Lado>(),
             &base_id,
-            |c| historial::pagina(c, &filtro, antes_de.as_deref(), cuantas).map_err(|e| e.detalle),
+            |c| historial::pagina(c, &filtro, antes_de.as_deref(), cuantas),
         )
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(Fallo::from)
 }
 
 #[tauri::command]
@@ -1314,12 +1313,11 @@ pub async fn historial_detalle(
             &app.state::<Estado>(),
             &app.state::<Lado>(),
             &base_id,
-            |c| historial::detalle(c, &id).map_err(|e| e.detalle),
+            |c| historial::detalle(c, &id),
         )
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(Fallo::from)
 }
 
 /// Las acciones pedidas, para nombrar las que van juntas en un conflicto.
@@ -1337,13 +1335,13 @@ pub async fn historial_breves(
     .map_err(|e| e.to_string())?
 }
 
-/// Cuántas acciones desharía «Volver a este punto» en `id`.
+/// Cuántas acciones desharía «Volver a este punto» en `id`, y si alguna no se puede deshacer.
 #[tauri::command]
 pub async fn historial_posteriores(
     app: AppHandle,
     base_id: String,
     id: String,
-) -> Result<u32, Fallo> {
+) -> Result<historial::Posteriores, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<Estado>()
             .con_conexion(&base_id, |c| historial::posteriores(c, &id))

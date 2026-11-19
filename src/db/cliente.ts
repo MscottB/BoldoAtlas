@@ -224,7 +224,11 @@ export function historialConflictos(id: string, sentido: "deshacer" | "rehacer")
 
 // Lecturas: no esperan a la cola, como `consultar`. Página y detalle también se leen en la organización de al lado.
 /** Hasta `cuantas` (como mucho 200), de la más nueva a la más antigua, las que siguen a `antesDe`. */
-export function historialPagina(filtro: Filtro, antesDe: string | null, cuantas: number): Promise<AccionBreve[]> {
+export function historialPagina(
+  filtro: Filtro,
+  antesDe: string | null,
+  cuantas: number,
+): Promise<AccionBreve[]> {
   return conBase("historial_pagina", { filtro, antesDe, cuantas });
 }
 
@@ -236,9 +240,10 @@ export function historialBreves(ids: string[]): Promise<AccionBreve[]> {
   return conBase("historial_breves", { ids });
 }
 
-/** Cuántas desharía «Volver a este punto» en `id`. */
-export function historialPosteriores(id: string): Promise<number> {
-  return conBase("historial_posteriores", { id });
+/** Cuántas desharía «Volver a este punto» en `id`, y si alguna no se puede deshacer. En la cola, como
+ * `historialConflictos`: cuenta lo que habrá cuando salga el `volver_a` que se pida después. */
+export function historialPosteriores(id: string): Promise<{ n: number; bloqueada: boolean }> {
+  return enCola("historial_posteriores", { id });
 }
 
 /** Espera a que salgan todos los lotes, también los que entren mientras tanto. Nunca falla. */

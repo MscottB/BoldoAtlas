@@ -2160,7 +2160,10 @@
       "volverTexto": "The action that came after is undone. You can redo it from here. | The {n} actions that came after are undone. You can redo them from here.",
       "nadaDespues": "There are no done actions after this one.",
       "volvisteHecho": "Back at this point: {n} action was undone. | Back at this point: {n} actions were undone.",
-      "cargarMas": "Load more"
+      "cargarMas": "Load more",
+      "volverBloqueada": "You can't go back to this point: a later change can no longer be undone.",
+      "cerrar": "Close",
+      "filtroElemento": "Only changes to"
     }
   }
 }

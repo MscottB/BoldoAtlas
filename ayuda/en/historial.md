@@ -7,7 +7,7 @@
 Open **History** in the side menu, right below **Review**. Changes are grouped by day. Each one shows the time, what you did ("You renamed Sales to North") and how many items it touched. The list loads in parts as you scroll down.
 
 - The **You are here** line marks how far what is done goes.
-- What is above that line is undone: it looks faded and is marked **Undone**.
+- What is undone looks faded and is marked **Undone**, also an old change you undid on its own.
 
 ## View a change
 
