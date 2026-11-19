@@ -2,7 +2,12 @@ import type { AccionBreve } from "./tipos";
 
 /** Las acciones (de la más nueva a la más antigua) agrupadas por su día en la zona horaria `zona`, AAAA-MM-DD. */
 export function agruparPorDia(a: AccionBreve[], zona: string): { dia: string; acciones: AccionBreve[] }[] {
-  const dia = new Intl.DateTimeFormat("en-CA", { timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit" });
+  const dia = new Intl.DateTimeFormat("en-CA", {
+    timeZone: zona,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
   const grupos: { dia: string; acciones: AccionBreve[] }[] = [];
   for (const x of a) {
     const d = dia.format(new Date(x.fecha));
@@ -25,7 +30,8 @@ export function instantes(desde: string, hasta: string): { desde?: string; hasta
   return { desde: desde ? inicio(desde, 0) : undefined, hasta: hasta ? inicio(hasta, 1) : undefined };
 }
 
-export type Destino = { unidad: string } | { puesto: { id: string; unidad_id: string } } | { persona: string };
+export type Destino =
+  { unidad: string } | { puesto: { id: string; unidad_id: string } } | { persona: string };
 
 /** «Ir a»: la primera fila de la muestra que sigue existiendo. Una asignación lleva a su persona. */
 export function destinoDe(
