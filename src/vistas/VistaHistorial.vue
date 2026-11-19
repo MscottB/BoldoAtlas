@@ -79,6 +79,7 @@ const pagina = (antes: string | null, cuantas: number) => historialPagina(filtro
 async function leer(antes: string | null, n: number, sumar: boolean) {
   const esta = ++vuelta;
   cargando.value = true;
+  if (!sumar) error.value = null;
   try {
     const r = await leerVarias(pagina, antes, n);
     if (esta !== vuelta) return;
@@ -91,8 +92,9 @@ async function leer(antes: string | null, n: number, sumar: boolean) {
     if (esta === vuelta) cargando.value = false;
   }
 }
+// Tras un error el observador no reintenta (el botón vuelve a montarse y lo vería sin fin): reintenta el clic.
 const masAbajo = () => {
-  if (!cargando.value && !fin.value)
+  if (!cargando.value && !fin.value && !error.value)
     void leer(acciones.value[acciones.value.length - 1]?.id ?? null, PAGINA, true);
 };
 watch(
@@ -309,7 +311,10 @@ async function listaExcel(): Promise<Lista> {
       variant="ghost"
       size="sm"
       class="self-center"
-      @click="masAbajo"
+      @click="
+        error = null;
+        masAbajo();
+      "
     >
       {{ t("historial.vista.cargarMas") }}
     </Button>

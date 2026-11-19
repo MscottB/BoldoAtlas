@@ -214,7 +214,7 @@ pub struct Filtro {
     pub desde: Option<String>,
     /// Instante UTC como `desde`, excluido.
     pub hasta: Option<String>,
-    /// `(tabla, fila_id)`, para «Ver historial» desde una ficha.
+    /// `(tabla, fila_id)`, para «Ver historial» desde una ficha. Una persona o un puesto traen también sus asignaciones.
     pub fila: Option<(String, String)>,
 }
 
@@ -238,13 +238,28 @@ pub fn pagina(
         Some((t, i)) => (Some(t.as_str()), Some(i.as_str())),
         None => (None, None),
     };
+    // el historial de una persona o un puesto trae también sus asignaciones: la columna que las une, como ruta JSON
+    let union = match tabla {
+        Some("trabajadores") => Some("$.trabajador_id"),
+        Some("puestos") => Some("$.puesto_id"),
+        _ => None,
+    };
+    // `asig`: las asignaciones de esa persona o puesto, las de hoy y las que solo quedan en el historial (borradas o
+    // movidas); un cambio que no toca la columna (terminarla, por ejemplo) se reconoce por su id
     let mut st = c.prepare(
-        "SELECT a.id FROM historial_acciones a
+        "WITH asig(id) AS (
+           SELECT id FROM asignaciones
+           WHERE ?6 = '$.trabajador_id' AND trabajador_id = ?5 OR ?6 = '$.puesto_id' AND puesto_id = ?5
+           UNION SELECT fila_id FROM historial_filas
+           WHERE ?6 IS NOT NULL AND tabla = 'asignaciones' AND ?5 IN (json_extract(antes, ?6), json_extract(despues, ?6)))
+         SELECT a.id FROM historial_acciones a
          WHERE (?1 IS NULL OR a.id < ?1)
            AND (?2 IS NULL OR a.fecha >= ?2)
            AND (?3 IS NULL OR a.fecha < ?3)
            AND (?4 IS NULL OR EXISTS (SELECT 1 FROM historial_filas g
-                                      WHERE g.accion_id = a.id AND g.tabla = ?4 AND g.fila_id = ?5))
+                                      WHERE g.accion_id = a.id
+                                        AND (g.tabla = ?4 AND g.fila_id = ?5
+                                             OR g.tabla = 'asignaciones' AND g.fila_id IN asig)))
          ORDER BY a.id DESC",
     )?;
     let mut ids = st.query(params![
@@ -252,7 +267,8 @@ pub fn pagina(
         instante(&f.desde),
         instante(&f.hasta),
         tabla,
-        fila_id
+        fila_id,
+        union
     ])?;
     let mut nombres = Nombres::new();
     let mut pagina = Vec::new();
@@ -270,21 +286,22 @@ pub fn pagina(
     Ok(pagina)
 }
 
-/// Si alguna fila de la acción se llama así (con el nombre que da `nombre_de`; `nombres` recuerda los ya buscados).
+/// Si alguna fila de la acción se llamaba así antes o después de ella, o se llama así hoy (el nombre que da `nombre_de`;
+/// `nombres` recuerda los ya buscados): «Renombraste Ventas a Norte» sale buscando «ventas» y buscando «norte».
 fn toca(c: &Connection, id: &str, buscado: &str, nombres: &mut Nombres) -> Result<bool, Fallo> {
-    let filas: Vec<(String, String, Option<String>)> = c
+    let filas: Vec<(String, String, Option<String>, Option<String>)> = c
         .prepare_cached(
-            "SELECT tabla, fila_id, coalesce(json_extract(despues, '$.nombre'), json_extract(antes, '$.nombre'))
+            "SELECT tabla, fila_id, json_extract(antes, '$.nombre'), json_extract(despues, '$.nombre')
              FROM historial_filas WHERE accion_id = ?1",
         )?
-        .query_map([id], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)))?
+        .query_map([id], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?)))?
         .collect::<rusqlite::Result<_>>()?;
-    for (tabla, fila_id, propio) in filas {
-        let nombre = nombre_en(c, nombres, &tabla, &fila_id)?;
-        if nombre
-            .or(propio)
-            .is_some_and(|n| normalizar_nombre(&n).contains(buscado))
-        {
+    let es = |n: &Option<String>| {
+        n.as_deref()
+            .is_some_and(|n| normalizar_nombre(n).contains(buscado))
+    };
+    for (tabla, fila_id, antes, despues) in filas {
+        if es(&antes) || es(&despues) || es(&nombre_en(c, nombres, &tabla, &fila_id)?) {
             return Ok(true);
         }
     }
@@ -506,9 +523,6 @@ mod tests {
         );
     }
 
-    const LIMITE_UNA_FILA: u64 = 200;
-    const LIMITE_BUSCAR: u64 = 1000;
-
     fn nueva_unidad(c: &mut Connection, id: &str, nombre: &str) -> String {
         lote(
             c,
@@ -574,6 +588,107 @@ mod tests {
         assert!(buscar("zzz").is_empty());
         // un texto en blanco no filtra
         assert_eq!(buscar("  ").len(), 3);
+    }
+
+    #[test]
+    fn buscar_encuentra_el_nombre_anterior_de_un_renombrado() {
+        let mut c = base();
+        let norte = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Norte' WHERE id = 'u1'"],
+        )
+        .unwrap();
+        let crear = nueva_unidad(&mut c, "u2", "Compras");
+        let sur = lote(
+            &mut c,
+            &["UPDATE unidades SET nombre = 'Sur' WHERE id = 'u2'"],
+        )
+        .unwrap();
+        let buscar = |texto: &str| {
+            let f = Filtro {
+                texto: Some(texto.into()),
+                ..Filtro::default()
+            };
+            pagina(&c, &f, None, 50).unwrap()
+        };
+        // «Renombraste Ventas a Norte» sale por el nombre de antes y por el de después
+        assert_eq!(ids(&buscar("ventas")), [norte.as_str()]);
+        assert_eq!(ids(&buscar("norte")), [norte.as_str()]);
+        // crear «Compras», que hoy se llama Sur: sale por los dos
+        assert_eq!(ids(&buscar("compras")), [sur.as_str(), crear.as_str()]);
+        assert_eq!(ids(&buscar("sur")), [sur.as_str(), crear.as_str()]);
+    }
+
+    #[test]
+    fn ver_historial_de_una_persona_incluye_sus_asignaciones() {
+        let mut c = base();
+        c.execute_batch(
+            "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES ('c1', 'Jefe', 'x', 'x');
+             INSERT INTO puestos (id, unidad_id, cargo_id, created_at, updated_at) VALUES ('p1', 'u1', 'c1', 'x', 'x');",
+        )
+        .unwrap();
+        let persona = |c: &mut Connection, id: &str, nombre: &str| {
+            lote(
+                c,
+                &[&format!(
+                    "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('{id}', '{nombre}', 'x', 'x')"
+                )],
+            )
+            .unwrap()
+        };
+        let asignar = |c: &mut Connection, id: &str, trabajador: &str, tipo: &str| {
+            lote(
+                c,
+                &[&format!(
+                    "INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, created_at, updated_at)
+                     VALUES ('{id}', 'p1', '{trabajador}', '{tipo}', '2026-01-01', 'x', 'x')"
+                )],
+            )
+            .unwrap()
+        };
+        let ana = persona(&mut c, "t1", "Ana");
+        let beto = persona(&mut c, "t2", "Beto");
+        let asignar_ana = asignar(&mut c, "s1", "t1", "titular");
+        // terminarla no toca trabajador_id: se reconoce por el id de la asignación
+        let terminar = lote(
+            &mut c,
+            &["UPDATE asignaciones SET hasta = '2026-06-01' WHERE id = 's1'"],
+        )
+        .unwrap();
+        let asignar_beto = asignar(&mut c, "s2", "t2", "reemplazo");
+        // borrada del todo, solo el historial sabe de quién era
+        let borrar = lote(&mut c, &["DELETE FROM asignaciones WHERE id = 's1'"]).unwrap();
+        let de = |tabla: &str, id: &str| {
+            let f = Filtro {
+                fila: Some((tabla.into(), id.into())),
+                ..Filtro::default()
+            };
+            pagina(&c, &f, None, 50).unwrap()
+        };
+        assert_eq!(
+            ids(&de("trabajadores", "t1")),
+            [
+                borrar.as_str(),
+                terminar.as_str(),
+                asignar_ana.as_str(),
+                ana.as_str()
+            ]
+        );
+        assert_eq!(
+            ids(&de("trabajadores", "t2")),
+            [asignar_beto.as_str(), beto.as_str()]
+        );
+        assert_eq!(
+            ids(&de("puestos", "p1")),
+            [
+                borrar.as_str(),
+                asignar_beto.as_str(),
+                terminar.as_str(),
+                asignar_ana.as_str()
+            ]
+        );
+        // otra tabla no suma asignaciones
+        assert!(de("unidades", "u1").is_empty());
     }
 
     #[test]
@@ -750,9 +865,16 @@ mod tests {
         tx.commit().unwrap();
     }
 
+    const LIMITE_UNA_FILA: u64 = 200;
+    const LIMITE_BUSCAR: u64 = 1000;
+    /// Las pruebas de tiempo, de a una: entre ellas no se quitan la CPU.
+    static MIDIENDO: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     /// Con todas las pruebas corriendo a la vez la CPU se reparte y una pasada puede esperar turno: se repite, con pausas,
     /// hasta una que quepa en `limite`; si ninguna de 100 cabe, es lento de verdad. Devuelve la página y lo que tardó.
     fn medir(c: &Connection, f: &Filtro, limite_ms: u64, nombre: &str) -> Vec<AccionBreve> {
+        // si otra prueba de tiempo falló con el candado tomado, este sigue sirviendo
+        let _turno = MIDIENDO.lock().unwrap_or_else(|e| e.into_inner());
         let limite = std::time::Duration::from_millis(limite_ms);
         let mut mejor = std::time::Duration::MAX;
         let mut p = Vec::new();

@@ -117,7 +117,7 @@ const valor = (c: string, v: unknown) => textoCampo(c, v, props.nombreDe ?? (() 
       </Button>
     </div>
 
-    <AlertDialog :open="preguntando && !!pregunta" @update:open="(v: boolean) => v || emit('cancelar')">
+    <AlertDialog :open="!!preguntando" @update:open="(v: boolean) => v || emit('cancelar')">
       <AlertDialogContent>
         <template v-if="pregunta?.tipo === 'juntas'">
           <AlertDialogHeader>
