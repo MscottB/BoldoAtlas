@@ -221,6 +221,10 @@ pub fn lote(
         if s.sql.to_lowercase().contains("historial_") {
             return Err("Sentencia no permitida: historial".into());
         }
+        // las fotos ya no se escriben desde la app de escritorio
+        if s.sql.to_lowercase().contains("foto_png") {
+            return Err("foto_no_permitida".into());
+        }
         tx.execute(&s.sql, params_from_iter(s.params.iter().map(a_sql)))
             .map_err(texto)?;
     }

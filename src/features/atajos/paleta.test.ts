@@ -12,7 +12,6 @@ const persona = (id: string, nombre: string): Trabajador => ({
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  tiene_foto: 0,
   updated_at: "",
 });
 const trabajadores = [persona("t1", "Ana Pérez"), persona("t3", "Luis Muñoz"), persona("t9", "Marta Soto")];

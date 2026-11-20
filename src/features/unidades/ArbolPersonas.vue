@@ -5,8 +5,7 @@ import { useVirtualList } from "@vueuse/core";
 import { ChevronRight } from "@lucide/vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import { useLienzo } from "@/features/arbol/useLienzo";
-import FotoPersona from "@/features/trabajadores/FotoPersona.vue";
-import { normalizarTexto } from "@/lib/texto";
+import { iniciales, normalizarTexto } from "@/lib/texto";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   abrirHastaNivel,
@@ -240,12 +239,13 @@ defineExpose({
             />
           </span>
           <span v-else class="-mx-1 size-6 shrink-0" aria-hidden="true" />
-          <FotoPersona
+          <span
             v-if="personaDe(f)"
-            :src="personaDe(f)?.foto ?? null"
-            :nombre="personaDe(f)?.nombre ?? ''"
-            class="size-8 shrink-0 text-xs"
-          />
+            class="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs"
+            aria-hidden="true"
+          >
+            {{ iniciales(personaDe(f)?.nombre ?? "") }}
+          </span>
           <span v-else class="size-8 shrink-0 rounded-full border border-dashed" aria-hidden="true" />
 
           <span v-if="f.clase === 'unidad'" class="grid min-w-0 flex-1">

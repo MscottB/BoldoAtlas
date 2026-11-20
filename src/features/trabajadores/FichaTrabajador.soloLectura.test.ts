@@ -22,10 +22,6 @@ vi.mock("@/lado/modo", () => ({
   idLado: () => "",
 }));
 vi.mock("@/db/cliente", () => ({ consultar: vi.fn(async () => []) }));
-vi.mock("./foto", async (original) => ({
-  ...(await original<typeof import("./foto")>()),
-  urlFoto: () => "foto://w1",
-}));
 // Los diálogos de reka solo se abren en el navegador: aquí la ficha deja ver lo que lleva; el aviso de cambios, cerrado.
 vi.mock("@/components/ui/dialog", async () => {
   const { h: hh } = await import("vue");
@@ -67,7 +63,6 @@ const persona: Trabajador = {
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  tiene_foto: 1,
   updated_at: "",
 };
 
@@ -95,15 +90,13 @@ beforeEach(() => {
 });
 
 describe("La ficha en solo lectura", () => {
-  it("al lado los campos se ven deshabilitados y no hay eliminar ni foto; ver en el organigrama y cerrar siguen", async () => {
+  it("al lado los campos se ven deshabilitados y no hay eliminar; ver en el organigrama y cerrar siguen", async () => {
     lado.activo = true;
     const s = await html();
     for (const id of ["ficha-nombre", "ficha-correo", "ficha-telefono", "ficha-notas", "ficha-sede_id"])
       expect(etiqueta(s, id), id).toMatch(/\sdisabled[\s>=]/);
     expect(s).toContain('value="Ana Pérez"');
     expect(s).not.toContain(t("ficha.eliminar"));
-    expect(s).not.toContain(t("ficha.elegirFoto"));
-    expect(s).not.toContain(t("ficha.quitarFoto"));
     expect(s).toContain(t("ubicar.ver"));
     expect(s).toContain(t("ficha.cerrar"));
   });
@@ -114,7 +107,12 @@ describe("La ficha en solo lectura", () => {
     for (const id of ["ficha-nombre", "ficha-correo", "ficha-telefono", "ficha-sede_id"])
       expect(etiqueta(s, id), id).not.toMatch(/\sdisabled[\s>=]/);
     expect(s).toContain(t("ficha.eliminar"));
-    expect(s).toContain(t("ficha.elegirFoto"));
-    expect(s).toContain(t("ficha.quitarFoto"));
+  });
+
+  it("muestra las iniciales y ninguna imagen de la persona", async () => {
+    lado.activo = false;
+    const s = await html();
+    expect(s).toMatch(/>\s*AP\s*</);
+    expect(s).not.toContain("<img");
   });
 });

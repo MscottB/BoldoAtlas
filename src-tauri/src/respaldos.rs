@@ -15,7 +15,7 @@ const PREFIJO_SEGURIDAD: &str = "boldo-antes-de-restaurar-";
 const PREFIJO_REEMPLAZO: &str = "boldo-antes-de-reemplazar-";
 /// Copia que se hace antes de agregar o fusionar lo que trae un `.boldo`: de estas quedan las últimas `CONSERVAR_IMPORTAR`.
 const PREFIJO_IMPORTAR: &str = "boldo-antes-de-importar-";
-/// Copia que se hace antes de optimizar las fotos, con las originales: de estas quedan las últimas `CONSERVAR_OPTIMIZAR`.
+/// Ya no se crea (la optimización de fotos se fue), pero los que quedaron se siguen listando y restaurando.
 const PREFIJO_OPTIMIZAR: &str = "boldo-antes-de-optimizar-";
 const SUFIJO_TEMPORAL: &str = ".tmp";
 /// Lo que `db.rs` deja antes de migrar, con el nombre de ahora (`.db`) o de versiones anteriores (`.boldo`).
@@ -27,8 +27,6 @@ pub const CONSERVAR_SEGURIDAD: usize = 10;
 pub const PLAZO_SUPRESION_DIAS: i64 = 30;
 /// Cuántos `boldo-antes-de-importar-` quedan al crear uno nuevo.
 pub const CONSERVAR_IMPORTAR: usize = 20;
-/// Pocos: cada uno guarda las fotos sin reducir, y puede pesar cientos de MB.
-pub const CONSERVAR_OPTIMIZAR: usize = 3;
 
 /// Error con un código estable que el frontend traduce (`respaldos.error.<codigo>`); `detalle` es técnico.
 #[derive(Debug, Serialize)]
@@ -296,25 +294,6 @@ pub fn respaldar_antes_de_importar(
     Ok(nombre)
 }
 
-/// Respaldo previo a optimizar las fotos: va aparte de los automáticos, y de estos quedan los últimos `CONSERVAR_OPTIMIZAR`.
-pub fn respaldar_antes_de_optimizar(
-    conn: &Connection,
-    dir: &Path,
-    sello: &str,
-) -> Result<String, Fallo> {
-    let nombre = volcar(conn, dir, PREFIJO_OPTIMIZAR, sello)?;
-    // el respaldo ya está hecho: si la poda falla, se reintenta la próxima vez
-    for viejo in entradas(dir)
-        .unwrap_or_default()
-        .iter()
-        .filter(|e| e.optimizacion && e.nombre != nombre)
-        .skip(CONSERVAR_OPTIMIZAR - 1)
-    {
-        let _ = fs::remove_file(dir.join(&viejo.nombre));
-    }
-    Ok(nombre)
-}
-
 /// Tras un respaldo de seguridad: quedan los últimos `CONSERVAR_SEGURIDAD` de su tipo, y el recién hecho nunca se va.
 fn podar_seguridad(dir: &Path, prefijo: &str, nuevo: &str) {
     // el respaldo ya está hecho: si la poda falla, se reintenta la próxima vez
@@ -409,6 +388,15 @@ pub(crate) fn fecha_de_eliminada(nombre: &str) -> Option<String> {
     entrada(&format!("{PREFIJO}{cola}"))
         .filter(|e| !e.seguridad)
         .map(|e| fecha_de_sello(&e.sello))
+}
+
+/// Solo los nombres de los respaldos de la carpeta, sin abrir ninguno.
+pub(crate) fn nombres(dir: &Path) -> Vec<String> {
+    entradas(dir)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| e.nombre)
+        .collect()
 }
 
 /// Respaldos de la carpeta, del más nuevo al más viejo. Un archivo ilegible se lista sin revisión;
@@ -611,6 +599,8 @@ fn cambiar_base(
         migrada?;
         quitada?;
         db::asegurar_meta(&c)?;
+        // el respaldo (o el archivo) puede venir de antes de que se dejaran de guardar fotos: la base viva ya sale sin ellas
+        crate::fotos::limpiar(&mut c)?;
         if !previas.is_empty() {
             supresion::reaplicar(&mut c, &previas, &relleno)?;
             // los UPDATE dejan los datos en páginas libres: se compacta antes de que sea la base viva
@@ -1326,57 +1316,17 @@ mod tests {
     }
 
     #[test]
-    fn de_los_respaldos_de_optimizar_quedan_los_ultimos_3_y_los_demas_no_se_tocan() {
+    fn un_respaldo_de_optimizar_antiguo_se_sigue_listando() {
         let dir = tempfile::tempdir().unwrap();
         let conn = Connection::open(dir.path().join("boldo.db")).unwrap();
         conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
             .unwrap();
         let carpeta = dir.path().join("respaldos");
         fs::create_dir(&carpeta).unwrap();
-        let reemplazo = volcar(&conn, &carpeta, PREFIJO_REEMPLAZO, "20200101-0000").unwrap();
-        let importar = respaldar_antes_de_importar(&conn, &carpeta, "20200101-0000").unwrap();
-        let comun = respaldar(&conn, &carpeta, "20200101-0000").unwrap();
-        let hechos: Vec<_> = (0..CONSERVAR_OPTIMIZAR + 2)
-            .map(|n| {
-                respaldar_antes_de_optimizar(&conn, &carpeta, &format!("20250101-{n:04}")).unwrap()
-            })
-            .collect();
-        assert!(hechos[0].starts_with("boldo-antes-de-optimizar-"));
-        assert!(!carpeta.join(&hechos[0]).exists());
-        assert!(!carpeta.join(&hechos[1]).exists());
-        for quedan in &hechos[2..] {
-            assert!(carpeta.join(quedan).exists());
-        }
-        for otro in [&reemplazo, &importar, &comun] {
-            assert!(carpeta.join(otro).exists(), "{otro}");
-        }
+        let viejo = volcar(&conn, &carpeta, PREFIJO_OPTIMIZAR, "20250101-0000").unwrap();
         let lista = listar(&carpeta).unwrap();
-        let r = lista.iter().find(|r| r.nombre == hechos[4]).unwrap();
+        let r = lista.iter().find(|r| r.nombre == viejo).unwrap();
         assert!(r.optimizacion && r.seguridad && !r.reemplazo && !r.importacion);
-    }
-
-    #[test]
-    fn la_poda_de_optimizar_nunca_se_lleva_el_respaldo_recien_hecho() {
-        let dir = tempfile::tempdir().unwrap();
-        let conn = Connection::open(dir.path().join("boldo.db")).unwrap();
-        conn.execute_batch("CREATE TABLE meta (clave TEXT, valor TEXT);")
-            .unwrap();
-        let carpeta = dir.path().join("respaldos");
-        fs::create_dir(&carpeta).unwrap();
-        for n in 0..CONSERVAR_OPTIMIZAR {
-            respaldar_antes_de_optimizar(&conn, &carpeta, &format!("20300101-{n:04}")).unwrap();
-        }
-        // el reloj volvió atrás
-        let nuevo = respaldar_antes_de_optimizar(&conn, &carpeta, "20200101-0000").unwrap();
-        assert!(carpeta.join(&nuevo).exists());
-        assert_eq!(
-            entradas(&carpeta)
-                .unwrap()
-                .iter()
-                .filter(|e| e.optimizacion)
-                .count(),
-            CONSERVAR_OPTIMIZAR
-        );
     }
 
     #[test]
@@ -1601,5 +1551,27 @@ mod tests {
                 "motivo-privado-456",
             ],
         );
+    }
+
+    #[test]
+    fn restaurar_un_respaldo_con_fotos_lo_deja_limpio() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, respaldos, conn) = base(dir.path());
+        conn.execute(
+            "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES ('a', 'Ana', 'FOTO-XYZ', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        let c = db::abrir(&b.bd).unwrap();
+        assert!(!crate::fotos::hay(&c).unwrap());
+        drop(c);
+        let bytes = fs::read(&b.bd).unwrap();
+        assert!(!bytes.windows(8).any(|w| w == b"FOTO-XYZ"));
+        // el respaldo de origen no se toca: sigue con su foto
+        let origen = Connection::open(respaldos.join(&nombre)).unwrap();
+        assert!(crate::fotos::hay(&origen).unwrap());
     }
 }

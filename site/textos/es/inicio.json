@@ -24,7 +24,7 @@
       },
       {
         "titulo": "Las fichas de tu gente se quedan contigo",
-        "texto": "Contacto, contrato, sede, jornada, notas y foto quedan en una base SQLite en tu computador, sin cuentas ni servidor.",
+        "texto": "Contacto, contrato, sede, jornada, y notas quedan en una base SQLite en tu computador, sin cuentas ni servidor.",
         "enlace": { "texto": "Dónde quedan tus datos", "href": "/manual/inicio#donde-quedan-tus-datos" }
       },
       {

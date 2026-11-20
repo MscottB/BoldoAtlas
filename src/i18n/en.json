@@ -172,7 +172,7 @@
         "personasEnTarjetas": "People on the cards",
         "mostrarTipo": "Unit type",
         "mostrarJefe": "Head",
-        "mostrarFoto": "Head's photo",
+        "mostrarFoto": "Head's initials",
         "mostrarDotacion": "Headcount",
         "mostrarVacantes": "Vacancies",
         "mostrarEtiquetas": "Tags"
@@ -482,6 +482,7 @@
     "desdeZip": "BoldoAtlas is running from inside a .zip file ({ruta}). Close it, extract it to a folder first and open it from there; otherwise your data would end up in a temporary folder and be lost.",
     "esquemaNuevo": "This database was created with a newer version of BoldoAtlas (schema {actual}; this app supports up to {conocida}). Update BoldoAtlas to open it.",
     "sinEspacio": "There's no space left on the disk. Free up some space and try again.",
+    "fotoNoPermitida": "Person photos are no longer stored in the desktop app. They are edited on the web only.",
     "abiertaEnOtraCopia": "Another copy of BoldoAtlas has this database open ({ruta}). Close it and open BoldoAtlas again.",
     "sinPermiso": "BoldoAtlas can't write to {ruta}. Move it to a folder you have write access to (for example, Documents) or check that folder's permissions. Details: {detalle}",
     "translocado": "macOS opened BoldoAtlas from a temporary read-only copy ({ruta}). If this is the portable version, remove the quarantine from its folder (xattr -dr com.apple.quarantine <folder>) and open it again; if you installed it from the .dmg, drag it to Applications and open it from there.",
@@ -542,10 +543,6 @@
     "correo": "Email",
     "telefono": "Phone",
     "notas": "Notes",
-    "foto": "Photo",
-    "elegirFoto": "Choose photo",
-    "quitarFoto": "Remove photo",
-    "procesandoFoto": "Preparing the photo…",
     "encabeza": "Units they head",
     "ninguna": "None",
     "eliminar": "Delete",
@@ -562,14 +559,7 @@
     "error": {
       "nombre": "Enter the name.",
       "correo": "The email is not valid.",
-      "fotoTipo": "The photo must be PNG, JPG or WebP.",
-      "fotoPeso": "The photo cannot be larger than 30 MB.",
-      "fotoPesada": "The photo could not be brought below 1 MB.",
-      "fotoDemorada": "The photo took too long to prepare. Choose it again or try another one.",
-      "fotoGuardado": "The photo could not be saved.",
-      "fotoEnorme": "The image has too many pixels (more than 120 megapixels). Choose a smaller one.",
-      "notasLectura": "The notes could not be read. Close the record and open it again.",
-      "fotoLectura": "The photo could not be read."
+      "notasLectura": "The notes could not be read. Close the record and open it again."
     },
     "cerrar": "Close",
     "sinGuardarTitulo": "You have unsaved changes",
@@ -583,6 +573,20 @@
     "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}",
     "masDatos": "More details",
     "exportarDatos": "Export their data"
+  },
+  "fotos": {
+    "aviso": {
+      "titulo": "People's photos",
+      "texto": "This version no longer stores people's photos, to keep less personal data on this computer. You have photos in {donde}. If you want to keep them, first export each organization to a .boldo file (they stay in the file, but this version does not import them).",
+      "organizacion": "“{nombre}”",
+      "respaldos": "{n} backup | {n} backups",
+      "y": " and ",
+      "quitar": "Remove the photos now",
+      "masTarde": "Later"
+    },
+    "avance": "Removing the photos…",
+    "listo": "Done. The photos were removed.",
+    "listoConFallos": "The photos were removed. {n} file could not be cleaned; it will be tried again when the app opens. | The photos were removed. {n} files could not be cleaned; they will be tried again when the app opens."
   },
   "puesto": {
     "nuevo": "New position",
@@ -1046,27 +1050,6 @@
       "titulo": "Organization",
       "nombre": "Organization name"
     },
-    "fotos": {
-      "titulo": "Photos",
-      "ayuda": "New photos are reduced when you choose them. The ones already saved can be reduced here: they look the same and weigh much less.",
-      "optimizar": "Optimize existing photos",
-      "estimando": "Working out how much would be saved…",
-      "nadaQueHacer": "Your photos are already optimized.",
-      "confirmarTitulo": "Optimize the photos?",
-      "confirmarTexto": "{n} photo takes up {total} and would go down to about {quedarian}. A backup with the originals is made first, and it will take up about {respaldo} on disk. | {n} photos take up {total} and would go down to about {quedarian}. A backup with the originals is made first, and it will take up about {respaldo} on disk.",
-      "confirmar": "Optimize",
-      "volver": "Go back",
-      "respaldo": "Making the backup…",
-      "compactando": "Freeing the space in the database…",
-      "avance": "{n} of {total} photos",
-      "avanceEtiqueta": "Optimization progress",
-      "cancelar": "Cancel",
-      "resultado": "Done. Photos optimized: {n}. Space freed: {ahorro}.",
-      "resultadoCancelado": "Canceled. Photos optimized: {n}. Space freed: {ahorro}. The others stay as they were.",
-      "sinCompactar": "The photos were optimized, but the database file could not be made smaller. That space will be reused over time.",
-      "sinGanancia": "{n} photo would not get lighter and was left as it was. | {n} photos would not get lighter and were left as they were.",
-      "fallidas": "{n} photo could not be optimized and stays as it was: | {n} photos could not be optimized and stay as they were:"
-    },
     "logo": {
       "titulo": "Logo",
       "ayuda": "PNG, JPG or WebP up to 1 MB.",
@@ -1393,7 +1376,7 @@
     "importarComparar": "Compare the file with your data",
     "importarAplicarRevision": "Apply what you decided in the review",
     "revisionAbierta": "Import review with unapplied decisions",
-    "optimizarFotos": "Optimize photos",
+    "quitarFotos": "Remove the photos",
     "comparar": "Compare with another organization"
   },
   "salida": {
@@ -1469,6 +1452,7 @@
       "vaciadas": "{n} reference to something that does not come in is left empty. | {n} references to something that does not come in are left empty.",
       "agregarNoDisponible": "Not available: {motivo}. With this file you can only replace everything.",
       "tomaraNombre": "Your database has no name: it will take “{nombre}”.",
+      "fotosQuitadas": "{n} photo was not imported | {n} photos were not imported",
       "tomoNombre": "Your database took the name “{nombre}”.",
       "hechoNada": "Done. There was nothing new to add.",
       "detalle": "{n} record with a notice | {n} records with a notice",
@@ -2045,7 +2029,7 @@
   "suprimir": {
     "boton": "Delete permanently",
     "titulo": "Delete “{nombre}” permanently?",
-    "queSeBorra": "Their email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out; with “No limit”, it stays.",
+    "queSeBorra": "Their email, phone, notes and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out; with “No limit”, it stays.",
     "sinCompactar": "The person was deleted, but the file could not be compacted yet. Close and reopen the organization to finish.",
     "noSeDeshace": "This cannot be undone.",
     "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open.",

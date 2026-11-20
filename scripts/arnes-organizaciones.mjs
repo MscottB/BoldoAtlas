@@ -22,10 +22,7 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TAR, artefactos } from "./release.mjs";
 import {
-  FOTO,
-  OTRA_BASE,
   abrirApp,
-  cargarImagen,
   comprobar,
   comprobarInstaladaIntacta,
   conPuertoAbierto,
@@ -41,11 +38,10 @@ import {
 
 const VECES = 10;
 const META_MS = 1000;
-const FOTOS = 1000;
 const PLAZO_MS = 1_200_000;
 const TIPO_GERENCIA = "00000000-0000-7000-8000-000000000001";
 const UNIDAD = "0190a000-0000-7000-8000-00000000a001";
-const PERSONA = "arnes-foto";
+const PERSONA = "arnes-persona";
 const ORG_MIGRADA = "Organización migrada";
 const RESPALDO = "boldo-20200101-0000.db";
 const CAMBIO = `performance.getEntriesByName("cambio-organizacion")`;
@@ -97,7 +93,7 @@ export const EDITAR = {
     "puesto.nuevoPuesto",
   ],
   arboles: ["arboles.nuevoArbol", "arboles.renombrar", "arboles.subir", "arboles.bajar", "arboles.quitar"],
-  ficha: ["ficha.eliminar", "ficha.elegirFoto", "ficha.quitarFoto"],
+  ficha: ["ficha.eliminar"],
   puesto: [
     "puesto.accion.titular",
     "puesto.accion.reemplazo",
@@ -363,12 +359,6 @@ function extraer(zip, para) {
 /** @typedef {{ id: string, nombre: string, ruta: string }} Otra */
 /** @typedef {{ carpeta: string, exe: string, datos: string }} Portable */
 
-/** La URL de la foto como la arma la app. @param {App} app @param {string} baseId @param {string} persona */
-const urlFoto = (app, baseId, persona) =>
-  app.evaluar(
-    `window.__TAURI_INTERNALS__.convertFileSrc(${JSON.stringify(baseId)}, "foto") + "/${persona}?v=arnes"`,
-  );
-
 /** @param {App} app */
 async function recargar(app) {
   await app.evaluar(`window.__antes = true; void setTimeout(() => location.reload(), 0)`);
@@ -379,7 +369,7 @@ async function recargar(app) {
 const verInicio = (app, que) => app.hasta(`Boolean(document.getElementById("inicio-organizacion"))`, que);
 
 /**
- * Nombre, una raíz y una persona con foto en la base abierta, por su página, y las preferencias dadas. Recarga, para que la
+ * Nombre, una raíz y una persona en la base abierta, por su página, y las preferencias dadas. Recarga, para que la
  * app tenga en memoria lo mismo que quedó guardado: así no lo vuelve a escribir al cerrarse.
  * @param {App} app @param {string} baseId @param {Record<string, string>} preferencias
  */
@@ -395,8 +385,8 @@ async function sembrar(app, baseId, preferencias) {
         params: [UNIDAD, TIPO_GERENCIA, ahora],
       },
       {
-        sql: "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES (?1, 'Persona del arnés', ?2, ?3, ?3)",
-        params: [PERSONA, FOTO, ahora],
+        sql: "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES (?1, 'Persona del arnés', ?2, ?2)",
+        params: [PERSONA, ahora],
       },
     ],
   });
@@ -438,8 +428,8 @@ async function abrirLaNueva(vieja, { carpeta, exe, datos }, antes, exeNuevo, que
     baseId: despues.baseId,
     sql: `SELECT (SELECT valor FROM meta WHERE clave = 'org_nombre') AS nombre,
       (SELECT count(*) FROM unidades WHERE id = ?1) AS unidades,
-      (SELECT count(*) FROM trabajadores WHERE id = ?2 AND foto_png = ?3) AS personas`,
-    params: [UNIDAD, PERSONA, FOTO],
+      (SELECT count(*) FROM trabajadores WHERE id = ?2) AS personas`,
+    params: [UNIDAD, PERSONA],
   });
   const f = filas.valor?.[0];
   comprobar(
@@ -472,11 +462,10 @@ const EN_HORIZONTAL = `Boolean(document.querySelector(".vue-flow__node .vue-flow
 const VISTAS_GUARDADAS = `Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith("boldo:vista")))`;
 
 /**
- * Una rama sin guardar y el árbol se ven en horizontal (la vista sembrada), y la foto responde con su base y no con otra.
- * Cierra la app.
- * @param {App} app @param {string} baseId @param {string} que
+ * Una rama sin guardar y el árbol se ven en horizontal (la vista sembrada). Cierra la app.
+ * @param {App} app @param {string} que
  */
-async function verArbolYFoto(app, baseId, que) {
+async function verArbol(app, que) {
   // Antes que el árbol completo, que cambia la general: una rama sin guardar usa la que se leyó al arrancar. Si main.ts
   // soltara los datos antes de migrar las preferencias, sería la de fábrica (vertical).
   await app.evaluar(`location.hash = "#/?raiz=${UNIDAD}"`);
@@ -496,11 +485,6 @@ async function verArbolYFoto(app, baseId, que) {
     await app.evaluar(EN_HORIZONTAL),
     await app.evaluar(VISTAS_GUARDADAS),
   );
-  const url = await urlFoto(app, baseId, PERSONA);
-  const conSuBase = await app.evaluar(cargarImagen(url));
-  comprobar(`${que}: la foto responde con su base`, conSuBase?.ancho > 0, { url, conSuBase });
-  const conOtra = await app.evaluar(cargarImagen(url.replace(baseId, OTRA_BASE)));
-  comprobar(`${que}: con otra base, la foto no responde`, conOtra === null, conOtra);
   comprobar(`${que}: la nueva cierra con código 0`, (await app.cerrar()) === 0);
 }
 
@@ -563,7 +547,7 @@ async function desdeAntesDeOrganizaciones(zip, exeNuevo) {
     !mal.length,
     mal,
   );
-  await verArbolYFoto(app, despues.baseId, "migración");
+  await verArbol(app, "migración");
   console.log(
     `migración desde antes de varias organizaciones: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`,
   );
@@ -597,7 +581,7 @@ async function desdeLaPublicada(zip, exeNuevo) {
     !mal.length,
     mal,
   );
-  await verArbolYFoto(app, despues.baseId, "actualización");
+  await verArbol(app, "actualización");
   console.log(`actualización desde la publicada: ${fallosHastaAhora() === previos ? "ok" : "FALLA"}`);
 }
 
@@ -687,12 +671,12 @@ function informar(sentido, ms) {
 const verArchivo = (ruta, existe, que) => comprobar(que, existsSync(ruta) === existe, ruta);
 
 /**
- * La grande de sembrar-grande.mjs (10.000 personas y 1.000 fotos) en `bd`, que no debe existir, con el id dado (y el
+ * La grande de sembrar-grande.mjs (10.000 personas, sin fotos) en `bd`, que no debe existir, con el id dado (y el
  * nombre, si se da). Devuelve su nombre.
  * @param {string} bd @param {string} id @param {string} [nombre]
  */
 async function sembrarGrande(bd, id, nombre) {
-  execFileSync(process.execPath, [join("scripts", "sembrar-grande.mjs"), bd, "--fotos", String(FOTOS)], {
+  execFileSync(process.execPath, [join("scripts", "sembrar-grande.mjs"), bd], {
     stdio: "inherit",
     timeout: 300_000,
   });
@@ -713,7 +697,7 @@ const entrada = (o, ruta, externa, color, abierta) => ({
 });
 
 /**
- * Una grande (10.000 personas y 1.000 fotos) en `boldo.db`, una chica interna y dos externas: alterna entre la grande y la
+ * Una grande (10.000 personas) en `boldo.db`, una chica interna y dos externas: alterna entre la grande y la
  * chica y después las elimina todas por la pantalla, `boldo.db` al final.
  * @param {Portable} portable
  */
@@ -758,14 +742,6 @@ async function medicionYEliminar({ carpeta, exe, datos }) {
     info.baseId === grande.id && info.rutaBd === primera.rutaBd,
     { primera, info },
   );
-
-  const conFoto = await app.llamar("db_consultar", {
-    baseId: info.baseId,
-    sql: "SELECT id FROM trabajadores WHERE foto_png IS NOT NULL LIMIT 1",
-    params: [],
-  });
-  const foto = await app.evaluar(cargarImagen(await urlFoto(app, info.baseId, conFoto.valor?.[0]?.id)));
-  comprobar("medición: las fotos sembradas son válidas para la app (256 px)", foto?.ancho === 256, foto);
 
   // Una pestaña de cada una: la chica desde Inicio, y de vuelta a la grande, que queda en el árbol.
   await app.evaluar(`location.hash = "#/bienvenida"`);

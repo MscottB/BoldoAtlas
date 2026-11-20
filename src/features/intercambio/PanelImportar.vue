@@ -51,6 +51,7 @@ import {
   organizacionEnCreacion,
   revisionConDecisiones,
   revisionDejada,
+  textoFotosQuitadas,
   useAvance,
   useTrabajo,
   type ModoImportar,
@@ -462,6 +463,7 @@ onUnmounted(() => {
       <p v-if="modo !== 'nueva' && resumen.informe?.nombreHeredado" class="text-sm">
         {{ t("intercambio.importar.tomaraNombre", { nombre: resumen.informe.nombreHeredado }) }}
       </p>
+      <p v-if="textoFotosQuitadas(resumen)" class="text-sm">{{ textoFotosQuitadas(resumen) }}</p>
       <div v-if="modo !== 'nueva' && resumen.informe" class="overflow-x-auto">
         <table class="text-sm">
           <thead>

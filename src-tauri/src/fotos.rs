@@ -1,250 +1,310 @@
-//! Las fotos de las personas, sin pasar por JSON: el protocolo `foto` las sirve para `<img src>` y dos comandos binarios
-//! las leen y las guardan al optimizarlas. La columna guarda solo el base64 (`foto_png` admite PNG, JPEG y WebP).
-//! Forma de la URL, que arma `convertFileSrc` en el cliente: `http://foto.localhost/<baseId>/<id>` en Windows y
-//! `foto://localhost/<baseId>/<id>` en Linux y macOS.
+//! Las fotos de las personas ya no se guardan en la app de escritorio: viven solo en la edición web. Aquí está lo que las
+//! quita de una base (también de su historial) y la compactación que no deja sus bytes escondidos en el archivo.
 
 use crate::comandos::Estado;
-use crate::db;
-use crate::lado::{Lado, leer_en};
-use crate::organizaciones::{OTRA_BASE, es_id_valido};
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
-use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
-use serde::Deserialize;
-use tauri::http::{Method, Response, StatusCode, header};
-use tauri::ipc::{InvokeBody, Request};
-use tauri::{AppHandle, Manager};
+use crate::intercambio::Sesiones;
+use crate::intercambio::validar::{abrir_no_confiable, para_leer, solo_lectura_cerrada};
+use crate::organizaciones::{ELIMINADAS, Lista, base_de, bloquear, nombres_eliminadas};
+use crate::respaldos::{self, Fallo};
+use crate::rutas::Rutas;
+use rusqlite::{Connection, OpenFlags, TransactionBehavior};
+use serde::Serialize;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, Manager, State};
 
-pub const ESQUEMA: &str = "foto";
+/// Queda en `meta` si las fotos ya se quitaron pero la compactación no pudo terminar: sus bytes siguen en el archivo y el
+/// arranque siguiente lo tiene que volver a intentar.
+const POR_COMPACTAR: &str = "fotos_por_compactar";
 
-/// Solo un id de persona: letras, números y guiones. Una ruta, un `%` o un id con otra forma no llegan a la base.
-fn id_valido(id: &str) -> bool {
-    (1..=64).contains(&id.len())
-        && id
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+/// Lo que el arranque encontró con fotos: los nombres de las organizaciones y cuántos respaldos.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Pendientes {
+    pub organizaciones: Vec<String>,
+    pub respaldos: u32,
 }
 
-/// El tipo sale de los bytes, nunca de lo que diga el dato guardado: un archivo importado no puede hacer pasar otra cosa
-/// (SVG, HTML) por una foto.
-fn tipo_de(b: &[u8]) -> Option<&'static str> {
-    if b.starts_with(&[0x89, b'P', b'N', b'G']) {
-        Some("image/png")
-    } else if b.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        Some("image/jpeg")
-    } else if b.len() >= 12 && &b[..4] == b"RIFF" && &b[8..12] == b"WEBP" {
-        Some("image/webp")
+/// Una base de antes del historial no tiene esas tablas: ahí solo se miran las personas.
+fn tiene_historial(c: &Connection) -> rusqlite::Result<bool> {
+    c.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historial_filas')",
+        [],
+        |f| f.get(0),
+    )
+}
+
+/// Quita todas las fotos de las personas y de su historial, y compacta. Devuelve cuántas personas tenían foto.
+/// Trabaja sin acción abierta: no anota nada en el historial. El archivo queda marcado (`POR_COMPACTAR`) hasta que la
+/// compactación termina: si falla dos veces, devuelve el error y sigue marcado.
+pub fn quitar(c: &mut Connection) -> Result<u64, Fallo> {
+    let historial = tiene_historial(c)?;
+    let tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let quitadas = tx.execute(
+        "UPDATE trabajadores SET foto_png = NULL WHERE foto_png IS NOT NULL",
+        [],
+    )? as u64;
+    if historial {
+        // las filas con foto, anotadas antes de vaciarlas: solo lo que se vació aquí se puede borrar después
+        tx.execute_batch(
+            "CREATE TEMP TABLE foto_filas AS SELECT accion_id, orden FROM historial_filas
+             WHERE tabla = 'trabajadores' AND (json_extract(antes, '$.foto_png') IS NOT NULL
+                                                OR json_extract(despues, '$.foto_png') IS NOT NULL);
+             UPDATE historial_filas SET antes = json_remove(antes, '$.foto_png'), despues = json_remove(despues, '$.foto_png')
+             WHERE (accion_id, orden) IN (SELECT accion_id, orden FROM foto_filas);
+             DELETE FROM historial_filas WHERE op = 'update'
+               AND COALESCE(json_remove(antes, '$.updated_at'), '{}') = '{}'
+               AND COALESCE(json_remove(despues, '$.updated_at'), '{}') = '{}'
+               AND (accion_id, orden) IN (SELECT accion_id, orden FROM foto_filas);
+             DELETE FROM historial_acciones WHERE id IN (SELECT accion_id FROM foto_filas)
+               AND id NOT IN (SELECT accion_id FROM historial_filas);
+             DROP TABLE foto_filas;",
+        )?;
+    }
+    // la marca va en la misma transacción que la limpieza: si la app muere compactando, o la compactación falla, ya está en el
+    // archivo y el arranque siguiente lo vuelve a intentar
+    tx.execute(
+        "INSERT OR REPLACE INTO meta (clave, valor) VALUES (?1, '1')",
+        [POR_COMPACTAR],
+    )?;
+    tx.commit()?;
+    // una vez más: lo habitual es otra conexión leyendo un instante
+    compactar(c).or_else(|_| compactar(c))?;
+    c.execute("DELETE FROM meta WHERE clave = ?1", [POR_COMPACTAR])?;
+    Ok(quitadas)
+}
+
+/// Si queda alguna foto en las personas o en su historial.
+pub fn hay(c: &Connection) -> Result<bool, Fallo> {
+    if c.query_row(
+        "SELECT EXISTS (SELECT 1 FROM trabajadores WHERE foto_png IS NOT NULL)",
+        [],
+        |f| f.get(0),
+    )? {
+        return Ok(true);
+    }
+    if !tiene_historial(c)? {
+        return Ok(false);
+    }
+    Ok(c.query_row(
+        "SELECT EXISTS (SELECT 1 FROM historial_filas WHERE tabla = 'trabajadores'
+                        AND (json_extract(antes, '$.foto_png') IS NOT NULL
+                             OR json_extract(despues, '$.foto_png') IS NOT NULL))",
+        [],
+        |f| f.get(0),
+    )?)
+}
+
+/// `hay`, o una compactación que quedó a medias.
+pub fn pendiente(c: &Connection) -> Result<bool, Fallo> {
+    if hay(c)? {
+        return Ok(true);
+    }
+    Ok(c.query_row(
+        "SELECT EXISTS (SELECT 1 FROM meta WHERE clave = ?1)",
+        [POR_COMPACTAR],
+        |f| f.get(0),
+    )
+    .unwrap_or(false))
+}
+
+/// Cada archivo que puede tener fotos y que la app abre sola: la base de cada organización de la lista que está en `datos`
+/// (`Some(posición)`), y sus respaldos y las copias de organizaciones eliminadas (`None`). Una externa puede estar en una unidad
+/// de red o quitada y colgar el arranque: su base se mira al abrirla (`fotos_hay`). Solo los que existen; los nombres, sin abrir
+/// ningún archivo.
+fn archivos(r: &Rutas, l: &Lista) -> Vec<(Option<usize>, PathBuf)> {
+    let mut v = Vec::new();
+    for (i, e) in l.organizaciones.iter().enumerate() {
+        let base = base_de(r, e);
+        if !e.externa && base.bd.is_file() {
+            v.push((Some(i), base.bd));
+        }
+        for n in respaldos::nombres(&base.respaldos) {
+            v.push((None, base.respaldos.join(n)));
+        }
+    }
+    let carpeta = r.datos.join(ELIMINADAS);
+    for n in nombres_eliminadas(r) {
+        v.push((None, carpeta.join(n)));
+    }
+    v
+}
+
+/// Qué tiene fotos, sin escribir nada: las copias de organizaciones eliminadas cuentan con los respaldos. Un archivo que no se
+/// puede leer cuenta: no se sabe que no las tenga.
+pub fn pendientes(r: &Rutas, l: &Lista) -> Pendientes {
+    let mut p = Pendientes {
+        organizaciones: Vec::new(),
+        respaldos: 0,
+    };
+    for (org, ruta) in archivos(r, l) {
+        // `para_leer`: con `-wal` y sin `-shm`, SQLite crearía el `-shm` al lado
+        let con = para_leer(&ruta, &r.datos)
+            .and_then(|leida| solo_lectura_cerrada(leida.ruta()))
+            .and_then(|c| pendiente(&c))
+            .unwrap_or(true);
+        if !con {
+            continue;
+        }
+        match org {
+            Some(i) => {
+                let e = &l.organizaciones[i];
+                p.organizaciones.push(if e.nombre.is_empty() {
+                    e.id.clone()
+                } else {
+                    e.nombre.clone()
+                });
+            }
+            None => p.respaldos += 1,
+        }
+    }
+    p
+}
+
+/// El id de la organización abierta y cómo limpiarla.
+pub type Abierta<'a> = (&'a str, &'a mut dyn FnMut() -> Result<u64, Fallo>);
+
+/// Lo que hizo `quitar_todas`: cuántas personas tenían foto, y los archivos que fallaron (siguen en `pendientes`).
+#[derive(Debug, Default)]
+pub struct Limpieza {
+    pub quitadas: u64,
+    pub fallos: Vec<String>,
+}
+
+/// Limpia todo lo de `pendientes`. `abierta` es el id de la organización abierta y cómo limpiarla, con su conexión: quien llama
+/// la toma solo mientras dura ese paso. La de `lado` no se toca. Un archivo que falla no detiene a los demás.
+/// `avance(hechos, total)` devuelve si seguir.
+pub fn quitar_todas(
+    r: &Rutas,
+    l: &Lista,
+    mut abierta: Option<Abierta<'_>>,
+    lado: Option<&str>,
+    mut avance: impl FnMut(u32, u32) -> bool,
+) -> Result<Limpieza, Fallo> {
+    let todos = archivos(r, l);
+    let total = todos.len() as u32;
+    let mut resultado = Limpieza::default();
+    for (hecho, (org, ruta)) in todos.into_iter().enumerate() {
+        if !avance(hecho as u32, total) {
+            return Err(Fallo::de("cancelado", ""));
+        }
+        let id = org.map(|i| l.organizaciones[i].id.as_str());
+        if id.is_some() && lado == id {
+            continue;
+        }
+        let limpia = match (abierta.as_mut(), id) {
+            (Some((abierta_id, limpiar_abierta)), Some(id)) if *abierta_id == id => {
+                limpiar_abierta()
+            }
+            _ => limpiar_archivo(&ruta, org.is_some()),
+        };
+        match limpia {
+            Ok(n) => resultado.quitadas += n,
+            Err(f) => {
+                resultado
+                    .fallos
+                    .push(format!("{}: {} {}", ruta.display(), f.codigo, f.detalle))
+            }
+        }
+    }
+    avance(total, total);
+    Ok(resultado)
+}
+
+/// Quita las fotos si hay, o una compactación pendiente. Sin nada, no escribe ni compacta.
+pub(crate) fn limpiar(c: &mut Connection) -> Result<u64, Fallo> {
+    if pendiente(c)? { quitar(c) } else { Ok(0) }
+}
+
+/// Abre el archivo para escribir. El de una organización, con su bloqueo: si otra copia de la app lo tiene, no se toca.
+fn limpiar_archivo(ruta: &Path, es_base: bool) -> Result<u64, Fallo> {
+    let _bloqueo = if es_base {
+        Some(bloquear(ruta, Duration::ZERO)?)
     } else {
         None
-    }
-}
-
-/// Bytes y tipo de lo guardado: solo base64 o, en datos de otra procedencia, un data URL completo.
-fn decodificar(guardado: &str) -> Option<(Vec<u8>, &'static str)> {
-    let base64 = match guardado.strip_prefix("data:") {
-        Some(resto) => resto.split_once(',')?.1,
-        None => guardado,
     };
-    let bytes = STANDARD.decode(base64).ok()?;
-    let tipo = tipo_de(&bytes)?;
-    Some((bytes, tipo))
+    let mut c = abrir_no_confiable(ruta, OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+    limpiar(&mut c)
 }
 
-/// Sin filtrar por `deleted_at`: «ver a una fecha» muestra también a quienes se eliminaron después.
-fn leer(c: &Connection, id: &str) -> Option<(Vec<u8>, &'static str)> {
-    if !id_valido(id) {
-        return None;
-    }
-    let guardado: Option<String> = c
-        .query_row(
-            "SELECT foto_png FROM trabajadores WHERE id = ?1",
-            [id],
-            |f| f.get(0),
-        )
-        .optional()
-        .ok()??;
-    decodificar(&guardado?)
+/// Fuera del hilo de la ventana: abre muchos archivos.
+#[tauri::command(async)]
+pub fn fotos_pendientes(estado: State<Estado>) -> Result<Pendientes, Fallo> {
+    Ok(pendientes(estado.rutas()?, &estado.lista_leida()?))
 }
 
-fn sin_cuerpo(estado: StatusCode) -> Response<Vec<u8>> {
-    let mut r = Response::new(Vec::new());
-    *r.status_mut() = estado;
-    r
+#[derive(Clone, Serialize)]
+struct Avance {
+    hechos: u32,
+    total: u32,
 }
 
-/// Sin datos personales en ningún error: ni el id ni el motivo. La URL lleva `?v=<updated_at>`: al editar una foto cambia la
-/// URL, así que se puede guardar sin caducidad. Optimizar no toca `updated_at`: hasta reiniciar puede verse la copia anterior
-/// en memoria, que es la misma imagen. En WebView2 no quedó copia en su carpeta (60 fotos); en WebKit no está comprobado.
-pub fn servir(c: &Connection, metodo: &Method, ruta: &str) -> Response<Vec<u8>> {
-    if metodo != Method::GET {
-        return sin_cuerpo(StatusCode::METHOD_NOT_ALLOWED);
-    }
-    let id = ruta.strip_prefix('/').unwrap_or_default();
-    if !id_valido(id) {
-        return sin_cuerpo(StatusCode::BAD_REQUEST);
-    }
-    match leer(c, id) {
-        Some((bytes, tipo)) => {
-            let mut r = Response::new(bytes);
-            let h = r.headers_mut();
-            h.insert(header::CONTENT_TYPE, header::HeaderValue::from_static(tipo));
-            h.insert(
-                header::CACHE_CONTROL,
-                header::HeaderValue::from_static("private, max-age=31536000, immutable"),
-            );
-            h.insert(
-                header::X_CONTENT_TYPE_OPTIONS,
-                header::HeaderValue::from_static("nosniff"),
-            );
-            r
-        }
-        None => sin_cuerpo(StatusCode::NOT_FOUND),
-    }
+/// Lo que `fotos_quitar_todas` le dice a la ventana: cuántas personas tenían foto y cuántos archivos no se pudieron limpiar.
+#[derive(Serialize)]
+pub struct Resultado {
+    quitadas: u64,
+    fallos: u32,
 }
 
-/// La ruta es `/<baseId>/<id>`. Solo responde con los datos de la base abierta o de la de al lado: la foto de otra base es un
-/// 404 (sin `Cache-Control`, para que nada de ella quede guardado) y sin base abierta, un 503.
-pub fn respuesta_de(
-    estado: &Estado,
-    lado: &Lado,
-    metodo: &Method,
-    ruta: &str,
-) -> Response<Vec<u8>> {
-    if metodo != Method::GET {
-        return sin_cuerpo(StatusCode::METHOD_NOT_ALLOWED);
+/// `empezar` reemplaza el trabajo en curso: esta limpieza no puede cancelar una importación ni su revisión, así que espera.
+/// shortcut: entre `ocupada` y `empezar` otro trabajo puede colarse; la ventana no lanza dos a la vez, subir a un solo paso atómico si cambia.
+fn reservar(sesiones: &Sesiones, trabajo: &str) -> Result<(), Fallo> {
+    if sesiones.ocupada() {
+        return Err(Fallo::de("trabajo_en_curso", ""));
     }
-    let Some((base_id, id)) = ruta.strip_prefix('/').and_then(|r| r.split_once('/')) else {
-        return sin_cuerpo(StatusCode::BAD_REQUEST);
-    };
-    if !es_id_valido(base_id) {
-        return sin_cuerpo(StatusCode::BAD_REQUEST);
-    }
-    // `servir` quiere `/<id>` y revisa que sea solo un id
-    let r = leer_en(estado, lado, base_id, |c| {
-        Ok::<_, String>(servir(c, metodo, &format!("/{id}")))
-    });
-    match r {
-        Ok(r) => r,
-        Err(e) if e == OTRA_BASE => sin_cuerpo(StatusCode::NOT_FOUND),
-        Err(_) => sin_cuerpo(StatusCode::SERVICE_UNAVAILABLE),
-    }
+    sesiones.empezar(trabajo)
 }
 
-/// Lo que atiende el protocolo: fuera del hilo principal, como `db_consultar`.
-pub fn atender(
-    app: AppHandle,
-    pedido: tauri::http::Request<Vec<u8>>,
-    responder: tauri::UriSchemeResponder,
-) {
-    tauri::async_runtime::spawn_blocking(move || {
-        responder.respond(respuesta_de(
-            &app.state::<Estado>(),
-            &app.state::<Lado>(),
-            pedido.method(),
-            pedido.uri().path(),
-        ));
-    });
-}
-
-/// Los bytes de una foto, para optimizarla en la ventana: respuesta binaria, sin JSON.
+/// Quita las fotos de todas las organizaciones y respaldos. Sigue el trabajo `trabajo`: si se cancela, se detiene.
 #[tauri::command]
-pub async fn foto_bytes(
-    app: AppHandle,
-    base_id: String,
-    id: String,
-) -> Result<tauri::ipc::Response, String> {
+pub async fn fotos_quitar_todas(app: AppHandle, trabajo: String) -> Result<Resultado, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Estado>().con_conexion(&base_id, |c| {
-            leer(c, &id)
-                .map(|(bytes, _)| tauri::ipc::Response::new(bytes))
-                .ok_or_else(|| "foto_no_disponible".to_string())
+        let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
+        // antes de empezar: si falla, la sesión no queda ocupada
+        let (r, lista) = (estado.rutas()?, estado.lista_leida()?);
+        reservar(&sesiones, &trabajo)?;
+        let lado = app.state::<crate::lado::Lado>().id();
+        let avance = |hechos, total| {
+            let _ = app.emit("fotos-avance", Avance { hechos, total });
+            sesiones.sigue(&trabajo)
+        };
+        // la conexión se toma solo mientras se limpia la organización abierta, no todo el trabajo
+        let id = estado.base_abierta().map(|b| b.id);
+        let mut abierta = || {
+            let id = id.as_deref().unwrap_or_default();
+            estado.con_conexion(id, limpiar)
+        };
+        let resultado = quitar_todas(
+            r,
+            &lista,
+            id.as_deref()
+                .map(|i| (i, &mut abierta as &mut dyn FnMut() -> _)),
+            lado.as_deref(),
+            avance,
+        );
+        sesiones.cancelar(&trabajo);
+        let l = resultado?;
+        for f in &l.fallos {
+            eprintln!("fotos: no se pudo limpiar {f}");
+        }
+        Ok(Resultado {
+            quitadas: l.quitadas,
+            fallos: l.fallos.len() as u32,
         })
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-#[derive(Debug, Deserialize)]
-struct FilaLote {
-    id: String,
-    /// `updated_at` y largo de la foto al leerla: si algo cambió mientras se optimizaba, esa fila no se toca.
-    version: String,
-    previos: i64,
-    largo: usize,
+/// Si la organización abierta tiene fotos: un archivo externo se mira al abrirlo.
+#[tauri::command(async)]
+pub fn fotos_hay(estado: State<Estado>, base_id: String) -> Result<bool, Fallo> {
+    estado.con_conexion(&base_id, |c| pendiente(c))
 }
 
-#[derive(Debug, Deserialize)]
-struct Lote {
-    base_id: String,
-    filas: Vec<FilaLote>,
-    version_app: String,
-}
-
-/// Cuerpo: 4 bytes (u32, little endian) con el largo de la descripción en JSON, la descripción y las imágenes seguidas.
-fn desarmar(cuerpo: &[u8]) -> Result<(Lote, &[u8]), String> {
-    let invalido = || "lote_invalido".to_string();
-    let (largo, resto) = cuerpo.split_first_chunk::<4>().ok_or_else(invalido)?;
-    let largo = u32::from_le_bytes(*largo) as usize;
-    if largo > resto.len() {
-        return Err(invalido());
-    }
-    let (meta, imagenes) = resto.split_at(largo);
-    let lote: Lote = serde_json::from_slice(meta).map_err(|_| invalido())?;
-    // sin desbordar: con panic = "abort", un largo enorme cerraría la app
-    let suma = lote
-        .filas
-        .iter()
-        .try_fold(0usize, |s, f| s.checked_add(f.largo));
-    if suma != Some(imagenes.len()) {
-        return Err(invalido());
-    }
-    Ok((lote, imagenes))
-}
-
-/// Un lote, en una transacción. No toca `updated_at`: es la misma foto con menos peso, no un cambio de datos. Si lo tocara,
-/// al fusionar con otra copia todas estas personas contarían como lo más reciente y le ganarían a una edición real hecha allá.
-/// Devuelve cuántas se escribieron.
-fn escribir_lote(c: &mut Connection, lote: &Lote, mut imagenes: &[u8]) -> Result<usize, String> {
-    let tx = c
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(|e| e.to_string())?;
-    let mut escritas = 0;
-    for f in &lote.filas {
-        let (imagen, resto) = imagenes.split_at_checked(f.largo).ok_or("lote_invalido")?;
-        imagenes = resto;
-        if tipo_de(imagen).is_none() {
-            return Err("lote_invalido".into());
-        }
-        escritas += tx
-            .execute(
-                "UPDATE trabajadores SET foto_png = ?1
-                 WHERE id = ?2 AND updated_at = ?3 AND octet_length(foto_png) = ?4",
-                params![STANDARD.encode(imagen), f.id, f.version, f.previos],
-            )
-            .map_err(|e| e.to_string())?;
-    }
-    if escritas > 0 {
-        db::marcar_cambio(&tx, &lote.version_app)?;
-    }
-    tx.commit().map_err(|e| e.to_string())?;
-    Ok(escritas)
-}
-
-/// La base va en el cuerpo porque el comando recibe bytes, no argumentos.
-fn guardar_lote(estado: &Estado, cuerpo: &[u8]) -> Result<usize, String> {
-    let (lote, imagenes) = desarmar(cuerpo)?;
-    estado.con_conexion(&lote.base_id, |c| escribir_lote(c, &lote, imagenes))
-}
-
-#[tauri::command]
-pub async fn fotos_guardar(app: AppHandle, request: Request<'_>) -> Result<usize, String> {
-    let InvokeBody::Raw(cuerpo) = request.body() else {
-        return Err("lote_invalido".into());
-    };
-    let cuerpo = cuerpo.clone();
-    tauri::async_runtime::spawn_blocking(move || guardar_lote(&app.state::<Estado>(), &cuerpo))
-        .await
-        .map_err(|e| e.to_string())?
+/// Quita las fotos de la organización abierta. Devuelve cuántas personas tenían.
+#[tauri::command(async)]
+pub fn fotos_quitar(estado: State<Estado>, base_id: String) -> Result<u64, Fallo> {
+    estado.con_conexion(&base_id, limpiar)
 }
 
 /// Sin esto, lo que ocupaban las fotos queda como páginas libres y el archivo de la base no baja de tamaño. Con WAL, el
@@ -262,369 +322,177 @@ pub(crate) fn compactar(c: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-/// Solo en la abierta: con el id de la de al lado da `otra_base`.
-fn compactar_en(estado: &Estado, base_id: &str) -> Result<(), String> {
-    estado.con_conexion(base_id, |c| compactar(c).map_err(|e| e.to_string()))
-}
-
-#[tauri::command]
-pub async fn fotos_compactar(app: AppHandle, base_id: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || compactar_en(&app.state::<Estado>(), &base_id))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::organizaciones::Base;
+    use crate::db;
+    use base64::Engine;
+    use base64::engine::general_purpose::STANDARD;
 
-    const JPEG: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
+    const MARCA: &str = "FOTO-27C-MARCA";
 
-    /// Lo mismo que `guardar_lote`, sin pasar por el seguro: estas pruebas miran solo la escritura.
-    fn guardar(c: &mut Connection, cuerpo: &[u8]) -> Result<usize, String> {
-        let (lote, imagenes) = desarmar(cuerpo)?;
-        escribir_lote(c, &lote, imagenes)
-    }
-
-    fn base() -> Connection {
+    fn migrada() -> Connection {
         let c = Connection::open_in_memory().unwrap();
-        c.execute_batch(
-            "CREATE TABLE trabajadores (id TEXT PRIMARY KEY, foto_png TEXT, updated_at TEXT, deleted_at TEXT);
-             CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT);
-             INSERT INTO meta VALUES ('data_revision', '0');",
-        )
-        .unwrap();
+        c.pragma_update(None, "recursive_triggers", "ON").unwrap();
+        c.execute_batch(&db::MIGRACIONES.join("\n")).unwrap();
         c
     }
 
-    fn con_foto(c: &Connection, id: &str, foto: &str) {
+    fn cuenta(c: &Connection, sql: &str) -> i64 {
+        c.query_row(sql, [], |f| f.get(0)).unwrap()
+    }
+
+    /// Ana con foto y dos acciones: una cambia nombre y foto, la otra solo la foto.
+    fn con_historial(c: &Connection, foto: &str) {
         c.execute(
-            "INSERT INTO trabajadores (id, foto_png, updated_at) VALUES (?1, ?2, 'v1')",
-            [id, foto],
+            "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES ('ana', 'Ana', ?1, 'x', 'x')",
+            [foto],
         )
         .unwrap();
-    }
-
-    fn lote(filas: &[(&str, &str, i64, &[u8])]) -> Vec<u8> {
-        lote_de("A", filas)
-    }
-
-    fn lote_de(base_id: &str, filas: &[(&str, &str, i64, &[u8])]) -> Vec<u8> {
-        let meta = serde_json::json!({
-            "base_id": base_id,
-            "version_app": "1.0",
-            "filas": filas.iter().map(|(id, v, p, img)| serde_json::json!(
-                { "id": id, "version": v, "previos": p, "largo": img.len() }
-            )).collect::<Vec<_>>(),
-        })
-        .to_string();
-        let mut cuerpo = (meta.len() as u32).to_le_bytes().to_vec();
-        cuerpo.extend_from_slice(meta.as_bytes());
-        for (.., img) in filas {
-            cuerpo.extend_from_slice(img);
-        }
-        cuerpo
-    }
-
-    #[test]
-    fn un_lote_con_otra_base_no_escribe() {
-        let dir = tempfile::tempdir().unwrap();
-        let c = base();
-        con_foto(&c, "ana", "xxxxxxxxxx");
-        let abierta = Base {
-            id: "B".into(),
-            bd: dir.path().join("b.db"),
-            respaldos: dir.path().to_path_buf(),
-        };
-        let e = Estado::de_prueba(Some(c), Some(abierta), None);
-        // el lote dice «A» y está abierta «B»
-        let cuerpo = lote(&[("ana", "v1", 10, JPEG)]);
-        assert_eq!(guardar_lote(&e, &cuerpo).unwrap_err(), "otra_base");
-        let foto: String = e
-            .con_conexion("B", |c| {
-                c.query_row("SELECT foto_png FROM trabajadores", [], |f| f.get(0))
-                    .map_err(|x| x.to_string())
-            })
-            .unwrap();
-        assert_eq!(foto, "xxxxxxxxxx");
-        // un cuerpo mal armado sigue siendo eso
-        assert_eq!(guardar_lote(&e, &[1, 0]).unwrap_err(), "lote_invalido");
-    }
-
-    #[test]
-    fn sirve_la_foto_con_su_tipo_y_cache_por_version() {
-        let c = base();
-        con_foto(&c, "ana-1", &STANDARD.encode(JPEG));
-        let r = servir(&c, &Method::GET, "/ana-1");
-        assert_eq!(r.status(), StatusCode::OK);
-        assert_eq!(r.body(), JPEG);
-        assert_eq!(r.headers()[header::CONTENT_TYPE], "image/jpeg");
-        assert!(
-            r.headers()[header::CACHE_CONTROL]
-                .to_str()
-                .unwrap()
-                .contains("immutable")
-        );
-        assert_eq!(r.headers()[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
-    }
-
-    #[test]
-    fn tambien_acepta_un_data_url_y_mira_los_bytes_no_el_prefijo() {
-        let c = base();
-        con_foto(
-            &c,
-            "dice-png",
-            &format!("data:image/png;base64,{}", STANDARD.encode(JPEG)),
-        );
-        let r = servir(&c, &Method::GET, "/dice-png");
-        assert_eq!(r.headers()[header::CONTENT_TYPE], "image/jpeg");
-    }
-
-    #[test]
-    fn un_id_invalido_no_llega_a_la_base_y_el_error_no_dice_nada() {
-        let c = base();
-        con_foto(&c, "ana", &STANDARD.encode(JPEG));
-        for ruta in [
-            "",
-            "/",
-            "/ana/",
-            "/../boldo.db",
-            "/..%2Fboldo.db",
-            "/ana' OR '1'='1",
-            "/ana%00",
-            "/a b",
-            &format!("/{}", "a".repeat(65)),
+        // como el formulario real: `actualizar()` siempre añade updated_at
+        for sql in [
+            "UPDATE trabajadores SET nombre = 'Ana B', foto_png = 'f2', updated_at = 'y' WHERE id = 'ana'",
+            "UPDATE trabajadores SET foto_png = 'f3', updated_at = 'y' WHERE id = 'ana'",
         ] {
-            let r = servir(&c, &Method::GET, ruta);
-            assert_eq!(r.status(), StatusCode::BAD_REQUEST, "{ruta}");
-            assert!(r.body().is_empty());
+            let accion = crate::historial::abrir_accion(c, "app", &serde_json::json!({})).unwrap();
+            c.execute(sql, []).unwrap();
+            crate::historial::cerrar_accion(c, &accion).unwrap();
         }
     }
 
     #[test]
-    fn sin_foto_o_con_algo_que_no_es_imagen_no_hay_nada_que_servir() {
-        let c = base();
-        c.execute(
-            "INSERT INTO trabajadores (id, updated_at) VALUES ('sin', 'v1')",
-            [],
-        )
-        .unwrap();
-        con_foto(&c, "vacia", "");
-        con_foto(&c, "rota", "esto no es base64 !!!");
-        con_foto(
-            &c,
-            "svg",
-            &format!(
-                "data:image/svg+xml;base64,{}",
-                STANDARD.encode("<svg onload='x'/>")
+    fn quitar_vacia_personas_e_historial() {
+        let mut c = migrada();
+        con_historial(&c, "f1");
+        assert!(hay(&c).unwrap());
+        assert_eq!(quitar(&mut c).unwrap(), 1);
+        assert_eq!(
+            cuenta(
+                &c,
+                "SELECT count(*) FROM trabajadores WHERE foto_png IS NOT NULL"
             ),
+            0
         );
-        for id in ["sin", "vacia", "rota", "svg", "nadie"] {
-            let r = servir(&c, &Method::GET, &format!("/{id}"));
-            assert_eq!(r.status(), StatusCode::NOT_FOUND, "{id}");
-            assert!(r.body().is_empty());
-            assert!(r.headers().is_empty());
-        }
-    }
-
-    const BASE_A: &str = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
-    const BASE_B: &str = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c";
-
-    /// Una base abierta con id `BASE_A` y la foto de `ana`; con `abierta` en falso, sin base abierta.
-    fn estado_con_foto(abierta: bool) -> Estado {
-        let c = base();
-        con_foto(&c, "ana", &STANDARD.encode(JPEG));
-        let base = abierta.then(|| Base {
-            id: BASE_A.into(),
-            bd: Default::default(),
-            respaldos: Default::default(),
-        });
-        Estado::de_prueba(abierta.then_some(c), base, None)
-    }
-
-    #[test]
-    fn foto_con_su_base_se_sirve() {
-        let e = estado_con_foto(true);
-        let r = respuesta_de(
-            &e,
-            &Lado::default(),
-            &Method::GET,
-            &format!("/{BASE_A}/ana"),
-        );
-        assert_eq!(r.status(), StatusCode::OK);
-        assert_eq!(r.body().as_slice(), JPEG);
-        assert!(
-            r.headers()[header::CACHE_CONTROL]
-                .to_str()
-                .unwrap()
-                .contains("immutable")
-        );
-    }
-
-    #[test]
-    fn foto_de_a_con_b_abierta_da_404() {
-        let e = estado_con_foto(true);
-        let r = respuesta_de(
-            &e,
-            &Lado::default(),
-            &Method::GET,
-            &format!("/{BASE_B}/ana"),
-        );
-        assert_eq!(r.status(), StatusCode::NOT_FOUND);
-        assert!(r.body().is_empty());
-        assert!(r.headers().get(header::CACHE_CONTROL).is_none());
-    }
-
-    #[test]
-    fn ruta_sin_base_da_400() {
-        let e = estado_con_foto(true);
-        for ruta in [
-            "/ana",
-            "/",
-            "",
-            "/../x/ana",
-            "/a/b/c",
-            &format!("/{BASE_A}"),
-        ] {
-            let r = respuesta_de(&e, &Lado::default(), &Method::GET, ruta);
-            assert_eq!(r.status(), StatusCode::BAD_REQUEST, "{ruta}");
-            assert!(r.body().is_empty());
-        }
-        // la base va bien, el resto no es un id
-        let r = respuesta_de(
-            &e,
-            &Lado::default(),
-            &Method::GET,
-            &format!("/{BASE_A}/ana/otro"),
-        );
-        assert_eq!(r.status(), StatusCode::BAD_REQUEST);
-    }
-
-    #[test]
-    fn con_la_base_cerrada_da_503() {
-        let e = estado_con_foto(false);
-        let r = respuesta_de(
-            &e,
-            &Lado::default(),
-            &Method::GET,
-            &format!("/{BASE_A}/ana"),
-        );
-        assert_eq!(r.status(), StatusCode::SERVICE_UNAVAILABLE);
-        assert!(r.body().is_empty());
-    }
-
-    #[test]
-    fn la_ruta_con_base_tambien_es_solo_get() {
-        let e = estado_con_foto(true);
-        let r = respuesta_de(
-            &e,
-            &Lado::default(),
-            &Method::POST,
-            &format!("/{BASE_A}/ana"),
-        );
-        assert_eq!(r.status(), StatusCode::METHOD_NOT_ALLOWED);
-    }
-
-    #[test]
-    fn solo_get() {
-        let c = base();
-        con_foto(&c, "ana", &STANDARD.encode(JPEG));
-        let r = servir(&c, &Method::POST, "/ana");
-        assert_eq!(r.status(), StatusCode::METHOD_NOT_ALLOWED);
-    }
-
-    #[test]
-    fn la_persona_eliminada_sigue_teniendo_foto_para_ver_a_una_fecha() {
-        let c = base();
-        con_foto(&c, "ida", &STANDARD.encode(JPEG));
-        c.execute("UPDATE trabajadores SET deleted_at = 'x'", [])
-            .unwrap();
-        assert_eq!(servir(&c, &Method::GET, "/ida").status(), StatusCode::OK);
-    }
-
-    #[test]
-    fn guardar_reemplaza_la_foto_sin_tocar_updated_at() {
-        let mut c = base();
-        let antes = "x".repeat(10);
-        con_foto(&c, "ana", &antes);
-        let escritas = guardar(&mut c, &lote(&[("ana", "v1", 10, JPEG)])).unwrap();
-        assert_eq!(escritas, 1);
-        let (foto, version): (String, String) = c
+        assert!(!hay(&c).unwrap());
+        assert_eq!(cuenta(&c, "SELECT count(*) FROM historial_acciones"), 1);
+        let (antes, despues): (String, String) = c
             .query_row(
-                "SELECT foto_png, updated_at FROM trabajadores WHERE id = 'ana'",
+                "SELECT antes, despues FROM historial_filas WHERE tabla = 'trabajadores'",
                 [],
                 |f| Ok((f.get(0)?, f.get(1)?)),
             )
             .unwrap();
-        assert_eq!(foto, STANDARD.encode(JPEG));
-        assert_eq!(version, "v1");
-        let revision: String = c
-            .query_row(
-                "SELECT valor FROM meta WHERE clave = 'data_revision'",
-                [],
-                |f| f.get(0),
-            )
-            .unwrap();
-        assert_eq!(revision, "1");
+        // la acción que solo cambió la foto (y updated_at) se borró; la mixta conserva nombre y updated_at
+        assert_eq!(antes, r#"{"nombre":"Ana","updated_at":"x"}"#);
+        assert_eq!(despues, r#"{"nombre":"Ana B","updated_at":"y"}"#);
     }
 
     #[test]
-    fn guardar_no_pisa_a_quien_cambio_mientras_se_optimizaba() {
-        let mut c = base();
-        con_foto(&c, "editada", "xxxxxxxxxx");
-        con_foto(&c, "otra-foto", "yyyyyyyyyy");
-        con_foto(&c, "bien", "zzzzzzzzzz");
-        c.execute_batch("UPDATE trabajadores SET updated_at = 'v2' WHERE id = 'editada'; UPDATE trabajadores SET foto_png = 'nueva' WHERE id = 'otra-foto';").unwrap();
-        let escritas = guardar(
-            &mut c,
-            &lote(&[
-                ("editada", "v1", 10, JPEG),
-                ("otra-foto", "v1", 10, JPEG),
-                ("bien", "v1", 10, JPEG),
-            ]),
+    fn reservar_no_pisa_un_trabajo_en_curso() {
+        let s = Sesiones::default();
+        s.empezar("importar").unwrap();
+        assert_eq!(
+            reservar(&s, "fotos").unwrap_err().codigo,
+            "trabajo_en_curso"
+        );
+        assert!(s.sigue("importar"));
+        s.cancelar("importar");
+        reservar(&s, "fotos").unwrap();
+        assert!(s.sigue("fotos"));
+    }
+
+    #[test]
+    fn quitar_no_deja_los_bytes_en_el_archivo() {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("b.db");
+        let mut c = db::abrir(&ruta).unwrap();
+        c.execute_batch(&db::MIGRACIONES.join("\n")).unwrap();
+        let foto = STANDARD.encode(MARCA);
+        con_historial(&c, &foto);
+        // la prueba no vale si la foto nunca llegó al archivo
+        c.query_row("PRAGMA wal_checkpoint(PASSIVE)", [], |_| Ok(()))
+            .unwrap();
+        let en = |archivo: &std::path::Path| std::fs::read(archivo).unwrap_or_default();
+        let esta = |b: &[u8], x: &str| b.windows(x.len()).any(|w| w == x.as_bytes());
+        let (db_, wal) = (en(&ruta), en(&dir.path().join("b.db-wal")));
+        assert!(
+            esta(&db_, &foto) || esta(&wal, &foto),
+            "la foto no estaba antes"
+        );
+        quitar(&mut c).unwrap();
+        for archivo in [ruta, dir.path().join("b.db-wal")] {
+            let bytes = std::fs::read(&archivo).unwrap_or_default();
+            for buscado in [MARCA, foto.as_str()] {
+                assert!(
+                    !bytes
+                        .windows(buscado.len())
+                        .any(|w| w == buscado.as_bytes()),
+                    "{archivo:?} guarda {buscado}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn quitar_no_borra_filas_que_ya_estaban_vacias() {
+        let mut c = migrada();
+        c.execute_batch(
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('sup', 'x', 'suprimir');
+             INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues)
+               VALUES ('sup', 1, 'trabajadores', 'ana', 'update', '{}', '{}');",
         )
         .unwrap();
-        assert_eq!(escritas, 1);
-        let foto = |id: &str| -> String {
-            c.query_row(
-                "SELECT foto_png FROM trabajadores WHERE id = ?1",
-                [id],
-                |f| f.get(0),
-            )
-            .unwrap()
-        };
-        assert_eq!(foto("editada"), "xxxxxxxxxx");
-        assert_eq!(foto("otra-foto"), "nueva");
-        assert_eq!(foto("bien"), STANDARD.encode(JPEG));
+        con_historial(&c, "f1");
+        quitar(&mut c).unwrap();
+        assert_eq!(
+            cuenta(
+                &c,
+                "SELECT count(*) FROM historial_filas WHERE accion_id = 'sup'"
+            ),
+            1
+        );
+        assert_eq!(cuenta(&c, "SELECT count(*) FROM historial_acciones"), 2);
     }
 
     #[test]
-    fn un_lote_mal_armado_o_con_algo_que_no_es_imagen_no_escribe_nada() {
-        let mut c = base();
-        con_foto(&c, "a", "xxxxxxxxxx");
-        con_foto(&c, "b", "yyyyyyyyyy");
-        // la primera fila es buena y la segunda no es imagen: se deshace toda la transacción
-        assert!(
-            guardar(
-                &mut c,
-                &lote(&[("a", "v1", 10, JPEG), ("b", "v1", 10, b"<svg/>")])
-            )
-            .is_err()
+    fn quitar_sin_fotos_no_cambia_nada() {
+        let mut c = migrada();
+        c.execute(
+            "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('ana', 'Ana', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        assert_eq!(quitar(&mut c).unwrap(), 0);
+        assert_eq!(cuenta(&c, "SELECT count(*) FROM historial_acciones"), 0);
+        assert!(!hay(&c).unwrap());
+    }
+
+    #[test]
+    fn lote_rechaza_foto_png() {
+        let mut c = migrada();
+        c.execute(
+            "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES ('ana', 'Ana', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        for sql in [
+            "UPDATE trabajadores SET foto_png = 'x'",
+            "UPDATE trabajadores SET FOTO_PNG = 'x'",
+        ] {
+            let s = [db::Sentencia {
+                sql: sql.into(),
+                params: vec![],
+            }];
+            assert_eq!(db::lote(&mut c, &s, "t").unwrap_err(), "foto_no_permitida");
+        }
+        assert_eq!(
+            cuenta(
+                &c,
+                "SELECT count(*) FROM trabajadores WHERE foto_png IS NOT NULL"
+            ),
+            0
         );
-        let mut sobra = lote(&[("a", "v1", 10, JPEG)]);
-        sobra.push(0);
-        assert!(guardar(&mut c, &sobra).is_err());
-        assert!(guardar(&mut c, &[1, 0]).is_err());
-        assert!(guardar(&mut c, &[255, 255, 255, 255, 1]).is_err());
-        let foto: String = c
-            .query_row(
-                "SELECT foto_png FROM trabajadores WHERE id = 'a'",
-                [],
-                |f| f.get(0),
-            )
-            .unwrap();
-        assert_eq!(foto, "xxxxxxxxxx");
+        assert_eq!(cuenta(&c, "SELECT count(*) FROM historial_acciones"), 0);
     }
 
     #[test]
@@ -666,103 +534,266 @@ mod tests {
         compactar(&c).unwrap();
     }
 
-    #[test]
-    fn largos_que_desbordan_o_no_caben_no_cierran_la_app() {
-        let mut c = base();
-        con_foto(&c, "a", "xxxxxxxxxx");
-        let armar = |largos: &[usize], imagenes: &[u8]| {
-            let filas: Vec<_> = largos
-                .iter()
-                .map(|l| serde_json::json!({ "id": "a", "version": "v1", "previos": 10, "largo": l }))
-                .collect();
-            let meta = serde_json::json!({ "base_id": "A", "version_app": "1", "filas": filas })
-                .to_string();
-            let mut cuerpo = (meta.len() as u32).to_le_bytes().to_vec();
-            cuerpo.extend_from_slice(meta.as_bytes());
-            cuerpo.extend_from_slice(imagenes);
-            cuerpo
-        };
-        // la suma da la vuelta y coincide con lo que hay: sin `checked_add` pasaría y `split_at` entraría en pánico
-        let cuerpo = armar(&[usize::MAX, 8], JPEG);
-        assert_eq!(guardar(&mut c, &cuerpo).unwrap_err(), "lote_invalido");
-        let cuerpo = armar(&[usize::MAX], JPEG);
-        assert_eq!(guardar(&mut c, &cuerpo).unwrap_err(), "lote_invalido");
+    /// Una base con foto en `ruta`, ya cerrada.
+    fn base_con_foto(ruta: &std::path::Path, nombre: &str) {
+        let carpeta = ruta.parent().unwrap();
+        std::fs::create_dir_all(carpeta).unwrap();
+        let mut c = db::abrir(ruta).unwrap();
+        db::migrar_con(&mut c, db::MIGRACIONES, carpeta).unwrap();
+        db::asegurar_meta(&c).unwrap();
+        c.execute(
+            "INSERT OR REPLACE INTO meta (clave, valor) VALUES ('org_nombre', ?1)",
+            [nombre],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES ('ana', 'Ana', 'F', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        c.close().unwrap();
     }
 
-    const FECHA: &str = "2026-11-01T12:00:00.000Z";
-
-    /// B con la foto de `ana`, que no está en A ni en C.
-    fn tres_con_foto() -> crate::lado::prueba::Tres {
-        crate::lado::prueba::tres(&format!(
-            "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at)
-             VALUES ('ana', 'Ana', '{}', '{FECHA}', '{FECHA}');",
-            STANDARD.encode(JPEG)
-        ))
-    }
-
-    #[test]
-    fn foto_del_lado_se_sirve_y_la_de_otra_base_da_404() {
-        let d = tres_con_foto();
-        d.abrir_lado();
-        let pedir = |base: &str| respuesta_de(&d.e, &d.lado, &Method::GET, &format!("/{base}/ana"));
-        let r = pedir(&d.b.id);
-        assert_eq!(r.status(), StatusCode::OK);
-        assert_eq!(r.body().as_slice(), JPEG);
-        for otra in [&d.c.id, &d.a.id] {
-            let r = pedir(otra);
-            assert_eq!(r.status(), StatusCode::NOT_FOUND, "{otra}");
-            assert!(r.headers().get(header::CACHE_CONTROL).is_none());
+    /// Dos organizaciones: la primera con foto y dos respaldos con foto, la segunda sin fotos.
+    fn dos_organizaciones() -> (tempfile::TempDir, Rutas, Lista) {
+        let (exe, r) = crate::organizaciones::prueba::rutas();
+        let con = crate::organizaciones::prueba::interna(&r, "2026");
+        let sin = crate::organizaciones::prueba::interna(&r, "2026");
+        let b_con = base_de(&r, &con);
+        // `interna` deja una base sin fotos: la primera se rehace con foto
+        std::fs::remove_file(&b_con.bd).unwrap();
+        base_con_foto(&b_con.bd, "Con fotos");
+        std::fs::create_dir_all(&b_con.respaldos).unwrap();
+        for sello in ["20260101-0900", "20260102-0900"] {
+            let c = db::abrir(&b_con.bd).unwrap();
+            respaldos::respaldar(&c, &b_con.respaldos, sello).unwrap();
         }
-        d.lado.cerrar();
-        assert_eq!(pedir(&d.b.id).status(), StatusCode::NOT_FOUND);
+        crate::organizaciones::prueba::escribir(&r, vec![con, sin]);
+        let l = crate::organizaciones::cargar_lista(&r);
+        (exe, r, l)
     }
 
     #[test]
-    fn lado_no_escribe() {
-        let d = tres_con_foto();
-        let bd = crate::organizaciones::ruta_de(&d.r, &d.b);
-        let (antes, fecha) = (
-            std::fs::read(&bd).unwrap(),
-            std::fs::metadata(&bd).unwrap().modified().unwrap(),
-        );
-        d.abrir_lado();
-        let id = d.b.id.as_str();
-        // `db_lote`, `fotos_guardar` y `fotos_compactar` solo pasan por la abierta
-        let lote_bd = crate::comandos::db_lote_en(&d.e, id, &[], "t");
-        assert_eq!(lote_bd.unwrap_err(), "otra_base");
-        let cuerpo = lote_de(id, &[("ana", FECHA, 10, JPEG)]);
-        assert_eq!(guardar_lote(&d.e, &cuerpo).unwrap_err(), "otra_base");
-        assert_eq!(compactar_en(&d.e, id).unwrap_err(), "otra_base");
-        // `db_consultar` sí llega al lado, y ahí nada escribe
-        let insertar = "INSERT INTO meta (clave, valor) VALUES ('x', 'y')";
-        let consultada =
-            crate::lado::leer_en(&d.e, &d.lado, id, |c| db::consultar(c, insertar, &[]));
-        assert!(consultada.is_err());
-        let solo_consulta = d.lado.con_lectura(id, |c| {
-            assert!(c.execute(insertar, []).is_err());
-            c.pragma_query_value(None, "query_only", |f| f.get::<_, i64>(0))
-                .map_err(|e| e.to_string())
-        });
-        assert_eq!(solo_consulta.unwrap(), 1);
-        d.lado.cerrar();
-        assert_eq!(std::fs::read(&bd).unwrap(), antes);
-        assert_eq!(std::fs::metadata(&bd).unwrap().modified().unwrap(), fecha);
+    fn pendientes_cuenta_organizaciones_y_respaldos() {
+        let (_exe, r, l) = dos_organizaciones();
+        let p = pendientes(&r, &l);
+        assert_eq!(p.organizaciones, [l.organizaciones[0].nombre.clone()]);
+        assert_eq!(p.respaldos, 2);
+    }
+
+    /// Nombre, tamaño y fecha de modificación de cada archivo bajo `dir`.
+    fn estampas(dir: &std::path::Path) -> Vec<(PathBuf, u64, std::time::SystemTime)> {
+        let mut v = Vec::new();
+        let mut por_ver = vec![dir.to_path_buf()];
+        while let Some(d) = por_ver.pop() {
+            for e in std::fs::read_dir(d).unwrap() {
+                let e = e.unwrap();
+                let m = e.metadata().unwrap();
+                if m.is_dir() {
+                    por_ver.push(e.path());
+                } else {
+                    v.push((e.path(), m.len(), m.modified().unwrap()));
+                }
+            }
+        }
+        v.sort();
+        v
     }
 
     #[test]
-    fn un_lote_que_no_escribio_nada_no_cuenta_como_cambio() {
-        let mut c = base();
-        assert_eq!(
-            guardar(&mut c, &lote(&[("nadie", "v1", 10, JPEG)])).unwrap(),
-            0
-        );
-        let revision: String = c
+    fn pendientes_no_escribe_y_quitar_salta_la_de_al_lado() {
+        let (_exe, r, l) = dos_organizaciones();
+        let antes = estampas(&r.datos);
+        assert_eq!(pendientes(&r, &l).respaldos, 2);
+        assert_eq!(estampas(&r.datos), antes);
+        // la de al lado no se escribe; sus respaldos sí
+        let lado = l.organizaciones[0].id.clone();
+        quitar_todas(&r, &l, None, Some(&lado), |_, _| true).unwrap();
+        let base = base_de(&r, &l.organizaciones[0]);
+        let de_la_base = |v: &[(PathBuf, u64, std::time::SystemTime)]| {
+            v.iter().find(|(p, ..)| *p == base.bd).cloned().unwrap()
+        };
+        assert_eq!(de_la_base(&estampas(&r.datos)), de_la_base(&antes));
+        let p = pendientes(&r, &l);
+        assert_eq!((p.organizaciones.len(), p.respaldos), (1, 0));
+    }
+
+    #[test]
+    fn quitar_todas_sigue_si_un_respaldo_falla() {
+        let (_exe, r, l) = dos_organizaciones();
+        let base = base_de(&r, &l.organizaciones[0]);
+        let malo = base.respaldos.join("boldo-20250101-0000.db");
+        std::fs::write(&malo, "no soy sqlite").unwrap();
+        let mut avances = Vec::new();
+        let l_ = quitar_todas(&r, &l, None, None, |h, t| {
+            avances.push((h, t));
+            true
+        })
+        .unwrap();
+        assert_eq!(l_.quitadas, 3);
+        assert_eq!(l_.fallos.len(), 1);
+        assert_eq!(std::fs::read(&malo).unwrap(), b"no soy sqlite");
+        let p = pendientes(&r, &l);
+        assert_eq!((p.organizaciones.len(), p.respaldos), (0, 1));
+        assert_eq!(avances.last(), Some(&(5, 5)));
+    }
+
+    #[test]
+    fn quitar_todas_usa_la_conexion_abierta_y_se_puede_cancelar() {
+        let (_exe, r, l) = dos_organizaciones();
+        let base = base_de(&r, &l.organizaciones[0]);
+        let mut c = db::abrir(&base.bd).unwrap();
+        let id = l.organizaciones[0].id.clone();
+        let e = quitar_todas(
+            &r,
+            &l,
+            Some((&id, &mut || limpiar(&mut c))),
+            None,
+            |h, _| h == 0,
+        )
+        .unwrap_err();
+        assert_eq!(e.codigo, "cancelado");
+        quitar_todas(
+            &r,
+            &l,
+            Some((&id, &mut || limpiar(&mut c))),
+            None,
+            |_, _| true,
+        )
+        .unwrap();
+        assert!(!hay(&c).unwrap());
+    }
+
+    #[test]
+    fn si_la_compactacion_falla_el_archivo_sigue_pendiente() {
+        let dir = tempfile::tempdir().unwrap();
+        let ruta = dir.path().join("b.db");
+        base_con_foto(&ruta, "X");
+        let mut c = db::abrir(&ruta).unwrap();
+        // un lector con la transacción abierta impide recortar el WAL
+        let lector = db::abrir(&ruta).unwrap();
+        lector
+            .execute_batch("BEGIN; SELECT * FROM trabajadores;")
+            .unwrap();
+        c.busy_timeout(std::time::Duration::from_millis(50))
+            .unwrap();
+        assert!(quitar(&mut c).is_err());
+        // las fotos ya no están, pero el archivo no se da por limpio
+        assert!(!hay(&c).unwrap());
+        assert!(pendiente(&c).unwrap());
+        // la marca ya estaba en el archivo antes de compactar
+        let marca: i64 = c
             .query_row(
-                "SELECT valor FROM meta WHERE clave = 'data_revision'",
-                [],
+                "SELECT count(*) FROM meta WHERE clave = ?1",
+                [POR_COMPACTAR],
                 |f| f.get(0),
             )
             .unwrap();
-        assert_eq!(revision, "0");
+        assert_eq!(marca, 1);
+        lector.execute_batch("COMMIT").unwrap();
+        assert_eq!(quitar(&mut c).unwrap(), 0);
+        assert!(!pendiente(&c).unwrap());
+    }
+
+    #[test]
+    fn una_base_de_antes_del_historial_se_limpia() {
+        let mut c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE trabajadores (id TEXT PRIMARY KEY, foto_png TEXT);
+             CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT);
+             INSERT INTO trabajadores VALUES ('a', 'F');",
+        )
+        .unwrap();
+        assert!(hay(&c).unwrap());
+        assert_eq!(quitar(&mut c).unwrap(), 1);
+        assert!(!pendiente(&c).unwrap());
+    }
+
+    #[test]
+    fn una_externa_no_se_cuenta_ni_se_escribe() {
+        let (_exe, r, mut l) = dos_organizaciones();
+        let afuera = tempfile::tempdir().unwrap();
+        let ruta = afuera.path().join("externa.db");
+        base_con_foto(&ruta, "Externa");
+        let mut e = crate::organizaciones::prueba::entrada(
+            &l.organizaciones[1].id,
+            &ruta.to_string_lossy(),
+            true,
+            "2026",
+        );
+        e.nombre = "Externa".into();
+        // la segunda entrada pasa a ser externa
+        l.organizaciones[1] = e;
+        let antes = estampas(afuera.path());
+        let p = pendientes(&r, &l);
+        assert_eq!(p.organizaciones, [l.organizaciones[0].nombre.clone()]);
+        quitar_todas(&r, &l, None, None, |_, _| true).unwrap();
+        assert_eq!(estampas(afuera.path()), antes);
+        assert!(hay(&Connection::open(&ruta).unwrap()).unwrap());
+    }
+
+    #[test]
+    fn las_copias_de_organizaciones_eliminadas_se_cuentan_y_se_limpian() {
+        let (_exe, r, l) = dos_organizaciones();
+        let c = db::abrir(&base_de(&r, &l.organizaciones[0]).bd).unwrap();
+        crate::organizaciones::guardar_eliminada(&r, &l.organizaciones[0], &c).unwrap();
+        drop(c);
+        assert_eq!(pendientes(&r, &l).respaldos, 3);
+        quitar_todas(&r, &l, None, None, |_, _| true).unwrap();
+        assert_eq!(pendientes(&r, &l).respaldos, 0);
+    }
+
+    #[test]
+    fn pendientes_no_deja_un_shm_al_lado_de_un_wal_sin_shm() {
+        let (_exe, r, l) = dos_organizaciones();
+        let bd = base_de(&r, &l.organizaciones[0]).bd;
+        crate::organizaciones::prueba::wal_sin_shm(
+            &bd,
+            "UPDATE trabajadores SET nombre = 'Ana B' WHERE id = 'ana'",
+        );
+        let shm = crate::respaldos::con_sufijo(&bd, "-shm");
+        assert_eq!(pendientes(&r, &l).organizaciones.len(), 1);
+        assert!(!shm.exists());
+    }
+
+    #[test]
+    fn copiar_a_carpeta_deja_la_organizacion_nueva_sin_fotos() {
+        let (_exe, r, l) = dos_organizaciones();
+        let origen = base_de(&r, &l.organizaciones[0]).bd;
+        assert!(hay(&Connection::open(&origen).unwrap()).unwrap());
+        let id =
+            crate::organizaciones::copiar_a_carpeta(&r, &origen, None, db::MIGRACIONES).unwrap();
+        let c = Connection::open(r.datos.join(crate::organizaciones::ruta_interna(&id))).unwrap();
+        assert!(!pendiente(&c).unwrap());
+        assert_eq!(
+            c.query_row("SELECT count(*) FROM trabajadores", [], |f| f
+                .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+    }
+
+    /// Medición (a mano): cuánto baja el archivo al quitar las fotos de la grande. Trabaja EN SITIO sobre la base que diga
+    /// BOLDO_MEDIR_BD: sembrarla antes en una carpeta de prueba, nunca en los datos de la app.
+    ///   node scripts/sembrar-grande.mjs <carpeta>/boldo.db --fotos 1000
+    ///   BOLDO_MEDIR_BD=<carpeta>/boldo.db cargo test medir_quitar_en_la_grande -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn medir_quitar_en_la_grande() {
+        let ruta = std::path::PathBuf::from(
+            std::env::var("BOLDO_MEDIR_BD").expect("falta BOLDO_MEDIR_BD"),
+        );
+        let tam = |c: &Connection| {
+            let _ = c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |f| {
+                f.get::<_, i64>(0)
+            });
+            std::fs::metadata(&ruta).unwrap().len()
+        };
+        let mut c = Connection::open(&ruta).unwrap();
+        c.pragma_update(None, "journal_mode", "WAL").unwrap();
+        let antes = tam(&c);
+        let n = quitar(&mut c).unwrap();
+        let despues = tam(&c);
+        println!("MEDICION fotos={n} antes={antes} bytes despues={despues} bytes");
     }
 }

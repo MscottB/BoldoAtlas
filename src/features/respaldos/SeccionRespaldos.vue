@@ -47,7 +47,7 @@ async function cargar() {
   }
 }
 onMounted(cargar);
-// Un trabajo que termina pudo dejar un respaldo nuevo (optimizar las fotos, sin salir de esta vista).
+// Un trabajo que termina pudo dejar un respaldo nuevo o cambiar uno (quitar las fotos, sin salir de esta vista).
 watch(ultimoFin, cargar);
 
 async function respaldar() {

@@ -44,7 +44,6 @@ const w = (id: string, nombre: string): Trabajador => ({
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  tiene_foto: 0,
   updated_at: "",
 });
 
@@ -137,6 +136,12 @@ describe("El directorio en modo Árbol", () => {
     // La cifra del encabezado es la del árbol: 7 asignaciones y la vacante de Finanzas.
     expect(s).toContain(i18n.global.t("directorio.arbol.filas", 8));
     expect(s).not.toContain(i18n.global.t("directorio.filas", 9));
+  });
+
+  it("cada persona lleva sus iniciales y ninguna imagen", async () => {
+    const s = await html();
+    expect(s).toMatch(/>\s*AP\s*</);
+    expect(s).not.toContain("<img");
   });
 
   it("el árbol solo tiene treeitems: los íconos de ubicar van fuera de él, uno por persona", async () => {

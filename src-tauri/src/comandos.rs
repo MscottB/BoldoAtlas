@@ -229,6 +229,13 @@ impl Estado {
         *self.aviso_inicio.lock().unwrap_or_else(|p| p.into_inner()) = aviso;
     }
 
+    /// La lista, leída con su candado.
+    pub(crate) fn lista_leida(&self) -> Result<Lista, Fallo> {
+        let r = self.rutas()?;
+        let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+        Ok(cargar_lista(r))
+    }
+
     fn listar_organizaciones(&self) -> Result<Vec<OrganizacionVista>, Fallo> {
         let r = self.rutas()?;
         let lista = {
@@ -1427,23 +1434,6 @@ pub async fn podar_respaldos_suprimidas(app: AppHandle, base_id: String) -> Resu
                     f.get(0)
                 })?;
             respaldos::podar_por_supresiones(&dir, &suprimidas, &ahora)
-        })
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-/// Antes de optimizar las fotos: conserva las originales, y de estos quedan los últimos 3.
-#[tauri::command]
-pub async fn respaldar_antes_de_optimizar(
-    app: AppHandle,
-    base_id: String,
-) -> Result<String, Fallo> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let estado = app.state::<Estado>();
-        let dir = estado.base(&base_id)?.respaldos;
-        estado.con_conexion(&base_id, |c| {
-            respaldos::respaldar_antes_de_optimizar(c, &dir, &respaldos::sello_local(c)?)
         })
     })
     .await

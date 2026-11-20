@@ -23,7 +23,6 @@ const w = (
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  tiene_foto: 0,
   updated_at: "2026-01-01T00:00:00.000Z",
   ...extra,
 });

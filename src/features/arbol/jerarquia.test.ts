@@ -247,7 +247,6 @@ describe("personasPorUnidad (jefatura y caras de la tarjeta)", () => {
     tipo_contrato_id: null,
     sede_id: null,
     jornada_id: null,
-    tiene_foto: 0,
     updated_at: "",
   });
   const gente = (...ids: string[]) => new Map(ids.map((id) => [id, persona(id)]));
@@ -509,7 +508,6 @@ describe("organigrama a una fecha", () => {
       tipo_contrato_id: null,
       sede_id: null,
       jornada_id: null,
-      tiene_foto: 0,
       updated_at: "",
     });
     const historico = {

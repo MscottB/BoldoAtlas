@@ -1,5 +1,17 @@
 [
   {
+    "id": "sin-fotos-en-el-escritorio",
+    "pagina": "fichas",
+    "es": {
+      "titulo": "Menos datos personales en tu equipo",
+      "texto": "El escritorio ya no guarda fotos de las personas: las tarjetas, la ficha y el Directorio muestran sus iniciales. Si tenías fotos, al abrir la app un aviso te ofrece quitarlas, también de tus respaldos."
+    },
+    "en": {
+      "titulo": "Less personal data on your computer",
+      "texto": "The desktop app no longer stores people photos: the cards, the record and the Directory show their initials. If you had photos, a notice when you open the app offers to remove them, backups included."
+    }
+  },
+  {
     "id": "historial-de-cambios",
     "pagina": "historial",
     "es": {

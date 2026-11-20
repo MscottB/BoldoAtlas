@@ -5,6 +5,7 @@ const esCheck = (t: string) => t.includes("CHECK constraint failed");
 
 const reglas: [(texto: string) => boolean, string][] = [
   [(t) => t === "sin_espacio", "errores.sinEspacio"],
+  [(t) => t === "foto_no_permitida", "errores.fotoNoPermitida"],
   [(t) => t === "otra_base", "respaldos.error.otra_base"],
   [(t) => t === "solo_lectura", "respaldos.error.solo_lectura"],
   [(t) => t === "misma", "respaldos.error.misma"],

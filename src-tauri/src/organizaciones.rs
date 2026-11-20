@@ -164,7 +164,7 @@ const VERSION_LISTA: u32 = 1;
 const PRINCIPAL: &str = "boldo.db";
 pub(crate) const CARPETA: &str = "organizaciones";
 const ARCHIVO: &str = "organizacion.db";
-const ELIMINADAS: &str = "organizaciones-eliminadas";
+pub(crate) const ELIMINADAS: &str = "organizaciones-eliminadas";
 /// Cuánto del nombre de la organización va en el nombre de su copia. Un nombre largo no debe agotar el de la ruta.
 const LARGO_EN_COPIA: usize = 40;
 /// Cuántas veces se intenta leer la lista si el error no es que falte, y la pausa entre intentos.
@@ -727,6 +727,15 @@ pub(crate) fn copiar_a_carpeta(
     // el origen se leyó dos veces, y otro equipo pudo cambiarlo entre medio: una interna no vuelve a pasar por `version_y_esquema`.
     // El total no rechaza: ya se preguntó por el del origen.
     revisar_organizacion(temporal.ruta(), migraciones, MAX_BYTES_VIVOS)?;
+    // el origen puede venir de antes de que se dejaran de guardar fotos: la organización nueva sale sin ellas
+    {
+        let mut c = crate::intercambio::validar::abrir_no_confiable(
+            temporal.ruta(),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,
+        )?;
+        crate::fotos::limpiar(&mut c)?;
+        c.close().map_err(|(_, e)| e)?;
+    }
     let id_copia = id_del_archivo(&solo_lectura_cerrada(temporal.ruta())?)?;
     let ocupada = |id: &str| {
         let bd = r.datos.join(ruta_interna(id));
@@ -1222,7 +1231,7 @@ pub fn borrar_respaldos_de(r: &Rutas, e: &Entrada) -> Result<(), Fallo> {
 }
 
 /// Las copias que hay. Solo lo que tiene su forma de nombre: lo demás de la carpeta no se muestra, y por lo tanto no se borra.
-fn nombres_eliminadas(r: &Rutas) -> Vec<String> {
+pub(crate) fn nombres_eliminadas(r: &Rutas) -> Vec<String> {
     fs::read_dir(r.datos.join(ELIMINADAS))
         .into_iter()
         .flatten()

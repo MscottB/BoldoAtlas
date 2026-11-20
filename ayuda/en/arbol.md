@@ -11,8 +11,8 @@ The tree is the main screen: it shows your organization as an org chart you can 
 Each unit is a card with:
 
 - its type (for example, Gerencia or Área) and its name;
-- the photo or initials and name of its head (**Replacement: name** if its position only has a replacement), or **No head assigned** if it has none; with **People on the cards**, also the head's job title;
-- with **People on the cards**, a row with the faces (photo or initials) of up to 4 more people in the unit and **+N** for those that don't fit. It counts only the unit itself, without its sub-units, and each person once. Press the faces (or `Tab` to them and `Enter`) to see the list on the panel's **People** tab;
+- the initials and name of its head (**Replacement: name** if its position only has a replacement), or **No head assigned** if it has none; with **People on the cards**, also the head's job title;
+- with **People on the cards**, a row with the initials of up to 4 more people in the unit and **+N** for those that don't fit. It counts only the unit itself, without its sub-units, and each person once. Press the faces (or `Tab` to them and `Enter`) to see the list on the panel's **People** tab;
 - the total headcount of its branch (the unit and everything under it); press it (or `Tab` to it and `Enter`) to see who they are on the panel's **People** tab;
 - the branch's vacancies, if any;
 - a colored dot for each tag (hover over it to see its name).
@@ -207,7 +207,7 @@ In addition, **Customize** lets you choose:
 - **Density**: **Normal** or **Compact**. The compact card is one line (name, headcount and vacancies) and reduces the spacing: use it for very large trees. On the selected compact card, the headcount and vacancies make room for the buttons.
 - **Lines** (in **Advanced**): right-angle or curved.
 - **Align by unit type** (in **Advanced**): each unit goes in the row (or column, when horizontal) of its type, in the order of the type list; for example, all Área units share one row even if they hang at different depths. Only the types of the units on screen take a row (a type with no visible unit, or whose units are in collapsed branches, leaves no empty row). If a unit's type would put it in its parent's row or above, it moves to the row right after its parent's, so lines always go down (or right): with a Gerencia inside another Gerencia, the rows of the following types start lower; with a Gerencia under an Área, only that branch moves down. Positions are stacked under their unit and take no row.
-- **What to show on cards** (with how many are on): people on the cards, unit type, head, head's photo, headcount, vacancies and tags.
+- **What to show on cards** (with how many are on): people on the cards, unit type, head, head's initials, headcount, vacancies and tags.
 - **People on the cards** (on at first): the head shows with their job title and, below, the faces of the unit's team. The card gets a little taller. Since the head is already on the card, with **Show positions** their position isn't repeated underneath, as in a classic org chart; the other positions still show. The compact card and the simplified card (zoomed out with many cards) don't show people. On a past date you see the people of that day. The faces open the **People** tab with **Include sub-units** off, so the list is the same people they count. With **Head** off the head isn't shown on the card, but still counts in the team number (the name of the faces button).
 
 Each tree (the full one or a subtree saved in Trees) remembers on this computer, for each organization, the last configuration you used in it.
@@ -253,7 +253,7 @@ The **Summary** tab holds, in this order:
 
 The **Positions** tab lists the unit's direct positions: job title, holder or **Vacant**, **Replacement: name** and its legend color. Press one to open its record, or **New position** to create another (see "Positions and replacements").
 
-The **People** tab lists who holds the positions: current holders and replacements, with their photo (or initials), name, job title, type (**Holder** or **Replacement**) and unit. A person with two positions appears once per position. Above the list:
+The **People** tab lists who holds the positions: current holders and replacements, with their initials, name, job title, type (**Holder** or **Replacement**) and unit. A person with two positions appears once per position. Above the list:
 
 - The search box (name, job title, unit or email, ignoring accents and case) and the order **By name**, **By job title** or **By unit**.
 - **Include sub-units** (on when the tab opens): adds the people of the whole branch, like the card's headcount. Off, only the unit's own positions.
@@ -262,11 +262,11 @@ The **People** tab lists who holds the positions: current holders and replacemen
 - **View in the directory**: opens the Directory filtered by this unit and its branch.
 - **Summary by job title** (expands when pressed): how many positions of each job title there are and how many are vacant (no holder); in brackets, the vacancies covered by a replacement.
 
-Press a person to see their **preview** in the same panel: photo, email, phone, current positions and history. **Open record** opens their full record to edit it; **Back to the list** (or `Esc`) returns to the list at the same place, with focus on the person you opened. With a date chosen, the list and the preview show who was assigned that day.
+Press a person to see their **preview** in the same panel: email, phone, current positions and history. **Open record** opens their full record to edit it; **Back to the list** (or `Esc`) returns to the list at the same place, with focus on the person you opened. With a date chosen, the list and the preview show who was assigned that day.
 
 **List** and **Tree** change how those same people are shown; your choice is remembered on this computer, for each organization. The **tree** starts at the panel's unit and shows what sits below it, parent and child:
 
-- Each unit shows its name, its type, its head (photo or initials, name and job title) and how many people its branch has: the holders, the same figure as the card (replacements show but do not add up). Above, **assignments** counts every row of people, like the list. Below it come its other people (replacements, marked), its positions with nobody as **Vacant** and then its sub-units. With **Include sub-units** off you see only the unit.
+- Each unit shows its name, its type, its head (initials, name and job title) and how many people its branch has: the holders, the same figure as the card (replacements show but do not add up). Above, **assignments** counts every row of people, like the list. Below it come its other people (replacements, marked), its positions with nobody as **Vacant** and then its sub-units. With **Include sub-units** off you see only the unit.
 - It opens at the first level. A unit's arrow opens or closes it; **Expand all** opens them all and **Collapse all** goes back to the first level.
 - Press a person or a head's name to see their preview; **Back to the tree** (or `Esc`) returns to the same place. Press a unit to select it on the canvas: the panel and the tree then start from it. Vacant positions open nothing.
 - The search box leaves the people who match, with the units that contain them, and highlights the text found (if the email matches, which the tree does not show, the person appears with no highlight). They are the same people as in the list, and **Copy emails** copies those.

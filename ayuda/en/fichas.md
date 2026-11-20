@@ -1,16 +1,16 @@
 # Person records
 
 ::: info In short
-The record keeps a person's details: contact, contract, site, schedule, photo and notes. It saves by itself, field by field.
+The record keeps a person's details: contact, contract, site, schedule and notes. It saves by itself, field by field.
 :::
 
-The record is the form for a person: their contact details, contract, site, schedule, photo and notes. It opens from the **Directory**, from **Review**, from the command palette (`Ctrl+K`, searching for the person) or from a position's dialog, by clicking the name of its holder. When you close it, focus returns to where you were; if that place no longer exists, to the **Search** button in the top bar.
+The record is the form for a person: their contact details, contract, site, schedule and notes. It opens from the **Directory**, from **Review**, from the command palette (`Ctrl+K`, searching for the person) or from a position's dialog, by clicking the name of its holder. When you close it, focus returns to where you were; if that place no longer exists, to the **Search** button in the top bar.
 
 Job title and unit are not edited in the record: they belong to the **position** the person holds (as holder or as a replacement). A vacancy is a position without a holder.
 
-The name, email, phone, the units the person heads and their positions are in plain view. **Contract type**, **site**, **schedule**, **notes** and **photo** are under **More details**: it opens by itself if the person already has any of those or there is an error there; otherwise with a click, and it stays as you leave it.
+The name, email, phone, the units the person heads and their positions are in plain view. **Contract type**, **site**, **schedule** and **notes** are under **More details**: it opens by itself if the person already has any of those or there is an error there; otherwise with a click, and it stays as you leave it.
 
-![Person record with name, email, phone, positions and the More details block open.](../img/en/fichas-ficha.webp "A person's record. 1: More details, with contract, site, schedule, notes and photo. 2: the person's positions. 3: show the person in the org chart."){width=732 height=744}
+![Person record with name, email, phone, positions and the More details block open.](../img/en/fichas-ficha.webp "A person's record. 1: More details, with contract, site, schedule and notes. 2: the person's positions. 3: show the person in the org chart."){width=732 height=637}
 
 ## Value lists
 
@@ -38,23 +38,12 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 :::
 
 - The **email** must look like an address (for example, ana@company.com) and cannot be shared between people.
-- The **photo** is optional: PNG, JPG or WebP up to 30 MB.
 
 ## Photos
 
-When you choose a photo, BoldoAtlas reduces it before saving it: its longest side becomes 256 pixels and it is saved as JPEG. It looks the same at every size where it appears and weighs much less, also in backups and in `.boldo` files. A small photo is not enlarged. Transparent areas turn white. An image over 120 megapixels is not accepted. If you close the record while the photo is being prepared, it waits until the photo is saved; if that is not possible, it lets you know before closing.
+BoldoAtlas no longer stores photos of people, to keep less personal data on your computer: the record, the org chart cards and the Directory show their initials.
 
-The converted photo does not keep the data the file carried, such as where it was taken or the camera. If converting it would make it heavier, it is saved as it is, **with whatever data it carries**. The same goes for a JPEG or WebP without that data that would barely get lighter: it is saved as it is.
-
-Photos you already have are reduced in **Settings › Photos › Optimize existing photos**, only if you ask. Those over about 36 KB are checked; lighter ones are not touched and keep whatever data they carry.
-
-1. First you see how much they take up, how much they would take up afterwards and how much the backup will take up.
-2. A backup is made, marked **Before optimizing photos**, which keeps the originals. The last 3 are kept.
-3. The photos are converted in parts, with a progress bar. You can keep working, and **Cancel** keeps what was already optimized.
-4. At the end you see how many were optimized and how much space was freed. A photo that could not be optimized is named and stays as it was.
-
-Optimizing does not change the person's modification date: it is the same photo with less weight. If you merge with another copy that still has the original photo, that photo shows up as a difference with the same date, and you choose which one stays.
-
+If an organization or a backup still has photos, a notice says so when the app opens. **Remove the photos now** deletes them from your organizations and their backups, with a progress bar, and you can keep working meanwhile. **Later** closes the notice and it shows again the next time you open the app. A `.boldo` file or a backup with photos comes in without them. If you open an external file with photos, the same notice shows. A backup with photos that you restore also ends up without them; the app restarts and does not count how many there were.
 ## Head of unit
 
 **Units they head** lists the units they are head of: they hold the head position as holder or, if that position has no holder, as a replacement.
@@ -71,13 +60,13 @@ Optimizing does not change the person's modification date: it is the same photo 
 
 **Delete permanently** is in the record and in **Settings › Deleted**. It asks you to type the person's name to confirm.
 
-- It erases their email, phone, notes, photo and the rest of their record, and the reason for their position changes, also from the change history.
+- It erases their email, phone, notes and the rest of their record, and the reason for their position changes, also from the change history.
 - Their **name** stays in the change history until the period set in **Settings › Change history** runs out (1 year if you do not change it); after that it is erased too. With **No limit** it never runs out and the name stays.
 - Where they held a position it shows "Deleted person": the chart at a date and the vacancies do not change.
 - It **cannot be undone** and no backup is made first. Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open (see [Backups](respaldos.md#people-deleted-permanently)).
 
 ## Export their data
 
-**Export their data**, in the record, saves an Excel file with two sheets: the person's data and their positions, including the ones that have ended. It has no photo. As the file is not encrypted, it first asks you to accept the usual notice.
+**Export their data**, in the record, saves an Excel file with two sheets: the person's data and their positions, including the ones that have ended. As the file is not encrypted, it first asks you to accept the usual notice.
 
 **See also:** [Positions and replacements](puestos.md) · [Directory](directorio.md) · [Settings and lists](mantenedores.md).

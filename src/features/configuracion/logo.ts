@@ -1,12 +1,14 @@
-import { FOTO_MAX_BYTES, FOTO_TIPOS } from "@/features/trabajadores/validar";
+/** Lo que se guarda: meta se relee entero tras cada escritura. */
+export const LOGO_MAX_BYTES = 1024 * 1024;
+const LOGO_TIPOS = ["image/png", "image/jpeg", "image/webp"];
 
 /** Lado mayor al convertir: meta se relee entero tras cada escritura, así que el logo no debe pesar de más. */
 const LADO_MAX = 512;
 
 /** null = válido; si no, qué falló (sufijo de `config.logo.error.*`). El tipo se revisa antes que el tamaño. */
 export function validarLogo(archivo: { type: string; size: number }): "tipo" | "tamano" | null {
-  if (!FOTO_TIPOS.includes(archivo.type)) return "tipo"; // mismos tipos y tope que la foto de la ficha
-  return archivo.size > FOTO_MAX_BYTES ? "tamano" : null;
+  if (!LOGO_TIPOS.includes(archivo.type)) return "tipo";
+  return archivo.size > LOGO_MAX_BYTES ? "tamano" : null;
 }
 
 /** La parte base64 de un data URL (`meta.logo_png` no lleva el prefijo). */

@@ -46,7 +46,7 @@ BoldoAtlas checks for new versions when it opens and every day (you can change h
 
 ### Does it work for large organizations?
 
-Yes, it is built for them. It was tested with 2,000 units, 3,000 positions and 10,000 people: branches fold away, the directory draws only the rows in view and photos load when they appear. With more than 300 cards in view, the canvas simplifies them when you zoom out so it keeps moving smoothly.
+Yes, it is built for them. It was tested with 2,000 units, 3,000 positions and 10,000 people: branches fold away, and the directory draws only the rows in view. With more than 300 cards in view, the canvas simplifies them when you zoom out so it keeps moving smoothly.
 
 ### Is it a final version?
 

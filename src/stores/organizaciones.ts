@@ -26,6 +26,7 @@ import {
   respaldoAutomatico,
   soloRespaldoAutomatico,
 } from "@/features/respaldos/respaldos";
+import { conocerAbierta, revisarExterna } from "@/features/fotos/aviso";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
 import { MODO_LADO } from "@/lado/modo";
@@ -94,6 +95,7 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
   // Sus datos pueden no haber llegado, o no cargar: la lista ya sabe cómo se llama.
   const nombreAbierta = computed(() => org.org.nombre || abierta.value?.nombre || "");
   const varias = computed(() => lista.value.length > 1);
+  conocerAbierta(() => ({ nombre: nombreAbierta.value, externa: abierta.value?.externa ?? false }));
   // Con una sola no se lee el nombre: renombrar no debe despertar a quien nombra un trabajo, como la bandeja.
   registrarAbierta(() => ({
     nombre: varias.value ? nombreAbierta.value || t("barra.sinNombre") : "",
@@ -229,7 +231,15 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
     } finally {
       cambiando.value = false;
     }
-    void cargarLista();
+    // Toda forma de entrar pasa por aquí. Con la lista al día se sabe si es un archivo externo, que el arranque no mira:
+    // si trae fotos, el aviso es solo por él.
+    void cargarLista().then(() => {
+      const o = lista.value.find((x) => x.id === id);
+      if (o?.externa && baseActual() === id)
+        revisarExterna(id, o.nombre).catch((e: unknown) => {
+          if (!(e instanceof BaseCambiada)) console.error(e);
+        });
+    });
   }
 
   async function cambiarA(id: string, pestana: string): Promise<Resultado> {

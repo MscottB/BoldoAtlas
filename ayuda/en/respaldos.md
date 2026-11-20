@@ -36,7 +36,7 @@ Backups also keep the change history; `.boldo` files do not (see [Export and imp
 
 ## Before replacing your data
 
-When you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. When [optimizing photos](fichas.md#photos), the backup is marked **Before optimizing photos**, and the last 3 are kept. For the ones made before replacing and before restoring, the last 10 of each kind are kept. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
+When you replace everything with a [`.boldo` file](exportar-importar.md), BoldoAtlas first makes a backup marked **Before replacing**. When adding or merging what a file carries, the backup is marked **Before importing**. The last 20 of those are kept. For the ones made before replacing and before restoring, the last 10 of each kind are kept. If you change your mind, restore it from this list. If the backup fails, nothing is replaced.
 
 ## Restore
 
@@ -47,7 +47,7 @@ Restoring replaces the open organization's data with the backup's and restarts t
 1. Under **View and restore backups**, press **Restore** on the row of the backup you want to recover.
 2. Confirm with **Restore and restart**.
 
-Before replacing anything, BoldoAtlas backs up your current data: it appears in the list marked **Before restore**; the last 10 of these are kept. If you picked the wrong backup, restore that one. Then your data is replaced with the backup and the app restarts.
+Before replacing anything, BoldoAtlas backs up your current data: it appears in the list marked **Before restore**; the last 10 of these are kept. If you picked the wrong backup, restore that one. Then your data is replaced with the backup and the app restarts. If the backup has photos, it is restored without them: [photos](fichas.md#photos) are no longer stored on the desktop.
 
 - A backup made with an older version of BoldoAtlas is updated when restored. One made with a **newer** version cannot be restored until you update BoldoAtlas.
 - If another BoldoAtlas window is open with the same data, close it first.

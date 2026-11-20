@@ -283,7 +283,7 @@ export const useOrganizacion = defineStore("organizacion", () => {
     }
   }
 
-  /** Se pasó a otra base: nada de la anterior queda a la vista, tampoco una foto (`urlFoto` lleva la base y no es reactiva). */
+  /** Se pasó a otra base: nada de la anterior queda a la vista. */
   function soltar(): void {
     ultimaCarga++;
     unidades.value = [];

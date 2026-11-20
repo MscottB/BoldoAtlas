@@ -13,6 +13,12 @@ export const RUTA_INTERCAMBIO = "/importar-exportar";
 
 export type ModoImportar = "nueva" | "agregar" | "revisar" | "reemplazar";
 
+/** «12 fotos no se importaron», o null si el archivo no traía ninguna: el escritorio no las guarda. */
+export const textoFotosQuitadas = (r: Pick<ResumenImportacion, "fotosQuitadas">): string | null =>
+  r.fotosQuitadas
+    ? i18n.global.t("intercambio.importar.fotosQuitadas", { n: r.fotosQuitadas }, r.fotosQuitadas)
+    : null;
+
 /**
  * La opción que viene marcada: como organización nueva, también con un parcial. Con la lista protegida Rust no puede
  * agregar otra: lo que este archivo permite sobre la abierta.
@@ -147,7 +153,7 @@ export function nombreColumna(c: string): string {
   return te(`intercambio.columnas.${c}`) ? t(`intercambio.columnas.${c}`) : t("intercambio.columnas.otra");
 }
 
-/** Un valor del detalle como se lee: una referencia ya viene por su nombre; una foto, por su tamaño. */
+/** Un valor del detalle como se lee: una referencia ya viene por su nombre; lo que no se muestra, por su tamaño. */
 export function textoValor(columna: string, v: ValorCampo): string {
   const { t, te, locale } = i18n.global;
   if (v.oculto !== null && v.oculto !== undefined)
