@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
-import { MARCA, armarSvg, datos, entrada } from "./fixture";
+import { COLOR_MARCA, MARCA, armarSvg, datos, entrada } from "./fixture";
 import { tarjetasDe } from "./niveles";
 
 describe("tarjetasDe", () => {
@@ -12,13 +12,28 @@ describe("tarjetasDe", () => {
     // Nombres, correos, teléfonos, cargos, etiquetas, la leyenda y el color de la marca llevan la marca.
     for (const texto of [JSON.stringify(tarjetas), svg]) expect(texto).not.toContain(MARCA);
     expect(svg).not.toContain("XQ"); // iniciales de la jefa
-    expect(svg).not.toContain("#abcdef");
+    expect(svg).not.toContain(COLOR_MARCA);
     expect(svg).not.toContain("#123456");
     expect(svg).not.toMatch(/Dotación|vacante/i);
     // Sí lleva la estructura: unidades, zonas y conexiones laterales.
     expect(svg).toContain("Finanzas");
     expect(svg).toContain("Zona Norte");
     expect(svg).toContain("Coordina");
+  });
+
+  it("estructura_sin_datos_aunque_vengan_puestos_en_el_grafo", async () => {
+    // Con «Ver puestos», con la jefatura en la tarjeta o como puesto aparte (coloreando por leyenda).
+    const configs = [
+      { ...VISTA_POR_DEFECTO, verPuestos: true },
+      { ...VISTA_POR_DEFECTO, verPuestos: true, colorearPor: "leyenda" },
+    ];
+    for (const config of configs) {
+      const { svg } = await armarSvg("estructura", { config, conPuestos: true });
+      expect(svg).not.toContain(MARCA);
+      // Solo las tres tarjetas de unidades y sus dos líneas jerárquicas: nada de los puestos.
+      expect(svg.match(/<rect [^>]*rx="8"/g)).toHaveLength(3);
+      expect(svg.match(/stroke="#a3a3a3"/g)).toHaveLength(2);
+    }
   });
 
   it("presentacion_lleva_jefatura_o_vacante", () => {
@@ -37,7 +52,8 @@ describe("tarjetasDe", () => {
       tarjetasDe("pantalla", entrada(datos(), c)).find((t) => t.id === "g")!;
     expect(g().lineas.join("|")).toContain("Dotación total: 2");
     expect(g().lineas.join("|")).toContain("XQ"); // iniciales de la jefatura
-    expect(g().color).toBe("#abcdef");
+    expect(g().color).toBe(COLOR_MARCA);
+    expect(g().lineas.join("|")).toContain(`${MARCA}1`); // el código de la marca
     const sin = g({ ...VISTA_POR_DEFECTO, mostrarDotacion: false, mostrarFoto: false });
     expect(sin.lineas.join("|")).not.toContain("Dotación");
     expect(sin.lineas.join("|")).not.toContain("XQ");

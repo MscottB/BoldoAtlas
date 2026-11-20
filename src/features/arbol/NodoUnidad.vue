@@ -5,7 +5,6 @@ import { useRouter } from "vue-router";
 import { Handle, Position } from "@vue-flow/core";
 import { toast } from "vue-sonner";
 import { Copy, Minus, SquareArrowOutUpRight, Users } from "@lucide/vue";
-import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
@@ -13,21 +12,10 @@ import { iniciales } from "@/lib/texto";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
-import { rutaSuperiores, type PersonasDeUnidad } from "./jerarquia";
+import { colorEfectivo, textoRuta, type DatosNodo } from "./datosNodo";
 import { CONTEXTO_LIENZO } from "./contexto";
 import { etiquetaEscala } from "./escala";
 import AccionesTarjeta from "./AccionesTarjeta.vue";
-
-export interface DatosNodo extends PersonasDeUnidad {
-  unidad: Unidad;
-  jefe: Trabajador | null;
-  /** La jefatura la cubre un reemplazo: el puesto no tiene titular vigente. */
-  jefeReemplazo: boolean;
-  total: number;
-  vacantes: number;
-  etiquetas: Etiqueta[];
-  hijos: number;
-}
 
 const props = defineProps<{ id: string; data: DatosNodo }>();
 const { t } = useI18n();
@@ -55,16 +43,10 @@ const nombresZonas = computed(() => t("zonas.en", { nombres: zonas.value.map((z)
 const escalaTarjeta = computed(() =>
   etiquetaEscala(t, config.value.colorearPor, contexto.escala.value?.get(props.id)),
 );
-const color = computed(() => marca.value?.color ?? escalaTarjeta.value?.color ?? null);
+const color = computed(() => colorEfectivo(marca.value, escalaTarjeta.value));
 // Un color que casi no se distingue de la tarjeta (azul marino en oscuro) lleva contorno en la franja y el código.
 const tenue = computed(() => !!color.value && marcaTenue(color.value, oscuro.value));
-const ruta = computed(() =>
-  contexto.rutas.value
-    ? rutaSuperiores(contexto.rutas.value, props.data.unidad)
-        .map((x) => x.nombre)
-        .join(" › ")
-    : null,
-);
+const ruta = computed(() => (contexto.rutas.value ? textoRuta(contexto.rutas.value, props.data.unidad) : null));
 // Alejado y con muchas tarjetas, la ligera (rendimiento.ts); la que se está renombrando conserva su campo.
 const ligera = computed(() => contexto.ligera.value && editando.value !== props.id);
 // Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).

@@ -21,16 +21,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { Etiqueta, Unidad } from "@/db/tipos";
+import type { Unidad } from "@/db/tipos";
 import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   dotacionPorUnidad,
-  indiceHijos,
-  jefeVisible,
   leyendaDeMarcas,
   marcasPorUnidad,
-  personasPorUnidad,
   ruta,
   rutasPorTipo,
   tiposEnUso,
@@ -71,8 +68,9 @@ import {
   tipoDeMarca,
   type ConfigVista,
 } from "./vista";
-import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
-import NodoPuesto, { type DatosPuesto } from "./NodoPuesto.vue";
+import NodoUnidad from "./NodoUnidad.vue";
+import NodoPuesto from "./NodoPuesto.vue";
+import { datosDePuestos, datosDeUnidades, etiquetasPorUnidad } from "./datosNodo";
 import { zonasDibujadas } from "./zonas";
 import AristaLateral from "./AristaLateral.vue";
 import ConexionLienzo from "./ConexionLienzo.vue";
@@ -83,7 +81,8 @@ import PreviaMover, { type Previa } from "./PreviaMover.vue";
 import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
 import MenuLienzo from "./MenuLienzo.vue";
-import LeyendaLienzo, { type EntradaLeyenda } from "./LeyendaLienzo.vue";
+import LeyendaLienzo from "./LeyendaLienzo.vue";
+import type { EntradaLeyenda } from "./leyenda";
 import ZoomLienzo from "./ZoomLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
@@ -424,15 +423,7 @@ async function enfocarTarjeta(id: string) {
 const visibles = computed(() => new Set(vista.value?.g.nodos.map((u) => u.id)));
 
 const trabajadorPorId = computed(() => new Map(org.enFecha.trabajadores.map((x) => [x.id, x])));
-const etiquetasDe = computed(() => {
-  const porId = new Map(org.etiquetas.map((e) => [e.id, e]));
-  const m = new Map<string, Etiqueta[]>();
-  for (const { unidad_id, etiqueta_id } of org.unidadEtiquetas) {
-    const e = porId.get(etiqueta_id);
-    if (e) m.set(unidad_id, [...(m.get(unidad_id) ?? []), e]);
-  }
-  return m;
-});
+const etiquetasDe = computed(() => etiquetasPorUnidad(org.etiquetas, org.unidadEtiquetas));
 
 // Lo que muestra cada tarjeta, para todas las que pueden dibujarse: un layout nuevo reutiliza estos objetos y las tarjetas
 // no se vuelven a pintar. Marca, ruta, leyenda y nivel de detalle los lee cada tarjeta del contexto (no rehacen los nodos).
@@ -460,53 +451,26 @@ const valoresEscala = computed(() =>
       )
     : null,
 );
-const datosUnidad = computed(() => {
-  const indice = indiceHijos(mostradas.value);
-  const vigentes = org.enFecha.vigentes;
-  const personas = personasPorUnidad(
-    mostradas.value,
-    org.enFecha.puestos,
-    vigentes,
+const cargosPorId = computed(() => new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre])));
+const datosUnidad = computed(() =>
+  datosDeUnidades({
+    unidades: mostradas.value,
+    puestos: org.enFecha.puestos,
+    vigentes: org.enFecha.vigentes,
+    trabajadores: trabajadorPorId.value,
+    cargos: cargosPorId.value,
+    dotaciones: dotaciones.value,
+    etiquetas: etiquetasDe.value,
+  }),
+);
+const datosPuesto = computed(() =>
+  datosDePuestos(
+    verPuestos.value ? org.enFecha.puestos : [],
+    org.enFecha.vigentes,
     trabajadorPorId.value,
-    new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre])),
-  );
-  return new Map(
-    mostradas.value.map((u): [string, DatosNodo] => {
-      const { total, vacantes } = dotaciones.value.get(u.id) ?? { total: 0, vacantes: 0 };
-      const jefe = jefeVisible(u, vigentes);
-      return [
-        u.id,
-        {
-          ...personas.get(u.id)!,
-          unidad: u,
-          jefe: (jefe && trabajadorPorId.value.get(jefe.trabajador_id)) || null,
-          jefeReemplazo: jefe?.tipo === "reemplazo",
-          total,
-          vacantes,
-          etiquetas: etiquetasDe.value.get(u.id) ?? [],
-          hijos: indice.get(u.id)?.length ?? 0,
-        },
-      ];
-    }),
-  );
-});
-const datosPuesto = computed(() => {
-  const cargos = new Map(org.catalogos.cargos.map((c) => [c.id, c.nombre]));
-  const vigentes = org.enFecha.vigentes;
-  const nombre = (a?: { trabajador_id: string }) =>
-    (a && trabajadorPorId.value.get(a.trabajador_id)?.nombre) || null;
-  return new Map(
-    (verPuestos.value ? org.enFecha.puestos : []).map((p): [string, DatosPuesto] => [
-      p.id,
-      {
-        cargo: cargos.get(p.cargo_id) ?? "",
-        titular: nombre(vigentes.get(p.id)?.titular),
-        reemplazo: nombre(vigentes.get(p.id)?.reemplazo),
-        leyendaId: p.leyenda_id,
-      },
-    ]),
-  );
-});
+    cargosPorId.value,
+  ),
+);
 
 // Mientras llega el layout de un cambio, `vista` puede nombrar algo que ya no está: se omite hasta el próximo.
 const nodos = computed<Node[]>(() => {

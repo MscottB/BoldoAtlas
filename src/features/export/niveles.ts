@@ -1,5 +1,6 @@
-import type { Etiqueta, Puesto, Trabajador, Unidad } from "@/db/tipos";
-import { jefeVisible, personasPorUnidad, type Vigentes } from "@/features/arbol/jerarquia";
+import type { Unidad } from "@/db/tipos";
+import { textoRuta, type ColorTarjeta, type DatosNodo, type DatosPuesto } from "@/features/arbol/datosNodo";
+import type { Traducir } from "@/features/arbol/escala";
 import { tamPuesto, tamUnidad, type ConfigVista } from "@/features/arbol/vista";
 import { iniciales } from "@/lib/texto";
 
@@ -18,38 +19,20 @@ export interface Tarjeta {
   vacante?: boolean;
 }
 
-/** El `t` de vue-i18n (`i18n.global.t` o el de useI18n). */
-export type Traducir = {
-  (clave: string): string;
-  (clave: string, nombrados: Record<string, unknown>): string;
-  (clave: string, nombrados: Record<string, unknown>, plural: number): string;
-};
-
-/** Todo a la fecha que se ve, como lo arma el lienzo (VistaArbol.vue). */
+/** Lo mismo que lee cada tarjeta del lienzo, a la fecha que se ve (ver datosNodo.ts). */
 export interface EntradaNivel {
   /** Las unidades que se dibujan (`Subgrafo.nodos`), en ese orden. */
   unidades: Unidad[];
-  /** Los puestos vivos de esas unidades: dan el cargo de la jefatura y las caras; con «Ver puestos», sus tarjetas. */
-  puestos: Puesto[];
-  /** Titular y reemplazo vigentes de cada puesto (`vigentesPorPuesto`, o `org.enFecha.vigentes`). */
-  vigentes: Vigentes;
-  /** Id → persona. */
-  trabajadores: Map<string, Trabajador>;
-  /** Id del cargo → su nombre. */
-  cargos: Map<string, string>;
+  /** `datosDeUnidades(...)`: puede traer más unidades que las dibujadas. */
+  datos: ReadonlyMap<string, DatosNodo>;
+  /** `datosDePuestos(...)`. Con «Ver puestos», sus tarjetas; se dibujan solo las que tienen caja. */
+  datosPuesto: ReadonlyMap<string, DatosPuesto>;
+  /** `coloresDeTarjetas(...)`; vacío si no se colorea. */
+  colores: ReadonlyMap<string, ColorTarjeta>;
+  /** `rutasPorTipo(...)`, como el contexto del lienzo; null si la vista no muestra la ruta. */
+  rutas: Map<string, Unidad[]> | null;
   /** Id del tipo de unidad → su nombre. */
   tipos: ReadonlyMap<string, string>;
-  /** Dotación y vacantes de cada unidad con su rama (`dotacionPorUnidad` sobre todo el alcance, no solo lo visible). */
-  dotaciones: ReadonlyMap<string, { total: number; vacantes: number }>;
-  /** Unidad → sus etiquetas. */
-  etiquetas: ReadonlyMap<string, Etiqueta[]>;
-  /**
-   * Tarjeta (unidad o puesto) → su color según «Colorear por» y el texto que va con él: el código de la marca o el
-   * valor de la escala (`etiquetaEscala(...).texto`). Vacío si no se colorea.
-   */
-  colores: ReadonlyMap<string, { color: string | null; texto?: string }>;
-  /** Unidad → sus superiores por tipo ya unidos («Gerencia › Área», como `ruta` en NodoUnidad). Vacío si no se usan. */
-  rutas: ReadonlyMap<string, string>;
   /** La configuración de Personalizar. Solo «Como en pantalla» la sigue. */
   config: ConfigVista;
   /** Unidad plegada → cuántas unidades quedan ocultas bajo ella (`descendientes(...).size`). */
@@ -78,61 +61,58 @@ export function tarjetasDe(nivel: Nivel, e: EntradaNivel): Tarjeta[] {
   const base = (u: Unidad) => ({ id: u.id, titulo: u.nombre, mas: e.plegadas.get(u.id) ?? 0 });
   if (nivel === "estructura") return e.unidades.map((u) => ({ ...base(u), lineas: [], color: null }));
 
-  const nombre = (id?: string) => (id && e.trabajadores.get(id)?.nombre) || null;
-  const personas = personasPorUnidad(e.unidades, e.puestos, e.vigentes, e.trabajadores, e.cargos);
-  const unidades = e.unidades.map((u): Tarjeta => {
-    const p = personas.get(u.id)!;
-    const jefe = jefeVisible(u, e.vigentes);
-    const quien = nombre(jefe?.trabajador_id);
-    const jefatura = quien && (jefe?.tipo === "reemplazo" ? t("arbol.reemplazo", { nombre: quien }) : quien);
+  const unidades = e.unidades.flatMap((u): Tarjeta[] => {
+    const d = e.datos.get(u.id);
+    if (!d) return [];
+    const jefatura =
+      d.jefe && (d.jefeReemplazo ? t("arbol.reemplazo", { nombre: d.jefe.nombre }) : d.jefe.nombre);
     if (nivel === "presentacion")
-      return jefatura
-        ? { ...base(u), lineas: [jefatura, p.cargoJefe].filter(hay), color: null }
-        : { ...base(u), lineas: [t("puesto.vacante")], color: null, vacante: true };
+      return [
+        jefatura
+          ? { ...base(u), lineas: [jefatura, d.cargoJefe].filter(hay), color: null }
+          : { ...base(u), lineas: [t("puesto.vacante")], color: null, vacante: true },
+      ];
 
     // Como en pantalla: lo que muestra NodoUnidad con esta configuración. La compacta es de una línea.
     const completa = c.densidad === "normal";
     const conPersonas = completa && c.personasEnTarjetas;
-    const { total = 0, vacantes = 0 } = e.dotaciones.get(u.id) ?? {};
     const color = e.colores.get(u.id);
     const cifras = [
-      c.mostrarDotacion && `${t("arbol.dotacion")}: ${total}`,
-      c.mostrarVacantes && vacantes > 0 && t("arbol.vacantes", { n: vacantes }, vacantes),
+      c.mostrarDotacion && `${t("arbol.dotacion")}: ${d.total}`,
+      c.mostrarVacantes && d.vacantes > 0 && t("arbol.vacantes", { n: d.vacantes }, d.vacantes),
       color?.texto,
     ].filter(hay);
     const lineas = completa
       ? [
           c.mostrarTipo && e.tipos.get(u.tipo_id)?.toUpperCase(),
-          e.rutas.get(u.id),
+          e.rutas && textoRuta(e.rutas, u),
           c.mostrarJefe &&
-            (quien && jefatura
-              ? `${c.mostrarFoto ? `${iniciales(quien)}  ` : ""}${jefatura}`
+            (d.jefe && jefatura
+              ? `${c.mostrarFoto ? `${iniciales(d.jefe.nombre)}  ` : ""}${jefatura}`
               : t("arbol.sinJefatura")),
-          conPersonas && c.mostrarJefe && p.cargoJefe,
+          conPersonas && c.mostrarJefe && d.cargoJefe,
           conPersonas &&
-            [...p.equipo.map((w) => iniciales(w.nombre)), p.resto ? `+${p.resto}` : ""].join(" ").trim(),
-          c.mostrarEtiquetas && (e.etiquetas.get(u.id) ?? []).map((x) => x.nombre).join(", "),
+            [...d.equipo.map((w) => iniciales(w.nombre)), d.resto ? `+${d.resto}` : ""].join(" ").trim(),
+          c.mostrarEtiquetas && d.etiquetas.map((x) => x.nombre).join(", "),
         ]
       : [];
-    return { ...base(u), lineas: [...lineas, cifras.join(" · ")].filter(hay), color: color?.color ?? null };
+    return [{ ...base(u), lineas: [...lineas, cifras.join(" · ")].filter(hay), color: color?.color ?? null }];
   });
   if (nivel !== "pantalla" || !c.verPuestos) return unidades;
 
   // Las tarjetas de puestos, como NodoPuesto. Solo se dibujan las que tienen caja (el de jefatura puede no tenerla).
-  const puestos = e.puestos.map((p): Tarjeta => {
-    const v = e.vigentes.get(p.id);
-    const reemplazo = nombre(v?.reemplazo?.trabajador_id);
-    const color = e.colores.get(p.id);
+  const puestos = [...e.datosPuesto].map(([id, p]): Tarjeta => {
+    const color = e.colores.get(id);
     const datos = [
-      c.mostrarCargo && (e.cargos.get(p.cargo_id) ?? ""),
-      c.mostrarPersona && (nombre(v?.titular?.trabajador_id) ?? t("puesto.vacante")),
+      c.mostrarCargo && p.cargo,
+      c.mostrarPersona && (p.titular ?? t("puesto.vacante")),
       c.mostrarPersona &&
         c.densidad === "normal" &&
-        reemplazo &&
-        t("puesto.reemplazoDe", { nombre: reemplazo }),
+        p.reemplazo &&
+        t("puesto.reemplazoDe", { nombre: p.reemplazo }),
       color?.texto,
     ].filter(hay);
-    return { id: p.id, titulo: datos[0] ?? "", lineas: datos.slice(1), color: color?.color ?? null, mas: 0 };
+    return { id, titulo: datos[0] ?? "", lineas: datos.slice(1), color: color?.color ?? null, mas: 0 };
   });
   return [...unidades, ...puestos];
 }

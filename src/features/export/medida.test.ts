@@ -10,6 +10,13 @@ describe("medida del texto sin DOM", () => {
     expect(anchoTexto("abc", 24)).toBe(2 * anchoTexto("abc", 12));
   });
 
+  it("las letras de ancho completo y los emojis miden un cuadrado", () => {
+    expect(anchoTexto("漢字", 10)).toBe(20);
+    expect(anchoTexto("한국", 10)).toBe(20);
+    expect(anchoTexto(String.fromCodePoint(0x1f600), 10)).toBe(10);
+    expect(anchoTexto("ab", 10)).toBeLessThan(anchoTexto("漢字", 10));
+  });
+
   it("recortar deja lo que cabe y agrega «…»", () => {
     expect(recortar("Finanzas", 200, 12)).toBe("Finanzas");
     const corto = recortar("Gerencia de Operaciones Regionales", 80, 12);

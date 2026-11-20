@@ -12,13 +12,7 @@ import { useVista } from "./useVista";
 import { tamPuesto } from "./vista";
 import { CONTEXTO_LIENZO } from "./contexto";
 import { etiquetaEscala } from "./escala";
-
-export interface DatosPuesto {
-  cargo: string;
-  titular: string | null;
-  reemplazo: string | null;
-  leyendaId: string | null;
-}
+import { colorEfectivo, type DatosPuesto } from "./datosNodo";
 
 const props = defineProps<{ id: string; data: DatosPuesto }>();
 const { t } = useI18n();
@@ -35,7 +29,7 @@ const leyenda = computed(
 const escalaTarjeta = computed(() =>
   etiquetaEscala(t, config.value.colorearPor, contexto.escala.value?.get(props.id)),
 );
-const color = computed(() => leyenda.value?.color ?? escalaTarjeta.value?.color ?? null);
+const color = computed(() => colorEfectivo(leyenda.value, escalaTarjeta.value));
 // Si la tarjeta tenía el foco al cambiar de detalle, lo recibe su nuevo elemento (si no, caería en <body>).
 const raiz = useTemplateRef<HTMLElement>("raiz");
 watch(contexto.ligera, async () => {

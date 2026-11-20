@@ -9,7 +9,8 @@ import { fijarBase } from "@/lib/baseActiva";
 import { CONTEXTO_LIENZO, type ContextoLienzo } from "./contexto";
 import { u } from "./fixture";
 import { useVista } from "./useVista";
-import NodoUnidad, { type DatosNodo } from "./NodoUnidad.vue";
+import NodoUnidad from "./NodoUnidad.vue";
+import type { DatosNodo } from "./datosNodo";
 
 vi.hoisted(() =>
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} }),

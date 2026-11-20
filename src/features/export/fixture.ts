@@ -1,6 +1,7 @@
 import type { Conexion, Etiqueta, Trabajador, Zona } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { a, p, u } from "@/features/arbol/fixture";
+import { coloresDeTarjetas, datosDePuestos, datosDeUnidades } from "@/features/arbol/datosNodo";
 import { descendientes, dotacionPorUnidad, vigentesPorPuesto } from "@/features/arbol/jerarquia";
 import {
   aristasDibujadas,
@@ -17,6 +18,8 @@ import { dibujarSvg, type EntradaSvg } from "./treeSvg";
 // Datos de prueba de la exportación. Todo dato de personas (y lo que Estructura no lleva) tiene la marca: así una
 // prueba busca la marca en el SVG entero.
 export const MARCA = "ZQX";
+/** Color de la marca de la Gerencia General: oscuro, así su texto va en blanco. */
+export const COLOR_MARCA = "#1e3a8a";
 
 const persona = (id: string, nombre: string): Trabajador => ({
   id,
@@ -69,22 +72,37 @@ export function datos() {
 type Datos = ReturnType<typeof datos>;
 const PLEGADAS = new Set(["a2"]);
 
+/** Como la armará la ventana: los datos de las tarjetas con las mismas funciones que el lienzo. */
 export function entrada(d: Datos, config: ConfigVista = VISTA_POR_DEFECTO): EntradaNivel {
-  const visibles = subgrafoVisible(d.unidades, [], PLEGADAS).nodos;
+  const vigentes = vigentesPorPuesto(d.asignaciones);
+  const datosPuesto = datosDePuestos(d.puestos, vigentes, d.trabajadores, d.cargos);
+  const g = d.unidades[0]!;
   return {
-    unidades: visibles,
-    puestos: d.puestos,
-    vigentes: vigentesPorPuesto(d.asignaciones),
-    trabajadores: d.trabajadores,
-    cargos: d.cargos,
+    unidades: subgrafoVisible(d.unidades, [], PLEGADAS).nodos,
+    datos: datosDeUnidades({
+      unidades: d.unidades,
+      puestos: d.puestos,
+      vigentes,
+      trabajadores: d.trabajadores,
+      cargos: d.cargos,
+      dotaciones: dotacionPorUnidad(d.unidades, d.puestos, d.asignaciones),
+      etiquetas: d.etiquetas,
+    }),
+    datosPuesto,
+    colores: coloresDeTarjetas({
+      criterio: `marca:${g.tipo_id}`,
+      unidades: d.unidades,
+      puestos: datosPuesto,
+      marcas: new Map([["g", { color: COLOR_MARCA, codigo: `${MARCA}1`, unidad: g }]]),
+      leyendas: null,
+      escala: null,
+      t: i18n.global.t,
+    }),
+    rutas: null,
     tipos: new Map([
       ["t-g", "Gerencia"],
       ["t-a", "Área"],
     ]),
-    dotaciones: dotacionPorUnidad(d.unidades, d.puestos, d.asignaciones),
-    etiquetas: d.etiquetas,
-    colores: new Map([["g", { color: "#abcdef", texto: `${MARCA}-cod` }]]),
-    rutas: new Map(),
     config,
     plegadas: new Map([...PLEGADAS].map((id) => [id, descendientes(d.unidades, id).size])),
     t: i18n.global.t,
@@ -98,6 +116,9 @@ export async function armarSvg(
     config?: ConfigVista;
     ajustar?: (d: Datos) => void;
     encabezado?: Partial<EntradaSvg["encabezado"]>;
+    /** Pone los puestos en el grafo aunque el nivel no los lleve (un error de quien arma la entrada). */
+    conPuestos?: boolean;
+    cambiar?: (e: EntradaSvg) => EntradaSvg;
   } = {},
 ) {
   const d = datos();
@@ -108,14 +129,14 @@ export async function armarSvg(
     d.unidades,
     d.conexiones,
     PLEGADAS,
-    pantalla && config.verPuestos ? d.puestos : [],
-    pantalla && jefeEnTarjeta(config),
+    o.conPuestos || (pantalla && config.verPuestos) ? d.puestos : [],
+    (o.conPuestos || pantalla) && jefeEnTarjeta(config),
   );
   const tam = tamanos(nivel, config, false);
   const pos = await calcularLayout(g, tam.unidad, tam.puesto, config);
   const cajas = cajasDibujadas(g, pos, tam.unidad, tam.puesto);
   const tarjetas = tarjetasDe(nivel, entrada(d, config));
-  const r = dibujarSvg({
+  const e: EntradaSvg = {
     nivel,
     tarjetas,
     cajas,
@@ -141,7 +162,8 @@ export async function armarSvg(
       logo: null,
       ...o.encabezado,
     },
+    fondo: true,
     t: i18n.global.t,
-  });
-  return { ...r, tarjetas };
+  };
+  return { ...dibujarSvg(o.cambiar ? o.cambiar(e) : e), tarjetas };
 }

@@ -3,11 +3,23 @@
 const ANGOSTAS = new Set("iljtfrI.,:;'|!()[] ");
 const ANCHAS = new Set("mwMW@%");
 
+// Letras de ancho completo (chino, japonés, coreano) y emojis: ocupan un cuadrado entero.
+const completa = (cp: number) =>
+  (cp >= 0x1100 && cp <= 0x115f) || (cp >= 0x2600 && cp <= 0x27bf) || cp >= 0x2e80;
+
 /** Ancho aproximado, en px, de `texto` con letra de `tam` px. */
 export function anchoTexto(texto: string, tam: number, negrita = false): number {
   let em = 0;
   for (const c of texto)
-    em += ANGOSTAS.has(c) ? 0.32 : ANCHAS.has(c) ? 0.9 : c !== c.toLowerCase() || /\d/.test(c) ? 0.68 : 0.56;
+    em += completa(c.codePointAt(0)!)
+      ? 1
+      : ANGOSTAS.has(c)
+        ? 0.32
+        : ANCHAS.has(c)
+          ? 0.9
+          : c !== c.toLowerCase() || /\d/.test(c)
+            ? 0.68
+            : 0.56;
   return em * tam * (negrita ? 1.08 : 1);
 }
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { u } from "@/features/arbol/fixture";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
-import { armarSvg } from "./fixture";
+import { textoSobre } from "@/features/tema/tema";
+import { COLOR_MARCA, armarSvg } from "./fixture";
 
 const NIVELES = ["estructura", "presentacion", "pantalla"] as const;
 const LOGO = "data:image/png;base64,iVBORw0KGgo=";
@@ -15,6 +17,16 @@ describe("dibujarSvg", () => {
     expect(svg).toContain("A &amp; &lt;B&gt; &quot;C&quot;");
     expect(svg).not.toContain("<B>");
     expect(svg).not.toContain('"C"');
+  });
+
+  it("quita_los_caracteres_que_xml_no_admite", async () => {
+    const emoji = String.fromCodePoint(0x1f600);
+    const sucio = ["Fin", "\u0001", "\ufffe", "an", "\uffff", "\ud800", "zas", "\udc00", emoji].join("");
+    const { svg } = await armarSvg("estructura", { ajustar: (d) => (d.unidades[1]!.nombre = sucio) });
+    expect(svg).toContain(`Finanzas${emoji}`);
+    expect(svg).not.toMatch(/[\u0001\ufffe\uffff]/);
+    // Sin mitades sueltas de un par sustituto: el emoji entero sí queda.
+    expect(svg.replace(emoji, "")).not.toMatch(/[\ud800-\udfff]/);
   });
 
   it("encabezado_con_la_fecha_elegida", async () => {
@@ -33,6 +45,38 @@ describe("dibujarSvg", () => {
     }
   });
 
+  it("presentacion_alta_es_16_9", async () => {
+    // Una cadena de 25 unidades bajo Finanzas: el dibujo es mucho más alto que ancho y se agregan márgenes a los lados.
+    const { ancho, alto } = await armarSvg("presentacion", {
+      ajustar: (d) => {
+        for (let i = 0; i < 25; i++) d.unidades.push(u(`c${i}`, "t-s", `Nivel ${i}`, i ? `c${i - 1}` : "a1"));
+      },
+    });
+    expect(alto).toBeGreaterThan(25 * 112);
+    expect(ancho / alto).toBe(16 / 9);
+  });
+
+  it("color_llena_la_tarjeta", async () => {
+    const { svg } = await armarSvg("pantalla");
+    expect(svg).toMatch(new RegExp(`<rect [^>]*rx="8" fill="${COLOR_MARCA}"`));
+    const texto = textoSobre(COLOR_MARCA);
+    expect(svg).toMatch(new RegExp(`<text [^>]*fill="${texto}"[^>]*>Gerencia General</text>`));
+    expect(svg).not.toContain('width="4"'); // sin la franja de antes
+  });
+
+  it("caja_sin_tarjeta_no_ocupa_lugar", async () => {
+    const base = await armarSvg("estructura");
+    const con = await armarSvg("estructura", {
+      cambiar: (e) => ({
+        ...e,
+        cajas: new Map([...e.cajas, ["p-lejos", { x: 9000, y: 9000, ancho: 200, alto: 68 }]]),
+        aristas: [...e.aristas, ["g", "p-lejos"]],
+      }),
+    });
+    expect([con.ancho, con.alto]).toEqual([base.ancho, base.alto]);
+    expect(con.svg).toBe(base.svg);
+  });
+
   it("sin_foreign_object", async () => {
     for (const nivel of NIVELES) {
       const { svg } = await armarSvg(nivel, {
@@ -46,7 +90,9 @@ describe("dibujarSvg", () => {
   });
 
   it("logo_solo_como_data_url", async () => {
-    expect((await armarSvg("estructura", { encabezado: { logo: LOGO } })).svg).toContain(`href="${LOGO}"`);
+    const { svg } = await armarSvg("estructura", { encabezado: { logo: LOGO } });
+    expect(svg).toContain(`href="${LOGO}" xlink:href="${LOGO}"`);
+    expect(svg).toContain('xmlns:xlink="http://www.w3.org/1999/xlink"');
     for (const logo of ["https://ejemplo.cl/logo.png", "javascript:alert(1)", 'data:image/png;base64,a"b'])
       expect((await armarSvg("estructura", { encabezado: { logo } })).svg).not.toContain("<image");
   });
@@ -59,5 +105,11 @@ describe("dibujarSvg", () => {
       );
       expect(svg).not.toMatch(/var\(|oklch|currentColor|#171717/);
     }
+  });
+
+  it("sin_fondo_para_png_transparente", async () => {
+    const { svg } = await armarSvg("pantalla", { cambiar: (e) => ({ ...e, fondo: false }) });
+    expect(svg).not.toContain('id="fondo"');
+    expect(svg).toContain("Gerencia General");
   });
 });

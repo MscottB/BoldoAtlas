@@ -4,16 +4,7 @@ import { ChevronDown, ChevronRight } from "@lucide/vue";
 import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
 import { useVista } from "./useVista";
-
-/** Una fila de la leyenda: una marca (con código), una entrada de leyenda de puestos (con descripción) o un tipo de línea (`trazo`). */
-export interface EntradaLeyenda {
-  clave: string;
-  color: string | null;
-  codigo?: string | null;
-  nombre: string;
-  descripcion?: string | null;
-  trazo?: "punteado" | "puntos" | "continuo";
-}
+import type { EntradaLeyenda } from "./leyenda";
 
 defineProps<{ titulo: string; entradas: EntradaLeyenda[] }>();
 const { t } = useI18n();
