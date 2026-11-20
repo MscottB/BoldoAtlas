@@ -66,14 +66,7 @@ const opciones = (personas = false): OpcionesManual => ({
   titulo: "Manual de organización y funciones",
   conPersonas: personas,
   textos: textosManual(),
-  portada: {
-    organizacion: "Atlas SA",
-    alcance: "Toda la organización",
-    fecha: "20 de noviembre de 2026",
-    version: "BoldoAtlas 0.13.0",
-    revision: "Revisión de los datos: 42",
-    logo: null,
-  },
+  portada: { version: "BoldoAtlas 0.13.0", revision: "Revisión de los datos: 42" },
 });
 // r con `n` hijas (cada una con la suya) y `puestos` puestos.
 const conHijas = (n: number, puestos = 3) =>

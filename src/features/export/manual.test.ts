@@ -7,12 +7,11 @@ import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MARCA, datos } from "./fixture";
 import { datosManual, textosManual, type UnidadManual } from "./manual";
+import { manualDeAlcance } from "./manualDeAlcance";
 import { documentoManual, type OpcionesManual } from "./manualPdf";
-import type { PaginaPdf } from "./pdf";
 import { generarDocumento } from "./pdf.worker";
-import { prepararImagen, type Alcance } from "./preparar";
+import type { Alcance } from "./preparar";
 import { textoDelPdf, textoPorPagina } from "./textoPdf";
-import { dibujarSvg } from "./treeSvg";
 
 // «Organigrama a una fecha» lee lo histórico de la base: aquí, de estas filas.
 const h = vi.hoisted(() => ({ filas: new Map<string, unknown[]>() }));
@@ -56,14 +55,7 @@ const opciones = (conPersonas: boolean): OpcionesManual => ({
   titulo: "Manual de organización y funciones",
   conPersonas,
   textos: textosManual(),
-  portada: {
-    organizacion: "Atlas SA",
-    alcance: "Toda la organización",
-    fecha: "20 de noviembre de 2026",
-    version: "BoldoAtlas 0.13.0",
-    revision: "Revisión de los datos: 42",
-    logo: null,
-  },
+  portada: { version: "BoldoAtlas 0.13.0", revision: "Revisión de los datos: 42" },
 });
 
 describe("datosManual", () => {
@@ -257,19 +249,20 @@ describe("datosManual", () => {
 });
 
 describe("el manual en PDF, con pdfmake", () => {
-  // Los dibujos, como los armará la ventana: Estructura sin personas, Presentación con ellas.
+  // El manual por la tubería de verdad: sus tarjetas de puestos y el general salen de `manualDeAlcance`.
   const armar = async (alcance: Alcance, conPersonas: boolean) => {
-    const nivel = conPersonas ? "presentacion" : "estructura";
-    const dibujo = async (a: Alcance): Promise<PaginaPdf> =>
-      dibujarSvg(await prepararImagen({ alcance: a, nivel, abrirTodo: true, config: VISTA_POR_DEFECTO }), {
-        sinEncabezado: true,
-      });
-    const unidades = datosManual({ alcance, conPersonas });
-    const general = [{ ...(await dibujo(alcance)), arriba: "Viene de la página 1" }];
-    const dibujos = new Map<string, PaginaPdf>();
-    for (const x of unidades) dibujos.set(x.id, await dibujo({ rama: x.id }));
-    const doc = documentoManual({ unidades, general, dibujos }, opciones(conPersonas));
-    return { doc, pdf: await generarDocumento(doc, () => {}, false) };
+    const m = await manualDeAlcance({
+      alcance,
+      conPersonas,
+      hoja: "carta",
+      orientacion: "vertical",
+      config: VISTA_POR_DEFECTO,
+    });
+    const doc = documentoManual(
+      { unidades: m.unidades, general: m.general, dibujos: m.dibujos },
+      { ...opciones(conPersonas), encabezado: m.encabezado },
+    );
+    return { doc, pdf: await generarDocumento(doc, () => {}, false), m };
   };
 
   it("manual_sin_personas_no_lleva_nombres", async () => {
@@ -277,7 +270,7 @@ describe("el manual en PDF, con pdfmake", () => {
     expect(new TextDecoder("latin1").decode(pdf)).not.toContain(MARCA);
     const texto = textoDelPdf(pdf);
     expect(texto).not.toContain(MARCA);
-    expect(texto).not.toContain("Ximena");
+    for (const nombre of ["Ximena", "Quiroga", "Bruno", "Carla"]) expect(texto).not.toContain(nombre);
     // Se lee lo que sí va: la tabla, la portada y los dibujos.
     for (const x of ["Analista", "Vacante", "Ocupado", "Mantención", "BoldoAtlas"])
       expect(texto).toContain(x);
@@ -286,13 +279,22 @@ describe("el manual en PDF, con pdfmake", () => {
     expect(paginas[1]).toEqual(expect.arrayContaining(["Organigrama", "general", "3"]));
     // En el índice, solo «Organigrama general»: el «viene de» es de la hoja.
     expect(paginas[1]!.join(" ")).not.toContain("Viene");
-    expect(paginas[2]).toEqual(expect.arrayContaining(["Organigrama general", "· Viene de la página 1"]));
+    expect(paginas[2]).toEqual(expect.arrayContaining(["Organigrama general", "· Lámina 1"]));
     // Los metadatos: solo el título y lo que pdfkit pone solo (programa y fecha).
     expect(doc.info).toEqual({ title: "Manual de organización y funciones" });
     const info = new TextDecoder("latin1")
       .decode(pdf)
       .match(/\/(Title|Author|Subject|Keywords|Creator|Producer)\b/g);
     expect(new Set(info)).toEqual(new Set(["/Title", "/Creator", "/Producer"]));
+  });
+
+  it("una descripción más larga que una página no se pierde: la fila se parte y el final se lee", async () => {
+    const org = useOrganizacion();
+    const larga = `${"descripcion de un puesto con mucho texto ".repeat(750)}ultimapalabraunica`;
+    expect(larga.length).toBeGreaterThan(30000);
+    org.$patch({ puestos: org.puestos.map((x) => (x.id === "p-x" ? { ...x, descripcion: larga } : x)) });
+    const { pdf } = await armar("todo", false);
+    expect(textoDelPdf(pdf)).toContain("ultimapalabraunica");
   });
 
   it("control: con personas el manual sí lleva los nombres, y así se ve que la búsqueda sirve", async () => {

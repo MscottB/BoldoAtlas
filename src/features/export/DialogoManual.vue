@@ -2,16 +2,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { archivoAbrirCarpeta, archivoGuardar, leerMeta } from "@/db/cliente";
+import { archivoGuardar, leerMeta } from "@/db/cliente";
 import { useVista } from "@/features/arbol/useVista";
 import { crearAviso } from "@/features/excel/aviso";
 import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
@@ -33,6 +24,8 @@ import { elegir, guardarPreferencia, leerPreferencia } from "@/lib/preferencias"
 import { VERSION_ACTUAL } from "@/stores/actualizaciones";
 import { useOrganizacion } from "@/stores/organizacion";
 import { armarPdf } from "./armarPdf";
+import AvisoSinCifrar from "./AvisoSinCifrar.vue";
+import { avisarGuardado, fuentesDelOrganigrama, textoDelAlcance } from "./dialogos";
 import { nombreArchivo, paginasDelPdf } from "./formatos";
 import { textosManual } from "./manual";
 import { manualDeAlcance } from "./manualDeAlcance";
@@ -71,9 +64,7 @@ watch(abierto, (si) => {
 const alcance = computed<Alcance>(() =>
   elegida.value && org.enFecha.porId.has(elegida.value) ? { rama: elegida.value } : "todo",
 );
-const textoAlcance = computed(() =>
-  alcance.value === "todo" ? t("imagen.alcanceTodo") : org.enFecha.porId.get(alcance.value.rama)!.nombre,
-);
+const textoAlcance = computed(() => textoDelAlcance(alcance.value, org, t));
 const NINGUNA = new Set<string>();
 
 const { ubicar, cerrar } = ubicadorEnWorker();
@@ -88,7 +79,7 @@ watch(avisoAbierto, (v) => v || aviso.cerrado());
 // Lo que dice el aviso además de «queda sin cifrar»: letra bajo 8 pt, o más de 200 páginas.
 const avisos = ref<string[]>([]);
 // Si cambia el organigrama mientras se arma o se pregunta, el manual sería el de antes: se corta y se avisa.
-watch([() => org.enFecha, () => org.catalogos], () => {
+watch(fuentesDelOrganigrama(org), () => {
   if (!armando.value) return;
   armando.value.abort(CAMBIO);
   avisoAbierto.value = false;
@@ -134,12 +125,8 @@ async function guardar() {
           conPersonas,
           textos: textosManual(),
           portada: {
-            organizacion: encabezado.organizacion,
-            alcance: encabezado.alcance,
-            fecha: encabezado.fecha,
             version: t("manual.version", { version: VERSION_ACTUAL }),
             revision: t("manual.revision", { revision: meta.data_revision ?? "?" }),
-            logo: encabezado.logo,
           },
         },
       },
@@ -160,14 +147,7 @@ async function guardar() {
     const rama = alcance.value === "todo" ? "" : textoAlcance.value;
     const archivo = nombreArchivo(org.org.nombre, rama, "manual", "pdf", org.fechaVista ?? hoyISO());
     const nombre = await archivoGuardar(archivo, pdf, "pdf");
-    if (nombre)
-      toast.success(t("imagen.guardada", { nombre }), {
-        duration: 10000,
-        action: {
-          label: t("excel.abrirCarpeta"),
-          onClick: () => void archivoAbrirCarpeta().catch((x: unknown) => toast.error(mensajeFallo(x))),
-        },
-      });
+    if (nombre) avisarGuardado(nombre);
   } catch (e) {
     // Cancelado por la persona o al cerrar: nada que decir. Si cambió el organigrama, se dice que vuelva a guardar.
     const que = falloAlGuardar(e, true, control.signal);
@@ -241,21 +221,10 @@ async function guardar() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
-  <AlertDialog v-model:open="avisoAbierto">
-    <AlertDialogContent data-aviso-manual>
-      <AlertDialogHeader>
-        <AlertDialogTitle>{{ t("excel.aviso.titulo") }}</AlertDialogTitle>
-        <AlertDialogDescription>
-          {{ t("pdf.aviso") }}
-          <template v-for="a in avisos" :key="a"> {{ a }}</template>
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>{{ t("excel.aviso.cancelar") }}</AlertDialogCancel>
-        <AlertDialogAction data-accion="aceptar-aviso-manual" @click="aviso.aceptar()">
-          {{ t("imagen.aceptar") }}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
+  <AvisoSinCifrar v-model:open="avisoAbierto" nombre="manual" @aceptar="aviso.aceptar()">
+    <AlertDialogDescription>
+      {{ t("pdf.aviso") }}
+      <template v-for="a in avisos" :key="a"> {{ a }}</template>
+    </AlertDialogDescription>
+  </AvisoSinCifrar>
 </template>

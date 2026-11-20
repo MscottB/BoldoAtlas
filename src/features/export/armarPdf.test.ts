@@ -36,7 +36,7 @@ const manual: OpcionesManual = {
   ...o,
   conPersonas: false,
   textos: {} as TextosManual,
-  portada: { organizacion: "A", alcance: "B", fecha: "C", version: "D", revision: "E", logo: null },
+  portada: { version: "D", revision: "E" },
 };
 const svg = "<svg/>";
 afterEach(() => void (w.creados.length = 0));

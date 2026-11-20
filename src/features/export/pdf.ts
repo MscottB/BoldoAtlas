@@ -50,6 +50,10 @@ export interface TDocumentDefinitions {
   footer: (pagina: number, total: number) => Nodo;
 }
 
+/** La escala con que un dibujo cabe en una caja: nunca más de 1 (no se agranda). */
+export const escalaQueEntra = (d: { ancho: number; alto: number }, caja: { ancho: number; alto: number }) =>
+  Math.min(1, caja.ancho / d.ancho, caja.alto / d.alto);
+
 export const TENUE = "#737373";
 // pdfmake solo lee PNG y JPG; otro logo no va.
 export const LOGO_PDF = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/;
@@ -85,7 +89,7 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
   const conMapa = hojitas.length > 0;
   if (conMapa && !o.mapa) throw new Error("En cuadrícula falta el dibujo entero para el mapa (o.mapa).");
 
-  const cabe = (ancho: number, alto: number) => Math.min(1, area.ancho / ancho, area.alto / alto);
+  const cabe = (ancho: number, alto: number) => escalaQueEntra({ ancho, alto }, area);
   // Todas las hojas con la escala de las enteras (la menor): una hoja más angosta, al final, no sale más grande.
   const escalaHojas = Math.min(...hojitas.map((r) => cabe(r.ancho, r.alto)));
 

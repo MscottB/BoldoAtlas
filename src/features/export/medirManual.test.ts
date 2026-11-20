@@ -45,7 +45,7 @@ describe.skipIf(!RUTA)("medición del manual con la organización grande", () =>
           titulo: "Manual de organización y funciones",
           conPersonas,
           textos: textosManual(),
-          portada: { ...e, fecha: e.fecha, version: "BoldoAtlas", revision: "?", logo: null },
+          portada: { version: "BoldoAtlas", revision: "?" },
         }),
         () => {},
       );

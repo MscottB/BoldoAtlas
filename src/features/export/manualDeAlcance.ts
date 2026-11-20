@@ -7,7 +7,7 @@ import { datosManual, textosManual } from "./manual";
 import { cabezaDeSeccion, type DatosManualPdf } from "./manualPdf";
 import { LETRA_MIN_PT, areaUtil, cajaDibujoManual, type Hoja, type Orientacion } from "./paginas";
 import { paginasPdf } from "./paginasDeAlcance";
-import type { PaginaPdf } from "./pdf";
+import { escalaQueEntra, type PaginaPdf } from "./pdf";
 import { prepararImagen, unidadesDe, type Alcance, type PedidoImagen } from "./preparar";
 import { dibujarSvg, letraMinima, type EntradaSvg } from "./treeSvg";
 
@@ -117,7 +117,7 @@ export async function dibujoChico(
       { ...e, tarjetas: e.tarjetas.map((x) => ({ ...x, mas: 0 })) },
       { sinEncabezado: true },
     );
-    const escala = Math.min(1, caja.ancho / pagina.ancho, caja.alto / pagina.alto);
+    const escala = escalaQueEntra(pagina, caja);
     if (!mejor || escala > mejor.escala) mejor = { pagina, escala, direccion };
   }
   return mejor!;

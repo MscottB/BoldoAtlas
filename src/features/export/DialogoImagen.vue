@@ -2,16 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { archivoAbrirCarpeta, archivoGuardar } from "@/db/cliente";
+import { archivoGuardar } from "@/db/cliente";
 import { LIMITE_TARJETAS } from "@/features/arbol/rendimiento";
 import { useVista } from "@/features/arbol/useVista";
 import { crearAviso } from "@/features/excel/aviso";
@@ -33,6 +24,8 @@ import { useRetornoFoco } from "@/lib/foco";
 import { elegir, guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
 import { armarPdf } from "./armarPdf";
+import AvisoSinCifrar from "./AvisoSinCifrar.vue";
+import { avisarGuardado, fuentesDelOrganigrama, textoDelAlcance } from "./dialogos";
 import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 import type { Nivel } from "./niveles";
 import { ErrorCiclo, LISTA_HOJAS, ORIENTACIONES, type Hoja, type Orientacion, type Reparto } from "./paginas";
@@ -125,9 +118,7 @@ watch(abierto, (si) => {
 const alcance = computed<Alcance>(() =>
   elegida.value && org.enFecha.porId.has(elegida.value) ? { rama: elegida.value } : "todo",
 );
-const textoAlcance = computed(() =>
-  alcance.value === "todo" ? t("imagen.alcanceTodo") : org.enFecha.porId.get(alcance.value.rama)!.nombre,
-);
+const textoAlcance = computed(() => textoDelAlcance(alcance.value, org, t));
 const NINGUNA = new Set<string>();
 
 const pedido = computed<PedidoImagen>(() => ({
@@ -221,7 +212,7 @@ function programar(dibujo = true) {
   if (abierto.value) espera = setTimeout(() => void mostrar(), 300);
 }
 // Personalizar no se puede tocar con la ventana abierta: basta con ver si cambia la configuración entera.
-watch([pedido, () => org.enFecha, abierto], () => programar());
+watch([pedido, ...fuentesDelOrganigrama(org), abierto], () => programar());
 watch([esPdf, opcionesPdf], () => programar(false));
 onMounted(() => programar()); // no en el servidor de las pruebas: ahí no hay worker
 
@@ -313,15 +304,7 @@ async function guardar() {
     const rama = alcance.value === "todo" ? "" : textoAlcance.value;
     const archivo = nombreArchivo(org.org.nombre, rama, nivel.value, f, org.fechaVista ?? hoyISO());
     const nombre = await archivoGuardar(archivo, bytes, f);
-    if (nombre)
-      toast.success(t("imagen.guardada", { nombre }), {
-        description: bajada,
-        duration: 10000,
-        action: {
-          label: t("excel.abrirCarpeta"),
-          onClick: () => void archivoAbrirCarpeta().catch((x: unknown) => toast.error(mensajeFallo(x))),
-        },
-      });
+    if (nombre) avisarGuardado(nombre, bajada);
   } catch (e) {
     // Cancelado por la persona o al cerrar: nada que decir. Si cambió el organigrama, se dice que vuelva a guardar.
     const que = falloAlGuardar(e, f === "pdf", armando.value?.signal);
@@ -549,25 +532,14 @@ async function copiar() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
-  <AlertDialog v-model:open="avisoAbierto">
-    <AlertDialogContent data-aviso-imagen>
-      <AlertDialogHeader>
-        <AlertDialogTitle>{{ t("excel.aviso.titulo") }}</AlertDialogTitle>
-        <AlertDialogDescription v-if="esPdf">
-          {{ t("pdf.aviso") }}
-          <template v-for="a in avisos" :key="a"> {{ a }}</template>
-        </AlertDialogDescription>
-        <AlertDialogDescription v-else>
-          {{ t("imagen.aviso") }}
-          <template v-if="chica"> {{ t("imagen.chica") }}</template>
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>{{ t("excel.aviso.cancelar") }}</AlertDialogCancel>
-        <AlertDialogAction data-accion="aceptar-aviso-imagen" @click="aviso.aceptar()">
-          {{ t("imagen.aceptar") }}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
+  <AvisoSinCifrar v-model:open="avisoAbierto" nombre="imagen" @aceptar="aviso.aceptar()">
+    <AlertDialogDescription v-if="esPdf">
+      {{ t("pdf.aviso") }}
+      <template v-for="a in avisos" :key="a"> {{ a }}</template>
+    </AlertDialogDescription>
+    <AlertDialogDescription v-else>
+      {{ t("imagen.aviso") }}
+      <template v-if="chica"> {{ t("imagen.chica") }}</template>
+    </AlertDialogDescription>
+  </AvisoSinCifrar>
 </template>

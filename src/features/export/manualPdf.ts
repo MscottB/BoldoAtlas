@@ -5,6 +5,7 @@ import { MARGEN, areaUtil, cajaDibujoManual, type CabezaSeccion } from "./pagina
 import {
   LOGO_PDF,
   TENUE,
+  escalaQueEntra,
   marcoPdf,
   type Nodo,
   type OpcionesMarco,
@@ -23,15 +24,8 @@ export interface OpcionesManual extends OpcionesMarco {
   /** Con la columna «Ocupa». Sin personas, los datos ya vienen sin nombres: esto solo quita la columna vacía. */
   conPersonas: boolean;
   textos: TextosManual;
-  /** Todo ya traducido; `version` y `revision` son las líneas enteras. `logo`: una URL `data:image/...;base64`. */
-  portada: {
-    organizacion: string;
-    alcance: string;
-    fecha: string;
-    version: string;
-    revision: string;
-    logo: string | null;
-  };
+  /** Lo de la portada que el encabezado no trae, ya traducido: las líneas enteras. */
+  portada: { version: string; revision: string };
 }
 
 const OSCURO = "#0a0a0a";
@@ -40,7 +34,7 @@ const LINEA_ARRIBA = MARGEN + 10.5;
 
 /** Un dibujo achicado hasta caber en `ancho` × `alto`, centrado. Nunca se agranda. */
 const encajado = (p: PaginaPdf, ancho: number, alto: number): Nodo => {
-  const e = Math.min(1, ancho / p.ancho, alto / p.alto);
+  const e = escalaQueEntra(p, { ancho, alto });
   return { svg: p.svg, width: p.ancho * e, height: p.alto * e, alignment: "center" };
 };
 
@@ -66,7 +60,7 @@ export const cabezaDeSeccion = (x: UnidadManual, t: TextosManual): CabezaSeccion
 export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocumentDefinitions {
   const t = o.textos;
   const area = areaUtil(o.hoja, o.orientacion);
-  const p = o.portada;
+  const p = { ...o.portada, ...o.encabezado };
 
   const portada: Nodo = {
     stack: [
@@ -116,7 +110,6 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
     layout: "lightHorizontalLines",
     table: {
       headerRows: 1,
-      dontBreakRows: true,
       widths: o.conPersonas ? ["25%", "*", "25%", "auto"] : ["30%", "*", "auto"],
       body: [
         [t.cargo, t.descripcion, ...(o.conPersonas ? [t.ocupa] : []), t.estado].map((text) => ({
