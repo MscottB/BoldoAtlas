@@ -58,11 +58,12 @@ const HOJAS_POR_VUELTA = 8;
  * nivel del pedido. Por ramas, cada página se mide con el mismo dibujo que llevará, «sigue en la página N» incluido;
  * la vista previa reparte solo la raíz (con miles de unidades, repartirlo todo tarda) y `paginas`, todo.
  * `entero`: la entrada del pedido ya calculada (la del diálogo), para no repetir su layout. Con `senal` abortada, se
- * rechaza con su motivo (un «AbortError») en el siguiente paso.
+ * rechaza con su motivo (un «AbortError») en el siguiente paso. `claves`: las de «sigue» y «viene» (el manual dice
+ * «lámina»); por defecto, las del PDF, con «página».
  */
 export async function paginasPdf(
   pedido: PedidoImagen,
-  o: { hoja: Hoja; orientacion: Orientacion; reparto: Reparto },
+  o: { hoja: Hoja; orientacion: Orientacion; reparto: Reparto; claves?: Claves },
   { senal, entero: dada }: { senal?: AbortSignal; entero?: Promise<EntradaSvg> } = {},
 ): Promise<PdfDeAlcance> {
   const t = i18n.global.t;
@@ -122,7 +123,11 @@ export async function paginasPdf(
   }
   // Los layouts de la vista previa sirven al guardar: las páginas de la raíz no se vuelven a medir.
   const entradas: Entradas = new Map();
-  const raiz = await porRamas(pedido, entero, hoja, orientacion, entradas, { senal, soloPrimera: true });
+  const claves = o.claves ?? CLAVES_PDF;
+  const raiz = await porRamas(pedido, entero, hoja, orientacion, entradas, claves, {
+    senal,
+    soloPrimera: true,
+  });
   // Si la raíz no deja nada para después, la vista previa ya tiene todas las páginas y se sabe cuántas son.
   if (raiz.completa) {
     const todas = contar([...raiz.paginas, ...extra]);
@@ -141,13 +146,17 @@ export async function paginasPdf(
     encabezado,
     paginas: async (s, alAvanzar) =>
       contar([
-        ...(await porRamas(pedido, entero, hoja, orientacion, entradas, { senal: s, alAvanzar })).paginas,
+        ...(await porRamas(pedido, entero, hoja, orientacion, entradas, claves, { senal: s, alAvanzar }))
+          .paginas,
         ...extra,
       ]),
   };
 }
 
 type Entradas = Map<string, Promise<EntradaSvg>>;
+/** Las claves de i18n de «sigue en la … {n}» y «viene de la … {n}». */
+type Claves = { sigue: string; viene: string };
+const CLAVES_PDF: Claves = { sigue: "pdf.sigue", viene: "pdf.viene" };
 
 /**
  * Las páginas por ramas. `entradas` guarda el layout de cada página medida, para no repetirlo. `soloPrimera`: solo las
@@ -159,6 +168,7 @@ async function porRamas(
   hoja: Hoja,
   orientacion: Orientacion,
   entradas: Entradas,
+  claves: Claves,
   {
     senal,
     soloPrimera = false,
@@ -223,10 +233,10 @@ async function porRamas(
       const sigue = new Map(p.sigue.map((s) => [s.unidad, soloPrimera ? "…" : s.pagina + antes]));
       const tarjetas = e.tarjetas.map((x) => {
         const n = sigue.get(x.id);
-        return n ? { ...x, textoMas: t("pdf.sigue", { n }) } : x;
+        return n ? { ...x, textoMas: t(claves.sigue, { n }) } : x;
       });
       const arriba = [
-        p.viene && t("pdf.viene", { n: p.viene + antes }),
+        p.viene && t(claves.viene, { n: p.viene + antes }),
         p.hijas &&
           t("pdf.continuacion", { nombre: nombres.get(p.raiz), k: p.hijas.parte, n: p.hijas.partes }),
       ]

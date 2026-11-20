@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { SQL_HISTORICO } from "@/db/repos/historico";
+import { i18n } from "@/i18n";
 import { a, p, u } from "@/features/arbol/fixture";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -163,6 +164,30 @@ describe("datosManual", () => {
       descripcion: "Lleva las cuentas",
       estado: "vacante",
     });
+  });
+
+  it("jefatura_fuera_del_alcance_o_borrada_no_sale", () => {
+    const org = useOrganizacion();
+    // Operaciones apunta a la gerencia (fuera de su rama); Finanzas, a un puesto borrado.
+    org.$patch({
+      unidades: org.unidades.map((x) =>
+        x.id === "a2" ? { ...x, jefe_puesto_id: "p-g" } : x.id === "a1" ? { ...x, jefe_puesto_id: "p-b" } : x,
+      ),
+      puestos: [...org.puestos, { ...p("p-b", "a1"), cargo_id: "c-g", deleted_at: "2026-01-01" } as never],
+    });
+    const rama = datosManual({ alcance: { rama: "a2" }, conPersonas: true });
+    expect(rama[0]).not.toHaveProperty("jefatura");
+    const todo = datosManual({ alcance: "todo", conPersonas: true });
+    expect(todo.find((x) => x.id === "a1")).not.toHaveProperty("jefatura");
+    // Con toda la organización, la gerencia sí está en el alcance.
+    expect(todo.find((x) => x.id === "a2")!.jefatura).toMatchObject({ cargo: "Gerente" });
+  });
+
+  it("cargo_que_no_esta_en_el_catalogo_dice_sin_cargo", () => {
+    const org = useOrganizacion();
+    org.$patch({ puestos: org.puestos.map((x) => (x.id === "p-v" ? { ...x, cargo_id: "c-borrado" } : x)) });
+    const us = datosManual({ alcance: "todo", conPersonas: false });
+    expect(us.find((x) => x.id === "a2")!.puestos[0]!.cargo).toBe(i18n.global.t("manual.sinCargo"));
   });
 
   it("rama_como_alcance", () => {

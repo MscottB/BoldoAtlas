@@ -14,6 +14,9 @@ export const HOJAS: Record<Hoja, { ancho: number; alto: number }> = {
   a3: { ancho: 841.89, alto: 1190.55 },
   a2: { ancho: 1190.55, alto: 1683.78 },
 };
+/** Las hojas y orientaciones que se ofrecen, en este orden. */
+export const LISTA_HOJAS = Object.keys(HOJAS) as Hoja[];
+export const ORIENTACIONES: Orientacion[] = ["horizontal", "vertical"];
 export const MARGEN = 28.35; // 1 cm
 export const ENCABEZADO = 28;
 export const PIE = 22;

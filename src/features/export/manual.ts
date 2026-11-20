@@ -90,7 +90,7 @@ export function datosManual(o: { alcance: Alcance; conPersonas: boolean }): Unid
   for (const x of puestos) {
     const d = datosPuesto.get(x.id)!;
     const fila: PuestoManual = {
-      cargo: d.cargo,
+      cargo: d.cargo || i18n.global.t("manual.sinCargo"),
       descripcion: x.descripcion,
       estado: e.vigentes.get(x.id)?.titular ? "ocupado" : "vacante",
       ...(d.titular ? { titular: d.titular } : {}),

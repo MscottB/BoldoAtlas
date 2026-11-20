@@ -33,14 +33,27 @@ const limpio = (t: string) =>
     .join("")
     .replace(/_$/, "");
 
-/** `Organizacion_Alcance_nivel_AAAA-MM-DD.ext`, seguro en Windows. */
+/** `Organizacion_Alcance_nivel_AAAA-MM-DD.ext`, seguro en Windows. El manual va con «manual» en lugar del nivel. */
 export function nombreArchivo(
   organizacion: string,
   alcance: string,
-  nivel: Nivel,
+  nivel: Nivel | "manual",
   ext: "png" | "jpg" | "svg" | "pdf",
   fecha: string,
 ): string {
   const partes = [limpio(organizacion) || "BoldoAtlas", limpio(alcance), nivel, fecha].filter(Boolean);
   return `${partes.join("_")}.${ext}`;
+}
+
+/**
+ * Cuántas páginas tiene un PDF de pdfmake. pdfkit escribe sus diccionarios sin comprimir, y el de las páginas va al
+ * final: ahí está su cuenta. Se lee desde el final, cada vez el doble, para no pasar a texto un PDF de cientos de MB.
+ */
+export function paginasDelPdf(pdf: Uint8Array): number {
+  for (let n = 1 << 16; ; n *= 2) {
+    const m = /\/Type \/Pages\n\/Count (\d+)/.exec(
+      new TextDecoder("latin1").decode(pdf.subarray(Math.max(0, pdf.length - n))),
+    );
+    if (m || n >= pdf.length) return Number(m?.[1] ?? 0);
+  }
 }

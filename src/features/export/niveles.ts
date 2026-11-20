@@ -39,6 +39,11 @@ export interface EntradaNivel {
   config: ConfigVista;
   /** Unidad plegada → cuántas unidades quedan ocultas bajo ella (`descendientes(...).size`). */
   plegadas: ReadonlyMap<string, number>;
+  /**
+   * Fuera de «Como en pantalla», también las tarjetas de `datosPuesto` (el dibujo chico del manual): el cargo y, en
+   * Presentación, quién lo ocupa.
+   */
+  conPuestos?: boolean;
   t: Traducir;
 }
 
@@ -61,7 +66,23 @@ const hay = (x: string | false | null | undefined): x is string => !!x;
 export function tarjetasDe(nivel: Nivel, e: EntradaNivel): Tarjeta[] {
   const { config: c, t } = e;
   const base = (u: Unidad) => ({ id: u.id, titulo: u.nombre, mas: e.plegadas.get(u.id) ?? 0 });
-  if (nivel === "estructura") return e.unidades.map((u) => ({ ...base(u), lineas: [], color: null }));
+  const puestosDelManual = (conPersonas: boolean): Tarjeta[] =>
+    e.conPuestos
+      ? [...e.datosPuesto].map(([id, p]) => ({
+          id,
+          titulo: p.cargo || t("manual.sinCargo"),
+          lineas: conPersonas
+            ? [
+                p.titular ?? t("puesto.vacante"),
+                p.reemplazo && t("puesto.reemplazoDe", { nombre: p.reemplazo }),
+              ].filter(hay)
+            : [],
+          color: null,
+          mas: 0,
+        }))
+      : [];
+  if (nivel === "estructura")
+    return [...e.unidades.map((u) => ({ ...base(u), lineas: [], color: null })), ...puestosDelManual(false)];
 
   const unidades = e.unidades.flatMap((u): Tarjeta[] => {
     const d = e.datos.get(u.id);
@@ -100,7 +121,8 @@ export function tarjetasDe(nivel: Nivel, e: EntradaNivel): Tarjeta[] {
       : [];
     return [{ ...base(u), lineas: [...lineas, cifras.join(" · ")].filter(hay), color: color?.color ?? null }];
   });
-  if (nivel !== "pantalla" || !c.verPuestos) return unidades;
+  if (nivel === "presentacion") return [...unidades, ...puestosDelManual(true)];
+  if (!c.verPuestos) return unidades;
 
   // Las tarjetas de puestos, como NodoPuesto. Solo se dibujan las que tienen caja (el de jefatura puede no tenerla).
   const puestos = [...e.datosPuesto].map(([id, p]): Tarjeta => {
