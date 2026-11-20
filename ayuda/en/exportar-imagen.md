@@ -33,6 +33,7 @@ If the image has more than 1,000 cards, the window says so with the number: it m
 - **PNG**: choose the **Background** (**White** or **Transparent**) and the **Size**, from 1x to 4x. If the size you ask for is too large, it is lowered automatically and a notice says what it came down to.
 - **JPG**: always with a white background; you choose the size.
 - **SVG**: a vector drawing, which can be enlarged without losing quality and opened in an editor.
+- If the organization is so wide that it does not fit in an image even at 1x, as a PNG, JPG or when copied it would be smaller than on screen and unreadable: the window warns you. Choose a branch or save it as SVG.
 
 **Save…** lets you choose where the file goes; when it finishes, **Open folder** shows it. **Copy image** puts a PNG on the clipboard, to paste straight into a presentation or an email. BoldoAtlas remembers the level, format, background and size you used.
 

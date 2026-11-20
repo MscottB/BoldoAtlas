@@ -256,13 +256,15 @@ mod tests {
             assert_eq!(e.detalle, "nombre_invalido", "{malo:?}");
         }
         #[cfg(windows)]
-        assert!(
+        assert_eq!(
             destino_de_prueba(
                 Some(dentro.as_os_str().to_owned()),
                 Some(&rutas(true)),
                 r"..\..\x"
             )
-            .is_err()
+            .unwrap_err()
+            .detalle,
+            "nombre_invalido"
         );
         // fuera, la propia datos/, una carpeta que no existe, una instalada o sin rutas: se rechaza
         let fuera = tempfile::tempdir().unwrap();

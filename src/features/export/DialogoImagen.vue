@@ -35,7 +35,7 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useRetornoFoco } from "@/lib/foco";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
-import { escalaQueCabe, fondoDePng, nombreArchivo } from "./formatos";
+import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 import type { Nivel } from "./niveles";
 import { cuantasTarjetas, prepararImagen, type Alcance, type PedidoImagen } from "./preparar";
 import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
@@ -76,6 +76,8 @@ const elegida = ref<string | null>(props.rama ?? null);
 const abrirTodo = ref(false);
 const previa = shallowRef<string | null>(null);
 const fallo = ref(false);
+// Lo que midió la vista previa: con ello se avisa si el PNG saldría ilegible.
+const chicaPrevia = ref(false);
 // Cada vez que se abre: el alcance que trae quien la abre, y las ramas como en pantalla.
 watch(abierto, (si) => {
   if (!si) return;
@@ -83,6 +85,7 @@ watch(abierto, (si) => {
   abrirTodo.value = false;
   previa.value = null; // la de la vez anterior puede ser de otra rama
   fallo.value = false;
+  chicaPrevia.value = false;
 });
 // Una unidad que no existe a la fecha que se ve (o ya no existe) vuelve a ser toda la organización.
 const alcance = computed<Alcance>(() =>
@@ -150,7 +153,9 @@ async function mostrar() {
     const e = await entrada();
     if (v !== vuelta) return;
     // Un data: URL en un <img>: el SVG no corre nada.
-    previa.value = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(dibujarSvg(e).svg)}`;
+    const { svg, ancho, alto } = dibujarSvg(e);
+    previa.value = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    chicaPrevia.value = pngMenorQuePantalla(ancho, alto);
     fallo.value = false;
   } catch (e) {
     if (v !== vuelta || e === REEMPLAZADO) return;
@@ -163,6 +168,7 @@ async function mostrar() {
 function programar() {
   vuelta++;
   fallo.value = false; // el error de antes no tapa el «Preparando…»
+  chicaPrevia.value = false;
   calculo = null;
   clearTimeout(espera);
   if (abierto.value) espera = setTimeout(() => void mostrar(), 300);
@@ -172,6 +178,7 @@ watch([pedido, () => org.enFecha, abierto], programar);
 onMounted(programar); // no en el servidor de las pruebas: ahí no hay worker
 
 const ocupado = ref(false);
+const chica = ref(false); // lo que dice el aviso de aceptación: la imagen saldría ilegible
 const avisoAbierto = ref(false);
 const aviso = crearAviso((v) => (avisoAbierto.value = v));
 // Cerrar el aviso de cualquier forma es no aceptarlo. «Acepto» responde antes (el cierre llega después, en otra vuelta).
@@ -186,10 +193,11 @@ async function guardar() {
   if (ocupado.value) return;
   ocupado.value = true;
   try {
-    if (!(await aviso.preguntar())) return;
     const e = await entrada();
     const f = formato.value;
     const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: conFondo() });
+    chica.value = f !== "svg" && pngMenorQuePantalla(ancho, alto);
+    if (!(await aviso.preguntar())) return;
     let bytes: Uint8Array;
     let bajada: string | undefined; // se dice solo si de verdad se guardó
     if (f === "svg") bytes = new TextEncoder().encode(svg);
@@ -226,15 +234,21 @@ async function copiar() {
   if (ocupado.value) return;
   ocupado.value = true;
   try {
-    if (!(await aviso.preguntar())) return;
+    // Antes del aviso (se puede esperar): el clic de «Acepto» es el gesto, y después no se espera nada.
+    const e = await entrada();
     const fondoPng = fondoDePng(formato.value, fondo.value);
-    await copiarImagen(
-      entrada().then((e) => {
-        const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: fondoPng === "blanco" });
-        return svgABlob(svg, ancho, alto, { escala: 2, formato: "png", fondo: fondoPng });
-      }),
-    );
-    toast.success(t("imagen.copiada"));
+    const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: fondoPng === "blanco" });
+    chica.value = pngMenorQuePantalla(ancho, alto);
+    if (!(await aviso.preguntar())) return;
+    await copiarImagen(svgABlob(svg, ancho, alto, { escala: 2, formato: "png", fondo: fondoPng }));
+    const cabe = escalaQueCabe(ancho, alto, 2);
+    toast.success(t("imagen.copiada"), {
+      description: cabe.bajada
+        ? t("imagen.escalaBajada", {
+            escala: cabe.escala.toLocaleString(locale.value, { maximumFractionDigits: 2 }),
+          })
+        : undefined,
+    });
   } catch (e) {
     // Si la imagen no se pudo armar, clipboard.write falla con su propio error (DOMException), no con el
     // ErrorImagen: casi siempre se dice «no se pudo copiar». En Linux (WebKitGTK) puede no aceptar imágenes.
@@ -373,6 +387,9 @@ async function copiar() {
               })
             }}
           </p>
+          <p v-if="chicaPrevia && formato !== 'svg'" role="status" data-aviso-chica class="text-sm">
+            {{ t("imagen.chica") }}
+          </p>
         </div>
       </div>
 
@@ -396,7 +413,10 @@ async function copiar() {
     <AlertDialogContent data-aviso-imagen>
       <AlertDialogHeader>
         <AlertDialogTitle>{{ t("excel.aviso.titulo") }}</AlertDialogTitle>
-        <AlertDialogDescription>{{ t("imagen.aviso") }}</AlertDialogDescription>
+        <AlertDialogDescription>
+          {{ t("imagen.aviso") }}
+          <template v-if="chica"> {{ t("imagen.chica") }}</template>
+        </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel>{{ t("excel.aviso.cancelar") }}</AlertDialogCancel>

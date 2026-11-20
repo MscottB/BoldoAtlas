@@ -5,8 +5,9 @@ import { u } from "@/features/arbol/fixture";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
 import { formatearFecha } from "@/features/puestos/puestos";
 import { useOrganizacion } from "@/stores/organizacion";
-import { datos } from "./fixture";
+import { MARCA, datos } from "./fixture";
 import { cuantasTarjetas, prepararImagen, type PedidoImagen } from "./preparar";
+import { dibujarSvg } from "./treeSvg";
 
 // «Organigrama a una fecha» lee lo histórico de la base: aquí, de estas filas.
 const h = vi.hoisted(() => ({ filas: new Map<string, unknown[]>() }));
@@ -90,5 +91,46 @@ describe("prepararImagen", () => {
     const config = { ...VISTA_POR_DEFECTO, verPuestos: true };
     expect(cuantasTarjetas(pedido({ abrirTodo: true, config }))).toBe(6);
     expect(cuantasTarjetas(pedido({ abrirTodo: true, config, nivel: "pantalla" }))).toBe(6 + 2);
+  });
+});
+
+describe("privacidad de punta a punta", () => {
+  // Todo dato de personas, cargos, etiquetas y leyendas lleva la marca; Personalizar, todo prendido.
+  const sembrar = () => {
+    const org = useOrganizacion();
+    org.$patch({
+      puestos: org.puestos.map((x) => ({ ...x, leyenda_id: "ley" })),
+      leyendas: [
+        {
+          id: "ley",
+          nombre: `Leyenda ${MARCA}`,
+          color: "#ff0000",
+          descripcion: `Desc ${MARCA}`,
+          orden: 0,
+          deleted_at: null,
+        },
+      ],
+      etiquetas: [{ id: "et", nombre: `Etiqueta ${MARCA}`, color: "#00ff00" }],
+      unidadEtiquetas: [{ unidad_id: "g", etiqueta_id: "et" }],
+      catalogos: { ...org.catalogos, cargos: [{ id: "cargo", nombre: `Cargo ${MARCA}` }] } as never,
+    });
+  };
+  const todo = { ...VISTA_POR_DEFECTO, verPuestos: true, colorearPor: "leyenda", personasEnTarjetas: true };
+
+  it("Estructura no deja salir ningún dato de personas, aunque Personalizar lo pida todo", async () => {
+    sembrar();
+    const svg = dibujarSvg(
+      await prepararImagen(pedido({ nivel: "estructura", abrirTodo: true, config: todo })),
+    ).svg;
+    expect(svg).not.toContain(MARCA);
+    expect(svg).not.toContain("ff0000");
+  });
+
+  it("control: «Como en pantalla» con lo mismo sí lleva la marca (la siembra llega)", async () => {
+    sembrar();
+    const svg = dibujarSvg(
+      await prepararImagen(pedido({ nivel: "pantalla", abrirTodo: true, config: todo })),
+    ).svg;
+    expect(svg).toContain(MARCA);
   });
 });

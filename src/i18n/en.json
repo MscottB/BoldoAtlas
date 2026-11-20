@@ -2188,6 +2188,7 @@
     "aceptar": "I accept, continue",
     "guardada": "Saved {nombre}",
     "copiada": "Image copied. You can paste it now.",
+    "chica": "As a PNG or JPG, or when copied, the image would be smaller than on screen and unreadable. Choose a branch or save it as SVG.",
     "escalaBajada": "The image was too large for that size: it was made at {escala}x.",
     "abrir": "Export as image",
     "exportarRama": "Export this branch as an image",

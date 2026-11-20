@@ -17,6 +17,9 @@ export function escalaQueCabe(
   return { escala: Math.floor(tope * 10000) / 10000, bajada: true };
 }
 
+/** A 1x ya no cabe: PNG, JPG o copiar saldrían más chicos que en pantalla (ilegibles). */
+export const pngMenorQuePantalla = (ancho: number, alto: number) => escalaQueCabe(ancho, alto, 1).bajada;
+
 /** El fondo con que se arma la imagen: el elegido solo cuenta en PNG (solo ahí se ofrece); JPG y SVG van en blanco. */
 export const fondoDePng = (
   formato: "png" | "jpg" | "svg",

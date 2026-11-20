@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escalaQueCabe, fondoDePng, nombreArchivo } from "./formatos";
+import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 
 describe("escala_que_cabe", () => {
   it("deja la escala pedida si cabe", () => {
@@ -52,5 +52,14 @@ describe("fondo_de_png", () => {
     expect(fondoDePng("png", "blanco")).toBe("blanco");
     expect(fondoDePng("jpg", "transparente")).toBe("blanco");
     expect(fondoDePng("svg", "transparente")).toBe("blanco");
+  });
+});
+
+describe("png_menor_que_pantalla", () => {
+  it("avisa solo cuando ni a 1x cabe", () => {
+    expect(pngMenorQuePantalla(346988, 732)).toBe(true);
+    expect(pngMenorQuePantalla(16384, 7000)).toBe(false);
+    expect(pngMenorQuePantalla(16385, 100)).toBe(true);
+    expect(pngMenorQuePantalla(11000, 11000)).toBe(true);
   });
 });

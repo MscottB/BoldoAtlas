@@ -2188,6 +2188,7 @@
     "aceptar": "Acepto, continuar",
     "guardada": "Se guardó {nombre}",
     "copiada": "Imagen copiada. Ya puedes pegarla.",
+    "chica": "En PNG o JPG, o al copiarla, la imagen saldría más chica que en pantalla y no se podría leer. Elige una rama o guárdala en SVG.",
     "escalaBajada": "La imagen era muy grande para ese tamaño: se hizo a {escala}x.",
     "abrir": "Exportar como imagen",
     "exportarRama": "Exportar esta rama como imagen",
