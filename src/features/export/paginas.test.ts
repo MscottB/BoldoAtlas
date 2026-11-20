@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  ErrorCiclo,
   LETRA_MIN_PT,
   MARGEN,
   SOLAPE,
@@ -177,6 +178,9 @@ describe("repartirPorRamas", () => {
   it("ciclo_en_los_datos_termina_con_error", async () => {
     await expect(repartir({ r: ["a"], a: ["b"], b: ["a"] })).rejects.toThrow(/ciclo/);
     await expect(repartir({ r: ["r"] })).rejects.toThrow(/ciclo/);
+    // Con su clase: la app lo reconoce sin leer el texto.
+    await expect(repartir({ r: ["a"], a: ["r"] })).rejects.toBeInstanceOf(ErrorCiclo);
+    await expect(repartir({ r: ["r"] })).rejects.toMatchObject({ unidad: "r" });
   });
 
   it("rama_muy_honda_no_agota_la_pila", async () => {

@@ -2229,6 +2229,8 @@
     "filaColumna": "Fila {fila}, columna {columna}",
     "leyenda": "Leyenda",
     "ilegible": "En una página la letra quedaría bajo 8 puntos y no se podría leer. Repártelo por ramas o en cuadrícula.",
+    "ilegibleAlguna": "Alguna página quedaría con letra bajo 8 puntos y costaría leerla. Prueba con una hoja más grande.",
+    "preparando": "Preparando las páginas…",
     "muchas": "El PDF lleva {n} páginas, más de {limite}: puede tardar.",
     "aviso": "El PDF queda sin cifrar: cualquiera que lo abra verá lo que contiene. Quien lo genera es responsable de dónde lo guarda y con quién lo comparte.",
     "armando": "Armando el PDF…",

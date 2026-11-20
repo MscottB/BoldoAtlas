@@ -297,7 +297,8 @@ export function dibujarSvg(
   };
   let ancho = Math.ceil(contenido.ancho + 2 * MARGEN);
   let alto = Math.ceil(contenido.alto + 2 * MARGEN);
-  if (e.nivel === "presentacion") {
+  // En el PDF (sin encabezado) no: la página tiene su propia forma, y los márgenes achicarían el dibujo.
+  if (e.nivel === "presentacion" && conEncabezado) {
     // Enteros 16k × 9k: así ancho / alto da 16 / 9 exacto.
     const k = Math.ceil(Math.max(ancho / 16, alto / 9));
     [ancho, alto] = [16 * k, 9 * k];

@@ -3,6 +3,7 @@ import { i18n } from "@/i18n";
 import { indiceHijos } from "@/features/arbol/jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
+  LETRA_MIN_PT,
   cuadricula,
   escalaParaHoja,
   repartirPorRamas,
@@ -13,66 +14,104 @@ import {
 } from "./paginas";
 import type { PaginaPdf } from "./pdf";
 import { prepararImagen, unidadesDe, type PedidoImagen } from "./preparar";
-import { dibujarSvg, type EntradaSvg } from "./treeSvg";
+import { dibujarSvg, letraMinima, type EntradaSvg } from "./treeSvg";
 
 /** Sobre esta cifra de páginas, el diálogo avisa antes de armar el PDF. */
 export const LIMITE_PAGINAS = 200;
 
 /** Lo que necesita `armarPdf`, salvo los textos fijos. */
 export interface PdfDeAlcance {
-  paginas: PaginaPdf[];
+  /** El dibujo de la primera página, para la vista previa: en cuadrícula, el del mapa. */
+  primera: string;
   /** En cuadrícula: el dibujo entero, para el mapa (`o.mapa` de `documentoPdf`). */
   mapa?: { svg: string; ancho: number; alto: number };
   /** Cuántas páginas tendrá el PDF, con el mapa. */
   total: number;
-  /** En una página: la letra quedaría bajo 8 pt. */
+  /** Alguna página tendría letra bajo 8 pt. */
   ilegible: boolean;
   /** El de cada página del PDF: organización, alcance, fecha y logo. */
   encabezado: EntradaSvg["encabezado"];
+  /**
+   * Las páginas para `armarPdf`, sin el mapa. En cuadrícula, las hojas se dibujan recién aquí, al guardar, y de a poco:
+   * la ventana sigue respondiendo y `senal` las detiene.
+   */
+  paginas: (senal?: AbortSignal) => Promise<PaginaPdf[]>;
 }
 
 // Solo el dibujo: el encabezado lo lleva cada página del PDF, y la leyenda va en su propia página (sus 9 pt, a la escala
 // de la hoja, bajarían de 8).
 const dibujo = (e: EntradaSvg, recorte?: Hojita) =>
   dibujarSvg({ ...e, leyenda: null }, { sinEncabezado: true, recorte });
+const HOJAS_POR_VUELTA = 8;
 
 /**
  * Las páginas del PDF del pedido, repartidas como se elige. Cada una sale de `prepararImagen` y `dibujarSvg`, con el
  * nivel del pedido. Por ramas, cada página se mide con el mismo dibujo que llevará, «sigue en la página N» incluido.
+ * `entero`: la entrada del pedido ya calculada (la del diálogo), para no repetir su layout. Con `senal` abortada, se
+ * rechaza con su motivo (un «AbortError») en el siguiente paso.
  */
 export async function paginasPdf(
   pedido: PedidoImagen,
   o: { hoja: Hoja; orientacion: Orientacion; reparto: Reparto },
+  { senal, entero: dada }: { senal?: AbortSignal; entero?: Promise<EntradaSvg> } = {},
 ): Promise<PdfDeAlcance> {
   const t = i18n.global.t;
   const { hoja, orientacion } = o;
-  const entero = await prepararImagen(pedido);
-  let paginas: PaginaPdf[];
-  let mapa: PdfDeAlcance["mapa"];
-  let ilegible = false;
-  if (o.reparto === "una") {
-    const d = dibujo(entero);
-    ilegible = escalaParaHoja(d.ancho, d.alto, hoja, orientacion, pedido.nivel).ilegible;
-    paginas = [d];
-  } else if (o.reparto === "cuadricula") {
-    const d = (mapa = dibujo(entero));
-    paginas = cuadricula(d.ancho, d.alto, hoja, orientacion, pedido.nivel).hojas.map((h) => ({
-      ...dibujo(entero, h),
-      recorte: h,
-      arriba: t("pdf.filaColumna", { fila: h.fila, columna: h.columna }),
-    }));
-  } else paginas = await porRamas(pedido, entero, hoja, orientacion);
+  const entero = await (dada ?? prepararImagen(pedido));
+  senal?.throwIfAborted();
+  const legible = (p: { ancho: number; alto: number }) =>
+    !escalaParaHoja(p.ancho, p.alto, hoja, orientacion, pedido.nivel).ilegible;
+  const { leyenda, encabezado } = entero;
+  const extra: PaginaPdf[] =
+    entero.nivel === "pantalla" && leyenda?.entradas.length
+      ? [
+          {
+            ...dibujarSvg(
+              { ...entero, tarjetas: [], aristas: [], laterales: [], zonas: null },
+              { sinEncabezado: true },
+            ),
+            arriba: t("pdf.leyenda"),
+          },
+        ]
+      : [];
 
-  const { leyenda } = entero;
-  if (entero.nivel === "pantalla" && leyenda?.entradas.length)
-    paginas.push({
-      ...dibujarSvg(
-        { ...entero, tarjetas: [], aristas: [], laterales: [], zonas: null },
-        { sinEncabezado: true },
-      ),
-      arriba: t("pdf.leyenda"),
-    });
-  return { paginas, mapa, total: paginas.length + (mapa ? 1 : 0), ilegible, encabezado: entero.encabezado };
+  if (o.reparto === "cuadricula") {
+    const mapa = dibujo(entero);
+    const { hojas } = cuadricula(mapa.ancho, mapa.alto, hoja, orientacion, pedido.nivel);
+    return {
+      primera: mapa.svg,
+      mapa,
+      total: 1 + hojas.length + extra.length,
+      // Las hojas van a 8 pt, salvo que la letra ya sea menor a escala 1 (cuadricula no agranda).
+      ilegible: letraMinima(pedido.nivel) < LETRA_MIN_PT || !extra.every(legible),
+      encabezado,
+      paginas: async (s) => {
+        const lista: PaginaPdf[] = [];
+        for (const [i, h] of hojas.entries()) {
+          // Cada hoja recorre el dibujo entero: entre tanda y tanda, la ventana atiende lo suyo.
+          if (i % HOJAS_POR_VUELTA === 0) await new Promise((r) => setTimeout(r));
+          s?.throwIfAborted();
+          lista.push({
+            ...dibujo(entero, h),
+            recorte: h,
+            arriba: t("pdf.filaColumna", { fila: h.fila, columna: h.columna }),
+          });
+        }
+        return [...lista, ...extra];
+      },
+    };
+  }
+  const lista = [
+    ...(o.reparto === "una" ? [dibujo(entero)] : await porRamas(pedido, entero, hoja, orientacion, senal)),
+    ...extra,
+  ];
+  return {
+    primera: lista[0]!.svg,
+    total: lista.length,
+    ilegible: !lista.every(legible),
+    encabezado,
+    paginas: async () => lista,
+  };
 }
 
 async function porRamas(
@@ -80,6 +119,7 @@ async function porRamas(
   entero: EntradaSvg,
   hoja: Hoja,
   orientacion: Orientacion,
+  senal?: AbortSignal,
 ): Promise<PaginaPdf[]> {
   const t = i18n.global.t;
   // Las ramas como se ven en el dibujo entero: una unidad plegada ahí no tiene hijas que repartir.
@@ -97,6 +137,7 @@ async function porRamas(
   // midió al repartir es la misma que se dibuja.
   const entradas = new Map<string, Promise<EntradaSvg>>();
   const entradaDe = (raiz: string, profundidad: number, tramo?: [number, number]) => {
+    senal?.throwIfAborted(); // cada página es un layout: al cerrar la ventana o cambiar algo, no se sigue
     const clave = `${raiz} ${profundidad} ${tramo?.join(" ") ?? ""}`;
     let e = entradas.get(clave);
     if (!e) {
@@ -115,7 +156,9 @@ async function porRamas(
     return e;
   };
   const medir = async (raiz: string, profundidad: number, tramo?: [number, number]) => {
-    const { ancho, alto } = dibujo(await entradaDe(raiz, profundidad, tramo));
+    const e = await entradaDe(raiz, profundidad, tramo);
+    senal?.throwIfAborted();
+    const { ancho, alto } = dibujo(e);
     return { ancho, alto };
   };
 
@@ -125,6 +168,7 @@ async function porRamas(
     const antes = paginas.length;
     for (const p of await repartirPorRamas(raiz, hijosDe, medir, hoja, orientacion, pedido.nivel)) {
       const e = await entradaDe(p.raiz, p.profundidad, p.hijas && [p.hijas.desde, p.hijas.hasta]);
+      senal?.throwIfAborted();
       const sigue = new Map(p.sigue.map((s) => [s.unidad, s.pagina + antes]));
       const tarjetas = e.tarjetas.map((x) => {
         const n = sigue.get(x.id);
@@ -151,7 +195,7 @@ export function avisosPdf(
 ): string[] {
   const t = i18n.global.t;
   return [
-    ...(reparto === "una" && r.ilegible ? [t("pdf.ilegible")] : []),
+    ...(r.ilegible ? [t(reparto === "una" ? "pdf.ilegible" : "pdf.ilegibleAlguna")] : []),
     ...(r.total > LIMITE_PAGINAS
       ? [t("pdf.muchas", { n: r.total.toLocaleString(locale), limite: LIMITE_PAGINAS })]
       : []),

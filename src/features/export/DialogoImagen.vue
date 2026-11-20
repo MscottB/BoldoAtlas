@@ -38,7 +38,7 @@ import { useOrganizacion } from "@/stores/organizacion";
 import { armarPdf } from "./armarPdf";
 import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 import type { Nivel } from "./niveles";
-import type { Hoja, Orientacion, Reparto } from "./paginas";
+import { ErrorCiclo, type Hoja, type Orientacion, type Reparto } from "./paginas";
 import { avisosPdf, paginasPdf, type PdfDeAlcance } from "./paginasDeAlcance";
 import { cuantasTarjetas, prepararImagen, type Alcance, type PedidoImagen } from "./preparar";
 import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
@@ -109,7 +109,7 @@ const chicaPrevia = ref(false);
 // Cada vez que se abre: el alcance que trae quien la abre, y las ramas como en pantalla.
 watch(abierto, (si) => {
   if (!si) {
-    armando.value?.abort(); // cerrar la ventana cancela el PDF
+    armando.value?.abort(); // cerrar la ventana cancela el PDF; el cálculo de la vista previa lo corta `programar`
     return;
   }
   elegida.value = props.rama ?? null;
@@ -164,6 +164,7 @@ async function ubicar(grafo: ElkNode): Promise<NodoUbicado[]> {
 onBeforeUnmount(() => {
   worker?.terminate();
   armando.value?.abort();
+  controlPdf?.abort();
   clearTimeout(espera);
 });
 
@@ -178,18 +179,18 @@ function entrada() {
   }
   return calculo;
 }
-// Lo mismo para el PDF: todas sus páginas, medidas y dibujadas.
+// Lo mismo para el PDF: sus páginas medidas, sobre la misma entrada. `programar` lo detiene con `controlPdf`.
 let calculoPdf: Promise<PdfDeAlcance> | null = null;
+let controlPdf: AbortController | null = null;
 function paginas() {
   if (!calculoPdf) {
-    const p = paginasPdf(pedido.value, opcionesPdf.value);
+    controlPdf = new AbortController();
+    const p = paginasPdf(pedido.value, opcionesPdf.value, { senal: controlPdf.signal, entero: entrada() });
     calculoPdf = p;
     p.catch(() => calculoPdf === p && (calculoPdf = null));
   }
   return calculoPdf;
 }
-// repartirPorRamas lo dice así si una unidad queda debajo de sí misma.
-const esCiclo = (e: unknown) => e instanceof Error && e.message.includes("ciclo");
 const dataUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 let espera: ReturnType<typeof setTimeout> | undefined;
 let vuelta = 0; // sube con cada cambio: una vista previa de antes no se muestra
@@ -201,7 +202,7 @@ async function mostrar() {
       const r = await paginas();
       if (v !== vuelta) return;
       // La primera página del PDF: en cuadrícula, el mapa.
-      previa.value = dataUrl((r.mapa ?? r.paginas[0]!).svg);
+      previa.value = dataUrl(r.primera);
       pdfPrevia.value = r;
     } else {
       const e = await entrada();
@@ -215,23 +216,26 @@ async function mostrar() {
     if (v !== vuelta || e === REEMPLAZADO) return;
     console.error(e);
     previa.value = null; // no queda a la vista una imagen de antes
-    fallo.value = esCiclo(e) ? "pdf.ciclo" : "imagen.previaFallo";
+    fallo.value = e instanceof ErrorCiclo ? "pdf.ciclo" : "imagen.previaFallo";
   }
 }
-// Cada cambio se espera 300 ms: tocar varias opciones seguidas arma una sola vista previa.
-function programar() {
+// Cada cambio se espera 300 ms: tocar varias opciones seguidas arma una sola vista previa. `dibujo` en false: cambió
+// solo lo del PDF (hoja, orientación, reparto) o el formato, y la entrada del dibujo sirve igual.
+function programar(dibujo = true) {
   vuelta++;
   fallo.value = null; // el error de antes no tapa el «Preparando…»
   chicaPrevia.value = false;
   pdfPrevia.value = null;
-  calculo = null;
+  if (dibujo) calculo = null;
+  controlPdf?.abort(); // también al cerrar la ventana: lo que se estaba repartiendo ya no sirve
   calculoPdf = null;
   clearTimeout(espera);
   if (abierto.value) espera = setTimeout(() => void mostrar(), 300);
 }
 // Personalizar no se puede tocar con la ventana abierta: basta con ver si cambia la configuración entera.
-watch([pedido, () => org.enFecha, abierto, esPdf, opcionesPdf], programar);
-onMounted(programar); // no en el servidor de las pruebas: ahí no hay worker
+watch([pedido, () => org.enFecha, abierto], () => programar());
+watch([esPdf, opcionesPdf], () => programar(false));
+onMounted(() => programar()); // no en el servidor de las pruebas: ahí no hay worker
 
 const ocupado = ref(false);
 const chica = ref(false); // lo que dice el aviso de aceptación: la imagen saldría ilegible
@@ -239,17 +243,27 @@ const avisoAbierto = ref(false);
 const aviso = crearAviso((v) => (avisoAbierto.value = v));
 // Cerrar el aviso de cualquier forma es no aceptarlo. «Acepto» responde antes (el cierre llega después, en otra vuelta).
 watch(avisoAbierto, (v) => v || aviso.cerrado());
-// Lo que el PDF avisa antes de guardar, y también bajo la vista previa: ilegible en una página, o más de 200.
+// Lo que el PDF avisa antes de guardar, y también bajo la vista previa: letra bajo 8 pt, o más de 200 páginas.
 const avisos = computed(() =>
   esPdf.value && pdfPrevia.value ? avisosPdf(reparto.value, pdfPrevia.value, locale.value) : [],
 );
-// Mientras se arma el PDF: para cancelarlo, y cuántas páginas lleva.
+// Mientras se preparan las páginas o se arma el PDF: para cancelarlo, y cuánto lleva.
 const armando = shallowRef<AbortController | null>(null);
 const avance = ref("");
 
 // Lo que falló al armar la imagen, con su texto; lo demás (guardar, portapapeles), con `otro`.
 const textoError = (e: unknown, otro: () => string) =>
-  e instanceof ErrorImagen ? t(`imagen.error.${e.codigo}`) : esCiclo(e) ? t("pdf.ciclo") : otro();
+  e instanceof ErrorImagen
+    ? t(`imagen.error.${e.codigo}`)
+    : e instanceof ErrorCiclo
+      ? t("pdf.ciclo")
+      : otro();
+// Espera `p`, salvo que antes se cancele: el cálculo es de la vista previa, y sigue para ella.
+const hasta = <T,>(p: Promise<T>, senal: AbortSignal) =>
+  new Promise<T>((resolver, rechazar) => {
+    senal.addEventListener("abort", () => rechazar(senal.reason), { once: true });
+    p.then(resolver, rechazar);
+  });
 const conFondo = () => fondoDePng(formato.value, fondo.value) === "blanco";
 
 async function guardar() {
@@ -260,12 +274,15 @@ async function guardar() {
     let bytes: Uint8Array;
     let bajada: string | undefined; // se dice solo si de verdad se guardó
     if (f === "pdf") {
-      const r = (pdfPrevia.value = await paginas());
-      if (!(await aviso.preguntar())) return;
+      // Cancelar sirve desde ya: la vista previa puede no haber terminado de repartir.
       const control = (armando.value = new AbortController());
+      avance.value = t("pdf.preparando");
+      const r = (pdfPrevia.value = await hasta(paginas(), control.signal));
+      if (!(await aviso.preguntar())) return;
+      const lista = await r.paginas(control.signal);
       avance.value = "";
       bytes = await armarPdf(
-        r.paginas,
+        lista,
         {
           hoja: hoja.value,
           orientacion: orientacion.value,
@@ -534,7 +551,7 @@ async function copiar() {
       </div>
 
       <DialogFooter>
-        <template v-if="armando">
+        <template v-if="armando && !avisoAbierto">
           <p role="status" data-avance-pdf class="self-center text-sm sm:mr-auto">
             {{ avance || t("pdf.armando") }}
           </p>

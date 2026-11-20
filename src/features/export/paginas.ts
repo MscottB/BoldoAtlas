@@ -59,6 +59,14 @@ export interface PaginaRamas {
   viene: number | null;
 }
 
+/** Una unidad quedó debajo de sí misma: el reparto no terminaría. El mensaje es para el registro; la app dice el suyo. */
+export class ErrorCiclo extends Error {
+  constructor(readonly unidad: string) {
+    super(`La unidad ${unidad} está debajo de sí misma: el organigrama tiene un ciclo.`);
+    this.name = "ErrorCiclo";
+  }
+}
+
 /**
  * Reparte el organigrama en páginas legibles, cortando por ramas. `medir` da el tamaño del dibujo de `raiz` con
  * `profundidad` niveles (y, si viene, solo con las hijas del tramo [desde, hasta)); el que llama lo arma con elk.
@@ -103,8 +111,7 @@ export async function repartirPorRamas(
       } else {
         abiertas.add(u);
         for (const h of hijosDe(u)) {
-          if (abiertas.has(h))
-            throw new Error(`La unidad ${h} está debajo de sí misma: el organigrama tiene un ciclo.`);
+          if (abiertas.has(h)) throw new ErrorCiclo(h);
           if (!alturas.has(h)) pila.push(h);
         }
       }

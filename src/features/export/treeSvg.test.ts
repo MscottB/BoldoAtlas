@@ -44,6 +44,11 @@ describe("dibujarSvg", () => {
     }
   });
 
+  it("presentacion_sin_encabezado_no_se_rellena_a_16_9", async () => {
+    const { ancho, alto } = await armarSvg("presentacion", { dibujo: { sinEncabezado: true } });
+    expect(ancho / alto).not.toBe(16 / 9);
+  });
+
   it("presentacion_alta_es_16_9", async () => {
     // Una cadena de 25 unidades bajo Finanzas: el dibujo es mucho más alto que ancho y se agregan márgenes a los lados.
     const { ancho, alto } = await armarSvg("presentacion", {
