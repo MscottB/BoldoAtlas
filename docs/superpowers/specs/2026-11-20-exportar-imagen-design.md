@@ -53,7 +53,7 @@ El autor lo aprobó por partes el 2026-11-20. Detalla la primera entrega de la T
 
 ## El diálogo
 
-- **Se abre desde** el menú (Exportar › Imagen…), un botón en la barra del árbol y el clic derecho en una unidad («Exportar esta rama como imagen», con esa rama como alcance).
+- **Se abre desde** la página «Importar y exportar» (la app no tiene un menú «Exportar»), un botón en la barra del árbol y el clic derecho en una unidad («Exportar esta rama como imagen», con esa rama como alcance).
 - **Opciones:**
   - el alcance: toda la organización, una gerencia o una rama;
   - el nivel;
