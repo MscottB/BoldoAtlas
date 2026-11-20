@@ -78,7 +78,7 @@ export async function revisarAlArrancar(): Promise<void> {
   if (debeAvisar(p, yaAvisado)) {
     yaAvisado = true;
     mostrar({ texto: textoAviso(p, i18n.global.t), externa: false, baseId: baseActual() });
-  } else if (!debeAvisar(p, false)) {
+  } else {
     // sin nada en la lista, una foto en la abierta es de un archivo externo
     await revisarExterna(baseActual(), abierta().nombre);
   }
@@ -130,17 +130,21 @@ export async function quitarAhora(): Promise<{ quitadas: number; fallos: number 
     return null;
   }
   quitando.value = { hechos: 0, total: 0 };
-  let r: { quitadas: number; fallos: number };
   try {
-    r = await conTrabajo(i18n.global.t("trabajos.quitarFotos"), async () =>
-      a.externa ? { quitadas: await fotosQuitar(), fallos: 0 } : quitarTodas(),
-    );
+    let r: { quitadas: number; fallos: number };
+    try {
+      r = await conTrabajo(i18n.global.t("trabajos.quitarFotos"), async () =>
+        a.externa ? { quitadas: await fotosQuitar(), fallos: 0 } : quitarTodas(),
+      );
+    } finally {
+      quitando.value = null;
+    }
+    // La limpieza general no toca los archivos externos: si el abierto es uno, ahora se pregunta por él. Con una propia no
+    // avisa: ya no tiene fotos (o falló, y entonces sí vale ofrecerlo de nuevo).
+    if (!a.externa) await revisarExterna(baseActual(), abierta().nombre);
+    return r;
   } finally {
-    quitando.value = null;
+    // también si la limpieza falla: un aviso general en espera no puede quedar oculto
+    siguiente();
   }
-  // La limpieza general no toca los archivos externos: si el abierto es uno, ahora se pregunta por él. Con una propia no
-  // avisa: ya no tiene fotos (o falló, y entonces sí vale ofrecerlo de nuevo).
-  if (!a.externa) await revisarExterna(baseActual(), abierta().nombre);
-  siguiente();
-  return r;
 }

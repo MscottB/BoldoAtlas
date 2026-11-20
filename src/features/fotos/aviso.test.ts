@@ -112,6 +112,29 @@ describe("El aviso", () => {
     expect(db.fotosQuitar).not.toHaveBeenCalled();
   });
 
+  it("si la limpieza general falla, suelta fotos-avance y deja de limpiar", async () => {
+    db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
+    db.fotosQuitarTodas.mockRejectedValue(new Error("boom"));
+    await m.revisarAlArrancar();
+    await expect(m.quitarAhora()).rejects.toThrow("boom");
+    expect(m.quitando.value).toBeNull();
+    expect(evento.soltado).toBe(true);
+  });
+
+  it("si la limpieza falla, el aviso que esperaba sale igual", async () => {
+    const lectura = pendiente<{ organizaciones: string[]; respaldos: number }>();
+    db.fotosPendientes.mockReturnValue(lectura.promesa);
+    db.fotosHay.mockResolvedValue(true);
+    db.fotosQuitar.mockRejectedValue(new Error("boom"));
+    const arranque = m.revisarAlArrancar();
+    await m.revisarExterna("A", "Externa");
+    lectura.resolver({ organizaciones: ["Norte"], respaldos: 1 });
+    await arranque;
+    await expect(m.quitarAhora()).rejects.toThrow("boom");
+    expect(m.quitando.value).toBeNull();
+    expect(m.aviso.value).toMatchObject({ externa: false });
+  });
+
   it("tras la limpieza general, la abierta externa con fotos recibe su propio aviso", async () => {
     db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
     m.conocerAbierta(() => ({ nombre: "Externa", externa: true }));
