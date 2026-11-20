@@ -1,5 +1,17 @@
 [
   {
+    "id": "manual-de-organizacion",
+    "pagina": "manual",
+    "es": {
+      "titulo": "El manual de organización y funciones",
+      "texto": "Genera un PDF con portada, índice, el organigrama general y una sección por unidad con su dibujo, su jefatura y la tabla de sus puestos. Eliges toda la organización o una rama, la hoja y la orientación. Sin marcar «Incluir a las personas», no aparece ningún nombre: sirve para compartirlo fuera."
+    },
+    "en": {
+      "titulo": "The organization and functions manual",
+      "texto": "Generate a PDF with a cover, contents, the general org chart and a section for each unit with its drawing, its head and the table of its positions. You choose the whole organization or one branch, the sheet and the orientation. With \"Include people\" unchecked, no name appears: good for sharing outside."
+    }
+  },
+  {
     "id": "exportar-pdf",
     "pagina": "exportar-imagen",
     "es": {

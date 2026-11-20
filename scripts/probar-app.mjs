@@ -879,6 +879,62 @@ async function exportarImagen(exe, carpeta) {
   comprobar("la app de la imagen cierra sola y con código 0", codigo === 0, codigo);
 }
 
+/**
+ * El manual de organización y funciones, sin personas. Parte de la base que sembró `exportarImagen` (la persona de humo
+ * es jefa de la raíz). Se abre desde Importar/Exportar y se guarda con `BOLDO_GUARDAR_EN`, por `data-accion`: la
+ * interfaz sale en inglés. `revisarBase` comprueba `rutaBd` antes de cerrar.
+ * @param {string} exe @param {string} carpeta
+ */
+async function manualSinPersonas(exe, carpeta) {
+  const destino = join(carpeta, "datos", "manual-humo");
+  mkdirSync(destino, { recursive: true });
+  const app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
+  await revisarBase(app, carpeta);
+  try {
+    await app.evaluar(`location.hash = "#/importar-exportar"`);
+    const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
+    const clic = async (/** @type {string} */ a) => {
+      await app.hasta(
+        `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
+        `el botón ${a}`,
+      );
+      await app.evaluar(`${por(a)}.click()`);
+    };
+    await clic("abrir-manual");
+    await app.hasta(`Boolean(document.querySelector("[data-dialogo-manual]"))`, "el diálogo del manual");
+    // Sin personas, en carta vertical
+    await app.evaluar(`(() => { const c = ${por("manual-personas")}; if (c.checked) c.click(); })()`);
+    await app.hasta(`!${por("manual-personas")}.checked`, "la casilla de personas sin marcar");
+    await clic("hoja-carta");
+    await clic("orientacion-vertical");
+    await clic("guardar-manual");
+    // El manual se arma en un worker y luego pide aceptar «queda sin cifrar»
+    await esperar(async () => {
+      if (await app.evaluar(`Boolean(${por("aceptar-aviso-manual")})`)) {
+        await app.evaluar(`${por("aceptar-aviso-manual")}.click()`);
+      }
+      return readdirSync(destino).some((f) => f.includes("_manual") && f.endsWith(".pdf"));
+    }, "el PDF del manual guardado");
+  } catch (e) {
+    const avisos = await app
+      .evaluar(`[...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.innerText).join(" | ")`)
+      .catch(() => "");
+    throw new Error(`${e instanceof Error ? e.message : e}; avisos: ${avisos}`, { cause: e });
+  }
+  const archivo = readdirSync(destino).find((f) => f.includes("_manual") && f.endsWith(".pdf"));
+  const bytes = archivo ? readFileSync(join(destino, archivo)) : Buffer.alloc(0);
+  comprobar("el manual empieza con %PDF", bytes.subarray(0, 4).toString("latin1") === "%PDF", bytes.length);
+  // Como en el PDF de la imagen: pdfkit escribe el texto como glifos, así que esto solo atrapa un nombre en claro.
+  comprobar(
+    "el manual sin personas no lleva el nombre de la persona en claro",
+    bytes.length > 0 && !bytes.toString("latin1").includes(PERSONA.nombre),
+    PERSONA.nombre,
+  );
+  await revisarBase(app, carpeta);
+  const codigo = await app.cerrar();
+  comprobar("la app del manual cierra sola y con código 0", codigo === 0, codigo);
+}
+
 async function correr() {
   const a = artefactos("windows", "");
   const [zip, ...otros] = globSync(`release/*/${a.zip}`);
@@ -892,6 +948,7 @@ async function correr() {
   await historialPersistente(exe, carpeta);
   await historialVolverAPunto(exe, carpeta);
   await exportarImagen(exe, carpeta);
+  await manualSinPersonas(exe, carpeta);
   await fotosSoloEnLaWeb(exe, carpeta, info);
   comprobarInstaladaIntacta();
   exigirSinFallos();

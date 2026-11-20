@@ -29,7 +29,8 @@
         "Several trees in one database, and any branch opens as a tree of its own.",
         "Saved views, and highlighting by tag or by text.",
         "Colors by mark, by legend, by time in position or by people reporting, with the value written on each card.",
-        "Export the whole org chart or one branch as a PNG, JPG or SVG image, or as a PDF on Letter, Oficio, A4, A3 or A2 sheets: structure only, with each head, or as you see it, with a preview."
+        "Export the whole org chart or one branch as a PNG, JPG or SVG image, or as a PDF on Letter, Oficio, A4, A3 or A2 sheets: structure only, with each head, or as you see it, with a preview.",
+        "Generate the organization and functions manual as a PDF: cover, contents, general org chart and a section for each unit with its positions, with or without the people's names."
       ],
       "imagen": {
         "nombre": "arbol",
