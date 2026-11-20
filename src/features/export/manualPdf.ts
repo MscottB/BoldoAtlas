@@ -1,7 +1,7 @@
 // Aparte de manual.ts: el worker de pdfmake importa esto, y así no carga el store ni i18n (solo sus tipos).
 import type { PuestoManual, TextosManual, UnidadManual } from "./manual";
 import { anchoTexto, recortar as recortarTexto } from "./medida";
-import { MARGEN, areaUtil, cajaDibujoManual } from "./paginas";
+import { MARGEN, areaUtil, cajaDibujoManual, type CabezaSeccion } from "./paginas";
 import {
   LOGO_PDF,
   TENUE,
@@ -44,6 +44,19 @@ const encajado = (p: PaginaPdf, ancho: number, alto: number): Nodo => {
   return { svg: p.svg, width: p.ancho * e, height: p.alto * e, alignment: "center" };
 };
 
+// «Gerente», «Gerente · Ximena», «Gerente (vacante)» o «Gerente (vacante) · Reemplazo: Carla».
+const jefatura = (y: PuestoManual, t: TextosManual) => {
+  const quien = y.titular ?? (y.reemplazo ? `${t.reemplazo}: ${y.reemplazo}` : null);
+  return `${y.cargo}${y.estado === "vacante" ? ` (${t.jefaturaVacante})` : ""}${quien ? ` · ${quien}` : ""}`;
+};
+
+/** Lo que va arriba de la sección de una unidad: el documento lo escribe y `cajaDibujoManual` lo mide. */
+export const cabezaDeSeccion = (x: UnidadManual, t: TextosManual): CabezaSeccion => ({
+  titulo: `${x.numero}  ${x.nombre}`,
+  ruta: x.ruta.length ? x.ruta.join(" › ") : null,
+  jefatura: x.jefatura ? { etiqueta: `${t.jefatura}: `, texto: jefatura(x.jefatura, t) } : null,
+});
+
 /**
  * La definición de pdfmake del manual: portada, índice (`toc`: pdfmake pone el número de página), el organigrama
  * general y una sección por unidad, cada una en su página, con su ruta, su jefatura, su dibujo y la tabla de sus
@@ -53,7 +66,6 @@ const encajado = (p: PaginaPdf, ancho: number, alto: number): Nodo => {
 export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocumentDefinitions {
   const t = o.textos;
   const area = areaUtil(o.hoja, o.orientacion);
-  const caja = cajaDibujoManual(area);
   const p = o.portada;
 
   const portada: Nodo = {
@@ -98,12 +110,6 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
     pageBreak: "before",
   }));
 
-  // «Gerente», «Gerente · Ximena», «Gerente (vacante)» o «Gerente (vacante) · Reemplazo: Carla».
-  const jefatura = (y: PuestoManual) => {
-    const quien = y.titular ?? (y.reemplazo ? `${t.reemplazo}: ${y.reemplazo}` : null);
-    return `${y.cargo}${y.estado === "vacante" ? ` (${t.jefaturaVacante})` : ""}${quien ? ` · ${quien}` : ""}`;
-  };
-
   const tabla = (x: UnidadManual): Nodo => ({
     margin: [0, 12, 0, 0],
     fontSize: 9,
@@ -132,10 +138,12 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
 
   const secciones = d.unidades.map((x): Nodo => {
     const dibujo = d.dibujos.get(x.id);
+    const c = cabezaDeSeccion(x, t);
+    const caja = cajaDibujoManual(area, c);
     return {
       stack: [
         {
-          text: `${x.numero}  ${x.nombre}`,
+          text: c.titulo,
           tocItem: true,
           // En el índice, cada nivel un poco más adentro.
           tocMargin: [(x.numero.split(".").length - 1) * 12, 0, 0, 0],
@@ -143,11 +151,11 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
           bold: true,
           color: OSCURO,
         },
-        ...(x.ruta.length ? [{ text: x.ruta.join(" › "), margin: [0, 2, 0, 0] }] : []),
-        ...(x.jefatura
+        ...(c.ruta ? [{ text: c.ruta, margin: [0, 2, 0, 0] }] : []),
+        ...(c.jefatura
           ? [
               {
-                text: [{ text: `${t.jefatura}: `, bold: true }, jefatura(x.jefatura)],
+                text: [{ text: c.jefatura.etiqueta, bold: true }, c.jefatura.texto],
                 fontSize: 10,
                 color: OSCURO,
                 margin: [0, 6, 0, 0],

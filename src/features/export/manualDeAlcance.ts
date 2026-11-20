@@ -3,8 +3,8 @@ import { i18n } from "@/i18n";
 import { indiceHijos } from "@/features/arbol/jerarquia";
 import type { ConfigVista } from "@/features/arbol/vista";
 import { useOrganizacion } from "@/stores/organizacion";
-import { datosManual } from "./manual";
-import type { DatosManualPdf } from "./manualPdf";
+import { datosManual, textosManual } from "./manual";
+import { cabezaDeSeccion, type DatosManualPdf } from "./manualPdf";
 import { LETRA_MIN_PT, areaUtil, cajaDibujoManual, type Hoja, type Orientacion } from "./paginas";
 import { paginasPdf } from "./paginasDeAlcance";
 import type { PaginaPdf } from "./pdf";
@@ -64,32 +64,61 @@ export async function manualDeAlcance(
     arriba: [t("manual.lamina", { n: i + 1 }), x.arriba].filter(Boolean).join(" · "),
   }));
 
-  // El dibujo chico va en la caja que le deja la sección (`documentoManual`): con esa escala se mide si se lee.
-  const caja = cajaDibujoManual(areaUtil(p.hoja, p.orientacion));
+  // El dibujo chico va en la caja que deja la cabeza de su sección (`documentoManual`): con su escala se mide si se lee.
+  const area = areaUtil(p.hoja, p.orientacion);
+  const textos = textosManual();
   const hijas = indiceHijos(unidadesDe(toRaw(useOrganizacion().enFecha.unidades), p.alcance));
   let ilegible = hojas.ilegible;
   const dibujos = new Map<string, PaginaPdf>();
   for (const [i, x] of unidades.entries()) {
-    const e = await prepararImagen({
-      alcance: { rama: x.id },
-      nivel,
-      abrirTodo: true,
-      // En la densidad compacta, la tarjeta de un puesto es de una línea: no cabría quién lo ocupa.
-      config: { ...p.config, densidad: "normal" },
-      ubicar: p.ubicar,
-      puestosDe: x.id,
-      pagina: { raiz: x.id, cortadas: new Set((hijas.get(x.id) ?? []).map((h) => h.id)), fuera: NINGUNA },
-    });
-    senal?.throwIfAborted();
-    // Sin «+N unidades» en las hijas: cada una tiene su propia sección.
-    const d = dibujarSvg(
-      { ...e, tarjetas: e.tarjetas.map((x) => ({ ...x, mas: 0 })) },
-      { sinEncabezado: true },
+    const caja = cajaDibujoManual(area, cabezaDeSeccion(x, textos));
+    const d = await dibujoChico(
+      {
+        alcance: { rama: x.id },
+        nivel,
+        abrirTodo: true,
+        // En la densidad compacta, la tarjeta de un puesto es de una línea: no cabría quién lo ocupa.
+        config: { ...p.config, densidad: "normal" },
+        ubicar: p.ubicar,
+        puestosDe: x.id,
+        pagina: { raiz: x.id, cortadas: new Set((hijas.get(x.id) ?? []).map((h) => h.id)), fuera: NINGUNA },
+      },
+      caja,
     );
-    ilegible ||=
-      letraMinima(nivel, false) * Math.min(1, caja.ancho / d.ancho, caja.alto / d.alto) < LETRA_MIN_PT;
-    dibujos.set(x.id, d);
+    senal?.throwIfAborted();
+    ilegible ||= letraMinima(nivel, false) * d.escala < LETRA_MIN_PT;
+    dibujos.set(x.id, d.pagina);
     alAvanzar?.(t("manual.dibujando", { n: i + 1, m: unidades.length }));
   }
   return { unidades, general, dibujos, ilegible, encabezado: r.encabezado };
+}
+
+type Direccion = ConfigVista["direccion"];
+
+/**
+ * El dibujo chico de una unidad, en la dirección con que mejor cabe en `caja`: hacia abajo (las hijas en fila) o hacia
+ * el lado (en columna), como lo hace el lienzo con «Dirección». Sin «+N unidades» en las hijas: cada una tiene su
+ * propia sección. Lo que se mide es lo que se dibuja. `direcciones`: las que se prueban, en orden; un empate se queda
+ * con la primera (la de la vista). Si una ya cabe sin achicar, la otra no se arma.
+ */
+export async function dibujoChico(
+  pedido: PedidoImagen,
+  caja: { ancho: number; alto: number },
+  direcciones: Direccion[] = [
+    pedido.config.direccion,
+    pedido.config.direccion === "vertical" ? "horizontal" : "vertical",
+  ],
+): Promise<{ pagina: PaginaPdf; escala: number; direccion: Direccion }> {
+  let mejor: { pagina: PaginaPdf; escala: number; direccion: Direccion } | null = null;
+  for (const direccion of direcciones) {
+    if (mejor?.escala === 1) break;
+    const e = await prepararImagen({ ...pedido, config: { ...pedido.config, direccion } });
+    const pagina = dibujarSvg(
+      { ...e, tarjetas: e.tarjetas.map((x) => ({ ...x, mas: 0 })) },
+      { sinEncabezado: true },
+    );
+    const escala = Math.min(1, caja.ancho / pagina.ancho, caja.alto / pagina.alto);
+    if (!mejor || escala > mejor.escala) mejor = { pagina, escala, direccion };
+  }
+  return mejor!;
 }

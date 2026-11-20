@@ -1,4 +1,5 @@
 import type { Nivel } from "./niveles";
+import { partir } from "./medida";
 import { letraMinima } from "./treeSvg";
 
 /** Cómo se reparte el PDF en páginas. Todo es puro: pdfmake solo pinta lo que esto decide. Una unidad SVG vale 1 punto. */
@@ -30,16 +31,33 @@ export function areaUtil(hoja: Hoja, orientacion: Orientacion): { ancho: number;
   return { ancho: a - 2 * MARGEN, alto: b - 2 * MARGEN - ENCABEZADO - PIE };
 }
 
-/**
- * El lugar del dibujo chico de una sección del manual: el área útil sin la cabeza de la sección (título de 14 pt, ruta
- * de 8 pt, jefatura de 10 pt y sus márgenes, cada uno en una línea). Si la cabeza ocupa más, pdfmake pasa el dibujo a
- * la página siguiente, y la tabla lo sigue. La medida del manual y su dibujo usan esto mismo.
- */
-export function cajaDibujoManual(area: { ancho: number; alto: number }): { ancho: number; alto: number } {
-  return { ancho: area.ancho, alto: area.alto - CABEZA_SECCION };
+/** Las líneas de arriba de una sección del manual, ya escritas: `cabezaDeSeccion` en manualPdf.ts. */
+export interface CabezaSeccion {
+  titulo: string;
+  ruta: string | null;
+  jefatura: { etiqueta: string; texto: string } | null;
 }
-// 14 y 8 pt de Roboto (alto de línea 1,17) con 2 de margen, 10 pt con 6, y los 12 sobre el dibujo.
-const CABEZA_SECCION = Math.ceil(14 * 1.17 + (8 * 1.17 + 2) + (10 * 1.17 + 6) + 12);
+
+/**
+ * El lugar del dibujo chico de una sección del manual: el área útil sin su cabeza (título de 14 pt en negrita, ruta de
+ * 8 pt, jefatura de 10 pt y sus márgenes). Cada línea se mide con `partir`: si el título, la ruta o la jefatura se
+ * parten en dos, la cabeza crece y el dibujo se achica. `anchoTexto` estima algo de más, así que el dibujo cabe bajo la
+ * cabeza que pone pdfmake. La medida del manual y su dibujo usan esto mismo.
+ */
+export function cajaDibujoManual(
+  area: { ancho: number; alto: number },
+  c: CabezaSeccion,
+): { ancho: number; alto: number } {
+  // Alto de línea de Roboto en pdfmake: 1,17 veces la letra.
+  const alto = (texto: string, tam: number, negrita = false) =>
+    partir(texto, area.ancho, tam, Infinity, negrita).length * tam * 1.17;
+  const cabeza =
+    alto(c.titulo, 14, true) +
+    (c.ruta ? alto(c.ruta, 8) + 2 : 0) +
+    (c.jefatura ? alto(c.jefatura.etiqueta + c.jefatura.texto, 10, true) + 6 : 0) +
+    12; // sobre el dibujo
+  return { ancho: area.ancho, alto: area.alto - Math.ceil(cabeza) };
+}
 
 /**
  * La escala que hace caber el dibujo en el área útil, y si con ella la letra más chica baja de 8 pt. Un dibujo chico no
