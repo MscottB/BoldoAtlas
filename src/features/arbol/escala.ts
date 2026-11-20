@@ -127,9 +127,10 @@ export function textoEscala(criterio: CriterioEscala, v: ValorEscala): { clave: 
   return { clave: criterio === "antiguedad" ? "arbol.vista.anios" : "arbol.vista.aCargoValor", n: v.valor };
 }
 
-/** El `t` de vue-i18n, con las dos formas que usa la tarjeta. */
-type Traducir = {
+/** El `t` de vue-i18n (`i18n.global.t` o el de useI18n), con las formas que usan las tarjetas. */
+export type Traducir = {
   (clave: string): string;
+  (clave: string, nombrados: Record<string, unknown>): string;
   (clave: string, nombrados: Record<string, unknown>, plural: number): string;
 };
 

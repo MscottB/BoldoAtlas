@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { excelAbrirCarpeta, excelGuardar, infoApp, leerMeta } from "@/db/cliente";
+import { archivoAbrirCarpeta, archivoGuardar, infoApp, leerMeta } from "@/db/cliente";
 import { hoyISO } from "@/features/puestos/puestos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -77,14 +77,14 @@ async function pulsar() {
       aceptar: aviso.preguntar,
       armar,
       escribir: escribirAparte,
-      guardar: excelGuardar,
+      guardar: (n, b) => archivoGuardar(n, b, "xlsx"),
     });
     if (nombre)
       toast.success(t("excel.guardado", { nombre }), {
         duration: 10000,
         action: {
           label: t("excel.abrirCarpeta"),
-          onClick: () => void excelAbrirCarpeta().catch((e: unknown) => toast.error(mensajeFallo(e))),
+          onClick: () => void archivoAbrirCarpeta().catch((e: unknown) => toast.error(mensajeFallo(e))),
         },
       });
   } catch (e) {

@@ -49,7 +49,7 @@ pub fn run() {
         .manage(intercambio::Sesiones::default())
         .manage(comparar_organizaciones::Comparaciones::default())
         .manage(lado::Lado::default())
-        .manage(excel::UltimoExcel::default())
+        .manage(excel::UltimoArchivo::default())
         .on_page_load(|ventana, carga| {
             ventana
                 .state::<intercambio::Sesiones>()
@@ -181,8 +181,8 @@ pub fn run() {
             comandos::exportar_preparar,
             comandos::exportar_elegir_destino,
             comandos::exportar_guardar,
-            excel::excel_guardar,
-            excel::excel_abrir_carpeta,
+            excel::archivo_guardar,
+            excel::archivo_abrir_carpeta,
             comandos::importar_elegir,
             comandos::importar_abrir,
             comandos::importar_agregar,

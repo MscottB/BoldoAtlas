@@ -1224,7 +1224,7 @@
       "fallo": "No se pudo completar la operación: {detalle}",
       "ya_existe": "Ya hay un archivo con ese nombre. Elige otro nombre.",
       "pedido_invalido": "BoldoAtlas tuvo un problema interno al guardar el archivo y no se guardó nada. Inténtalo de nuevo.",
-      "sin_excel": "No hay un Excel guardado en esta sesión cuya carpeta abrir.",
+      "sin_archivo": "No hay un archivo guardado en esta sesión cuya carpeta abrir.",
       "excel_libro": "No se pudo armar el archivo de Excel y no se guardó nada. Detalle: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",
@@ -1814,6 +1814,10 @@
         "en_revision": "En revisión",
         "obsoleto": "Obsoleto"
       }
+    },
+    "imagen": {
+      "titulo": "Imagen del organigrama",
+      "texto": "El organigrama, o una parte, en PNG, JPG o SVG, o copiado para pegarlo."
     }
   },
   "comparar": {
@@ -2148,6 +2152,51 @@
       "volverBloqueada": "No se puede volver a este punto: un cambio posterior ya no se puede deshacer.",
       "cerrar": "Cerrar",
       "filtroElemento": "Solo los cambios de"
+    }
+  },
+  "imagen": {
+    "masUnidades": "+{n} unidad | +{n} unidades",
+    "titulo": "Exportar el organigrama como imagen",
+    "descripcion": "Para una presentación, un documento o un correo.",
+    "aFecha": "Sale el organigrama al {fecha}.",
+    "alcance": "Qué parte",
+    "alcanceTodo": "Toda la organización",
+    "abrirTodo": "Abrir todas las ramas del alcance",
+    "nivel": "Nivel de detalle",
+    "niveles": {
+      "estructura": "Estructura",
+      "estructuraAyuda": "Solo las unidades, sin datos de personas. Para compartir fuera.",
+      "presentacion": "Presentación",
+      "presentacionAyuda": "Cada unidad con su jefatura, en letra grande. Para una diapositiva.",
+      "pantalla": "Como en pantalla",
+      "pantallaAyuda": "Lo que muestra el lienzo con tu configuración."
+    },
+    "formato": "Formato",
+    "fondo": "Fondo",
+    "fondos": {
+      "blanco": "Blanco",
+      "transparente": "Transparente"
+    },
+    "tamano": "Tamaño",
+    "vistaPrevia": "Vista previa",
+    "preparando": "Preparando la vista previa…",
+    "previaFallo": "No se pudo armar la vista previa.",
+    "muchas": "La imagen lleva {n} tarjetas, más de {limite}: puede tardar y quedar muy grande.",
+    "guardar": "Guardar…",
+    "copiar": "Copiar imagen",
+    "aviso": "La imagen queda sin cifrar: cualquiera que la abra verá lo que contiene. Quien la genera es responsable de dónde la guarda y con quién la comparte.",
+    "aceptar": "Acepto, continuar",
+    "guardada": "Se guardó {nombre}",
+    "copiada": "Imagen copiada. Ya puedes pegarla.",
+    "chica": "En PNG o JPG, o al copiarla, la imagen saldría más chica que en pantalla y no se podría leer. Elige una rama o guárdala en SVG.",
+    "escalaBajada": "La imagen era muy grande para ese tamaño: se hizo a {escala}x.",
+    "abrir": "Exportar como imagen",
+    "exportarRama": "Exportar esta rama como imagen",
+    "error": {
+      "leer": "No se pudo leer el dibujo como imagen.",
+      "lienzo": "No se pudo preparar la imagen.",
+      "crear": "No se pudo crear la imagen. Prueba con un tamaño menor.",
+      "copiar": "No se pudo copiar la imagen. Guárdala como archivo."
     }
   }
 }
