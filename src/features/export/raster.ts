@@ -11,18 +11,12 @@ export class ErrorImagen extends Error {
 }
 
 function cargar(svg: string): Promise<HTMLImageElement> {
-  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
   return new Promise((ok, mal) => {
     const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      ok(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      mal(new ErrorImagen("leer"));
-    };
-    img.src = url;
+    img.onload = () => ok(img);
+    img.onerror = () => mal(new ErrorImagen("leer"));
+    // data: y no blob:, que la CSP de la app (img-src 'self' data:) no deja cargar; la vista previa usa lo mismo
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
 }
 
