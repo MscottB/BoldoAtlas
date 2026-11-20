@@ -821,7 +821,7 @@ El escritorio se lleva a la web exportando un `.boldo`, que la web importará.
 1. 27c: fotos solo en la edición web.
 2. 23b, 23c y 23d: imagen y PDF, manual y visor.
 3. 25a y 23i: carga masiva y PPTX editable.
-4. 24a, 24b y 24c: procesos, RACI e indicadores.
+4. El mapa de procesos y la 24c: procesos, actividades, RACI, mapa e indicadores. El mapa de procesos reemplaza a las 24a y 24b, con su diseño (`2026-11-04-mapa-de-procesos-design.md`) y su plan. Ambos se terminan y se fusionan antes de llegar aquí, y su decisión de ir «al final» cambia por esta (decisión del autor, 2026-11-19). Es la base de la ventaja de la edición web: avisar qué procesos quedan sin responsable cuando un escenario mueve o elimina puestos.
 5. 26a, 26b y 23h: escenarios simples, comparación sin costo y notas.
 6. 19d, 19f y 19e, al final: base cifrada, candado por árbol y página «Seguridad y privacidad». La 19d también cifra los escenarios; la 19e explica que el escritorio ya no guarda fotos.
 
