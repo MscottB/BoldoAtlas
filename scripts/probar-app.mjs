@@ -521,9 +521,9 @@ const conCtrl = (tecla) =>
 
 /** Al abrir, la app muestra Inicio, que no atiende atajos: se pasa al árbol. @param {Awaited<ReturnType<typeof abrirApp>>} app */
 const alArbol = async (app) => {
-  await app.evaluar(`location.hash = "#/"`);
+  // recién abierta, la app puede pasar a Inicio después de que pedimos el árbol: se vuelve a pedir mientras espera
   await app.hasta(
-    `location.hash === "#/" && !!document.querySelector(".vue-flow")`,
+    `(location.hash === "#/" || ((location.hash = "#/"), false)) && !!document.querySelector(".vue-flow")`,
     "que la app muestre el árbol",
   );
 };
