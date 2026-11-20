@@ -123,14 +123,25 @@ export async function paginasPdf(
   // Los layouts de la vista previa sirven al guardar: las páginas de la raíz no se vuelven a medir.
   const entradas: Entradas = new Map();
   const raiz = await porRamas(pedido, entero, hoja, orientacion, entradas, { senal, soloPrimera: true });
+  // Si la raíz no deja nada para después, la vista previa ya tiene todas las páginas y se sabe cuántas son.
+  if (raiz.completa) {
+    const todas = contar([...raiz.paginas, ...extra]);
+    return {
+      primera: todas.lista[0]!.svg,
+      total: todas.total,
+      ilegible: todas.ilegible,
+      encabezado,
+      paginas: async () => todas,
+    };
+  }
   return {
-    primera: raiz[0]!.svg,
+    primera: raiz.paginas[0]!.svg,
     total: null,
-    ilegible: !raiz.every(legible),
+    ilegible: !raiz.paginas.every(legible),
     encabezado,
     paginas: async (s, alAvanzar) =>
       contar([
-        ...(await porRamas(pedido, entero, hoja, orientacion, entradas, { senal: s, alAvanzar })),
+        ...(await porRamas(pedido, entero, hoja, orientacion, entradas, { senal: s, alAvanzar })).paginas,
         ...extra,
       ]),
   };
@@ -153,7 +164,7 @@ async function porRamas(
     soloPrimera = false,
     alAvanzar,
   }: { senal?: AbortSignal; soloPrimera?: boolean; alAvanzar?: (n: number) => void },
-): Promise<PaginaPdf[]> {
+): Promise<{ paginas: PaginaPdf[]; completa: boolean }> {
   const t = i18n.global.t;
   // Las ramas como se ven en el dibujo entero: una unidad plegada ahí no tiene hijas que repartir.
   const unidades = unidadesDe(toRaw(useOrganizacion().enFecha.unidades), pedido.alcance);
@@ -197,6 +208,8 @@ async function porRamas(
 
   // Cada raíz del alcance se reparte aparte; sus números siguen a los de la anterior.
   const paginas: PaginaPdf[] = [];
+  // Con `soloPrimera`, queda completo si hay una sola raíz y ninguna de sus páginas manda a otra.
+  let completa = !soloPrimera || raices.length <= 1;
   for (const raiz of soloPrimera ? raices.slice(0, 1) : raices) {
     const antes = paginas.length;
     const reparto = await repartirPorRamas(raiz, hijosDe, medir, hoja, orientacion, pedido.nivel, {
@@ -206,6 +219,7 @@ async function porRamas(
     for (const p of reparto) {
       const e = await entradaDe(p.raiz, p.profundidad, p.hijas && [p.hijas.desde, p.hijas.hasta]);
       senal?.throwIfAborted();
+      if (p.sigue.length) completa &&= !soloPrimera;
       const sigue = new Map(p.sigue.map((s) => [s.unidad, soloPrimera ? "…" : s.pagina + antes]));
       const tarjetas = e.tarjetas.map((x) => {
         const n = sigue.get(x.id);
@@ -221,7 +235,7 @@ async function porRamas(
       paginas.push({ ...dibujo({ ...e, tarjetas }), ...(arriba && { arriba }) });
     }
   }
-  return paginas.length ? paginas : [dibujo(entero)];
+  return { paginas: paginas.length ? paginas : [dibujo(entero)], completa };
 }
 
 /** Lo que se avisa antes de armar el PDF, ya traducido. */

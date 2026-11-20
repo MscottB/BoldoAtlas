@@ -39,7 +39,7 @@ If the image has more than 1,000 cards, the window says so with the number: it m
 
 ## PDF
 
-Choose **PDF** to get the org chart on sheets, ready to print or send. It is a multi-page document, with the organization and the date at the top and "Page N of M" at the bottom. Under **Paper** you choose **Letter**, **Oficio**, **A4**, **A3** or **A2**, and under **Orientation**, **Landscape** or **Portrait**. The preview shows the first page and says how many pages there will be; **by branches**, the pages are counted when you save.
+Choose **PDF** to get the org chart on sheets, ready to print or send. It is a multi-page document, with the organization and the date at the top and "Page N of M" at the bottom. Under **Paper** you choose **Letter**, **Oficio**, **A4**, **A3** or **A2**, and under **Orientation**, **Landscape** or **Portrait**. The preview shows the first page and says how many pages there will be; **by branches**, if the org chart does not fit on the first page, the pages are counted when you save.
 
 Under **Split** you choose how the drawing is cut:
 

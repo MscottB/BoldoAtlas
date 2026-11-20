@@ -39,7 +39,7 @@ Si la imagen lleva más de 1.000 tarjetas, la ventana lo avisa con la cifra: pue
 
 ## PDF
 
-Elige **PDF** para tener el organigrama en hojas, listo para imprimir o mandar. Es un documento de varias páginas, con la organización y la fecha arriba y «Página N de M» abajo. En **Hoja** eliges **Carta**, **Oficio**, **A4**, **A3** o **A2**, y en **Orientación**, **Horizontal** o **Vertical**. La vista previa muestra la primera página y dice cuántas páginas saldrán; **por ramas**, las páginas se cuentan al guardar.
+Elige **PDF** para tener el organigrama en hojas, listo para imprimir o mandar. Es un documento de varias páginas, con la organización y la fecha arriba y «Página N de M» abajo. En **Hoja** eliges **Carta**, **Oficio**, **A4**, **A3** o **A2**, y en **Orientación**, **Horizontal** o **Vertical**. La vista previa muestra la primera página y dice cuántas páginas saldrán; **por ramas**, si el organigrama no cabe en la primera página, las páginas se cuentan al guardar.
 
 En **Repartir** eliges cómo se corta el dibujo:
 
