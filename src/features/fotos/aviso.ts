@@ -45,6 +45,8 @@ function mostrar(a: Aviso) {
   else aviso.value = a;
 }
 function siguiente() {
+  // el de un externo es de su base: si ya no está abierta, no vale
+  if (enEspera?.externa && enEspera.baseId !== baseActual()) enEspera = null;
   if (!enEspera || aviso.value || quitando.value) return;
   aviso.value = enEspera;
   enEspera = null;

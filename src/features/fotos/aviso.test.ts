@@ -149,6 +149,19 @@ describe("El aviso", () => {
     expect(m.aviso.value).toMatchObject({ externa: true, baseId: "A" });
   });
 
+  it("el aviso en espera de un externo no sale si la base abierta ya es otra", async () => {
+    const hay = pendiente<boolean>();
+    db.fotosHay.mockReturnValue(hay.promesa);
+    db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
+    const externa = m.revisarExterna("A", "Externa");
+    await m.revisarAlArrancar();
+    hay.resolver(true);
+    await externa;
+    (await import("@/lib/baseActiva")).fijarBase("B");
+    await m.masTarde();
+    expect(m.aviso.value).toBeNull();
+  });
+
   it("si otro trabajo ocupa la sesión, la limpieza general no da error y no quita nada", async () => {
     db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
     db.fotosQuitarTodas.mockRejectedValue({ codigo: "trabajo_en_curso", detalle: "" });
