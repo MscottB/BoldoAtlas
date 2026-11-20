@@ -672,7 +672,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 - Las hojas de procesos, actividades e indicadores se suman cuando exista la Fase 3.
 
 ### Task 23b: Capturas y PDF para organigramas grandes (spec §11 "Capturas" y "PDF")
-- **En dos entregas (decisión del autor, 2026-11-20):** primero la imagen (SVG, PNG, JPG, Copiar imagen y los tres niveles), con diseño en `docs/superpowers/specs/2026-11-20-exportar-imagen-design.md`; después el PDF de organigramas grandes, con su propio diseño. «Como en pantalla» ya no lleva fotos (27c).
+- **En dos entregas (decisión del autor, 2026-11-20):** primero la imagen (SVG, PNG, JPG, Copiar imagen y los tres niveles), con diseño en `docs/superpowers/specs/2026-11-20-exportar-imagen-design.md`; después el PDF de organigramas grandes, con diseño en `docs/superpowers/specs/2026-11-20-exportar-pdf-design.md` (pdfmake; en una página, por ramas o en cuadrícula). «Como en pantalla» ya no lleva fotos (27c).
 - Es la base de la Fase 4: `treeSvg.ts`, SVG, PNG y PDF con `pdfmake`, con tamaño de hoja, orientación y reparto en varias páginas con marcas de continuación. Probarlo con la organización grande.
 - **Niveles de detalle y formatos (pedido del autor, 2026-11-15),** en spec §11 "Niveles de detalle": Estructura, Presentación y Como en pantalla; PNG (fondo blanco o transparente, 1x a 4x), JPG, SVG y PDF, y **Copiar imagen** para pegar en PowerPoint o en un correo. Funciones puras con pruebas para lo que lleva cada nivel; prueba obligatoria: Estructura no tiene ningún nombre, correo ni foto de una persona.
 - PPTX editable en la 23i.
