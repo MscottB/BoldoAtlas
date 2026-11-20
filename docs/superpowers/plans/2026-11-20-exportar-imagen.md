@@ -87,7 +87,7 @@ La ventana rasteriza el SVG en un `canvas` para el PNG y el JPG. Rust guarda con
 
 **Interfaces:**
 - Produces:
-  - `escalaQueCabe(ancho: number, alto: number, escala: 1|2|3|4): { escala: number; bajada: boolean }` en `formatos.ts`. Cumple `max(ancho, alto) * escala ≤ 16384` y `ancho * alto * escala² ≤ 268435456`.
+  - `escalaQueCabe(ancho: number, alto: number, escala: 1|2|3|4): { escala: number; bajada: boolean }` en `formatos.ts`. Cumple `max(ancho, alto) * escala ≤ 16384` y `ancho * alto * escala² ≤ 120000000`.
   - `nombreArchivo(organizacion: string, alcance: string, nivel: Nivel, ext: "png"|"jpg"|"svg", fecha: string): string`. Es seguro para Windows: sin `\ / : * ? " < > |`.
   - `svgAImagen(svg: string, ancho: number, alto: number, o: { escala: number; formato: "png"|"jpg"; fondo: "blanco"|"transparente" }): Promise<Uint8Array>` en `raster.ts`. JPG siempre con fondo blanco.
   - `copiarImagen(png: Uint8Array): Promise<void>` en `raster.ts`, con `navigator.clipboard.write([new ClipboardItem({"image/png": blob})])`.

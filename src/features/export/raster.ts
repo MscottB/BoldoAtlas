@@ -19,13 +19,13 @@ function cargar(svg: string): Promise<HTMLImageElement> {
 
 /** El SVG ya armado, dibujado en un canvas a `escala` (si no cabe, baja) y pasado a PNG o JPG. El JPG no tiene
  * transparencia: va siempre sobre blanco. El PNG transparente se pide con un SVG armado sin fondo. */
-export async function svgAImagen(
+export async function svgABlob(
   svg: string,
   ancho: number,
   alto: number,
-  o: { escala: number; formato: "png" | "jpg"; fondo: "blanco" | "transparente" },
-): Promise<Uint8Array> {
-  const e = escalaQueCabe(ancho, alto, o.escala as 1 | 2 | 3 | 4).escala;
+  o: { escala: 1 | 2 | 3 | 4; formato: "png" | "jpg"; fondo: "blanco" | "transparente" },
+): Promise<Blob> {
+  const e = escalaQueCabe(ancho, alto, o.escala).escala;
   const img = await cargar(svg);
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(ancho * e));
@@ -40,12 +40,17 @@ export async function svgAImagen(
   const blob = await new Promise<Blob | null>((ok) =>
     canvas.toBlob(ok, o.formato === "jpg" ? "image/jpeg" : "image/png", 0.92),
   );
-  if (!blob) throw new Error("No se pudo crear la imagen: es demasiado grande.");
-  return new Uint8Array(await blob.arrayBuffer());
+  if (!blob) throw new Error("No se pudo crear la imagen. Prueba con una escala menor.");
+  return blob;
 }
 
-/** Pone un PNG en el portapapeles. */
-export async function copiarImagen(png: Uint8Array): Promise<void> {
-  const blob = new Blob([png as BlobPart], { type: "image/png" });
-  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+/** Lo mismo, como bytes (para «Guardar como»). */
+export async function svgAImagen(...a: Parameters<typeof svgABlob>): Promise<Uint8Array> {
+  return new Uint8Array(await (await svgABlob(...a)).arrayBuffer());
+}
+
+/** Pone un PNG en el portapapeles. Recibe la promesa del Blob (`svgABlob(...)`) sin esperarla antes: así el clic
+ * conserva su permiso para escribir en el portapapeles mientras se arma la imagen. */
+export async function copiarImagen(png: Blob | Promise<Blob>): Promise<void> {
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
 }

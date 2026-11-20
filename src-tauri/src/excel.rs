@@ -36,6 +36,18 @@ fn filtro_de(ext: &str) -> Option<&'static str> {
     }
 }
 
+/// Como `intercambio::con_extension`, pero un `.jpeg` ya escrito vale como `jpg`.
+fn con_extension_de(destino: PathBuf, ext: &str) -> Result<PathBuf, Fallo> {
+    let es_jpeg = ext == "jpg"
+        && destino
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("jpeg"));
+    if es_jpeg {
+        return Ok(destino);
+    }
+    intercambio::con_extension(destino, ext)
+}
+
 /// Cuerpo: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el contenido del archivo.
 fn desarmar(cuerpo: &[u8]) -> Result<(Pedido, &[u8]), Fallo> {
     let invalido = || Fallo::de("pedido_invalido", "");
@@ -95,7 +107,7 @@ pub async fn archivo_guardar(
         .and_then(|f| f.into_path().ok()) else {
             return Ok(None);
         };
-        let destino = intercambio::con_extension(destino, &pedido.ext)?;
+        let destino = con_extension_de(destino, &pedido.ext)?;
         escribir(&destino, libro)?;
         let nombre = nombre_archivo(&destino);
         *app.state::<UltimoArchivo>()
@@ -171,6 +183,15 @@ mod tests {
             let c = cuerpo(&format!(r#"{{"nombre":"a","ext":"{ext}"}}"#), b"x");
             assert!(desarmar(&c).is_ok(), "{ext}");
         }
+    }
+
+    #[test]
+    fn guardar_deja_un_jpeg_como_jpg() {
+        let d = tempfile::tempdir().unwrap();
+        let jpeg = con_extension_de(d.path().join("x.JPEG"), "jpg").unwrap();
+        assert_eq!(jpeg.file_name().unwrap(), "x.JPEG");
+        let otro = con_extension_de(d.path().join("x.png"), "jpg").unwrap();
+        assert_eq!(otro.file_name().unwrap(), "x.png.jpg");
     }
 
     #[test]
