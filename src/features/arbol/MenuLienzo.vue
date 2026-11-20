@@ -21,6 +21,7 @@ import { descendientes, indiceHijos } from "./jerarquia";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { CONTEXTO_LIENZO } from "./contexto";
+import DialogoImagen from "@/features/export/DialogoImagen.vue";
 
 // Menú contextual del lienzo (clic derecho, Mayús+F10 o la tecla Menú) según lo apuntado: una unidad, un puesto o el
 // fondo. `unidades`: las que se dibujan; `visibles`: las que están en pantalla; `raiz`: la rama enfocada, si hay.
@@ -101,6 +102,18 @@ async function guardar(id: string) {
   if (!r.ok) toast.error(r.mensaje);
 }
 const abrirVista = () => (panelAbierto.value = true);
+
+// «Exportar esta rama como imagen», con las ramas como están en el lienzo. También al lado y a una fecha.
+const imagen = ref(false);
+const ramaImagen = ref<string | null>(null);
+const pantalla = computed(() => ({
+  colapsados: lienzo.colapsados.value,
+  unidades: new Set(props.unidades.map((u) => u.id)),
+}));
+function exportarRama(id: string) {
+  ramaImagen.value = id;
+  imagen.value = true;
+}
 </script>
 
 <template>
@@ -159,6 +172,9 @@ const abrirVista = () => (panelAbierto.value = true);
           @select="pedir(() => abrirEnPestanaNueva({ name: 'arbol', query: { raiz: id } }))"
         >
           {{ t("pestanas.abrirNueva") }}
+        </ContextMenuItem>
+        <ContextMenuItem data-accion="exportar-rama-imagen" @select="pedir(() => exportarRama(id))">
+          {{ t("imagen.exportarRama") }}
         </ContextMenuItem>
         <template v-if="!MODO_LADO">
           <ContextMenuItem :disabled="soloLectura || !guardable" @select="pedir(() => guardar(id))">
@@ -226,4 +242,5 @@ const abrirVista = () => (panelAbierto.value = true);
       </template>
     </ContextMenuContent>
   </ContextMenu>
+  <DialogoImagen v-model:open="imagen" :rama="ramaImagen" :pantalla="pantalla" />
 </template>

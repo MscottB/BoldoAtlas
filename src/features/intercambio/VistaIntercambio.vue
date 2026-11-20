@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { Download, FileSpreadsheet, Upload } from "@lucide/vue";
+import { Download, FileSpreadsheet, ImageDown, Upload } from "@lucide/vue";
 import PanelExcel from "@/features/excel/PanelExcel.vue";
+import DialogoImagen from "@/features/export/DialogoImagen.vue";
 import PanelExportar from "./PanelExportar.vue";
 import PanelImportar from "./PanelImportar.vue";
 import { organizacionEnCreacion } from "./intercambio";
@@ -21,6 +22,8 @@ const caminos = [
 type Accion = (typeof caminos)[number]["id"];
 const accion = computed(() => caminos.find((c) => c.id === route.query.accion)?.id ?? null);
 const ir = (a: Accion | null) => router.replace({ path: route.path, query: a ? { accion: a } : {} });
+// La imagen del organigrama no tiene panel aquí: abre su ventana, sin lienzo (las ramas, como el lienzo al empezar).
+const imagen = ref(false);
 </script>
 
 <template>
@@ -34,7 +37,7 @@ const ir = (a: Accion | null) => router.replace({ path: route.path, query: a ? {
       </p>
     </header>
 
-    <ul v-if="!accion" class="grid gap-3 sm:grid-cols-3">
+    <ul v-if="!accion" class="grid gap-3 sm:grid-cols-2">
       <li v-for="c in caminos" :key="c.id">
         <button
           type="button"
@@ -48,10 +51,25 @@ const ir = (a: Accion | null) => router.replace({ path: route.path, query: a ? {
           <span class="text-sm text-muted-foreground">{{ t(`intercambio.${c.id}.texto`) }}</span>
         </button>
       </li>
+      <li>
+        <button
+          type="button"
+          data-accion="abrir-imagen-pagina"
+          class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+          @click="imagen = true"
+        >
+          <span class="flex items-center gap-2 font-medium">
+            <ImageDown class="size-4 shrink-0" aria-hidden="true" />
+            {{ t("intercambio.imagen.titulo") }}
+          </span>
+          <span class="text-sm text-muted-foreground">{{ t("intercambio.imagen.texto") }}</span>
+        </button>
+      </li>
     </ul>
 
     <PanelExportar v-else-if="accion === 'exportar'" @terminar="ir(null)" />
     <PanelExcel v-else-if="accion === 'excel'" @terminar="ir(null)" />
     <PanelImportar v-else @terminar="ir(null)" />
+    <DialogoImagen v-model:open="imagen" />
   </section>
 </template>

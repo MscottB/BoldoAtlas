@@ -26,7 +26,6 @@ import { MODO_LADO } from "@/lado/modo";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
   dotacionPorUnidad,
-  leyendaDeMarcas,
   marcasPorUnidad,
   ruta,
   rutasPorTipo,
@@ -50,7 +49,7 @@ import {
 import LayoutWorker from "./layout.worker?worker";
 import { LIMITE_TARJETAS, colaDeUltimo, conMinimapa, tarjetasLigeras } from "./rendimiento";
 import { CONTEXTO_LIENZO } from "./contexto";
-import { clasesEnUso, colorDeClase, escalaPorTarjeta, esCriterioEscala } from "./escala";
+import { escalaPorTarjeta, esCriterioEscala } from "./escala";
 import { destinoAlSoltar, estadoMover, idLienzo, nodoEn, useLienzo } from "./useLienzo";
 import { escalaMaxEtiqueta, trazarLaterales, type Caja, type Trazado } from "./lateral";
 import { puestoConTarjeta } from "./ubicar";
@@ -60,7 +59,6 @@ import {
   arbolDeVista,
   jefeEnTarjeta,
   leerVista,
-  leyendasEnUso,
   separaciones,
   tamPuesto,
   tamUnidad,
@@ -82,7 +80,7 @@ import BarraLienzo from "./BarraLienzo.vue";
 import BarraSeleccion from "./BarraSeleccion.vue";
 import MenuLienzo from "./MenuLienzo.vue";
 import LeyendaLienzo from "./LeyendaLienzo.vue";
-import type { EntradaLeyenda } from "./leyenda";
+import { leyendaDeColores, type EntradaLeyenda } from "./leyenda";
 import ZoomLienzo from "./ZoomLienzo.vue";
 import PanelUnidad from "@/features/unidades/PanelUnidad.vue";
 import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
@@ -584,42 +582,18 @@ provide(CONTEXTO_LIENZO, {
   encuadrar: encuadrarTodo,
 });
 
-const leyenda = computed<EntradaLeyenda[]>(() => {
-  if (!vista.value) return [];
-  const c = criterioEscala.value;
-  if (c && valoresEscala.value)
-    return clasesEnUso(valoresEscala.value, [
-      ...vista.value.g.nodos.map((u) => u.id),
-      ...vista.value.g.puestos.map((p) => p.id),
-    ]).map((x) => ({
-      clave: String(x),
-      color: colorDeClase(x),
-      nombre: t(typeof x === "number" ? `arbol.vista.rangos.${c}.${x}` : `arbol.vista.aparte.${x}`),
-    }));
-  if (porLeyenda.value)
-    return leyendasEnUso(vista.value.g.puestos, org.leyendas).map((l) => ({
-      clave: l.id,
-      color: l.color,
-      nombre: l.nombre,
-      descripcion: l.descripcion,
-    }));
-  return marcas.value
-    ? leyendaDeMarcas(marcas.value, vista.value.g.nodos).map((m) => ({
-        clave: m.unidad.id,
-        color: m.color,
-        codigo: m.codigo,
-        nombre: m.unidad.nombre,
-      }))
-    : [];
-});
-const tituloLeyenda = computed(() =>
-  criterioEscala.value
-    ? t(`arbol.vista.${criterioEscala.value}`)
-    : porLeyenda.value
-      ? t("arbol.vista.leyendaPuesto")
-      : t("arbol.vista.marcaDe", {
-          tipo: tiposUso.value.find((x) => x.id === tipoMarca.value)?.nombre ?? "",
-        }),
+const leyenda = computed(() =>
+  leyendaDeColores({
+    criterio: config.value.colorearPor,
+    escala: valoresEscala.value,
+    marcas: marcas.value,
+    tipoMarca: tipoMarca.value,
+    tipos: tiposUso.value,
+    leyendas: org.leyendas,
+    nodos: vista.value?.g.nodos ?? [],
+    puestos: vista.value?.g.puestos ?? [],
+    t,
+  }),
 );
 // `trazados` ya viene vacío con «Relaciones laterales» apagado. En ligero la línea es continua (ver AristaLateral).
 const leyendaLineas = computed<EntradaLeyenda[]>(() => {
@@ -987,10 +961,10 @@ function verCompleto() {
       </div>
       <!-- Las leyendas van en franjas fijas bajo el lienzo (no bajo el panel): así no tapan tarjetas. -->
       <div
-        v-if="leyenda.length || leyendaZonas.length || leyendaLineas.length"
+        v-if="leyenda.entradas.length || leyendaZonas.length || leyendaLineas.length"
         class="col-start-1 grid grid-cols-1"
       >
-        <LeyendaLienzo v-if="leyenda.length" :titulo="tituloLeyenda" :entradas="leyenda" />
+        <LeyendaLienzo v-if="leyenda.entradas.length" :titulo="leyenda.titulo" :entradas="leyenda.entradas" />
         <LeyendaLienzo v-if="leyendaZonas.length" :titulo="t('zonas.titulo')" :entradas="leyendaZonas" />
         <LeyendaLienzo
           v-if="leyendaLineas.length"

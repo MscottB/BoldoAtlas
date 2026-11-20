@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { onKeyStroke } from "@vueuse/core";
@@ -10,6 +10,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Ellipsis,
+  ImageDown,
   LayoutGrid,
   ListCollapse,
   MapIcon,
@@ -41,6 +42,7 @@ import PanelVista from "./PanelVista.vue";
 import PanelResaltar from "./PanelResaltar.vue";
 import MenuVistas from "./MenuVistas.vue";
 import SelectorFecha from "./SelectorFecha.vue";
+import DialogoImagen from "@/features/export/DialogoImagen.vue";
 
 // Una fila de 7 controles: lo frecuente a la vista y lo ocasional en «Más». El zoom está en la esquina del lienzo.
 // `unidades`: las que se dibujan (el árbol completo o la rama enfocada).
@@ -48,7 +50,7 @@ const props = defineProps<{ raiz: string | null; unidades: Unidad[]; totalNivele
 const emit = defineEmits<{ reordenar: [] }>();
 const { t } = useI18n();
 const org = useOrganizacion();
-const { seleccion, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
+const { seleccion, colapsados, nuevaHija, expandirTodo, contraerHasta } = useLienzo();
 // Los niveles que de verdad tiene lo que se dibuja (1 a la profundidad).
 const niveles = computed(() => Array.from({ length: props.totalNiveles }, (_, i) => i + 1));
 const { config, minimapa } = useVista();
@@ -61,6 +63,13 @@ onKeyStroke("0", (e) => {
 });
 
 const nueva = () => void nuevaHija(props.raiz);
+
+// «Exportar como imagen»: de lo que se ve (la rama enfocada, si hay), con las ramas como están.
+const imagen = ref(false);
+const pantalla = computed(() => ({
+  colapsados: colapsados.value,
+  unidades: new Set(props.unidades.map((u) => u.id)),
+}));
 
 // La unidad seleccionada, o la raíz enfocada. Una raíz ya es un árbol en Árboles: solo se guardan ramas.
 const aGuardar = computed(() => {
@@ -103,6 +112,16 @@ async function guardarEnArboles() {
       <PanelVista />
       <MenuVistas :raiz="raiz" :unidades="unidades" />
       <SelectorFecha />
+      <Button
+        variant="outline"
+        size="sm"
+        data-accion="abrir-imagen-barra"
+        :aria-label="t('imagen.abrir')"
+        :title="t('imagen.abrir')"
+        @click="imagen = true"
+      >
+        <ImageDown aria-hidden="true" />
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <!-- Con poco ancho, solo el ícono: el nombre sigue en aria-label y title. -->
@@ -160,5 +179,6 @@ async function guardarEnArboles() {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+    <DialogoImagen v-model:open="imagen" :rama="raiz" :pantalla="pantalla" />
   </div>
 </template>

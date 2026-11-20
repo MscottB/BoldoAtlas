@@ -1814,6 +1814,10 @@
         "en_revision": "In review",
         "obsoleto": "Obsolete"
       }
+    },
+    "imagen": {
+      "titulo": "Org chart image",
+      "texto": "The org chart, or part of it, as PNG, JPG or SVG, or copied to paste."
     }
   },
   "comparar": {
@@ -2151,6 +2155,47 @@
     }
   },
   "imagen": {
-    "masUnidades": "+{n} unit | +{n} units"
+    "masUnidades": "+{n} unit | +{n} units",
+    "titulo": "Export the org chart as an image",
+    "descripcion": "For a presentation, a document or an email.",
+    "aFecha": "It shows the org chart as of {fecha}.",
+    "alcance": "Which part",
+    "alcanceTodo": "The whole organization",
+    "abrirTodo": "Open every branch in the scope",
+    "nivel": "Level of detail",
+    "niveles": {
+      "estructura": "Structure",
+      "estructuraAyuda": "Only the units, with no personal data. To share outside.",
+      "presentacion": "Presentation",
+      "presentacionAyuda": "Each unit with its head, in large type. For a slide.",
+      "pantalla": "As on screen",
+      "pantallaAyuda": "What the canvas shows with your settings."
+    },
+    "formato": "Format",
+    "fondo": "Background",
+    "fondos": {
+      "blanco": "White",
+      "transparente": "Transparent"
+    },
+    "tamano": "Size",
+    "vistaPrevia": "Preview",
+    "preparando": "Preparing the preview…",
+    "previaFallo": "The preview could not be made.",
+    "muchas": "The image has {n} cards, more than {limite}: it may take a while and be very large.",
+    "guardar": "Save…",
+    "copiar": "Copy image",
+    "aviso": "The image is not encrypted: anyone who opens it will see what it contains. Whoever makes it is responsible for where it is saved and who it is shared with.",
+    "aceptar": "I accept, continue",
+    "guardada": "Saved {nombre}",
+    "copiada": "Image copied. You can paste it now.",
+    "escalaBajada": "The image was too large for that size: it was made at {escala}x.",
+    "abrir": "Export as image",
+    "exportarRama": "Export this branch as an image",
+    "error": {
+      "leer": "The drawing could not be read as an image.",
+      "lienzo": "The image could not be prepared.",
+      "crear": "The image could not be made. Try a smaller size.",
+      "copiar": "The image could not be copied. Save it as a file."
+    }
   }
 }

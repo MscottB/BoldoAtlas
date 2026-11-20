@@ -1,6 +1,15 @@
 // Lo que solo se puede hacer en el navegador (Image, canvas, portapapeles). Lo que se calcula sin él está en formatos.ts.
 import { escalaQueCabe } from "./formatos";
 
+/** Lo que falló al armar la imagen; la ventana lo dice con `imagen.error.<codigo>`. */
+export class ErrorImagen extends Error {
+  readonly codigo: "leer" | "lienzo" | "crear";
+  constructor(codigo: ErrorImagen["codigo"]) {
+    super(codigo);
+    this.codigo = codigo;
+  }
+}
+
 function cargar(svg: string): Promise<HTMLImageElement> {
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
   return new Promise((ok, mal) => {
@@ -11,7 +20,7 @@ function cargar(svg: string): Promise<HTMLImageElement> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      mal(new Error("No se pudo leer el dibujo SVG como imagen."));
+      mal(new ErrorImagen("leer"));
     };
     img.src = url;
   });
@@ -31,7 +40,7 @@ export async function svgABlob(
   canvas.width = Math.max(1, Math.round(ancho * e));
   canvas.height = Math.max(1, Math.round(alto * e));
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("No se pudo crear el lienzo para la imagen.");
+  if (!ctx) throw new ErrorImagen("lienzo");
   if (o.formato === "jpg" || o.fondo === "blanco") {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -40,7 +49,7 @@ export async function svgABlob(
   const blob = await new Promise<Blob | null>((ok) =>
     canvas.toBlob(ok, o.formato === "jpg" ? "image/jpeg" : "image/png", 0.92),
   );
-  if (!blob) throw new Error("No se pudo crear la imagen. Prueba con una escala menor.");
+  if (!blob) throw new ErrorImagen("crear");
   return blob;
 }
 

@@ -1814,6 +1814,10 @@
         "en_revision": "En revisión",
         "obsoleto": "Obsoleto"
       }
+    },
+    "imagen": {
+      "titulo": "Imagen del organigrama",
+      "texto": "El organigrama, o una parte, en PNG, JPG o SVG, o copiado para pegarlo."
     }
   },
   "comparar": {
@@ -2151,6 +2155,47 @@
     }
   },
   "imagen": {
-    "masUnidades": "+{n} unidad | +{n} unidades"
+    "masUnidades": "+{n} unidad | +{n} unidades",
+    "titulo": "Exportar el organigrama como imagen",
+    "descripcion": "Para una presentación, un documento o un correo.",
+    "aFecha": "Sale el organigrama al {fecha}.",
+    "alcance": "Qué parte",
+    "alcanceTodo": "Toda la organización",
+    "abrirTodo": "Abrir todas las ramas del alcance",
+    "nivel": "Nivel de detalle",
+    "niveles": {
+      "estructura": "Estructura",
+      "estructuraAyuda": "Solo las unidades, sin datos de personas. Para compartir fuera.",
+      "presentacion": "Presentación",
+      "presentacionAyuda": "Cada unidad con su jefatura, en letra grande. Para una diapositiva.",
+      "pantalla": "Como en pantalla",
+      "pantallaAyuda": "Lo que muestra el lienzo con tu configuración."
+    },
+    "formato": "Formato",
+    "fondo": "Fondo",
+    "fondos": {
+      "blanco": "Blanco",
+      "transparente": "Transparente"
+    },
+    "tamano": "Tamaño",
+    "vistaPrevia": "Vista previa",
+    "preparando": "Preparando la vista previa…",
+    "previaFallo": "No se pudo armar la vista previa.",
+    "muchas": "La imagen lleva {n} tarjetas, más de {limite}: puede tardar y quedar muy grande.",
+    "guardar": "Guardar…",
+    "copiar": "Copiar imagen",
+    "aviso": "La imagen queda sin cifrar: cualquiera que la abra verá lo que contiene. Quien la genera es responsable de dónde la guarda y con quién la comparte.",
+    "aceptar": "Acepto, continuar",
+    "guardada": "Se guardó {nombre}",
+    "copiada": "Imagen copiada. Ya puedes pegarla.",
+    "escalaBajada": "La imagen era muy grande para ese tamaño: se hizo a {escala}x.",
+    "abrir": "Exportar como imagen",
+    "exportarRama": "Exportar esta rama como imagen",
+    "error": {
+      "leer": "No se pudo leer el dibujo como imagen.",
+      "lienzo": "No se pudo preparar la imagen.",
+      "crear": "No se pudo crear la imagen. Prueba con un tamaño menor.",
+      "copiar": "No se pudo copiar la imagen. Guárdala como archivo."
+    }
   }
 }
