@@ -679,6 +679,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 - Incluir zonas y `zona_unidades` en el SVG, el PNG y el PDF.
 
 ### Task 23c: Manual de organización y funciones (spec §11 "PDF")
+- Diseño aprobado (2026-11-20): `docs/superpowers/specs/2026-11-20-manual-design.md`, plan `docs/superpowers/plans/2026-11-20-manual.md`.
 - Plantilla del PDF de la 23b con los puestos, su descripción, titular y vacantes. Se puede entregar sin procesos y sumarlos cuando exista la Fase 3.
 
 ### Task 23d: Visor HTML (spec §11 "Visor HTML")
