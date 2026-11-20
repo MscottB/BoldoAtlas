@@ -43,7 +43,7 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 
 BoldoAtlas ya no guarda fotos de las personas, para tener menos datos personales en tu computador: la ficha, las tarjetas del árbol y el Directorio muestran sus iniciales.
 
-Si una organización o un respaldo todavía tiene fotos, al abrir la app sale un aviso que lo dice. **Quitar las fotos ahora** las borra de tus organizaciones y de sus respaldos, con una barra de avance, y puedes seguir trabajando mientras tanto. **Más tarde** cierra el aviso y vuelve a salir la próxima vez que abras la app. Un archivo `.boldo` o un respaldo con fotos entra sin ellas, y se te dice cuántas eran.
+Si una organización o un respaldo todavía tiene fotos, al abrir la app sale un aviso que lo dice. **Quitar las fotos ahora** las borra de tus organizaciones y de sus respaldos, con una barra de avance, y puedes seguir trabajando mientras tanto. **Más tarde** cierra el aviso y vuelve a salir la próxima vez que abras la app. Un archivo `.boldo` o un respaldo con fotos entra sin ellas. Si abres un archivo externo con fotos, sale el mismo aviso. Un respaldo con fotos que restauras también queda sin ellas; la app se reinicia y no cuenta cuántas eran.
 ## Jefatura
 
 **Unidades que encabeza** lista las unidades de las que es jefe: ocupa el puesto de jefatura como titular o, si ese puesto no tiene titular, como reemplazo.

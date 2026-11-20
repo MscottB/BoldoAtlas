@@ -135,6 +135,30 @@ describe("El aviso", () => {
     expect(m.aviso.value).toMatchObject({ externa: false });
   });
 
+  it("el aviso de un externo que espera a fotosHay mientras sale el general no se pierde", async () => {
+    const hay = pendiente<boolean>();
+    db.fotosHay.mockReturnValue(hay.promesa);
+    db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
+    const externa = m.revisarExterna("A", "Externa");
+    await m.revisarAlArrancar();
+    expect(m.aviso.value).toMatchObject({ externa: false });
+    hay.resolver(true);
+    await externa;
+    expect(m.aviso.value).toMatchObject({ externa: false });
+    await m.masTarde();
+    expect(m.aviso.value).toMatchObject({ externa: true, baseId: "A" });
+  });
+
+  it("si otro trabajo ocupa la sesión, la limpieza general no da error y no quita nada", async () => {
+    db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
+    db.fotosQuitarTodas.mockRejectedValue({ codigo: "trabajo_en_curso", detalle: "" });
+    await m.revisarAlArrancar();
+    expect(await m.quitarAhora()).toBeNull();
+    expect(m.quitando.value).toBeNull();
+    expect(m.aviso.value).toBeNull();
+    expect(evento.soltado).toBe(true);
+  });
+
   it("tras la limpieza general, la abierta externa con fotos recibe su propio aviso", async () => {
     db.fotosPendientes.mockResolvedValue({ organizaciones: ["Norte"], respaldos: 0 });
     m.conocerAbierta(() => ({ nombre: "Externa", externa: true }));

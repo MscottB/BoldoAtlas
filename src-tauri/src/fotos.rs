@@ -51,7 +51,9 @@ pub fn quitar(c: &mut Connection) -> Result<u64, Fallo> {
                                                 OR json_extract(despues, '$.foto_png') IS NOT NULL);
              UPDATE historial_filas SET antes = json_remove(antes, '$.foto_png'), despues = json_remove(despues, '$.foto_png')
              WHERE (accion_id, orden) IN (SELECT accion_id, orden FROM foto_filas);
-             DELETE FROM historial_filas WHERE op = 'update' AND COALESCE(antes, '{}') = '{}' AND COALESCE(despues, '{}') = '{}'
+             DELETE FROM historial_filas WHERE op = 'update'
+               AND COALESCE(json_remove(antes, '$.updated_at'), '{}') = '{}'
+               AND COALESCE(json_remove(despues, '$.updated_at'), '{}') = '{}'
                AND (accion_id, orden) IN (SELECT accion_id, orden FROM foto_filas);
              DELETE FROM historial_acciones WHERE id IN (SELECT accion_id FROM foto_filas)
                AND id NOT IN (SELECT accion_id FROM historial_filas);
@@ -243,13 +245,23 @@ pub struct Resultado {
     fallos: u32,
 }
 
+/// `empezar` reemplaza el trabajo en curso: esta limpieza no puede cancelar una importación ni su revisión, así que espera.
+/// shortcut: entre `ocupada` y `empezar` otro trabajo puede colarse; la ventana no lanza dos a la vez, subir a un solo paso atómico si cambia.
+fn reservar(sesiones: &Sesiones, trabajo: &str) -> Result<(), Fallo> {
+    if sesiones.ocupada() {
+        return Err(Fallo::de("trabajo_en_curso", ""));
+    }
+    sesiones.empezar(trabajo)
+}
+
 /// Quita las fotos de todas las organizaciones y respaldos. Sigue el trabajo `trabajo`: si se cancela, se detiene.
 #[tauri::command]
 pub async fn fotos_quitar_todas(app: AppHandle, trabajo: String) -> Result<Resultado, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
-        sesiones.empezar(&trabajo)?;
+        // antes de empezar: si falla, la sesión no queda ocupada
         let (r, lista) = (estado.rutas()?, estado.lista_leida()?);
+        reservar(&sesiones, &trabajo)?;
         let lado = app.state::<crate::lado::Lado>().id();
         let avance = |hechos, total| {
             let _ = app.emit("fotos-avance", Avance { hechos, total });
@@ -337,9 +349,10 @@ mod tests {
             [foto],
         )
         .unwrap();
+        // como el formulario real: `actualizar()` siempre añade updated_at
         for sql in [
-            "UPDATE trabajadores SET nombre = 'Ana B', foto_png = 'f2' WHERE id = 'ana'",
-            "UPDATE trabajadores SET foto_png = 'f3' WHERE id = 'ana'",
+            "UPDATE trabajadores SET nombre = 'Ana B', foto_png = 'f2', updated_at = 'y' WHERE id = 'ana'",
+            "UPDATE trabajadores SET foto_png = 'f3', updated_at = 'y' WHERE id = 'ana'",
         ] {
             let accion = crate::historial::abrir_accion(c, "app", &serde_json::json!({})).unwrap();
             c.execute(sql, []).unwrap();
@@ -369,8 +382,23 @@ mod tests {
                 |f| Ok((f.get(0)?, f.get(1)?)),
             )
             .unwrap();
-        assert_eq!(antes, r#"{"nombre":"Ana"}"#);
-        assert_eq!(despues, r#"{"nombre":"Ana B"}"#);
+        // la acción que solo cambió la foto (y updated_at) se borró; la mixta conserva nombre y updated_at
+        assert_eq!(antes, r#"{"nombre":"Ana","updated_at":"x"}"#);
+        assert_eq!(despues, r#"{"nombre":"Ana B","updated_at":"y"}"#);
+    }
+
+    #[test]
+    fn reservar_no_pisa_un_trabajo_en_curso() {
+        let s = Sesiones::default();
+        s.empezar("importar").unwrap();
+        assert_eq!(
+            reservar(&s, "fotos").unwrap_err().codigo,
+            "trabajo_en_curso"
+        );
+        assert!(s.sigue("importar"));
+        s.cancelar("importar");
+        reservar(&s, "fotos").unwrap();
+        assert!(s.sigue("fotos"));
     }
 
     #[test]
@@ -732,6 +760,7 @@ mod tests {
     fn copiar_a_carpeta_deja_la_organizacion_nueva_sin_fotos() {
         let (_exe, r, l) = dos_organizaciones();
         let origen = base_de(&r, &l.organizaciones[0]).bd;
+        assert!(hay(&Connection::open(&origen).unwrap()).unwrap());
         let id =
             crate::organizaciones::copiar_a_carpeta(&r, &origen, None, db::MIGRACIONES).unwrap();
         let c = Connection::open(r.datos.join(crate::organizaciones::ruta_interna(&id))).unwrap();

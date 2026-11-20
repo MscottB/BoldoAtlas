@@ -43,7 +43,7 @@ If you close the record with unsaved changes (an invalid field, or a new record 
 
 BoldoAtlas no longer stores photos of people, to keep less personal data on your computer: the record, the org chart cards and the Directory show their initials.
 
-If an organization or a backup still has photos, a notice says so when the app opens. **Remove the photos now** deletes them from your organizations and their backups, with a progress bar, and you can keep working meanwhile. **Later** closes the notice and it shows again the next time you open the app. A `.boldo` file or a backup with photos comes in without them, and you are told how many there were.
+If an organization or a backup still has photos, a notice says so when the app opens. **Remove the photos now** deletes them from your organizations and their backups, with a progress bar, and you can keep working meanwhile. **Later** closes the notice and it shows again the next time you open the app. A `.boldo` file or a backup with photos comes in without them. If you open an external file with photos, the same notice shows. A backup with photos that you restore also ends up without them; the app restarts and does not count how many there were.
 ## Head of unit
 
 **Units they head** lists the units they are head of: they hold the head position as holder or, if that position has no holder, as a replacement.

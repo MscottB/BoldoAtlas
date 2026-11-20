@@ -8,6 +8,7 @@ import {
   fotosQuitarTodas,
   type FotosPendientes as Pendientes,
 } from "@/db/cliente";
+import { esFallo } from "@/db/errores";
 import { i18n } from "@/i18n";
 import { alSoltarDatos, baseActual } from "@/lib/baseActiva";
 import { nuevoId } from "@/lib/ids";
@@ -88,13 +89,16 @@ export async function revisarAlArrancar(): Promise<void> {
 export async function revisarExterna(id: string, nombre: string): Promise<void> {
   if (quitando.value || aviso.value || externasVistas.has(id)) return;
   externasVistas.add(id);
-  if (!(await fotosHay()) || aviso.value || quitando.value) return;
+  const hay = await fotosHay();
+  if (!hay) return;
   const { t } = i18n.global;
-  aviso.value = {
+  const nuevo: Aviso = {
     texto: t("fotos.aviso.texto", { donde: t("fotos.aviso.organizacion", { nombre }) }),
     externa: true,
     baseId: id,
   };
+  // si el general o una limpieza ganaron la espera, `mostrar` lo deja en cola: no se pierde
+  mostrar(nuevo);
 }
 
 export async function masTarde(): Promise<void> {
@@ -136,6 +140,10 @@ export async function quitarAhora(): Promise<{ quitadas: number; fallos: number 
       r = await conTrabajo(i18n.global.t("trabajos.quitarFotos"), async () =>
         a.externa ? { quitadas: await fotosQuitar(), fallos: 0 } : quitarTodas(),
       );
+    } catch (e) {
+      // otro trabajo (una importación) ocupa la sesión: como «Más tarde», sin error; el próximo arranque vuelve a avisar
+      if (esFallo(e) && e.codigo === "trabajo_en_curso") return null;
+      throw e;
     } finally {
       quitando.value = null;
     }
