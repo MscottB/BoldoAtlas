@@ -38,7 +38,7 @@ export function nombreArchivo(
   organizacion: string,
   alcance: string,
   nivel: Nivel,
-  ext: "png" | "jpg" | "svg",
+  ext: "png" | "jpg" | "svg" | "pdf",
   fecha: string,
 ): string {
   const partes = [limpio(organizacion) || "BoldoAtlas", limpio(alcance), nivel, fecha].filter(Boolean);

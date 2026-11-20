@@ -770,7 +770,7 @@ export function fotosQuitar(): Promise<number> {
 export function archivoGuardar(
   nombre: string,
   bytes: Uint8Array,
-  ext: "xlsx" | "png" | "jpg" | "svg",
+  ext: "xlsx" | "png" | "jpg" | "svg" | "pdf",
 ): Promise<string | null> {
   const pedido = new TextEncoder().encode(JSON.stringify({ nombre, ext }));
   const cuerpo = new Uint8Array(4 + pedido.length + bytes.length);

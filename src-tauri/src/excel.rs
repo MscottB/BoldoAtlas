@@ -32,6 +32,7 @@ fn filtro_de(ext: &str) -> Option<&'static str> {
         "png" => Some("PNG"),
         "jpg" => Some("JPG"),
         "svg" => Some("SVG"),
+        "pdf" => Some("PDF"),
         _ => None,
     }
 }
@@ -217,6 +218,13 @@ mod tests {
             let c = cuerpo(&format!(r#"{{"nombre":"a","ext":"{ext}"}}"#), b"x");
             assert!(desarmar(&c).is_ok(), "{ext}");
         }
+    }
+
+    #[test]
+    fn guardar_acepta_pdf() {
+        let c = cuerpo(r#"{"nombre":"a.pdf","ext":"pdf"}"#, b"%PDF-1.3");
+        assert!(desarmar(&c).is_ok());
+        assert_eq!(filtro_de("pdf"), Some("PDF"));
     }
 
     #[test]
