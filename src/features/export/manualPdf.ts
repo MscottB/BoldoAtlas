@@ -1,6 +1,6 @@
 // Aparte de manual.ts: el worker de pdfmake importa esto, y así no carga el store ni i18n (solo sus tipos).
-import type { TextosManual, UnidadManual } from "./manual";
-import { recortar as recortarTexto } from "./medida";
+import type { PuestoManual, TextosManual, UnidadManual } from "./manual";
+import { anchoTexto, recortar as recortarTexto } from "./medida";
 import { MARGEN, areaUtil } from "./paginas";
 import {
   LOGO_PDF,
@@ -80,18 +80,28 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
     pageBreak: "before",
   };
 
+  // El índice lleva solo «Organigrama general»: el «· viene de…» de cada hoja va en otra columna.
+  const resto = area.ancho - anchoTexto(t.general, 8) - 3;
   const general = d.general.map((x, i): Nodo => ({
     stack: [
       encajado(x, area.ancho, area.alto),
       {
-        text: recortarTexto([t.general, x.arriba].filter(Boolean).join(" · "), area.ancho, 8),
-        noWrap: true,
         absolutePosition: { x: MARGEN, y: LINEA_ARRIBA },
-        ...(i ? {} : { tocItem: true }),
+        columnGap: 3,
+        columns: [
+          { text: t.general, width: "auto", noWrap: true, ...(i ? {} : { tocItem: true }) },
+          ...(x.arriba ? [{ text: recortarTexto(`· ${x.arriba}`, resto, 8), noWrap: true }] : []),
+        ],
       },
     ],
     pageBreak: "before",
   }));
+
+  // «Gerente», «Gerente · Ximena», «Gerente (vacante)» o «Gerente (vacante) · Reemplazo: Carla».
+  const jefatura = (y: PuestoManual) => {
+    const quien = y.titular ?? (y.reemplazo ? `${t.reemplazo}: ${y.reemplazo}` : null);
+    return `${y.cargo}${y.estado === "vacante" ? ` (${t.jefaturaVacante})` : ""}${quien ? ` · ${quien}` : ""}`;
+  };
 
   const tabla = (x: UnidadManual): Nodo => ({
     margin: [0, 12, 0, 0],
@@ -136,7 +146,7 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
         ...(x.jefatura
           ? [
               {
-                text: [{ text: `${t.jefatura}: `, bold: true }, x.jefatura],
+                text: [{ text: `${t.jefatura}: `, bold: true }, jefatura(x.jefatura)],
                 fontSize: 10,
                 color: OSCURO,
                 margin: [0, 6, 0, 0],

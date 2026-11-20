@@ -101,7 +101,12 @@ describe("datosManual", () => {
   it("sin_descripcion_vacante_y_reemplazo", () => {
     const us = datosManual({ alcance: "todo", conPersonas: true });
     const de = (id: string) => us.find((x) => x.id === id)!;
-    expect(de("g").jefatura).toBe(`Ximena Quiroga ${MARCA}`);
+    expect(de("g").jefatura).toEqual({
+      cargo: "Gerente",
+      descripcion: null,
+      estado: "ocupado",
+      titular: `Ximena Quiroga ${MARCA}`,
+    });
     expect(de("a1").puestos).toEqual([
       { cargo: "Jefe", descripcion: null, estado: "ocupado", titular: `Bruno ${MARCA}` },
       { cargo: "Analista", descripcion: "Lleva las cuentas", estado: "vacante", reemplazo: `Carla ${MARCA}` },
@@ -118,6 +123,46 @@ describe("datosManual", () => {
     );
     for (const x of [t.sinDescripcion, t.vacante, t.ocupado, `${t.reemplazo}: Carla ${MARCA}`, t.ocupa])
       expect(doc).toContain(x);
+  });
+
+  it("jefatura_dice_su_cargo", () => {
+    // La línea «Jefatura: …» de cada sección que la lleva, en orden.
+    const lineas = (conPersonas: boolean) =>
+      [
+        ...JSON.stringify(
+          documentoManual(
+            { unidades: datosManual({ alcance: "todo", conPersonas }), general: [], dibujos: new Map() },
+            opciones(conPersonas),
+          ).content,
+        ).matchAll(/"Jefatura: ","bold":true\},"([^"]*)"/g),
+      ].map(([, x]) => x);
+
+    // Ocupada: el cargo siempre, el nombre solo con personas.
+    expect(lineas(false)).toEqual(["Gerente", "Jefe"]);
+    expect(lineas(true)).toEqual([`Gerente · Ximena Quiroga ${MARCA}`, `Jefe · Bruno ${MARCA}`]);
+
+    // Vacante: Operaciones la encabeza un analista sin nadie; Finanzas, uno con reemplazo.
+    const org = useOrganizacion();
+    org.$patch({
+      unidades: org.unidades.map((x) =>
+        x.id === "a2" ? { ...x, jefe_puesto_id: "p-v" } : x.id === "a1" ? { ...x, jefe_puesto_id: "p-x" } : x,
+      ),
+    });
+    expect(lineas(false)).toEqual(["Gerente", "Analista (vacante)", "Analista (vacante)"]);
+    expect(lineas(true)).toEqual([
+      `Gerente · Ximena Quiroga ${MARCA}`,
+      `Analista (vacante) · Reemplazo: Carla ${MARCA}`,
+      "Analista (vacante)",
+    ]);
+
+    // Sin personas, ni la jefatura vacante con reemplazo deja salir un nombre.
+    const sin = datosManual({ alcance: "todo", conPersonas: false });
+    expect(JSON.stringify(sin)).not.toContain(MARCA);
+    expect(sin.find((x) => x.id === "a1")!.jefatura).toEqual({
+      cargo: "Analista",
+      descripcion: "Lleva las cuentas",
+      estado: "vacante",
+    });
   });
 
   it("rama_como_alcance", () => {
@@ -152,7 +197,7 @@ describe("datosManual", () => {
 
     const us = datosManual({ alcance: "todo", conPersonas: true });
     expect(numeros(us)).toEqual(["1 Gerencia General", "1.1 Finanzas"]);
-    expect(us[0]!.jefatura).toBe(`Ximena Quiroga ${MARCA}`);
+    expect(us[0]!.jefatura).toEqual(us[0]!.puestos[0]);
     expect(us[0]!.puestos).toEqual([
       { cargo: "Gerente", descripcion: null, estado: "ocupado", titular: `Ximena Quiroga ${MARCA}` },
     ]);
@@ -163,7 +208,8 @@ describe("datosManual", () => {
     const us = datosManual({ alcance: "todo", conPersonas: false });
     expect(JSON.stringify(us)).not.toContain(MARCA);
     for (const x of us) {
-      expect(x).not.toHaveProperty("jefatura");
+      expect(x.jefatura ?? {}).not.toHaveProperty("titular");
+      expect(x.jefatura ?? {}).not.toHaveProperty("reemplazo");
       for (const y of x.puestos) {
         expect(y).not.toHaveProperty("titular");
         expect(y).not.toHaveProperty("reemplazo");
@@ -202,7 +248,9 @@ describe("el manual en PDF, con pdfmake", () => {
     // El organigrama general va en el índice, en la página 3, con su «viene de» bajo el encabezado.
     const paginas = textoPorPagina(pdf).map((x) => x.split("\n").map((y) => y.trim()));
     expect(paginas[1]).toEqual(expect.arrayContaining(["Organigrama", "general", "3"]));
-    expect(paginas[2]).toContain("Organigrama general · Viene de la página 1");
+    // En el índice, solo «Organigrama general»: el «viene de» es de la hoja.
+    expect(paginas[1]!.join(" ")).not.toContain("Viene");
+    expect(paginas[2]).toEqual(expect.arrayContaining(["Organigrama general", "· Viene de la página 1"]));
     // Los metadatos: solo el título y lo que pdfkit pone solo (programa y fecha).
     expect(doc.info).toEqual({ title: "Manual de organización y funciones" });
     const info = new TextDecoder("latin1")

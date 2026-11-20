@@ -1,7 +1,7 @@
 import { toRaw } from "vue";
 import type { Puesto, Trabajador } from "@/db/tipos";
 import { i18n } from "@/i18n";
-import { datosDePuestos, datosDeUnidades } from "@/features/arbol/datosNodo";
+import { datosDePuestos } from "@/features/arbol/datosNodo";
 import { indiceHijos, ruta } from "@/features/arbol/jerarquia";
 import { useOrganizacion } from "@/stores/organizacion";
 import { unidadesDe, type Alcance } from "./preparar";
@@ -16,7 +16,10 @@ export interface PuestoManual {
   reemplazo?: string;
 }
 
-/** Una sección del manual. `jefatura`, el nombre de quien la ejerce, solo va con personas. */
+/**
+ * Una sección del manual. `jefatura`: el puesto que encabeza la unidad, si tiene. Su cargo va siempre; quién lo
+ * ocupa, solo con personas, como en cualquier puesto.
+ */
 export interface UnidadManual {
   id: string;
   /** «1», «1.1», «1.2», «1.2.1»… en el orden del árbol, desde la raíz del alcance. */
@@ -24,7 +27,7 @@ export interface UnidadManual {
   nombre: string;
   /** Los nombres de sus superiores, desde la raíz de la organización (también con una rama como alcance). */
   ruta: string[];
-  jefatura?: string;
+  jefatura?: PuestoManual;
   puestos: PuestoManual[];
 }
 
@@ -39,6 +42,8 @@ export interface TextosManual {
   estado: string;
   ocupado: string;
   vacante: string;
+  /** «vacante», en minúscula: «Jefatura: Gerente (vacante)». */
+  jefaturaVacante: string;
   sinDescripcion: string;
   reemplazo: string;
 }
@@ -55,6 +60,7 @@ export function textosManual(): TextosManual {
     estado: t("manual.estado"),
     ocupado: t("manual.ocupado"),
     vacante: t("manual.vacante"),
+    jefaturaVacante: t("manual.jefaturaVacante"),
     sinDescripcion: t("manual.sinDescripcion"),
     reemplazo: t("manual.reemplazo"),
   };
@@ -62,7 +68,7 @@ export function textosManual(): TextosManual {
 
 /**
  * Las unidades del alcance en el orden del árbol (cada una antes que sus hijas; los hermanos, en el orden del lienzo),
- * a la fecha que se ve, con sus puestos. Jefatura, titular y reemplazo salen de `datosNodo.ts`, como en el lienzo. Sin
+ * a la fecha que se ve, con sus puestos. Cargo, titular y reemplazo salen de `datosDePuestos`, como en el lienzo. Sin
  * personas, los nombres ni se leen: no se pasa ninguna persona.
  */
 export function datosManual(o: { alcance: Alcance; conPersonas: boolean }): UnidadManual[] {
@@ -79,17 +85,7 @@ export function datosManual(o: { alcance: Alcance; conPersonas: boolean }): Unid
     : new Map<string, Trabajador>();
   const cargos = new Map(toRaw(org.catalogos).cargos.map((c) => [c.id, c.nombre]));
   const datosPuesto = datosDePuestos(puestos, e.vigentes, trabajadores, cargos);
-  const jefes = o.conPersonas
-    ? datosDeUnidades({
-        unidades,
-        puestos,
-        vigentes: e.vigentes,
-        trabajadores,
-        cargos,
-        dotaciones: new Map(),
-        etiquetas: new Map(),
-      })
-    : null;
+  const filas = new Map<string, PuestoManual>();
   const porUnidad = new Map<string, PuestoManual[]>();
   for (const x of puestos) {
     const d = datosPuesto.get(x.id)!;
@@ -100,7 +96,10 @@ export function datosManual(o: { alcance: Alcance; conPersonas: boolean }): Unid
       ...(d.titular ? { titular: d.titular } : {}),
       ...(d.reemplazo ? { reemplazo: d.reemplazo } : {}),
     };
-    porUnidad.set(x.unidad_id, [...(porUnidad.get(x.unidad_id) ?? []), fila]);
+    filas.set(x.id, fila);
+    const lista = porUnidad.get(x.unidad_id);
+    if (lista) lista.push(fila);
+    else porUnidad.set(x.unidad_id, [fila]);
   }
 
   const indice = indiceHijos(unidades);
@@ -108,7 +107,7 @@ export function datosManual(o: { alcance: Alcance; conPersonas: boolean }): Unid
   const recorrer = (padre: string | null, prefijo: string, camino: string[]) =>
     (indice.get(padre) ?? []).forEach((x, i) => {
       const numero = prefijo ? `${prefijo}.${i + 1}` : String(i + 1);
-      const jefe = jefes?.get(x.id)?.jefe?.nombre;
+      const jefe = x.jefe_puesto_id ? filas.get(x.jefe_puesto_id) : undefined;
       res.push({
         id: x.id,
         numero,
