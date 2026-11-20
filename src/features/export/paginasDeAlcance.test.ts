@@ -119,9 +119,25 @@ describe("paginasPdf", () => {
     });
     const config = { ...VISTA_POR_DEFECTO, verPuestos: true };
     const r = await paginasPdf(pedido({ nivel: "pantalla", config }), carta("ramas"));
-    expect(r.total).toBeNull();
-    expect(r.ilegible).toBe(true); // la raíz ya se ve en la vista previa
+    expect(r.total).toBe(1); // no deja nada para después: la vista previa ya sabe cuántas son
+    expect(r.ilegible).toBe(true);
     expect(await r.paginas()).toMatchObject({ total: 1, ilegible: true });
+  });
+
+  it("por ramas, si todo cabe en la raíz, la vista previa ya sabe cuántas páginas son", async () => {
+    cargar([
+      u("r", "t", "Gerencia General", null),
+      u("a", "t", "Área a", "r", 0),
+      u("b", "t", "Área b", "r", 1),
+    ]);
+    const c = contador();
+    const r = await paginasPdf(pedido({ ubicar: c.ubicar }), carta("ramas"));
+    expect(r.total).toBe(1);
+    expect(r.primera).not.toContain(`>${t("pdf.sigue", { n: "…" })}</text>`);
+    const antes = c.n;
+    // Guardar usa lo mismo, sin volver a repartir.
+    expect(await r.paginas()).toMatchObject({ total: 1, ilegible: false });
+    expect(c.n).toBe(antes);
   });
 
   it("por ramas, la vista previa solo pide los layouts de la raíz, y Guardar los vuelve a usar", async () => {

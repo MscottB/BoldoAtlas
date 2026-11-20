@@ -234,8 +234,12 @@ function programar(dibujo = true) {
   chicaPrevia.value = false;
   pdfPrevia.value = null;
   if (dibujo) calculo = null;
-  // Guardar tampoco sigue: sería el PDF del organigrama de antes. Al cerrar, lo corta `watch(abierto)`.
-  if (abierto.value) armando.value?.abort(CAMBIO);
+  // Guardar tampoco sigue: sería el PDF del organigrama de antes. Al cerrar, lo corta `watch(abierto)`. Si el aviso de
+  // aceptación estaba abierto, se cierra: lo que dice ya no vale.
+  if (abierto.value && armando.value) {
+    armando.value.abort(CAMBIO);
+    avisoAbierto.value = false;
+  }
   controlPdf?.abort(); // también al cerrar la ventana: lo que se estaba repartiendo ya no sirve
   calculoPdf = null;
   clearTimeout(espera);
@@ -295,7 +299,10 @@ async function guardar() {
       control.signal.throwIfAborted();
       pdfPrevia.value = { ...r, total, ilegible };
       avance.value = "";
-      if (!(await aviso.preguntar())) return;
+      if (!(await aviso.preguntar())) {
+        control.signal.throwIfAborted(); // se cerró porque cambió el organigrama: se avisa
+        return;
+      }
       bytes = await armarPdf(
         lista,
         {
