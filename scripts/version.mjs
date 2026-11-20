@@ -62,7 +62,7 @@ export function verificarEtiqueta(base, etiqueta) {
 
 /**
  * Versión impuesta por el CI (BOLDO_VERSION): la del release que se publica o la de prueba de un PR
- * (`0.1.0-alpha.3+pr4`). La fecha se suma a la metadata.
+ * (`0.13.0`). La fecha se suma a la metadata: `0.13.0+20112026`.
  * @param {string} valor
  * @param {string} fecha
  * @returns {{ completa: string, base: string, numerica: string }}

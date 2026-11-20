@@ -55,7 +55,7 @@ jobs:
           path: ~/.cache/tauri
           key: tauri-herramientas-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: tauri-herramientas-${{ runner.os }}-
-      # en un PR: la versión que tendrá al fusionarse, con el número del PR (p. ej. 0.1.0-alpha.3+pr4)
+      # en un PR: la versión que tendrá al fusionarse, con la fecha de compilación (p. ej. 0.13.0+20112026)
       - id: v
         run: node scripts/publicacion.mjs "$GITHUB_EVENT_PATH"
         shell: bash

@@ -209,7 +209,7 @@ describe("publicacion", () => {
       version: "0.1.0-alpha.2",
       etiqueta: "v0.1.0-alpha.2",
       prerelease: "true",
-      version_prueba: "0.1.0-alpha.2+pr4",
+      version_prueba: "0.1.0-alpha.2",
       notas: "- Pestañas",
     }));
   it("una versión final no es prerelease", () =>
@@ -221,7 +221,7 @@ describe("publicacion", () => {
       [{ number: 3, title: "A", labels: [{ name: "version:menor" }] }, pr],
       ["v0.1.0-alpha.1"],
     );
-    expect([v.version, v.pr, v.version_prueba]).toEqual(["0.1.0", "#3 #4", "0.1.0+pr4"]);
+    expect([v.version, v.pr, v.version_prueba]).toEqual(["0.1.0", "#3 #4", "0.1.0"]);
   });
   it("sin PR (push a main que no es un merge, o ya publicado) no publica", () =>
     expect(publicacion([], ["v0.1.0-alpha.1"])).toEqual({ publicar: "false" }));

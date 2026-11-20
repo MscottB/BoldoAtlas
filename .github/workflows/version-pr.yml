@@ -40,7 +40,7 @@ jobs:
             echo "<!-- boldoatlas:version-pr -->"
             echo "Se publicará como **$ETIQUETA** al fusionar este PR."
             echo
-            echo "La portable de prueba de este PR es \`$PRUEBA\` (artefacto del workflow build-prueba)."
+            echo "La portable de prueba de este PR es \`$PRUEBA+$(TZ=America/Santiago date +%d%m%Y)\` (artefacto del workflow build-prueba)."
             echo "Para cambiar el salto: labels \`version:parche\`, \`version:menor\` o \`version:mayor\`."
             echo
             echo "### Notas de la versión"
