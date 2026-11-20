@@ -390,6 +390,15 @@ pub(crate) fn fecha_de_eliminada(nombre: &str) -> Option<String> {
         .map(|e| fecha_de_sello(&e.sello))
 }
 
+/// Solo los nombres de los respaldos de la carpeta, sin abrir ninguno.
+pub(crate) fn nombres(dir: &Path) -> Vec<String> {
+    entradas(dir)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| e.nombre)
+        .collect()
+}
+
 /// Respaldos de la carpeta, del más nuevo al más viejo. Un archivo ilegible se lista sin revisión;
 /// uno que ni siquiera se puede consultar (desapareció, sin permisos) se omite.
 pub fn listar(dir: &Path) -> Result<Vec<Respaldo>, Fallo> {
@@ -591,7 +600,7 @@ fn cambiar_base(
         quitada?;
         db::asegurar_meta(&c)?;
         // el respaldo (o el archivo) puede venir de antes de que se dejaran de guardar fotos: la base viva ya sale sin ellas
-        crate::fotos::quitar(&mut c)?;
+        crate::fotos::limpiar(&mut c)?;
         if !previas.is_empty() {
             supresion::reaplicar(&mut c, &previas, &relleno)?;
             // los UPDATE dejan los datos en páginas libres: se compacta antes de que sea la base viva

@@ -394,7 +394,7 @@ pub fn abrir(
     let fotos_quitadas = {
         let mut c =
             validar::abrir_no_confiable(temporal.ruta(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
-        let n = crate::fotos::quitar(&mut c)?;
+        let n = crate::fotos::limpiar(&mut c)?;
         c.close().map_err(|(_, e)| e)?;
         n
     };
@@ -1028,6 +1028,23 @@ mod tests {
             let quedan = temporales(&r.datos);
             assert_eq!(quedan.len(), 1, "{quedan:?}");
             assert!(quedan[0].starts_with("boldo-importando-"), "{quedan:?}");
+        }
+
+        #[test]
+        fn como_nueva_con_fotos_queda_sin_fotos() {
+            let (d, origen) = base_con_datos();
+            origen
+                .execute(
+                    "UPDATE trabajadores SET foto_png = 'FOTO-XYZ' WHERE id = 'ana'",
+                    [],
+                )
+                .unwrap();
+            let (_exe, r) = rutas();
+            let i = importacion(d.path(), &origen, &r.datos);
+            assert_eq!(i.fotos_quitadas, 1);
+            let id = como_nueva(&i, &r).unwrap();
+            let c = Connection::open(bd_de(&r, &id)).unwrap();
+            assert!(!crate::fotos::hay(&c).unwrap());
         }
 
         #[test]

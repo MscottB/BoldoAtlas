@@ -3,8 +3,8 @@
 
 use crate::comandos::Estado;
 use crate::intercambio::Sesiones;
-use crate::intercambio::validar::{abrir_no_confiable, solo_lectura_cerrada};
-use crate::organizaciones::{Lista, base_de, bloquear};
+use crate::intercambio::validar::{abrir_no_confiable, para_leer, solo_lectura_cerrada};
+use crate::organizaciones::{ELIMINADAS, Lista, base_de, bloquear, nombres_eliminadas};
 use crate::respaldos::{self, Fallo};
 use crate::rutas::Rutas;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
@@ -34,8 +34,8 @@ fn tiene_historial(c: &Connection) -> rusqlite::Result<bool> {
 }
 
 /// Quita todas las fotos de las personas y de su historial, y compacta. Devuelve cuántas personas tenían foto.
-/// Trabaja sin acción abierta: no anota nada en el historial. Si la compactación falla dos veces, el archivo queda marcado
-/// (`POR_COMPACTAR`) y devuelve el error.
+/// Trabaja sin acción abierta: no anota nada en el historial. El archivo queda marcado (`POR_COMPACTAR`) hasta que la
+/// compactación termina: si falla dos veces, devuelve el error y sigue marcado.
 pub fn quitar(c: &mut Connection) -> Result<u64, Fallo> {
     let historial = tiene_historial(c)?;
     let tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -58,17 +58,16 @@ pub fn quitar(c: &mut Connection) -> Result<u64, Fallo> {
              DROP TABLE foto_filas;",
         )?;
     }
+    // la marca va en la misma transacción que la limpieza: si la app muere compactando, o la compactación falla, ya está en el
+    // archivo y el arranque siguiente lo vuelve a intentar
+    tx.execute(
+        "INSERT OR REPLACE INTO meta (clave, valor) VALUES (?1, '1')",
+        [POR_COMPACTAR],
+    )?;
     tx.commit()?;
-    // la marca se quita antes de compactar: así no queda un valor suelto en el archivo ya compacto
-    let _ = c.execute("DELETE FROM meta WHERE clave = ?1", [POR_COMPACTAR]);
     // una vez más: lo habitual es otra conexión leyendo un instante
-    compactar(c).or_else(|_| compactar(c)).map_err(|e| {
-        let _ = c.execute(
-            "INSERT OR REPLACE INTO meta (clave, valor) VALUES (?1, '1')",
-            [POR_COMPACTAR],
-        );
-        Fallo::from(e)
-    })?;
+    compactar(c).or_else(|_| compactar(c))?;
+    c.execute("DELETE FROM meta WHERE clave = ?1", [POR_COMPACTAR])?;
     Ok(quitadas)
 }
 
@@ -106,80 +105,111 @@ pub fn pendiente(c: &Connection) -> Result<bool, Fallo> {
     .unwrap_or(false))
 }
 
-/// Cada archivo que puede tener fotos: la base de cada organización de la lista y sus respaldos. `(organización, es el
-/// archivo de la organización, ruta)`; solo los que existen.
-fn archivos(r: &Rutas, l: &Lista) -> Vec<(usize, bool, PathBuf)> {
+/// Cada archivo que puede tener fotos y que la app abre sola: la base de cada organización de la lista que está en `datos`
+/// (`Some(posición)`), y sus respaldos y las copias de organizaciones eliminadas (`None`). Una externa puede estar en una unidad
+/// de red o quitada y colgar el arranque: su base se mira al abrirla (`fotos_hay`). Solo los que existen; los nombres, sin abrir
+/// ningún archivo.
+fn archivos(r: &Rutas, l: &Lista) -> Vec<(Option<usize>, PathBuf)> {
     let mut v = Vec::new();
     for (i, e) in l.organizaciones.iter().enumerate() {
         let base = base_de(r, e);
-        if base.bd.is_file() {
-            v.push((i, true, base.bd));
+        if !e.externa && base.bd.is_file() {
+            v.push((Some(i), base.bd));
         }
-        for b in respaldos::listar(&base.respaldos).unwrap_or_default() {
-            v.push((i, false, base.respaldos.join(b.nombre)));
+        for n in respaldos::nombres(&base.respaldos) {
+            v.push((None, base.respaldos.join(n)));
         }
+    }
+    let carpeta = r.datos.join(ELIMINADAS);
+    for n in nombres_eliminadas(r) {
+        v.push((None, carpeta.join(n)));
     }
     v
 }
 
-/// Qué tiene fotos, sin escribir nada. Un archivo que no se puede leer cuenta: no se sabe que no las tenga.
+/// Qué tiene fotos, sin escribir nada: las copias de organizaciones eliminadas cuentan con los respaldos. Un archivo que no se
+/// puede leer cuenta: no se sabe que no las tenga.
 pub fn pendientes(r: &Rutas, l: &Lista) -> Pendientes {
     let mut p = Pendientes {
         organizaciones: Vec::new(),
         respaldos: 0,
     };
-    for (i, es_base, ruta) in archivos(r, l) {
-        let con = solo_lectura_cerrada(&ruta)
+    for (org, ruta) in archivos(r, l) {
+        // `para_leer`: con `-wal` y sin `-shm`, SQLite crearía el `-shm` al lado
+        let con = para_leer(&ruta, &r.datos)
+            .and_then(|leida| solo_lectura_cerrada(leida.ruta()))
             .and_then(|c| pendiente(&c))
             .unwrap_or(true);
         if !con {
             continue;
         }
-        if es_base {
-            let e = &l.organizaciones[i];
-            p.organizaciones.push(if e.nombre.is_empty() {
-                e.id.clone()
-            } else {
-                e.nombre.clone()
-            });
-        } else {
-            p.respaldos += 1;
+        match org {
+            Some(i) => {
+                let e = &l.organizaciones[i];
+                p.organizaciones.push(if e.nombre.is_empty() {
+                    e.id.clone()
+                } else {
+                    e.nombre.clone()
+                });
+            }
+            None => p.respaldos += 1,
         }
     }
     p
 }
 
-/// Limpia todo lo de `pendientes`. `abierta` es la organización con su conexión, que se usa tal cual; la de `lado` no se toca.
-/// Un archivo que falla no detiene a los demás: sigue contando en `pendientes`. `avance(hechos, total)` devuelve si seguir.
+/// El id de la organización abierta y cómo limpiarla.
+pub type Abierta<'a> = (&'a str, &'a mut dyn FnMut() -> Result<u64, Fallo>);
+
+/// Lo que hizo `quitar_todas`: cuántas personas tenían foto, y los archivos que fallaron (siguen en `pendientes`).
+#[derive(Debug, Default)]
+pub struct Limpieza {
+    pub quitadas: u64,
+    pub fallos: Vec<String>,
+}
+
+/// Limpia todo lo de `pendientes`. `abierta` es el id de la organización abierta y cómo limpiarla, con su conexión: quien llama
+/// la toma solo mientras dura ese paso. La de `lado` no se toca. Un archivo que falla no detiene a los demás.
+/// `avance(hechos, total)` devuelve si seguir.
 pub fn quitar_todas(
     r: &Rutas,
     l: &Lista,
-    mut abierta: Option<(&str, &mut Connection)>,
+    mut abierta: Option<Abierta<'_>>,
     lado: Option<&str>,
     mut avance: impl FnMut(u32, u32) -> bool,
-) -> Result<u64, Fallo> {
+) -> Result<Limpieza, Fallo> {
     let todos = archivos(r, l);
     let total = todos.len() as u32;
-    let mut quitadas = 0;
-    for (hecho, (i, es_base, ruta)) in todos.into_iter().enumerate() {
+    let mut resultado = Limpieza::default();
+    for (hecho, (org, ruta)) in todos.into_iter().enumerate() {
         if !avance(hecho as u32, total) {
             return Err(Fallo::de("cancelado", ""));
         }
-        let id = l.organizaciones[i].id.as_str();
-        if es_base && lado == Some(id) {
+        let id = org.map(|i| l.organizaciones[i].id.as_str());
+        if id.is_some() && lado == id {
             continue;
         }
-        let limpia = match abierta.as_mut() {
-            Some((abierta_id, c)) if es_base && *abierta_id == id => limpiar(c),
-            _ => limpiar_archivo(&ruta, es_base),
+        let limpia = match (abierta.as_mut(), id) {
+            (Some((abierta_id, limpiar_abierta)), Some(id)) if *abierta_id == id => {
+                limpiar_abierta()
+            }
+            _ => limpiar_archivo(&ruta, org.is_some()),
         };
-        quitadas += limpia.unwrap_or(0);
+        match limpia {
+            Ok(n) => resultado.quitadas += n,
+            Err(f) => {
+                resultado
+                    .fallos
+                    .push(format!("{}: {} {}", ruta.display(), f.codigo, f.detalle))
+            }
+        }
     }
     avance(total, total);
-    Ok(quitadas)
+    Ok(resultado)
 }
 
-fn limpiar(c: &mut Connection) -> Result<u64, Fallo> {
+/// Quita las fotos si hay, o una compactación pendiente. Sin nada, no escribe ni compacta.
+pub(crate) fn limpiar(c: &mut Connection) -> Result<u64, Fallo> {
     if pendiente(c)? { quitar(c) } else { Ok(0) }
 }
 
@@ -218,14 +248,26 @@ pub async fn fotos_quitar_todas(app: AppHandle, trabajo: String) -> Result<u64, 
             let _ = app.emit("fotos-avance", Avance { hechos, total });
             sesiones.sigue(&trabajo)
         };
-        let resultado = match estado.base_abierta() {
-            Some(b) => estado.con_conexion(&b.id, |c| {
-                quitar_todas(r, &lista, Some((&b.id, c)), lado.as_deref(), avance)
-            }),
-            None => quitar_todas(r, &lista, None, lado.as_deref(), avance),
+        // la conexión se toma solo mientras se limpia la organización abierta, no todo el trabajo
+        let id = estado.base_abierta().map(|b| b.id);
+        let mut abierta = || {
+            let id = id.as_deref().unwrap_or_default();
+            estado.con_conexion(id, limpiar)
         };
+        let resultado = quitar_todas(
+            r,
+            &lista,
+            id.as_deref()
+                .map(|i| (i, &mut abierta as &mut dyn FnMut() -> _)),
+            lado.as_deref(),
+            avance,
+        );
         sesiones.cancelar(&trabajo);
-        resultado
+        let l = resultado?;
+        for f in &l.fallos {
+            eprintln!("fotos: no se pudo limpiar {f}");
+        }
+        Ok(l.quitadas)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -545,12 +587,13 @@ mod tests {
         let malo = base.respaldos.join("boldo-20250101-0000.db");
         std::fs::write(&malo, "no soy sqlite").unwrap();
         let mut avances = Vec::new();
-        let n = quitar_todas(&r, &l, None, None, |h, t| {
+        let l_ = quitar_todas(&r, &l, None, None, |h, t| {
             avances.push((h, t));
             true
         })
         .unwrap();
-        assert_eq!(n, 3);
+        assert_eq!(l_.quitadas, 3);
+        assert_eq!(l_.fallos.len(), 1);
         assert_eq!(std::fs::read(&malo).unwrap(), b"no soy sqlite");
         let p = pendientes(&r, &l);
         assert_eq!((p.organizaciones.len(), p.respaldos), (0, 1));
@@ -563,9 +606,23 @@ mod tests {
         let base = base_de(&r, &l.organizaciones[0]);
         let mut c = db::abrir(&base.bd).unwrap();
         let id = l.organizaciones[0].id.clone();
-        let e = quitar_todas(&r, &l, Some((&id, &mut c)), None, |h, _| h == 0).unwrap_err();
+        let e = quitar_todas(
+            &r,
+            &l,
+            Some((&id, &mut || limpiar(&mut c))),
+            None,
+            |h, _| h == 0,
+        )
+        .unwrap_err();
         assert_eq!(e.codigo, "cancelado");
-        quitar_todas(&r, &l, Some((&id, &mut c)), None, |_, _| true).unwrap();
+        quitar_todas(
+            &r,
+            &l,
+            Some((&id, &mut || limpiar(&mut c))),
+            None,
+            |_, _| true,
+        )
+        .unwrap();
         assert!(!hay(&c).unwrap());
     }
 
@@ -586,6 +643,15 @@ mod tests {
         // las fotos ya no están, pero el archivo no se da por limpio
         assert!(!hay(&c).unwrap());
         assert!(pendiente(&c).unwrap());
+        // la marca ya estaba en el archivo antes de compactar
+        let marca: i64 = c
+            .query_row(
+                "SELECT count(*) FROM meta WHERE clave = ?1",
+                [POR_COMPACTAR],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(marca, 1);
         lector.execute_batch("COMMIT").unwrap();
         assert_eq!(quitar(&mut c).unwrap(), 0);
         assert!(!pendiente(&c).unwrap());
@@ -603,5 +669,68 @@ mod tests {
         assert!(hay(&c).unwrap());
         assert_eq!(quitar(&mut c).unwrap(), 1);
         assert!(!pendiente(&c).unwrap());
+    }
+
+    #[test]
+    fn una_externa_no_se_cuenta_ni_se_escribe() {
+        let (_exe, r, mut l) = dos_organizaciones();
+        let afuera = tempfile::tempdir().unwrap();
+        let ruta = afuera.path().join("externa.db");
+        base_con_foto(&ruta, "Externa");
+        let mut e = crate::organizaciones::prueba::entrada(
+            &l.organizaciones[1].id,
+            &ruta.to_string_lossy(),
+            true,
+            "2026",
+        );
+        e.nombre = "Externa".into();
+        // la segunda entrada pasa a ser externa
+        l.organizaciones[1] = e;
+        let antes = estampas(afuera.path());
+        let p = pendientes(&r, &l);
+        assert_eq!(p.organizaciones, [l.organizaciones[0].nombre.clone()]);
+        quitar_todas(&r, &l, None, None, |_, _| true).unwrap();
+        assert_eq!(estampas(afuera.path()), antes);
+        assert!(hay(&Connection::open(&ruta).unwrap()).unwrap());
+    }
+
+    #[test]
+    fn las_copias_de_organizaciones_eliminadas_se_cuentan_y_se_limpian() {
+        let (_exe, r, l) = dos_organizaciones();
+        let c = db::abrir(&base_de(&r, &l.organizaciones[0]).bd).unwrap();
+        crate::organizaciones::guardar_eliminada(&r, &l.organizaciones[0], &c).unwrap();
+        drop(c);
+        assert_eq!(pendientes(&r, &l).respaldos, 3);
+        quitar_todas(&r, &l, None, None, |_, _| true).unwrap();
+        assert_eq!(pendientes(&r, &l).respaldos, 0);
+    }
+
+    #[test]
+    fn pendientes_no_deja_un_shm_al_lado_de_un_wal_sin_shm() {
+        let (_exe, r, l) = dos_organizaciones();
+        let bd = base_de(&r, &l.organizaciones[0]).bd;
+        crate::organizaciones::prueba::wal_sin_shm(
+            &bd,
+            "UPDATE trabajadores SET nombre = 'Ana B' WHERE id = 'ana'",
+        );
+        let shm = crate::respaldos::con_sufijo(&bd, "-shm");
+        assert_eq!(pendientes(&r, &l).organizaciones.len(), 1);
+        assert!(!shm.exists());
+    }
+
+    #[test]
+    fn copiar_a_carpeta_deja_la_organizacion_nueva_sin_fotos() {
+        let (_exe, r, l) = dos_organizaciones();
+        let origen = base_de(&r, &l.organizaciones[0]).bd;
+        let id =
+            crate::organizaciones::copiar_a_carpeta(&r, &origen, None, db::MIGRACIONES).unwrap();
+        let c = Connection::open(r.datos.join(crate::organizaciones::ruta_interna(&id))).unwrap();
+        assert!(!pendiente(&c).unwrap());
+        assert_eq!(
+            c.query_row("SELECT count(*) FROM trabajadores", [], |f| f
+                .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
     }
 }
