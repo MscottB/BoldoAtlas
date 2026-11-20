@@ -199,7 +199,8 @@ export function publicacion(prs, etiquetas) {
     version,
     etiqueta: `v${version}`,
     prerelease: String(version.includes("-")),
-    version_prueba: `${version}+pr${ultimo.number}`,
+    // la portable de prueba lleva la versión que tendrá al fusionarse; la fecha de compilación la suma versionForzada
+    version_prueba: version,
     notas: notasCombinadas(prs),
   };
 }

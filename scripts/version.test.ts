@@ -9,10 +9,10 @@ import {
 
 describe("versionForzada", () => {
   it("versión de prueba de un PR: la fecha se suma a la metadata", () =>
-    expect(versionForzada("0.1.0-alpha.3+pr4", "31102026")).toEqual({
-      completa: "0.1.0-alpha.3+pr4.31102026",
-      base: "0.1.0-alpha.3+pr4",
-      numerica: "0.1.0",
+    expect(versionForzada("0.13.0", "20112026")).toEqual({
+      completa: "0.13.0+20112026",
+      base: "0.13.0",
+      numerica: "0.13.0",
     }));
   it("versión de release, con o sin v", () =>
     expect(versionForzada("v0.1.0-alpha.3", "31102026")).toEqual({
