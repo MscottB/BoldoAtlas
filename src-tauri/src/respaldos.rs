@@ -590,6 +590,8 @@ fn cambiar_base(
         migrada?;
         quitada?;
         db::asegurar_meta(&c)?;
+        // el respaldo (o el archivo) puede venir de antes de que se dejaran de guardar fotos: la base viva ya sale sin ellas
+        crate::fotos::quitar(&mut c)?;
         if !previas.is_empty() {
             supresion::reaplicar(&mut c, &previas, &relleno)?;
             // los UPDATE dejan los datos en páginas libres: se compacta antes de que sea la base viva
@@ -1540,5 +1542,27 @@ mod tests {
                 "motivo-privado-456",
             ],
         );
+    }
+
+    #[test]
+    fn restaurar_un_respaldo_con_fotos_lo_deja_limpio() {
+        let dir = tempfile::tempdir().unwrap();
+        let (b, respaldos, conn) = base(dir.path());
+        conn.execute(
+            "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES ('a', 'Ana', 'FOTO-XYZ', 'x', 'x')",
+            [],
+        )
+        .unwrap();
+        let nombre = respaldar(&conn, &respaldos, "20260101-0900").unwrap();
+        let mut slot = Some(conn);
+        restaurar(&mut slot, &b, &nombre, MIGRACIONES).unwrap();
+        let c = db::abrir(&b.bd).unwrap();
+        assert!(!crate::fotos::hay(&c).unwrap());
+        drop(c);
+        let bytes = fs::read(&b.bd).unwrap();
+        assert!(!bytes.windows(8).any(|w| w == b"FOTO-XYZ"));
+        // el respaldo de origen no se toca: sigue con su foto
+        let origen = Connection::open(respaldos.join(&nombre)).unwrap();
+        assert!(crate::fotos::hay(&origen).unwrap());
     }
 }

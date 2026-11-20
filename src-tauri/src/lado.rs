@@ -56,6 +56,11 @@ impl Lado {
         }
     }
 
+    /// El id de la organización que está al lado, si hay una.
+    pub fn id(&self) -> Option<String> {
+        self.abierto().as_ref().map(|a| a.copia.id.clone())
+    }
+
     /// Suelta la copia, y borra su temporal, si `id` es el de ella.
     pub fn soltar_si(&self, id: &str) {
         let mut g = self.abierto();

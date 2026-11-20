@@ -229,6 +229,13 @@ impl Estado {
         *self.aviso_inicio.lock().unwrap_or_else(|p| p.into_inner()) = aviso;
     }
 
+    /// La lista, leída con su candado.
+    pub(crate) fn lista_leida(&self) -> Result<Lista, Fallo> {
+        let r = self.rutas()?;
+        let _lista = self.lista.lock().unwrap_or_else(|p| p.into_inner());
+        Ok(cargar_lista(r))
+    }
+
     fn listar_organizaciones(&self) -> Result<Vec<OrganizacionVista>, Fallo> {
         let r = self.rutas()?;
         let lista = {

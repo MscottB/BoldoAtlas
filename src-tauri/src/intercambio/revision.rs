@@ -2294,6 +2294,7 @@ mod tests {
                 temporal,
                 meta,
                 archivo: "prueba.boldo".into(),
+                fotos_quitadas: 0,
             },
             lugares: Lugares::new(),
         }
@@ -4578,6 +4579,7 @@ mod tests {
                     origen: None,
                 },
                 archivo: String::new(),
+                fotos_quitadas: 0,
             },
         );
         s.guardar_importacion("t", i).unwrap();
@@ -5237,6 +5239,7 @@ mod tests {
                     origen: None,
                 },
                 archivo: String::new(),
+                fotos_quitadas: 0,
             },
         );
         s.guardar_importacion("t1", i).unwrap();
@@ -5304,6 +5307,7 @@ mod tests {
             temporal,
             meta,
             archivo: String::new(),
+            fotos_quitadas: 0,
         };
         // 20 000 distintas, 5 000 borradas en el archivo, 5 000 nuevas
         let f = Connection::open(b.i.temporal.ruta()).unwrap();

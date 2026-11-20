@@ -54,6 +54,8 @@ pub struct Importacion {
     meta: MetaArchivo,
     /// El nombre del archivo, para el historial.
     archivo: String,
+    /// Cuántas personas traían foto: se quitaron de la copia antes de revisar nada.
+    fotos_quitadas: u64,
 }
 
 impl Importacion {
@@ -286,6 +288,8 @@ pub struct ResumenImportacion {
     pub motivo_revision: Option<&'static str>,
     /// Cada rama frente a esta base, también si la revisión falló. None si ni eso se pudo saber: no se puede preguntar dónde va.
     pub ramas: Option<Vec<fusion::RamaImportada>>,
+    /// Personas del archivo que traían foto: se quitaron, la edición de escritorio no las guarda.
+    pub fotos_quitadas: u64,
 }
 
 /// Lo que quedó en `meta` al reemplazar: nada más que lo que la app escribe y lee.
@@ -386,6 +390,14 @@ pub fn abrir(
     formato::descifrar(archivo, temporal.ruta(), codigo, seguir)?;
     let version = validar::revisar(temporal.ruta(), migraciones)?;
     validar::migrar_copia(temporal.ruta(), version, migraciones)?;
+    // las fotos ya no entran por ningún camino: se quitan antes de que `revisar` o un modo las vea
+    let fotos_quitadas = {
+        let mut c =
+            validar::abrir_no_confiable(temporal.ruta(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+        let n = crate::fotos::quitar(&mut c)?;
+        c.close().map_err(|(_, e)| e)?;
+        n
+    };
     let meta = validar::leer_meta(&validar::solo_lectura(temporal.ruta())?)?;
     let archivo = archivo
         .file_name()
@@ -395,6 +407,7 @@ pub fn abrir(
         temporal,
         meta,
         archivo,
+        fotos_quitadas,
     })
 }
 
@@ -425,6 +438,7 @@ pub fn revisar(conn: &mut Connection, i: &Importacion) -> Result<ResumenImportac
         informe,
         motivo_revision,
         ramas,
+        fotos_quitadas: i.fotos_quitadas,
     })
 }
 
@@ -1765,6 +1779,46 @@ mod tests {
                     "{t} sigue en {a:?}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn importar_con_fotos_no_muestra_cambios_de_foto() {
+        for reemplazando in [false, true] {
+            let (d, origen) = base_con_datos();
+            origen
+                .execute(
+                    "UPDATE trabajadores SET foto_png = 'FOTO-XYZ' WHERE id = 'ana'",
+                    [],
+                )
+                .unwrap();
+            let (archivo, codigo) = exportar(&origen, d.path(), None);
+            let (dd, bd, respaldos, mut conn) = destino();
+            let i = abrir(&archivo, dd.path(), &codigo, MIGRACIONES, SIGUE).unwrap();
+            assert!(!crate::fotos::hay(&i.solo_lectura().unwrap()).unwrap());
+            let resumen = revisar(&mut conn, &i).unwrap();
+            assert_eq!(resumen.fotos_quitadas, 1);
+            assert!(!format!("{:?}", resumen.informe).contains("foto_png"));
+            if reemplazando {
+                let mut slot = Some(conn);
+                reemplazar_con(&mut slot, &bd, &respaldos, &i, MIGRACIONES).unwrap();
+                conn = db::abrir(&bd).unwrap();
+            } else {
+                agregar(&mut conn, &respaldos, &i, &HashMap::new(), "t").unwrap();
+            }
+            assert_eq!(
+                cuenta(&conn, "trabajadores WHERE id = 'ana'"),
+                1,
+                "{reemplazando}"
+            );
+            assert!(!crate::fotos::hay(&conn).unwrap());
+            assert_eq!(
+                cuenta(
+                    &conn,
+                    "historial_filas WHERE json_extract(despues, '$.foto_png') IS NOT NULL"
+                ),
+                0
+            );
         }
     }
 }
