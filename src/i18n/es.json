@@ -2149,5 +2149,8 @@
       "cerrar": "Cerrar",
       "filtroElemento": "Solo los cambios de"
     }
+  },
+  "imagen": {
+    "masUnidades": "+{n} unidad | +{n} unidades"
   }
 }
