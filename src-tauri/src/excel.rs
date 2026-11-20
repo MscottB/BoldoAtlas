@@ -91,12 +91,18 @@ fn destino_de_prueba(
     let Some(variable) = variable else {
         return Ok(None);
     };
-    let rechazo = || Fallo::de("destino_de_prueba_invalido", "");
-    let rutas = rutas.filter(|r| r.portable).ok_or_else(rechazo)?;
-    let carpeta = fs::canonicalize(variable).map_err(|_| rechazo())?;
-    let datos = fs::canonicalize(&rutas.datos).map_err(|_| rechazo())?;
-    if carpeta == datos || !carpeta.starts_with(&datos) || sugerido.is_empty() {
-        return Err(rechazo());
+    let rechazo = |motivo: &'static str| Fallo::de("destino_de_prueba_invalido", motivo);
+    let rutas = rutas
+        .filter(|r| r.portable)
+        .ok_or_else(|| rechazo("no_portable"))?;
+    let carpeta = fs::canonicalize(variable).map_err(|_| rechazo("carpeta_inexistente"))?;
+    let datos = fs::canonicalize(&rutas.datos).map_err(|_| rechazo("sin_datos"))?;
+    if carpeta == datos || !carpeta.starts_with(&datos) {
+        return Err(rechazo("fuera_de_datos"));
+    }
+    // solo un nombre de archivo: nada de carpetas ni `..`
+    if Path::new(sugerido).file_name() != Some(std::ffi::OsStr::new(sugerido)) {
+        return Err(rechazo("nombre_invalido"));
     }
     Ok(Some(carpeta.join(sugerido)))
 }
@@ -239,6 +245,25 @@ mod tests {
         let ok = con(&dentro, Some(&rutas(true))).unwrap().unwrap();
         assert_eq!(ok.file_name().unwrap(), "a.svg");
         assert!(ok.starts_with(fs::canonicalize(&dentro).unwrap()));
+        // el nombre sugerido no puede traer carpetas
+        for malo in ["../x", "..", "", "a/b"] {
+            let e = destino_de_prueba(
+                Some(dentro.as_os_str().to_owned()),
+                Some(&rutas(true)),
+                malo,
+            )
+            .unwrap_err();
+            assert_eq!(e.detalle, "nombre_invalido", "{malo:?}");
+        }
+        #[cfg(windows)]
+        assert!(
+            destino_de_prueba(
+                Some(dentro.as_os_str().to_owned()),
+                Some(&rutas(true)),
+                r"..\..\x"
+            )
+            .is_err()
+        );
         // fuera, la propia datos/, una carpeta que no existe, una instalada o sin rutas: se rechaza
         let fuera = tempfile::tempdir().unwrap();
         for (v, r) in [

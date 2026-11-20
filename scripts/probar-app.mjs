@@ -3,7 +3,15 @@
 // «registro» es lo que imprime el proceso más la consola de la página.
 // Solo en CI: abre una ventana maximizada, y en el equipo de alguien aparecería en su pantalla.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, win32 } from "node:path";
 import { TAR, artefactos } from "./release.mjs";
 
@@ -729,45 +737,120 @@ async function fotosSoloEnLaWeb(exe, carpeta, info) {
 }
 
 /**
- * Exportar el organigrama como imagen: el «Guardar como» nativo no se maneja desde aquí. La app lo salta solo si el
- * arnés la lanza con `BOLDO_GUARDAR_EN` y esa carpeta existe dentro de `datos/` de la portable (excel.rs). Se guarda un
- * SVG y un PNG de «Estructura», que no lleva datos de personas. Todo por atributo `data-accion`: la interfaz sale en inglés.
+ * Exportar el organigrama como imagen. El «Guardar como» nativo no se maneja desde aquí: la app lo salta solo si el
+ * arnés la lanza con `BOLDO_GUARDAR_EN` y esa carpeta existe dentro de `datos/` de la portable (excel.rs).
+ * Con la app abierta se siembra la persona como jefa de la raíz (cargo, puesto, titular vigente). Después, con la app
+ * vuelta a abrir, se guarda: Presentación (lleva a la persona), Estructura (no la lleva, sí la raíz) y un PNG.
+ * Todo por atributo `data-accion`: la interfaz sale en inglés. `revisarBase` comprueba `rutaBd` antes de cada escritura.
  * @param {string} exe @param {string} carpeta
  */
 async function exportarImagen(exe, carpeta) {
   const destino = join(carpeta, "datos", "imagenes-humo");
   mkdirSync(destino, { recursive: true });
-  const app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
+
+  let app = await abrirApp(exe);
+  const info = await revisarBase(app, carpeta);
+  const raiz = await app.llamar("db_consultar", {
+    baseId: info.baseId,
+    sql: "SELECT id, nombre FROM unidades WHERE parent_id IS NULL AND deleted_at IS NULL LIMIT 1",
+    params: [],
+  });
+  const unidad = raiz.ok ? raiz.valor[0] : undefined;
+  comprobar("la raíz sembrada se puede leer", Boolean(unidad), raiz);
+  if (!unidad) throw new Error("sin raíz: no se puede sembrar el puesto");
+  const t = new Date().toISOString();
+  const ids = { cargo: "humo-cargo", puesto: "humo-puesto", asignacion: "humo-asignacion" };
+  const lote = await app.llamar("db_lote", {
+    baseId: info.baseId,
+    versionApp: "humo",
+    sentencias: [
+      {
+        sql: "INSERT INTO cargos (id, nombre, created_at, updated_at) VALUES (?1, 'Cargo de humo', ?2, ?2)",
+        params: [ids.cargo, t],
+      },
+      {
+        sql: "INSERT INTO puestos (id, unidad_id, cargo_id, orden, created_at, updated_at) VALUES (?1, ?2, ?3, 0, ?4, ?4)",
+        params: [ids.puesto, unidad.id, ids.cargo, t],
+      },
+      {
+        sql: `INSERT INTO asignaciones (id, puesto_id, trabajador_id, tipo, desde, hasta, created_at, updated_at)
+              VALUES (?1, ?2, ?3, 'titular', '2020-01-01', NULL, ?4, ?4)`,
+        params: [ids.asignacion, ids.puesto, PERSONA.id, t],
+      },
+      {
+        sql: "UPDATE unidades SET jefe_puesto_id = ?1, updated_at = ?3 WHERE id = ?2",
+        params: [ids.puesto, unidad.id, t],
+      },
+    ],
+  });
+  comprobar("se sembró la jefatura de la raíz con la persona de humo", lote.ok, lote);
+  comprobar("la app de la siembra cierra sola y con código 0", (await app.cerrar()) === 0);
+
+  app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
   await revisarBase(app, carpeta);
-  await alArbol(app);
-  const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
-  const clic = async (/** @type {string} */ a) => {
-    await app.hasta(`Boolean(${por(a)})`, `el botón ${a}`);
-    await app.evaluar(`${por(a)}.click()`);
-  };
-  await clic("abrir-imagen-barra");
-  await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
-  await clic("nivel-estructura");
-  const guardar = async (/** @type {string} */ formato) => {
-    await clic(`formato-${formato}`);
-    await clic("guardar-imagen");
-    // el aviso de «queda sin cifrar» sale la primera vez; si ya se aceptó, no sale
-    await esperar(async () => {
-      if (await app.evaluar(`Boolean(${por("aceptar-aviso-imagen")})`)) {
-        await app.evaluar(`${por("aceptar-aviso-imagen")}.click()`);
-      }
-      return readdirSync(destino).some((f) => f.endsWith(`.${formato}`));
-    }, `el archivo .${formato} guardado`);
-  };
-  await guardar("svg");
-  await guardar("png");
+  try {
+    await alArbol(app);
+    const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
+    // habilitado: el archivo aparece antes de que la ventana suelte `ocupado`
+    const clic = async (/** @type {string} */ a) => {
+      await app.hasta(
+        `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
+        `el botón ${a}`,
+      );
+      await app.evaluar(`${por(a)}.click()`);
+    };
+    await clic("abrir-imagen-barra");
+    await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
+    const guardar = async (/** @type {string} */ nivel, /** @type {string} */ formato) => {
+      await clic(`nivel-${nivel}`);
+      await clic(`formato-${formato}`);
+      await clic("guardar-imagen");
+      // el aviso de «queda sin cifrar» sale en cada exportación
+      await esperar(async () => {
+        if (await app.evaluar(`Boolean(${por("aceptar-aviso-imagen")})`)) {
+          await app.evaluar(`${por("aceptar-aviso-imagen")}.click()`);
+        }
+        return readdirSync(destino).some((f) => f.includes(`_${nivel}`) && f.endsWith(`.${formato}`));
+      }, `el archivo de ${nivel} .${formato} guardado`);
+      await app.hasta(`!${por("guardar-imagen")}.disabled`, "que Guardar vuelva a estar disponible");
+    };
+    await guardar("presentacion", "svg");
+    await guardar("estructura", "svg");
+    await guardar("estructura", "png");
+  } catch (e) {
+    const avisos = await app
+      .evaluar(`[...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.innerText).join(" | ")`)
+      .catch(() => "");
+    const ruta = await app.evaluar("location.hash").catch(() => "");
+    throw new Error(`${e instanceof Error ? e.message : e}; ruta ${ruta}; avisos: ${avisos}`, { cause: e });
+  }
   const archivos = readdirSync(destino);
-  const svg = archivos.find((f) => f.endsWith(".svg"));
-  const png = archivos.find((f) => f.endsWith(".png"));
-  comprobar("la imagen se guardó como SVG y como PNG en la carpeta de prueba", Boolean(svg && png), archivos);
-  const texto = svg ? readFileSync(join(destino, svg), "utf8") : "";
-  comprobar("el SVG es un dibujo", texto.includes("<svg"), texto.slice(0, 80));
-  comprobar("el SVG de Estructura no lleva el nombre de la persona", !texto.includes(PERSONA.nombre), PERSONA.nombre);
+  const de = (/** @type {string} */ nivel, /** @type {string} */ ext) =>
+    archivos.find((f) => f.includes(`_${nivel}`) && f.endsWith(`.${ext}`));
+  const leer = (/** @type {string | undefined} */ f) => (f ? readFileSync(join(destino, f), "utf8") : "");
+  const presentacion = leer(de("presentacion", "svg"));
+  const estructura = leer(de("estructura", "svg"));
+  const png = de("estructura", "png");
+  comprobar(
+    "se guardaron la Presentación y la Estructura en SVG y la Estructura en PNG",
+    Boolean(presentacion && estructura && png),
+    archivos,
+  );
+  comprobar(
+    "el SVG de Presentación lleva el nombre de la persona",
+    presentacion.includes(PERSONA.nombre),
+    presentacion.slice(0, 200),
+  );
+  comprobar(
+    "el SVG de Estructura no lleva el nombre de la persona",
+    !estructura.includes(PERSONA.nombre),
+    PERSONA.nombre,
+  );
+  comprobar(
+    "el SVG de Estructura lleva el nombre de la raíz",
+    estructura.includes(unidad.nombre),
+    unidad.nombre,
+  );
   const cabecera = png ? readFileSync(join(destino, png)).subarray(0, 8).toString("hex") : "";
   comprobar("el PNG empieza con la firma de PNG", cabecera === "89504e470d0a1a0a", cabecera);
   await revisarBase(app, carpeta);

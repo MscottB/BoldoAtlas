@@ -14,7 +14,7 @@ There are three ways, and all of them open the same window:
 
 ## Level of detail
 
-- **Structure**: only the units, with no personal data. It is the one to use when sharing outside. It is selected by default.
+- **Structure**: only the units, with no personal data. It is the one to use when sharing outside. It is selected the first time; after that, the window remembers the one you used.
 - **Presentation**: each unit with its head, in large type. For a slide.
 - **As on screen**: what the canvas shows with your Customize settings, with the color legend if you have one on. Positions appear if **Show positions** is on.
 
@@ -22,7 +22,7 @@ If you are viewing the org chart on a past date, the image shows that day, and t
 
 ## Which part and which branches open
 
-Under **Which part** you choose the whole organization or one unit with everything under it. The branches come out as you see them on screen. Check **Open every branch in the scope** to get them all expanded.
+Under **Which part** you choose the whole organization or one unit with everything under it. The branches come out as you see them on screen; if you open the window from **Import/Export**, which has no tree on screen, they come out as the tree does when it first opens. Check **Open every branch in the scope** to get them all expanded.
 
 ::: warning Many cards
 If the image has more than 1,000 cards, the window says so with the number: it may take a while and come out very large. For a large organization, choose a branch or leave the branches as they are on screen.

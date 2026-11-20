@@ -14,7 +14,7 @@ Hay tres caminos, y todos abren la misma ventana:
 
 ## Nivel de detalle
 
-- **Estructura**: solo las unidades, sin datos de personas. Es la que conviene para compartir fuera. Viene elegida.
+- **Estructura**: solo las unidades, sin datos de personas. Es la que conviene para compartir fuera. La primera vez viene elegida; después, la ventana recuerda la que usaste.
 - **Presentación**: cada unidad con su jefatura, en letra grande. Para una diapositiva.
 - **Como en pantalla**: lo que muestra el lienzo con tu configuración de Personalizar, con la leyenda de colores si la tienes puesta. Los puestos salen si tienes activado **Ver puestos**.
 
@@ -22,7 +22,7 @@ Si estás viendo el organigrama a una fecha, la imagen sale con ese día, y la f
 
 ## Qué parte y qué ramas se abren
 
-En **Qué parte** eliges toda la organización o una unidad con todo lo que depende de ella. Las ramas salen como las ves en pantalla. Marca **Abrir todas las ramas del alcance** para que salgan todas desplegadas.
+En **Qué parte** eliges toda la organización o una unidad con todo lo que depende de ella. Las ramas salen como las ves en pantalla; si abres la ventana desde **Importar/Exportar**, que no tiene pantalla de árbol, salen como el árbol al abrirse por primera vez. Marca **Abrir todas las ramas del alcance** para que salgan todas desplegadas.
 
 ::: warning Muchas tarjetas
 Si la imagen lleva más de 1.000 tarjetas, la ventana lo avisa con la cifra: puede tardar y quedar muy grande. En una organización grande, elige una rama o deja las ramas como están en pantalla.

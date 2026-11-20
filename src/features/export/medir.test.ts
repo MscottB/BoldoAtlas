@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { createPinia, setActivePinia } from "pinia";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
@@ -35,7 +36,9 @@ describe.skipIf(!RUTA)("medición del SVG con la organización grande", () => {
       const pedido: PedidoImagen = { alcance: "todo", nivel, abrirTodo, config: VISTA_POR_DEFECTO };
       const entrada = await prepararImagen(pedido);
       const t2 = performance.now();
-      const { svg } = dibujarSvg(entrada);
+      const { svg, ancho, alto } = dibujarSvg(entrada);
+      const salida = process.env.BOLDO_SVG_DIR; // para medir el PNG en un navegador
+      if (salida) writeFileSync(`${salida}/${nivel}-${abrirTodo}.json`, JSON.stringify({ svg, ancho, alto }));
       const t3 = performance.now();
       console.log(
         `MEDIDA ${nivel} abrirTodo=${abrirTodo}: tarjetas=${entrada.tarjetas.length} carga=${Math.round(t1 - t0)}ms ` +
