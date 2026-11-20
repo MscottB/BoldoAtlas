@@ -78,6 +78,9 @@ export class ErrorCiclo extends Error {
  * - Si ni un nivel de hijas cabe, las hijas se reparten en partes, cada una con todas las que quepan.
  * - Una hija que no cabe ni sola va igual en su parte, a la escala que quepa. Cada vuelta avanza al menos una hija y
  *   cada rama cortada es más honda que la que la cortó, así que el reparto siempre termina.
+ *
+ * `soloPrimera`: solo la raíz, con todas sus partes (la vista previa). Sus «sigue» quedan en 0: esas ramas no se
+ * repartieron. `alAvanzar` dice cuántas páginas van.
  */
 export async function repartirPorRamas(
   raiz: string,
@@ -90,6 +93,7 @@ export async function repartirPorRamas(
   hoja: Hoja,
   orientacion: Orientacion,
   nivel: Nivel,
+  { soloPrimera = false, alAvanzar }: { soloPrimera?: boolean; alAvanzar?: (paginas: number) => void } = {},
 ): Promise<PaginaRamas[]> {
   // Cuántos niveles hay bajo cada unidad: más hondo no hay nada que medir. Con una pila y no con recursión, para que
   // una rama muy honda no agote la pila de llamadas. Si una unidad aparece bajo sí misma, los datos están mal: sin
@@ -132,7 +136,7 @@ export async function repartirPorRamas(
   const paginas: PaginaRamas[] = [];
   const primera = new Map<string, number>(); // unidad cortada → su primera página
   const cola: { id: string; viene: number | null }[] = [{ id: raiz, viene: null }];
-  for (let i = 0; i < cola.length; i++) {
+  for (let i = 0; i < (soloPrimera ? 1 : cola.length); i++) {
     const { id, viene } = cola[i]!;
     const hijas = hijosDe(id);
     const tramos: { profundidad: number; tramo?: [number, number] }[] = [];
@@ -164,9 +168,10 @@ export async function repartirPorRamas(
         sigue: cortadas.map((unidad) => ({ unidad, pagina: 0 })),
         viene,
       });
+      alAvanzar?.(paginas.length);
     });
   }
-  for (const p of paginas) for (const s of p.sigue) s.pagina = primera.get(s.unidad)!;
+  for (const p of paginas) for (const s of p.sigue) s.pagina = primera.get(s.unidad) ?? 0;
   return paginas;
 }
 

@@ -34,6 +34,12 @@ const svg = "<svg/>";
 afterEach(() => void (w.creados.length = 0));
 
 describe("armarPdf", () => {
+  it("manda las páginas tal cual al worker", () => {
+    const paginas = [{ svg, ancho: 1, alto: 1 }];
+    void armarPdf(paginas, o, () => {});
+    expect(w.creados[0]!.pedidos[0]).toEqual({ paginas, o });
+  });
+
   it("al cancelar cierra el worker y rechaza con AbortError", async () => {
     const c = new AbortController();
     const pdf = armarPdf([{ svg, ancho: 1, alto: 1 }], o, () => {}, c.signal);
@@ -47,17 +53,5 @@ describe("armarPdf", () => {
     c.abort();
     await expect(armarPdf([], o, () => {}, c.signal)).rejects.toMatchObject({ name: "AbortError" });
     expect(w.creados).toHaveLength(0);
-  });
-
-  it("el dibujo que comparten las hojas viaja una sola vez", () => {
-    void armarPdf(
-      [
-        { svg, ancho: 1, alto: 1 },
-        { svg, ancho: 1, alto: 1 },
-      ],
-      o,
-      () => {},
-    );
-    expect(w.creados[0]!.pedidos[0]).toMatchObject({ svgs: [svg], paginas: [{ svg: 0 }, { svg: 0 }] });
   });
 });

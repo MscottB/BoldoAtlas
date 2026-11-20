@@ -39,7 +39,14 @@ import { armarPdf } from "./armarPdf";
 import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 import type { Nivel } from "./niveles";
 import { ErrorCiclo, type Hoja, type Orientacion, type Reparto } from "./paginas";
-import { avisosPdf, paginasPdf, type PdfDeAlcance } from "./paginasDeAlcance";
+import {
+  CAMBIO,
+  REEMPLAZADO,
+  avisosPdf,
+  falloAlGuardar,
+  paginasPdf,
+  type PdfDeAlcance,
+} from "./paginasDeAlcance";
 import { cuantasTarjetas, prepararImagen, type Alcance, type PedidoImagen } from "./preparar";
 import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
 import { dibujarSvg, type EntradaSvg } from "./treeSvg";
@@ -139,8 +146,7 @@ const pedido = computed<PedidoImagen>(() => ({
 const tarjetas = computed(() => (abierto.value ? cuantasTarjetas(pedido.value) : 0));
 
 // El layout corre en el worker del lienzo: la ventana sigue respondiendo con organizaciones grandes. Si llega otro
-// pedido mientras uno corre, el anterior ya no sirve (colaDeUltimo).
-const REEMPLAZADO = new Error("reemplazado");
+// pedido mientras uno corre, el anterior ya no sirve (colaDeUltimo) y se rechaza con REEMPLAZADO.
 let worker: Worker | null = null;
 // Se crea al pedir el primer layout (así no lo hay en las pruebas) y otra vez si muere.
 const cola = colaDeUltimo<ElkNode, NodoUbicado[]>((id, grafo) =>
@@ -203,7 +209,8 @@ async function mostrar() {
       if (v !== vuelta) return;
       // La primera página del PDF: en cuadrícula, el mapa.
       previa.value = dataUrl(r.primera);
-      pdfPrevia.value = r;
+      // Guardar pudo dejar ya las páginas contadas (por ramas): no se pisan con las de la vista previa.
+      pdfPrevia.value ??= r;
     } else {
       const e = await entrada();
       if (v !== vuelta) return;
@@ -227,6 +234,8 @@ function programar(dibujo = true) {
   chicaPrevia.value = false;
   pdfPrevia.value = null;
   if (dibujo) calculo = null;
+  // Guardar tampoco sigue: sería el PDF del organigrama de antes. Al cerrar, lo corta `watch(abierto)`.
+  if (abierto.value) armando.value?.abort(CAMBIO);
   controlPdf?.abort(); // también al cerrar la ventana: lo que se estaba repartiendo ya no sirve
   calculoPdf = null;
   clearTimeout(espera);
@@ -269,18 +278,24 @@ const conFondo = () => fondoDePng(formato.value, fondo.value) === "blanco";
 async function guardar() {
   if (ocupado.value) return;
   ocupado.value = true;
+  const f = formato.value;
   try {
-    const f = formato.value;
     let bytes: Uint8Array;
     let bajada: string | undefined; // se dice solo si de verdad se guardó
     if (f === "pdf") {
       // Cancelar sirve desde ya: la vista previa puede no haber terminado de repartir.
       const control = (armando.value = new AbortController());
       avance.value = t("pdf.preparando");
-      const r = (pdfPrevia.value = await hasta(paginas(), control.signal));
-      if (!(await aviso.preguntar())) return;
-      const lista = await r.paginas(control.signal);
+      const r = await hasta(paginas(), control.signal);
+      // Primero todas las páginas (por ramas, recién aquí se cuentan): el aviso de aceptación ya dice cuántas son y si
+      // alguna no se lee. «Acepto» es la confirmación de un PDF de más de 200 páginas.
+      const { lista, total, ilegible } = await r.paginas(control.signal, (n) => {
+        avance.value = t("pdf.preparandoN", { n: n.toLocaleString(locale.value) });
+      });
+      control.signal.throwIfAborted();
+      pdfPrevia.value = { ...r, total, ilegible };
       avance.value = "";
+      if (!(await aviso.preguntar())) return;
       bytes = await armarPdf(
         lista,
         {
@@ -323,12 +338,10 @@ async function guardar() {
         },
       });
   } catch (e) {
-    if (e instanceof DOMException && e.name === "AbortError") {
-      // Cancelado por la persona: nada que decir. Si no, `programar` cortó el cálculo porque cambió el dibujo.
-      if (!armando.value?.signal.aborted) toast.info(t("pdf.interrumpido"));
-      return;
-    }
-    toast.error(textoError(e, () => mensajeFallo(e)));
+    // Cancelado por la persona o al cerrar: nada que decir. Si cambió el organigrama, se dice que vuelva a guardar.
+    const que = falloAlGuardar(e, f === "pdf", armando.value?.signal);
+    if (que === "interrumpido") toast.info(t("pdf.interrumpido"));
+    else if (que === "error") toast.error(textoError(e, () => mensajeFallo(e)));
   } finally {
     armando.value = null;
     ocupado.value = false;
@@ -536,7 +549,11 @@ async function copiar() {
             </p>
           </div>
           <p v-if="esPdf && pdfPrevia" data-paginas-pdf class="text-sm">
-            {{ t("pdf.paginas", { n: pdfPrevia.total.toLocaleString(locale) }, pdfPrevia.total) }}
+            {{
+              pdfPrevia.total === null
+                ? t("pdf.paginasAlGuardar")
+                : t("pdf.paginas", { n: pdfPrevia.total.toLocaleString(locale) }, pdfPrevia.total)
+            }}
           </p>
           <p v-for="a in avisos" :key="a" role="status" data-aviso-pdf class="text-sm">{{ a }}</p>
           <p v-if="tarjetas > LIMITE_TARJETAS" role="status" data-aviso-tarjetas class="text-sm">

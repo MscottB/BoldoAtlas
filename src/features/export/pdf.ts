@@ -52,17 +52,11 @@ const TENUE = "#737373";
 const LOGO_PDF = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/;
 const CORTE = 6; // largo de cada marca de corte, en pt
 
-/** El dibujo con la raíz cambiada para mostrar solo el rectángulo `r`: el visor recorta lo de afuera. */
-const recortar = (svg: string, r: Hojita) =>
-  svg.replace(/^<svg[^>]*>/, (raiz) =>
-    raiz
-      .replace(/ width="[^"]*"/, ` width="${r.ancho}"`)
-      .replace(/ height="[^"]*"/, ` height="${r.alto}"`)
-      .replace(/ viewBox="[^"]*"/, ` viewBox="${r.x} ${r.y} ${r.ancho} ${r.alto}"`),
-  );
-
-/** El dibujo entero con las hojas de la cuadrícula encima, cada una con su «fila·columna». */
-function mapa(p: { svg: string; ancho: number; alto: number }, hojitas: Hojita[]): string {
+/**
+ * El dibujo entero con las hojas de la cuadrícula encima, cada una con su «fila·columna»: la primera página del PDF en
+ * cuadrícula, y su vista previa.
+ */
+export function mapa(p: { svg: string; ancho: number; alto: number }, hojitas: Hojita[]): string {
   const trazo = Math.max(p.ancho, p.alto) / 400;
   const marcas = hojitas.map((h) => {
     const letra = Math.min(h.ancho, h.alto) / 5;
@@ -77,7 +71,8 @@ function mapa(p: { svg: string; ancho: number; alto: number }, hojitas: Hojita[]
 /**
  * La definición del documento de pdfmake. Cada página lleva arriba la organización, el alcance, la fecha y su línea
  * `arriba`; abajo, el logo y «Página N de M». El dibujo se achica hasta caber en el área útil (nunca se agranda). Si
- * las páginas traen `recorte` (cuadrícula), la primera es el mapa y cada hoja lleva marcas de corte en las esquinas.
+ * las páginas traen `recorte` (cuadrícula), la primera es el mapa y cada hoja lleva marcas de corte en las esquinas; su
+ * dibujo ya viene recortado (`dibujarSvg` con `recorte`).
  * Los metadatos solo llevan `o.titulo`: ni personas ni la organización. En cuadrícula, `o.mapa` es obligatorio.
  */
 export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDefinitions {
@@ -118,7 +113,7 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
       : []),
     ...paginas.map(({ svg, ancho, alto, recorte: r }) =>
       r
-        ? dibujo(recortar(svg, r), r.ancho, r.alto, escalaHojas, true)
+        ? dibujo(svg, r.ancho, r.alto, escalaHojas, true)
         : dibujo(svg, ancho, alto, cabe(ancho, alto), false),
     ),
   ].map((n, i) => (i ? { ...n, pageBreak: "before" } : n));

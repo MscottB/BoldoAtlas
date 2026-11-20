@@ -40,6 +40,8 @@ updates:
         patterns: ["@tauri-apps/*"]
       menores-y-parches:
         update-types: [minor, patch]
+        # pdfmake va fijo en 0.3.11 (0.3.12 y 0.3.13 rompen el texto de los SVG): su PR va aparte, para probarlo solo.
+        exclude-patterns: ["pdfmake"]
 
   - package-ecosystem: cargo
     directory: /src-tauri

@@ -116,6 +116,33 @@ describe("repartirPorRamas", () => {
     ]);
   });
 
+  it("solo_primera_reparte_solo_la_raiz_con_todas_sus_partes", async () => {
+    // La raíz en partes: salen todas, igual que en el reparto entero.
+    const partes: Arbol = { r: Array.from({ length: 15 }, (_, i) => `h${i}`) };
+    const sola = (a: Arbol, medir = medirFalso(a)) =>
+      repartirPorRamas("r", hijosDe(a), medir, "carta", "horizontal", "estructura", { soloPrimera: true });
+    expect(await sola(partes)).toEqual(await repartir(partes));
+
+    // Una rama cortada: no se mide ni se reparte, y su «sigue» queda sin número (0).
+    const a = cadena(8);
+    const medidas: string[] = [];
+    const p = await sola(a, async (raiz, prof, h) => (medidas.push(raiz), medirFalso(a)(raiz, prof, h)));
+    expect(p).toEqual([
+      { numero: 1, raiz: "r", profundidad: 5, sigue: [{ unidad: "n5", pagina: 0 }], viene: null },
+    ]);
+    expect(new Set(medidas)).toEqual(new Set(["r"]));
+  });
+
+  it("al_avanzar_dice_cuantas_paginas_van", async () => {
+    const a = cadena(8);
+    const avance: number[] = [];
+    const p = await repartirPorRamas("r", hijosDe(a), medirFalso(a), "carta", "horizontal", "estructura", {
+      alAvanzar: (n) => avance.push(n),
+    });
+    expect(avance).toEqual([1, 2]);
+    expect(p).toHaveLength(2);
+  });
+
   it("numeracion_por_niveles", async () => {
     // Con una sola fila de hijas por página (cada una con 6 nietas), A y B quedan juntas antes que sus ramas.
     const seis = (id: string) => Array.from({ length: 6 }, (_, i) => `${id}${i}`);

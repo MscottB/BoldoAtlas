@@ -38,7 +38,7 @@ describe.skipIf(!RUTA)("medición del PDF con la organización grande", () => {
       const t1 = performance.now();
       const r = await paginasPdf(pedido, o, { entero });
       const t2 = performance.now();
-      const lista = await r.paginas();
+      const { lista, total, ilegible } = await r.paginas();
       const t3 = performance.now();
       const opciones = {
         ...o,
@@ -50,9 +50,9 @@ describe.skipIf(!RUTA)("medición del PDF con la organización grande", () => {
       const pdf = await generarPdf(lista, opciones, () => {});
       const t4 = performance.now();
       console.log(
-        `MEDIDA ${reparto}: layoutEntero=${Math.round(t1 - t0)}ms reparto(paginasPdf)=${Math.round(t2 - t1)}ms ` +
-          `hojas=${Math.round(t3 - t2)}ms pdfmake=${Math.round(t4 - t3)}ms paginas=${r.total} ` +
-          `ilegible=${r.ilegible} pdf=${(pdf.length / 1e6).toFixed(2)}MB`,
+        `MEDIDA ${reparto}: layoutEntero=${Math.round(t1 - t0)}ms vistaPrevia(paginasPdf)=${Math.round(t2 - t1)}ms ` +
+          `guardar(paginas)=${Math.round(t3 - t2)}ms pdfmake=${Math.round(t4 - t3)}ms paginas=${total} ` +
+          `ilegible=${ilegible} pdf=${(pdf.length / 1e6).toFixed(2)}MB`,
       );
       expect(new TextDecoder("latin1").decode(pdf.subarray(0, 4))).toBe("%PDF");
     },

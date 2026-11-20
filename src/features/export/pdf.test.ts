@@ -121,9 +121,9 @@ describe("documentoPdf", () => {
 
   it("en cuadrícula, la primera página es el mapa y cada hoja recorta su parte con marcas de corte", () => {
     const entero = svg(2000, 1000);
-    // Cada hoja puede traer solo su parte: el mapa sale de `o.mapa`, no de las hojas.
+    // Cada hoja trae solo su parte, ya recortada (como la da `dibujarSvg` con `recorte`): el mapa sale de `o.mapa`.
     const hoja = (fila: number, columna: number, x: number, ancho = 1000) => ({
-      svg: svg(ancho, 1000),
+      svg: svg(ancho, 1000).replace(/viewBox="[^"]*"/, `viewBox="${x} 0 ${ancho} 1000"`),
       ancho: 2000,
       alto: 1000,
       arriba: `fila ${fila}, columna ${columna}`,

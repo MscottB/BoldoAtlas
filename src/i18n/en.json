@@ -2221,6 +2221,7 @@
       "cuadricula": "In a grid"
     },
     "paginas": "1 page | {n} pages",
+    "paginasAlGuardar": "Pages are counted when you save.",
     "pagina": "Page {n} of {m}",
     "titulo": "Org chart",
     "sigue": "Continues on page {n}",
@@ -2233,6 +2234,7 @@
     "ilegibleCuadricula": "The text at this level of detail would be under 8 points and hard to read. Try another level of detail.",
     "interrumpido": "The org chart changed while the PDF was being prepared; save it again.",
     "preparando": "Preparing the pages…",
+    "preparandoN": "Preparing the pages… ({n})",
     "muchas": "The PDF has {n} pages, more than {limite}: it may take a while.",
     "aviso": "The PDF is not encrypted: anyone who opens it will see what it contains. Whoever makes it is responsible for where it is saved and who it is shared with.",
     "armando": "Making the PDF…",

@@ -16,9 +16,10 @@ export async function generarPdf(
   const documento = documentoPdf(paginas, o);
   const total = documento.content.length;
   let hechas = -1;
-  // pdfmake avisa qué parte del dibujo de las páginas va hecha (de 0 a 1), no la página.
+  // pdfmake avisa qué parte del dibujo de las páginas va hecha (de 0 a 1), no la página. Se dice la que se está
+  // dibujando: desde la 1, nunca «página 0».
   pdfMake.setProgressCallback((parte) => {
-    const n = Math.floor(parte * total);
+    const n = Math.max(1, Math.ceil(parte * total));
     if (n !== hechas) alAvanzar((hechas = n), total);
   });
   // No con getBuffer: en 0.3.11 un error del flujo lo deja esperando para siempre.
@@ -35,10 +36,9 @@ export async function generarPdf(
   return pdf;
 }
 
-/** Lo que manda `armarPdf`: cada dibujo una vez, y cada página con el índice del suyo. */
+/** Lo que manda `armarPdf`. */
 export interface PedidoPdf {
-  svgs: string[];
-  paginas: (Omit<PaginaPdf, "svg"> & { svg: number })[];
+  paginas: PaginaPdf[];
   o: OpcionesPdf;
 }
 
@@ -46,8 +46,7 @@ export interface PedidoPdf {
 if (typeof self !== "undefined")
   self.onmessage = async ({ data }: MessageEvent<PedidoPdf>) => {
     try {
-      const paginas = data.paginas.map((p) => ({ ...p, svg: data.svgs[p.svg]! }));
-      const pdf = await generarPdf(paginas, data.o, (hechas, total) =>
+      const pdf = await generarPdf(data.paginas, data.o, (hechas, total) =>
         self.postMessage({ avance: [hechas, total] }),
       );
       self.postMessage({ pdf }, { transfer: [pdf.buffer] });

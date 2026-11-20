@@ -2221,6 +2221,7 @@
       "cuadricula": "En cuadrícula"
     },
     "paginas": "1 página | {n} páginas",
+    "paginasAlGuardar": "Las páginas se cuentan al guardar.",
     "pagina": "Página {n} de {m}",
     "titulo": "Organigrama",
     "sigue": "Sigue en la página {n}",
@@ -2233,6 +2234,7 @@
     "ilegibleCuadricula": "La letra de este nivel de detalle quedaría bajo 8 puntos y costaría leerla. Prueba con otro nivel de detalle.",
     "interrumpido": "Cambió el organigrama mientras se preparaba el PDF; vuelve a guardarlo.",
     "preparando": "Preparando las páginas…",
+    "preparandoN": "Preparando las páginas… ({n})",
     "muchas": "El PDF lleva {n} páginas, más de {limite}: puede tardar.",
     "aviso": "El PDF queda sin cifrar: cualquiera que lo abra verá lo que contiene. Quien lo genera es responsable de dónde lo guarda y con quién lo comparte.",
     "armando": "Armando el PDF…",

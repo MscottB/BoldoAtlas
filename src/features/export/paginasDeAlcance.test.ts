@@ -49,10 +49,10 @@ const pedido = (o: Partial<PedidoImagen> = {}): PedidoImagen => ({
   ...o,
 });
 const carta = (reparto: Reparto) => ({ hoja: "carta" as const, orientacion: "horizontal" as const, reparto });
-// Lo que hará Guardar: el reparto y después todas sus páginas.
+// Lo que hará Guardar: la vista previa y después todas las páginas, con su cifra.
 async function todas(pe: PedidoImagen, reparto: Reparto) {
   const r = await paginasPdf(pe, carta(reparto));
-  return { ...r, lista: await r.paginas() };
+  return { ...r, ...(await r.paginas()) };
 }
 // elk en este hilo, contando los layouts. `alPedir(n)` corre antes del n-ésimo.
 function contador(alPedir: (n: number) => void = () => {}) {
@@ -76,7 +76,6 @@ describe("paginasPdf", () => {
     expect(r.total).toBe(4);
     expect(r.ilegible).toBe(false);
     const [primera, ...resto] = r.lista;
-    expect(r.primera).toBe(primera!.svg);
     expect(primera!.arriba).toBeUndefined();
     // Cada área cortada dice dónde sigue, en la línea de su tarjeta; su página dice de dónde viene.
     for (const [i, x] of ["a", "b", "c"].entries()) {
@@ -120,8 +119,37 @@ describe("paginasPdf", () => {
     });
     const config = { ...VISTA_POR_DEFECTO, verPuestos: true };
     const r = await paginasPdf(pedido({ nivel: "pantalla", config }), carta("ramas"));
-    expect(r.total).toBe(1);
-    expect(r.ilegible).toBe(true);
+    expect(r.total).toBeNull();
+    expect(r.ilegible).toBe(true); // la raíz ya se ve en la vista previa
+    expect(await r.paginas()).toMatchObject({ total: 1, ilegible: true });
+  });
+
+  it("por ramas, la vista previa solo pide los layouts de la raíz, y Guardar los vuelve a usar", async () => {
+    tresYNueve();
+    const c = contador();
+    const r = await paginasPdf(pedido({ ubicar: c.ubicar }), carta("ramas"));
+    // El dibujo entero, y la raíz con un nivel (cabe) y con dos (no cabe): las áreas no se miden.
+    expect(c.n).toBe(3);
+    expect(r.total).toBeNull();
+    // Sin las otras ramas repartidas, «sigue» no tiene número todavía.
+    expect(r.primera.split(`>${t("pdf.sigue", { n: "…" })}</text>`)).toHaveLength(4);
+    expect(r.primera).not.toContain(`>${t("pdf.sigue", { n: 2 })}</text>`);
+
+    const avance: number[] = [];
+    const guardar = await r.paginas(undefined, (n) => avance.push(n));
+    // Solo una medida por área: las de la raíz ya estaban.
+    expect(c.n).toBe(6);
+    expect(avance).toEqual([1, 2, 3, 4]);
+    expect(guardar.total).toBe(4);
+    expect(guardar.ilegible).toBe(false);
+    // Las mismas páginas que da Guardar sin otra vista previa antes.
+    const otra = await todas(pedido(), "ramas");
+    expect(guardar.lista).toEqual(otra.lista);
+    expect(guardar.lista[0]!.svg).toContain(`>${t("pdf.sigue", { n: 2 })}</text>`);
+    // Y Guardar también se detiene.
+    const control = new AbortController();
+    control.abort();
+    await expect(r.paginas(control.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("en una da una sola página, y avisa si no se lee", async () => {
@@ -151,7 +179,9 @@ describe("paginasPdf", () => {
     const r = await todas(pedido(), "cuadricula");
     expect(r.mapa?.svg).toContain(">Área 0</text>");
     expect(r.mapa?.svg).toContain(">Área 11</text>");
-    expect(r.primera).toBe(r.mapa?.svg);
+    // La vista previa es la primera página: el mapa con la cuadrícula encima.
+    expect(r.primera.startsWith(r.mapa!.svg.replace(/<\/svg>$/, ""))).toBe(true);
+    expect(r.primera).toContain(">1·1</text>");
     expect(r.lista.length).toBeGreaterThan(1);
     expect(r.total).toBe(r.lista.length + 1);
     expect(r.ilegible).toBe(false);
@@ -170,7 +200,7 @@ describe("paginasPdf", () => {
     cuenta.dibujos = 0;
     const r = await paginasPdf(pedido(), carta("cuadricula"));
     expect(cuenta.dibujos).toBe(1);
-    const lista = await r.paginas();
+    const { lista } = await r.paginas();
     expect(cuenta.dibujos).toBe(1 + lista.length);
     // Y se pueden detener.
     const control = new AbortController();

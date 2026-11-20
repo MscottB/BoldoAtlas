@@ -34,15 +34,6 @@ export function armarPdf(
     senal?.removeEventListener("abort", alAbortar);
     worker.terminate();
   });
-  // Un dibujo que se repite en varias páginas viaja una vez. Hoy cada página trae el suyo (cada hoja de la cuadrícula,
-  // solo su parte), así que casi nunca se repite.
-  const indice = new Map<string, number>();
-  for (const p of paginas) if (!indice.has(p.svg)) indice.set(p.svg, indice.size);
-  const pedido: PedidoPdf = {
-    svgs: [...indice.keys()],
-    paginas: paginas.map((p) => ({ ...p, svg: indice.get(p.svg)! })),
-    o,
-  };
-  worker.postMessage(pedido);
+  worker.postMessage({ paginas, o } satisfies PedidoPdf);
   return listo;
 }
