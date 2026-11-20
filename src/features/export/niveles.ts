@@ -15,6 +15,8 @@ export interface Tarjeta {
   color: string | null;
   /** Cuántas unidades oculta la rama plegada; 0 si no hay. */
   mas: number;
+  /** En lugar de «+N unidades»: en el PDF por ramas, «sigue en la página N». */
+  textoMas?: string;
   /** Presentación sin jefatura: «Vacante» va en gris. */
   vacante?: boolean;
 }

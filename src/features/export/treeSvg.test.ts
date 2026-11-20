@@ -116,4 +116,51 @@ describe("dibujarSvg", () => {
     expect(svg).not.toContain('id="fondo"');
     expect(svg).toContain("Gerencia General");
   });
+
+  it("sin_encabezado_para_el_pdf", async () => {
+    const con = await armarSvg("estructura", { encabezado: { logo: LOGO } });
+    const sin = await armarSvg("estructura", { encabezado: { logo: LOGO }, dibujo: { sinEncabezado: true } });
+    expect(sin.svg).not.toContain("<image");
+    expect(sin.svg).not.toContain(">Atlas SA</text>");
+    expect(sin.svg).not.toContain("· 20-11-2026</text>");
+    expect(sin.svg).toContain(">Gerencia General</text>");
+    // Sin el alto del encabezado ni el aire bajo él (48 + 24), y sin su ancho.
+    expect(con.alto - sin.alto).toBe(72);
+    expect(sin.ancho).toBeLessThanOrEqual(con.ancho);
+  });
+
+  // Dónde quedó el texto de una tarjeta (centrado en Estructura): x es el centro de la tarjeta.
+  const lugar = (svg: string, nombre: string) => {
+    const m = new RegExp(`<text x="([\\d.]+)" y="([\\d.]+)"[^>]*>${nombre}</text>`).exec(svg);
+    expect(m).not.toBeNull();
+    return { x: Number(m![1]), y: Number(m![2]) };
+  };
+
+  it("recorte_deja_fuera_lo_que_no_toca", async () => {
+    const entero = await armarSvg("estructura", { dibujo: { sinEncabezado: true } });
+    const g = lugar(entero.svg, "Gerencia General");
+    const recorte = { x: g.x - 10, y: g.y - 10, ancho: 20, alto: 20 };
+    const { svg, ancho, alto } = await armarSvg("estructura", { dibujo: { sinEncabezado: true, recorte } });
+    expect(svg).toContain(">Gerencia General</text>");
+    for (const fuera of ["Finanzas", "Operaciones", "Coordina", "Zona Norte"])
+      expect(svg).not.toContain(fuera);
+    // La hoja mide lo que el recorte, y el dibujo de afuera queda donde estaba.
+    expect(svg).toContain(`viewBox="${recorte.x} ${recorte.y} ${recorte.ancho} ${recorte.alto}"`);
+    expect([ancho, alto]).toEqual([entero.ancho, entero.alto]);
+  });
+
+  it("recorte_lo_que_cruza_el_borde_va_en_las_dos_hojas", async () => {
+    const entero = await armarSvg("estructura", { dibujo: { sinEncabezado: true } });
+    const f = lugar(entero.svg, "Finanzas");
+    const o = lugar(entero.svg, "Operaciones");
+    expect(o.x - f.x).toBeGreaterThan(110); // hermanas lado a lado: Operaciones, entera a la derecha del corte
+    const izquierda = { x: 0, y: 0, ancho: f.x, alto: entero.alto };
+    const derecha = { x: f.x, y: 0, ancho: entero.ancho - f.x, alto: entero.alto };
+    const a = await armarSvg("estructura", { dibujo: { sinEncabezado: true, recorte: izquierda } });
+    const b = await armarSvg("estructura", { dibujo: { sinEncabezado: true, recorte: derecha } });
+    expect(a.svg).toContain(">Finanzas</text>");
+    expect(b.svg).toContain(">Finanzas</text>");
+    expect(a.svg).not.toContain(">Operaciones</text>");
+    expect(b.svg).toContain(">Operaciones</text>");
+  });
 });

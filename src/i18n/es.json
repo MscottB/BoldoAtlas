@@ -2199,5 +2199,40 @@
       "crear": "No se pudo crear la imagen. Prueba con un tamaño menor.",
       "copiar": "No se pudo copiar la imagen. Guárdala como archivo."
     }
+  },
+  "pdf": {
+    "hoja": "Hoja",
+    "hojas": {
+      "carta": "Carta",
+      "oficio": "Oficio",
+      "a4": "A4",
+      "a3": "A3",
+      "a2": "A2"
+    },
+    "orientacion": "Orientación",
+    "orientaciones": {
+      "horizontal": "Horizontal",
+      "vertical": "Vertical"
+    },
+    "reparto": "Repartir",
+    "repartos": {
+      "una": "En una página",
+      "ramas": "Por ramas",
+      "cuadricula": "En cuadrícula"
+    },
+    "paginas": "1 página | {n} páginas",
+    "pagina": "Página {n} de {m}",
+    "titulo": "Organigrama",
+    "sigue": "Sigue en la página {n}",
+    "viene": "Viene de la página {n}",
+    "continuacion": "{nombre} (continuación, {k} de {n})",
+    "filaColumna": "Fila {fila}, columna {columna}",
+    "leyenda": "Leyenda",
+    "ilegible": "En una página la letra quedaría bajo 8 puntos y no se podría leer. Repártelo por ramas o en cuadrícula.",
+    "muchas": "El PDF lleva {n} páginas, más de {limite}: puede tardar.",
+    "aviso": "El PDF queda sin cifrar: cualquiera que lo abra verá lo que contiene. Quien lo genera es responsable de dónde lo guarda y con quién lo comparte.",
+    "armando": "Armando el PDF…",
+    "cancelar": "Cancelar",
+    "ciclo": "No se pudo repartir en páginas: una unidad quedó debajo de sí misma. Revisa de quién depende cada unidad."
   }
 }

@@ -2199,5 +2199,40 @@
       "crear": "The image could not be made. Try a smaller size.",
       "copiar": "The image could not be copied. Save it as a file."
     }
+  },
+  "pdf": {
+    "hoja": "Paper",
+    "hojas": {
+      "carta": "Letter",
+      "oficio": "Oficio",
+      "a4": "A4",
+      "a3": "A3",
+      "a2": "A2"
+    },
+    "orientacion": "Orientation",
+    "orientaciones": {
+      "horizontal": "Landscape",
+      "vertical": "Portrait"
+    },
+    "reparto": "Split",
+    "repartos": {
+      "una": "On one page",
+      "ramas": "By branches",
+      "cuadricula": "In a grid"
+    },
+    "paginas": "1 page | {n} pages",
+    "pagina": "Page {n} of {m}",
+    "titulo": "Org chart",
+    "sigue": "Continues on page {n}",
+    "viene": "Continued from page {n}",
+    "continuacion": "{nombre} (continued, {k} of {n})",
+    "filaColumna": "Row {fila}, column {columna}",
+    "leyenda": "Legend",
+    "ilegible": "On one page the text would be under 8 points and unreadable. Split it by branches or in a grid.",
+    "muchas": "The PDF has {n} pages, more than {limite}: it may take a while.",
+    "aviso": "The PDF is not encrypted: anyone who opens it will see what it contains. Whoever makes it is responsible for where it is saved and who it is shared with.",
+    "armando": "Making the PDF…",
+    "cancelar": "Cancel",
+    "ciclo": "It could not be split into pages: a unit ended up under itself. Check which unit each one reports to."
   }
 }

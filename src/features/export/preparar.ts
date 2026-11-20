@@ -60,6 +60,12 @@ export interface PedidoImagen {
   fondo?: boolean;
   /** Ubica los bloques del grafo de elk; la ventana usa el worker del lienzo. Sin él, elk en este hilo (pruebas). */
   ubicar?: (grafo: ElkNode) => Promise<NodoUbicado[]>;
+  /**
+   * Una página del PDF por ramas: solo la rama de `raiz`, sin las hijas de `fuera`, y con `cortadas` plegadas (su tarjeta
+   * lleva la línea de «+N unidades», que el PDF cambia por «sigue en la página N»). Los datos de cada tarjeta son los del
+   * alcance entero.
+   */
+  pagina?: { raiz: string; cortadas: ReadonlySet<string>; fuera: ReadonlySet<string> };
 }
 
 async function ubicarAqui(grafo: ElkNode): Promise<NodoUbicado[]> {
@@ -67,7 +73,7 @@ async function ubicarAqui(grafo: ElkNode): Promise<NodoUbicado[]> {
   return (await new ELK().layout(grafo)).children ?? [];
 }
 
-const unidadesDe = (unidades: Unidad[], a: Alcance) =>
+export const unidadesDe = (unidades: Unidad[], a: Alcance) =>
   a === "todo" ? unidades : unidadesDeRama(unidades, a.rama);
 
 // Fuera de «Como en pantalla» no van puestos: elk no les deja lugar.
@@ -85,8 +91,10 @@ function subgrafo(o: PedidoImagen) {
     // Una rama pedida desde su propia tarjeta plegada se ve abierta, no como una sola tarjeta.
     if (o.alcance !== "todo") plegadas.delete(o.alcance.rama);
   }
+  const pag = o.pagina;
+  if (pag) plegadas = new Set([...plegadas, ...pag.cortadas]);
   const g = subgrafoVisible(
-    unidades,
+    pag ? unidadesDeRama(unidades, pag.raiz).filter((x) => !pag.fuera.has(x.id)) : unidades,
     toRaw(org.conexiones),
     plegadas,
     pantalla && o.config.verPuestos ? toRaw(e.puestos) : [],

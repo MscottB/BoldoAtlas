@@ -20,9 +20,9 @@ export function escalaQueCabe(
 /** A 1x ya no cabe: PNG, JPG o copiar saldrían más chicos que en pantalla (ilegibles). */
 export const pngMenorQuePantalla = (ancho: number, alto: number) => escalaQueCabe(ancho, alto, 1).bajada;
 
-/** El fondo con que se arma la imagen: el elegido solo cuenta en PNG (solo ahí se ofrece); JPG y SVG van en blanco. */
+/** El fondo con que se arma la imagen: el elegido solo cuenta en PNG (solo ahí se ofrece); JPG, SVG y PDF van en blanco. */
 export const fondoDePng = (
-  formato: "png" | "jpg" | "svg",
+  formato: "png" | "jpg" | "svg" | "pdf",
   fondo: "blanco" | "transparente",
 ): "blanco" | "transparente" => (formato === "png" ? fondo : "blanco");
 

@@ -35,14 +35,18 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useRetornoFoco } from "@/lib/foco";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
+import { armarPdf } from "./armarPdf";
 import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 import type { Nivel } from "./niveles";
+import type { Hoja, Orientacion, Reparto } from "./paginas";
+import { avisosPdf, paginasPdf, type PdfDeAlcance } from "./paginasDeAlcance";
 import { cuantasTarjetas, prepararImagen, type Alcance, type PedidoImagen } from "./preparar";
 import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
 import { dibujarSvg, type EntradaSvg } from "./treeSvg";
 
-// «Exportar como imagen»: alcance, nivel, formato y vista previa. Se abre desde la página Importar y exportar, la barra del
-// árbol y el clic derecho en una unidad (`rama`). `pantalla`: lo que muestra el lienzo, para que las ramas salgan como ahí.
+// «Exportar como imagen», o en PDF: alcance, nivel, formato y vista previa. Se abre desde la página Importar y exportar,
+// la barra del árbol y el clic derecho en una unidad (`rama`). `pantalla`: lo que muestra el lienzo, para que las ramas
+// salgan como ahí.
 const abierto = defineModel<boolean>("open", { required: true });
 const props = defineProps<{
   rama?: string | null;
@@ -54,10 +58,13 @@ const { config } = useVista();
 const retorno = useRetornoFoco();
 
 const NIVELES: Nivel[] = ["estructura", "presentacion", "pantalla"];
-const FORMATOS = ["png", "jpg", "svg"] as const;
+const FORMATOS = ["png", "jpg", "svg", "pdf"] as const;
 const ESCALAS = [1, 2, 3, 4] as const;
 const FONDOS = ["blanco", "transparente"] as const;
 type Formato = (typeof FORMATOS)[number];
+const HOJAS: Hoja[] = ["carta", "oficio", "a4", "a3", "a2"];
+const ORIENTACIONES: Orientacion[] = ["horizontal", "vertical"];
+const REPARTOS: Reparto[] = ["una", "ramas", "cuadricula"];
 
 // Se recuerda por PC lo elegido la última vez, salvo el alcance (es de cada imagen).
 const PREFERENCIA = "imagen";
@@ -68,24 +75,49 @@ const nivel = ref<Nivel>(elegir(NIVELES, guardada.nivel, "estructura"));
 const formato = ref<Formato>(elegir(FORMATOS, guardada.formato, "png"));
 const fondo = ref<(typeof FONDOS)[number]>(elegir(FONDOS, guardada.fondo, "blanco"));
 const escala = ref<(typeof ESCALAS)[number]>(elegir(ESCALAS, guardada.escala, 2));
-watch([nivel, formato, fondo, escala], ([n, f, fo, e]) =>
-  guardarPreferencia(PREFERENCIA, { nivel: n, formato: f, fondo: fo, escala: e }),
+const hoja = ref<Hoja>(elegir(HOJAS, guardada.hoja, "carta"));
+const orientacion = ref<Orientacion>(elegir(ORIENTACIONES, guardada.orientacion, "horizontal"));
+const reparto = ref<Reparto>(elegir(REPARTOS, guardada.reparto, "ramas"));
+watch([nivel, formato, fondo, escala, hoja, orientacion, reparto], ([n, f, fo, e, h, o, r]) =>
+  guardarPreferencia(PREFERENCIA, {
+    nivel: n,
+    formato: f,
+    fondo: fo,
+    escala: e,
+    hoja: h,
+    orientacion: o,
+    reparto: r,
+  }),
 );
+const esPdf = computed(() => formato.value === "pdf");
+const raster = computed(() => formato.value === "png" || formato.value === "jpg");
+const opcionesPdf = computed(() => ({
+  hoja: hoja.value,
+  orientacion: orientacion.value,
+  reparto: reparto.value,
+}));
 
 const elegida = ref<string | null>(props.rama ?? null);
 const abrirTodo = ref(false);
 const previa = shallowRef<string | null>(null);
-const fallo = ref(false);
+// La clave del texto que dice por qué no hay vista previa.
+const fallo = ref<string | null>(null);
+// Lo que midió la vista previa del PDF: sus páginas y avisos.
+const pdfPrevia = shallowRef<PdfDeAlcance | null>(null);
 // Lo que midió la vista previa: con ello se avisa si el PNG saldría ilegible.
 const chicaPrevia = ref(false);
 // Cada vez que se abre: el alcance que trae quien la abre, y las ramas como en pantalla.
 watch(abierto, (si) => {
-  if (!si) return;
+  if (!si) {
+    armando.value?.abort(); // cerrar la ventana cancela el PDF
+    return;
+  }
   elegida.value = props.rama ?? null;
   abrirTodo.value = false;
   previa.value = null; // la de la vez anterior puede ser de otra rama
-  fallo.value = false;
+  fallo.value = null;
   chicaPrevia.value = false;
+  pdfPrevia.value = null;
 });
 // Una unidad que no existe a la fecha que se ve (o ya no existe) vuelve a ser toda la organización.
 const alcance = computed<Alcance>(() =>
@@ -131,6 +163,7 @@ async function ubicar(grafo: ElkNode): Promise<NodoUbicado[]> {
 }
 onBeforeUnmount(() => {
   worker?.terminate();
+  armando.value?.abort();
   clearTimeout(espera);
 });
 
@@ -145,36 +178,59 @@ function entrada() {
   }
   return calculo;
 }
+// Lo mismo para el PDF: todas sus páginas, medidas y dibujadas.
+let calculoPdf: Promise<PdfDeAlcance> | null = null;
+function paginas() {
+  if (!calculoPdf) {
+    const p = paginasPdf(pedido.value, opcionesPdf.value);
+    calculoPdf = p;
+    p.catch(() => calculoPdf === p && (calculoPdf = null));
+  }
+  return calculoPdf;
+}
+// repartirPorRamas lo dice así si una unidad queda debajo de sí misma.
+const esCiclo = (e: unknown) => e instanceof Error && e.message.includes("ciclo");
+const dataUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 let espera: ReturnType<typeof setTimeout> | undefined;
 let vuelta = 0; // sube con cada cambio: una vista previa de antes no se muestra
 async function mostrar() {
   const v = vuelta;
   try {
-    const e = await entrada();
-    if (v !== vuelta) return;
     // Un data: URL en un <img>: el SVG no corre nada.
-    const { svg, ancho, alto } = dibujarSvg(e);
-    previa.value = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-    chicaPrevia.value = pngMenorQuePantalla(ancho, alto);
-    fallo.value = false;
+    if (esPdf.value) {
+      const r = await paginas();
+      if (v !== vuelta) return;
+      // La primera página del PDF: en cuadrícula, el mapa.
+      previa.value = dataUrl((r.mapa ?? r.paginas[0]!).svg);
+      pdfPrevia.value = r;
+    } else {
+      const e = await entrada();
+      if (v !== vuelta) return;
+      const { svg, ancho, alto } = dibujarSvg(e);
+      previa.value = dataUrl(svg);
+      chicaPrevia.value = pngMenorQuePantalla(ancho, alto);
+    }
+    fallo.value = null;
   } catch (e) {
     if (v !== vuelta || e === REEMPLAZADO) return;
     console.error(e);
     previa.value = null; // no queda a la vista una imagen de antes
-    fallo.value = true;
+    fallo.value = esCiclo(e) ? "pdf.ciclo" : "imagen.previaFallo";
   }
 }
 // Cada cambio se espera 300 ms: tocar varias opciones seguidas arma una sola vista previa.
 function programar() {
   vuelta++;
-  fallo.value = false; // el error de antes no tapa el «Preparando…»
+  fallo.value = null; // el error de antes no tapa el «Preparando…»
   chicaPrevia.value = false;
+  pdfPrevia.value = null;
   calculo = null;
+  calculoPdf = null;
   clearTimeout(espera);
   if (abierto.value) espera = setTimeout(() => void mostrar(), 300);
 }
 // Personalizar no se puede tocar con la ventana abierta: basta con ver si cambia la configuración entera.
-watch([pedido, () => org.enFecha, abierto], programar);
+watch([pedido, () => org.enFecha, abierto, esPdf, opcionesPdf], programar);
 onMounted(programar); // no en el servidor de las pruebas: ahí no hay worker
 
 const ocupado = ref(false);
@@ -183,31 +239,59 @@ const avisoAbierto = ref(false);
 const aviso = crearAviso((v) => (avisoAbierto.value = v));
 // Cerrar el aviso de cualquier forma es no aceptarlo. «Acepto» responde antes (el cierre llega después, en otra vuelta).
 watch(avisoAbierto, (v) => v || aviso.cerrado());
+// Lo que el PDF avisa antes de guardar, y también bajo la vista previa: ilegible en una página, o más de 200.
+const avisos = computed(() =>
+  esPdf.value && pdfPrevia.value ? avisosPdf(reparto.value, pdfPrevia.value, locale.value) : [],
+);
+// Mientras se arma el PDF: para cancelarlo, y cuántas páginas lleva.
+const armando = shallowRef<AbortController | null>(null);
+const avance = ref("");
 
 // Lo que falló al armar la imagen, con su texto; lo demás (guardar, portapapeles), con `otro`.
 const textoError = (e: unknown, otro: () => string) =>
-  e instanceof ErrorImagen ? t(`imagen.error.${e.codigo}`) : otro();
+  e instanceof ErrorImagen ? t(`imagen.error.${e.codigo}`) : esCiclo(e) ? t("pdf.ciclo") : otro();
 const conFondo = () => fondoDePng(formato.value, fondo.value) === "blanco";
 
 async function guardar() {
   if (ocupado.value) return;
   ocupado.value = true;
   try {
-    const e = await entrada();
     const f = formato.value;
-    const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: conFondo() });
-    chica.value = f !== "svg" && pngMenorQuePantalla(ancho, alto);
-    if (!(await aviso.preguntar())) return;
     let bytes: Uint8Array;
     let bajada: string | undefined; // se dice solo si de verdad se guardó
-    if (f === "svg") bytes = new TextEncoder().encode(svg);
-    else {
-      const cabe = escalaQueCabe(ancho, alto, escala.value);
-      if (cabe.bajada)
-        bajada = t("imagen.escalaBajada", {
-          escala: cabe.escala.toLocaleString(locale.value, { maximumFractionDigits: 2 }),
-        });
-      bytes = await svgAImagen(svg, ancho, alto, { escala: escala.value, formato: f, fondo: fondo.value });
+    if (f === "pdf") {
+      const r = (pdfPrevia.value = await paginas());
+      if (!(await aviso.preguntar())) return;
+      const control = (armando.value = new AbortController());
+      avance.value = "";
+      bytes = await armarPdf(
+        r.paginas,
+        {
+          hoja: hoja.value,
+          orientacion: orientacion.value,
+          encabezado: r.encabezado,
+          // Los números los pone cada página: aquí quedan las marcas tal cual.
+          pagina: t("pdf.pagina", { n: "{n}", m: "{m}" }),
+          titulo: t("pdf.titulo"),
+          mapa: r.mapa,
+        },
+        (n, m) => (avance.value = t("pdf.pagina", { n, m })),
+        control.signal,
+      );
+    } else {
+      const e = await entrada();
+      const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: conFondo() });
+      chica.value = f !== "svg" && pngMenorQuePantalla(ancho, alto);
+      if (!(await aviso.preguntar())) return;
+      if (f === "svg") bytes = new TextEncoder().encode(svg);
+      else {
+        const cabe = escalaQueCabe(ancho, alto, escala.value);
+        if (cabe.bajada)
+          bajada = t("imagen.escalaBajada", {
+            escala: cabe.escala.toLocaleString(locale.value, { maximumFractionDigits: 2 }),
+          });
+        bytes = await svgAImagen(svg, ancho, alto, { escala: escala.value, formato: f, fondo: fondo.value });
+      }
     }
     const rama = alcance.value === "todo" ? "" : textoAlcance.value;
     const archivo = nombreArchivo(org.org.nombre, rama, nivel.value, f, org.fechaVista ?? hoyISO());
@@ -222,8 +306,11 @@ async function guardar() {
         },
       });
   } catch (e) {
+    // Cancelado: no hay nada que decir (y su mensaje no está traducido).
+    if (e instanceof DOMException && e.name === "AbortError") return;
     toast.error(textoError(e, () => mensajeFallo(e)));
   } finally {
+    armando.value = null;
     ocupado.value = false;
   }
 }
@@ -349,7 +436,7 @@ async function copiar() {
               </div>
             </fieldset>
           </template>
-          <fieldset v-if="formato !== 'svg'" class="grid gap-1.5" :disabled="ocupado">
+          <fieldset v-if="raster" class="grid gap-1.5" :disabled="ocupado">
             <legend class="mb-1 text-sm font-medium">{{ t("imagen.tamano") }}</legend>
             <div class="flex flex-wrap gap-x-4 gap-y-1">
               <label v-for="e in ESCALAS" :key="e" class="flex items-center gap-1.5 text-sm">
@@ -364,6 +451,55 @@ async function copiar() {
               </label>
             </div>
           </fieldset>
+
+          <template v-if="esPdf">
+            <fieldset class="grid gap-1.5" :disabled="ocupado">
+              <legend class="mb-1 text-sm font-medium">{{ t("pdf.hoja") }}</legend>
+              <div class="flex flex-wrap gap-x-4 gap-y-1">
+                <label v-for="h in HOJAS" :key="h" class="flex items-center gap-1.5 text-sm">
+                  <input
+                    v-model="hoja"
+                    type="radio"
+                    name="pdf-hoja"
+                    :value="h"
+                    :data-accion="`hoja-${h}`"
+                    class="size-4 accent-primary"
+                  />
+                  {{ t(`pdf.hojas.${h}`) }}
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="grid gap-1.5" :disabled="ocupado">
+              <legend class="mb-1 text-sm font-medium">{{ t("pdf.orientacion") }}</legend>
+              <div class="flex flex-wrap gap-x-4 gap-y-1">
+                <label v-for="o in ORIENTACIONES" :key="o" class="flex items-center gap-1.5 text-sm">
+                  <input
+                    v-model="orientacion"
+                    type="radio"
+                    name="pdf-orientacion"
+                    :value="o"
+                    :data-accion="`orientacion-${o}`"
+                    class="size-4 accent-primary"
+                  />
+                  {{ t(`pdf.orientaciones.${o}`) }}
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="grid gap-1.5" :disabled="ocupado">
+              <legend class="mb-1 text-sm font-medium">{{ t("pdf.reparto") }}</legend>
+              <label v-for="r in REPARTOS" :key="r" class="flex items-center gap-1.5 text-sm">
+                <input
+                  v-model="reparto"
+                  type="radio"
+                  name="pdf-reparto"
+                  :value="r"
+                  :data-accion="`reparto-${r}`"
+                  class="size-4 accent-primary"
+                />
+                {{ t(`pdf.repartos.${r}`) }}
+              </label>
+            </fieldset>
+          </template>
         </div>
 
         <div class="grid min-h-48 content-start gap-2">
@@ -376,9 +512,13 @@ async function copiar() {
               class="max-h-full max-w-full object-contain"
             />
             <p v-else class="text-sm text-neutral-500">
-              {{ t(fallo ? "imagen.previaFallo" : "imagen.preparando") }}
+              {{ t(fallo ?? "imagen.preparando") }}
             </p>
           </div>
+          <p v-if="esPdf && pdfPrevia" data-paginas-pdf class="text-sm">
+            {{ t("pdf.paginas", { n: pdfPrevia.total.toLocaleString(locale) }, pdfPrevia.total) }}
+          </p>
+          <p v-for="a in avisos" :key="a" role="status" data-aviso-pdf class="text-sm">{{ a }}</p>
           <p v-if="tarjetas > LIMITE_TARJETAS" role="status" data-aviso-tarjetas class="text-sm">
             {{
               t("imagen.muchas", {
@@ -387,14 +527,23 @@ async function copiar() {
               })
             }}
           </p>
-          <p v-if="chicaPrevia && formato !== 'svg'" role="status" data-aviso-chica class="text-sm">
+          <p v-if="chicaPrevia && raster" role="status" data-aviso-chica class="text-sm">
             {{ t("imagen.chica") }}
           </p>
         </div>
       </div>
 
       <DialogFooter>
+        <template v-if="armando">
+          <p role="status" data-avance-pdf class="self-center text-sm sm:mr-auto">
+            {{ avance || t("pdf.armando") }}
+          </p>
+          <Button type="button" variant="outline" data-accion="cancelar-pdf" @click="armando.abort()">
+            {{ t("pdf.cancelar") }}
+          </Button>
+        </template>
         <Button
+          v-if="!esPdf"
           type="button"
           variant="outline"
           data-accion="copiar-imagen"
@@ -413,7 +562,11 @@ async function copiar() {
     <AlertDialogContent data-aviso-imagen>
       <AlertDialogHeader>
         <AlertDialogTitle>{{ t("excel.aviso.titulo") }}</AlertDialogTitle>
-        <AlertDialogDescription>
+        <AlertDialogDescription v-if="esPdf">
+          {{ t("pdf.aviso") }}
+          <template v-for="a in avisos" :key="a"> {{ a }}</template>
+        </AlertDialogDescription>
+        <AlertDialogDescription v-else>
           {{ t("imagen.aviso") }}
           <template v-if="chica"> {{ t("imagen.chica") }}</template>
         </AlertDialogDescription>
