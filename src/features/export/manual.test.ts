@@ -99,6 +99,17 @@ describe("datosManual", () => {
     ]);
   });
 
+  it("la columna de la descripción dice «Descripción», en los dos idiomas", () => {
+    expect(textosManual().descripcion).toBe("Descripción");
+    const antes = i18n.global.locale.value;
+    i18n.global.locale.value = "en";
+    try {
+      expect(textosManual().descripcion).toBe("Description");
+    } finally {
+      i18n.global.locale.value = antes;
+    }
+  });
+
   it("sin_descripcion_vacante_y_reemplazo", () => {
     const us = datosManual({ alcance: "todo", conPersonas: true });
     const de = (id: string) => us.find((x) => x.id === id)!;

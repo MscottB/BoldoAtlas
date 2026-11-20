@@ -6,6 +6,7 @@ import { i18n } from "@/i18n";
 import { u } from "@/features/arbol/fixture";
 import { useOrganizacion } from "@/stores/organizacion";
 import DialogoManual from "./DialogoManual.vue";
+import { LIMITE_PAGINAS, avisosPdf } from "./paginasDeAlcance";
 
 // Lo elegido la última vez (en node no hay localStorage).
 const pref = vi.hoisted(() => ({ valor: {} as Record<string, unknown> }));
@@ -71,6 +72,15 @@ describe("DialogoManual", () => {
     expect(s).not.toContain('data-accion="cancelar-manual"');
     expect(s).not.toContain('data-accion="reparto-');
     expect(s).not.toContain('data-accion="nivel-');
+  });
+
+  it("el aviso del manual dice cuántas páginas lleva, sin «puede tardar»: ya está armado", () => {
+    const n = (1234).toLocaleString("es");
+    const [muchas] = avisosPdf("ramas", { ilegible: false, total: 1234 }, "es", "manual.muchas");
+    expect(muchas).toBe(t("manual.muchas", { n, limite: LIMITE_PAGINAS }));
+    expect(muchas).toContain(n);
+    expect(muchas).not.toMatch(/tardar/);
+    expect(avisosPdf("ramas", { ilegible: false, total: LIMITE_PAGINAS }, "es", "manual.muchas")).toEqual([]);
   });
 
   it("recuerda las opciones, salvo el alcance, que trae quien la abre", async () => {

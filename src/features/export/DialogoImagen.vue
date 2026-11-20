@@ -30,7 +30,7 @@ import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useRetornoFoco } from "@/lib/foco";
-import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { elegir, guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
 import { armarPdf } from "./armarPdf";
 import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
@@ -72,8 +72,6 @@ const REPARTOS: Reparto[] = ["una", "ramas", "cuadricula"];
 
 // Se recuerda por PC lo elegido la última vez, salvo el alcance (es de cada imagen).
 const PREFERENCIA = "imagen";
-const elegir = <T,>(lista: readonly T[], valor: unknown, porDefecto: T): T =>
-  lista.includes(valor as T) ? (valor as T) : porDefecto;
 const guardada = leerPreferencia<Record<string, unknown>>(PREFERENCIA, {}) ?? {};
 const nivel = ref<Nivel>(elegir(NIVELES, guardada.nivel, "estructura"));
 const formato = ref<Formato>(elegir(FORMATOS, guardada.formato, "png"));

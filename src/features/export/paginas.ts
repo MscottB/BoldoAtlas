@@ -31,6 +31,17 @@ export function areaUtil(hoja: Hoja, orientacion: Orientacion): { ancho: number;
 }
 
 /**
+ * El lugar del dibujo chico de una sección del manual: el área útil sin la cabeza de la sección (título de 14 pt, ruta
+ * de 8 pt, jefatura de 10 pt y sus márgenes, cada uno en una línea). Si la cabeza ocupa más, pdfmake pasa el dibujo a
+ * la página siguiente, y la tabla lo sigue. La medida del manual y su dibujo usan esto mismo.
+ */
+export function cajaDibujoManual(area: { ancho: number; alto: number }): { ancho: number; alto: number } {
+  return { ancho: area.ancho, alto: area.alto - CABEZA_SECCION };
+}
+// 14 y 8 pt de Roboto (alto de línea 1,17) con 2 de margen, 10 pt con 6, y los 12 sobre el dibujo.
+const CABEZA_SECCION = Math.ceil(14 * 1.17 + (8 * 1.17 + 2) + (10 * 1.17 + 6) + 12);
+
+/**
  * La escala que hace caber el dibujo en el área útil, y si con ella la letra más chica baja de 8 pt. Un dibujo chico no
  * se agranda: la escala no pasa de 1.
  */

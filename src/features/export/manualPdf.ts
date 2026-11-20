@@ -1,7 +1,7 @@
 // Aparte de manual.ts: el worker de pdfmake importa esto, y así no carga el store ni i18n (solo sus tipos).
 import type { PuestoManual, TextosManual, UnidadManual } from "./manual";
 import { anchoTexto, recortar as recortarTexto } from "./medida";
-import { MARGEN, areaUtil } from "./paginas";
+import { MARGEN, areaUtil, cajaDibujoManual } from "./paginas";
 import {
   LOGO_PDF,
   TENUE,
@@ -53,6 +53,7 @@ const encajado = (p: PaginaPdf, ancho: number, alto: number): Nodo => {
 export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocumentDefinitions {
   const t = o.textos;
   const area = areaUtil(o.hoja, o.orientacion);
+  const caja = cajaDibujoManual(area);
   const p = o.portada;
 
   const portada: Nodo = {
@@ -153,8 +154,8 @@ export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocument
               },
             ]
           : []),
-        // El dibujo, hasta media página: la tabla empieza en la misma.
-        ...(dibujo ? [{ ...encajado(dibujo, area.ancho, area.alto / 2), margin: [0, 12, 0, 0] }] : []),
+        // El dibujo, en lo que deja la cabeza; si no cabe, va a la página siguiente y la tabla lo sigue.
+        ...(dibujo ? [{ ...encajado(dibujo, caja.ancho, caja.alto), margin: [0, 12, 0, 0] }] : []),
         ...(x.puestos.length ? [tabla(x)] : []),
       ],
       pageBreak: "before",

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { i18n } from "@/i18n";
-import { u } from "@/features/arbol/fixture";
+import { p, u } from "@/features/arbol/fixture";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { MARCA, datos } from "./fixture";
@@ -9,6 +9,7 @@ import { paginasDelPdf } from "./formatos";
 import { textosManual } from "./manual";
 import { manualDeAlcance, type PedidoManual } from "./manualDeAlcance";
 import { documentoManual, type OpcionesManual } from "./manualPdf";
+import { areaUtil, cajaDibujoManual } from "./paginas";
 import { generarDocumento } from "./pdf.worker";
 import { textoPorPagina } from "./textoPdf";
 
@@ -156,6 +157,20 @@ describe("manualDeAlcance", () => {
   it("avisa si el dibujo de una unidad queda con letra bajo 8 pt", async () => {
     conPersonas();
     expect((await manualDeAlcance(pedido())).ilegible).toBe(false);
+    // Una unidad con 3 hijas (cada una con la suya) y unos puestos se lee en carta vertical.
+    useOrganizacion().$patch({
+      unidades: [
+        u("r", "t", "Gerencia General", null),
+        ...[0, 1, 2].flatMap((i) => [
+          u(`h${i}`, "t", `Área ${i}`, "r", i),
+          u(`n${i}`, "t", `Sección ${i}`, `h${i}`),
+        ]),
+      ],
+      puestos: [0, 1, 2].map((i) => ({ ...p(`q${i}`, "r"), cargo_id: "c-x", orden: i })),
+      asignaciones: [],
+    });
+    for (const conPersonas of [false, true])
+      expect((await manualDeAlcance(pedido({ conPersonas }))).ilegible).toBe(false);
     useOrganizacion().$patch({
       unidades: [
         u("r", "t", "Gerencia General", null),
@@ -165,6 +180,32 @@ describe("manualDeAlcance", () => {
       cargado: true,
     });
     expect((await manualDeAlcance(pedido())).ilegible).toBe(true);
+  });
+
+  it("el dibujo chico usa la página entera, salvo la cabeza de la sección", async () => {
+    conPersonas();
+    // Finanzas con 12 puestos: una pila alta, más que media página.
+    const org = useOrganizacion();
+    org.$patch({
+      puestos: [
+        ...org.puestos,
+        ...Array.from({ length: 10 }, (_, i) => ({ ...p(`m${i}`, "a1"), cargo_id: "c-x", orden: 2 + i })),
+      ],
+    });
+    const m = await manualDeAlcance(pedido());
+    const svg = m.dibujos.get("a1")!.svg;
+    const nodos: { height: number; width: number }[] = [];
+    JSON.stringify(documentoManual(m, opciones()).content, (_, v: unknown) => {
+      if (v && typeof v === "object" && (v as { svg?: string }).svg === svg)
+        nodos.push(v as { height: number; width: number });
+      return v;
+    });
+    const area = areaUtil("carta", "vertical");
+    const caja = cajaDibujoManual(area);
+    expect(nodos).toHaveLength(1);
+    expect(nodos[0]!.height).toBeGreaterThan(area.alto / 2);
+    expect(nodos[0]!.height).toBeLessThanOrEqual(caja.alto);
+    expect(nodos[0]!.width).toBeLessThanOrEqual(caja.ancho);
   });
 
   it("dice cuánto lleva, y se cancela", async () => {

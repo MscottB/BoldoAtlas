@@ -1822,7 +1822,7 @@
     },
     "manual": {
       "titulo": "Organization manual",
-      "texto": "A PDF with a cover, contents, the org chart and a section for each unit with its positions and who holds them."
+      "texto": "A PDF with a cover, contents, the org chart and a section for each unit with its positions."
     }
   },
   "comparar": {
@@ -2261,7 +2261,7 @@
     "reemplazo": "Replacement",
     "version": "BoldoAtlas {version}",
     "revision": "Data revision: {revision}",
-    "descripcion": "A PDF with a cover, contents, the general org chart and a section for each unit with its positions.",
+    "ayuda": "A PDF with a cover, contents, the general org chart and a section for each unit with its positions.",
     "aFecha": "The manual shows the org chart as of {fecha}.",
     "personas": "Include people",
     "personasAyuda": "Unchecked, the manual has no names: good for sharing outside.",
@@ -2272,6 +2272,7 @@
     "viene": "Continued from sheet {n}",
     "preparando": "Preparing the general org chart… ({n})",
     "dibujando": "Drawing the units… {n} of {m}",
-    "armando": "Building the manual… {n} of {m}"
+    "armando": "Building the manual… {n} of {m}",
+    "muchas": "The manual has {n} pages, more than {limite}."
   }
 }

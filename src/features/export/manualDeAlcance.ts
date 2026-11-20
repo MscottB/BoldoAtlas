@@ -5,7 +5,7 @@ import type { ConfigVista } from "@/features/arbol/vista";
 import { useOrganizacion } from "@/stores/organizacion";
 import { datosManual } from "./manual";
 import type { DatosManualPdf } from "./manualPdf";
-import { LETRA_MIN_PT, areaUtil, type Hoja, type Orientacion } from "./paginas";
+import { LETRA_MIN_PT, areaUtil, cajaDibujoManual, type Hoja, type Orientacion } from "./paginas";
 import { paginasPdf } from "./paginasDeAlcance";
 import type { PaginaPdf } from "./pdf";
 import { prepararImagen, unidadesDe, type Alcance, type PedidoImagen } from "./preparar";
@@ -64,8 +64,8 @@ export async function manualDeAlcance(
     arriba: [t("manual.lamina", { n: i + 1 }), x.arriba].filter(Boolean).join(" · "),
   }));
 
-  // El dibujo chico va hasta media página (`documentoManual`): con esa escala se mide si se lee.
-  const area = areaUtil(p.hoja, p.orientacion);
+  // El dibujo chico va en la caja que le deja la sección (`documentoManual`): con esa escala se mide si se lee.
+  const caja = cajaDibujoManual(areaUtil(p.hoja, p.orientacion));
   const hijas = indiceHijos(unidadesDe(toRaw(useOrganizacion().enFecha.unidades), p.alcance));
   let ilegible = hojas.ilegible;
   const dibujos = new Map<string, PaginaPdf>();
@@ -81,9 +81,13 @@ export async function manualDeAlcance(
       pagina: { raiz: x.id, cortadas: new Set((hijas.get(x.id) ?? []).map((h) => h.id)), fuera: NINGUNA },
     });
     senal?.throwIfAborted();
-    const d = dibujarSvg(e, { sinEncabezado: true });
+    // Sin «+N unidades» en las hijas: cada una tiene su propia sección.
+    const d = dibujarSvg(
+      { ...e, tarjetas: e.tarjetas.map((x) => ({ ...x, mas: 0 })) },
+      { sinEncabezado: true },
+    );
     ilegible ||=
-      letraMinima(nivel) * Math.min(1, area.ancho / d.ancho, area.alto / 2 / d.alto) < LETRA_MIN_PT;
+      letraMinima(nivel, false) * Math.min(1, caja.ancho / d.ancho, caja.alto / d.alto) < LETRA_MIN_PT;
     dibujos.set(x.id, d);
     alAvanzar?.(t("manual.dibujando", { n: i + 1, m: unidades.length }));
   }

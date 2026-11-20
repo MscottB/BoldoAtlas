@@ -248,11 +248,12 @@ async function porRamas(
   return { paginas: paginas.length ? paginas : [dibujo(entero)], completa };
 }
 
-/** Lo que se avisa antes de armar el PDF, ya traducido. */
+/** Lo que se avisa antes de armar el PDF, ya traducido. `claveMuchas`: la del manual, que avisa ya armado. */
 export function avisosPdf(
   reparto: Reparto,
   r: { ilegible: boolean; total: number | null },
   locale: string,
+  claveMuchas = "pdf.muchas",
 ): string[] {
   const t = i18n.global.t;
   return [
@@ -267,7 +268,7 @@ export function avisosPdf(
       : []),
     // Sin la cifra (por ramas, en la vista previa) no se avisa: Guardar cuenta las páginas antes del aviso.
     ...(r.total !== null && r.total > LIMITE_PAGINAS
-      ? [t("pdf.muchas", { n: r.total.toLocaleString(locale), limite: LIMITE_PAGINAS })]
+      ? [t(claveMuchas, { n: r.total.toLocaleString(locale), limite: LIMITE_PAGINAS })]
       : []),
   ];
 }

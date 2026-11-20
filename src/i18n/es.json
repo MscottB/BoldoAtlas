@@ -1822,7 +1822,7 @@
     },
     "manual": {
       "titulo": "Manual de organización",
-      "texto": "Un PDF con portada, índice, el organigrama y una sección por unidad con sus puestos y quién los ocupa."
+      "texto": "Un PDF con portada, índice, el organigrama y una sección por unidad con sus puestos."
     }
   },
   "comparar": {
@@ -2261,7 +2261,7 @@
     "reemplazo": "Reemplazo",
     "version": "BoldoAtlas {version}",
     "revision": "Revisión de los datos: {revision}",
-    "descripcion": "Un PDF con portada, índice, el organigrama general y una sección por unidad con sus puestos.",
+    "ayuda": "Un PDF con portada, índice, el organigrama general y una sección por unidad con sus puestos.",
     "aFecha": "Sale el manual al {fecha}.",
     "personas": "Incluir a las personas",
     "personasAyuda": "Sin marcar, el manual no lleva ningún nombre: sirve para compartir fuera.",
@@ -2272,6 +2272,7 @@
     "viene": "Viene de la lámina {n}",
     "preparando": "Preparando el organigrama general… ({n})",
     "dibujando": "Dibujando las unidades… {n} de {m}",
-    "armando": "Armando el manual… {n} de {m}"
+    "armando": "Armando el manual… {n} de {m}",
+    "muchas": "El manual lleva {n} páginas, más de {limite}."
   }
 }

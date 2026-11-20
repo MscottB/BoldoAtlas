@@ -29,7 +29,7 @@ import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useRetornoFoco } from "@/lib/foco";
-import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { elegir, guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { VERSION_ACTUAL } from "@/stores/actualizaciones";
 import { useOrganizacion } from "@/stores/organizacion";
 import { armarPdf } from "./armarPdf";
@@ -53,8 +53,6 @@ const retorno = useRetornoFoco();
 
 // Se recuerda por PC lo elegido la última vez, salvo el alcance.
 const PREFERENCIA = "manual";
-const elegir = <T,>(lista: readonly T[], valor: unknown, porDefecto: T): T =>
-  lista.includes(valor as T) ? (valor as T) : porDefecto;
 const guardada = leerPreferencia<Record<string, unknown>>(PREFERENCIA, {}) ?? {};
 const personas = ref(guardada.personas !== false);
 const hoja = ref<Hoja>(elegir(LISTA_HOJAS, guardada.hoja, "carta"));
@@ -149,11 +147,15 @@ async function guardar() {
       control.signal,
     );
     avance.value = "";
-    avisos.value = avisosPdf("ramas", { ilegible: m.ilegible, total: paginasDelPdf(pdf) }, locale.value);
-    if (!(await aviso.preguntar())) {
-      control.signal.throwIfAborted(); // se cerró porque cambió el organigrama: se avisa
-      return;
-    }
+    // Si no se leyera la cuenta del PDF, al menos portada, índice, láminas y una página por unidad.
+    const total = paginasDelPdf(pdf) || 2 + m.general.length + m.unidades.length;
+    // Ya armado: «El manual lleva N páginas», sin «puede tardar».
+    avisos.value = avisosPdf("ramas", { ilegible: m.ilegible, total }, locale.value, "manual.muchas");
+    // Un cambio justo antes de preguntar, o mientras se pregunta, corta aquí y se avisa.
+    control.signal.throwIfAborted();
+    const acepta = await aviso.preguntar();
+    control.signal.throwIfAborted();
+    if (!acepta) return;
     // El nombre lleva la organización y la rama, nunca a una persona.
     const rama = alcance.value === "todo" ? "" : textoAlcance.value;
     const archivo = nombreArchivo(org.org.nombre, rama, "manual", "pdf", org.fechaVista ?? hoyISO());
@@ -190,7 +192,7 @@ async function guardar() {
       <DialogHeader>
         <DialogTitle>{{ t("manual.titulo") }}</DialogTitle>
         <DialogDescription>
-          {{ t("manual.descripcion") }}
+          {{ t("manual.ayuda") }}
           <template v-if="org.fechaVista">
             {{ t("manual.aFecha", { fecha: formatearFecha(org.fechaVista, locale) }) }}
           </template>
