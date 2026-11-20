@@ -83,15 +83,33 @@ export async function repartirPorRamas(
   orientacion: Orientacion,
   nivel: Nivel,
 ): Promise<PaginaRamas[]> {
-  // Cuántos niveles hay bajo cada unidad: más hondo no hay nada que medir.
+  // Cuántos niveles hay bajo cada unidad: más hondo no hay nada que medir. Con una pila y no con recursión, para que
+  // una rama muy honda no agote la pila de llamadas. Si una unidad aparece bajo sí misma, los datos están mal: sin
+  // este corte, el reparto no terminaría.
   const alturas = new Map<string, number>();
   const altura = (id: string): number => {
-    let a = alturas.get(id);
-    if (a === undefined) {
-      a = hijosDe(id).reduce((m, h) => Math.max(m, altura(h) + 1), 0);
-      alturas.set(id, a);
+    const pila = [id];
+    const abiertas = new Set<string>(); // en el camino, con sus hijas todavía por medir
+    while (pila.length) {
+      const u = pila[pila.length - 1]!;
+      if (alturas.has(u)) pila.pop();
+      else if (abiertas.has(u)) {
+        alturas.set(
+          u,
+          hijosDe(u).reduce((m, h) => Math.max(m, alturas.get(h)! + 1), 0),
+        );
+        abiertas.delete(u);
+        pila.pop();
+      } else {
+        abiertas.add(u);
+        for (const h of hijosDe(u)) {
+          if (abiertas.has(h))
+            throw new Error(`La unidad ${h} está debajo de sí misma: el organigrama tiene un ciclo.`);
+          if (!alturas.has(h)) pila.push(h);
+        }
+      }
     }
-    return a;
+    return alturas.get(id)!;
   };
   const cabe = async (id: string, d: number, tramo?: [number, number]) => {
     const m = await medir(id, d, tramo);
@@ -167,7 +185,8 @@ export function cuadricula(
   orientacion: Orientacion,
   nivel: Nivel,
 ): { escala: number; filas: number; columnas: number; hojas: Hojita[] } {
-  const escala = LETRA_MIN_PT / letraMinima(nivel);
+  // Como en escalaParaHoja, un dibujo nunca se agranda.
+  const escala = Math.min(1, LETRA_MIN_PT / letraMinima(nivel));
   const area = areaUtil(hoja, orientacion);
   const solape = SOLAPE / escala;
   // Los tramos [inicio, fin) de un eje: n hojas cubren n · (lado − solape) + solape.

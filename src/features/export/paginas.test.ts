@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   LETRA_MIN_PT,
   MARGEN,
@@ -10,6 +10,13 @@ import {
   type PaginaRamas,
 } from "./paginas";
 import { letraMinima } from "./treeSvg";
+
+// La letra real, salvo donde una prueba la cambia: hoy todos los niveles tienen 11, y el tope de escala necesita una
+// letra bajo 8 para verse.
+vi.mock("./treeSvg", async (importar) => {
+  const real = await importar<typeof import("./treeSvg")>();
+  return { ...real, letraMinima: vi.fn(real.letraMinima) };
+});
 
 // Un árbol de prueba: id → hijas, en orden.
 type Arbol = Record<string, string[]>;
@@ -138,6 +145,45 @@ describe("repartirPorRamas", () => {
       { numero: 1, raiz: "sola", profundidad: 0, sigue: [], viene: null },
     ]);
   });
+
+  it("cadena_que_no_cabe_termina", async () => {
+    // r → n1 → … → n50: cada unidad con hija (r y n1 a n49) va en su página, de a un nivel, enlazadas en orden.
+    const p = await repartir(cadena(50), "r", async () => ({ ancho: 1e7, alto: 1e7 }));
+    expect(p).toHaveLength(50);
+    p.forEach((x, i) => {
+      expect(x).toEqual({
+        numero: i + 1,
+        raiz: i ? `n${i}` : "r",
+        profundidad: 1,
+        sigue: i < 49 ? [{ unidad: `n${i + 1}`, pagina: i + 2 }] : [],
+        viene: i ? i : null,
+      });
+    });
+  });
+
+  it("cien_hijas_que_no_caben_ni_solas", async () => {
+    const a: Arbol = { r: Array.from({ length: 100 }, (_, i) => `h${i}`) };
+    const p = await repartir(a, "r", async () => ({ ancho: 1e7, alto: 1e7 }));
+    expect(p.map((x) => [x.raiz, x.profundidad, x.hijas, x.viene])).toEqual(
+      Array.from({ length: 100 }, (_, k) => [
+        "r",
+        1,
+        { desde: k, hasta: k + 1, parte: k + 1, partes: 100 },
+        null,
+      ]),
+    );
+  });
+
+  it("ciclo_en_los_datos_termina_con_error", async () => {
+    await expect(repartir({ r: ["a"], a: ["b"], b: ["a"] })).rejects.toThrow(/ciclo/);
+    await expect(repartir({ r: ["r"] })).rejects.toThrow(/ciclo/);
+  });
+
+  it("rama_muy_honda_no_agota_la_pila", async () => {
+    // Con recursión, 50.000 niveles agotarían la pila de llamadas.
+    const p = await repartir(cadena(50_000), "r", async () => ({ ancho: 1e7, alto: 1e7 }));
+    expect(p).toHaveLength(50_000);
+  });
 });
 
 describe("escalaParaHoja", () => {
@@ -222,6 +268,15 @@ describe("cuadricula", () => {
     // Un dibujo que cabe en una sola hoja da una hoja, sin solape.
     const una = cuadricula(500, 300, "carta", "horizontal", "estructura");
     expect(una.hojas).toEqual([{ fila: 1, columna: 1, x: 0, y: 0, ancho: 500, alto: 300 }]);
+  });
+
+  it("cuadricula_no_agranda", () => {
+    // Con letra de 11 se achica a 8 / 11; con una letra bajo 8, la escala queda en 1 y no agranda.
+    expect(cuadricula(3000, 2000, "carta", "horizontal", "estructura").escala).toBeCloseTo(8 / 11);
+    vi.mocked(letraMinima).mockReturnValueOnce(6);
+    const c = cuadricula(3000, 2000, "carta", "horizontal", "estructura");
+    expect(c.escala).toBe(1);
+    expect(c.hojas[0]!.ancho).toBeCloseTo(areaUtil("carta", "horizontal").ancho);
   });
 
   it("cuadricula_solape_y_bordes", () => {
