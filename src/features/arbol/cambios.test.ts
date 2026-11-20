@@ -16,7 +16,6 @@ const t = (id: string, nombre: string): Trabajador => ({
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  tiene_foto: 0,
   updated_at: "",
 });
 const cargos = [{ id: "cargo", nombre: "Gerente" }];

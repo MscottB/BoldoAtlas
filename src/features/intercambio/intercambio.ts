@@ -147,7 +147,7 @@ export function nombreColumna(c: string): string {
   return te(`intercambio.columnas.${c}`) ? t(`intercambio.columnas.${c}`) : t("intercambio.columnas.otra");
 }
 
-/** Un valor del detalle como se lee: una referencia ya viene por su nombre; una foto, por su tamaño. */
+/** Un valor del detalle como se lee: una referencia ya viene por su nombre; lo que no se muestra, por su tamaño. */
 export function textoValor(columna: string, v: ValorCampo): string {
   const { t, te, locale } = i18n.global;
   if (v.oculto !== null && v.oculto !== undefined)

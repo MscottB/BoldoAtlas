@@ -462,6 +462,9 @@ onUnmounted(() => {
       <p v-if="modo !== 'nueva' && resumen.informe?.nombreHeredado" class="text-sm">
         {{ t("intercambio.importar.tomaraNombre", { nombre: resumen.informe.nombreHeredado }) }}
       </p>
+      <p v-if="resumen.fotosQuitadas" class="text-sm">
+        {{ t("intercambio.importar.fotosQuitadas", { n: resumen.fotosQuitadas }, resumen.fotosQuitadas) }}
+      </p>
       <div v-if="modo !== 'nueva' && resumen.informe" class="overflow-x-auto">
         <table class="text-sm">
           <thead>

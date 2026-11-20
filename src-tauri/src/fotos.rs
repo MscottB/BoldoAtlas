@@ -282,7 +282,7 @@ pub fn fotos_hay(estado: State<Estado>, base_id: String) -> Result<bool, Fallo> 
 /// Quita las fotos de la organización abierta. Devuelve cuántas personas tenían.
 #[tauri::command(async)]
 pub fn fotos_quitar(estado: State<Estado>, base_id: String) -> Result<u64, Fallo> {
-    estado.con_conexion(&base_id, quitar)
+    estado.con_conexion(&base_id, limpiar)
 }
 
 /// Sin esto, lo que ocupaban las fotos queda como páginas libres y el archivo de la base no baja de tamaño. Con WAL, el

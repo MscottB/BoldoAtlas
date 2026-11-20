@@ -9,8 +9,7 @@ import type { Etiqueta, Trabajador, Unidad } from "@/db/tipos";
 import { useOrganizacion } from "@/stores/organizacion";
 import { marcaTenue, textoSobre } from "@/features/tema/tema";
 import { useTema } from "@/features/tema/useTema";
-import { urlFoto } from "@/features/trabajadores/foto";
-import FotoPersona from "@/features/trabajadores/FotoPersona.vue";
+import { iniciales } from "@/lib/texto";
 import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { tamUnidad } from "./vista";
@@ -260,13 +259,14 @@ async function guardar(e: Event) {
       {{ ruta }}
     </span>
     <div v-if="!compacta && config.mostrarJefe" class="flex items-center gap-1.5">
-      <FotoPersona
+      <span
         v-if="data.jefe && config.mostrarFoto"
-        :src="data.jefe.tiene_foto ? urlFoto(data.jefe) : null"
-        :nombre="data.jefe.nombre"
-        class="shrink-0"
+        class="grid shrink-0 place-items-center rounded-full bg-muted"
         :class="personas ? 'size-8 text-xs' : 'size-5 text-[10px]'"
-      />
+        aria-hidden="true"
+      >
+        {{ iniciales(data.jefe.nombre) }}
+      </span>
       <span class="grid min-w-0">
         <span v-if="data.jefe" class="truncate" :class="personas && 'font-medium'">
           {{ data.jefeReemplazo ? t("arbol.reemplazo", { nombre: data.jefe.nombre }) : data.jefe.nombre }}
@@ -287,13 +287,13 @@ async function guardar(e: Event) {
       @click.stop="verPersonas(id, false)"
     >
       <span class="flex gap-0.5" aria-hidden="true">
-        <FotoPersona
+        <span
           v-for="w in data.equipo"
           :key="w.id"
-          :src="w.tiene_foto ? urlFoto(w) : null"
-          :nombre="w.nombre"
-          class="size-6 text-[10px]"
-        />
+          class="grid size-6 place-items-center rounded-full bg-muted text-[10px]"
+        >
+          {{ iniciales(w.nombre) }}
+        </span>
       </span>
       <span v-if="data.resto" class="ml-1 text-muted-foreground" aria-hidden="true">+{{ data.resto }}</span>
     </button>

@@ -8,9 +8,7 @@ export function normalizarCorreo(c: string | null): string | null {
   return c?.trim() || null;
 }
 
-// octet_length no lee el contenido: la lista no toca las fotos, ni siquiera en disco.
-export const SQL_TRABAJADORES = `SELECT id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id,
-  COALESCE(octet_length(foto_png) > 0, 0) AS tiene_foto, updated_at
+export const SQL_TRABAJADORES = `SELECT id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id, updated_at
   FROM trabajadores WHERE deleted_at IS NULL ORDER BY nombre`;
 
 /** Las notas de una persona: se piden al abrir su ficha. */
@@ -24,11 +22,11 @@ export const SQL_ASIGNACIONES_PERSONA = `SELECT u.nombre AS unidad, c.nombre AS 
   LEFT JOIN unidades u ON u.id = p.unidad_id LEFT JOIN cargos c ON c.id = p.cargo_id
   WHERE a.trabajador_id = ? AND a.deleted_at IS NULL ORDER BY a.desde, a.created_at`;
 
-/** Lo que la ficha escribe. Foto y notas no vienen en la lista: `undefined` significa «no se toca». */
+/** Lo que la ficha escribe. Las notas no vienen en la lista: `undefined` significa «no se toca». */
 export type CamposTrabajador = Pick<
   Trabajador,
   "nombre" | "correo" | "telefono" | "tipo_contrato_id" | "sede_id" | "jornada_id"
-> & { foto_png?: string | null; notas?: string | null };
+> & { notas?: string | null };
 
 type DatosTrabajador = Pick<Trabajador, "nombre"> & Partial<Omit<CamposTrabajador, "nombre">>;
 
@@ -40,8 +38,8 @@ export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencia
     sentencias: [
       {
         sql: `INSERT INTO trabajadores (id, nombre, correo, telefono, tipo_contrato_id, sede_id, jornada_id,
-                foto_png, notas, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                notas, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params: [
           id,
           datos.nombre,
@@ -50,7 +48,6 @@ export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencia
           datos.tipo_contrato_id ?? null,
           datos.sede_id ?? null,
           datos.jornada_id ?? null,
-          datos.foto_png ?? null,
           datos.notas ?? null,
           t,
           t,
@@ -60,16 +57,7 @@ export function crearTrabajador(datos: DatosTrabajador): { id: string; sentencia
   };
 }
 
-const EDITABLES = [
-  "nombre",
-  "correo",
-  "telefono",
-  "tipo_contrato_id",
-  "sede_id",
-  "jornada_id",
-  "foto_png",
-  "notas",
-];
+const EDITABLES = ["nombre", "correo", "telefono", "tipo_contrato_id", "sede_id", "jornada_id", "notas"];
 
 export function editarTrabajador(id: string, cambios: Partial<CamposTrabajador>): Sentencia[] {
   const c = cambios.correo === undefined ? cambios : { ...cambios, correo: normalizarCorreo(cambios.correo) };

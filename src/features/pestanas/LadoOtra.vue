@@ -17,7 +17,7 @@ import { useLadoOtra } from "./useLadoOtra";
 import { usePestanas } from "./usePestanas";
 
 // El panel de al lado con otra organización: una copia de solo lectura, en un iframe con la app en modo lado (decisión 2).
-// Lo que se ve es una foto tomada al abrir.
+// Lo que se ve es una instantánea tomada al abrir.
 const props = defineProps<{ id: string }>();
 const { t } = useI18n();
 const pestanas = usePestanas();

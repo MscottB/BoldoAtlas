@@ -33,6 +33,8 @@ import DatosProyecto from "@/features/proyecto/DatosProyecto.vue";
 import DialogoActualizacion from "@/features/actualizaciones/DialogoActualizacion.vue";
 import DialogoNovedades from "@/features/actualizaciones/DialogoNovedades.vue";
 import FichaTrabajador from "@/features/trabajadores/FichaTrabajador.vue";
+import AvisoFotos from "@/features/fotos/AvisoFotos.vue";
+import { revisarAlArrancar } from "@/features/fotos/aviso";
 import { alOtraBase } from "@/db/cliente";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useOrganizaciones } from "@/stores/organizaciones";
@@ -103,6 +105,8 @@ const organizaciones = useOrganizaciones();
 void organizaciones.cargarLista().then((r) => {
   if (!r.ok) console.warn("No se pudo leer la lista de organizaciones:", r.mensaje);
 });
+// La app se monta con la carga inicial ya hecha: si quedaron fotos, se avisa una vez.
+revisarAlArrancar(org.org.nombre).catch((e: unknown) => console.error(e));
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);
@@ -262,6 +266,7 @@ function escEnBarra(e: KeyboardEvent) {
     <DialogoCodigoSinCopiar />
     <DialogoRevisionDejada />
     <DialogoSalir />
+    <AvisoFotos />
     <Toaster :container-aria-label="t('comun.avisos')" />
   </TooltipProvider>
 </template>

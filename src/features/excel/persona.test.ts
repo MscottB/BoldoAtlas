@@ -16,7 +16,6 @@ const persona = {
   tipo_contrato_id: "c1",
   sede_id: "s1",
   jornada_id: "j1",
-  tiene_foto: 1,
   updated_at: "2026-01-01T00:00:00Z",
   notas: "Prefiere reunirse en la mañana",
 };
@@ -31,7 +30,7 @@ const asig = (a: Partial<AsignacionHistorica>): AsignacionHistorica => ({
 });
 
 describe("hojasPersona", () => {
-  it("Datos lleva nombre, correo, teléfono, contrato, sede, jornada y notas; sin foto", () => {
+  it("Datos lleva nombre, correo, teléfono, contrato, sede, jornada y notas", () => {
     const [datos] = hojasPersona(persona, [], nombres, t);
     expect(datos!.nombre).toBe("[excel.persona.datos]");
     const f = Object.fromEntries(datos!.filas.map(([k, v]) => [k, v]));

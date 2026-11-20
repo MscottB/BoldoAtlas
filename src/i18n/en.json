@@ -172,7 +172,7 @@
         "personasEnTarjetas": "People on the cards",
         "mostrarTipo": "Unit type",
         "mostrarJefe": "Head",
-        "mostrarFoto": "Head's photo",
+        "mostrarFoto": "Head's initials",
         "mostrarDotacion": "Headcount",
         "mostrarVacantes": "Vacancies",
         "mostrarEtiquetas": "Tags"
@@ -543,10 +543,6 @@
     "correo": "Email",
     "telefono": "Phone",
     "notas": "Notes",
-    "foto": "Photo",
-    "elegirFoto": "Choose photo",
-    "quitarFoto": "Remove photo",
-    "procesandoFoto": "Preparing the photo…",
     "encabeza": "Units they head",
     "ninguna": "None",
     "eliminar": "Delete",
@@ -563,14 +559,7 @@
     "error": {
       "nombre": "Enter the name.",
       "correo": "The email is not valid.",
-      "fotoTipo": "The photo must be PNG, JPG or WebP.",
-      "fotoPeso": "The photo cannot be larger than 30 MB.",
-      "fotoPesada": "The photo could not be brought below 1 MB.",
-      "fotoDemorada": "The photo took too long to prepare. Choose it again or try another one.",
-      "fotoGuardado": "The photo could not be saved.",
-      "fotoEnorme": "The image has too many pixels (more than 120 megapixels). Choose a smaller one.",
-      "notasLectura": "The notes could not be read. Close the record and open it again.",
-      "fotoLectura": "The photo could not be read."
+      "notasLectura": "The notes could not be read. Close the record and open it again."
     },
     "cerrar": "Close",
     "sinGuardarTitulo": "You have unsaved changes",
@@ -584,6 +573,19 @@
     "puestoCerrado": "{cargo} · {unidad} · {tipo} · {desde} to {hasta}",
     "masDatos": "More details",
     "exportarDatos": "Export their data"
+  },
+  "fotos": {
+    "aviso": {
+      "titulo": "People's photos",
+      "texto": "This version no longer stores people's photos, to keep less personal data on this computer. You have photos in {donde}. If you want to keep them, first export each organization to a .boldo file.",
+      "organizacion": "“{nombre}”",
+      "respaldos": "{n} backup | {n} backups",
+      "y": " and ",
+      "quitar": "Remove the photos now",
+      "masTarde": "Later"
+    },
+    "avance": "Removing the photos…",
+    "listo": "Done. The photos were removed."
   },
   "puesto": {
     "nuevo": "New position",
@@ -1047,27 +1049,6 @@
       "titulo": "Organization",
       "nombre": "Organization name"
     },
-    "fotos": {
-      "titulo": "Photos",
-      "ayuda": "New photos are reduced when you choose them. The ones already saved can be reduced here: they look the same and weigh much less.",
-      "optimizar": "Optimize existing photos",
-      "estimando": "Working out how much would be saved…",
-      "nadaQueHacer": "Your photos are already optimized.",
-      "confirmarTitulo": "Optimize the photos?",
-      "confirmarTexto": "{n} photo takes up {total} and would go down to about {quedarian}. A backup with the originals is made first, and it will take up about {respaldo} on disk. | {n} photos take up {total} and would go down to about {quedarian}. A backup with the originals is made first, and it will take up about {respaldo} on disk.",
-      "confirmar": "Optimize",
-      "volver": "Go back",
-      "respaldo": "Making the backup…",
-      "compactando": "Freeing the space in the database…",
-      "avance": "{n} of {total} photos",
-      "avanceEtiqueta": "Optimization progress",
-      "cancelar": "Cancel",
-      "resultado": "Done. Photos optimized: {n}. Space freed: {ahorro}.",
-      "resultadoCancelado": "Canceled. Photos optimized: {n}. Space freed: {ahorro}. The others stay as they were.",
-      "sinCompactar": "The photos were optimized, but the database file could not be made smaller. That space will be reused over time.",
-      "sinGanancia": "{n} photo would not get lighter and was left as it was. | {n} photos would not get lighter and were left as they were.",
-      "fallidas": "{n} photo could not be optimized and stays as it was: | {n} photos could not be optimized and stay as they were:"
-    },
     "logo": {
       "titulo": "Logo",
       "ayuda": "PNG, JPG or WebP up to 1 MB.",
@@ -1394,7 +1375,7 @@
     "importarComparar": "Compare the file with your data",
     "importarAplicarRevision": "Apply what you decided in the review",
     "revisionAbierta": "Import review with unapplied decisions",
-    "optimizarFotos": "Optimize photos",
+    "quitarFotos": "Remove the photos",
     "comparar": "Compare with another organization"
   },
   "salida": {
@@ -1470,6 +1451,7 @@
       "vaciadas": "{n} reference to something that does not come in is left empty. | {n} references to something that does not come in are left empty.",
       "agregarNoDisponible": "Not available: {motivo}. With this file you can only replace everything.",
       "tomaraNombre": "Your database has no name: it will take “{nombre}”.",
+      "fotosQuitadas": "{n} photo was not imported | {n} photos were not imported",
       "tomoNombre": "Your database took the name “{nombre}”.",
       "hechoNada": "Done. There was nothing new to add.",
       "detalle": "{n} record with a notice | {n} records with a notice",
@@ -2046,7 +2028,7 @@
   "suprimir": {
     "boton": "Delete permanently",
     "titulo": "Delete “{nombre}” permanently?",
-    "queSeBorra": "Their email, phone, notes, photo and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out; with “No limit”, it stays.",
+    "queSeBorra": "Their email, phone, notes and the rest of their record are erased. Where they held a position, it shows “Deleted person”. Their name stays in the change history until that history's retention period runs out; with “No limit”, it stays.",
     "sinCompactar": "The person was deleted, but the file could not be compacted yet. Close and reopen the organization to finish.",
     "noSeDeshace": "This cannot be undone.",
     "respaldos": "Earlier backups that still hold them are deleted automatically after 30 days, while that organization is open.",

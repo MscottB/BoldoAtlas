@@ -149,7 +149,7 @@ describe("el detalle, campo por campo", () => {
     expect(texto("parent_id", "u1")).toBe("Ventas");
     expect(texto("parent_id", "borrada")).toBe("[historial.vista.otro]");
     expect(texto("orden", 2)).toBe('[intercambio.revisar.posicion {"n":3}]');
-    expect(texto("foto_png", "iVBORw0KGgo")).toBe("[historial.vista.imagen]");
+    expect(texto("logo_png", "iVBORw0KGgo")).toBe("[historial.vista.imagen]");
     expect([texto("deleted_at", "2026-11-18T10:00:00.000Z"), texto("deleted_at", null)]).toEqual([
       "[historial.vista.si]",
       "[historial.vista.no]",

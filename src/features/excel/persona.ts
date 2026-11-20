@@ -1,4 +1,4 @@
-// «Exportar sus datos»: lo que la app guarda de una persona, en dos hojas (Datos y Puestos). Sin foto.
+// «Exportar sus datos»: lo que la app guarda de una persona, en dos hojas (Datos y Puestos).
 import type { Trabajador, TablaCatalogo, ValorCatalogo } from "@/db/tipos";
 import { fechaExcel, type Hoja, type Traducir } from "./libro";
 

@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  FOTO_ENTRADA_MAX_BYTES,
   camposGuardables,
   cambiosFicha,
-  guardadoDeFicha,
   hayCambiosSinGuardar,
   hayCoincidenciaExacta,
   normalizarFicha,
   validarFicha,
-  validarFoto,
   type DatosFicha,
 } from "./validar";
 
@@ -24,20 +21,6 @@ describe("validarFicha", () => {
   it("correo válido o en blanco no da error", () => {
     expect(validarFicha({ ...base, correo: "ana@ejemplo.cl" })).toEqual({});
     expect(validarFicha({ ...base, correo: "   " })).toEqual({});
-  });
-});
-
-describe("validarFoto", () => {
-  it.each(["image/png", "image/jpeg", "image/webp"])("acepta %s de hasta 30 MB", (type) => {
-    expect(validarFoto({ type, size: FOTO_ENTRADA_MAX_BYTES })).toBeNull();
-  });
-  it("rechaza otros tipos", () => {
-    expect(validarFoto({ type: "image/gif", size: 10 })).toBe("La foto debe ser PNG, JPG o WebP.");
-  });
-  it("rechaza más de 30 MB", () => {
-    expect(validarFoto({ type: "image/png", size: FOTO_ENTRADA_MAX_BYTES + 1 })).toBe(
-      "La foto no puede pesar más de 30 MB.",
-    );
   });
 });
 
@@ -58,7 +41,6 @@ const vacia: DatosFicha = {
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  foto_png: null,
   notas: null,
 };
 const guardada: DatosFicha = { ...vacia, nombre: "Ana", correo: "ana@x.cl" };
@@ -70,10 +52,6 @@ describe("guardar cada campo válido", () => {
     expect(Object.keys(cambios).sort()).toEqual(["correo", "telefono"]);
     expect(camposGuardables(cambios, validarFicha(form))).toEqual({ telefono: "123" });
   });
-  it("la foto se guarda sola aunque otro campo sea inválido", () => {
-    const form = { ...guardada, correo: "ana@", foto_png: "AAAA" };
-    expect(camposGuardables(cambiosFicha(form, guardada), validarFicha(form))).toEqual({ foto_png: "AAAA" });
-  });
   it("borrar el nombre no se guarda; el nombre se guarda recortado", () => {
     const sinNombre = { ...guardada, nombre: "  " };
     expect(camposGuardables(cambiosFicha(sinNombre, guardada), validarFicha(sinNombre))).toEqual({});
@@ -84,7 +62,7 @@ describe("guardar cada campo válido", () => {
 
 describe("guardar sin pisar lo que no se cargó", () => {
   // Así queda la ficha antes de que lleguen las notas: lo guardado no las tiene y el formulario las muestra vacías.
-  const sinCargar: DatosFicha = { ...guardada, notas: undefined, foto_png: undefined };
+  const sinCargar: DatosFicha = { ...guardada, notas: undefined };
   const formAbierto: DatosFicha = { ...sinCargar, notas: "" };
 
   it("con notas sin cargar, editar otro campo no las incluye: no se borran", () => {
@@ -99,30 +77,13 @@ describe("guardar sin pisar lo que no se cargó", () => {
   it("normalizar no convierte las notas sin cargar en null", () => {
     expect(normalizarFicha(sinCargar).notas).toBeUndefined();
   });
-  it("la foto sin tocar nunca se escribe; quitarla sí", () => {
-    expect("foto_png" in cambiosFicha({ ...formAbierto, telefono: "1" }, sinCargar)).toBe(false);
-    expect(cambiosFicha({ ...formAbierto, foto_png: null }, sinCargar)).toEqual({ foto_png: null });
-  });
   it("ya cargadas, vaciar las notas sí se guarda", () => {
-    const base = { ...guardada, notas: "una nota", foto_png: undefined };
+    const base = { ...guardada, notas: "una nota" };
     expect(cambiosFicha({ ...base, notas: "  " }, base)).toEqual({ notas: null });
     expect(cambiosFicha({ ...base, notas: " otra " }, base)).toEqual({ notas: "otra" });
   });
-  it("sin foto guardada, quitar una recién elegida no es un cambio: una ficha nueva no avisa en falso", () => {
-    const nueva = { id: "", nombre: "", correo: null, telefono: null, tipo_contrato_id: null, sede_id: null, jornada_id: null, tiene_foto: 0, updated_at: "" };
-    const base = guardadoDeFicha(nueva, null);
-    expect(hayCambiosSinGuardar({ ...base, notas: "", foto_png: null }, base)).toBe(false);
-    expect(hayCambiosSinGuardar({ ...base, notas: "", foto_png: undefined }, base)).toBe(false);
-    expect(hayCambiosSinGuardar({ ...base, foto_png: "AAAA" }, base)).toBe(true);
-  });
-  it("con foto guardada, quitarla sí es un cambio y no tocarla no", () => {
-    const conFoto = { id: "a", nombre: "Ana", correo: null, telefono: null, tipo_contrato_id: null, sede_id: null, jornada_id: null, tiene_foto: 1, updated_at: "u" };
-    const base = guardadoDeFicha(conFoto, null);
-    expect(cambiosFicha({ ...base, foto_png: null }, base)).toEqual({ foto_png: null });
-    expect(cambiosFicha({ ...base, foto_png: undefined }, base)).toEqual({});
-  });
   it("ignora lo que no edita la ficha, aunque venga en el objeto", () => {
-    const conExtras = { ...sinCargar, id: "x", tiene_foto: 1, updated_at: "ayer" };
+    const conExtras = { ...sinCargar, id: "x", updated_at: "ayer" };
     expect(cambiosFicha(conExtras as DatosFicha, sinCargar)).toEqual({});
   });
 });

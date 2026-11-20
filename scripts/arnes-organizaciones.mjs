@@ -97,7 +97,7 @@ export const EDITAR = {
     "puesto.nuevoPuesto",
   ],
   arboles: ["arboles.nuevoArbol", "arboles.renombrar", "arboles.subir", "arboles.bajar", "arboles.quitar"],
-  ficha: ["ficha.eliminar", "ficha.elegirFoto", "ficha.quitarFoto"],
+  ficha: ["ficha.eliminar"],
   puesto: [
     "puesto.accion.titular",
     "puesto.accion.reemplazo",

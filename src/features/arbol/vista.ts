@@ -21,6 +21,7 @@ export interface ConfigVista {
   lineas: "smoothstep" | "bezier";
   mostrarTipo: boolean;
   mostrarJefe: boolean;
+  /** Las iniciales de la jefatura; la clave guardada sigue siendo la de cuando era su foto. */
   mostrarFoto: boolean;
   mostrarDotacion: boolean;
   mostrarVacantes: boolean;

@@ -6,7 +6,7 @@ const LADO = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 const ABIERTA = "0190a1b2-c3d4-7e5f-8a9b-ffffffffffff";
 const VEDADOS = [
   "db_lote",
-  "foto_bytes",
+  "fotos_quitar",
   "info_app",
   "info_proyecto",
   "plugin:event|listen",
@@ -143,9 +143,9 @@ describe("instalarPuente, sin IPC propio (macOS y Linux)", () => {
     expect(await puente.invoke("db_consultar", {}).catch((x: unknown) => x)).toBe(fallo);
   });
 
-  it("las fotos, las llamadas de vuelta y la ventana son las del padre", async () => {
+  it("las direcciones de archivos, las llamadas de vuelta y la ventana son las del padre", async () => {
     const { internos, puente } = await conPadre();
-    expect(puente.convertFileSrc(LADO, "foto")).toBe(`http://foto.localhost/${LADO}`);
+    expect(puente.convertFileSrc(LADO, "asset")).toBe(`http://asset.localhost/${LADO}`);
     expect(puente.transformCallback()).toBe(7);
     puente.unregisterCallback(7);
     expect(internos.unregisterCallback).toHaveBeenCalledWith(7);
@@ -154,7 +154,7 @@ describe("instalarPuente, sin IPC propio (macOS y Linux)", () => {
 
   it("solo_lectura_se_traduce", async () => {
     const { puente } = await conPadre();
-    const e = await puente.invoke("foto_bytes", {}).catch((x: unknown) => x);
+    const e = await puente.invoke("fotos_quitar", {}).catch((x: unknown) => x);
     expect(traducirError(e)).toBe(i18n.global.t("respaldos.error.solo_lectura"));
     expect(traducirError(e)).not.toBe("solo_lectura");
   });

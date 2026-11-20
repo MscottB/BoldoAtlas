@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FOTO_MAX_BYTES as MAX_LOGO_BYTES } from "@/features/trabajadores/validar";
-import { base64De, validarLogo } from "./logo";
+import { LOGO_MAX_BYTES as MAX_LOGO_BYTES, base64De, validarLogo } from "./logo";
 
 describe("validarLogo", () => {
   it.each(["image/png", "image/jpeg", "image/webp"])("acepta %s hasta 1 MB", (type) => {

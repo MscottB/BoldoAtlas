@@ -26,6 +26,7 @@ import {
   respaldoAutomatico,
   soloRespaldoAutomatico,
 } from "@/features/respaldos/respaldos";
+import { revisarExterna } from "@/features/fotos/aviso";
 import { useFicha } from "@/features/trabajadores/useFicha";
 import { i18n } from "@/i18n";
 import { MODO_LADO } from "@/lado/modo";
@@ -252,6 +253,11 @@ export const useOrganizaciones = defineStore("organizaciones", () => {
       return { ok: true };
     }
     await entrarEn(o.id, pestana, inicio);
+    // el arranque no mira los archivos externos: si este trae fotos, el aviso es solo por él
+    if (o.externa)
+      revisarExterna(o.id, o.nombre).catch((e: unknown) => {
+        if (!(e instanceof BaseCambiada)) console.error(e);
+      });
     return { ok: true };
   }
 

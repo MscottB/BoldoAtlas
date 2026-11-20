@@ -272,7 +272,7 @@ export interface Respaldo {
   reemplazo: boolean;
   /** Hecho antes de agregar o fusionar un archivo importado. */
   importacion: boolean;
-  /** Hecho antes de optimizar las fotos. */
+  /** Hecho antes de optimizar las fotos, cuando la app aún las guardaba. */
   optimizacion: boolean;
 }
 
@@ -306,11 +306,6 @@ export function podarRespaldosSuprimidas(): Promise<number> {
 /** Borrado definitivo: vacía a la persona y compacta la base. `relleno`: el nombre que queda («Persona suprimida»). */
 export function suprimirPersona(id: string, relleno: string): Promise<void> {
   return conBase<void>("suprimir_persona", { id, relleno });
-}
-
-/** Respaldo previo a optimizar las fotos: quedan los últimos 3. */
-export function respaldarAntesDeOptimizar(): Promise<string> {
-  return conBase<string>("respaldar_antes_de_optimizar");
 }
 
 /** Si sale bien, la app se reinicia y la promesa no se resuelve. */
@@ -388,6 +383,8 @@ export interface ResumenImportacion {
   motivoRevision: string | null;
   /** Cada rama frente a esta base, también si la revisión falló. null si no se pudo saber. */
   ramas: RamaImportada[] | null;
+  /** Personas del archivo que traían foto: se quitaron, la app de escritorio no las guarda. */
+  fotosQuitadas: number;
 }
 
 /** `raices` null: toda la base. */
@@ -524,7 +521,7 @@ export interface FilaCaso {
 
 export interface ValorCampo {
   texto: string | null;
-  /** De lo que no se muestra (una foto): cuántos bytes tiene. */
+  /** De lo que no se muestra (la configuración, o una foto de un respaldo viejo): cuántos bytes tiene. */
   oculto: number | null;
   cortado: boolean;
 }
@@ -742,22 +739,29 @@ export function ladoCerrar(): Promise<void> {
   return invoke("lado_cerrar");
 }
 
-// Fotos, en binario: no pasan por JSON.
-export function fotoBytes(id: string): Promise<ArrayBuffer> {
-  return conBase<ArrayBuffer>("foto_bytes", { id });
+// Fotos: la app de escritorio ya no las guarda (src-tauri/src/fotos.rs). Solo se quitan las que quedaron.
+/** Lo que aún tiene fotos: los nombres de las organizaciones y cuántos respaldos. Sin las externas. */
+export interface FotosPendientes {
+  organizaciones: string[];
+  respaldos: number;
 }
 
-/** El comando recibe solo bytes: `armar` escribe en el cuerpo la base con que se pidió. */
-export function fotosGuardar(armar: (baseId: string) => Promise<Uint8Array>): Promise<number> {
-  const base = baseActual();
-  return vigilar(
-    base,
-    armar(base).then((cuerpo) => invoke<number>("fotos_guardar", cuerpo)),
-  );
+export function fotosPendientes(): Promise<FotosPendientes> {
+  return invoke("fotos_pendientes");
 }
 
-export function fotosCompactar(): Promise<void> {
-  return conBase("fotos_compactar");
+/** Las quita de todas las organizaciones y respaldos; avisa `fotos-avance`. Devuelve cuántas personas tenían foto. */
+export function fotosQuitarTodas(trabajo: string): Promise<number> {
+  return invoke("fotos_quitar_todas", { trabajo });
+}
+
+/** Si la organización abierta tiene fotos: para una externa, que el arranque no mira. */
+export function fotosHay(): Promise<boolean> {
+  return conBase("fotos_hay");
+}
+
+export function fotosQuitar(): Promise<number> {
+  return conBase("fotos_quitar");
 }
 
 // Excel: el libro se arma en la ventana; «Guardar como» y la escritura quedan en Rust (src-tauri/src/excel.rs).

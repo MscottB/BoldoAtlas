@@ -51,7 +51,7 @@ export function instalarPuente(padre: Window): void {
         (e: unknown) => Promise.reject(copiaDe(e)),
       );
     },
-    // las fotos llegan por `foto://<id del lado>/…`
+    // lo que la app sirva por un protocolo propio, con la dirección del padre
     convertFileSrc: del.convertFileSrc.bind(del),
     transformCallback: del.transformCallback.bind(del),
     unregisterCallback: del.unregisterCallback.bind(del),

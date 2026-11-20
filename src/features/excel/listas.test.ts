@@ -166,7 +166,6 @@ describe("Personas de una unidad", () => {
     personaId: "w1",
     nombre: "Ana",
     correo: "ana@x.cl",
-    foto: "http://foto.localhost/x/w1",
     puestoId: "p1",
     cargo: "Jefa",
     tipo: "titular",
@@ -175,7 +174,7 @@ describe("Personas de una unidad", () => {
     ...f,
   });
 
-  it("nombre, cargo, tipo y unidad, en el orden dado y sin foto ni ids", () => {
+  it("nombre, cargo, tipo y unidad, en el orden dado y sin ids", () => {
     const h = hojaPersonas(
       [persona({}), persona({ clave: "a2", nombre: "Beto", tipo: "reemplazo" })],
       "Taller",

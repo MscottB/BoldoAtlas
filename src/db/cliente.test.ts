@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.stubGlobal("__APP_VERSION__", "prueba");
 
 const c = await import("./cliente");
-const { consultar, lote, alOtraBase, colaVacia, fotosGuardar } = c;
+const { consultar, lote, alOtraBase, colaVacia } = c;
 const { BaseCambiada, fijarBase, marcarCambio } = await import("@/lib/baseActiva");
 const { mensajeFallo } = await import("@/features/respaldos/respaldos");
 const { traducirError } = await import("./errores");
@@ -19,7 +19,6 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["leerMeta", () => c.leerMeta()],
   ["listarRespaldos", () => c.listarRespaldos()],
   ["respaldarAhora", () => c.respaldarAhora()],
-  ["respaldarAntesDeOptimizar", () => c.respaldarAntesDeOptimizar()],
   ["restaurarRespaldo", () => c.restaurarRespaldo("n")],
   ["abrirCarpetaRespaldos", () => c.abrirCarpetaRespaldos()],
   ["infoProyecto", () => c.infoProyecto()],
@@ -37,8 +36,8 @@ const CASOS: [string, () => Promise<unknown>][] = [
   ["revisionBloqueos", () => c.revisionBloqueos("t", 0, 1)],
   ["revisionOpciones", () => c.revisionOpciones("t", "destino", "texto")],
   ["revisionAplicar", () => c.revisionAplicar("t", 1, false)],
-  ["fotoBytes", () => c.fotoBytes("id")],
-  ["fotosCompactar", () => c.fotosCompactar()],
+  ["fotosHay", () => c.fotosHay()],
+  ["fotosQuitar", () => c.fotosQuitar()],
   ["compararOrganizaciones", () => c.compararOrganizaciones("otra", "t")],
   ["comparacionPagina", () => c.comparacionPagina({ tabla: null, presencia: null, desde: 0, cuantos: 1 })],
   ["comparacionDetalle", () => c.comparacionDetalle("tabla", "id")],
@@ -76,16 +75,11 @@ describe("baseId", () => {
     expect(invoke).toHaveBeenLastCalledWith("lado_cerrar");
   });
 
-  it("fotosGuardar arma el cuerpo con la base con que se pidió y lo manda tal cual", async () => {
-    const cuerpo = new Uint8Array([1, 2]);
-    let soltar: (c: Uint8Array) => void = () => {};
-    const armar = vi.fn<(baseId: string) => Promise<Uint8Array>>(() => new Promise((r) => (soltar = r)));
-    invoke.mockResolvedValue(3);
-    const p = fotosGuardar(armar);
-    expect(armar).toHaveBeenCalledWith("A");
-    soltar(cuerpo);
-    await expect(p).resolves.toBe(3);
-    expect(invoke).toHaveBeenCalledWith("fotos_guardar", cuerpo);
+  it("las fotos de todas las organizaciones no dependen de la abierta", async () => {
+    await c.fotosPendientes();
+    expect(invoke).toHaveBeenLastCalledWith("fotos_pendientes");
+    await c.fotosQuitarTodas("t");
+    expect(invoke).toHaveBeenLastCalledWith("fotos_quitar_todas", { trabajo: "t" });
   });
 
   it("excelGuardar manda el largo del pedido, el pedido con el nombre y el libro, en un solo cuerpo", async () => {
@@ -155,16 +149,6 @@ describe("el seguro", () => {
     await expect(segundo).rejects.toBeInstanceOf(BaseCambiada);
     expect(invoke.mock.calls.map((l) => (l[1] as { baseId: string }).baseId)).toEqual(["A", "A"]);
   });
-
-  it("fotosGuardar descarta la respuesta con otra base activa", async () => {
-    let resolver: (r: unknown) => void = () => {};
-    invoke.mockImplementation(() => new Promise((r) => (resolver = r)));
-    const p = fotosGuardar(async () => new Uint8Array());
-    await vi.waitFor(() => expect(invoke).toHaveBeenCalled());
-    fijarBase("B");
-    resolver(1);
-    await expect(p).rejects.toBeInstanceOf(BaseCambiada);
-  });
 });
 
 describe("otra_base", () => {
@@ -182,11 +166,10 @@ describe("otra_base", () => {
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
-  it("también lo reconoce en un lote y en fotosGuardar", async () => {
+  it("también lo reconoce en un lote", async () => {
     invoke.mockRejectedValue("otra_base");
     await expect(lote([{ sql: "a" }])).rejects.toBe("otra_base");
-    await expect(fotosGuardar(async () => new Uint8Array())).rejects.toBe("otra_base");
-    expect(manejador).toHaveBeenCalledTimes(2);
+    expect(manejador).toHaveBeenCalledTimes(1);
   });
 
   it("con la base ya cambiada no avisa", async () => {

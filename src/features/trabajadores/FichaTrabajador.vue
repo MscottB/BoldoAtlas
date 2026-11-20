@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { Eraser, History, ImagePlus, Trash2, X } from "@lucide/vue";
+import { Eraser, History, Trash2 } from "@lucide/vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,13 +37,13 @@ import { rutaHistorial } from "@/features/historial/historial";
 import { irConFoco } from "@/features/pestanas/routerConFoco";
 import { useOrganizacion } from "@/stores/organizacion";
 import { useRetornoFoco } from "@/lib/foco";
+import { iniciales } from "@/lib/texto";
 import BloquePlegable from "@/components/BloquePlegable.vue";
 import BotonUbicar from "@/features/arbol/BotonUbicar.vue";
 import BotonExcel from "@/features/excel/BotonExcel.vue";
 import { hojasPersona, type AsignacionHistorica } from "@/features/excel/persona";
 import DialogoSuprimir from "./DialogoSuprimir.vue";
 import SelectorCatalogo from "./SelectorCatalogo.vue";
-import { prepararFoto, procesarFoto, urlFoto } from "./foto";
 import { useFicha } from "./useFicha";
 import {
   camposGuardables,
@@ -52,7 +52,6 @@ import {
   hayCambiosSinGuardar,
   normalizarFicha,
   validarFicha,
-  validarFoto,
   type DatosFicha,
 } from "./validar";
 
@@ -78,11 +77,9 @@ const vacio = (): Trabajador => ({
   tipo_contrato_id: null,
   sede_id: null,
   jornada_id: null,
-  tiene_foto: 0,
   updated_at: "",
 });
 // Los campos de texto se editan como "" y se guardan como null (el nombre, obligatorio, solo se recorta).
-// `foto_png` undefined: la foto no se ha tocado (ver DatosFicha).
 const form = reactive<DatosFicha & { id: string; correo: string; telefono: string; notas: string }>({
   id: "",
   nombre: "",
@@ -92,7 +89,6 @@ const form = reactive<DatosFicha & { id: string; correo: string; telefono: strin
   sede_id: null,
   jornada_id: null,
   notas: "",
-  foto_png: undefined,
 });
 // "" = ficha nueva, todavía sin guardar.
 const id = computed(() => form.id || null);
@@ -100,8 +96,6 @@ const verErrores = ref(false);
 // Errores que devolvió la base, por campo del formulario (o "general"); se borran al editar ese campo.
 const fallidos = ref<Record<string, string>>({});
 const confirmando = ref(false);
-const errorFoto = ref("");
-const procesandoFoto = ref(0);
 // Las notas de esta ficha en la base. undefined: aún no llegan, y mientras tanto no se editan ni se escriben.
 const notasGuardadas = ref<string | null | undefined>(null);
 const errorNotas = ref(false);
@@ -137,12 +131,10 @@ watch(
       sede_id: w.sede_id,
       jornada_id: w.jornada_id,
       notas: "",
-      foto_png: undefined,
     });
     verErrores.value = false;
     fallidos.value = {};
     confirmando.value = false;
-    errorFoto.value = "";
     errorNotas.value = false;
     notasGuardadas.value = null;
     pedidoNotas++; // lo que venga en camino es de la ficha anterior
@@ -190,7 +182,6 @@ async function guardarAhora() {
     if (r.ok) {
       form.id = r.id!;
       notasGuardadas.value = datos.notas;
-      if (form.foto_png === datos.foto_png) form.foto_png = undefined; // ya guardada: ahora la sirve Rust
     } else
       fallidos.value = { [r.mensaje === t("errores.correoDuplicado") ? "correo" : "general"]: r.mensaje };
     return;
@@ -209,14 +200,11 @@ async function guardarAhora() {
       continue;
     }
     if (campo === "notas") notasGuardadas.value = valor;
-    if (campo === "foto_png" && form.foto_png === valor) form.foto_png = undefined;
   }
 }
 
 async function hayCambios() {
-  const conFoto = procesandoFoto.value > 0;
   await cola; // que termine lo que se está guardando antes de decidir
-  if (conFoto && errorFoto.value) return true; // la foto que se esperaba no quedó: que no se cierre sin verlo
   const base = id.value ? org.trabajadores.find((x) => x.id === id.value) : vacio();
   return !!base && hayCambiosSinGuardar(form, guardadoDe(base));
 }
@@ -275,47 +263,10 @@ function alSalir() {
   guardar();
 }
 
-function cambiar<K extends CampoCatalogo | "foto_png">(campo: K, valor: DatosFicha[K]) {
+function cambiar<K extends CampoCatalogo>(campo: K, valor: DatosFicha[K]) {
   (form as Record<string, unknown>)[campo] = valor;
   guardar();
 }
-
-const inputFoto = ref<HTMLInputElement | null>(null);
-let ultimaFoto = 0; // el mensaje es de la última foto elegida
-async function elegirFoto(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const archivo = input.files?.[0];
-  input.value = ""; // permite volver a elegir el mismo archivo
-  if (!archivo) return;
-  const esta = ++ultimaFoto;
-  errorFoto.value = validarFoto(archivo) ?? "";
-  if (errorFoto.value) return;
-  // En la cola: cerrar la ficha o pasar a otra espera a que la foto quede guardada, como con cualquier otro campo.
-  // Se compara la apertura y no el id: una ficha nueva cambia de id al crearse y sigue siendo la misma.
-  const apertura = ficha.abierta.value;
-  const sigueAbierta = () => ficha.abierta.value === apertura;
-  procesandoFoto.value++;
-  cola = cola.then(() =>
-    procesarFoto({
-      preparar: () => prepararFoto(archivo, sigueAbierta),
-      vigente: () => esta === ultimaFoto && sigueAbierta(),
-      guardar: async (base64) => {
-        form.foto_png = base64; // solo el base64
-        await guardarAhora();
-      },
-      avisar: (error) => (errorFoto.value = error ? t(`ficha.error.${error}`) : ""),
-      terminar: () => procesandoFoto.value--,
-    }),
-  );
-}
-
-// Recién elegida: la del formulario. Si no: la que sirve Rust, salvo que se acabe de quitar.
-const vistaFoto = computed(() => {
-  if (form.foto_png) return `data:image/png;base64,${form.foto_png}`;
-  if (form.foto_png === null || !id.value) return null;
-  const w = org.trabajadores.find((x) => x.id === id.value);
-  return w?.tiene_foto ? urlFoto(w) : null;
-});
 
 // Unidades de las que es el jefe visible (titular o, si falta, reemplazo del puesto de jefatura).
 const encabeza = computed(() => {
@@ -381,13 +332,12 @@ async function datosPersona() {
   };
 }
 
-// «Más datos» se abre solo si ya tiene algo adentro o un error (la foto, o lo que la base rechazó de esos campos).
+// «Más datos» se abre solo si ya tiene algo adentro o un error (lo que la base rechazó de esos campos).
 const conMasDatos = computed(
   () =>
-    !!(form.tipo_contrato_id || form.sede_id || form.jornada_id || form.notas.trim() || vistaFoto.value) ||
-    !!errorFoto.value ||
+    !!(form.tipo_contrato_id || form.sede_id || form.jornada_id || form.notas.trim()) ||
     errorNotas.value ||
-    ["tipo_contrato_id", "sede_id", "jornada_id", "notas", "foto_png"].some((k) => k in fallidos.value),
+    ["tipo_contrato_id", "sede_id", "jornada_id", "notas"].some((k) => k in fallidos.value),
 );
 
 const titulo = computed(() => t(id.value ? "ficha.tituloPersona" : "ficha.nuevaPersona"));
@@ -408,7 +358,16 @@ const alAbrir = (e: Event) => {
       @close-auto-focus="retorno.alCerrar"
     >
       <DialogHeader>
-        <DialogTitle>{{ titulo }}</DialogTitle>
+        <div class="flex items-center gap-3">
+          <span
+            v-if="id"
+            class="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-sm"
+            aria-hidden="true"
+          >
+            {{ iniciales(nombreGuardado) }}
+          </span>
+          <DialogTitle>{{ titulo }}</DialogTitle>
+        </div>
         <DialogDescription>{{
           t(alLado ? "ficha.descripcionSoloLectura" : "ficha.descripcion")
         }}</DialogDescription>
@@ -537,42 +496,6 @@ const alAbrir = (e: Event) => {
               <p v-if="errorNotas" role="alert" class="text-xs text-destructive">
                 {{ t("ficha.error.notasLectura") }}
               </p>
-            </div>
-
-            <div class="grid gap-1.5 sm:col-span-2">
-              <p class="text-sm font-medium">{{ t("ficha.foto") }}</p>
-              <div class="flex items-center gap-2">
-                <img v-if="vistaFoto" :src="vistaFoto" alt="" class="size-12 rounded-full object-cover" />
-                <template v-if="!alLado">
-                  <input
-                    ref="inputFoto"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    class="hidden"
-                    tabindex="-1"
-                    @change="elegirFoto"
-                  />
-                  <Button type="button" size="sm" variant="outline" @click="inputFoto?.click()">
-                    <ImagePlus aria-hidden="true" />
-                    {{ t("ficha.elegirFoto") }}
-                  </Button>
-                  <Button
-                    v-if="vistaFoto"
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    :disabled="procesandoFoto > 0"
-                    @click="cambiar('foto_png', null)"
-                  >
-                    <X aria-hidden="true" />
-                    {{ t("ficha.quitarFoto") }}
-                  </Button>
-                </template>
-              </div>
-              <p v-if="procesandoFoto" role="status" class="text-xs text-muted-foreground">
-                {{ t("ficha.procesandoFoto") }}
-              </p>
-              <p v-if="errorFoto" role="alert" class="text-xs text-destructive">{{ errorFoto }}</p>
             </div>
           </div>
         </BloquePlegable>

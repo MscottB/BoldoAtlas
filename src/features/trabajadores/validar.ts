@@ -5,12 +5,6 @@ import { normalizarTexto } from "@/lib/texto";
 
 const t = i18n.global.t;
 
-/** Lo que se guarda: la foto ya optimizada y el logo. */
-export const FOTO_MAX_BYTES = 1024 * 1024;
-/** Lo que se acepta elegir: la foto se reduce al elegirla, y una de teléfono pesa varios MB. */
-export const FOTO_ENTRADA_MAX_BYTES = 30 * 1024 * 1024;
-export const FOTO_TIPOS = ["image/png", "image/jpeg", "image/webp"];
-
 // Forma mínima de correo (algo@dominio.ext); la unicidad la impone la base.
 const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,21 +17,11 @@ export function validarFicha(f: { nombre: string; correo: string | null }): Reco
   return errores;
 }
 
-/** Mensaje de error de la foto elegida, o null si sirve. */
-export function validarFoto(archivo: { type: string; size: number }): string | null {
-  if (!FOTO_TIPOS.includes(archivo.type)) return t("ficha.error.fotoTipo");
-  if (archivo.size > FOTO_ENTRADA_MAX_BYTES) return t("ficha.error.fotoPeso");
-  return null;
-}
-
 /** ¿Ya hay un valor igual al texto, sin importar mayúsculas, tildes ni espacios? (decide si se ofrece "Agregar"). */
 export const hayCoincidenciaExacta = (valores: { nombre: string }[], texto: string): boolean =>
   valores.some((v) => normalizarTexto(v.nombre) === normalizarTexto(texto));
 
-/**
- * Lo que edita la ficha. Foto y notas no vienen en la lista: `notas` undefined en lo guardado es que aún no se cargaron, y
- * `foto_png` undefined en el formulario es que no se tocó (null la quita). En ninguno de los dos casos se escribe.
- */
+/** Lo que edita la ficha. Las notas no vienen en la lista: undefined en lo guardado es que aún no se cargaron, y no se escriben. */
 export type DatosFicha = CamposTrabajador;
 
 const CAMPOS_FICHA: (keyof DatosFicha)[] = [
@@ -47,7 +31,6 @@ const CAMPOS_FICHA: (keyof DatosFicha)[] = [
   "tipo_contrato_id",
   "sede_id",
   "jornada_id",
-  "foto_png",
   "notas",
 ];
 
@@ -61,10 +44,7 @@ export const normalizarFicha = (f: DatosFicha): DatosFicha => ({
   ...(f.notas === undefined ? {} : { notas: f.notas?.trim() || null }),
 });
 
-/**
- * Lo guardado de una ficha, tal como se compara con el formulario. Sin foto es null, y quitar una foto recién elegida no es
- * un cambio; con foto es undefined, porque su contenido no se carga, y quitarla sí lo es.
- */
+/** Lo guardado de una ficha, tal como se compara con el formulario. */
 export const guardadoDeFicha = (w: Trabajador, notas: string | null | undefined): DatosFicha => ({
   nombre: w.nombre,
   correo: w.correo,
@@ -72,7 +52,6 @@ export const guardadoDeFicha = (w: Trabajador, notas: string | null | undefined)
   tipo_contrato_id: w.tipo_contrato_id,
   sede_id: w.sede_id,
   jornada_id: w.jornada_id,
-  foto_png: w.tiene_foto ? undefined : null,
   notas,
 });
 

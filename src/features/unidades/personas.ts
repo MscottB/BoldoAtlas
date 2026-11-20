@@ -1,7 +1,6 @@
 import type { Asignacion, Puesto, Trabajador, Unidad, ValorCatalogo } from "@/db/tipos";
 import { descendientes, type Vigentes } from "@/features/arbol/jerarquia";
 import { asignacionesDePersona, type FilaPersona } from "@/features/puestos/puestos";
-import { urlFoto } from "@/features/trabajadores/foto";
 import { normalizarTexto } from "@/lib/texto";
 
 /** Una asignación vigente (titular o reemplazo) en un puesto del alcance: una persona con dos puestos da dos filas. */
@@ -11,8 +10,6 @@ export interface FilaPersonaUnidad {
   personaId: string;
   nombre: string;
   correo: string | null;
-  /** URL de su foto (`urlFoto`), si tiene. */
-  foto: string | null;
   puestoId: string;
   cargo: string;
   tipo: Asignacion["tipo"];
@@ -52,7 +49,6 @@ export function personasDelAlcance(
         personaId: w.id,
         nombre: w.nombre,
         correo: w.correo,
-        foto: w.tiene_foto ? urlFoto(w) : null,
         puestoId: p.id,
         cargo: cargo.get(p.cargo_id) ?? "",
         tipo: a.tipo,
