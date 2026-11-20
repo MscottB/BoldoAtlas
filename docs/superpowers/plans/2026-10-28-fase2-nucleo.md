@@ -826,16 +826,8 @@ El escritorio se lleva a la web exportando un `.boldo`, que la web importará.
 6. 19d, 19f y 19e, al final: base cifrada, candado por árbol y página «Seguridad y privacidad». La 19d también cifra los escenarios; la 19e explica que el escritorio ya no guarda fotos.
 
 ### Task 27c: Fotos solo en la edición web (decisión del autor, 2026-11-19)
-- Menos datos personales en el equipo: el escritorio deja de mostrar y de guardar fotos. Las tarjetas, la ficha y el Directorio usan las iniciales, como hoy cuando no hay foto.
-- **Fotos que ya existen:**
-  - al actualizar, si la organización tiene fotos, la app avisa una sola vez y ofrece guardarlas antes en un `.boldo`, para llevarlas a la web;
-  - después las borra de la base y compacta el archivo;
-  - también las quita de lo ya anotado en el historial de la 19c;
-  - los respaldos nuevos ya no las llevan;
-  - los respaldos de seguridad anteriores se borran a los 30 días, como en la 19b.
-  Hay que decidir en su diseño:
-  - qué pasa con varias organizaciones abiertas a la vez;
-  - qué pasa con los archivos externos;
-  - qué pasa con la organización de al lado, que es de solo lectura.
-- **Importar un `.boldo` con fotos** las deja fuera de la base. En el diseño se decide si la columna `foto_png` se queda vacía, por compatibilidad del esquema de `.boldo`, o si sale con una migración.
+- Diseño aprobado por el autor: `docs/superpowers/specs/2026-11-19-fotos-solo-web-design.md`. Manda sobre este resumen.
+- Menos datos personales en el equipo: el escritorio deja de mostrar y de guardar fotos; se ven las iniciales.
+- Un aviso en el primer arranque tras actualizar, y al abrir un archivo externo con fotos. Sugiere exportar antes a un `.boldo`. «Quitar las fotos ahora» limpia las organizaciones, su historial y **dentro de** cada respaldo; no se borran respaldos. Importar o restaurar quita las fotos solas. La organización de al lado no se modifica.
+- La columna `foto_png` se queda vacía en el esquema; `db::lote` rechaza escribirla.
 - Quitar el código que queda sin uso de la 27a y la 27b, medir antes y después, y actualizar la ayuda (es y en) y el sitio. El sitio deja de mencionar las fotos: no dice que algo falta ni anuncia la edición web antes de que exista.
