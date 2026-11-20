@@ -162,6 +162,7 @@ async function mostrar() {
 // Cada cambio se espera 300 ms: tocar varias opciones seguidas arma una sola vista previa.
 function programar() {
   vuelta++;
+  fallo.value = false; // el error de antes no tapa el «Preparando…»
   calculo = null;
   clearTimeout(espera);
   if (abierto.value) espera = setTimeout(() => void mostrar(), 300);
