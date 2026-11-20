@@ -50,9 +50,6 @@ pub fn run() {
         .manage(comparar_organizaciones::Comparaciones::default())
         .manage(lado::Lado::default())
         .manage(excel::UltimoExcel::default())
-        .register_asynchronous_uri_scheme_protocol(fotos::ESQUEMA, |ctx, pedido, responder| {
-            fotos::atender(ctx.app_handle().clone(), pedido, responder)
-        })
         .on_page_load(|ventana, carga| {
             ventana
                 .state::<intercambio::Sesiones>()
@@ -173,14 +170,10 @@ pub fn run() {
             comandos::historial_volver_a,
             comandos::historial_breves,
             comandos::historial_posteriores,
-            fotos::foto_bytes,
-            fotos::fotos_guardar,
-            fotos::fotos_compactar,
             comandos::suprimir_persona,
             comandos::podar_respaldos_suprimidas,
             comandos::listar_respaldos,
             comandos::respaldar_ahora,
-            comandos::respaldar_antes_de_optimizar,
             comandos::restaurar_respaldo,
             comandos::abrir_carpeta_respaldos,
             comandos::info_proyecto,
