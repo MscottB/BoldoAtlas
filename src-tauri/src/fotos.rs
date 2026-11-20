@@ -14,21 +14,18 @@ pub fn quitar(c: &mut Connection) -> Result<u64, Fallo> {
         "UPDATE trabajadores SET foto_png = NULL WHERE foto_png IS NOT NULL",
         [],
     )? as u64;
-    tx.execute(
-        "UPDATE historial_filas SET antes = json_remove(antes, '$.foto_png'), despues = json_remove(despues, '$.foto_png')
+    // las filas con foto, anotadas antes de vaciarlas: solo lo que se vació aquí se puede borrar después
+    tx.execute_batch(
+        "CREATE TEMP TABLE foto_filas AS SELECT accion_id, orden FROM historial_filas
          WHERE tabla = 'trabajadores' AND (json_extract(antes, '$.foto_png') IS NOT NULL
-                                            OR json_extract(despues, '$.foto_png') IS NOT NULL)",
-        [],
-    )?;
-    // un cambio que solo tocó la foto ya no cambia nada
-    tx.execute(
-        "DELETE FROM historial_filas WHERE tabla = 'trabajadores' AND op = 'update'
-           AND COALESCE(antes, '{}') = '{}' AND COALESCE(despues, '{}') = '{}'",
-        [],
-    )?;
-    tx.execute(
-        "DELETE FROM historial_acciones WHERE id NOT IN (SELECT accion_id FROM historial_filas)",
-        [],
+                                            OR json_extract(despues, '$.foto_png') IS NOT NULL);
+         UPDATE historial_filas SET antes = json_remove(antes, '$.foto_png'), despues = json_remove(despues, '$.foto_png')
+         WHERE (accion_id, orden) IN (SELECT accion_id, orden FROM foto_filas);
+         DELETE FROM historial_filas WHERE op = 'update' AND COALESCE(antes, '{}') = '{}' AND COALESCE(despues, '{}') = '{}'
+           AND (accion_id, orden) IN (SELECT accion_id, orden FROM foto_filas);
+         DELETE FROM historial_acciones WHERE id IN (SELECT accion_id FROM foto_filas)
+           AND id NOT IN (SELECT accion_id FROM historial_filas);
+         DROP TABLE foto_filas;",
     )?;
     tx.commit()?;
     compactar(c)?;
@@ -134,16 +131,49 @@ mod tests {
         c.execute_batch(&db::MIGRACIONES.join("\n")).unwrap();
         let foto = STANDARD.encode(MARCA);
         con_historial(&c, &foto);
+        // la prueba no vale si la foto nunca llegó al archivo
+        c.query_row("PRAGMA wal_checkpoint(PASSIVE)", [], |_| Ok(()))
+            .unwrap();
+        let en = |archivo: &std::path::Path| std::fs::read(archivo).unwrap_or_default();
+        let esta = |b: &[u8], x: &str| b.windows(x.len()).any(|w| w == x.as_bytes());
+        let (db_, wal) = (en(&ruta), en(&dir.path().join("b.db-wal")));
+        assert!(
+            esta(&db_, &foto) || esta(&wal, &foto),
+            "la foto no estaba antes"
+        );
         quitar(&mut c).unwrap();
         for archivo in [ruta, dir.path().join("b.db-wal")] {
             let bytes = std::fs::read(&archivo).unwrap_or_default();
             for buscado in [MARCA, foto.as_str()] {
                 assert!(
-                    !bytes.windows(buscado.len()).any(|w| w == buscado.as_bytes()),
+                    !bytes
+                        .windows(buscado.len())
+                        .any(|w| w == buscado.as_bytes()),
                     "{archivo:?} guarda {buscado}"
                 );
             }
         }
+    }
+
+    #[test]
+    fn quitar_no_borra_filas_que_ya_estaban_vacias() {
+        let mut c = migrada();
+        c.execute_batch(
+            "INSERT INTO historial_acciones (id, fecha, origen) VALUES ('sup', 'x', 'suprimir');
+             INSERT INTO historial_filas (accion_id, orden, tabla, fila_id, op, antes, despues)
+               VALUES ('sup', 1, 'trabajadores', 'ana', 'update', '{}', '{}');",
+        )
+        .unwrap();
+        con_historial(&c, "f1");
+        quitar(&mut c).unwrap();
+        assert_eq!(
+            cuenta(
+                &c,
+                "SELECT count(*) FROM historial_filas WHERE accion_id = 'sup'"
+            ),
+            1
+        );
+        assert_eq!(cuenta(&c, "SELECT count(*) FROM historial_acciones"), 2);
     }
 
     #[test]
