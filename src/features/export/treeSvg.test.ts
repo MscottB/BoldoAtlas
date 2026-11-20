@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { u } from "@/features/arbol/fixture";
 import { VISTA_POR_DEFECTO } from "@/features/arbol/vista";
-import { textoSobre } from "@/features/tema/tema";
 import { COLOR_MARCA, armarSvg } from "./fixture";
 
 const NIVELES = ["estructura", "presentacion", "pantalla"] as const;
@@ -56,12 +55,17 @@ describe("dibujarSvg", () => {
     expect(ancho / alto).toBe(16 / 9);
   });
 
-  it("color_llena_la_tarjeta", async () => {
+  it("color_en_el_borde_izquierdo", async () => {
     const { svg } = await armarSvg("pantalla");
-    expect(svg).toMatch(new RegExp(`<rect [^>]*rx="8" fill="${COLOR_MARCA}"`));
-    const texto = textoSobre(COLOR_MARCA);
-    expect(svg).toMatch(new RegExp(`<text [^>]*fill="${texto}"[^>]*>Gerencia General</text>`));
-    expect(svg).not.toContain('width="4"'); // sin la franja de antes
+    // Un borde de 4 px a la izquierda, con el color; la tarjeta sigue blanca y su texto, oscuro.
+    const d = new RegExp(`<path d="([^"]+)" fill="${COLOR_MARCA}"/>`).exec(svg)?.[1];
+    expect(d).toBeDefined();
+    // M (x + 8) y Q x … : x es el borde de la tarjeta; el tramo interior va en x + 4.
+    const n = d!.match(/-?[\d.]+/g)!.map(Number);
+    expect(n[0]! - n[2]!).toBeCloseTo(8);
+    expect(n[11]! - n[2]!).toBeCloseTo(4);
+    expect(svg).not.toMatch(new RegExp(`<rect [^>]*fill="${COLOR_MARCA}"`));
+    expect(svg).toMatch(/<text [^>]*fill="#0a0a0a"[^>]*>Gerencia General<\/text>/);
   });
 
   it("caja_sin_tarjeta_no_ocupa_lugar", async () => {

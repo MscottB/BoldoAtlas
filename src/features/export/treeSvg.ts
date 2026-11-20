@@ -62,6 +62,7 @@ const LOGO = 40;
 const AIRE = 24; // entre el encabezado, el dibujo y la leyenda
 const RELLENO = 8; // dentro de la tarjeta
 const LETRA_MAS = 11;
+const BORDE_COLOR = 4; // el de «Colorear por»
 const INTERLINEA = 1.3;
 const FILA_LEYENDA = 20;
 const ALTO_TITULO_ZONA = 18;
@@ -135,23 +136,23 @@ function arista(a: Caja, b: Caja, v: EntradaSvg["vista"]): string {
 
 function tarjeta(t: Tarjeta, c: Caja, nivel: Nivel, zonas: Zona[], textoMas: string): string[] {
   const L = LETRA[nivel];
-  // Solo «Como en pantalla» lleva color y líneas de datos; en los otros niveles se ignoran aunque vengan. El color
-  // llena la tarjeta y el texto va en el tono que se lee sobre él.
+  // Solo «Como en pantalla» lleva color y líneas de datos; en los otros niveles se ignoran aunque vengan. El color va
+  // en el borde izquierdo, como en la tarjeta completa del lienzo (border-l-4), que corre el texto.
   const color = nivel === "pantalla" ? t.color : null;
-  const sobre = color ? textoSobre(color) : null;
-  const ancho = c.ancho - 2 * RELLENO;
+  const borde = color ? BORDE_COLOR : 0;
+  const ancho = c.ancho - 2 * RELLENO - borde;
   const filas = [
     ...partir(t.titulo, ancho, L.titulo, L.lineasTitulo, true).map((s) => ({
       s,
       tam: L.titulo,
       negrita: true,
-      color: sobre ?? P.texto,
+      color: P.texto,
     })),
     ...(nivel === "estructura" ? [] : t.lineas).map((s, i) => ({
       s: recortar(s, ancho, L.linea),
       tam: L.linea,
       negrita: false,
-      color: sobre ?? (nivel === "presentacion" && (i > 0 || t.vacante) ? P.tenue : P.texto),
+      color: nivel === "presentacion" && (i > 0 || t.vacante) ? P.tenue : P.texto,
     })),
   ];
   // Lo que no cabe se deja fuera, de abajo hacia arriba; el «+N unidades» tiene su lugar al pie.
@@ -163,7 +164,7 @@ function tarjeta(t: Tarjeta, c: Caja, nivel: Nivel, zonas: Zona[], textoMas: str
     usado += f.tam * INTERLINEA;
     caben.push(f);
   }
-  const x = L.centrar ? c.x + c.ancho / 2 : c.x + RELLENO;
+  const x = L.centrar ? c.x + borde + (c.ancho - borde) / 2 : c.x + borde + RELLENO;
   let y = c.y + RELLENO + (L.centrar ? (libre - usado) / 2 : 0);
   const partes = [
     el("rect", {
@@ -172,10 +173,20 @@ function tarjeta(t: Tarjeta, c: Caja, nivel: Nivel, zonas: Zona[], textoMas: str
       width: c.ancho,
       height: c.alto,
       rx: 8,
-      fill: color ?? P.fondo,
+      fill: P.fondo,
       stroke: P.borde,
     }),
   ];
+  if (color) {
+    // El borde sigue las esquinas redondeadas de la tarjeta.
+    const [x0, x1, y0, y1, r] = [c.x, c.x + BORDE_COLOR, c.y, c.y + c.alto, 8];
+    partes.push(
+      el("path", {
+        d: `M ${x0 + r} ${y0} Q ${x0} ${y0} ${x0} ${y0 + r} V ${y1 - r} Q ${x0} ${y1} ${x0 + r} ${y1} Q ${x1} ${y1} ${x1} ${y1 - BORDE_COLOR} V ${y0 + BORDE_COLOR} Q ${x1} ${y0} ${x0 + r} ${y0} Z`,
+        fill: color,
+      }),
+    );
+  }
   // Las zonas que como recuadro cubrirían a otras: una franja arriba, como en el lienzo.
   const anchoZona = (c.ancho - 16) / Math.max(1, zonas.length);
   zonas.forEach((z, i) =>
@@ -197,7 +208,7 @@ function tarjeta(t: Tarjeta, c: Caja, nivel: Nivel, zonas: Zona[], textoMas: str
   if (t.mas)
     partes.push(
       texto(x, c.y + c.alto - RELLENO - 2, textoMas, LETRA_MAS, {
-        color: sobre ?? P.marcaTexto,
+        color: P.marcaTexto,
         negrita: true,
         centro: L.centrar,
       }),
