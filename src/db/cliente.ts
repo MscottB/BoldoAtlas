@@ -764,19 +764,23 @@ export function fotosQuitar(): Promise<number> {
   return conBase("fotos_quitar");
 }
 
-// Excel: el libro se arma en la ventana; «Guardar como» y la escritura quedan en Rust (src-tauri/src/excel.rs).
-/** Cuerpo binario: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el libro. El nombre del
- * archivo guardado, o null si no se eligió un lugar. */
-export function excelGuardar(nombre: string, libro: Uint8Array): Promise<string | null> {
-  const pedido = new TextEncoder().encode(JSON.stringify({ nombre }));
-  const cuerpo = new Uint8Array(4 + pedido.length + libro.length);
+// Archivos (Excel e imágenes): se arman en la ventana; «Guardar como» y la escritura quedan en Rust (src-tauri/src/excel.rs).
+/** Cuerpo binario: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el contenido. El nombre
+ * del archivo guardado, o null si no se eligió un lugar. `ext`: xlsx, png, jpg o svg; Rust rechaza otra. */
+export function archivoGuardar(
+  nombre: string,
+  bytes: Uint8Array,
+  ext: "xlsx" | "png" | "jpg" | "svg",
+): Promise<string | null> {
+  const pedido = new TextEncoder().encode(JSON.stringify({ nombre, ext }));
+  const cuerpo = new Uint8Array(4 + pedido.length + bytes.length);
   new DataView(cuerpo.buffer).setUint32(0, pedido.length, true);
   cuerpo.set(pedido, 4);
-  cuerpo.set(libro, 4 + pedido.length);
-  return invoke<string | null>("excel_guardar", cuerpo);
+  cuerpo.set(bytes, 4 + pedido.length);
+  return invoke<string | null>("archivo_guardar", cuerpo);
 }
 
-/** La carpeta del último Excel guardado; Rust conoce la ruta. */
-export function excelAbrirCarpeta(): Promise<void> {
-  return invoke("excel_abrir_carpeta");
+/** La carpeta del último archivo guardado; Rust conoce la ruta. */
+export function archivoAbrirCarpeta(): Promise<void> {
+  return invoke("archivo_abrir_carpeta");
 }

@@ -1,5 +1,6 @@
-//! Guardar un Excel armado en la ventana (src/features/excel): el diálogo nativo y la escritura quedan en Rust, sin
-//! permisos de archivos ni de diálogo para la interfaz, que nunca ve ni envía una ruta.
+//! Guardar un archivo armado en la ventana (el Excel de src/features/excel y las imágenes de src/features/export): el
+//! diálogo nativo y la escritura quedan en Rust, sin permisos de archivos ni de diálogo para la interfaz, que nunca ve
+//! ni envía una ruta.
 
 use crate::comandos::{Estado, abrir_carpeta, dialogo_con, nombre_archivo};
 use crate::intercambio;
@@ -12,30 +13,43 @@ use std::sync::{Mutex, PoisonError};
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Manager, State};
 
-/// El último Excel guardado: su carpeta es la que abre «Abrir carpeta».
+/// El último archivo guardado: su carpeta es la que abre «Abrir carpeta».
 #[derive(Default)]
-pub struct UltimoExcel(Mutex<Option<PathBuf>>);
+pub struct UltimoArchivo(Mutex<Option<PathBuf>>);
 
 #[derive(Debug, Deserialize)]
 struct Pedido {
     /// Nombre sugerido en «Guardar como»; quien elige el destino es el usuario.
     nombre: String,
+    /// Qué se guarda: solo los tipos de `filtro_de`.
+    ext: String,
 }
 
-/// Cuerpo: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el libro.
+/// Lo único que se guarda, con el nombre que ve el usuario en el filtro del diálogo.
+fn filtro_de(ext: &str) -> Option<&'static str> {
+    match ext {
+        "xlsx" => Some("Excel"),
+        "png" => Some("PNG"),
+        "jpg" => Some("JPG"),
+        "svg" => Some("SVG"),
+        _ => None,
+    }
+}
+
+/// Cuerpo: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el contenido del archivo.
 fn desarmar(cuerpo: &[u8]) -> Result<(Pedido, &[u8]), Fallo> {
     let invalido = || Fallo::de("pedido_invalido", "");
     let (largo, resto) = cuerpo.split_first_chunk::<4>().ok_or_else(invalido)?;
     let largo = u32::from_le_bytes(*largo) as usize;
     let (pedido, libro) = resto.split_at_checked(largo).ok_or_else(invalido)?;
     let pedido: Pedido = serde_json::from_slice(pedido).map_err(|_| invalido())?;
-    if libro.is_empty() {
+    if libro.is_empty() || filtro_de(&pedido.ext).is_none() {
         return Err(invalido());
     }
     Ok((pedido, libro))
 }
 
-/// Pasando por un nombre aparte: un corte a mitad nunca deja un Excel a medias con ese nombre. El temporal lleva un id
+/// Pasando por un nombre aparte: un corte a mitad nunca deja un archivo a medias con ese nombre. El temporal lleva un id
 /// nuevo y se crea con `create_new`: nunca pisa (ni borra al fallar) un archivo que ya estuviera.
 fn escribir(destino: &Path, libro: &[u8]) -> Result<(), Fallo> {
     let mut parcial = destino.as_os_str().to_owned();
@@ -54,9 +68,12 @@ fn escribir(destino: &Path, libro: &[u8]) -> Result<(), Fallo> {
     Ok(hecho?)
 }
 
-/// Pregunta dónde guardar y escribe el libro. Devuelve el nombre del archivo, o None si no se eligió un lugar.
+/// Pregunta dónde guardar y escribe el archivo. Devuelve su nombre, o None si no se eligió un lugar.
 #[tauri::command]
-pub async fn excel_guardar(app: AppHandle, request: Request<'_>) -> Result<Option<String>, Fallo> {
+pub async fn archivo_guardar(
+    app: AppHandle,
+    request: Request<'_>,
+) -> Result<Option<String>, Fallo> {
     let InvokeBody::Raw(cuerpo) = request.body() else {
         return Err(Fallo::de("pedido_invalido", ""));
     };
@@ -68,17 +85,20 @@ pub async fn excel_guardar(app: AppHandle, request: Request<'_>) -> Result<Optio
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
-        let Some(destino) = dialogo_con(&app, "Excel", "xlsx")
-            .set_file_name(sugerido)
-            .blocking_save_file()
-            .and_then(|f| f.into_path().ok())
-        else {
+        let Some(destino) = dialogo_con(
+            &app,
+            filtro_de(&pedido.ext).unwrap_or_default(),
+            &pedido.ext,
+        )
+        .set_file_name(sugerido)
+        .blocking_save_file()
+        .and_then(|f| f.into_path().ok()) else {
             return Ok(None);
         };
-        let destino = intercambio::con_extension(destino, "xlsx")?;
+        let destino = intercambio::con_extension(destino, &pedido.ext)?;
         escribir(&destino, libro)?;
         let nombre = nombre_archivo(&destino);
-        *app.state::<UltimoExcel>()
+        *app.state::<UltimoArchivo>()
             .0
             .lock()
             .unwrap_or_else(PoisonError::into_inner) = Some(destino);
@@ -88,12 +108,12 @@ pub async fn excel_guardar(app: AppHandle, request: Request<'_>) -> Result<Optio
     .map_err(|e| e.to_string())?
 }
 
-/// Abre la carpeta del último Excel guardado.
+/// Abre la carpeta del último archivo guardado.
 #[tauri::command]
-pub fn excel_abrir_carpeta(
+pub fn archivo_abrir_carpeta(
     app: AppHandle,
     estado: State<Estado>,
-    ultimo: State<UltimoExcel>,
+    ultimo: State<UltimoArchivo>,
 ) -> Result<(), Fallo> {
     let carpeta = ultimo
         .0
@@ -102,7 +122,7 @@ pub fn excel_abrir_carpeta(
         .as_deref()
         .and_then(Path::parent)
         .map(Path::to_path_buf)
-        .ok_or_else(|| Fallo::de("sin_excel", ""))?;
+        .ok_or_else(|| Fallo::de("sin_archivo", ""))?;
     abrir_carpeta(&app, estado.rutas()?, &carpeta)
 }
 
@@ -120,7 +140,7 @@ mod tests {
     #[test]
     fn desarma_el_pedido_y_el_libro() {
         let c = cuerpo(
-            r#"{"nombre":"Organización_2026-11-14_r3.xlsx"}"#,
+            r#"{"nombre":"Organización_2026-11-14_r3.xlsx","ext":"xlsx"}"#,
             b"PK\x03\x04",
         );
         let (p, libro) = desarmar(&c).unwrap();
@@ -136,9 +156,31 @@ mod tests {
         assert_eq!(codigo(&[255, 255, 255, 255, b'{']), "pedido_invalido");
         assert_eq!(codigo(&cuerpo("no es json", b"PK")), "pedido_invalido");
         assert_eq!(
-            codigo(&cuerpo(r#"{"nombre":"a.xlsx"}"#, b"")),
+            codigo(&cuerpo(r#"{"nombre":"a.xlsx","ext":"xlsx"}"#, b"")),
             "pedido_invalido"
         );
+    }
+
+    #[test]
+    fn guardar_rechaza_otra_extension() {
+        for ext in ["exe", "", "PNG", "xlsx.exe"] {
+            let c = cuerpo(&format!(r#"{{"nombre":"a","ext":"{ext}"}}"#), b"x");
+            assert_eq!(desarmar(&c).unwrap_err().codigo, "pedido_invalido", "{ext}");
+        }
+        for ext in ["xlsx", "png", "jpg", "svg"] {
+            let c = cuerpo(&format!(r#"{{"nombre":"a","ext":"{ext}"}}"#), b"x");
+            assert!(desarmar(&c).is_ok(), "{ext}");
+        }
+    }
+
+    #[test]
+    fn guardar_corrige_la_extension() {
+        let d = tempfile::tempdir().unwrap();
+        let destino = intercambio::con_extension(d.path().join("a.svg"), "png").unwrap();
+        assert_eq!(destino.file_name().unwrap(), "a.svg.png");
+        // ya con la extensión (en cualquier caso): se deja como está
+        let ya = intercambio::con_extension(d.path().join("b.PNG"), "png").unwrap();
+        assert_eq!(ya.file_name().unwrap(), "b.PNG");
     }
 
     /// Lo que hay en la carpeta, sin contar `destino`.

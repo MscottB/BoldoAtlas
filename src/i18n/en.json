@@ -1224,7 +1224,7 @@
       "fallo": "The operation could not be completed: {detalle}",
       "ya_existe": "A file with that name already exists. Choose another name.",
       "pedido_invalido": "BoldoAtlas had an internal problem saving the file and nothing was saved. Try again.",
-      "sin_excel": "There is no Excel file saved in this session whose folder to open.",
+      "sin_archivo": "There is no file saved in this session whose folder to open.",
       "excel_libro": "The Excel file could not be built and nothing was saved. Detail: {detalle}"
     },
     "ultimo": "Last backup: {fecha}",

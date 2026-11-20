@@ -1224,7 +1224,7 @@
       "fallo": "No se pudo completar la operación: {detalle}",
       "ya_existe": "Ya hay un archivo con ese nombre. Elige otro nombre.",
       "pedido_invalido": "BoldoAtlas tuvo un problema interno al guardar el archivo y no se guardó nada. Inténtalo de nuevo.",
-      "sin_excel": "No hay un Excel guardado en esta sesión cuya carpeta abrir.",
+      "sin_archivo": "No hay un archivo guardado en esta sesión cuya carpeta abrir.",
       "excel_libro": "No se pudo armar el archivo de Excel y no se guardó nada. Detalle: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",

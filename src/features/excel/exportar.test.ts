@@ -28,7 +28,7 @@ describe("exportar a Excel", () => {
 });
 
 describe("los fallos al exportar", () => {
-  it.each(["pedido_invalido", "sin_excel", "excel_libro"])(
+  it.each(["pedido_invalido", "sin_archivo", "excel_libro"])(
     "%s se dice con su propio texto, en los dos idiomas",
     async (codigo) => {
       const { mensajeFallo } = await import("@/features/respaldos/respaldos");
