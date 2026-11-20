@@ -2240,5 +2240,21 @@
     "armando": "Armando el PDF…",
     "cancelar": "Cancelar",
     "ciclo": "No se pudo repartir en páginas: una unidad quedó debajo de sí misma. Revisa de quién depende cada unidad."
+  },
+  "manual": {
+    "titulo": "Manual de organización y funciones",
+    "indice": "Índice",
+    "general": "Organigrama general",
+    "jefatura": "Jefatura",
+    "cargo": "Cargo",
+    "descripcion": "Descripción",
+    "ocupa": "Ocupa",
+    "estado": "Estado",
+    "ocupado": "Ocupado",
+    "vacante": "Vacante",
+    "sinDescripcion": "Sin descripción",
+    "reemplazo": "Reemplazo",
+    "version": "BoldoAtlas {version}",
+    "revision": "Revisión de los datos: {revision}"
   }
 }

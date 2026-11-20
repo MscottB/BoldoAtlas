@@ -1,0 +1,155 @@
+// Aparte de manual.ts: el worker de pdfmake importa esto, y así no carga el store ni i18n (solo sus tipos).
+import type { TextosManual, UnidadManual } from "./manual";
+import { recortar as recortarTexto } from "./medida";
+import { MARGEN, areaUtil } from "./paginas";
+import {
+  LOGO_PDF,
+  TENUE,
+  marcoPdf,
+  type Nodo,
+  type OpcionesMarco,
+  type PaginaPdf,
+  type TDocumentDefinitions,
+} from "./pdf";
+
+/** Lo que manda la ventana: las secciones, el organigrama general (por ramas) y el dibujo chico de cada unidad, por id. */
+export interface DatosManualPdf {
+  unidades: UnidadManual[];
+  general: PaginaPdf[];
+  dibujos: Map<string, PaginaPdf>;
+}
+
+export interface OpcionesManual extends OpcionesMarco {
+  /** Con la columna «Ocupa». Sin personas, los datos ya vienen sin nombres: esto solo quita la columna vacía. */
+  conPersonas: boolean;
+  textos: TextosManual;
+  /** Todo ya traducido; `version` y `revision` son las líneas enteras. `logo`: una URL `data:image/...;base64`. */
+  portada: {
+    organizacion: string;
+    alcance: string;
+    fecha: string;
+    version: string;
+    revision: string;
+    logo: string | null;
+  };
+}
+
+const OSCURO = "#0a0a0a";
+// La segunda línea del encabezado: bajo la primera, de 9 pt.
+const LINEA_ARRIBA = MARGEN + 10.5;
+
+/** Un dibujo achicado hasta caber en `ancho` × `alto`, centrado. Nunca se agranda. */
+const encajado = (p: PaginaPdf, ancho: number, alto: number): Nodo => {
+  const e = Math.min(1, ancho / p.ancho, alto / p.alto);
+  return { svg: p.svg, width: p.ancho * e, height: p.alto * e, alignment: "center" };
+};
+
+/**
+ * La definición de pdfmake del manual: portada, índice (`toc`: pdfmake pone el número de página), el organigrama
+ * general y una sección por unidad, cada una en su página, con su ruta, su jefatura, su dibujo y la tabla de sus
+ * puestos. El encabezado y el pie son los del PDF del organigrama; los metadatos solo llevan `o.titulo`.
+ * El general va por ramas: su línea «viene de» va donde el PDF la pone, bajo el encabezado.
+ */
+export function documentoManual(d: DatosManualPdf, o: OpcionesManual): TDocumentDefinitions {
+  const t = o.textos;
+  const area = areaUtil(o.hoja, o.orientacion);
+  const p = o.portada;
+
+  const portada: Nodo = {
+    stack: [
+      ...(p.logo && LOGO_PDF.test(p.logo)
+        ? [{ image: p.logo, fit: [160, 80], alignment: "center", margin: [0, 0, 0, 24] }]
+        : []),
+      { text: p.organizacion, fontSize: 18, bold: true },
+      { text: o.titulo, fontSize: 26, bold: true, margin: [0, 12, 0, 24] },
+      { text: p.alcance, fontSize: 14 },
+      { text: p.fecha, fontSize: 12, margin: [0, 4, 0, 0] },
+      { text: p.version, color: TENUE, margin: [0, 48, 0, 0] },
+      { text: p.revision, color: TENUE },
+    ],
+    alignment: "center",
+    color: OSCURO,
+    margin: [0, area.alto / 4, 0, 0],
+  };
+
+  const indice: Nodo = {
+    toc: {
+      title: { text: t.indice, fontSize: 16, bold: true, color: OSCURO, margin: [0, 0, 0, 12] },
+      textStyle: { fontSize: 10, color: OSCURO },
+    },
+    pageBreak: "before",
+  };
+
+  const general = d.general.map((x, i): Nodo => ({
+    stack: [
+      encajado(x, area.ancho, area.alto),
+      {
+        text: recortarTexto([t.general, x.arriba].filter(Boolean).join(" · "), area.ancho, 8),
+        noWrap: true,
+        absolutePosition: { x: MARGEN, y: LINEA_ARRIBA },
+        ...(i ? {} : { tocItem: true }),
+      },
+    ],
+    pageBreak: "before",
+  }));
+
+  const tabla = (x: UnidadManual): Nodo => ({
+    margin: [0, 12, 0, 0],
+    fontSize: 9,
+    layout: "lightHorizontalLines",
+    table: {
+      headerRows: 1,
+      dontBreakRows: true,
+      widths: o.conPersonas ? ["25%", "*", "25%", "auto"] : ["30%", "*", "auto"],
+      body: [
+        [t.cargo, t.descripcion, ...(o.conPersonas ? [t.ocupa] : []), t.estado].map((text) => ({
+          text,
+          bold: true,
+          color: OSCURO,
+        })),
+        ...x.puestos.map((y) => [
+          { text: y.cargo, color: OSCURO },
+          y.descripcion ? { text: y.descripcion } : { text: t.sinDescripcion, italics: true },
+          ...(o.conPersonas
+            ? [{ stack: [y.titular ?? "", ...(y.reemplazo ? [`${t.reemplazo}: ${y.reemplazo}`] : [])] }]
+            : []),
+          { text: y.estado === "ocupado" ? t.ocupado : t.vacante },
+        ]),
+      ],
+    },
+  });
+
+  const secciones = d.unidades.map((x): Nodo => {
+    const dibujo = d.dibujos.get(x.id);
+    return {
+      stack: [
+        {
+          text: `${x.numero}  ${x.nombre}`,
+          tocItem: true,
+          // En el índice, cada nivel un poco más adentro.
+          tocMargin: [(x.numero.split(".").length - 1) * 12, 0, 0, 0],
+          fontSize: 14,
+          bold: true,
+          color: OSCURO,
+        },
+        ...(x.ruta.length ? [{ text: x.ruta.join(" › "), margin: [0, 2, 0, 0] }] : []),
+        ...(x.jefatura
+          ? [
+              {
+                text: [{ text: `${t.jefatura}: `, bold: true }, x.jefatura],
+                fontSize: 10,
+                color: OSCURO,
+                margin: [0, 6, 0, 0],
+              },
+            ]
+          : []),
+        // El dibujo, hasta media página: la tabla empieza en la misma.
+        ...(dibujo ? [{ ...encajado(dibujo, area.ancho, area.alto / 2), margin: [0, 12, 0, 0] }] : []),
+        ...(x.puestos.length ? [tabla(x)] : []),
+      ],
+      pageBreak: "before",
+    };
+  });
+
+  return { ...marcoPdf(o, () => ""), content: [portada, indice, ...general, ...secciones] };
+}

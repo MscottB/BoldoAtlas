@@ -2240,5 +2240,21 @@
     "armando": "Making the PDF…",
     "cancelar": "Cancel",
     "ciclo": "It could not be split into pages: a unit ended up under itself. Check which unit each one reports to."
+  },
+  "manual": {
+    "titulo": "Organization and functions manual",
+    "indice": "Contents",
+    "general": "General org chart",
+    "jefatura": "Head",
+    "cargo": "Position",
+    "descripcion": "Description",
+    "ocupa": "Held by",
+    "estado": "Status",
+    "ocupado": "Filled",
+    "vacante": "Vacant",
+    "sinDescripcion": "No description",
+    "reemplazo": "Replacement",
+    "version": "BoldoAtlas {version}",
+    "revision": "Data revision: {revision}"
   }
 }

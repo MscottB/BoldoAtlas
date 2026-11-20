@@ -304,15 +304,18 @@ async function guardar() {
         return;
       }
       bytes = await armarPdf(
-        lista,
         {
-          hoja: hoja.value,
-          orientacion: orientacion.value,
-          encabezado: r.encabezado,
-          // Los números los pone cada página: aquí quedan las marcas tal cual.
-          pagina: t("pdf.pagina", { n: "{n}", m: "{m}" }),
-          titulo: t("pdf.titulo"),
-          mapa: r.mapa,
+          tipo: "organigrama",
+          paginas: lista,
+          o: {
+            hoja: hoja.value,
+            orientacion: orientacion.value,
+            encabezado: r.encabezado,
+            // Los números los pone cada página: aquí quedan las marcas tal cual.
+            pagina: t("pdf.pagina", { n: "{n}", m: "{m}" }),
+            titulo: t("pdf.titulo"),
+            mapa: r.mapa,
+          },
         },
         (n, m) => (avance.value = t("pdf.pagina", { n, m })),
         control.signal,
