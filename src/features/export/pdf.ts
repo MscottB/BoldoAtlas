@@ -8,6 +8,7 @@ import {
   type Hojita,
   type Orientacion,
 } from "./paginas";
+import { anchoTexto, recortar as recortarTexto } from "./medida";
 
 /** Una página del PDF: el dibujo de `dibujarSvg` y, en cuadrícula, la parte que le toca. */
 export interface PaginaPdf {
@@ -24,8 +25,12 @@ export interface OpcionesPdf {
   orientacion: Orientacion;
   /** Lo que va en el encabezado de cada página. `logo`: una URL `data:image/...;base64`; va en el pie. */
   encabezado: { organizacion: string; alcance: string; fecha: string; logo: string | null };
-  /** El pie, ya traducido, con `{n}` y `{m}`. Si falta: «Página {n} de {m}». */
-  pagina?: string;
+  /** El pie, ya traducido, con `{n}` y `{m}`: «Página {n} de {m}». */
+  pagina: string;
+  /** El título de los metadatos, ya traducido: «Organigrama». Lo único que dicen, con la fecha que pone pdfkit. */
+  titulo: string;
+  /** En cuadrícula, el dibujo entero para el mapa: cada hoja puede traer solo su parte. */
+  mapa?: { svg: string; ancho: number; alto: number };
 }
 
 /** Un nodo de pdfmake, que no trae sus tipos. */
@@ -57,7 +62,7 @@ const recortar = (svg: string, r: Hojita) =>
   );
 
 /** El dibujo entero con las hojas de la cuadrícula encima, cada una con su «fila·columna». */
-function mapa(p: PaginaPdf, hojitas: Hojita[]): string {
+function mapa(p: { svg: string; ancho: number; alto: number }, hojitas: Hojita[]): string {
   const trazo = Math.max(p.ancho, p.alto) / 400;
   const marcas = hojitas.map((h) => {
     const letra = Math.min(h.ancho, h.alto) / 5;
@@ -73,7 +78,7 @@ function mapa(p: PaginaPdf, hojitas: Hojita[]): string {
  * La definición del documento de pdfmake. Cada página lleva arriba la organización, el alcance, la fecha y su línea
  * `arriba`; abajo, el logo y «Página N de M». El dibujo se achica hasta caber en el área útil (nunca se agranda). Si
  * las páginas traen `recorte` (cuadrícula), la primera es el mapa y cada hoja lleva marcas de corte en las esquinas.
- * Los metadatos solo dicen «Organigrama»: ni personas ni la organización.
+ * Los metadatos solo llevan `o.titulo`: ni personas ni la organización. En cuadrícula, `o.mapa` es obligatorio.
  */
 export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDefinitions {
   const { ancho: w, alto: h } = HOJAS[o.hoja];
@@ -82,6 +87,7 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
   const arriba = MARGEN + ENCABEZADO;
   const hojitas = paginas.flatMap((p) => (p.recorte ? [p.recorte] : []));
   const conMapa = hojitas.length > 0;
+  if (conMapa && !o.mapa) throw new Error("En cuadrícula falta el dibujo entero para el mapa (o.mapa).");
 
   const cabe = (ancho: number, alto: number) => Math.min(1, area.ancho / ancho, area.alto / alto);
   // Todas las hojas con la escala de las enteras (la menor): una hoja más angosta, al final, no sale más grande.
@@ -105,9 +111,11 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
     return { stack: [nodo, { canvas, absolutePosition: { x: 0, y: 0 } }] };
   };
 
-  const p0 = paginas[0];
+  const entero = conMapa ? o.mapa : undefined;
   const content = [
-    ...(conMapa && p0 ? [dibujo(mapa(p0, hojitas), p0.ancho, p0.alto, cabe(p0.ancho, p0.alto), false)] : []),
+    ...(entero
+      ? [dibujo(mapa(entero, hojitas), entero.ancho, entero.alto, cabe(entero.ancho, entero.alto), false)]
+      : []),
     ...paginas.map(({ svg, ancho, alto, recorte: r }) =>
       r
         ? dibujo(recortar(svg, r), r.ancho, r.alto, escalaHojas, true)
@@ -116,11 +124,14 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
   ].map((n, i) => (i ? { ...n, pageBreak: "before" } : n));
 
   const { organizacion, alcance, fecha, logo } = o.encabezado;
-  const plantilla = o.pagina ?? "Página {n} de {m}";
+  // Todo en una línea: un nombre largo se corta con «…» y el encabezado no pasa de sus 28 pt.
+  const anchoUtil = anchoHoja - 2 * MARGEN;
+  const derecha = recortarTexto(`${alcance} · ${fecha}`, anchoUtil / 2, 8);
+  const izquierda = recortarTexto(organizacion, anchoUtil - anchoTexto(derecha, 8) - 12, 9, true);
   return {
     pageSize: { width: anchoHoja, height: altoHoja },
     pageMargins: [MARGEN, arriba, MARGEN, MARGEN + PIE],
-    info: { title: "Organigrama" },
+    info: { title: o.titulo },
     defaultStyle: { fontSize: 8, color: TENUE },
     content,
     header: (n) => ({
@@ -128,18 +139,18 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
       stack: [
         {
           columns: [
-            { text: organizacion, bold: true, fontSize: 9, color: "#0a0a0a" },
-            { text: `${alcance} · ${fecha}`, alignment: "right" },
+            { text: izquierda, bold: true, fontSize: 9, color: "#0a0a0a", noWrap: true },
+            { text: derecha, alignment: "right", noWrap: true, width: "auto" },
           ],
         },
-        { text: paginas[n - 1 - (conMapa ? 1 : 0)]?.arriba ?? "" },
+        { text: recortarTexto(paginas[n - 1 - (conMapa ? 1 : 0)]?.arriba ?? "", anchoUtil, 8), noWrap: true },
       ],
     }),
     footer: (n, m) => ({
       margin: [MARGEN, 10, MARGEN, 0],
       columns: [
         logo && LOGO_PDF.test(logo) ? { image: logo, fit: [48, 12] } : { text: "" },
-        { text: plantilla.replace("{n}", String(n)).replace("{m}", String(m)), alignment: "right" },
+        { text: o.pagina.replace("{n}", String(n)).replace("{m}", String(m)), alignment: "right" },
       ],
     }),
   };

@@ -12,7 +12,9 @@ declare module "pdfmake/build/pdfmake" {
     addVirtualFileSystem(vfs: Record<string, string>): void;
     setUrlAccessPolicy(permitir: (url: string) => boolean): void;
     setProgressCallback(avance: (parte: number) => void): void;
-    createPdf(documento: object): { getBuffer(): Promise<Uint8Array> };
+    createPdf(documento: object): {
+      getStream(): Promise<{ on(evento: string, f: (x: unknown) => void): void; end(): void }>;
+    };
   };
   export default pdfMake;
 }

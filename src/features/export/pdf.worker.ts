@@ -21,8 +21,18 @@ export async function generarPdf(
     const n = Math.floor(parte * total);
     if (n !== hechas) alAvanzar((hechas = n), total);
   });
-  const b = await pdfMake.createPdf({ ...documento, compress }).getBuffer();
-  return new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+  // No con getBuffer: en 0.3.11 un error del flujo lo deja esperando para siempre.
+  const flujo = await pdfMake.createPdf({ ...documento, compress }).getStream();
+  const partes = await new Promise<Uint8Array[]>((resolver, rechazar) => {
+    const leidas: Uint8Array[] = [];
+    flujo.on("data", (p) => leidas.push(p as Uint8Array));
+    flujo.on("end", () => resolver(leidas));
+    flujo.on("error", rechazar);
+    flujo.end();
+  });
+  const pdf = new Uint8Array(partes.reduce((n, p) => n + p.length, 0));
+  partes.reduce((n, p) => (pdf.set(p, n), n + p.length), 0);
+  return pdf;
 }
 
 /** Lo que manda `armarPdf`: cada dibujo una vez, y cada página con el índice del suyo. */
