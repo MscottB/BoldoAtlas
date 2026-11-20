@@ -1,5 +1,17 @@
 [
   {
+    "id": "exportar-imagen",
+    "pagina": "exportar-imagen",
+    "es": {
+      "titulo": "Exporta el organigrama como imagen",
+      "texto": "Guarda el organigrama, o una rama, como PNG, JPG o SVG, o cópialo para pegarlo en una presentación. Eliges el nivel de detalle: solo la estructura, sin datos de personas; la presentación, con cada jefatura; o como lo ves en pantalla. Ves una vista previa antes de guardar."
+    },
+    "en": {
+      "titulo": "Export the org chart as an image",
+      "texto": "Save the org chart, or one branch, as PNG, JPG or SVG, or copy it to paste into a presentation. You choose the level of detail: structure only, with no personal data; the presentation level, with each head; or as you see it on screen. You see a preview before saving."
+    }
+  },
+  {
     "id": "sin-fotos-en-el-escritorio",
     "pagina": "fichas",
     "es": {

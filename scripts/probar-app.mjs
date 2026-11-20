@@ -3,7 +3,7 @@
 // «registro» es lo que imprime el proceso más la consola de la página.
 // Solo en CI: abre una ventana maximizada, y en el equipo de alguien aparecería en su pantalla.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, globSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, win32 } from "node:path";
 import { TAR, artefactos } from "./release.mjs";
 
@@ -83,10 +83,10 @@ const lanzados = [];
 /** Lo que sirve para leer la página de la última app abierta. @type {((expresion: string) => Promise<any>) | undefined} */
 let evaluarPagina;
 
-/** @param {string} exe @param {import("node:child_process").StdioOptions} stdio */
-function lanzar(exe, stdio) {
+/** @param {string} exe @param {import("node:child_process").StdioOptions} stdio @param {NodeJS.ProcessEnv} [env] */
+function lanzar(exe, stdio, env = {}) {
   exigirPortable(exe, process.env.RUNNER_TEMP);
-  const p = spawn(exe, [], { stdio });
+  const p = spawn(exe, [], { stdio, env: { ...process.env, ...env } });
   lanzados.push(p);
   return p;
 }
@@ -203,9 +203,9 @@ async function conectarCdp(url) {
   return { enviar };
 }
 
-/** La app abierta y lo que se le puede pedir por su página. @param {string} exe */
-export async function abrirApp(exe) {
-  const proceso = lanzar(exe, ["ignore", "pipe", "pipe"]);
+/** La app abierta y lo que se le puede pedir por su página. @param {string} exe @param {NodeJS.ProcessEnv} [env] */
+export async function abrirApp(exe, env) {
+  const proceso = lanzar(exe, ["ignore", "pipe", "pipe"], env);
   for (const salida of [proceso.stdout, proceso.stderr]) {
     salida?.on("data", (b) => anotar(`[proceso] ${String(b).trimEnd()}`));
   }
@@ -728,6 +728,53 @@ async function fotosSoloEnLaWeb(exe, carpeta, info) {
   comprobar("foto_png es NULL en todas las personas", quedan === 0 && personas > 0, { quedan, personas });
 }
 
+/**
+ * Exportar el organigrama como imagen: el «Guardar como» nativo no se maneja desde aquí. La app lo salta solo si el
+ * arnés la lanza con `BOLDO_GUARDAR_EN` y esa carpeta existe dentro de `datos/` de la portable (excel.rs). Se guarda un
+ * SVG y un PNG de «Estructura», que no lleva datos de personas. Todo por atributo `data-accion`: la interfaz sale en inglés.
+ * @param {string} exe @param {string} carpeta
+ */
+async function exportarImagen(exe, carpeta) {
+  const destino = join(carpeta, "datos", "imagenes-humo");
+  mkdirSync(destino, { recursive: true });
+  const app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
+  await revisarBase(app, carpeta);
+  await alArbol(app);
+  const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
+  const clic = async (/** @type {string} */ a) => {
+    await app.hasta(`Boolean(${por(a)})`, `el botón ${a}`);
+    await app.evaluar(`${por(a)}.click()`);
+  };
+  await clic("abrir-imagen-barra");
+  await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
+  await clic("nivel-estructura");
+  const guardar = async (/** @type {string} */ formato) => {
+    await clic(`formato-${formato}`);
+    await clic("guardar-imagen");
+    // el aviso de «queda sin cifrar» sale la primera vez; si ya se aceptó, no sale
+    await esperar(async () => {
+      if (await app.evaluar(`Boolean(${por("aceptar-aviso-imagen")})`)) {
+        await app.evaluar(`${por("aceptar-aviso-imagen")}.click()`);
+      }
+      return readdirSync(destino).some((f) => f.endsWith(`.${formato}`));
+    }, `el archivo .${formato} guardado`);
+  };
+  await guardar("svg");
+  await guardar("png");
+  const archivos = readdirSync(destino);
+  const svg = archivos.find((f) => f.endsWith(".svg"));
+  const png = archivos.find((f) => f.endsWith(".png"));
+  comprobar("la imagen se guardó como SVG y como PNG en la carpeta de prueba", Boolean(svg && png), archivos);
+  const texto = svg ? readFileSync(join(destino, svg), "utf8") : "";
+  comprobar("el SVG es un dibujo", texto.includes("<svg"), texto.slice(0, 80));
+  comprobar("el SVG de Estructura no lleva el nombre de la persona", !texto.includes(PERSONA.nombre), PERSONA.nombre);
+  const cabecera = png ? readFileSync(join(destino, png)).subarray(0, 8).toString("hex") : "";
+  comprobar("el PNG empieza con la firma de PNG", cabecera === "89504e470d0a1a0a", cabecera);
+  await revisarBase(app, carpeta);
+  const codigo = await app.cerrar();
+  comprobar("la app de la imagen cierra sola y con código 0", codigo === 0, codigo);
+}
+
 async function correr() {
   const a = artefactos("windows", "");
   const [zip, ...otros] = globSync(`release/*/${a.zip}`);
@@ -740,6 +787,7 @@ async function correr() {
   await reapertura(exe, carpeta, info);
   await historialPersistente(exe, carpeta);
   await historialVolverAPunto(exe, carpeta);
+  await exportarImagen(exe, carpeta);
   await fotosSoloEnLaWeb(exe, carpeta, info);
   comprobarInstaladaIntacta();
   exigirSinFallos();

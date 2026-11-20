@@ -16,6 +16,7 @@
     { "id": "boldo-medicion", "producto": "boldo", "titulo": "Nota de medición: carga bajo demanda", "url": "https://github.com/MscottB/BoldoAtlas/blob/main/docs/superpowers/notas/2026-11-01-fotos-optimizadas.md", "titulo_en": "Measurement note: on-demand loading" },
     { "id": "boldo-fecha", "producto": "boldo", "titulo": "Manual: Ver a una fecha", "url": "https://mscottb.github.io/BoldoAtlas/manual/arbol#ver-a-una-fecha", "titulo_en": "Manual: Viewing a past date", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/arbol#viewing-a-past-date" },
     { "id": "boldo-fichas", "producto": "boldo", "titulo": "Manual: Fichas de personas", "url": "https://mscottb.github.io/BoldoAtlas/manual/fichas", "titulo_en": "Manual: Person records", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/fichas" },
+    { "id": "boldo-imagen", "producto": "boldo", "titulo": "Manual: Exportar como imagen", "url": "https://mscottb.github.io/BoldoAtlas/manual/exportar-imagen", "titulo_en": "Manual: Export as an image", "url_en": "https://mscottb.github.io/BoldoAtlas/en/manual/exportar-imagen" },
     { "id": "visio-planes", "producto": "visio", "titulo": "Visio plans and pricing", "url": "https://www.microsoft.com/en-us/microsoft-365/visio/visio-plans-and-pricing" },
     { "id": "lucid-planes", "producto": "lucid", "titulo": "Lucid Plans", "url": "https://help.lucid.co/hc/en-us/articles/360056903132-Lucid-Plans" },
     { "id": "lucid-importar", "producto": "lucid", "titulo": "Import an org chart from a CSV, Excel file, or Google Sheet", "url": "https://help.lucid.co/hc/en-us/articles/44818725952276" },
@@ -159,6 +160,20 @@
         "drawio": { "ni": true, "nivel": "ni" },
         "orgchart": { "es": "Sí, en los planes Plus y Pro", "en": "Yes, on the Plus and Pro plans", "f": ["orgchart-planes", "orgchart-historia"], "nivel": "parcial" },
         "buk": { "es": "Plan Pro: historial de cambios; vista a una fecha no indicada", "en": "Pro plan: change history; view on a date not stated", "f": ["buk-plataforma"], "nivel": "ni" },
+        "talana": { "ni": true, "nivel": "ni" }
+      }
+    },
+    {
+      "id": "imagen",
+      "es": "Exportar el organigrama como imagen",
+      "en": "Export the org chart as an image",
+      "celdas": {
+        "boldo": { "es": "Sí: PNG, JPG o SVG, de toda la organización o de una rama", "en": "Yes: PNG, JPG or SVG, of the whole organization or of one branch", "f": ["boldo-imagen"], "nivel": "si" },
+        "visio": { "ni": true, "nivel": "ni" },
+        "lucid": { "ni": true, "nivel": "ni" },
+        "drawio": { "ni": true, "nivel": "ni" },
+        "orgchart": { "ni": true, "nivel": "ni" },
+        "buk": { "ni": true, "nivel": "ni" },
         "talana": { "ni": true, "nivel": "ni" }
       }
     },

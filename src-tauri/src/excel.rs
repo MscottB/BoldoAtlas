@@ -80,6 +80,27 @@ fn escribir(destino: &Path, libro: &[u8]) -> Result<(), Fallo> {
     Ok(hecho?)
 }
 
+/// Solo el arnés de CI: con `BOLDO_GUARDAR_EN` (que pone él al lanzar la app; la ventana no puede fijar variables del
+/// proceso) se guarda ahí, sin «Guardar como». Vale solo en una portable y con una carpeta que ya exista dentro de su
+/// `datos/`; fuera de eso se rechaza, no se cae al diálogo. Sin la variable, `Ok(None)`: el diálogo de siempre.
+fn destino_de_prueba(
+    variable: Option<std::ffi::OsString>,
+    rutas: Option<&crate::rutas::Rutas>,
+    sugerido: &str,
+) -> Result<Option<PathBuf>, Fallo> {
+    let Some(variable) = variable else {
+        return Ok(None);
+    };
+    let rechazo = || Fallo::de("destino_de_prueba_invalido", "");
+    let rutas = rutas.filter(|r| r.portable).ok_or_else(rechazo)?;
+    let carpeta = fs::canonicalize(variable).map_err(|_| rechazo())?;
+    let datos = fs::canonicalize(&rutas.datos).map_err(|_| rechazo())?;
+    if carpeta == datos || !carpeta.starts_with(&datos) || sugerido.is_empty() {
+        return Err(rechazo());
+    }
+    Ok(Some(carpeta.join(sugerido)))
+}
+
 /// Pregunta dónde guardar y escribe el archivo. Devuelve su nombre, o None si no se eligió un lugar.
 #[tauri::command]
 pub async fn archivo_guardar(
@@ -97,14 +118,21 @@ pub async fn archivo_guardar(
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
-        let Some(destino) = dialogo_con(
-            &app,
-            filtro_de(&pedido.ext).unwrap_or_default(),
-            &pedido.ext,
-        )
-        .set_file_name(sugerido)
-        .blocking_save_file()
-        .and_then(|f| f.into_path().ok()) else {
+        let de_prueba = destino_de_prueba(
+            std::env::var_os("BOLDO_GUARDAR_EN"),
+            app.state::<Estado>().rutas_app(),
+            &sugerido,
+        )?;
+        let Some(destino) = de_prueba.or_else(|| {
+            dialogo_con(
+                &app,
+                filtro_de(&pedido.ext).unwrap_or_default(),
+                &pedido.ext,
+            )
+            .set_file_name(sugerido)
+            .blocking_save_file()
+            .and_then(|f| f.into_path().ok())
+        }) else {
             return Ok(None);
         };
         let destino = con_extension_de(destino, &pedido.ext)?;
@@ -182,6 +210,47 @@ mod tests {
         for ext in ["xlsx", "png", "jpg", "svg"] {
             let c = cuerpo(&format!(r#"{{"nombre":"a","ext":"{ext}"}}"#), b"x");
             assert!(desarmar(&c).is_ok(), "{ext}");
+        }
+    }
+
+    #[test]
+    fn destino_de_prueba_solo_con_la_variable_y_dentro_de_datos() {
+        let exe = tempfile::tempdir().unwrap();
+        let datos = exe.path().join("datos");
+        let dentro = datos.join("imagenes");
+        fs::create_dir_all(&dentro).unwrap();
+        let rutas = |portable| crate::rutas::Rutas {
+            datos: datos.clone(),
+            bd: datos.join("boldo.db"),
+            respaldos: datos.join("respaldos"),
+            escenarios: datos.join("escenarios"),
+            portable,
+        };
+        let con = |v: &Path, r: Option<&crate::rutas::Rutas>| {
+            destino_de_prueba(Some(v.as_os_str().to_owned()), r, "a.svg")
+        };
+        // sin la variable: el diálogo de siempre
+        assert_eq!(
+            destino_de_prueba(None, Some(&rutas(true)), "a.svg").unwrap(),
+            None
+        );
+        assert_eq!(destino_de_prueba(None, None, "a.svg").unwrap(), None);
+        // dentro de datos/ de una portable: se guarda ahí
+        let ok = con(&dentro, Some(&rutas(true))).unwrap().unwrap();
+        assert_eq!(ok.file_name().unwrap(), "a.svg");
+        assert!(ok.starts_with(fs::canonicalize(&dentro).unwrap()));
+        // fuera, la propia datos/, una carpeta que no existe, una instalada o sin rutas: se rechaza
+        let fuera = tempfile::tempdir().unwrap();
+        for (v, r) in [
+            (fuera.path(), Some(rutas(true))),
+            (datos.as_path(), Some(rutas(true))),
+            (&datos.join("falta"), Some(rutas(true))),
+            (&dentro.join("..").join(".."), Some(rutas(true))),
+            (dentro.as_path(), Some(rutas(false))),
+            (dentro.as_path(), None),
+        ] {
+            let e = con(v, r.as_ref()).unwrap_err();
+            assert_eq!(e.codigo, "destino_de_prueba_invalido", "{v:?}");
         }
     }
 
