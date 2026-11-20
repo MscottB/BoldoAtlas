@@ -10,7 +10,7 @@ Job title and unit are not edited in the record: they belong to the **position**
 
 The name, email, phone, the units the person heads and their positions are in plain view. **Contract type**, **site**, **schedule** and **notes** are under **More details**: it opens by itself if the person already has any of those or there is an error there; otherwise with a click, and it stays as you leave it.
 
-![Person record with name, email, phone, positions and the More details block open.](../img/en/fichas-ficha.webp "A person's record. 1: More details, with contract, site, schedule and notes. 2: the person's positions. 3: show the person in the org chart."){width=732 height=744}
+![Person record with name, email, phone, positions and the More details block open.](../img/en/fichas-ficha.webp "A person's record. 1: More details, with contract, site, schedule and notes. 2: the person's positions. 3: show the person in the org chart."){width=732 height=637}
 
 ## Value lists
 

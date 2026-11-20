@@ -577,7 +577,7 @@
   "fotos": {
     "aviso": {
       "titulo": "People's photos",
-      "texto": "This version no longer stores people's photos, to keep less personal data on this computer. You have photos in {donde}. If you want to keep them, first export each organization to a .boldo file.",
+      "texto": "This version no longer stores people's photos, to keep less personal data on this computer. You have photos in {donde}. If you want to keep them, first export each organization to a .boldo file (they stay in the file, but this version does not import them).",
       "organizacion": "“{nombre}”",
       "respaldos": "{n} backup | {n} backups",
       "y": " and ",

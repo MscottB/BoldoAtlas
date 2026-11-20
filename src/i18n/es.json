@@ -577,7 +577,7 @@
   "fotos": {
     "aviso": {
       "titulo": "Fotos de las personas",
-      "texto": "Esta versión ya no guarda fotos de las personas, para tener menos datos personales en el equipo. Tienes fotos en {donde}. Si quieres conservarlas, exporta antes cada organización a un .boldo.",
+      "texto": "Esta versión ya no guarda fotos de las personas, para tener menos datos personales en el equipo. Tienes fotos en {donde}. Si quieres conservarlas, exporta antes cada organización a un .boldo (se conservan en el archivo, pero esta versión no las importa).",
       "organizacion": "«{nombre}»",
       "respaldos": "{n} respaldo | {n} respaldos",
       "y": " y ",

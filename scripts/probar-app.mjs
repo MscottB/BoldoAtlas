@@ -694,15 +694,21 @@ async function fotosSoloEnLaWeb(exe, carpeta, info) {
   const app = await abrirApp(exe);
   const abierta = await revisarBase(app, carpeta);
   comprobar("la base de las fotos es la misma", abierta.rutaBd === info.rutaBd, abierta.rutaBd);
-  const boton = `[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Quitar las fotos ahora")`;
-  await app.hasta(`Boolean(${boton})`, "el aviso «Quitar las fotos ahora»");
-  comprobar("la app avisa de las fotos al abrir", true);
+  // por atributo y no por texto: el idioma de la interfaz sale del sistema
+  const boton = `document.querySelector('[data-accion="quitar-fotos"]')`;
+  const avisa = await app.hasta(`Boolean(${boton})`, "el aviso para quitar las fotos");
+  comprobar("la app avisa de las fotos al abrir", avisa === true, avisa);
   await app.evaluar(`${boton}.click()`);
   await app.hasta(
     `window.__TAURI_INTERNALS__.invoke("fotos_pendientes").then((p) => p.organizaciones.length === 0 && p.respaldos === 0)`,
     "que fotos_pendientes dé cero",
   );
-  comprobar("tras quitarlas no queda ninguna pendiente", true);
+  const pendientes = await app.llamar("fotos_pendientes");
+  comprobar(
+    "tras quitarlas no queda ninguna pendiente",
+    pendientes.ok && pendientes.valor.organizaciones.length === 0 && pendientes.valor.respaldos === 0,
+    pendientes,
+  );
 
   const lote = await app.llamar("db_lote", {
     baseId: abierta.baseId,

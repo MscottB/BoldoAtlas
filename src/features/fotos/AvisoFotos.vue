@@ -47,7 +47,9 @@ async function quitar() {
       </AlertDialogHeader>
       <AlertDialogFooter>
         <Button type="button" variant="outline" @click="masTarde">{{ t("fotos.aviso.masTarde") }}</Button>
-        <Button type="button" @click="quitar">{{ t("fotos.aviso.quitar") }}</Button>
+        <Button type="button" data-accion="quitar-fotos" @click="quitar">{{
+          t("fotos.aviso.quitar")
+        }}</Button>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>

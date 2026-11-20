@@ -38,5 +38,7 @@ describe("AvisoFotos", () => {
     expect(s).toContain("Tienes fotos en «Norte» y 2 respaldos.");
     expect(s).toContain("Quitar las fotos ahora");
     expect(s).toContain("Más tarde");
+    // el arnés de la app real busca el botón por este atributo, no por su texto (cambia con el idioma)
+    expect(s).toContain('data-accion="quitar-fotos"');
   });
 });

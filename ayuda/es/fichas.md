@@ -10,7 +10,7 @@ El cargo y la unidad no se editan en la ficha: son del **puesto** que la persona
 
 A la vista están el nombre, el correo, el teléfono, las unidades que encabeza y sus puestos. **Tipo de contrato**, **sede**, **jornada** y **notas** están en **Más datos**: se abre solo si la persona ya tiene alguno de esos datos o hay un error ahí; si no, con un clic, y queda como lo dejes.
 
-![Ficha de persona con nombre, correo, teléfono, puestos y el bloque Más datos abierto.](../img/es/fichas-ficha.webp "La ficha de una persona. 1: Más datos, con contrato, sede, jornada y notas. 2: los puestos de la persona. 3: ver a la persona en el organigrama."){width=732 height=744}
+![Ficha de persona con nombre, correo, teléfono, puestos y el bloque Más datos abierto.](../img/es/fichas-ficha.webp "La ficha de una persona. 1: Más datos, con contrato, sede, jornada y notas. 2: los puestos de la persona. 3: ver a la persona en el organigrama."){width=732 height=637}
 
 ## Listas de valores
 
