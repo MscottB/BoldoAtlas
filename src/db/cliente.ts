@@ -750,8 +750,8 @@ export function fotosPendientes(): Promise<FotosPendientes> {
   return invoke("fotos_pendientes");
 }
 
-/** Las quita de todas las organizaciones y respaldos; avisa `fotos-avance`. Devuelve cuántas personas tenían foto. */
-export function fotosQuitarTodas(trabajo: string): Promise<number> {
+/** Las quita de todas las organizaciones y respaldos; avisa `fotos-avance`. `fallos`: archivos que siguen pendientes. */
+export function fotosQuitarTodas(trabajo: string): Promise<{ quitadas: number; fallos: number }> {
   return invoke("fotos_quitar_todas", { trabajo });
 }
 

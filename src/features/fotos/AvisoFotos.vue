@@ -25,11 +25,13 @@ const avance = computed(() =>
 
 async function quitar() {
   try {
-    if (!(await quitarAhora())) return;
+    const hecho = await quitarAhora();
+    if (!hecho) return;
     // como al importar: lo que se ve sale de la base ya limpia
     const r = await org.cargar();
     if (!r.ok) return void toast.error(r.mensaje);
-    toast.success(t("fotos.listo"));
+    if (hecho.fallos) toast.warning(t("fotos.listoConFallos", { n: hecho.fallos }, hecho.fallos));
+    else toast.success(t("fotos.listo"));
   } catch (e) {
     toast.error(mensajeFallo(e));
   }

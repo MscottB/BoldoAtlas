@@ -11,11 +11,21 @@ import {
   mensajeComoNueva,
   modoInicial,
   revisionConDecisiones,
+  textoFotosQuitadas,
 } from "./intercambio";
 
 const resumenDe = (r: Partial<ResumenImportacion>) =>
   ({ parcial: false, informe: null, ...r }) as ResumenImportacion;
 const conInforme = { informe: {} } as Partial<ResumenImportacion>;
+
+describe("textoFotosQuitadas", () => {
+  it("con fotos quitadas lo dice en el resumen; sin ninguna, no hay línea", () => {
+    i18n.global.locale.value = "es";
+    expect(textoFotosQuitadas({ fotosQuitadas: 12 })).toBe("12 fotos no se importaron");
+    expect(textoFotosQuitadas({ fotosQuitadas: 1 })).toBe("1 foto no se importó");
+    expect(textoFotosQuitadas({ fotosQuitadas: 0 })).toBeNull();
+  });
+});
 
 describe("modoInicial", () => {
   it("«Como organización nueva» es el primero, también con un parcial", () => {

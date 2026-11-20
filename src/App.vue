@@ -106,7 +106,7 @@ void organizaciones.cargarLista().then((r) => {
   if (!r.ok) console.warn("No se pudo leer la lista de organizaciones:", r.mensaje);
 });
 // La app se monta con la carga inicial ya hecha: si quedaron fotos, se avisa una vez.
-revisarAlArrancar(org.org.nombre).catch((e: unknown) => console.error(e));
+revisarAlArrancar().catch((e: unknown) => console.error(e));
 const sinAbrirActiva = computed(() => organizaciones.sinAbrir.get(pestanas.activa));
 // Con una sola pestaña no hay barra (se abre otra con Ctrl+T o «Abrir en pestaña nueva»).
 const conPestanas = computed(() => pestanas.lista.length > 1);

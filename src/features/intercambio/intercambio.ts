@@ -17,6 +17,12 @@ export type ModoImportar = "nueva" | "agregar" | "revisar" | "reemplazar";
  * La opción que viene marcada: como organización nueva, también con un parcial. Con la lista protegida Rust no puede
  * agregar otra: lo que este archivo permite sobre la abierta.
  */
+/** «12 fotos no se importaron», o null si el archivo no traía ninguna: el escritorio no las guarda. */
+export const textoFotosQuitadas = (r: Pick<ResumenImportacion, "fotosQuitadas">): string | null =>
+  r.fotosQuitadas
+    ? i18n.global.t("intercambio.importar.fotosQuitadas", { n: r.fotosQuitadas }, r.fotosQuitadas)
+    : null;
+
 export const modoInicial = (r: ResumenImportacion, listaProtegida = false): ModoImportar =>
   !listaProtegida ? "nueva" : r.informe ? "agregar" : r.parcial ? "revisar" : "reemplazar";
 

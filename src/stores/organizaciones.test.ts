@@ -34,6 +34,8 @@ const c = vi.hoisted(() => ({
   sincronizarOrganizacion: vi.fn(),
 }));
 vi.mock("@/db/cliente", () => c);
+const fotos = vi.hoisted(() => ({ conocerAbierta: vi.fn(), revisarExterna: vi.fn(async () => {}) }));
+vi.mock("@/features/fotos/aviso", () => fotos);
 const toast = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), warning: vi.fn() }));
 vi.mock("vue-sonner", () => ({ toast }));
 
@@ -72,6 +74,7 @@ beforeEach(() => {
   for (const f of Object.values(c)) f.mockReset();
   toast.error.mockReset();
   toast.warning.mockReset();
+  fotos.revisarExterna.mockClear();
   c.abrirOrganizacion.mockImplementation(async (id: string) => ({ id }));
   c.colaVacia.mockResolvedValue(undefined);
   c.consultar.mockResolvedValue([]);
@@ -112,6 +115,19 @@ describe("la abierta, para la barra y la bandeja", () => {
     expect(await o.activarPestana(p.activa)).toEqual({ ok: true });
     expect(baseActual()).toBe("B");
     expect(o.sinAbrir.size).toBe(0);
+  });
+
+  it("abrir un archivo externo pregunta por sus fotos; una propia no", async () => {
+    await arrancar(null);
+    const o = useOrganizaciones();
+    c.listarOrganizaciones.mockResolvedValue([
+      { id: "B", nombre: "Beta", externa: true },
+      { id: "C", nombre: "Gama", externa: false },
+    ]);
+    await o.abrir("C");
+    await o.abrir("B");
+    await vi.waitFor(() => expect(fotos.revisarExterna).toHaveBeenCalledWith("B", "Beta"));
+    expect(fotos.revisarExterna).toHaveBeenCalledTimes(1);
   });
 
   it("tras cambiar, es de la nueva y no queda nada de la anterior", async () => {
@@ -1221,6 +1237,14 @@ describe("eliminar", () => {
     c.eliminarOrganizacion.mockImplementation(async () => (orden.push(enCambio()), { id: "B" }));
     await o.eliminar("A", { guardarCopia: false, borrarArchivo: false });
     expect(orden).toEqual(["colaVacia", "colaVacia", true]);
+  });
+
+  it("si cae en un archivo externo, pregunta por sus fotos como al abrirlo", async () => {
+    const { o } = await arrancar();
+    c.eliminarOrganizacion.mockResolvedValue({ id: "B" });
+    c.listarOrganizaciones.mockResolvedValue([{ id: "B", nombre: "Beta", externa: true }]);
+    await o.eliminar("A", { guardarCopia: false, borrarArchivo: false });
+    await vi.waitFor(() => expect(fotos.revisarExterna).toHaveBeenCalledWith("B", "Beta"));
   });
 
   it("de otra, las cierra sin cambiar de base", async () => {

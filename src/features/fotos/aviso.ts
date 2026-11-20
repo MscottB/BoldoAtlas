@@ -15,17 +15,45 @@ import { conTrabajo } from "@/lib/trabajos";
 
 export type Traducir = typeof i18n.global.t;
 
-/** Lo que se ve. `externa`: solo por la organización abierta, un archivo externo que el arranque no mira. */
-export const aviso = shallowRef<{ texto: string; externa: boolean; baseId: string } | null>(null);
+interface Aviso {
+  texto: string;
+  /** Solo por la organización abierta: un archivo externo, que el arranque no mira. */
+  externa: boolean;
+  baseId: string;
+}
+
+/** Lo que se ve. */
+export const aviso = shallowRef<Aviso | null>(null);
 /** La limpieza en curso y su avance. */
 export const quitando = shallowRef<{ hechos: number; total: number } | null>(null);
 
 // «Más tarde» vale hasta cerrar la app: no se guarda, y el próximo arranque vuelve a avisar.
 let yaAvisado = false;
 const externasVistas = new Set<string>();
+// El aviso general, si llegó con el de un externo a la vista o con una limpieza en curso: sale después.
+let enEspera: Aviso | null = null;
+
+let abierta = (): { nombre: string; externa: boolean } => ({ nombre: "", externa: false });
+/** Lo registra el store de organizaciones: cómo se llama la abierta y si es un archivo externo. */
+export const conocerAbierta = (f: typeof abierta): void => {
+  abierta = f;
+};
+
+function mostrar(a: Aviso) {
+  if (aviso.value || quitando.value) enEspera = a;
+  else aviso.value = a;
+}
+function siguiente() {
+  if (!enEspera || aviso.value || quitando.value) return;
+  aviso.value = enEspera;
+  enEspera = null;
+}
+
 // El aviso de un archivo externo es de esa organización: al cambiar de base ya no vale.
 alSoltarDatos(() => {
-  if (aviso.value?.externa) aviso.value = null;
+  if (!aviso.value?.externa) return;
+  aviso.value = null;
+  siguiente();
 });
 
 export const debeAvisar = (p: Pendientes, yaAvisado: boolean): boolean =>
@@ -43,22 +71,24 @@ export function textoAviso(p: Pendientes, t: Traducir): string {
   return t("fotos.aviso.texto", { donde: dondeHay(lugares, t) });
 }
 
-/** Al terminar la carga inicial. `nombreAbierta`: por si la abierta es un archivo externo con fotos. */
-export async function revisarAlArrancar(nombreAbierta: string): Promise<void> {
-  if (quitando.value || aviso.value) return;
+/** Al terminar la carga inicial. */
+export async function revisarAlArrancar(): Promise<void> {
+  if (yaAvisado) return;
   const p = await fotosPendientes();
-  if (quitando.value || aviso.value) return; // mientras se leía, otro aviso o una limpieza
   if (debeAvisar(p, yaAvisado)) {
     yaAvisado = true;
-    aviso.value = { texto: textoAviso(p, i18n.global.t), externa: false, baseId: baseActual() };
-  } else if (!debeAvisar(p, false)) await revisarExterna(baseActual(), nombreAbierta);
+    mostrar({ texto: textoAviso(p, i18n.global.t), externa: false, baseId: baseActual() });
+  } else if (!debeAvisar(p, false)) {
+    // sin nada en la lista, una foto en la abierta es de un archivo externo
+    await revisarExterna(baseActual(), abierta().nombre);
+  }
 }
 
 /** Al abrir un archivo externo: una vez por sesión. */
 export async function revisarExterna(id: string, nombre: string): Promise<void> {
   if (quitando.value || aviso.value || externasVistas.has(id)) return;
   externasVistas.add(id);
-  if (!(await fotosHay())) return;
+  if (!(await fotosHay()) || aviso.value || quitando.value) return;
   const { t } = i18n.global;
   aviso.value = {
     texto: t("fotos.aviso.texto", { donde: t("fotos.aviso.organizacion", { nombre }) }),
@@ -67,11 +97,16 @@ export async function revisarExterna(id: string, nombre: string): Promise<void> 
   };
 }
 
-export function masTarde(): void {
+export async function masTarde(): Promise<void> {
+  const a = aviso.value;
   aviso.value = null;
+  // lo que el aviso general dejó fuera: la abierta, si es un archivo externo (una propia sigue con sus fotos)
+  const abiertaAhora = abierta();
+  if (a && !a.externa && abiertaAhora.externa) await revisarExterna(baseActual(), abiertaAhora.nombre);
+  siguiente();
 }
 
-async function quitarTodas(): Promise<number> {
+async function quitarTodas(): Promise<{ quitadas: number; fallos: number }> {
   const soltar = await listen<{ hechos: number; total: number }>("fotos-avance", (e) => {
     quitando.value = e.payload;
   });
@@ -82,20 +117,30 @@ async function quitarTodas(): Promise<number> {
   }
 }
 
-/** «Quitar las fotos ahora»: el aviso se cierra y la limpieza sigue con su avance, sin bloquear la ventana. Falso si no
- * quitó nada. */
-export async function quitarAhora(): Promise<boolean> {
+/**
+ * «Quitar las fotos ahora»: el aviso se cierra y la limpieza sigue con su avance, sin bloquear la ventana. null si no
+ * quitó nada; si no, cuántas y cuántos archivos fallaron (siguen pendientes para el próximo arranque).
+ */
+export async function quitarAhora(): Promise<{ quitadas: number; fallos: number } | null> {
   const a = aviso.value;
   aviso.value = null;
   // la de un archivo externo solo con esa base abierta: con otra, fotos_quitar limpiaría la que no es
-  if (!a || quitando.value || (a.externa && a.baseId !== baseActual())) return false;
+  if (!a || quitando.value || (a.externa && a.baseId !== baseActual())) {
+    siguiente();
+    return null;
+  }
   quitando.value = { hechos: 0, total: 0 };
+  let r: { quitadas: number; fallos: number };
   try {
-    await conTrabajo(i18n.global.t("trabajos.quitarFotos"), () =>
-      a.externa ? fotosQuitar() : quitarTodas(),
+    r = await conTrabajo(i18n.global.t("trabajos.quitarFotos"), async () =>
+      a.externa ? { quitadas: await fotosQuitar(), fallos: 0 } : quitarTodas(),
     );
   } finally {
     quitando.value = null;
   }
-  return true;
+  // La limpieza general no toca los archivos externos: si el abierto es uno, ahora se pregunta por él. Con una propia no
+  // avisa: ya no tiene fotos (o falló, y entonces sí vale ofrecerlo de nuevo).
+  if (!a.externa) await revisarExterna(baseActual(), abierta().nombre);
+  siguiente();
+  return r;
 }

@@ -236,9 +236,16 @@ struct Avance {
     total: u32,
 }
 
+/// Lo que `fotos_quitar_todas` le dice a la ventana: cuántas personas tenían foto y cuántos archivos no se pudieron limpiar.
+#[derive(Serialize)]
+pub struct Resultado {
+    quitadas: u64,
+    fallos: u32,
+}
+
 /// Quita las fotos de todas las organizaciones y respaldos. Sigue el trabajo `trabajo`: si se cancela, se detiene.
 #[tauri::command]
-pub async fn fotos_quitar_todas(app: AppHandle, trabajo: String) -> Result<u64, Fallo> {
+pub async fn fotos_quitar_todas(app: AppHandle, trabajo: String) -> Result<Resultado, Fallo> {
     tauri::async_runtime::spawn_blocking(move || {
         let (estado, sesiones) = (app.state::<Estado>(), app.state::<Sesiones>());
         sesiones.empezar(&trabajo)?;
@@ -267,7 +274,10 @@ pub async fn fotos_quitar_todas(app: AppHandle, trabajo: String) -> Result<u64, 
         for f in &l.fallos {
             eprintln!("fotos: no se pudo limpiar {f}");
         }
-        Ok(l.quitadas)
+        Ok(Resultado {
+            quitadas: l.quitadas,
+            fallos: l.fallos.len() as u32,
+        })
     })
     .await
     .map_err(|e| e.to_string())?

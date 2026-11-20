@@ -585,7 +585,8 @@
       "masTarde": "Más tarde"
     },
     "avance": "Quitando las fotos…",
-    "listo": "Listo. Se quitaron las fotos."
+    "listo": "Listo. Se quitaron las fotos.",
+    "listoConFallos": "Se quitaron las fotos. {n} archivo no se pudo limpiar; se intentará de nuevo al abrir la app. | Se quitaron las fotos. {n} archivos no se pudieron limpiar; se intentará de nuevo al abrir la app."
   },
   "puesto": {
     "nuevo": "Nuevo puesto",

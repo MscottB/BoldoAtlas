@@ -585,7 +585,8 @@
       "masTarde": "Later"
     },
     "avance": "Removing the photos…",
-    "listo": "Done. The photos were removed."
+    "listo": "Done. The photos were removed.",
+    "listoConFallos": "The photos were removed. {n} file could not be cleaned; it will be tried again when the app opens. | The photos were removed. {n} files could not be cleaned; they will be tried again when the app opens."
   },
   "puesto": {
     "nuevo": "New position",
