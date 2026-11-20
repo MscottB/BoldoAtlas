@@ -74,6 +74,9 @@ const LETRA: Record<Nivel, { titulo: number; lineasTitulo: number; linea: number
   pantalla: { titulo: 13, lineasTitulo: 1, linea: 11, centrar: false },
 };
 
+/** La letra más chica de las tarjetas de ese nivel, en unidades del dibujo: con ella se mide si el PDF se lee. */
+export const letraMinima = (nivel: Nivel) => Math.min(LETRA[nivel].titulo, LETRA[nivel].linea, LETRA_MAS);
+
 // XML no admite estos caracteres de control: se quitan para que el archivo siempre abra.
 // También U+FFFE, U+FFFF y las mitades sueltas de un par sustituto (un emoji partido).
 const CONTROL =
@@ -216,19 +219,49 @@ function tarjeta(t: Tarjeta, c: Caja, nivel: Nivel, zonas: Zona[], textoMas: str
   return partes;
 }
 
+/** Para el PDF. */
+export interface OpcionesDibujo {
+  /** Sin el encabezado (logo, organización, alcance y fecha): en el PDF lo lleva cada página. */
+  sinEncabezado?: boolean;
+  /**
+   * Una hoja de la cuadrícula, en coordenadas de la imagen entera: solo va lo que la toca, y el SVG mide lo que ella. El
+   * resto del dibujo queda donde estaba, así cada hoja calza con sus vecinas.
+   */
+  recorte?: Caja;
+}
+
+// Con un bucle: Math.min(...lista) lanza RangeError con decenas de miles de elementos.
+function envolvente(cajas: Caja[]): Caja {
+  if (!cajas.length) return { x: 0, y: 0, ancho: 0, alto: 0 };
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const c of cajas) {
+    x0 = Math.min(x0, c.x);
+    y0 = Math.min(y0, c.y);
+    x1 = Math.max(x1, c.x + c.ancho);
+    y1 = Math.max(y1, c.y + c.alto);
+  }
+  return { x: x0, y: y0, ancho: x1 - x0, alto: y1 - y0 };
+}
+const punto = (p: Punto): Caja => ({ ...p, ancho: 0, alto: 0 });
+
 /**
  * El organigrama como texto SVG puro (rect, text, path e image solo para el logo), con la paleta clara y los textos
  * escapados. En Presentación el lienzo se amplía con márgenes blancos hasta 16:9 exacto. Solo se dibujan las cajas y
  * líneas de las tarjetas que hay: una caja sin tarjeta (un puesto fuera de «Como en pantalla») no ocupa lugar.
  */
-export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: number } {
+export function dibujarSvg(
+  e: EntradaSvg,
+  o: OpcionesDibujo = {},
+): { svg: string; ancho: number; alto: number } {
   const zonas = e.nivel === "presentacion" ? null : e.zonas;
   const leyenda = e.nivel === "pantalla" && e.leyenda?.entradas.length ? e.leyenda : null;
   const ids = new Set(e.tarjetas.map((t) => t.id));
   const cajas = new Map([...e.cajas].filter(([id]) => ids.has(id)));
   const trazados = trazarLaterales(e.laterales, cajas, e.vista.direccion);
   const { organizacion, alcance, fecha, logo } = e.encabezado;
-  const conLogo = !!logo && LOGO_VALIDO.test(logo);
+  const conEncabezado = !o.sinEncabezado;
+  const conLogo = conEncabezado && !!logo && LOGO_VALIDO.test(logo);
+  const cabeza = conEncabezado ? ALTO_ENCABEZADO + AIRE : 0;
   const sub = `${alcance} · ${fecha}`;
 
   // Lo que ocupa el dibujo: tarjetas, recuadros de zonas con su nombre encima, y líneas laterales con su etiqueta.
@@ -243,25 +276,14 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
       const tr = trazados.get(l.id);
       const w = l.etiqueta ? anchoEtiqueta(l.etiqueta) : 10;
       return tr
-        ? [
-            ...tr.puntos.map((p) => ({ ...p, ancho: 0, alto: 0 })),
-            { x: tr.etiqueta.x - w / 2, y: tr.etiqueta.y - 10, ancho: w, alto: 20 },
-          ]
+        ? [...tr.puntos.map(punto), { x: tr.etiqueta.x - w / 2, y: tr.etiqueta.y - 10, ancho: w, alto: 20 }]
         : [];
     }),
   ];
-  // Con un bucle: Math.min(...lista) lanza RangeError con decenas de miles de elementos.
-  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
-  for (const c of ocupado) {
-    x0 = Math.min(x0, c.x);
-    y0 = Math.min(y0, c.y);
-    x1 = Math.max(x1, c.x + c.ancho);
-    y1 = Math.max(y1, c.y + c.alto);
-  }
-  if (!ocupado.length) [x0, y0, x1, y1] = [0, 0, 0, 0];
-  const dibujo = { ancho: x1 - x0, alto: y1 - y0 };
-  const anchoEncabezado =
-    (conLogo ? LOGO + 12 : 0) + Math.max(anchoTexto(organizacion, 18, true), anchoTexto(sub, 12));
+  const { x: x0, y: y0, ...dibujo } = envolvente(ocupado);
+  const anchoEncabezado = conEncabezado
+    ? (conLogo ? LOGO + 12 : 0) + Math.max(anchoTexto(organizacion, 18, true), anchoTexto(sub, 12))
+    : 0;
   const anchoLeyenda = leyenda
     ? leyenda.entradas.reduce(
         (m, x) => Math.max(m, 32 + anchoTexto(x.nombre, 12)),
@@ -271,11 +293,12 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
   const altoLeyenda = leyenda ? (leyenda.entradas.length + 1) * FILA_LEYENDA : 0;
   const contenido = {
     ancho: Math.max(dibujo.ancho, anchoEncabezado, anchoLeyenda),
-    alto: ALTO_ENCABEZADO + AIRE + dibujo.alto + (leyenda ? AIRE + altoLeyenda : 0),
+    alto: cabeza + dibujo.alto + (leyenda ? AIRE + altoLeyenda : 0),
   };
   let ancho = Math.ceil(contenido.ancho + 2 * MARGEN);
   let alto = Math.ceil(contenido.alto + 2 * MARGEN);
-  if (e.nivel === "presentacion") {
+  // En el PDF (sin encabezado) no: la página tiene su propia forma, y los márgenes achicarían el dibujo.
+  if (e.nivel === "presentacion" && conEncabezado) {
     // Enteros 16k × 9k: así ancho / alto da 16 / 9 exacto.
     const k = Math.ceil(Math.max(ancho / 16, alto / 9));
     [ancho, alto] = [16 * k, 9 * k];
@@ -284,9 +307,13 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
   const ox = (ancho - contenido.ancho) / 2;
   const oy = (alto - contenido.alto) / 2;
   const dx = ox + (contenido.ancho - dibujo.ancho) / 2 - x0;
-  const dy = oy + ALTO_ENCABEZADO + AIRE - y0;
+  const dy = oy + cabeza - y0;
   const mover = (p: Punto) => ({ x: p.x + dx, y: p.y + dy });
   const caja = (c: Caja): Caja => ({ ...c, ...mover(c) });
+  // Lo que toca la hoja, ya movido; sin recorte, todo.
+  const r = o.recorte;
+  const toca = (c: Caja) =>
+    !r || (c.x <= r.x + r.ancho && c.x + c.ancho >= r.x && c.y <= r.y + r.alto && c.y + c.alto >= r.y);
 
   const partes = [
     ...(e.fondo ? [el("rect", { id: "fondo", x: 0, y: 0, width: ancho, height: alto, fill: P.fondo })] : []),
@@ -307,17 +334,20 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
     );
     xEncabezado += LOGO + 12;
   }
-  partes.push(texto(xEncabezado, oy + 20, organizacion, 18, { negrita: true }));
-  partes.push(texto(xEncabezado, oy + 40, sub, 12, { color: P.tenue }));
+  if (conEncabezado) {
+    partes.push(texto(xEncabezado, oy + 20, organizacion, 18, { negrita: true }));
+    partes.push(texto(xEncabezado, oy + 40, sub, 12, { color: P.tenue }));
+  }
 
   for (const { zona, caja: c } of zonas?.recuadros ?? []) {
-    const r = caja(c);
+    const z = caja(c);
+    if (!toca({ ...z, y: z.y - ALTO_TITULO_ZONA, alto: z.alto + ALTO_TITULO_ZONA })) continue;
     partes.push(
       el("rect", {
-        x: r.x,
-        y: r.y,
-        width: r.ancho,
-        height: r.alto,
+        x: z.x,
+        y: z.y,
+        width: z.ancho,
+        height: z.alto,
         rx: 12,
         fill: zona.color,
         "fill-opacity": 0.1,
@@ -325,7 +355,7 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
         "stroke-width": 2,
       }),
     );
-    partes.push(texto(r.x + 4, r.y - 6, recortar(zona.nombre, r.ancho - 4, 12), 12, { negrita: true }));
+    partes.push(texto(z.x + 4, z.y - 6, recortar(zona.nombre, z.ancho - 4, 12), 12, { negrita: true }));
   }
 
   // Un puesto sin tarjeta en la pila de su unidad: la línea a las hijas, que salía de él, sale de la unidad.
@@ -337,7 +367,7 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
       continue;
     }
     const [ca, cb] = [cajas.get(real(a)), cajas.get(b)];
-    if (ca && cb)
+    if (ca && cb && toca(envolvente([caja(ca), caja(cb)])))
       partes.push(
         el("path", {
           d: arista(caja(ca), caja(cb), e.vista),
@@ -354,6 +384,10 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
     const tr = trazados.get(l.id);
     if (!tr) continue;
     const puntos = tr.puntos.map(mover);
+    const c = mover(tr.etiqueta);
+    const w = l.etiqueta && tr.conTexto ? anchoEtiqueta(l.etiqueta) : 10;
+    if (!toca(envolvente([...puntos.map(punto), { x: c.x - w / 2, y: c.y - 10, ancho: w, alto: 20 }])))
+      continue;
     partes.push(
       el("path", {
         d: caminoSvg(puntos),
@@ -365,9 +399,7 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
     );
     const punta = l.ambos ? null : puntaFlecha(puntos);
     if (punta) partes.push(el("path", { d: punta, fill: P.marca }));
-    const c = mover(tr.etiqueta);
-    if (l.etiqueta && tr.conTexto) {
-      const w = anchoEtiqueta(l.etiqueta);
+    if (l.etiqueta && tr.conTexto)
       etiquetas.push(
         el("rect", {
           x: c.x - w / 2,
@@ -380,7 +412,7 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
         }),
         texto(c.x, c.y + 4, recortar(l.etiqueta, w - 12, 12), 12, { centro: true }),
       );
-    } else
+    else
       etiquetas.push(
         el("rect", {
           x: c.x - 5,
@@ -397,21 +429,21 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
 
   for (const t of e.tarjetas) {
     const c = cajas.get(t.id);
-    if (c)
+    if (c && toca(caja(c)))
       partes.push(
         ...tarjeta(
           t,
           caja(c),
           e.nivel,
           zonas?.marcas.get(t.id) ?? [],
-          e.t("imagen.masUnidades", { n: t.mas }, t.mas),
+          t.textoMas ?? e.t("imagen.masUnidades", { n: t.mas }, t.mas),
         ),
       );
   }
   partes.push(...etiquetas);
 
   if (leyenda) {
-    const y = oy + ALTO_ENCABEZADO + AIRE + dibujo.alto + AIRE;
+    const y = oy + cabeza + dibujo.alto + AIRE;
     partes.push(texto(ox, y + 14, leyenda.titulo, 12, { negrita: true }));
     leyenda.entradas.forEach((x, i) => {
       const fila = y + (i + 1) * FILA_LEYENDA;
@@ -452,9 +484,9 @@ export function dibujarSvg(e: EntradaSvg): { svg: string; ancho: number; alto: n
   const raiz = atributos({
     xmlns: "http://www.w3.org/2000/svg",
     "xmlns:xlink": conLogo ? "http://www.w3.org/1999/xlink" : undefined,
-    width: ancho,
-    height: alto,
-    viewBox: `0 0 ${ancho} ${alto}`,
+    width: r ? r.ancho : ancho,
+    height: r ? r.alto : alto,
+    viewBox: r ? `${r.x} ${r.y} ${r.ancho} ${r.alto}` : `0 0 ${ancho} ${alto}`,
     "font-family": FUENTE,
   });
   return { svg: `<svg${raiz}>${partes.join("")}</svg>`, ancho, alto };

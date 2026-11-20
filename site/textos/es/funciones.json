@@ -29,7 +29,7 @@
         "Varios árboles en la misma base, y cualquier rama se abre como árbol propio.",
         "Vistas guardadas y resaltado por etiqueta o por texto.",
         "Colores por marca, por leyenda, por antigüedad en el puesto o por personas a cargo, con el valor escrito en cada tarjeta.",
-        "Exporta como imagen PNG, JPG o SVG todo el organigrama o una rama: solo la estructura, con cada jefatura o como lo ves, con vista previa."
+        "Exporta todo el organigrama o una rama como imagen PNG, JPG o SVG, o como PDF en hojas Carta, Oficio, A4, A3 o A2: solo la estructura, con cada jefatura o como lo ves, con vista previa."
       ],
       "imagen": {
         "nombre": "arbol",

@@ -7,6 +7,15 @@ import { u } from "@/features/arbol/fixture";
 import { LIMITE_TARJETAS } from "@/features/arbol/rendimiento";
 import { useOrganizacion } from "@/stores/organizacion";
 import DialogoImagen from "./DialogoImagen.vue";
+import { CAMBIO, LIMITE_PAGINAS, REEMPLAZADO, avisosPdf, falloAlGuardar } from "./paginasDeAlcance";
+
+// Lo elegido la última vez (en node no hay localStorage).
+const pref = vi.hoisted(() => ({ valor: {} as Record<string, unknown> }));
+vi.mock("@/lib/preferencias", async (original) => ({
+  ...(await original<object>()),
+  leerPreferencia: () => pref.valor,
+  guardarPreferencia: () => {},
+}));
 
 // Los diálogos de reka solo se abren en el navegador: aquí la ventana deja ver lo que lleva.
 vi.mock("@/components/ui/dialog", async () => {
@@ -30,6 +39,7 @@ vi.mock("@/components/ui/dialog", async () => {
 const t = i18n.global.t;
 let pinia: Pinia;
 beforeEach(() => {
+  pref.valor = {};
   pinia = createPinia();
   setActivePinia(pinia);
 });
@@ -78,5 +88,99 @@ describe("DialogoImagen", () => {
     expect(s).toContain("data-aviso-tarjetas");
     const n = (LIMITE_TARJETAS + 1).toLocaleString("es");
     expect(s).toContain(t("imagen.muchas", { n, limite: LIMITE_TARJETAS.toLocaleString("es") }));
+  });
+
+  it("sin PDF elegido no muestra sus opciones", async () => {
+    conHijas(2);
+    const s = await html();
+    expect(s).toContain('data-accion="formato-pdf"');
+    expect(s).not.toContain('data-accion="hoja-');
+  });
+
+  it("con PDF: hoja, orientación y reparto, por defecto carta, horizontal y por ramas; sin copiar", async () => {
+    pref.valor = { formato: "pdf" };
+    conHijas(2);
+    const s = await html();
+    const marcada = (accion: string) => new RegExp(`<input[^>]*data-accion="${accion}"[^>]*>`).exec(s)?.[0];
+    for (const h of ["carta", "oficio", "a4", "a3", "a2"]) {
+      expect(marcada(`hoja-${h}`)).toBeDefined();
+      expect(s).toContain(t(`pdf.hojas.${h}`));
+    }
+    for (const o of ["horizontal", "vertical"]) expect(s).toContain(t(`pdf.orientaciones.${o}`));
+    for (const r of ["una", "ramas", "cuadricula"]) expect(s).toContain(t(`pdf.repartos.${r}`));
+    expect(marcada("hoja-carta")).toContain("checked");
+    expect(marcada("hoja-a4")).not.toContain("checked");
+    expect(marcada("orientacion-horizontal")).toContain("checked");
+    expect(marcada("orientacion-vertical")).not.toContain("checked");
+    expect(marcada("reparto-ramas")).toContain("checked");
+    expect(marcada("reparto-una")).not.toContain("checked");
+    expect(marcada("reparto-cuadricula")).toBeDefined();
+    expect(marcada("formato-pdf")).toContain("checked");
+    // Ni copiar, ni fondo, ni tamaño: no son de un PDF. Guardar sí.
+    expect(s).not.toContain('data-accion="copiar-imagen"');
+    expect(s).not.toContain(t("imagen.fondos.transparente"));
+    expect(s).not.toContain("4x");
+    expect(s).toContain('data-accion="guardar-imagen"');
+  });
+
+  it("recuerda la hoja, la orientación y el reparto elegidos", async () => {
+    pref.valor = { formato: "pdf", hoja: "a3", orientacion: "vertical", reparto: "cuadricula" };
+    conHijas(2);
+    const s = await html();
+    const marcada = (accion: string) => new RegExp(`<input[^>]*data-accion="${accion}"[^>]*>`).exec(s)?.[0];
+    expect(marcada("hoja-a3")).toContain("checked");
+    expect(marcada("orientacion-vertical")).toContain("checked");
+    expect(marcada("reparto-cuadricula")).toContain("checked");
+  });
+
+  it("avisa si en una página no se lee, y sobre 200 páginas con la cifra", () => {
+    expect(avisosPdf("ramas", { ilegible: false, total: 3 }, "es")).toEqual([]);
+    expect(avisosPdf("una", { ilegible: false, total: 1 }, "es")).toEqual([]);
+    expect(avisosPdf("una", { ilegible: true, total: 1 }, "es")).toEqual([t("pdf.ilegible")]);
+    // En los otros repartos también se avisa, sin sugerir repartir (ya se reparte).
+    expect(avisosPdf("ramas", { ilegible: true, total: 3 }, "es")).toEqual([t("pdf.ilegibleAlguna")]);
+    // En cuadrícula la escala ya está en 1: una hoja más grande no ayuda.
+    expect(avisosPdf("cuadricula", { ilegible: true, total: 3 }, "es")).toEqual([
+      t("pdf.ilegibleCuadricula"),
+    ]);
+    expect(avisosPdf("cuadricula", { ilegible: false, total: LIMITE_PAGINAS }, "es")).toEqual([]);
+    const muchas = avisosPdf("ramas", { ilegible: false, total: 1234 }, "es");
+    expect(muchas).toEqual([t("pdf.muchas", { n: (1234).toLocaleString("es"), limite: LIMITE_PAGINAS })]);
+    expect(muchas[0]).toContain((1234).toLocaleString("es"));
+    // Por ramas, en la vista previa no hay cifra: no se avisa de páginas, sí de la letra.
+    expect(avisosPdf("ramas", { ilegible: false, total: null }, "es")).toEqual([]);
+    expect(avisosPdf("ramas", { ilegible: true, total: null }, "es")).toEqual([t("pdf.ilegibleAlguna")]);
+  });
+
+  it("al fallar Guardar: «interrumpido» solo en el PDF y si cambió el organigrama", () => {
+    const abortada = (motivo?: unknown) => {
+      const c = new AbortController();
+      c.abort(motivo);
+      return c.signal;
+    };
+    const corte = new DOMException("x", "AbortError");
+    const viva = new AbortController().signal;
+    // `programar` cortó Guardar porque cambió el organigrama o la fecha.
+    expect(falloAlGuardar(CAMBIO, true, abortada(CAMBIO))).toBe("interrumpido");
+    // Lo cortado fue la vista previa (la señal de Guardar sigue viva), o un layout que la vista previa nueva reemplazó.
+    expect(falloAlGuardar(corte, true, viva)).toBe("interrumpido");
+    expect(falloAlGuardar(REEMPLAZADO, true, abortada(CAMBIO))).toBe("interrumpido");
+    expect(falloAlGuardar(REEMPLAZADO, true, viva)).toBe("interrumpido");
+    // armarPdf rechaza con su propio AbortError: vale el motivo de la señal.
+    expect(falloAlGuardar(corte, true, abortada(CAMBIO))).toBe("interrumpido");
+    // Cancelar o cerrar la ventana: nada que decir.
+    expect(falloAlGuardar(corte, true, abortada())).toBe("nada");
+    expect(falloAlGuardar(REEMPLAZADO, true, abortada())).toBe("nada");
+    // PNG, JPG y SVG no tienen `armando`: un corte no es «interrumpido».
+    expect(falloAlGuardar(corte, false, undefined)).toBe("nada");
+    expect(falloAlGuardar(REEMPLAZADO, false, undefined)).toBe("error");
+    expect(falloAlGuardar(new Error("disco lleno"), true, viva)).toBe("error");
+    expect(falloAlGuardar(new Error("disco lleno"), false, undefined)).toBe("error");
+  });
+
+  it("el pie que recibe el PDF lleva {n} y {m} tal cual, en los dos idiomas", () => {
+    // Así lo arma el diálogo; documentoPdf los cambia por los números de cada página.
+    expect(t("pdf.pagina", { n: "{n}", m: "{m}" })).toBe("Página {n} de {m}");
+    expect(t("pdf.pagina", { n: "{n}", m: "{m}" }, { locale: "en" })).toBe("Page {n} of {m}");
   });
 });

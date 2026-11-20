@@ -1225,7 +1225,8 @@
       "ya_existe": "Ya hay un archivo con ese nombre. Elige otro nombre.",
       "pedido_invalido": "BoldoAtlas tuvo un problema interno al guardar el archivo y no se guardó nada. Inténtalo de nuevo.",
       "sin_archivo": "No hay un archivo guardado en esta sesión cuya carpeta abrir.",
-      "excel_libro": "No se pudo armar el archivo de Excel y no se guardó nada. Detalle: {detalle}"
+      "excel_libro": "No se pudo armar el archivo de Excel y no se guardó nada. Detalle: {detalle}",
+      "pdf_armar": "No se pudo armar el PDF y no se guardó nada. Detalle: {detalle}"
     },
     "ultimo": "Último respaldo: {fecha}",
     "verLista": "Ver respaldos y restaurar",
@@ -2198,5 +2199,46 @@
       "crear": "No se pudo crear la imagen. Prueba con un tamaño menor.",
       "copiar": "No se pudo copiar la imagen. Guárdala como archivo."
     }
+  },
+  "pdf": {
+    "hoja": "Hoja",
+    "hojas": {
+      "carta": "Carta",
+      "oficio": "Oficio",
+      "a4": "A4",
+      "a3": "A3",
+      "a2": "A2"
+    },
+    "orientacion": "Orientación",
+    "orientaciones": {
+      "horizontal": "Horizontal",
+      "vertical": "Vertical"
+    },
+    "reparto": "Repartir",
+    "repartos": {
+      "una": "En una página",
+      "ramas": "Por ramas",
+      "cuadricula": "En cuadrícula"
+    },
+    "paginas": "1 página | {n} páginas",
+    "paginasAlGuardar": "Las páginas se cuentan al guardar.",
+    "pagina": "Página {n} de {m}",
+    "titulo": "Organigrama",
+    "sigue": "Sigue en la página {n}",
+    "viene": "Viene de la página {n}",
+    "continuacion": "{nombre} (continuación, {k} de {n})",
+    "filaColumna": "Fila {fila}, columna {columna}",
+    "leyenda": "Leyenda",
+    "ilegible": "En una página la letra quedaría bajo 8 puntos y no se podría leer. Repártelo por ramas o en cuadrícula.",
+    "ilegibleAlguna": "Alguna página quedaría con letra bajo 8 puntos y costaría leerla. Prueba con una hoja más grande.",
+    "ilegibleCuadricula": "La letra de este nivel de detalle quedaría bajo 8 puntos y costaría leerla. Prueba con otro nivel de detalle.",
+    "interrumpido": "Cambió el organigrama mientras se preparaba el PDF; vuelve a guardarlo.",
+    "preparando": "Preparando las páginas…",
+    "preparandoN": "Preparando las páginas… ({n})",
+    "muchas": "El PDF lleva {n} páginas, más de {limite}: puede tardar.",
+    "aviso": "El PDF queda sin cifrar: cualquiera que lo abra verá lo que contiene. Quien lo genera es responsable de dónde lo guarda y con quién lo comparte.",
+    "armando": "Armando el PDF…",
+    "cancelar": "Cancelar",
+    "ciclo": "No se pudo repartir en páginas: una unidad quedó debajo de sí misma. Revisa de quién depende cada unidad."
   }
 }

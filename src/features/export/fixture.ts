@@ -13,7 +13,7 @@ import {
 import { VISTA_POR_DEFECTO, jefeEnTarjeta, separaciones, type ConfigVista } from "@/features/arbol/vista";
 import { zonasDibujadas } from "@/features/arbol/zonas";
 import { tamanos, tarjetasDe, type EntradaNivel, type Nivel } from "./niveles";
-import { dibujarSvg, type EntradaSvg } from "./treeSvg";
+import { dibujarSvg, type EntradaSvg, type OpcionesDibujo } from "./treeSvg";
 
 // Datos de prueba de la exportación. Todo dato de personas (y lo que Estructura no lleva) tiene la marca: así una
 // prueba busca la marca en el SVG entero.
@@ -119,6 +119,7 @@ export async function armarSvg(
     /** Pone los puestos en el grafo aunque el nivel no los lleve (un error de quien arma la entrada). */
     conPuestos?: boolean;
     cambiar?: (e: EntradaSvg) => EntradaSvg;
+    dibujo?: OpcionesDibujo;
   } = {},
 ) {
   const d = datos();
@@ -165,5 +166,5 @@ export async function armarSvg(
     fondo: true,
     t: i18n.global.t,
   };
-  return { ...dibujarSvg(o.cambiar ? o.cambiar(e) : e), tarjetas };
+  return { ...dibujarSvg(o.cambiar ? o.cambiar(e) : e, o.dibujo), tarjetas };
 }

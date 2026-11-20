@@ -1,5 +1,17 @@
 [
   {
+    "id": "exportar-pdf",
+    "pagina": "exportar-imagen",
+    "es": {
+      "titulo": "El organigrama en PDF",
+      "texto": "Exporta el organigrama como PDF en hojas Carta, Oficio, A4, A3 o A2, horizontal o vertical. Lo puedes dejar en una página, repartido por ramas, con «sigue en la página N» donde se corta, o en cuadrícula, con un mapa, marcas de corte y 1 cm de solape para pegar las hojas. Avisa si la letra queda muy chica y puedes cancelar mientras se arma."
+    },
+    "en": {
+      "titulo": "The org chart as a PDF",
+      "texto": "Export the org chart as a PDF on Letter, Oficio, A4, A3 or A2 sheets, landscape or portrait. Keep it on one page, split by branches, with \"continues on page N\" where it is cut, or in a grid, with a map, cut marks and a 1 cm overlap for taping the sheets together. It warns you if the text gets too small, and you can cancel while it is being made."
+    }
+  },
+  {
     "id": "exportar-imagen",
     "pagina": "exportar-imagen",
     "es": {
