@@ -743,4 +743,28 @@ mod tests {
             1
         );
     }
+
+    /// Medición (a mano): cuánto baja el archivo al quitar las fotos de la grande. Trabaja EN SITIO sobre la base que diga
+    /// BOLDO_MEDIR_BD: sembrarla antes en una carpeta de prueba, nunca en los datos de la app.
+    ///   node scripts/sembrar-grande.mjs <carpeta>/boldo.db --fotos 1000
+    ///   BOLDO_MEDIR_BD=<carpeta>/boldo.db cargo test medir_quitar_en_la_grande -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn medir_quitar_en_la_grande() {
+        let ruta = std::path::PathBuf::from(
+            std::env::var("BOLDO_MEDIR_BD").expect("falta BOLDO_MEDIR_BD"),
+        );
+        let tam = |c: &Connection| {
+            let _ = c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |f| {
+                f.get::<_, i64>(0)
+            });
+            std::fs::metadata(&ruta).unwrap().len()
+        };
+        let mut c = Connection::open(&ruta).unwrap();
+        c.pragma_update(None, "journal_mode", "WAL").unwrap();
+        let antes = tam(&c);
+        let n = quitar(&mut c).unwrap();
+        let despues = tam(&c);
+        println!("MEDICION fotos={n} antes={antes} bytes despues={despues} bytes");
+    }
 }

@@ -15,7 +15,7 @@ Both actions are in **Import/Export**, in the sidebar, and in the app menu. Ther
 
 ![Export with the One or more trees or branches option and the list of units with one branch checked.](../img/en/exportar-alcance.webp "Export: checking a unit includes its whole branch."){width=768 height=414}
 
-A branch carries its units, its positions, the people who hold them today, the full history of those positions, the list values they use, its tags, its zones (with the branch's units only), its saved branches and views, and its processes. People who are no longer there travel with their name and email only, without phone, notes or photo, so the history makes sense. What was deleted does not go. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going and the roles of people who are not going.
+A branch carries its units, its positions, the people who hold them today, the full history of those positions, the list values they use, its tags, its zones (with the branch's units only), its saved branches and views, and its processes. People who are no longer there travel with their name and email only, without phone or notes, so the history makes sense. What was deleted does not go. What points outside the branch is cut and you are told before saving: connections with a unit that is not going, a head whose position is not going and the roles of people who are not going.
 
 ::: warning Important
 The code is shown only once and is not saved anywhere. If it is lost, the file cannot be opened: you have to export again, which gives another file and another code. The file carries personal data: send the file and the code **through different channels**, for example the file by email and the code by phone.
@@ -78,7 +78,7 @@ A person you deleted permanently here does not come back with a file (see [Delet
 
 When you revert the deletion of a zone, its former members do not come back on their own: each one shows as its own case, and they are restored row by row.
 
-What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. For people who are no longer there, a branch carries only name and email: what comes empty does not erase their data in your database. A photo or a view's settings are compared without being shown, and it says how much they weigh.
+What is only in your database stays: nothing is deleted for not being in the file. That is what lets you bring a single branch without touching the rest. For people who are no longer there, a branch carries only name and email: what comes empty does not erase their data in your database. A view's settings are compared without being shown, and it says how much they weigh. Photos do not come in: if the file carries any, they are removed on import and you are told how many.
 
 ![Show fields of a different record: each field with its value in your data and in the file, to choose one by one.](../img/en/importar-decidir-campos.webp "Field by field: you choose which value stays."){width=768 height=736}
 
@@ -127,7 +127,7 @@ To work with the records in a spreadsheet: **Export to Excel**, in **Import/Expo
 
 The **Information** sheet is always included: organization, dates, versions, revision, scope and sheets, and the logo if the organization has one. With a branch, **People** has only those with a current position in it; with the whole organization, also those without a position.
 
-If you are viewing the org chart as of a date, that day is exported: the positions, holders, headcounts and vacancies of then. Deleted records are not included. Photos are not exported.
+If you are viewing the org chart as of a date, that day is exported: the positions, holders, headcounts and vacancies of then. Deleted records are not included.
 
 ## Different versions
 

@@ -1,5 +1,5 @@
 // Prueba de humo de la app real: extrae la portable de Windows ya construida, la abre y, por CDP, comprueba en su página
-// el puente de Tauri (baseId, protocolo foto:, bloqueo, reabrir, segunda instancia). La app no escribe un registro propio:
+// el puente de Tauri (baseId, bloqueo, reabrir, segunda instancia, fotos que solo la web guarda). La app no escribe un registro propio:
 // «registro» es lo que imprime el proceso más la consola de la página.
 // Solo en CI: abre una ventana maximizada, y en el equipo de alguien aparecería en su pantalla.
 import { execFileSync, spawn } from "node:child_process";
@@ -13,9 +13,9 @@ export const OTRA_BASE = "00000000-0000-4000-8000-000000000000";
 const ORGANIZACION = "Organización de humo";
 const RAIZ = "Raíz de humo";
 const RAIZ_NUEVA = "Raíz renombrada";
-const PERSONA = { id: "humo-foto", nombre: "Persona de humo" };
-// PNG de 1×1
-export const FOTO =
+const PERSONA = { id: "humo-persona", nombre: "Persona de humo" };
+// PNG de 1×1: la foto que el paso de las fotos siembra con la app cerrada
+const FOTO =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==";
 const PUERTO = 9222;
 // Lo que wry pasa a WebView2 cuando la app no fija sus argumentos (wry/src/webview2/mod.rs).
@@ -329,14 +329,6 @@ async function metaDe(app, baseId, clave) {
   return r.ok ? (r.valor[0]?.valor ?? null) : r;
 }
 
-/** Abre una URL en un `<img>` nuevo: `{ ancho }` si cargó, o `null` si dio error. @param {string} url */
-export const cargarImagen = (url) => `new Promise((ok) => {
-  const img = new Image();
-  img.onload = () => ok({ ancho: img.naturalWidth });
-  img.onerror = () => ok(null);
-  img.src = ${JSON.stringify(url)};
-})`;
-
 /** @param {Awaited<ReturnType<typeof abrirApp>>} app @param {string} carpeta */
 export async function revisarBase(app, carpeta) {
   const r = await app.llamar("info_app");
@@ -420,8 +412,8 @@ async function primeraApertura(exe, carpeta) {
 
   const ahora = new Date().toISOString();
   const persona = {
-    sql: "INSERT INTO trabajadores (id, nombre, foto_png, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4)",
-    params: [PERSONA.id, PERSONA.nombre, FOTO, ahora],
+    sql: "INSERT INTO trabajadores (id, nombre, created_at, updated_at) VALUES (?1, ?2, ?3, ?3)",
+    params: [PERSONA.id, PERSONA.nombre, ahora],
   };
   const guardado = await app.llamar("db_lote", {
     baseId: info.baseId,
@@ -486,28 +478,11 @@ async function reapertura(exe, carpeta, primera) {
   const marca = await metaDe(app, info.baseId, "humo");
   comprobar("reabrir conserva lo escrito con db_lote", marca === "guardado", marca);
 
-  // la foto tal como la pinta la app, con su `urlFoto`
   await app.evaluar(`location.hash = "#/directorio"`);
   await app.hasta(
     `[...document.querySelectorAll("tr")].some((f) => f.innerText.includes(${JSON.stringify(PERSONA.nombre)}))`,
     "la persona en el directorio",
   );
-  await app.evaluar(
-    `[...document.querySelectorAll("tr")].find((f) => f.innerText.includes(${JSON.stringify(PERSONA.nombre)})).click()`,
-  );
-  const selector = `img[src*="/${PERSONA.id}?"]`;
-  /** @type {string} */
-  const url = await app.hasta(
-    `document.querySelector(${JSON.stringify(selector)})?.naturalWidth > 0 && document.querySelector(${JSON.stringify(selector)}).src`,
-    "que la ficha muestre la foto (naturalWidth > 0)",
-  );
-  const ancho = await app.evaluar(`document.querySelector(${JSON.stringify(selector)}).naturalWidth`);
-  comprobar("la foto de urlFoto carga en la ficha", ancho > 0, ancho);
-  comprobar("urlFoto lleva el baseId", url.includes(`/${info.baseId}/${PERSONA.id}?`), url);
-  const misma = await app.evaluar(cargarImagen(url));
-  comprobar("la misma URL carga en un <img> nuevo", misma?.ancho > 0, misma);
-  const conOtra = await app.evaluar(cargarImagen(url.replace(info.baseId, OTRA_BASE)));
-  comprobar("la misma URL con otra base da fallo", conOtra === null, conOtra);
 
   // con un id que no está en la lista, `abrir_organizacion` no cambia nada: da `trabajo_en_curso` si la sesión está ocupada y
   // `desconocido` si no. Una recarga no corre `onUnmounted`: la suelta Rust al empezar a cargar la página.
@@ -692,6 +667,61 @@ async function historialVolverAPunto(exe, carpeta) {
   comprobar("la app de volver a un punto cierra sola y con código 0", (await app.cerrar()) === 0);
 }
 
+/**
+ * La app de escritorio no guarda fotos: si una base las trae, un aviso ofrece quitarlas. Con la app cerrada se siembra una
+ * en la base de prueba (la ruta ya la comprobó `revisarBase`, y aquí se vuelve a exigir dentro de la carpeta temporal),
+ * y al abrir hay que ver el aviso, pulsar «Quitar las fotos ahora» y terminar sin fotos. Va al final: ningún otro paso
+ * parte de una base con fotos, así que el aviso no estorba a los demás.
+ * @param {string} exe @param {string} carpeta @param {{ rutaBd: string, baseId: string }} info
+ */
+async function fotosSoloEnLaWeb(exe, carpeta, info) {
+  if (!dentroDe(info.rutaBd, carpeta))
+    throw new Error(`La base no está en la carpeta temporal: ${info.rutaBd}`);
+  const { DatabaseSync } = await import("node:sqlite");
+  const conBase = (/** @type {(c: import("node:sqlite").DatabaseSync) => any} */ f) => {
+    const c = new DatabaseSync(info.rutaBd);
+    try {
+      return f(c);
+    } finally {
+      c.close();
+    }
+  };
+  const conFoto = () =>
+    conBase((c) => c.prepare("SELECT count(*) AS n FROM trabajadores WHERE foto_png IS NOT NULL").get()?.n);
+  conBase((c) => c.prepare("UPDATE trabajadores SET foto_png = ?1 WHERE id = ?2").run(FOTO, PERSONA.id));
+  comprobar("la foto sembrada con la app cerrada está en la base", conFoto() === 1, conFoto());
+
+  const app = await abrirApp(exe);
+  const abierta = await revisarBase(app, carpeta);
+  comprobar("la base de las fotos es la misma", abierta.rutaBd === info.rutaBd, abierta.rutaBd);
+  const boton = `[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Quitar las fotos ahora")`;
+  await app.hasta(`Boolean(${boton})`, "el aviso «Quitar las fotos ahora»");
+  comprobar("la app avisa de las fotos al abrir", true);
+  await app.evaluar(`${boton}.click()`);
+  await app.hasta(
+    `window.__TAURI_INTERNALS__.invoke("fotos_pendientes").then((p) => p.organizaciones.length === 0 && p.respaldos === 0)`,
+    "que fotos_pendientes dé cero",
+  );
+  comprobar("tras quitarlas no queda ninguna pendiente", true);
+
+  const lote = await app.llamar("db_lote", {
+    baseId: abierta.baseId,
+    sentencias: [{ sql: "UPDATE trabajadores SET foto_png = ?1 WHERE id = ?2", params: [FOTO, PERSONA.id] }],
+    versionApp: "humo",
+  });
+  comprobar(
+    "db_lote con foto_png da foto_no_permitida",
+    !lote.ok && lote.error === "foto_no_permitida",
+    lote,
+  );
+
+  const codigo = await app.cerrar();
+  comprobar("la app de las fotos cierra sola y con código 0", codigo === 0, codigo);
+  const quedan = conFoto();
+  const personas = conBase((c) => c.prepare("SELECT count(*) AS n FROM trabajadores").get()?.n);
+  comprobar("foto_png es NULL en todas las personas", quedan === 0 && personas > 0, { quedan, personas });
+}
+
 async function correr() {
   const a = artefactos("windows", "");
   const [zip, ...otros] = globSync(`release/*/${a.zip}`);
@@ -704,6 +734,7 @@ async function correr() {
   await reapertura(exe, carpeta, info);
   await historialPersistente(exe, carpeta);
   await historialVolverAPunto(exe, carpeta);
+  await fotosSoloEnLaWeb(exe, carpeta, info);
   comprobarInstaladaIntacta();
   exigirSinFallos();
 }

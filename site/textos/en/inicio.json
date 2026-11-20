@@ -24,7 +24,7 @@
       },
       {
         "titulo": "Your people's records stay with you",
-        "texto": "Contact details, contract, site, shift, notes and photo stay in a SQLite database on your computer, with no accounts and no server.",
+        "texto": "Contact details, contract, site, shift and notes stay in a SQLite database on your computer, with no accounts and no server.",
         "enlace": { "texto": "Where your data lives", "href": "/en/manual/inicio#where-your-data-lives" }
       },
       {

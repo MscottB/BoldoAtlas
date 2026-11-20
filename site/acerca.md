@@ -46,7 +46,7 @@ BoldoAtlas busca versiones nuevas al abrirse y cada día (puedes cambiar la frec
 
 ### ¿Sirve para organizaciones grandes?
 
-Sí, está pensada para eso. Se probó con 2.000 unidades, 3.000 puestos y 10.000 personas: las ramas se pliegan, el directorio dibuja solo las filas a la vista y las fotos se cargan cuando aparecen. Con más de 300 tarjetas a la vista, el lienzo las simplifica al alejarte para seguir moviéndose con fluidez.
+Sí, está pensada para eso. Se probó con 2.000 unidades, 3.000 puestos y 10.000 personas: las ramas se pliegan, y el directorio dibuja solo las filas a la vista. Con más de 300 tarjetas a la vista, el lienzo las simplifica al alejarte para seguir moviéndose con fluidez.
 
 ### ¿Es una versión final?
 

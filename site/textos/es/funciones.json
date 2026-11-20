@@ -5,7 +5,7 @@
   "cifras": [
     {
       "valor": "10.000",
-      "texto": "personas, 1.000 de ellas con foto"
+      "texto": "personas"
     },
     {
       "valor": "2.000",
@@ -16,13 +16,13 @@
       "texto": "para abrir todo eso"
     }
   ],
-  "nota": "Medido en Windows 11, desde abrir la app hasta ver los totales en Inicio, con una organización de prueba y retratos generados: de 0,6 a 0,9 s con fotos optimizadas o de 300 KB. La primera apertura de cada carpeta tarda más porque hace un respaldo.",
+  "nota": "Medido en Windows 11, desde abrir la app hasta ver los totales en Inicio, con una organización de prueba y datos generados: de 0,6 a 0,9 s. La primera apertura de cada carpeta tarda más porque hace un respaldo.",
   "items": [
     {
       "id": "arboles",
       "etiqueta": "Árboles muy grandes",
       "titulo": "Toda la estructura en un solo lienzo",
-      "texto": "Cada tarjeta muestra la jefatura, las caras del equipo, la dotación y las vacantes de la unidad. Las zonas, con nombre y color, agrupan unidades de cualquier rama sin cambiar quién depende de quién.",
+      "texto": "Cada tarjeta muestra la jefatura, las iniciales del equipo, la dotación y las vacantes de la unidad. Las zonas, con nombre y color, agrupan unidades de cualquier rama sin cambiar quién depende de quién.",
       "puntos": [
         "Ramas que se pliegan, y un botón por cada nivel real (o «−» y «+» si son muchos) y Todo para elegir cuántos niveles ver.",
         "Relaciones laterales entre unidades: líneas punteadas con su descripción, por el espacio libre entre tarjetas.",
@@ -73,7 +73,7 @@
       "titulo": "Cada organización, aparte de las demás",
       "texto": "Una organización es un archivo con su organigrama, sus personas y sus listas: sirve para llevar clientes distintos, las empresas de un grupo o una copia de prueba.",
       "puntos": [
-        "Varias organizaciones, cada una con sus datos, fotos y respaldos aparte: pasas de una a otra con sus pestañas.",
+        "Varias organizaciones, cada una con sus datos y respaldos aparte: pasas de una a otra con sus pestañas.",
         "Crea una, abre un archivo .db o explora el ejemplo, sin tocar la que tienes abierta.",
         "Con más de una, Inicio muestra hasta 8 abiertas hace poco, y un clic abre la que quieras.",
         "Cuando abres más de una organización, cada pestaña lleva el punto de color y el nombre de la suya.",
@@ -102,7 +102,7 @@
       "puntos": [
         "Vacantes a la vista en cada tarjeta del árbol.",
         "Listas propias de cargos, contratos, sedes y jornadas.",
-        "Las fotos se reducen al elegirlas: se ven igual y pesan mucho menos, también en respaldos y archivos .boldo."
+        "Menos datos personales en tu equipo: las tarjetas y las fichas muestran las iniciales de cada persona."
       ],
       "imagen": {
         "nombre": "ficha",

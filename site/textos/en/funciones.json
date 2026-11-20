@@ -5,7 +5,7 @@
   "cifras": [
     {
       "valor": "10,000",
-      "texto": "people, 1,000 of them with a photo"
+      "texto": "people"
     },
     {
       "valor": "2,000",
@@ -16,13 +16,13 @@
       "texto": "to open all of that"
     }
   ],
-  "nota": "Measured on Windows 11, from opening the app to seeing the totals on Home, with a test organization and generated portraits: 0.6 to 0.9 s with optimized or 300 KB photos. The first opening of each folder takes longer because it makes a backup.",
+  "nota": "Measured on Windows 11, from opening the app to seeing the totals on Home, with a test organization and generated data: 0.6 to 0.9 s. The first opening of each folder takes longer because it makes a backup.",
   "items": [
     {
       "id": "arboles",
       "etiqueta": "Very large trees",
       "titulo": "The whole structure on one canvas",
-      "texto": "Each card shows the unit's head, the team's faces, the headcount and the vacancies. Zones, with a name and a color, group units from any branch without changing who reports to whom.",
+      "texto": "Each card shows the unit's head, the team's initials, the headcount and the vacancies. Zones, with a name and a color, group units from any branch without changing who reports to whom.",
       "puntos": [
         "Branches fold away, and one button per real level (or − and + when there are many) and All choose how many levels you see.",
         "Lateral connections between units: dotted lines with their description, through the free space between cards.",
@@ -73,7 +73,7 @@
       "titulo": "Each organization, apart from the others",
       "texto": "An organization is a file with its org chart, its people and its lists: it lets you keep different clients, the companies in a group or a test copy.",
       "puntos": [
-        "Several organizations, each with its data, photos and backups apart: you move between them with their tabs.",
+        "Several organizations, each with its data and backups apart: you move between them with their tabs.",
         "Create one, open a .db file or explore the example, without touching the one you have open.",
         "With more than one, Home shows up to 8 recently opened, and one click opens the one you want.",
         "When you open more than one organization, each tab carries the color dot and the name of its own.",
@@ -102,7 +102,7 @@
       "puntos": [
         "Vacancies in plain sight on every card of the tree.",
         "Your own lists of job titles, contracts, sites and shifts.",
-        "Photos are reduced when you choose them: they look the same and weigh much less, in backups and .boldo files too."
+        "Less personal data on your computer: the cards and records show each person's initials."
       ],
       "imagen": {
         "nombre": "ficha",

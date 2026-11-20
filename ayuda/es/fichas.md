@@ -1,16 +1,16 @@
 # Fichas de personas
 
 ::: info En resumen
-La ficha guarda los datos de una persona: contacto, contrato, sede, jornada, foto y notas. Se guarda sola, campo por campo.
+La ficha guarda los datos de una persona: contacto, contrato, sede, jornada y notas. Se guarda sola, campo por campo.
 :::
 
-La ficha es el formulario de una persona: sus datos de contacto, contrato, sede, jornada, foto y notas. Se abre desde el **Directorio**, desde **Revisión**, desde la paleta de comandos (`Ctrl+K`, buscando a la persona) o desde el diálogo de un puesto, pulsando el nombre de quien lo ocupa. Al cerrarla, el foco vuelve a donde estabas; si ese lugar ya no existe, al botón **Buscar** de la barra superior.
+La ficha es el formulario de una persona: sus datos de contacto, contrato, sede, jornada y notas. Se abre desde el **Directorio**, desde **Revisión**, desde la paleta de comandos (`Ctrl+K`, buscando a la persona) o desde el diálogo de un puesto, pulsando el nombre de quien lo ocupa. Al cerrarla, el foco vuelve a donde estabas; si ese lugar ya no existe, al botón **Buscar** de la barra superior.
 
 El cargo y la unidad no se editan en la ficha: son del **puesto** que la persona ocupa (como titular o como reemplazo). Una vacante es un puesto sin titular.
 
-A la vista están el nombre, el correo, el teléfono, las unidades que encabeza y sus puestos. **Tipo de contrato**, **sede**, **jornada**, **notas** y **foto** están en **Más datos**: se abre solo si la persona ya tiene alguno de esos datos o hay un error ahí; si no, con un clic, y queda como lo dejes.
+A la vista están el nombre, el correo, el teléfono, las unidades que encabeza y sus puestos. **Tipo de contrato**, **sede**, **jornada** y **notas** están en **Más datos**: se abre solo si la persona ya tiene alguno de esos datos o hay un error ahí; si no, con un clic, y queda como lo dejes.
 
-![Ficha de persona con nombre, correo, teléfono, puestos y el bloque Más datos abierto.](../img/es/fichas-ficha.webp "La ficha de una persona. 1: Más datos, con contrato, sede, jornada, notas y foto. 2: los puestos de la persona. 3: ver a la persona en el organigrama."){width=732 height=744}
+![Ficha de persona con nombre, correo, teléfono, puestos y el bloque Más datos abierto.](../img/es/fichas-ficha.webp "La ficha de una persona. 1: Más datos, con contrato, sede, jornada y notas. 2: los puestos de la persona. 3: ver a la persona en el organigrama."){width=732 height=744}
 
 ## Listas de valores
 
@@ -38,23 +38,12 @@ Si cierras la ficha con cambios sin guardar (un campo inválido o una ficha nuev
 :::
 
 - El **correo** debe tener forma de dirección (por ejemplo, ana@empresa.cl) y no puede repetirse entre personas.
-- La **foto** es opcional: PNG, JPG o WebP de hasta 30 MB.
 
 ## Fotos
 
-Al elegir una foto, BoldoAtlas la reduce antes de guardarla: su lado mayor queda en 256 píxeles y se guarda como JPEG. Se ve igual en todos los tamaños en que aparece y pesa mucho menos, también en los respaldos y en los archivos `.boldo`. Una foto pequeña no se agranda. Lo transparente queda blanco. Una imagen de más de 120 megapíxeles no se acepta. Si cierras la ficha mientras la foto se prepara, se espera a que quede guardada; si no se puede, te avisa antes de cerrar.
+BoldoAtlas ya no guarda fotos de las personas, para tener menos datos personales en tu computador: la ficha, las tarjetas del árbol y el Directorio muestran sus iniciales.
 
-La foto convertida no guarda los datos que traía el archivo, como el lugar donde se tomó o la cámara. Si convertirla la dejara más pesada, se guarda tal cual, **con los datos que traiga**. Lo mismo vale para un JPEG o WebP sin esos datos que casi no bajaría de peso: se guarda tal cual.
-
-Las fotos que ya tenías se reducen en **Configuración › Fotos › Optimizar fotos existentes**, solo si lo pides. Se revisan las que pesan más de unos 36 KB; las más livianas no se tocan y conservan los datos que traigan.
-
-1. Primero ves cuánto ocupan, en cuánto quedarían y cuánto ocupará el respaldo.
-2. Se hace un respaldo, marcado **Antes de optimizar fotos**, que conserva las originales. Quedan los últimos 3.
-3. Las fotos se convierten por partes, con una barra de avance. Puedes seguir trabajando, y **Cancelar** deja lo ya optimizado.
-4. Al final ves cuántas se optimizaron y cuánto espacio se liberó. Una foto que no se pudo optimizar se nombra y sigue como estaba.
-
-Optimizar no cambia la fecha de modificación de la persona: es la misma foto con menos peso. Si fusionas con otra copia que aún tiene la foto original, esa foto aparece como una diferencia con la misma fecha, y eliges cuál se queda.
-
+Si una organización o un respaldo todavía tiene fotos, al abrir la app sale un aviso que lo dice. **Quitar las fotos ahora** las borra de tus organizaciones y de sus respaldos, con una barra de avance, y puedes seguir trabajando mientras tanto. **Más tarde** cierra el aviso y vuelve a salir la próxima vez que abras la app. Un archivo `.boldo` o un respaldo con fotos entra sin ellas, y se te dice cuántas eran.
 ## Jefatura
 
 **Unidades que encabeza** lista las unidades de las que es jefe: ocupa el puesto de jefatura como titular o, si ese puesto no tiene titular, como reemplazo.
@@ -71,13 +60,13 @@ En **Puestos** se ven los puestos vigentes de la persona (cargo, unidad, si es t
 
 **Borrar definitivamente** está en la ficha y en **Configuración › Eliminados**. Pide escribir el nombre de la persona para confirmar.
 
-- Borra su correo, teléfono, notas, foto y los demás datos de su ficha, y el motivo de sus cambios de puesto, también del historial de cambios.
+- Borra su correo, teléfono, notas y los demás datos de su ficha, y el motivo de sus cambios de puesto, también del historial de cambios.
 - Su **nombre** queda en el historial de cambios hasta que venza el plazo de **Configuración › Historial de cambios** (1 año si no lo cambias); después se borra también. Con **Sin límite**, nunca vence y el nombre se queda.
 - Donde ocupó un puesto queda «Persona suprimida»: el organigrama a una fecha y las vacantes no cambian.
 - **No se puede deshacer** y no hace un respaldo antes. Los respaldos anteriores que la guardan se borran solos a los 30 días, cuando esa organización esté abierta (ver [Respaldos](respaldos.md#personas-borradas-definitivamente)).
 
 ## Exportar sus datos
 
-**Exportar sus datos**, en la ficha, guarda un Excel con dos hojas: los datos de la persona y sus puestos, también los que ya terminaron. No lleva la foto. Como el archivo no va cifrado, antes pide aceptar el aviso de siempre.
+**Exportar sus datos**, en la ficha, guarda un Excel con dos hojas: los datos de la persona y sus puestos, también los que ya terminaron. Como el archivo no va cifrado, antes pide aceptar el aviso de siempre.
 
 **Ver también:** [Puestos y reemplazos](puestos.md) · [Directorio](directorio.md) · [Configuración y mantenedores](mantenedores.md).

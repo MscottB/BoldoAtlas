@@ -1,7 +1,7 @@
 # Organizaciones
 
 ::: info En resumen
-Puedes tener varias organizaciones en BoldoAtlas y pasar de una a otra con sus pestañas. Cada una guarda aparte sus datos, fotos, respaldos y preferencias: nada de una llega a otra.
+Puedes tener varias organizaciones en BoldoAtlas y pasar de una a otra con sus pestañas. Cada una guarda aparte sus datos, respaldos y preferencias: nada de una llega a otra.
 :::
 
 Una organización es un archivo de base de datos con su organigrama, sus personas y sus listas. Sirve para llevar clientes distintos, las empresas de un grupo o una copia de prueba junto a la real, sin que se mezclen.
@@ -69,7 +69,7 @@ El panel, el divisor y `F6` funcionan como en la [vista dividida](pestanas.md#vi
 
 ## Qué se guarda aparte
 
-Cada organización tiene su propio archivo, con sus fotos y su logo, y sus propios respaldos. Las preferencias de sus vistas también son suyas: el estado del árbol, los filtros y columnas del Directorio, cómo se ven las personas en el panel de una unidad y el minimapa. El tema, el idioma, el color de acento, el tamaño de la interfaz, la frecuencia de los respaldos y de las actualizaciones, la barra lateral y lo que pasa al cerrar valen para todas tus organizaciones.
+Cada organización tiene su propio archivo, con su logo, y sus propios respaldos. Las preferencias de sus vistas también son suyas: el estado del árbol, los filtros y columnas del Directorio, cómo se ven las personas en el panel de una unidad y el minimapa. El tema, el idioma, el color de acento, el tamaño de la interfaz, la frecuencia de los respaldos y de las actualizaciones, la barra lateral y lo que pasa al cerrar valen para todas tus organizaciones.
 
 | Qué | Dónde, dentro de la carpeta de datos |
 |---|---|

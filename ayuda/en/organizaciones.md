@@ -1,7 +1,7 @@
 # Organizations
 
 ::: info In short
-You can keep several organizations in BoldoAtlas and move between them with their tabs. Each keeps its data, photos, backups and preferences apart: nothing from one reaches another.
+You can keep several organizations in BoldoAtlas and move between them with their tabs. Each keeps its data, backups and preferences apart: nothing from one reaches another.
 :::
 
 An organization is a database file with its org chart, its people and its lists. It lets you keep different clients, the companies in a group or a test copy next to the real one, without mixing them.
@@ -69,7 +69,7 @@ The panel, the divider and `F6` work as in the [split view](pestanas.md#split-vi
 
 ## What is kept apart
 
-Each organization has its own file, with its photos and its logo, and its own backups. Its view preferences are its own too: the state of the tree, the Directory's filters and columns, how people show in a unit's panel and the minimap. The theme, the language, the accent color, the interface size, how often backups and updates run, the sidebar and what happens on closing apply to all your organizations.
+Each organization has its own file, with its logo, and its own backups. Its view preferences are its own too: the state of the tree, the Directory's filters and columns, how people show in a unit's panel and the minimap. The theme, the language, the accent color, the interface size, how often backups and updates run, the sidebar and what happens on closing apply to all your organizations.
 
 | What | Where, inside the data folder |
 |---|---|

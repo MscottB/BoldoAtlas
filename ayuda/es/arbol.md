@@ -11,8 +11,8 @@ El árbol es la pantalla principal: muestra tu organización como un organigrama
 Cada unidad es una tarjeta con:
 
 - su tipo (por ejemplo, Gerencia o Área) y su nombre;
-- la foto o las iniciales y el nombre de la jefatura (**Reemplazo: nombre** si su puesto solo tiene reemplazo), o **Sin jefe asignado** si no tiene; con **Personas en las tarjetas**, también el cargo de la jefatura;
-- con **Personas en las tarjetas**, una fila con las caras (foto o iniciales) de hasta 4 personas más de la unidad y **+N** con las que no caben. Cuenta solo la propia unidad, sin sus subunidades, y cada persona una vez. Pulsa las caras (o `Tab` hasta ellas y `Enter`) para ver la lista en la pestaña **Personas** del panel;
+- las iniciales y el nombre de la jefatura (**Reemplazo: nombre** si su puesto solo tiene reemplazo), o **Sin jefe asignado** si no tiene; con **Personas en las tarjetas**, también el cargo de la jefatura;
+- con **Personas en las tarjetas**, una fila con las iniciales de hasta 4 personas más de la unidad y **+N** con las que no caben. Cuenta solo la propia unidad, sin sus subunidades, y cada persona una vez. Pulsa las caras (o `Tab` hasta ellas y `Enter`) para ver la lista en la pestaña **Personas** del panel;
 - la dotación total de su rama (ella y todo lo que cuelga de ella); púlsala (o `Tab` hasta ella y `Enter`) para ver quiénes son en la pestaña **Personas** del panel;
 - las vacantes de la rama, si hay;
 - un punto de color por cada etiqueta (pasa el puntero por encima para ver su nombre).
@@ -207,7 +207,7 @@ Además de lo anterior, **Personalizar** permite elegir:
 - **Densidad**: **Normal** o **Compacta**. La tarjeta compacta es de una línea (nombre, dotación y vacantes) y reduce las separaciones: sirve para árboles muy grandes. En la tarjeta compacta seleccionada, la dotación y las vacantes dejan su lugar a los botones.
 - **Líneas** (en **Avanzado**): rectas en ángulo o curvas.
 - **Alinear por tipo de unidad** (en **Avanzado**): cada unidad va en la fila (o columna, en horizontal) de su tipo, en el orden de la lista de tipos; por ejemplo, todas las Áreas quedan en una misma fila aunque cuelguen a distinta profundidad. Solo ocupan fila los tipos de las unidades que se ven (un tipo sin unidades a la vista, o cuyas unidades están en ramas plegadas, no deja una fila vacía). Si el tipo de una unidad la dejaría en la fila de su superior o más arriba, baja a la fila siguiente a la de su superior, para que las líneas siempre vayan hacia abajo (o hacia la derecha): con una Gerencia dentro de otra Gerencia, las filas de los tipos que siguen empiezan más abajo; con una Gerencia bajo un Área, solo baja esa rama. Los puestos van apilados bajo su unidad y no ocupan fila.
-- **Qué mostrar en las tarjetas** (con cuántos datos están activos): personas en las tarjetas, tipo de unidad, jefatura, foto de la jefatura, dotación, vacantes y etiquetas.
+- **Qué mostrar en las tarjetas** (con cuántos datos están activos): personas en las tarjetas, tipo de unidad, jefatura, dotación, vacantes y etiquetas.
 - **Personas en las tarjetas** (encendido al comienzo): la jefatura se ve con su cargo y, debajo, las caras del equipo de la unidad. La tarjeta queda un poco más alta. Como la jefatura ya está en la tarjeta, con **Ver puestos** su puesto no se repite debajo, como en un organigrama clásico; los demás puestos sí se ven. La tarjeta compacta y la tarjeta simplificada (al alejarte con muchas tarjetas) no muestran personas. A una fecha pasada se ven las personas de ese día. Las caras abren la pestaña **Personas** con **Incluir subunidades** apagado, para que la lista sea la misma que cuentan. Con **Jefatura** apagada la jefatura no se ve en la tarjeta, pero sigue contada en la cifra del equipo (el nombre del botón de las caras).
 
 Cada árbol (el completo o un subárbol guardado en Árboles) recuerda en este computador, para cada organización, la última configuración que usaste en él.
@@ -253,7 +253,7 @@ La pestaña **Resumen** reúne, en este orden:
 
 La pestaña **Puestos** lista los puestos directos de la unidad: cargo, titular o **Vacante**, **Reemplazo: nombre** y el color de su leyenda. Pulsa uno para abrir su ficha, o **Nuevo puesto** para crear otro (ver «Puestos y reemplazos»).
 
-La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reemplazos vigentes, con su foto (o iniciales), nombre, cargo, tipo (**Titular** o **Reemplazo**) y unidad. Una persona con dos puestos aparece una vez por puesto. Arriba de la lista:
+La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reemplazos vigentes, con sus iniciales, nombre, cargo, tipo (**Titular** o **Reemplazo**) y unidad. Una persona con dos puestos aparece una vez por puesto. Arriba de la lista:
 
 - El buscador (nombre, cargo, unidad o correo, sin importar tildes ni mayúsculas) y el orden **Por nombre**, **Por cargo** o **Por unidad**.
 - **Incluir subunidades** (encendido al abrir la pestaña): suma a las personas de toda la rama, como la dotación de la tarjeta. Apagado, solo los puestos de la propia unidad.
@@ -262,11 +262,11 @@ La pestaña **Personas** lista a quienes ocupan los puestos: titulares y reempla
 - **Ver en el directorio**: abre el Directorio filtrado por esta unidad y su rama.
 - **Resumen por cargo** (se despliega al pulsarlo): cuántos puestos de cada cargo hay y cuántos están vacantes (sin titular); entre paréntesis, las vacantes que cubre un reemplazo.
 
-Pulsa una persona para ver su **vista previa** en el mismo panel: foto, correo, teléfono, puestos vigentes e historial. **Abrir ficha** abre su ficha completa para editarla; **Volver a la lista** (o `Esc`) vuelve a la lista en el mismo lugar, con el foco en la persona que abriste. Con una fecha elegida, la lista y la vista previa muestran a quienes estaban asignados ese día.
+Pulsa una persona para ver su **vista previa** en el mismo panel: correo, teléfono, puestos vigentes e historial. **Abrir ficha** abre su ficha completa para editarla; **Volver a la lista** (o `Esc`) vuelve a la lista en el mismo lugar, con el foco en la persona que abriste. Con una fecha elegida, la lista y la vista previa muestran a quienes estaban asignados ese día.
 
 **Lista** y **Árbol** cambian cómo se ven esas mismas personas; la elección se recuerda en este computador, para cada organización. El **árbol** parte de la unidad del panel y muestra lo que tiene debajo, padre e hijo:
 
-- Cada unidad muestra su nombre, su tipo, su jefatura (foto o iniciales, nombre y cargo) y cuántas personas tiene su rama: los titulares, la misma cifra de la tarjeta (los reemplazos se ven, pero no suman). Arriba, **asignaciones** cuenta todas las filas de personas, como la lista. Debajo van sus demás personas (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Con **Incluir subunidades** apagado se ve solo la unidad.
+- Cada unidad muestra su nombre, su tipo, su jefatura (iniciales, nombre y cargo) y cuántas personas tiene su rama: los titulares, la misma cifra de la tarjeta (los reemplazos se ven, pero no suman). Arriba, **asignaciones** cuenta todas las filas de personas, como la lista. Debajo van sus demás personas (los reemplazos, marcados), sus puestos sin nadie como **Vacante** y luego sus subunidades. Con **Incluir subunidades** apagado se ve solo la unidad.
 - Al abrirlo se ve el primer nivel. La flecha de una unidad la abre o la cierra; **Expandir todo** abre todas y **Contraer todo** vuelve al primer nivel.
 - Pulsa una persona o el nombre de una jefatura para ver su vista previa; **Volver al árbol** (o `Esc`) vuelve al mismo lugar. Pulsa una unidad para seleccionarla en el lienzo: el panel y el árbol pasan a partir de ella. Los puestos vacantes no abren nada.
 - El buscador deja a quienes coinciden, con las unidades que los contienen, y resalta el texto encontrado (si coincide el correo, que no se ve en el árbol, la persona aparece sin resaltar). Son las mismas personas que en la lista, y **Copiar correos** copia esas.

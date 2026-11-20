@@ -36,7 +36,7 @@ Los respaldos guardan también el historial de cambios; los archivos `.boldo` no
 
 ## Antes de reemplazar los datos
 
-Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. Al [optimizar las fotos](fichas.md#fotos), el respaldo se marca **Antes de optimizar fotos**, y se conservan los últimos 3. De los de reemplazar y de restaurar se conservan los últimos 10 de cada tipo. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
+Al reemplazar todo con un [archivo `.boldo`](exportar-importar.md), BoldoAtlas hace antes un respaldo marcado **Antes de reemplazar**. Al agregar o fusionar lo que trae un archivo, el respaldo se marca **Antes de importar**. De estos se conservan los últimos 20. De los de reemplazar y de restaurar se conservan los últimos 10 de cada tipo. Si te arrepientes, restáuralo desde esta lista. Si el respaldo falla, no se reemplaza nada.
 
 ## Restaurar
 
@@ -47,7 +47,7 @@ Restaurar reemplaza los datos de la organización abierta por los del respaldo y
 1. En **Ver respaldos y restaurar**, pulsa **Restaurar** en la fila del respaldo que quieres recuperar.
 2. Confirma con **Restaurar y reiniciar**.
 
-Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la lista marcados **Antes de restaurar**; de estos se conservan los últimos 10. Si te equivocaste de respaldo, restaura ese. Luego los datos se reemplazan por los del respaldo y la app se reinicia.
+Antes de reemplazar nada, BoldoAtlas respalda tus datos actuales: quedan en la lista marcados **Antes de restaurar**; de estos se conservan los últimos 10. Si te equivocaste de respaldo, restaura ese. Luego los datos se reemplazan por los del respaldo y la app se reinicia. Si el respaldo trae fotos, se restaura sin ellas: las [fotos](fichas.md#fotos) ya no se guardan en el escritorio.
 
 - Un respaldo hecho con una versión anterior de BoldoAtlas se actualiza al restaurarlo. Uno hecho con una versión **más nueva** no se puede restaurar hasta que actualices BoldoAtlas.
 - Si hay otra ventana de BoldoAtlas abierta con los mismos datos, ciérrala antes.
