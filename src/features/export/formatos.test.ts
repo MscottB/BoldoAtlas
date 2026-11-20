@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escalaQueCabe, nombreArchivo } from "./formatos";
+import { escalaQueCabe, fondoDePng, nombreArchivo } from "./formatos";
 
 describe("escala_que_cabe", () => {
   it("deja la escala pedida si cabe", () => {
@@ -43,5 +43,14 @@ describe("nombre_archivo_seguro", () => {
     expect(nombreArchivo("???", "", "pantalla", "jpg", "2026-11-20")).toBe(
       "BoldoAtlas_pantalla_2026-11-20.jpg",
     );
+  });
+});
+
+describe("fondo_de_png", () => {
+  it("el fondo elegido solo cuenta en PNG; JPG y SVG van en blanco", () => {
+    expect(fondoDePng("png", "transparente")).toBe("transparente");
+    expect(fondoDePng("png", "blanco")).toBe("blanco");
+    expect(fondoDePng("jpg", "transparente")).toBe("blanco");
+    expect(fondoDePng("svg", "transparente")).toBe("blanco");
   });
 });

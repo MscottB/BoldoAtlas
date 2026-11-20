@@ -35,7 +35,7 @@ import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useRetornoFoco } from "@/lib/foco";
 import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
-import { escalaQueCabe, nombreArchivo } from "./formatos";
+import { escalaQueCabe, fondoDePng, nombreArchivo } from "./formatos";
 import type { Nivel } from "./niveles";
 import { cuantasTarjetas, prepararImagen, type Alcance, type PedidoImagen } from "./preparar";
 import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
@@ -74,11 +74,15 @@ watch([nivel, formato, fondo, escala], ([n, f, fo, e]) =>
 
 const elegida = ref<string | null>(props.rama ?? null);
 const abrirTodo = ref(false);
+const previa = shallowRef<string | null>(null);
+const fallo = ref(false);
 // Cada vez que se abre: el alcance que trae quien la abre, y las ramas como en pantalla.
 watch(abierto, (si) => {
   if (!si) return;
   elegida.value = props.rama ?? null;
   abrirTodo.value = false;
+  previa.value = null; // la de la vez anterior puede ser de otra rama
+  fallo.value = false;
 });
 // Una unidad que no existe a la fecha que se ve (o ya no existe) vuelve a ser toda la organización.
 const alcance = computed<Alcance>(() =>
@@ -138,8 +142,6 @@ function entrada() {
   }
   return calculo;
 }
-const previa = shallowRef<string | null>(null);
-const fallo = ref(false);
 let espera: ReturnType<typeof setTimeout> | undefined;
 let vuelta = 0; // sube con cada cambio: una vista previa de antes no se muestra
 async function mostrar() {
@@ -153,6 +155,7 @@ async function mostrar() {
   } catch (e) {
     if (v !== vuelta || e === REEMPLAZADO) return;
     console.error(e);
+    previa.value = null; // no queda a la vista una imagen de antes
     fallo.value = true;
   }
 }
@@ -176,7 +179,7 @@ watch(avisoAbierto, (v) => v || aviso.cerrado());
 // Lo que falló al armar la imagen, con su texto; lo demás (guardar, portapapeles), con `otro`.
 const textoError = (e: unknown, otro: () => string) =>
   e instanceof ErrorImagen ? t(`imagen.error.${e.codigo}`) : otro();
-const conFondo = () => formato.value !== "png" || fondo.value === "blanco";
+const conFondo = () => fondoDePng(formato.value, fondo.value) === "blanco";
 
 async function guardar() {
   if (ocupado.value) return;
@@ -187,15 +190,14 @@ async function guardar() {
     const f = formato.value;
     const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: conFondo() });
     let bytes: Uint8Array;
+    let bajada: string | undefined; // se dice solo si de verdad se guardó
     if (f === "svg") bytes = new TextEncoder().encode(svg);
     else {
       const cabe = escalaQueCabe(ancho, alto, escala.value);
       if (cabe.bajada)
-        toast.info(
-          t("imagen.escalaBajada", {
-            escala: cabe.escala.toLocaleString(locale.value, { maximumFractionDigits: 2 }),
-          }),
-        );
+        bajada = t("imagen.escalaBajada", {
+          escala: cabe.escala.toLocaleString(locale.value, { maximumFractionDigits: 2 }),
+        });
       bytes = await svgAImagen(svg, ancho, alto, { escala: escala.value, formato: f, fondo: fondo.value });
     }
     const rama = alcance.value === "todo" ? "" : textoAlcance.value;
@@ -203,6 +205,7 @@ async function guardar() {
     const nombre = await archivoGuardar(archivo, bytes, f);
     if (nombre)
       toast.success(t("imagen.guardada", { nombre }), {
+        description: bajada,
         duration: 10000,
         action: {
           label: t("excel.abrirCarpeta"),
@@ -223,7 +226,7 @@ async function copiar() {
   ocupado.value = true;
   try {
     if (!(await aviso.preguntar())) return;
-    const fondoPng = fondo.value;
+    const fondoPng = fondoDePng(formato.value, fondo.value);
     await copiarImagen(
       entrada().then((e) => {
         const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: fondoPng === "blanco" });
@@ -232,7 +235,8 @@ async function copiar() {
     );
     toast.success(t("imagen.copiada"));
   } catch (e) {
-    // En Linux (WebKitGTK) el portapapeles puede no aceptar imágenes.
+    // Si la imagen no se pudo armar, clipboard.write falla con su propio error (DOMException), no con el
+    // ErrorImagen: casi siempre se dice «no se pudo copiar». En Linux (WebKitGTK) puede no aceptar imágenes.
     console.error(e);
     toast.error(textoError(e, () => t("imagen.error.copiar")));
   } finally {

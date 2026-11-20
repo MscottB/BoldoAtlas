@@ -17,6 +17,12 @@ export function escalaQueCabe(
   return { escala: Math.floor(tope * 10000) / 10000, bajada: true };
 }
 
+/** El fondo con que se arma la imagen: el elegido solo cuenta en PNG (solo ahí se ofrece); JPG y SVG van en blanco. */
+export const fondoDePng = (
+  formato: "png" | "jpg" | "svg",
+  fondo: "blanco" | "transparente",
+): "blanco" | "transparente" => (formato === "png" ? fondo : "blanco");
+
 // Solo letras y números; lo demás (incluido lo que Windows no admite) pasa a «_», sin repetirse ni quedar en los bordes.
 const limpio = (t: string) =>
   Array.from(t.replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, ""))
