@@ -2230,6 +2230,8 @@
     "leyenda": "Legend",
     "ilegible": "On one page the text would be under 8 points and unreadable. Split it by branches or in a grid.",
     "ilegibleAlguna": "Some page would have text under 8 points and be hard to read. Try a larger paper size.",
+    "ilegibleCuadricula": "The text at this level of detail would be under 8 points and hard to read. Try another level of detail.",
+    "interrumpido": "The org chart changed while the PDF was being prepared; save it again.",
     "preparando": "Preparing the pages…",
     "muchas": "The PDF has {n} pages, more than {limite}: it may take a while.",
     "aviso": "The PDF is not encrypted: anyone who opens it will see what it contains. Whoever makes it is responsible for where it is saved and who it is shared with.",

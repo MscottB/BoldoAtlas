@@ -2230,6 +2230,8 @@
     "leyenda": "Leyenda",
     "ilegible": "En una página la letra quedaría bajo 8 puntos y no se podría leer. Repártelo por ramas o en cuadrícula.",
     "ilegibleAlguna": "Alguna página quedaría con letra bajo 8 puntos y costaría leerla. Prueba con una hoja más grande.",
+    "ilegibleCuadricula": "La letra de este nivel de detalle quedaría bajo 8 puntos y costaría leerla. Prueba con otro nivel de detalle.",
+    "interrumpido": "Cambió el organigrama mientras se preparaba el PDF; vuelve a guardarlo.",
     "preparando": "Preparando las páginas…",
     "muchas": "El PDF lleva {n} páginas, más de {limite}: puede tardar.",
     "aviso": "El PDF queda sin cifrar: cualquiera que lo abra verá lo que contiene. Quien lo genera es responsable de dónde lo guarda y con quién lo comparte.",

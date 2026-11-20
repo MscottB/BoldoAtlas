@@ -323,8 +323,11 @@ async function guardar() {
         },
       });
   } catch (e) {
-    // Cancelado: no hay nada que decir (y su mensaje no está traducido).
-    if (e instanceof DOMException && e.name === "AbortError") return;
+    if (e instanceof DOMException && e.name === "AbortError") {
+      // Cancelado por la persona: nada que decir. Si no, `programar` cortó el cálculo porque cambió el dibujo.
+      if (!armando.value?.signal.aborted) toast.info(t("pdf.interrumpido"));
+      return;
+    }
     toast.error(textoError(e, () => mensajeFallo(e)));
   } finally {
     armando.value = null;

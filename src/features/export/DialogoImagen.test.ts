@@ -138,8 +138,11 @@ describe("DialogoImagen", () => {
     expect(avisosPdf("una", { ilegible: false, total: 1 }, "es")).toEqual([]);
     expect(avisosPdf("una", { ilegible: true, total: 1 }, "es")).toEqual([t("pdf.ilegible")]);
     // En los otros repartos también se avisa, sin sugerir repartir (ya se reparte).
-    for (const reparto of ["ramas", "cuadricula"] as const)
-      expect(avisosPdf(reparto, { ilegible: true, total: 3 }, "es")).toEqual([t("pdf.ilegibleAlguna")]);
+    expect(avisosPdf("ramas", { ilegible: true, total: 3 }, "es")).toEqual([t("pdf.ilegibleAlguna")]);
+    // En cuadrícula la escala ya está en 1: una hoja más grande no ayuda.
+    expect(avisosPdf("cuadricula", { ilegible: true, total: 3 }, "es")).toEqual([
+      t("pdf.ilegibleCuadricula"),
+    ]);
     expect(avisosPdf("cuadricula", { ilegible: false, total: LIMITE_PAGINAS }, "es")).toEqual([]);
     const muchas = avisosPdf("ramas", { ilegible: false, total: 1234 }, "es");
     expect(muchas).toEqual([t("pdf.muchas", { n: (1234).toLocaleString("es"), limite: LIMITE_PAGINAS })]);

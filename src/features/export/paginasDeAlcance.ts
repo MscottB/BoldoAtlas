@@ -195,7 +195,15 @@ export function avisosPdf(
 ): string[] {
   const t = i18n.global.t;
   return [
-    ...(r.ilegible ? [t(reparto === "una" ? "pdf.ilegible" : "pdf.ilegibleAlguna")] : []),
+    ...(r.ilegible
+      ? [
+          t(
+            { una: "pdf.ilegible", ramas: "pdf.ilegibleAlguna", cuadricula: "pdf.ilegibleCuadricula" }[
+              reparto
+            ],
+          ),
+        ]
+      : []),
     ...(r.total > LIMITE_PAGINAS
       ? [t("pdf.muchas", { n: r.total.toLocaleString(locale), limite: LIMITE_PAGINAS })]
       : []),

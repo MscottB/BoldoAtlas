@@ -178,7 +178,7 @@ describe("paginasPdf", () => {
     await expect(r.paginas(control.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("con la señal abortada, el reparto por ramas para antes", async () => {
+  it("con la señal abortada, el reparto por ramas deja de pedir layouts a ubicar", async () => {
     tresYNueve();
     const entera = contador();
     await paginasPdf(pedido({ ubicar: entera.ubicar }), carta("ramas"));
