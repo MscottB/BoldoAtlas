@@ -740,7 +740,7 @@ async function fotosSoloEnLaWeb(exe, carpeta, info) {
  * Exportar el organigrama como imagen. El «Guardar como» nativo no se maneja desde aquí: la app lo salta solo si el
  * arnés la lanza con `BOLDO_GUARDAR_EN` y esa carpeta existe dentro de `datos/` de la portable (excel.rs).
  * Con la app abierta se siembra la persona como jefa de la raíz (cargo, puesto, titular vigente). Después, con la app
- * vuelta a abrir, se guarda: Presentación (lleva a la persona), Estructura (no la lleva, sí la raíz) y un PNG.
+ * vuelta a abrir, se guarda: Presentación (lleva a la persona), Estructura (no la lleva, sí la raíz), un PNG y un PDF.
  * Todo por atributo `data-accion`: la interfaz sale en inglés. `revisarBase` comprueba `rutaBd` antes de cada escritura.
  * @param {string} exe @param {string} carpeta
  */
@@ -801,9 +801,14 @@ async function exportarImagen(exe, carpeta) {
     };
     await clic("abrir-imagen-barra");
     await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
-    const guardar = async (/** @type {string} */ nivel, /** @type {string} */ formato) => {
+    const guardar = async (
+      /** @type {string} */ nivel,
+      /** @type {string} */ formato,
+      /** @type {string[]} */ opciones = [],
+    ) => {
       await clic(`nivel-${nivel}`);
       await clic(`formato-${formato}`);
+      for (const o of opciones) await clic(o);
       await clic("guardar-imagen");
       // el aviso de «queda sin cifrar» sale en cada exportación
       await esperar(async () => {
@@ -817,6 +822,8 @@ async function exportarImagen(exe, carpeta) {
     await guardar("presentacion", "svg");
     await guardar("estructura", "svg");
     await guardar("estructura", "png");
+    // El PDF: carta horizontal repartida por ramas (el reparto lo arma un worker, así que el archivo tarda más)
+    await guardar("estructura", "pdf", ["hoja-carta", "orientacion-horizontal", "reparto-ramas"]);
   } catch (e) {
     const avisos = await app
       .evaluar(`[...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.innerText).join(" | ")`)
@@ -853,6 +860,20 @@ async function exportarImagen(exe, carpeta) {
   );
   const cabecera = png ? readFileSync(join(destino, png)).subarray(0, 8).toString("hex") : "";
   comprobar("el PNG empieza con la firma de PNG", cabecera === "89504e470d0a1a0a", cabecera);
+  const pdf = de("estructura", "pdf");
+  const bytesPdf = pdf ? readFileSync(join(destino, pdf)) : Buffer.alloc(0);
+  comprobar(
+    "el PDF de Estructura empieza con %PDF",
+    bytesPdf.subarray(0, 4).toString("latin1") === "%PDF",
+    bytesPdf.length,
+  );
+  // pdfkit escribe el texto como números de glifo en hexadecimal: esta búsqueda solo atrapa un nombre en claro (en
+  // los metadatos, por ejemplo). Que ningún texto con personas llegue al PDF lo prueba pdf_estructura_sin_personas.
+  comprobar(
+    "el PDF de Estructura no lleva el nombre de la persona en claro",
+    bytesPdf.length > 0 && !bytesPdf.toString("latin1").includes(PERSONA.nombre),
+    PERSONA.nombre,
+  );
   await revisarBase(app, carpeta);
   const codigo = await app.cerrar();
   comprobar("la app de la imagen cierra sola y con código 0", codigo === 0, codigo);

@@ -37,6 +37,33 @@ If the image has more than 1,000 cards, the window says so with the number: it m
 
 **Save…** lets you choose where the file goes; when it finishes, **Open folder** shows it. **Copy image** puts a PNG on the clipboard, to paste straight into a presentation or an email. BoldoAtlas remembers the level, format, background and size you used.
 
+## PDF
+
+Choose **PDF** to get the org chart on sheets, ready to print or send. It is a multi-page document, with the organization and the date at the top and "Page N of M" at the bottom. Under **Paper** you choose **Letter**, **Oficio**, **A4**, **A3** or **A2**, and under **Orientation**, **Landscape** or **Portrait**. The preview shows the first page and says how many pages there will be.
+
+Under **Split** you choose how the drawing is cut:
+
+- **On one page**: the whole org chart on a single sheet, at whatever scale fits.
+- **By branches**: each big branch goes on its own page. Where the drawing is cut, the card says **Continues on page N**, and the page for that branch says **Continued from page M**. If the children of a unit do not fit together, they go in parts: "continued, 1 of 3", "2 of 3"...
+- **In a grid**: the org chart is cut into equal sheets, like a map. The first page is a **map** of the whole drawing, with each sheet marked. The sheets overlap by 1 cm and have **cut marks** at the corners, for taping them together. Each one says "Row R, column C".
+
+::: warning By branches follows what you see on screen
+**By branches** splits the branches as they are open on screen. A folded branch comes out with its **+N units** and is not split. To split everything, check **Open every branch in the scope**.
+:::
+
+If **As on screen** has a color legend, it goes on its own page, at the end.
+
+### Warnings
+
+- If the text would be **under 8 points**, the window warns you, because it would be hard to read. On one page, split by branches or in a grid; by branches, try a larger paper size; in a grid, try another level of detail.
+- If the PDF would have **more than 200 pages**, the window warns you with the number: it may take a while.
+
+### Cancel
+
+While the pages are prepared and the PDF is made, the bottom of the window shows how far it is ("Page 3 of 12") and a **Cancel** button. Cancelling, or closing the window, stops everything and saves nothing. If the org chart changes while it is being prepared, the PDF is not saved: the window tells you, and you can save it again.
+
+Like the image, the PDF is not encrypted, and with the **Structure** level it has no personal data.
+
 ## The image is not encrypted
 
 Before saving or copying, a notice reminds you that the image is not encrypted: anyone who opens it will see what it contains. Press **I accept, continue** to go on. Whoever generates it is responsible for where it is saved and who it is shared with. With the **Structure** level, no personal data comes out.
