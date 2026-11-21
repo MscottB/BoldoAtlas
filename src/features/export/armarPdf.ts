@@ -1,4 +1,3 @@
-import type { OpcionesPdf, PaginaPdf } from "./pdf";
 import type { PedidoPdf } from "./pdf.worker";
 import PdfWorker from "./pdf.worker?worker";
 
@@ -6,12 +5,11 @@ import PdfWorker from "./pdf.worker?worker";
 const fallo = (detalle: string) => ({ codigo: "pdf_armar", detalle });
 
 /**
- * El PDF, armado en un worker propio que se cierra al terminar: pdfmake no se carga en la ventana. Con `senal`
- * abortada, el worker se cierra y la promesa se rechaza con un `DOMException` de nombre «AbortError».
+ * El PDF del organigrama o el manual, armado en un worker propio que se cierra al terminar: pdfmake no se carga en la
+ * ventana. Con `senal` abortada, el worker se cierra y la promesa se rechaza con un `DOMException` de nombre «AbortError».
  */
 export function armarPdf(
-  paginas: PaginaPdf[],
-  o: OpcionesPdf,
+  pedido: PedidoPdf,
   alAvanzar: (hechas: number, total: number) => void,
   senal?: AbortSignal,
 ): Promise<Uint8Array> {
@@ -34,6 +32,6 @@ export function armarPdf(
     senal?.removeEventListener("abort", alAbortar);
     worker.terminate();
   });
-  worker.postMessage({ paginas, o } satisfies PedidoPdf);
+  worker.postMessage(pedido);
   return listo;
 }

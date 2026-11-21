@@ -74,8 +74,12 @@ const LETRA: Record<Nivel, { titulo: number; lineasTitulo: number; linea: number
   pantalla: { titulo: 13, lineasTitulo: 1, linea: 11, centrar: false },
 };
 
-/** La letra más chica de las tarjetas de ese nivel, en unidades del dibujo: con ella se mide si el PDF se lee. */
-export const letraMinima = (nivel: Nivel) => Math.min(LETRA[nivel].titulo, LETRA[nivel].linea, LETRA_MAS);
+/**
+ * La letra más chica de las tarjetas de ese nivel, en unidades del dibujo: con ella se mide si el PDF se lee.
+ * `conMas` en false: el dibujo no lleva la línea de «+N unidades».
+ */
+export const letraMinima = (nivel: Nivel, conMas = true) =>
+  Math.min(LETRA[nivel].titulo, LETRA[nivel].linea, conMas ? LETRA_MAS : Infinity);
 
 // XML no admite estos caracteres de control: se quitan para que el archivo siempre abra.
 // También U+FFFE, U+FFFF y las mitades sueltas de un par sustituto (un emoji partido).

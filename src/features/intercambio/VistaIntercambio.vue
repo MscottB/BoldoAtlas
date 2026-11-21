@@ -2,9 +2,10 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { Download, FileSpreadsheet, ImageDown, Upload } from "@lucide/vue";
+import { BookOpen, Download, FileSpreadsheet, ImageDown, Upload } from "@lucide/vue";
 import PanelExcel from "@/features/excel/PanelExcel.vue";
 import DialogoImagen from "@/features/export/DialogoImagen.vue";
+import DialogoManual from "@/features/export/DialogoManual.vue";
 import PanelExportar from "./PanelExportar.vue";
 import PanelImportar from "./PanelImportar.vue";
 import { organizacionEnCreacion } from "./intercambio";
@@ -24,6 +25,7 @@ const accion = computed(() => caminos.find((c) => c.id === route.query.accion)?.
 const ir = (a: Accion | null) => router.replace({ path: route.path, query: a ? { accion: a } : {} });
 // La imagen del organigrama no tiene panel aquí: abre su ventana, sin lienzo (las ramas, como el lienzo al empezar).
 const imagen = ref(false);
+const manual = ref(false);
 </script>
 
 <template>
@@ -65,11 +67,26 @@ const imagen = ref(false);
           <span class="text-sm text-muted-foreground">{{ t("intercambio.imagen.texto") }}</span>
         </button>
       </li>
+      <li>
+        <button
+          type="button"
+          data-accion="abrir-manual"
+          class="flex h-full w-full flex-col gap-1 rounded-lg border p-4 text-left hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+          @click="manual = true"
+        >
+          <span class="flex items-center gap-2 font-medium">
+            <BookOpen class="size-4 shrink-0" aria-hidden="true" />
+            {{ t("intercambio.manual.titulo") }}
+          </span>
+          <span class="text-sm text-muted-foreground">{{ t("intercambio.manual.texto") }}</span>
+        </button>
+      </li>
     </ul>
 
     <PanelExportar v-else-if="accion === 'exportar'" @terminar="ir(null)" />
     <PanelExcel v-else-if="accion === 'excel'" @terminar="ir(null)" />
     <PanelImportar v-else @terminar="ir(null)" />
     <DialogoImagen v-model:open="imagen" />
+    <DialogoManual v-model:open="manual" />
   </section>
 </template>

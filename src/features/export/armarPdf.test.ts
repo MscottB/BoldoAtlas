@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { armarPdf } from "./armarPdf";
+import type { TextosManual } from "./manual";
+import type { OpcionesManual } from "./manualPdf";
 import type { OpcionesPdf } from "./pdf";
 
 // Un worker de mentira que nunca responde: así se ve qué hace armarPdf al cancelar.
@@ -30,19 +32,36 @@ const o: OpcionesPdf = {
   pagina: "{n}/{m}",
   titulo: "Organigrama",
 };
+const manual: OpcionesManual = {
+  ...o,
+  conPersonas: false,
+  textos: {} as TextosManual,
+  portada: { version: "D", revision: "E" },
+};
 const svg = "<svg/>";
 afterEach(() => void (w.creados.length = 0));
 
 describe("armarPdf", () => {
   it("manda las páginas tal cual al worker", () => {
-    const paginas = [{ svg, ancho: 1, alto: 1 }];
-    void armarPdf(paginas, o, () => {});
-    expect(w.creados[0]!.pedidos[0]).toEqual({ paginas, o });
+    const pedido = { tipo: "organigrama" as const, paginas: [{ svg, ancho: 1, alto: 1 }], o };
+    void armarPdf(pedido, () => {});
+    expect(w.creados[0]!.pedidos[0]).toEqual(pedido);
+  });
+
+  it("manda el manual tal cual al worker", () => {
+    const datos = { unidades: [], general: [], dibujos: new Map([["u", { svg, ancho: 1, alto: 1 }]]) };
+    const pedido = { tipo: "manual" as const, datos, o: manual };
+    void armarPdf(pedido, () => {});
+    expect(w.creados[0]!.pedidos[0]).toEqual(pedido);
   });
 
   it("al cancelar cierra el worker y rechaza con AbortError", async () => {
     const c = new AbortController();
-    const pdf = armarPdf([{ svg, ancho: 1, alto: 1 }], o, () => {}, c.signal);
+    const pdf = armarPdf(
+      { tipo: "organigrama", paginas: [{ svg, ancho: 1, alto: 1 }], o },
+      () => {},
+      c.signal,
+    );
     c.abort();
     await expect(pdf).rejects.toMatchObject({ name: "AbortError" });
     expect(w.creados[0]!.terminado).toBe(true);
@@ -51,7 +70,9 @@ describe("armarPdf", () => {
   it("con la señal ya cancelada ni crea el worker", async () => {
     const c = new AbortController();
     c.abort();
-    await expect(armarPdf([], o, () => {}, c.signal)).rejects.toMatchObject({ name: "AbortError" });
+    await expect(armarPdf({ tipo: "organigrama", paginas: [], o }, () => {}, c.signal)).rejects.toMatchObject(
+      { name: "AbortError" },
+    );
     expect(w.creados).toHaveLength(0);
   });
 });

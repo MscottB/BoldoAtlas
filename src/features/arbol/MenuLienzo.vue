@@ -22,6 +22,7 @@ import { useLienzo } from "./useLienzo";
 import { useVista } from "./useVista";
 import { CONTEXTO_LIENZO } from "./contexto";
 import DialogoImagen from "@/features/export/DialogoImagen.vue";
+import DialogoManual from "@/features/export/DialogoManual.vue";
 
 // Menú contextual del lienzo (clic derecho, Mayús+F10 o la tecla Menú) según lo apuntado: una unidad, un puesto o el
 // fondo. `unidades`: las que se dibujan; `visibles`: las que están en pantalla; `raiz`: la rama enfocada, si hay.
@@ -114,6 +115,12 @@ function exportarRama(id: string) {
   ramaImagen.value = id;
   imagen.value = true;
 }
+// «Manual de esta rama»: el manual con esa unidad como alcance.
+const manual = ref(false);
+function manualRama(id: string) {
+  ramaImagen.value = id;
+  manual.value = true;
+}
 </script>
 
 <template>
@@ -175,6 +182,9 @@ function exportarRama(id: string) {
         </ContextMenuItem>
         <ContextMenuItem data-accion="exportar-rama-imagen" @select="pedir(() => exportarRama(id))">
           {{ t("imagen.exportarRama") }}
+        </ContextMenuItem>
+        <ContextMenuItem data-accion="manual-rama" @select="pedir(() => manualRama(id))">
+          {{ t("manual.rama") }}
         </ContextMenuItem>
         <template v-if="!MODO_LADO">
           <ContextMenuItem :disabled="soloLectura || !guardable" @select="pedir(() => guardar(id))">
@@ -243,4 +253,5 @@ function exportarRama(id: string) {
     </ContextMenuContent>
   </ContextMenu>
   <DialogoImagen v-model:open="imagen" :rama="ramaImagen" :pantalla="pantalla" />
+  <DialogoManual v-model:open="manual" :rama="ramaImagen" />
 </template>

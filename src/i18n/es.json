@@ -1819,6 +1819,10 @@
     "imagen": {
       "titulo": "Imagen del organigrama",
       "texto": "El organigrama, o una parte, en PNG, JPG o SVG, o copiado para pegarlo."
+    },
+    "manual": {
+      "titulo": "Manual de organización",
+      "texto": "Un PDF con portada, índice, el organigrama y una sección por unidad con sus puestos."
     }
   },
   "comparar": {
@@ -2240,5 +2244,35 @@
     "armando": "Armando el PDF…",
     "cancelar": "Cancelar",
     "ciclo": "No se pudo repartir en páginas: una unidad quedó debajo de sí misma. Revisa de quién depende cada unidad."
+  },
+  "manual": {
+    "titulo": "Manual de organización y funciones",
+    "indice": "Índice",
+    "general": "Organigrama general",
+    "jefatura": "Jefatura",
+    "cargo": "Cargo",
+    "descripcion": "Descripción",
+    "ocupa": "Ocupa",
+    "estado": "Estado",
+    "ocupado": "Ocupado",
+    "vacante": "Vacante",
+    "jefaturaVacante": "vacante",
+    "sinDescripcion": "Sin descripción",
+    "reemplazo": "Reemplazo",
+    "version": "BoldoAtlas {version}",
+    "revision": "Revisión de los datos: {revision}",
+    "ayuda": "Un PDF con portada, índice, el organigrama general y una sección por unidad con sus puestos.",
+    "aFecha": "Sale el manual al {fecha}.",
+    "personas": "Incluir a las personas",
+    "personasAyuda": "Sin marcar, el manual no lleva ningún nombre: sirve para compartir fuera.",
+    "rama": "Manual de esta rama",
+    "sinCargo": "Sin cargo",
+    "lamina": "Lámina {n}",
+    "sigue": "Sigue en la lámina {n}",
+    "viene": "Viene de la lámina {n}",
+    "preparando": "Preparando el organigrama general… ({n})",
+    "dibujando": "Dibujando las unidades… {n} de {m}",
+    "armando": "Armando el manual… {n} de {m}",
+    "muchas": "El manual lleva {n} páginas, más de {limite}."
   }
 }

@@ -66,6 +66,11 @@ export interface PedidoImagen {
    * alcance entero.
    */
   pagina?: { raiz: string; cortadas: ReadonlySet<string>; fuera: ReadonlySet<string> };
+  /**
+   * El dibujo chico del manual: los puestos de esta unidad, en cualquier nivel. En Estructura solo el cargo; en
+   * Presentación, también quién lo ocupa, y la jefatura va en la tarjeta de la unidad.
+   */
+  puestosDe?: string;
 }
 
 async function ubicarAqui(grafo: ElkNode): Promise<NodoUbicado[]> {
@@ -93,12 +98,17 @@ function subgrafo(o: PedidoImagen) {
   }
   const pag = o.pagina;
   if (pag) plegadas = new Set([...plegadas, ...pag.cortadas]);
+  const puestos = toRaw(e.puestos);
   const g = subgrafoVisible(
     pag ? unidadesDeRama(unidades, pag.raiz).filter((x) => !pag.fuera.has(x.id)) : unidades,
     toRaw(org.conexiones),
     plegadas,
-    pantalla && o.config.verPuestos ? toRaw(e.puestos) : [],
-    pantalla && jefeEnTarjeta(o.config),
+    pantalla && o.config.verPuestos
+      ? puestos
+      : o.puestosDe
+        ? puestos.filter((x) => x.unidad_id === o.puestosDe)
+        : [],
+    pantalla ? jefeEnTarjeta(o.config) : o.nivel === "presentacion",
   );
   return { org, e, unidades, plegadas, g };
 }
@@ -145,7 +155,8 @@ export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
   const dotaciones = conPersonas
     ? dotacionPorUnidad(unidades, toRaw(e.puestos), toRaw(e.asignaciones), fecha)
     : null;
-  const datosPuesto = datosDePuestos(g.puestos, e.vigentes, trabajadores, cargos);
+  // Estructura no lleva personas: sus puestos (el manual) ni leen los nombres.
+  const datosPuesto = datosDePuestos(g.puestos, e.vigentes, conPersonas ? trabajadores : new Map(), cargos);
   const tipoMarca = pantalla ? tipoDeMarca(config.colorearPor, tiposUso) : null;
   const marcas = tipoMarca ? marcasPorUnidad(todas, tipoMarca) : null;
   const criterio = esCriterioEscala(config.colorearPor) ? config.colorearPor : null;
@@ -189,6 +200,7 @@ export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
       : new Map(),
     rutas,
     tipos: new Map(catalogos.tipos_unidad.map((x) => [x.id, x.nombre])),
+    conPuestos: !!o.puestosDe,
     config,
     plegadas: new Map(
       g.nodos.filter((u) => plegadas.has(u.id)).map((u) => [u.id, descendientes(unidades, u.id).size]),

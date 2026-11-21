@@ -2,17 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import type { ElkNode } from "elkjs/lib/elk.bundled.js";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,22 +13,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { archivoAbrirCarpeta, archivoGuardar } from "@/db/cliente";
-import type { NodoUbicado } from "@/features/arbol/layout";
-import LayoutWorker from "@/features/arbol/layout.worker?worker";
-import { LIMITE_TARJETAS, colaDeUltimo } from "@/features/arbol/rendimiento";
+import { archivoGuardar } from "@/db/cliente";
+import { LIMITE_TARJETAS } from "@/features/arbol/rendimiento";
 import { useVista } from "@/features/arbol/useVista";
 import { crearAviso } from "@/features/excel/aviso";
 import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
 import { useRetornoFoco } from "@/lib/foco";
-import { guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
+import { elegir, guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
 import { armarPdf } from "./armarPdf";
+import AvisoSinCifrar from "./AvisoSinCifrar.vue";
+import { avisarGuardado, fuentesDelOrganigrama, textoDelAlcance } from "./dialogos";
 import { escalaQueCabe, fondoDePng, nombreArchivo, pngMenorQuePantalla } from "./formatos";
 import type { Nivel } from "./niveles";
-import { ErrorCiclo, type Hoja, type Orientacion, type Reparto } from "./paginas";
+import { ErrorCiclo, LISTA_HOJAS, ORIENTACIONES, type Hoja, type Orientacion, type Reparto } from "./paginas";
+import OpcionesHoja from "./OpcionesHoja.vue";
 import {
   CAMBIO,
   REEMPLAZADO,
@@ -50,6 +41,7 @@ import {
 import { cuantasTarjetas, prepararImagen, type Alcance, type PedidoImagen } from "./preparar";
 import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
 import { dibujarSvg, type EntradaSvg } from "./treeSvg";
+import { ubicadorEnWorker } from "./ubicador";
 
 // «Exportar como imagen», o en PDF: alcance, nivel, formato y vista previa. Se abre desde la página Importar y exportar,
 // la barra del árbol y el clic derecho en una unidad (`rama`). `pantalla`: lo que muestra el lienzo, para que las ramas
@@ -69,20 +61,16 @@ const FORMATOS = ["png", "jpg", "svg", "pdf"] as const;
 const ESCALAS = [1, 2, 3, 4] as const;
 const FONDOS = ["blanco", "transparente"] as const;
 type Formato = (typeof FORMATOS)[number];
-const HOJAS: Hoja[] = ["carta", "oficio", "a4", "a3", "a2"];
-const ORIENTACIONES: Orientacion[] = ["horizontal", "vertical"];
 const REPARTOS: Reparto[] = ["una", "ramas", "cuadricula"];
 
 // Se recuerda por PC lo elegido la última vez, salvo el alcance (es de cada imagen).
 const PREFERENCIA = "imagen";
-const elegir = <T,>(lista: readonly T[], valor: unknown, porDefecto: T): T =>
-  lista.includes(valor as T) ? (valor as T) : porDefecto;
 const guardada = leerPreferencia<Record<string, unknown>>(PREFERENCIA, {}) ?? {};
 const nivel = ref<Nivel>(elegir(NIVELES, guardada.nivel, "estructura"));
 const formato = ref<Formato>(elegir(FORMATOS, guardada.formato, "png"));
 const fondo = ref<(typeof FONDOS)[number]>(elegir(FONDOS, guardada.fondo, "blanco"));
 const escala = ref<(typeof ESCALAS)[number]>(elegir(ESCALAS, guardada.escala, 2));
-const hoja = ref<Hoja>(elegir(HOJAS, guardada.hoja, "carta"));
+const hoja = ref<Hoja>(elegir(LISTA_HOJAS, guardada.hoja, "carta"));
 const orientacion = ref<Orientacion>(elegir(ORIENTACIONES, guardada.orientacion, "horizontal"));
 const reparto = ref<Reparto>(elegir(REPARTOS, guardada.reparto, "ramas"));
 watch([nivel, formato, fondo, escala, hoja, orientacion, reparto], ([n, f, fo, e, h, o, r]) =>
@@ -130,9 +118,7 @@ watch(abierto, (si) => {
 const alcance = computed<Alcance>(() =>
   elegida.value && org.enFecha.porId.has(elegida.value) ? { rama: elegida.value } : "todo",
 );
-const textoAlcance = computed(() =>
-  alcance.value === "todo" ? t("imagen.alcanceTodo") : org.enFecha.porId.get(alcance.value.rama)!.nombre,
-);
+const textoAlcance = computed(() => textoDelAlcance(alcance.value, org, t));
 const NINGUNA = new Set<string>();
 
 const pedido = computed<PedidoImagen>(() => ({
@@ -145,30 +131,10 @@ const pedido = computed<PedidoImagen>(() => ({
 }));
 const tarjetas = computed(() => (abierto.value ? cuantasTarjetas(pedido.value) : 0));
 
-// El layout corre en el worker del lienzo: la ventana sigue respondiendo con organizaciones grandes. Si llega otro
-// pedido mientras uno corre, el anterior ya no sirve (colaDeUltimo) y se rechaza con REEMPLAZADO.
-let worker: Worker | null = null;
-// Se crea al pedir el primer layout (así no lo hay en las pruebas) y otra vez si muere.
-const cola = colaDeUltimo<ElkNode, NodoUbicado[]>((id, grafo) =>
-  (worker ??= crearWorker()).postMessage({ id, grafo }),
-);
-function crearWorker() {
-  const w = new LayoutWorker();
-  w.onmessage = ({ data }: MessageEvent<{ id: number; ubicados?: NodoUbicado[]; error?: string }>) =>
-    cola.recibir(data.id, data.ubicados, data.error);
-  w.onerror = w.onmessageerror = (e: Event) => {
-    e.preventDefault();
-    w.terminate();
-    worker = null;
-    cola.fallar(e instanceof ErrorEvent ? e.message : e.type);
-  };
-  return w;
-}
-async function ubicar(grafo: ElkNode): Promise<NodoUbicado[]> {
-  return (await cola.pedir(grafo)) ?? Promise.reject(REEMPLAZADO);
-}
+// El layout corre en el worker del lienzo: la ventana sigue respondiendo con organizaciones grandes.
+const { ubicar, cerrar } = ubicadorEnWorker();
 onBeforeUnmount(() => {
-  worker?.terminate();
+  cerrar();
   armando.value?.abort();
   controlPdf?.abort();
   clearTimeout(espera);
@@ -246,7 +212,7 @@ function programar(dibujo = true) {
   if (abierto.value) espera = setTimeout(() => void mostrar(), 300);
 }
 // Personalizar no se puede tocar con la ventana abierta: basta con ver si cambia la configuración entera.
-watch([pedido, () => org.enFecha, abierto], () => programar());
+watch([pedido, ...fuentesDelOrganigrama(org), abierto], () => programar());
 watch([esPdf, opcionesPdf], () => programar(false));
 onMounted(() => programar()); // no en el servidor de las pruebas: ahí no hay worker
 
@@ -304,15 +270,18 @@ async function guardar() {
         return;
       }
       bytes = await armarPdf(
-        lista,
         {
-          hoja: hoja.value,
-          orientacion: orientacion.value,
-          encabezado: r.encabezado,
-          // Los números los pone cada página: aquí quedan las marcas tal cual.
-          pagina: t("pdf.pagina", { n: "{n}", m: "{m}" }),
-          titulo: t("pdf.titulo"),
-          mapa: r.mapa,
+          tipo: "organigrama",
+          paginas: lista,
+          o: {
+            hoja: hoja.value,
+            orientacion: orientacion.value,
+            encabezado: r.encabezado,
+            // Los números los pone cada página: aquí quedan las marcas tal cual.
+            pagina: t("pdf.pagina", { n: "{n}", m: "{m}" }),
+            titulo: t("pdf.titulo"),
+            mapa: r.mapa,
+          },
         },
         (n, m) => (avance.value = t("pdf.pagina", { n, m })),
         control.signal,
@@ -335,15 +304,7 @@ async function guardar() {
     const rama = alcance.value === "todo" ? "" : textoAlcance.value;
     const archivo = nombreArchivo(org.org.nombre, rama, nivel.value, f, org.fechaVista ?? hoyISO());
     const nombre = await archivoGuardar(archivo, bytes, f);
-    if (nombre)
-      toast.success(t("imagen.guardada", { nombre }), {
-        description: bajada,
-        duration: 10000,
-        action: {
-          label: t("excel.abrirCarpeta"),
-          onClick: () => void archivoAbrirCarpeta().catch((x: unknown) => toast.error(mensajeFallo(x))),
-        },
-      });
+    if (nombre) avisarGuardado(nombre, bajada);
   } catch (e) {
     // Cancelado por la persona o al cerrar: nada que decir. Si cambió el organigrama, se dice que vuelva a guardar.
     const que = falloAlGuardar(e, f === "pdf", armando.value?.signal);
@@ -493,38 +454,7 @@ async function copiar() {
           </fieldset>
 
           <template v-if="esPdf">
-            <fieldset class="grid gap-1.5" :disabled="ocupado">
-              <legend class="mb-1 text-sm font-medium">{{ t("pdf.hoja") }}</legend>
-              <div class="flex flex-wrap gap-x-4 gap-y-1">
-                <label v-for="h in HOJAS" :key="h" class="flex items-center gap-1.5 text-sm">
-                  <input
-                    v-model="hoja"
-                    type="radio"
-                    name="pdf-hoja"
-                    :value="h"
-                    :data-accion="`hoja-${h}`"
-                    class="size-4 accent-primary"
-                  />
-                  {{ t(`pdf.hojas.${h}`) }}
-                </label>
-              </div>
-            </fieldset>
-            <fieldset class="grid gap-1.5" :disabled="ocupado">
-              <legend class="mb-1 text-sm font-medium">{{ t("pdf.orientacion") }}</legend>
-              <div class="flex flex-wrap gap-x-4 gap-y-1">
-                <label v-for="o in ORIENTACIONES" :key="o" class="flex items-center gap-1.5 text-sm">
-                  <input
-                    v-model="orientacion"
-                    type="radio"
-                    name="pdf-orientacion"
-                    :value="o"
-                    :data-accion="`orientacion-${o}`"
-                    class="size-4 accent-primary"
-                  />
-                  {{ t(`pdf.orientaciones.${o}`) }}
-                </label>
-              </div>
-            </fieldset>
+            <OpcionesHoja v-model:hoja="hoja" v-model:orientacion="orientacion" :disabled="ocupado" />
             <fieldset class="grid gap-1.5" :disabled="ocupado">
               <legend class="mb-1 text-sm font-medium">{{ t("pdf.reparto") }}</legend>
               <label v-for="r in REPARTOS" :key="r" class="flex items-center gap-1.5 text-sm">
@@ -602,25 +532,14 @@ async function copiar() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
-  <AlertDialog v-model:open="avisoAbierto">
-    <AlertDialogContent data-aviso-imagen>
-      <AlertDialogHeader>
-        <AlertDialogTitle>{{ t("excel.aviso.titulo") }}</AlertDialogTitle>
-        <AlertDialogDescription v-if="esPdf">
-          {{ t("pdf.aviso") }}
-          <template v-for="a in avisos" :key="a"> {{ a }}</template>
-        </AlertDialogDescription>
-        <AlertDialogDescription v-else>
-          {{ t("imagen.aviso") }}
-          <template v-if="chica"> {{ t("imagen.chica") }}</template>
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>{{ t("excel.aviso.cancelar") }}</AlertDialogCancel>
-        <AlertDialogAction data-accion="aceptar-aviso-imagen" @click="aviso.aceptar()">
-          {{ t("imagen.aceptar") }}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
+  <AvisoSinCifrar v-model:open="avisoAbierto" nombre="imagen" @aceptar="aviso.aceptar()">
+    <AlertDialogDescription v-if="esPdf">
+      {{ t("pdf.aviso") }}
+      <template v-for="a in avisos" :key="a"> {{ a }}</template>
+    </AlertDialogDescription>
+    <AlertDialogDescription v-else>
+      {{ t("imagen.aviso") }}
+      <template v-if="chica"> {{ t("imagen.chica") }}</template>
+    </AlertDialogDescription>
+  </AvisoSinCifrar>
 </template>

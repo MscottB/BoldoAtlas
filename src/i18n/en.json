@@ -1819,6 +1819,10 @@
     "imagen": {
       "titulo": "Org chart image",
       "texto": "The org chart, or part of it, as PNG, JPG or SVG, or copied to paste."
+    },
+    "manual": {
+      "titulo": "Organization manual",
+      "texto": "A PDF with a cover, contents, the org chart and a section for each unit with its positions."
     }
   },
   "comparar": {
@@ -2240,5 +2244,35 @@
     "armando": "Making the PDF…",
     "cancelar": "Cancel",
     "ciclo": "It could not be split into pages: a unit ended up under itself. Check which unit each one reports to."
+  },
+  "manual": {
+    "titulo": "Organization and functions manual",
+    "indice": "Contents",
+    "general": "General org chart",
+    "jefatura": "Head",
+    "cargo": "Position",
+    "descripcion": "Description",
+    "ocupa": "Held by",
+    "estado": "Status",
+    "ocupado": "Filled",
+    "vacante": "Vacant",
+    "jefaturaVacante": "vacant",
+    "sinDescripcion": "No description",
+    "reemplazo": "Replacement",
+    "version": "BoldoAtlas {version}",
+    "revision": "Data revision: {revision}",
+    "ayuda": "A PDF with a cover, contents, the general org chart and a section for each unit with its positions.",
+    "aFecha": "The manual shows the org chart as of {fecha}.",
+    "personas": "Include people",
+    "personasAyuda": "Unchecked, the manual has no names: good for sharing outside.",
+    "rama": "Manual for this branch",
+    "sinCargo": "No position title",
+    "lamina": "Sheet {n}",
+    "sigue": "Continues on sheet {n}",
+    "viene": "Continued from sheet {n}",
+    "preparando": "Preparing the general org chart… ({n})",
+    "dibujando": "Drawing the units… {n} of {m}",
+    "armando": "Building the manual… {n} of {m}",
+    "muchas": "The manual has {n} pages, more than {limite}."
   }
 }

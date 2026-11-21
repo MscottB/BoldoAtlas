@@ -33,8 +33,11 @@ export interface OpcionesPdf {
   mapa?: { svg: string; ancho: number; alto: number };
 }
 
+/** Lo común a todo PDF: la hoja, el encabezado, el pie y los metadatos. */
+export type OpcionesMarco = Omit<OpcionesPdf, "mapa">;
+
 /** Un nodo de pdfmake, que no trae sus tipos. */
-type Nodo = Record<string, unknown>;
+export type Nodo = Record<string, unknown>;
 
 /** Lo que se usa de la definición de un documento de pdfmake. */
 export interface TDocumentDefinitions {
@@ -47,9 +50,13 @@ export interface TDocumentDefinitions {
   footer: (pagina: number, total: number) => Nodo;
 }
 
-const TENUE = "#737373";
-// pdfmake solo lee PNG y JPG; otro logo no va en el pie.
-const LOGO_PDF = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/;
+/** La escala con que un dibujo cabe en una caja: nunca más de 1 (no se agranda). */
+export const escalaQueEntra = (d: { ancho: number; alto: number }, caja: { ancho: number; alto: number }) =>
+  Math.min(1, caja.ancho / d.ancho, caja.alto / d.alto);
+
+export const TENUE = "#737373";
+// pdfmake solo lee PNG y JPG; otro logo no va.
+export const LOGO_PDF = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/;
 const CORTE = 6; // largo de cada marca de corte, en pt
 
 /**
@@ -76,15 +83,13 @@ export function mapa(p: { svg: string; ancho: number; alto: number }, hojitas: H
  * Los metadatos solo llevan `o.titulo`: ni personas ni la organización. En cuadrícula, `o.mapa` es obligatorio.
  */
 export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDefinitions {
-  const { ancho: w, alto: h } = HOJAS[o.hoja];
-  const [anchoHoja, altoHoja] = o.orientacion === "vertical" ? [w, h] : [h, w];
   const area = areaUtil(o.hoja, o.orientacion);
   const arriba = MARGEN + ENCABEZADO;
   const hojitas = paginas.flatMap((p) => (p.recorte ? [p.recorte] : []));
   const conMapa = hojitas.length > 0;
   if (conMapa && !o.mapa) throw new Error("En cuadrícula falta el dibujo entero para el mapa (o.mapa).");
 
-  const cabe = (ancho: number, alto: number) => Math.min(1, area.ancho / ancho, area.alto / alto);
+  const cabe = (ancho: number, alto: number) => escalaQueEntra({ ancho, alto }, area);
   // Todas las hojas con la escala de las enteras (la menor): una hoja más angosta, al final, no sale más grande.
   const escalaHojas = Math.min(...hojitas.map((r) => cabe(r.ancho, r.alto)));
 
@@ -118,6 +123,22 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
     ),
   ].map((n, i) => (i ? { ...n, pageBreak: "before" } : n));
 
+  return {
+    ...marcoPdf(o, (n) => paginas[n - 1 - (conMapa ? 1 : 0)]?.arriba ?? ""),
+    content,
+  };
+}
+
+/**
+ * La hoja, los márgenes y los metadatos (solo `o.titulo`), y en cada página el encabezado (organización, alcance, fecha
+ * y la línea `arriba(n)` de la página n) y el pie (logo y «Página N de M»).
+ */
+export function marcoPdf(
+  o: OpcionesMarco,
+  arriba: (pagina: number) => string,
+): Omit<TDocumentDefinitions, "content"> {
+  const { ancho: w, alto: h } = HOJAS[o.hoja];
+  const [anchoHoja, altoHoja] = o.orientacion === "vertical" ? [w, h] : [h, w];
   const { organizacion, alcance, fecha, logo } = o.encabezado;
   // Todo en una línea: un nombre largo se corta con «…» y el encabezado no pasa de sus 28 pt.
   const anchoUtil = anchoHoja - 2 * MARGEN;
@@ -125,10 +146,9 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
   const izquierda = recortarTexto(organizacion, anchoUtil - anchoTexto(derecha, 8) - 12, 9, true);
   return {
     pageSize: { width: anchoHoja, height: altoHoja },
-    pageMargins: [MARGEN, arriba, MARGEN, MARGEN + PIE],
+    pageMargins: [MARGEN, MARGEN + ENCABEZADO, MARGEN, MARGEN + PIE],
     info: { title: o.titulo },
     defaultStyle: { fontSize: 8, color: TENUE },
-    content,
     header: (n) => ({
       margin: [MARGEN, MARGEN, MARGEN, 0],
       stack: [
@@ -138,7 +158,7 @@ export function documentoPdf(paginas: PaginaPdf[], o: OpcionesPdf): TDocumentDef
             { text: derecha, alignment: "right", noWrap: true, width: "auto" },
           ],
         },
-        { text: recortarTexto(paginas[n - 1 - (conMapa ? 1 : 0)]?.arriba ?? "", anchoUtil, 8), noWrap: true },
+        { text: recortarTexto(arriba(n), anchoUtil, 8), noWrap: true },
       ],
     }),
     footer: (n, m) => ({

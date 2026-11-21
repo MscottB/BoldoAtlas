@@ -1,4 +1,5 @@
 import type { Nivel } from "./niveles";
+import { partir } from "./medida";
 import { letraMinima } from "./treeSvg";
 
 /** Cómo se reparte el PDF en páginas. Todo es puro: pdfmake solo pinta lo que esto decide. Una unidad SVG vale 1 punto. */
@@ -14,6 +15,9 @@ export const HOJAS: Record<Hoja, { ancho: number; alto: number }> = {
   a3: { ancho: 841.89, alto: 1190.55 },
   a2: { ancho: 1190.55, alto: 1683.78 },
 };
+/** Las hojas y orientaciones que se ofrecen, en este orden. */
+export const LISTA_HOJAS = Object.keys(HOJAS) as Hoja[];
+export const ORIENTACIONES: Orientacion[] = ["horizontal", "vertical"];
 export const MARGEN = 28.35; // 1 cm
 export const ENCABEZADO = 28;
 export const PIE = 22;
@@ -25,6 +29,34 @@ export function areaUtil(hoja: Hoja, orientacion: Orientacion): { ancho: number;
   const { ancho, alto } = HOJAS[hoja];
   const [a, b] = orientacion === "vertical" ? [ancho, alto] : [alto, ancho];
   return { ancho: a - 2 * MARGEN, alto: b - 2 * MARGEN - ENCABEZADO - PIE };
+}
+
+/** Las líneas de arriba de una sección del manual, ya escritas: `cabezaDeSeccion` en manualPdf.ts. */
+export interface CabezaSeccion {
+  titulo: string;
+  ruta: string | null;
+  jefatura: { etiqueta: string; texto: string } | null;
+}
+
+/**
+ * El lugar del dibujo chico de una sección del manual: el área útil sin su cabeza (título de 14 pt en negrita, ruta de
+ * 8 pt, jefatura de 10 pt y sus márgenes). Cada línea se mide con `partir`: si el título, la ruta o la jefatura se
+ * parten en dos, la cabeza crece y el dibujo se achica. `anchoTexto` estima algo de más, así que el dibujo cabe bajo la
+ * cabeza que pone pdfmake. La medida del manual y su dibujo usan esto mismo.
+ */
+export function cajaDibujoManual(
+  area: { ancho: number; alto: number },
+  c: CabezaSeccion,
+): { ancho: number; alto: number } {
+  // Alto de línea de Roboto en pdfmake: 1,17 veces la letra.
+  const alto = (texto: string, tam: number, negrita = false) =>
+    partir(texto, area.ancho, tam, Infinity, negrita).length * tam * 1.17;
+  const cabeza =
+    alto(c.titulo, 14, true) +
+    (c.ruta ? alto(c.ruta, 8) + 2 : 0) +
+    (c.jefatura ? alto(c.jefatura.etiqueta + c.jefatura.texto, 10, true) + 6 : 0) +
+    12; // sobre el dibujo
+  return { ancho: area.ancho, alto: area.alto - Math.ceil(cabeza) };
 }
 
 /**

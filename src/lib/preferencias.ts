@@ -13,6 +13,10 @@ export function leerPreferencia<T>(clave: string, porDefecto: T): T {
   }
 }
 
+/** El valor guardado si es uno de `lista`; si no (otra versión, o a mano), `porDefecto`. */
+export const elegir = <T>(lista: readonly T[], valor: unknown, porDefecto: T): T =>
+  lista.includes(valor as T) ? (valor as T) : porDefecto;
+
 // El panel de al lado muestra otra organización como la dejó quien la usa: lee sus preferencias, no las escribe.
 export function guardarPreferencia(clave: string, valor: unknown): void {
   if (MODO_LADO) return;

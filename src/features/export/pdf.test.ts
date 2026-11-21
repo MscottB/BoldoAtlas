@@ -9,6 +9,7 @@ import { MARGEN } from "./paginas";
 import { documentoPdf, type OpcionesPdf, type PaginaPdf } from "./pdf";
 import { generarPdf } from "./pdf.worker";
 import { prepararImagen } from "./preparar";
+import { textoDelPdf } from "./textoPdf";
 import { dibujarSvg } from "./treeSvg";
 
 // Un PNG de 1 × 1, como el logo de la organización.
@@ -23,32 +24,6 @@ const o: OpcionesPdf = {
 };
 const svg = (ancho: number, alto: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${ancho}" height="${alto}" viewBox="0 0 ${ancho} ${alto}" font-family="Inter"><rect width="10" height="10"/></svg>`;
-
-/**
- * El texto que se ve en el PDF. pdfkit escribe cada letra como el número de su glifo en la fuente; el mapa ToUnicode de
- * cada fuente dice qué letra es. Sin saber qué fuente usa cada línea, se lee con todos los mapas: sobra, pero no falta.
- */
-function textoDelPdf(pdf: Uint8Array): string {
-  const s = new TextDecoder("latin1").decode(pdf);
-  const mapas = [...s.matchAll(/beginbfrange([\s\S]*?)endbfrange/g)].map(([, rangos]) => {
-    const m = new Map<number, string>();
-    for (const [, desde, letras] of rangos!.matchAll(/<([0-9a-f]+)> <[0-9a-f]+> \[([^\]]*)\]/g))
-      // Una ligadura trae varias letras: «fi» es <0066 0069>.
-      [...letras!.matchAll(/<([0-9a-f ]+)>/g)].forEach(([, u], i) =>
-        m.set(parseInt(desde!, 16) + i, String.fromCharCode(...u!.split(" ").map((x) => parseInt(x, 16)))),
-      );
-    return m;
-  });
-  const lineas = s
-    .split("\n")
-    .filter((l) => /T[Jj]$/.test(l))
-    .map((l) => [...l.matchAll(/<([0-9a-f]+)>/g)].map(([, h]) => h).join(""));
-  return mapas
-    .flatMap((m) =>
-      lineas.map((h) => (h.match(/.{4}/g) ?? []).map((g) => m.get(parseInt(g, 16)) ?? "?").join("")),
-    )
-    .join("\n");
-}
 
 describe("documentoPdf", () => {
   it("documento_lleva_encabezado_y_pie", () => {
