@@ -123,6 +123,45 @@ describe("DialogoImagen", () => {
     expect(s).toContain('data-accion="guardar-imagen"');
   });
 
+  it("con el visor HTML: las casillas de correo y teléfono, sin copiar ni lo del PNG y el PDF", async () => {
+    pref.valor = { formato: "html", nivel: "presentacion", correo: true };
+    conHijas(2);
+    const s = await html();
+    const casilla = (accion: string) => new RegExp(`<input[^>]*data-accion="${accion}"[^>]*>`).exec(s)?.[0];
+    expect(casilla("formato-html")).toContain("checked");
+    expect(s).toContain(t("imagen.formatos.html"));
+    expect(s).toContain(t("imagen.correo"));
+    expect(s).toContain(t("imagen.telefono"));
+    // Recuerda lo marcado; ninguna apagada fuera de Estructura.
+    expect(casilla("visor-correo")).toContain("checked");
+    expect(casilla("visor-telefono")).not.toContain("checked");
+    expect(casilla("visor-correo")).not.toContain("disabled");
+    expect(s).not.toContain('data-accion="copiar-imagen"');
+    expect(s).not.toContain(t("imagen.fondos.transparente"));
+    expect(s).not.toContain("4x");
+    expect(s).not.toContain('data-accion="hoja-');
+    expect(s).toContain('data-accion="guardar-imagen"');
+  });
+
+  it("con el visor HTML en Estructura: las casillas salen desmarcadas y apagadas", async () => {
+    pref.valor = { formato: "html", nivel: "estructura", correo: true, telefono: true };
+    conHijas(2);
+    const s = await html();
+    for (const accion of ["visor-correo", "visor-telefono"]) {
+      const c = new RegExp(`<input[^>]*data-accion="${accion}"[^>]*>`).exec(s)?.[0];
+      expect(c, accion).toContain("disabled");
+      expect(c, accion).not.toContain("checked");
+    }
+  });
+
+  it("sin el visor HTML no hay casillas de correo ni teléfono", async () => {
+    conHijas(2);
+    const s = await html();
+    expect(s).toContain('data-accion="formato-html"');
+    expect(s).not.toContain('data-accion="visor-correo"');
+    expect(s).not.toContain('data-accion="visor-telefono"');
+  });
+
   it("recuerda la hoja, la orientación y el reparto elegidos", async () => {
     pref.valor = { formato: "pdf", hoja: "a3", orientacion: "vertical", reparto: "cuadricula" };
     conHijas(2);

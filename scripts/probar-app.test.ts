@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { conPuertoAbierto, dentroDe, enCI, esErrorDeConsola, exigirPortable } from "./probar-app.mjs";
+import {
+  conPuertoAbierto,
+  dentroDe,
+  enCI,
+  esErrorDeConsola,
+  exigirPortable,
+  pedidoPermitido,
+  rutaEdge,
+} from "./probar-app.mjs";
 
 describe("esErrorDeConsola", () => {
   it("errores de la consola, excepciones y errores del navegador; no avisos ni la salida del proceso", () => {
@@ -116,5 +124,34 @@ describe("dentroDe", () => {
       false,
     );
     expect(dentroDe("", carpeta)).toBe(false);
+  });
+});
+
+describe("pedidoPermitido", () => {
+  const archivo = "file:///C:/humo/datos/visor-humo/Org_presentacion_2026-11-27.html";
+  it("solo el propio archivo y data:", () => {
+    expect(pedidoPermitido(archivo, archivo)).toBe(true);
+    expect(pedidoPermitido("data:image/png;base64,AAAA", archivo)).toBe(true);
+    for (const u of [
+      "https://fonts.googleapis.com/css",
+      "http://127.0.0.1/x",
+      "file:///C:/humo/otro.html",
+      `${archivo}?x`,
+      "blob:null/1",
+    ])
+      expect(pedidoPermitido(u, archivo), u).toBe(false);
+  });
+});
+
+describe("rutaEdge", () => {
+  it("busca msedge.exe en las dos carpetas de programas, y nada si no está", () => {
+    const x86 = mkdtempSync(join(tmpdir(), "edge-x86-"));
+    const pf = mkdtempSync(join(tmpdir(), "edge-pf-"));
+    expect(rutaEdge({ "ProgramFiles(x86)": x86, ProgramFiles: pf })).toBeUndefined();
+    const app = join(pf, "Microsoft", "Edge", "Application");
+    mkdirSync(app, { recursive: true });
+    writeFileSync(join(app, "msedge.exe"), "");
+    expect(rutaEdge({ "ProgramFiles(x86)": x86, ProgramFiles: pf })).toBe(join(app, "msedge.exe"));
+    expect(rutaEdge({})).toBeUndefined();
   });
 });

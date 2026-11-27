@@ -33,6 +33,7 @@ Si la imagen lleva más de 1.000 tarjetas, la ventana lo avisa con la cifra: pue
 - **PNG**: elige el **Fondo** (**Blanco** o **Transparente**) y el **Tamaño**, de 1x a 4x. Si el tamaño pedido es demasiado grande, se baja solo y un aviso dice a cuánto quedó.
 - **JPG**: siempre con fondo blanco; eliges el tamaño.
 - **SVG**: un dibujo vectorial, que se amplía sin perder calidad y se abre en un editor.
+- **Visor HTML**: un archivo que se abre en el navegador, con búsqueda y ramas que se pliegan. Lo explica [Exportar como visor HTML](exportar-visor.md).
 - Si la organización es tan ancha que ni a 1x cabe en una imagen, en PNG, JPG o al copiar saldría más chica que en pantalla y no se podría leer: la ventana lo avisa. Elige una rama o guárdala en SVG.
 
 **Guardar…** te deja elegir dónde queda el archivo; al terminar, **Abrir carpeta** lo muestra. **Copiar imagen** deja un PNG en el portapapeles, para pegarlo directo en una presentación o un correo. BoldoAtlas recuerda el nivel, el formato, el fondo y el tamaño que usaste.

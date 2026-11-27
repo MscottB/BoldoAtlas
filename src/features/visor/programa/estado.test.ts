@@ -16,6 +16,7 @@ import {
   plegar,
   enlaceCorreo,
   enlaceTelefono,
+  logoSeguro,
   posicionEnHermanos,
   siguienteResultado,
 } from "./estado";
@@ -191,5 +192,21 @@ describe("colores del visor", () => {
       expect(contraste(borde, f)).toBeGreaterThanOrEqual(3);
       expect(contraste(acento, f)).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("logoSeguro", () => {
+  it("solo una imagen en data:; lo demás no se usa", () => {
+    expect(logoSeguro("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
+    for (const x of [
+      undefined,
+      null,
+      "",
+      "https://x.cl/logo.png",
+      "javascript:alert(1)",
+      "data:text/html,<b>",
+      " data:image/png,",
+    ])
+      expect(logoSeguro(x), String(x)).toBeUndefined();
   });
 });

@@ -142,6 +142,10 @@ export function enlaceTelefono(telefono: string): string | null {
   return digitos ? `tel:${telefono.trim().startsWith("+") ? "+" : ""}${digitos}` : null;
 }
 
+/** El logo solo si es una imagen dentro del archivo (`data:image/`); la CSP ya limita `img-src` a `data:`. */
+export const logoSeguro = (logo: string | null | undefined): string | undefined =>
+  logo && /^data:image\//.test(logo) ? logo : undefined;
+
 /** `aria-setsize` y `aria-posinset` de cada fila: entre las filas con el mismo superior. */
 export function posicionEnHermanos(filas: readonly FilaLista[]): { tam: number; pos: number }[] {
   const grupos = new Map<number, number[]>();

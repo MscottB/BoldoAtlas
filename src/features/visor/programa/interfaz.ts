@@ -7,6 +7,7 @@ import {
   enlaceCorreo,
   enlaceTelefono,
   filasDeLista,
+  logoSeguro,
   moverEnLista,
   plegar,
   posicionEnHermanos,
@@ -119,9 +120,10 @@ export async function montar(d: DatosVisor): Promise<void> {
     zoom,
     cambio,
   );
-  if (logo) {
+  const src = logoSeguro(logo);
+  if (src) {
     const img = h("img", { "data-visor": "logo", alt: "" });
-    img.src = logo;
+    img.src = src;
     barra.prepend(img);
   }
   const estado = h("div", { "data-visor": "estado", role: "status" });

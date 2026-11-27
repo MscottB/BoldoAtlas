@@ -33,6 +33,7 @@ fn filtro_de(ext: &str) -> Option<&'static str> {
         "jpg" => Some("JPG"),
         "svg" => Some("SVG"),
         "pdf" => Some("PDF"),
+        "html" => Some("HTML"),
         _ => None,
     }
 }
@@ -225,6 +226,18 @@ mod tests {
         let c = cuerpo(r#"{"nombre":"a.pdf","ext":"pdf"}"#, b"%PDF-1.3");
         assert!(desarmar(&c).is_ok());
         assert_eq!(filtro_de("pdf"), Some("PDF"));
+    }
+
+    #[test]
+    fn guardar_acepta_html_y_no_sus_variantes() {
+        let c = cuerpo(r#"{"nombre":"a.html","ext":"html"}"#, b"<!doctype html>");
+        assert!(desarmar(&c).is_ok());
+        assert_eq!(filtro_de("html"), Some("HTML"));
+        for ext in ["htm", "HTML"] {
+            let c = cuerpo(&format!(r#"{{"nombre":"a","ext":"{ext}"}}"#), b"x");
+            assert_eq!(desarmar(&c).unwrap_err().codigo, "pedido_invalido", "{ext}");
+            assert_eq!(filtro_de(ext), None, "{ext}");
+        }
     }
 
     #[test]

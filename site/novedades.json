@@ -1,5 +1,17 @@
 [
   {
+    "id": "exportar-visor",
+    "pagina": "exportar-visor",
+    "es": {
+      "titulo": "El organigrama como visor HTML",
+      "texto": "Guarda el organigrama, o una rama, como un archivo que se abre en cualquier navegador, sin instalar nada y sin internet. Quien lo recibe puede plegar ramas, buscar una unidad o una persona, recorrerlo como lista con el teclado y ver el detalle de cada unidad. En Estructura no lleva datos de personas, y el correo y el teléfono van solo si los marcas."
+    },
+    "en": {
+      "titulo": "The org chart as an HTML viewer",
+      "texto": "Save the org chart, or one branch, as a file that opens in any browser, with nothing to install and no internet. Whoever receives it can fold branches, search for a unit or a person, move through it as a list with the keyboard and see the details of each unit. In Structure it has no personal data, and email and phone go only if you check them."
+    }
+  },
+  {
     "id": "manual-de-organizacion",
     "pagina": "manual",
     "es": {

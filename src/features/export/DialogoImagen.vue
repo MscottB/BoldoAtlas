@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { AlertDialogDescription } from "@/components/ui/alert-dialog";
@@ -20,6 +20,7 @@ import { crearAviso } from "@/features/excel/aviso";
 import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
 import { mensajeFallo } from "@/features/respaldos/respaldos";
 import SelectorUnidad from "@/features/unidades/SelectorUnidad.vue";
+import { datosVisor } from "@/features/visor/datos";
 import { useRetornoFoco } from "@/lib/foco";
 import { elegir, guardarPreferencia, leerPreferencia } from "@/lib/preferencias";
 import { useOrganizacion } from "@/stores/organizacion";
@@ -43,9 +44,9 @@ import { ErrorImagen, copiarImagen, svgABlob, svgAImagen } from "./raster";
 import { dibujarSvg, type EntradaSvg } from "./treeSvg";
 import { ubicadorEnWorker } from "./ubicador";
 
-// «Exportar como imagen», o en PDF: alcance, nivel, formato y vista previa. Se abre desde la página Importar y exportar,
-// la barra del árbol y el clic derecho en una unidad (`rama`). `pantalla`: lo que muestra el lienzo, para que las ramas
-// salgan como ahí.
+// «Exportar como imagen», en PDF o como visor HTML: alcance, nivel, formato y vista previa. Se abre desde la página
+// Importar y exportar, la barra del árbol y el clic derecho en una unidad (`rama`). `pantalla`: lo que muestra el
+// lienzo, para que las ramas salgan como ahí.
 const abierto = defineModel<boolean>("open", { required: true });
 const props = defineProps<{
   rama?: string | null;
@@ -57,11 +58,13 @@ const { config } = useVista();
 const retorno = useRetornoFoco();
 
 const NIVELES: Nivel[] = ["estructura", "presentacion", "pantalla"];
-const FORMATOS = ["png", "jpg", "svg", "pdf"] as const;
+const FORMATOS = ["png", "jpg", "svg", "pdf", "html"] as const;
 const ESCALAS = [1, 2, 3, 4] as const;
 const FONDOS = ["blanco", "transparente"] as const;
 type Formato = (typeof FORMATOS)[number];
 const REPARTOS: Reparto[] = ["una", "ramas", "cuadricula"];
+// Lo que el visor HTML suma, solo si se marca. Estructura no lleva datos de personas: ahí salen apagadas.
+const CASILLAS = ["correo", "telefono"] as const;
 
 // Se recuerda por PC lo elegido la última vez, salvo el alcance (es de cada imagen).
 const PREFERENCIA = "imagen";
@@ -73,7 +76,8 @@ const escala = ref<(typeof ESCALAS)[number]>(elegir(ESCALAS, guardada.escala, 2)
 const hoja = ref<Hoja>(elegir(LISTA_HOJAS, guardada.hoja, "carta"));
 const orientacion = ref<Orientacion>(elegir(ORIENTACIONES, guardada.orientacion, "horizontal"));
 const reparto = ref<Reparto>(elegir(REPARTOS, guardada.reparto, "ramas"));
-watch([nivel, formato, fondo, escala, hoja, orientacion, reparto], ([n, f, fo, e, h, o, r]) =>
+const casillas = reactive({ correo: guardada.correo === true, telefono: guardada.telefono === true });
+watch([nivel, formato, fondo, escala, hoja, orientacion, reparto, casillas], ([n, f, fo, e, h, o, r, c]) =>
   guardarPreferencia(PREFERENCIA, {
     nivel: n,
     formato: f,
@@ -82,9 +86,16 @@ watch([nivel, formato, fondo, escala, hoja, orientacion, reparto], ([n, f, fo, e
     hoja: h,
     orientacion: o,
     reparto: r,
+    correo: c.correo,
+    telefono: c.telefono,
   }),
 );
 const esPdf = computed(() => formato.value === "pdf");
+const esHtml = computed(() => formato.value === "html");
+const contacto = computed(() => ({
+  correo: nivel.value !== "estructura" && casillas.correo,
+  telefono: nivel.value !== "estructura" && casillas.telefono,
+}));
 const raster = computed(() => formato.value === "png" || formato.value === "jpg");
 const opcionesPdf = computed(() => ({
   hoja: hoja.value,
@@ -286,6 +297,16 @@ async function guardar() {
         (n, m) => (avance.value = t("pdf.pagina", { n, m })),
         control.signal,
       );
+    } else if (f === "html") {
+      if (!(await aviso.preguntar())) return;
+      // El programa pesa ~1,5 MB: se carga recién al guardar, no con la ventana.
+      const [{ armarHtml }, { default: programa }] = await Promise.all([
+        import("@/features/visor/html"),
+        import("virtual:visor-programa"),
+      ]);
+      bytes = new TextEncoder().encode(
+        await armarHtml(datosVisor({ ...pedido.value, ...contacto.value }), programa),
+      );
     } else {
       const e = await entrada();
       const { svg, ancho, alto } = dibujarSvg({ ...e, fondo: conFondo() });
@@ -415,9 +436,24 @@ async function copiar() {
                   :data-accion="`formato-${f}`"
                   class="size-4 accent-primary"
                 />
-                {{ f.toUpperCase() }}
+                {{ f === "html" ? t("imagen.formatos.html") : f.toUpperCase() }}
               </label>
             </div>
+          </fieldset>
+
+          <fieldset v-if="esHtml" class="grid gap-1.5" :disabled="ocupado">
+            <legend class="mb-1 text-sm font-medium">{{ t("imagen.contacto") }}</legend>
+            <label v-for="c in CASILLAS" :key="c" class="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="size-4 accent-primary"
+                :data-accion="`visor-${c}`"
+                :checked="contacto[c]"
+                :disabled="nivel === 'estructura'"
+                @change="casillas[c] = ($event.target as HTMLInputElement).checked"
+              />
+              {{ t(`imagen.${c}`) }}
+            </label>
           </fieldset>
 
           <template v-if="formato === 'png'">
@@ -517,7 +553,7 @@ async function copiar() {
           </Button>
         </template>
         <Button
-          v-if="!esPdf"
+          v-if="!esPdf && !esHtml"
           type="button"
           variant="outline"
           data-accion="copiar-imagen"
@@ -537,6 +573,7 @@ async function copiar() {
       {{ t("pdf.aviso") }}
       <template v-for="a in avisos" :key="a"> {{ a }}</template>
     </AlertDialogDescription>
+    <AlertDialogDescription v-else-if="esHtml">{{ t("imagen.avisoVisor") }}</AlertDialogDescription>
     <AlertDialogDescription v-else>
       {{ t("imagen.aviso") }}
       <template v-if="chica"> {{ t("imagen.chica") }}</template>

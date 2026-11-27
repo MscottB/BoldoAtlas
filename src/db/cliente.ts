@@ -766,11 +766,11 @@ export function fotosQuitar(): Promise<number> {
 
 // Archivos (Excel e imágenes): se arman en la ventana; «Guardar como» y la escritura quedan en Rust (src-tauri/src/excel.rs).
 /** Cuerpo binario: 4 bytes (u32, little endian) con el largo del pedido en JSON, el pedido y el contenido. El nombre
- * del archivo guardado, o null si no se eligió un lugar. `ext`: xlsx, png, jpg o svg; Rust rechaza otra. */
+ * del archivo guardado, o null si no se eligió un lugar. `ext`: xlsx, png, jpg, svg, pdf o html; Rust rechaza otra. */
 export function archivoGuardar(
   nombre: string,
   bytes: Uint8Array,
-  ext: "xlsx" | "png" | "jpg" | "svg" | "pdf",
+  ext: "xlsx" | "png" | "jpg" | "svg" | "pdf" | "html",
 ): Promise<string | null> {
   const pedido = new TextEncoder().encode(JSON.stringify({ nombre, ext }));
   const cuerpo = new Uint8Array(4 + pedido.length + bytes.length);

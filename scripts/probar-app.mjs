@@ -13,6 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, win32 } from "node:path";
+import { pathToFileURL } from "node:url";
 import { TAR, artefactos } from "./release.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -22,6 +23,8 @@ const ORGANIZACION = "Organización de humo";
 const RAIZ = "Raíz de humo";
 const RAIZ_NUEVA = "Raíz renombrada";
 const PERSONA = { id: "humo-persona", nombre: "Persona de humo" };
+// El nombre que el visor debe mostrar como texto: si se leyera como HTML, cerraría el bloque y correría el onerror.
+const NOMBRE_XSS = `</script><img src=x onerror="window.__xss=1">`;
 // PNG de 1×1: la foto que el paso de las fotos siembra con la app cerrada
 const FOTO =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==";
@@ -162,8 +165,11 @@ function procesosDeWebview() {
   }
 }
 
-/** @param {string} url */
-async function conectarCdp(url) {
+/**
+ * `alEvento` recibe cada evento de CDP (lo que no es una respuesta), además de lo que se anota.
+ * @param {string} url @param {(metodo: string, params: any) => void} [alEvento]
+ */
+async function conectarCdp(url, alEvento) {
   const ws = new WebSocket(url);
   await new Promise((ok, mal) => {
     ws.onopen = ok;
@@ -174,6 +180,7 @@ async function conectarCdp(url) {
   let ultimo = 0;
   ws.onmessage = (m) => {
     const d = JSON.parse(String(m.data));
+    if (!d.id) alEvento?.(d.method, d.params);
     if (d.id) {
       const p = pendientes.get(d.id);
       pendientes.delete(d.id);
@@ -935,6 +942,233 @@ async function manualSinPersonas(exe, carpeta) {
   comprobar("la app del manual cierra sola y con código 0", codigo === 0, codigo);
 }
 
+/**
+ * Lo único que el visor puede pedir: su propio archivo y lo que va en `data:` (el logo). Todo lo demás sería ir a la red.
+ * @param {string} url @param {string} archivo la URL `file:` del visor
+ */
+export const pedidoPermitido = (url, archivo) => url === archivo || url.startsWith("data:");
+
+/** El Edge que trae Windows, en cualquiera de sus dos carpetas de programas. @param {NodeJS.ProcessEnv} [e] */
+export const rutaEdge = (e = process.env) =>
+  [e["ProgramFiles(x86)"], e.ProgramFiles]
+    .filter((d) => d !== undefined)
+    .map((d) => join(d, "Microsoft", "Edge", "Application", "msedge.exe"))
+    .find((r) => existsSync(r));
+
+/**
+ * Abre un visor HTML en Edge sin interfaz, con su perfil en `carpeta/edge`, y por CDP comprueba que dibuja, que la lista se
+ * recorre con el teclado, que plegar la raíz deja una tarjeta, que la búsqueda encuentra `unidad` y la muestra como
+ * texto, que no pide nada a la red y que la CSP no reclama. Edge se cierra pase lo que pase.
+ * @param {string} archivo @param {string} carpeta @param {{ raiz: string, unidad: { id: string, nombre: string } }} o
+ */
+export async function revisarVisorEnEdge(archivo, carpeta, { raiz, unidad }) {
+  const edge = rutaEdge();
+  if (!edge) throw new Error("No está msedge.exe en Archivos de programa");
+  const perfil = join(carpeta, "edge");
+  mkdirSync(perfil, { recursive: true });
+  const proceso = spawn(
+    edge,
+    [
+      "--headless=new",
+      "--remote-debugging-port=0",
+      "--remote-allow-origins=*",
+      `--user-data-dir=${perfil}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      "about:blank",
+    ],
+    { stdio: "ignore" },
+  );
+  lanzados.push(proceso);
+  try {
+    // Con el puerto 0, Edge elige uno libre y lo escribe en la primera línea de DevToolsActivePort.
+    const activo = join(perfil, "DevToolsActivePort");
+    const puerto = await esperar(
+      async () => existsSync(activo) && readFileSync(activo, "utf8").split("\n")[0].trim(),
+      "el puerto de depuración de Edge",
+    );
+    const url = await esperar(async () => {
+      /** @type {{ type: string, webSocketDebuggerUrl: string }[]} */
+      const lista = await (await fetch(`http://127.0.0.1:${puerto}/json/list`)).json();
+      return lista.find((t) => t.type === "page")?.webSocketDebuggerUrl;
+    }, "la página de Edge");
+    const inicio = registro.length;
+    const direccion = pathToFileURL(archivo).href;
+    /** @type {string[]} */
+    const pedidos = [];
+    const { enviar } = await conectarCdp(url, (metodo, params) => {
+      if (metodo === "Network.requestWillBeSent") pedidos.push(params.request.url);
+    });
+    /** @param {string} expression @returns {Promise<any>} */
+    const evaluar = async (expression) => {
+      const r = await enviar("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
+      if (r.exceptionDetails)
+        throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
+      return r.result.value;
+    };
+    const hasta = (/** @type {string} */ c, /** @type {string} */ que) => esperar(() => evaluar(c), que);
+    const tarjetas = `document.querySelectorAll('main[data-visor="dibujo"] [data-id]').length`;
+    const dibujado = `Boolean(document.querySelector('main[data-visor="dibujo"] svg')) && !document.querySelector('[data-visor="estado"]').textContent`;
+    // La red se mira desde antes de cargar el archivo.
+    await enviar("Network.enable");
+    await enviar("Page.navigate", { url: direccion });
+    await hasta(`location.href === ${JSON.stringify(direccion)} && ${dibujado}`, "que el visor dibuje");
+    const n = await evaluar(tarjetas);
+    comprobar("el visor dibuja más de una tarjeta", n > 1, n);
+
+    // La lista, con la raíz abierta: ArrowDown (una tecla de verdad, por CDP) pasa de la primera fila a la siguiente.
+    await evaluar(`document.querySelector('[data-visor="vista-lista"]').click()`);
+    await evaluar(`document.querySelector('[data-visor="fila"][tabindex="0"]').focus()`);
+    const foco = `document.activeElement?.dataset.unidad ?? ""`;
+    const antes = await evaluar(foco);
+    for (const type of ["keyDown", "keyUp"])
+      await enviar("Input.dispatchKeyEvent", {
+        type,
+        key: "ArrowDown",
+        code: "ArrowDown",
+        windowsVirtualKeyCode: 40,
+      });
+    const despues = await evaluar(foco);
+    comprobar(
+      "ArrowDown en la lista mueve el foco a otra fila",
+      Boolean(antes && despues && despues !== antes),
+      {
+        antes,
+        despues,
+      },
+    );
+    await evaluar(`document.querySelector('[data-visor="vista-diagrama"]').click()`);
+
+    // Plegar la raíz: su botón es un <g> del SVG, que no tiene .click().
+    await evaluar(
+      `document.querySelector('[data-plegar=${JSON.stringify(raiz)}]').dispatchEvent(new MouseEvent("click", { bubbles: true }))`,
+    );
+    const plegada = await hasta(
+      `${tarjetas} === 1 && ${dibujado}`,
+      "una sola tarjeta tras plegar la raíz",
+    ).then(
+      () => true,
+      () => false,
+    );
+    comprobar("plegar la raíz deja una sola tarjeta", plegada, await evaluar(tarjetas));
+
+    // Buscar la unidad por su nombre, que lleva </script>: aparece, y como texto.
+    await evaluar(
+      `(() => { const c = document.querySelector('[data-visor="buscar"]'); c.value = ${JSON.stringify(unidad.nombre)}; c.dispatchEvent(new Event("input")); })()`,
+    );
+    const encontrada = await evaluar(
+      `[...document.querySelectorAll('[data-visor="resultado"]')].find((r) => r.dataset.unidad === ${JSON.stringify(unidad.id)})?.firstChild?.textContent ?? null`,
+    );
+    comprobar(
+      "buscar la unidad la encuentra, con su nombre como texto",
+      encontrada === unidad.nombre,
+      encontrada,
+    );
+    const xss = await evaluar(`[typeof window.__xss, document.querySelectorAll('img[src="x"]').length]`);
+    comprobar("el nombre con </script> no corre nada", xss[0] === "undefined" && xss[1] === 0, xss);
+
+    const afuera = pedidos.filter((u) => !pedidoPermitido(u, direccion));
+    comprobar(
+      "el visor no pide nada fuera de su archivo",
+      pedidos.length > 0 && afuera.length === 0,
+      pedidos,
+    );
+    const csp = registro.slice(inicio).filter((l) => /Content Security Policy/i.test(l));
+    comprobar("la CSP del visor no reclama", csp.length === 0, csp);
+  } finally {
+    detener(proceso);
+  }
+}
+
+/**
+ * El visor HTML, sobre la base que sembró `exportarImagen` (la persona de humo es jefa de la raíz). Con la app abierta se
+ * renombra una hija de la raíz a `NOMBRE_XSS`; con la app vuelta a abrir y `BOLDO_GUARDAR_EN`, se guarda un visor de
+ * Presentación desde el diálogo de la imagen, por `data-accion`, y se revisa en Edge. `revisarBase` comprueba `rutaBd`
+ * antes de cada escritura.
+ * @param {string} exe @param {string} carpeta
+ */
+async function exportarVisor(exe, carpeta) {
+  const destino = join(carpeta, "datos", "visor-humo");
+  mkdirSync(destino, { recursive: true });
+
+  let app = await abrirApp(exe);
+  let info = await revisarBase(app, carpeta);
+  const leidas = await app.llamar("db_consultar", {
+    baseId: info.baseId,
+    sql: `SELECT id, parent_id FROM unidades WHERE deleted_at IS NULL
+          AND (parent_id IS NULL OR parent_id IN (SELECT id FROM unidades WHERE parent_id IS NULL)) ORDER BY parent_id`,
+    params: [],
+  });
+  /** @type {{ id: string, parent_id: string | null }[]} */
+  const filas = leidas.ok ? leidas.valor : [];
+  const raiz = filas.find((f) => f.parent_id === null)?.id;
+  const hija = filas.find((f) => f.parent_id === raiz)?.id;
+  comprobar("hay una raíz con una hija para el visor", Boolean(raiz && hija), leidas);
+  if (!raiz || !hija) throw new Error("sin raíz con hijas: no se puede probar el visor");
+  info = await revisarBase(app, carpeta);
+  const lote = await app.llamar("db_lote", {
+    baseId: info.baseId,
+    versionApp: "humo",
+    sentencias: [
+      {
+        sql: "UPDATE unidades SET nombre = ?1, updated_at = ?3 WHERE id = ?2",
+        params: [NOMBRE_XSS, hija, new Date().toISOString()],
+      },
+    ],
+  });
+  comprobar("se renombró una unidad con </script>", lote.ok, lote);
+  comprobar("la app del renombre cierra sola y con código 0", (await app.cerrar()) === 0);
+
+  app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
+  await revisarBase(app, carpeta);
+  const guardado = () => readdirSync(destino).find((f) => f.includes("_presentacion") && f.endsWith(".html"));
+  try {
+    await alArbol(app);
+    const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
+    const clic = async (/** @type {string} */ a) => {
+      await app.hasta(
+        `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
+        `el botón ${a}`,
+      );
+      await app.evaluar(`${por(a)}.click()`);
+    };
+    await clic("abrir-imagen-barra");
+    await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
+    await clic("nivel-presentacion");
+    await clic("formato-html");
+    await clic("guardar-imagen");
+    // el aviso de «queda sin cifrar» sale también con el visor
+    await esperar(async () => {
+      if (await app.evaluar(`Boolean(${por("aceptar-aviso-imagen")})`)) {
+        await app.evaluar(`${por("aceptar-aviso-imagen")}.click()`);
+      }
+      return Boolean(guardado());
+    }, "el visor HTML de Presentación guardado");
+  } catch (e) {
+    const avisos = await app
+      .evaluar(`[...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.innerText).join(" | ")`)
+      .catch(() => "");
+    throw new Error(`${e instanceof Error ? e.message : e}; avisos: ${avisos}`, { cause: e });
+  }
+  await revisarBase(app, carpeta);
+  const codigo = await app.cerrar();
+  comprobar("la app del visor cierra sola y con código 0", codigo === 0, codigo);
+
+  const archivo = join(destino, /** @type {string} */ (guardado()));
+  const html = readFileSync(archivo, "utf8");
+  comprobar(
+    "el visor de Presentación lleva el nombre de la persona",
+    html.includes(PERSONA.nombre),
+    PERSONA.nombre,
+  );
+  comprobar(
+    "el nombre con </script> no queda tal cual en el archivo",
+    !html.includes(NOMBRE_XSS),
+    NOMBRE_XSS,
+  );
+  await revisarVisorEnEdge(archivo, carpeta, { raiz, unidad: { id: hija, nombre: NOMBRE_XSS } });
+}
+
 async function correr() {
   const a = artefactos("windows", "");
   const [zip, ...otros] = globSync(`release/*/${a.zip}`);
@@ -948,6 +1182,7 @@ async function correr() {
   await historialPersistente(exe, carpeta);
   await historialVolverAPunto(exe, carpeta);
   await exportarImagen(exe, carpeta);
+  await exportarVisor(exe, carpeta);
   await manualSinPersonas(exe, carpeta);
   await fotosSoloEnLaWeb(exe, carpeta, info);
   comprobarInstaladaIntacta();
