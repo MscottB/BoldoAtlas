@@ -202,7 +202,7 @@ describe("dibujarSvg", () => {
     const con = await armarSvg("pantalla", {
       dibujo: { interactivo: { conRamas: new Set(), plegadas: new Set() } },
     });
-    // Con la opción pero sin ramas, solo suma el grupo de cada tarjeta.
-    expect(con.svg.replace(/<g data-id="[^>]*>|<\/g>/g, "")).toBe(svg);
+    // Con la opción pero sin ramas, solo suma el grupo de cada tarjeta: se quita cada grupo y queda su contenido.
+    expect(con.svg.replace(/<g data-id="[^"]*"[^>]*>(.*?)<\/g>/g, "$1")).toBe(svg);
   });
 });

@@ -99,6 +99,7 @@ function subgrafo(o: PedidoImagen) {
   const pag = o.pagina;
   if (pag) plegadas = new Set([...plegadas, ...pag.cortadas]);
   const puestos = toRaw(e.puestos);
+  const sinJefe = pantalla ? jefeEnTarjeta(o.config) : o.nivel === "presentacion";
   const g = subgrafoVisible(
     pag ? unidadesDeRama(unidades, pag.raiz).filter((x) => !pag.fuera.has(x.id)) : unidades,
     toRaw(org.conexiones),
@@ -108,9 +109,9 @@ function subgrafo(o: PedidoImagen) {
       : o.puestosDe
         ? puestos.filter((x) => x.unidad_id === o.puestosDe)
         : [],
-    pantalla ? jefeEnTarjeta(o.config) : o.nivel === "presentacion",
+    sinJefe,
   );
-  return { org, e, unidades, plegadas, g };
+  return { org, e, unidades, plegadas, g, sinJefe };
 }
 
 /** Cuántas tarjetas lleva la imagen: para avisar si pasa de LIMITE_TARJETAS, como «Expandir todo». */
@@ -133,6 +134,8 @@ export interface ContenidoImagen {
   };
   /** Los tipos de unidad con que elk alinea; vacío si no se alinea por tipo. */
   tiposAlinear: ValorCatalogo[];
+  /** La jefatura va en la tarjeta de la unidad, no en la de su puesto. */
+  jefeEnTarjeta: boolean;
   tarjetas: Tarjeta[];
   leyenda: EntradaSvg["leyenda"];
   encabezado: EntradaSvg["encabezado"];
@@ -142,7 +145,7 @@ export interface ContenidoImagen {
 
 /** Todo lo de la imagen que se lee del store a la fecha que se ve, salvo el layout de elk. */
 export function contenidoImagen(o: PedidoImagen): ContenidoImagen {
-  const { org, e, unidades, plegadas, g } = subgrafo(o);
+  const { org, e, unidades, plegadas, g, sinJefe } = subgrafo(o);
   const { config, nivel } = o;
   const t = i18n.global.t;
   const pantalla = nivel === "pantalla";
@@ -227,6 +230,7 @@ export function contenidoImagen(o: PedidoImagen): ContenidoImagen {
     plegadas,
     tam,
     opcionesLayout,
+    jefeEnTarjeta: sinJefe,
     tiposAlinear: config.alinearPorTipo ? catalogos.tipos_unidad : [],
     tarjetas,
     leyenda: pantalla

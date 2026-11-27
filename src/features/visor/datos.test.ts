@@ -76,6 +76,15 @@ describe("datosVisor", () => {
     ).toEqual(["a1", "a2", "g", "s1", "s2", "s3"]);
   });
 
+  it("pantalla_con_puestos_sin_casillas_no_lleva_contacto", () => {
+    const config = { ...VISTA_POR_DEFECTO, verPuestos: true };
+    const v = datosVisor({ ...pedido({ nivel: "pantalla", config }), ...sin });
+    expect(v.tarjetas.some((t) => t.id === "p-x")).toBe(true);
+    const json = JSON.stringify(v);
+    expect(json).not.toContain("@correo.cl");
+    expect(json).not.toContain("+56 9");
+  });
+
   it("sin_descripciones", () => {
     const v = datosVisor({
       ...pedido({ nivel: "pantalla", config: { ...VISTA_POR_DEFECTO, verPuestos: true } }),

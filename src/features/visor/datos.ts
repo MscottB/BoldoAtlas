@@ -2,7 +2,8 @@ import { toRaw } from "vue";
 import type { Conexion, Puesto, Unidad } from "@/db/tipos";
 import { i18n, type Idioma } from "@/i18n";
 import { useOrganizacion } from "@/stores/organizacion";
-import { jefeEnTarjeta, type ConfigVista } from "@/features/arbol/vista";
+import { datosDePuestos } from "@/features/arbol/datosNodo";
+import type { ConfigVista } from "@/features/arbol/vista";
 import type { Tarjeta } from "@/features/export/niveles";
 import { contenidoImagen, type ContenidoImagen, type PedidoImagen } from "@/features/export/preparar";
 
@@ -75,26 +76,30 @@ export function datosVisor(o: PedidoImagen & { correo: boolean; telefono: boolea
   const abiertas = contenidoImagen({ ...o, abrirTodo: true });
   const plegadas = o.abrirTodo ? new Set<string>() : contenidoImagen(o).plegadas;
 
-  const enAlcance = new Set(abiertas.unidades.map((u) => u.id));
   const todas = toRaw(e.unidades);
   const porId = new Map(todas.map((u) => [u.id, u]));
   const cargos = new Map(toRaw(org.catalogos).cargos.map((c) => [c.id, c.nombre]));
-  const trabajadores = new Map(toRaw(e.trabajadores).map((x) => [x.id, x]));
   const conPersonas = o.nivel !== "estructura";
+  // Estructura no lleva personas: no se leen sus nombres ni se arma el mapa de trabajadores.
+  const trabajadores = conPersonas ? new Map(toRaw(e.trabajadores).map((x) => [x.id, x])) : new Map();
   const puestos = [...toRaw(e.puestos)].sort((a, b) => a.orden - b.orden);
+  const datosPuesto = datosDePuestos(puestos, e.vigentes, trabajadores, cargos);
+  const porUnidad = new Map<string, Puesto[]>();
+  for (const p of puestos) porUnidad.set(p.unidad_id, [...(porUnidad.get(p.unidad_id) ?? []), p]);
 
   const persona = (p: Puesto): PersonaPanel => {
-    const cargo = cargos.get(p.cargo_id) ?? "";
-    if (!conPersonas) return { cargo };
-    const v = e.vigentes.get(p.id);
-    const titular = v?.titular && trabajadores.get(v.titular.trabajador_id);
-    const reemplazo = v?.reemplazo && trabajadores.get(v.reemplazo.trabajador_id)?.nombre;
+    const { cargo, titular, reemplazo } = datosPuesto.get(p.id)!;
+    // El contacto es solo el del titular, y solo con su casilla.
+    const t =
+      titular && (o.correo || o.telefono)
+        ? trabajadores.get(e.vigentes.get(p.id)!.titular!.trabajador_id)
+        : null;
     return {
       cargo,
-      ...(titular && { nombre: titular.nombre }),
+      ...(titular && { nombre: titular }),
       ...(reemplazo && { reemplazo }),
-      ...(titular && o.correo && titular.correo && { correo: titular.correo }),
-      ...(titular && o.telefono && titular.telefono && { telefono: titular.telefono }),
+      ...(o.correo && t?.correo && { correo: t.correo }),
+      ...(o.telefono && t?.telefono && { telefono: t.telefono }),
     };
   };
   const ruta = (u: Unidad) => {
@@ -109,7 +114,7 @@ export function datosVisor(o: PedidoImagen & { correo: boolean; telefono: boolea
   };
   const panel: DatosVisor["panel"] = {};
   for (const u of abiertas.unidades) {
-    const suyos = puestos.filter((p) => p.unidad_id === u.id);
+    const suyos = porUnidad.get(u.id) ?? [];
     const jefe = suyos.find((p) => p.id === u.jefe_puesto_id);
     panel[u.id] = {
       ruta: ruta(u),
@@ -130,11 +135,9 @@ export function datosVisor(o: PedidoImagen & { correo: boolean; telefono: boolea
     encabezado: abiertas.encabezado,
     unidades: abiertas.unidades.map(sinDescripcion),
     puestos: abiertas.g.puestos.map(sinDescripcion),
-    conexiones: toRaw(org.conexiones).filter(
-      (c) => enAlcance.has(c.origen_id) && enAlcance.has(c.destino_id),
-    ),
+    conexiones: abiertas.g.laterales,
     tiposAlinear: abiertas.tiposAlinear,
-    jefeEnTarjeta: o.nivel === "pantalla" ? jefeEnTarjeta(o.config) : o.nivel === "presentacion",
+    jefeEnTarjeta: abiertas.jefeEnTarjeta,
     tam: abiertas.tam,
     opcionesLayout: abiertas.opcionesLayout,
     config: o.config,
