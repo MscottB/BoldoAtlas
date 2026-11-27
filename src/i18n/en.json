@@ -2274,5 +2274,9 @@
     "dibujando": "Drawing the units… {n} of {m}",
     "armando": "Building the manual… {n} of {m}",
     "muchas": "The manual has {n} pages, more than {limite}."
+  },
+  "visor": {
+    "plegar": "Collapse the branch",
+    "desplegar": "Expand the branch"
   }
 }

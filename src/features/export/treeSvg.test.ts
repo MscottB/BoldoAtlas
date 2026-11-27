@@ -168,4 +168,41 @@ describe("dibujarSvg", () => {
     expect(a.svg).not.toContain(">Operaciones</text>");
     expect(b.svg).toContain(">Operaciones</text>");
   });
+
+  it("interactivo_marca_tarjetas_y_botones", async () => {
+    const interactivo = { conRamas: new Set(["g", "a2"]), plegadas: new Set(["a2"]) };
+    const { svg, tarjetas } = await armarSvg("estructura", { dibujo: { interactivo } });
+    const ids = [...svg.matchAll(/ data-id="([^"]*)"/g)].map((m) => m[1]);
+    expect(ids.sort()).toEqual(tarjetas.map((t) => t.id).sort());
+    expect(svg).toContain('tabindex="0" role="button" aria-label="Gerencia General"');
+    const botones = [...svg.matchAll(/<g data-plegar="([^"]*)"[^>]*aria-label="([^"]*)">(.*?)<\/g>/g)];
+    expect(botones.map((m) => m[1]).sort()).toEqual(["a2", "g"]);
+    // a2 está plegada: «+» y «Desplegar»; g está abierta: «−» y «Plegar».
+    const a2 = botones.find((m) => m[1] === "a2")!;
+    const g = botones.find((m) => m[1] === "g")!;
+    expect(a2[2]).toBe("Desplegar la rama");
+    expect(a2[3]).toContain(">+</text>");
+    expect(g[2]).toBe("Plegar la rama");
+    expect(g[3]).toContain(">−</text>");
+  });
+
+  it("interactivo_pone_el_boton_al_borde_derecho_si_es_horizontal", async () => {
+    const interactivo = { conRamas: new Set(["g"]), plegadas: new Set<string>() };
+    const config = { ...VISTA_POR_DEFECTO, direccion: "horizontal" as const };
+    const { svg } = await armarSvg("estructura", { config, dibujo: { interactivo } });
+    const caja = /<rect x="([\d.]+)" y="([\d.]+)" width="220" height="68" rx="8"/.exec(svg)!;
+    const circulo = /<g data-plegar="g"[^>]*><circle cx="([\d.]+)" cy="([\d.]+)"/.exec(svg)!;
+    expect(Number(circulo[1])).toBeCloseTo(Number(caja[1]) + 220, 0);
+    expect(Number(circulo[2])).toBeCloseTo(Number(caja[2]) + 34, 0);
+  });
+
+  it("sin_interactivo_igual_que_antes", async () => {
+    const { svg } = await armarSvg("pantalla");
+    expect(svg).not.toMatch(/data-id|data-plegar|tabindex/);
+    const con = await armarSvg("pantalla", {
+      dibujo: { interactivo: { conRamas: new Set(), plegadas: new Set() } },
+    });
+    // Con la opción pero sin ramas, solo suma el grupo de cada tarjeta.
+    expect(con.svg.replace(/<g data-id="[^>]*>|<\/g>/g, "")).toBe(svg);
+  });
 });

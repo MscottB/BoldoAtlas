@@ -232,6 +232,11 @@ export interface OpcionesDibujo {
    * resto del dibujo queda donde estaba, así cada hoja calza con sus vecinas.
    */
   recorte?: Caja;
+  /**
+   * Para el visor HTML: cada tarjeta va en un grupo con su id (`data-id`), y las que tienen ramas suman el botón de
+   * plegar (`data-plegar`), «+» si está plegada y «−» si no. Sin la opción el dibujo no cambia.
+   */
+  interactivo?: { conRamas: ReadonlySet<string>; plegadas: ReadonlySet<string> };
 }
 
 // Con un bucle: Math.min(...lista) lanza RangeError con decenas de miles de elementos.
@@ -246,6 +251,26 @@ function envolvente(cajas: Caja[]): Caja {
   }
   return { x: x0, y: y0, ancho: x1 - x0, alto: y1 - y0 };
 }
+const grupo = (a: Atributos, partes: string[]) => `<g${atributos(a)}>${partes.join("")}</g>`;
+const RADIO_BOTON = 8;
+
+/** El botón de plegar: un círculo con «+» o «−» al centro del borde de abajo (a la derecha si el dibujo va en horizontal). */
+function botonPlegar(id: string, c: Caja, h: boolean, plegada: boolean, t: Traducir): string {
+  const [cx, cy] = h ? [c.x + c.ancho, c.y + c.alto / 2] : [c.x + c.ancho / 2, c.y + c.alto];
+  return grupo(
+    {
+      "data-plegar": id,
+      tabindex: 0,
+      role: "button",
+      "aria-label": t(plegada ? "visor.desplegar" : "visor.plegar"),
+    },
+    [
+      el("circle", { cx, cy, r: RADIO_BOTON, fill: P.fondo, stroke: P.marca, "stroke-width": 1.5 }),
+      texto(cx, cy + 4, plegada ? "+" : "−", 12, { centro: true, negrita: true, color: P.marcaTexto }),
+    ],
+  );
+}
+
 const punto = (p: Punto): Caja => ({ ...p, ancho: 0, alto: 0 });
 
 /**
@@ -433,16 +458,25 @@ export function dibujarSvg(
 
   for (const t of e.tarjetas) {
     const c = cajas.get(t.id);
-    if (c && toca(caja(c)))
-      partes.push(
-        ...tarjeta(
-          t,
-          caja(c),
-          e.nivel,
-          zonas?.marcas.get(t.id) ?? [],
-          t.textoMas ?? e.t("imagen.masUnidades", { n: t.mas }, t.mas),
-        ),
-      );
+    if (!c || !toca(caja(c))) continue;
+    const dibujada = tarjeta(
+      t,
+      caja(c),
+      e.nivel,
+      zonas?.marcas.get(t.id) ?? [],
+      t.textoMas ?? e.t("imagen.masUnidades", { n: t.mas }, t.mas),
+    );
+    const vivo = o.interactivo;
+    if (!vivo) {
+      partes.push(...dibujada);
+      continue;
+    }
+    partes.push(
+      grupo({ "data-id": t.id, tabindex: 0, role: "button", "aria-label": t.titulo }, dibujada),
+      ...(vivo.conRamas.has(t.id)
+        ? [botonPlegar(t.id, caja(c), e.vista.direccion === "horizontal", vivo.plegadas.has(t.id), e.t)]
+        : []),
+    );
   }
   partes.push(...etiquetas);
 

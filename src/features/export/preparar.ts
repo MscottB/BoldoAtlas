@@ -1,6 +1,6 @@
 import { toRaw } from "vue";
 import type { ElkNode } from "elkjs/lib/elk.bundled.js";
-import type { Unidad } from "@/db/tipos";
+import type { Unidad, ValorCatalogo, Zona } from "@/db/tipos";
 import { i18n } from "@/i18n";
 import { useOrganizacion } from "@/stores/organizacion";
 import {
@@ -38,7 +38,7 @@ import {
 } from "@/features/arbol/vista";
 import { zonasDibujadas } from "@/features/arbol/zonas";
 import { formatearFecha, hoyISO } from "@/features/puestos/puestos";
-import { tamanos, tarjetasDe, type Nivel } from "./niveles";
+import { tamanos, tarjetasDe, type Nivel, type Tarjeta } from "./niveles";
 import type { EntradaSvg } from "./treeSvg";
 
 /** Qué parte del organigrama va en la imagen: toda o la rama de una unidad. */
@@ -119,8 +119,29 @@ export function cuantasTarjetas(o: PedidoImagen): number {
   return g.nodos.length + g.puestos.length;
 }
 
-/** La entrada del dibujo SVG, armada desde el store a la fecha que se ve, con los mismos datos que el lienzo. */
-export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
+/** Lo que arma `contenidoImagen`: todo lo de la imagen menos lo que ubica elk. */
+export interface ContenidoImagen {
+  g: ReturnType<typeof subgrafo>["g"];
+  /** Las unidades del alcance. */
+  unidades: Unidad[];
+  plegadas: Set<string>;
+  tam: ReturnType<typeof tamanos>;
+  opcionesLayout: {
+    direccion: ConfigVista["direccion"];
+    densidad: ConfigVista["densidad"];
+    alinearPorTipo: boolean;
+  };
+  /** Los tipos de unidad con que elk alinea; vacío si no se alinea por tipo. */
+  tiposAlinear: ValorCatalogo[];
+  tarjetas: Tarjeta[];
+  leyenda: EntradaSvg["leyenda"];
+  encabezado: EntradaSvg["encabezado"];
+  /** Las zonas con las unidades que cubren, o null si no se ven. */
+  zonasDatos: { zonas: Zona[]; zonaUnidades: { zona_id: string; unidad_id: string }[] } | null;
+}
+
+/** Todo lo de la imagen que se lee del store a la fecha que se ve, salvo el layout de elk. */
+export function contenidoImagen(o: PedidoImagen): ContenidoImagen {
   const { org, e, unidades, plegadas, g } = subgrafo(o);
   const { config, nivel } = o;
   const t = i18n.global.t;
@@ -133,20 +154,11 @@ export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
   const tiposRuta = new Set(tiposUso.filter((x) => config.rutaTipos.includes(x.id)).map((x) => x.id));
   const rutas = pantalla && tiposRuta.size ? rutasPorTipo(todas, catalogos.tipos_unidad, tiposRuta) : null;
   const tam = tamanos(nivel, config, !!rutas);
-  const opciones = {
+  const opcionesLayout = {
     direccion: config.direccion,
     densidad: config.densidad,
     alinearPorTipo: config.alinearPorTipo,
   };
-  const grafo = grafoElk(
-    g,
-    tam.unidad,
-    tam.puesto,
-    opciones,
-    config.alinearPorTipo ? catalogos.tipos_unidad : [],
-  );
-  const pos = posiciones(g, await (o.ubicar ?? ubicarAqui)(grafo), tam.unidad, tam.puesto, opciones);
-  const cajas = cajasDibujadas(g, pos, tam.unidad, tam.puesto);
 
   const conPersonas = nivel !== "estructura";
   const fecha = org.fechaVista ?? undefined;
@@ -210,21 +222,13 @@ export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
 
   const rama = o.alcance === "todo" ? null : e.porId.get(o.alcance.rama);
   return {
-    nivel,
+    g,
+    unidades,
+    plegadas,
+    tam,
+    opcionesLayout,
+    tiposAlinear: config.alinearPorTipo ? catalogos.tipos_unidad : [],
     tarjetas,
-    cajas,
-    aristas: aristasDibujadas(g),
-    laterales: lateralesADibujar(g, config),
-    zonas:
-      config.zonas && org.zonas.length
-        ? zonasDibujadas(
-            toRaw(org.zonas),
-            toRaw(org.zonaUnidades),
-            cajas,
-            g.puestos,
-            Math.floor(separaciones(config).hermanos / 2),
-          )
-        : null,
     leyenda: pantalla
       ? leyendaDeColores({
           criterio: config.colorearPor,
@@ -238,14 +242,46 @@ export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
           t,
         })
       : null,
-    vista: config,
     encabezado: {
       organizacion: org.org.nombre,
       alcance: rama?.nombre ?? t("imagen.alcanceTodo"),
       fecha: formatearFecha(org.fechaVista ?? hoyISO(), i18n.global.locale.value),
       logo: org.org.logo ? `data:image/png;base64,${org.org.logo}` : null,
     },
+    zonasDatos:
+      config.zonas && org.zonas.length
+        ? { zonas: toRaw(org.zonas), zonaUnidades: toRaw(org.zonaUnidades) }
+        : null,
+  };
+}
+
+/** La entrada del dibujo SVG, armada desde el store a la fecha que se ve, con los mismos datos que el lienzo. */
+export async function prepararImagen(o: PedidoImagen): Promise<EntradaSvg> {
+  const c = contenidoImagen(o);
+  const { g, tam, opcionesLayout } = c;
+  const grafo = grafoElk(g, tam.unidad, tam.puesto, opcionesLayout, c.tiposAlinear);
+  const pos = posiciones(g, await (o.ubicar ?? ubicarAqui)(grafo), tam.unidad, tam.puesto, opcionesLayout);
+  const cajas = cajasDibujadas(g, pos, tam.unidad, tam.puesto);
+  const config = o.config;
+  return {
+    nivel: o.nivel,
+    tarjetas: c.tarjetas,
+    cajas,
+    aristas: aristasDibujadas(g),
+    laterales: lateralesADibujar(g, config),
+    zonas: c.zonasDatos
+      ? zonasDibujadas(
+          c.zonasDatos.zonas,
+          c.zonasDatos.zonaUnidades,
+          cajas,
+          g.puestos,
+          Math.floor(separaciones(config).hermanos / 2),
+        )
+      : null,
+    leyenda: c.leyenda,
+    vista: config,
+    encabezado: c.encabezado,
     fondo: o.fondo ?? true,
-    t,
+    t: i18n.global.t,
   };
 }

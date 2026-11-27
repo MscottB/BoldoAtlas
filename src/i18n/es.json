@@ -2274,5 +2274,9 @@
     "dibujando": "Dibujando las unidades… {n} de {m}",
     "armando": "Armando el manual… {n} de {m}",
     "muchas": "El manual lleva {n} páginas, más de {limite}."
+  },
+  "visor": {
+    "plegar": "Plegar la rama",
+    "desplegar": "Desplegar la rama"
   }
 }
