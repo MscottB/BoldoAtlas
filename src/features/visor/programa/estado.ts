@@ -65,6 +65,17 @@ export function buscar(d: DatosVisor, texto: string): { id: string; titulo: stri
   return r;
 }
 
+/** La unidad cuyo panel se abre desde una tarjeta: la misma si es una unidad, la suya si es un puesto. */
+export const unidadDelPanel = (d: DatosVisor, id: string): string | null =>
+  d.panel[id] ? id : (d.puestos.find((p) => p.id === id)?.unidad_id ?? null);
+
+/** Qué hace una tecla en una tarjeta: Espacio pliega la que tiene ramas; en las demás, y con Enter, abre el panel. */
+export function teclaEnTarjeta(tecla: string, conRamas: boolean): "plegar" | "panel" | null {
+  if (tecla === "Enter") return "panel";
+  if (tecla === " ") return conRamas ? "plegar" : "panel";
+  return null;
+}
+
 export interface FilaLista {
   id: string;
   nivel: number;

@@ -12,6 +12,8 @@ import {
   plegar,
   posicionEnHermanos,
   siguienteResultado,
+  teclaEnTarjeta,
+  unidadDelPanel,
   type TeclaLista,
 } from "./estado";
 
@@ -42,6 +44,7 @@ export async function montar(d: DatosVisor): Promise<void> {
   const t = traductor(d.textos);
   const main = document.querySelector<HTMLElement>('main[data-visor="dibujo"]')!;
   const nombreDe = new Map(d.unidades.map((u) => [u.id, u.nombre]));
+  const conRamas = new Set(d.unidades.flatMap((u) => (u.parent_id ? [u.parent_id] : [])));
 
   let plegadas = new Set(d.plegadas);
   let vista: "diagrama" | "lista" = "diagrama";
@@ -260,10 +263,15 @@ export async function montar(d: DatosVisor): Promise<void> {
     if (plegarId && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
       alternar(plegarId);
-    } else if (o && !plegarId && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      abrirPanel(o.getAttribute("data-id")!);
+      return;
     }
+    const id = o?.getAttribute("data-id");
+    const accion = id ? teclaEnTarjeta(e.key, conRamas.has(id)) : null;
+    if (!id || !accion) return;
+    e.preventDefault();
+    // Tras plegar, el foco vuelve a la misma tarjeta.
+    if (accion === "plegar") alternar(id, `[data-id="${CSS.escape(id)}"]`);
+    else abrirPanel(id);
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !panel.hidden) return cerrarPanel();
@@ -274,17 +282,18 @@ export async function montar(d: DatosVisor): Promise<void> {
   });
 
   // ---- Lo plegado, compartido por el diagrama y la lista
+  /** `volverA`: el selector de lo que recibe el foco tras el dibujo nuevo (que reemplazó al de antes). */
   function cambiar(nuevas: Set<string>, volverA?: string) {
     plegadas = nuevas;
     construirLista();
     if (vista === "lista") return void (sucio = true);
     void redibujar().then((ok) => {
-      // Tras plegar, el foco vuelve al botón de esa tarjeta (el dibujo nuevo lo reemplazó).
-      if (ok && volverA) svg?.querySelector<SVGElement>(`[data-plegar="${CSS.escape(volverA)}"]`)?.focus();
+      if (ok && volverA) svg?.querySelector<SVGElement>(volverA)?.focus();
     });
   }
-  const alternar = (id: string) =>
-    cambiar(plegadas.has(id) ? desplegar(plegadas, id) : plegar(plegadas, id), id);
+  // Tras plegar, el foco vuelve al botón de esa tarjeta, salvo que se pida otro.
+  const alternar = (id: string, foco = `[data-plegar="${CSS.escape(id)}"]`) =>
+    cambiar(plegadas.has(id) ? desplegar(plegadas, id) : plegar(plegadas, id), foco);
 
   // ---- La lista
   function construirLista() {
@@ -390,9 +399,11 @@ export async function montar(d: DatosVisor): Promise<void> {
     }
     return li;
   };
+  /** `id` es el de la tarjeta: la de un puesto abre el panel de su unidad. */
   function abrirPanel(id: string) {
-    const info = d.panel[id];
-    if (!info) return;
+    const unidad = unidadDelPanel(d, id);
+    const info = unidad ? d.panel[unidad] : undefined;
+    if (!unidad || !info) return;
     abridor = document.activeElement;
     abiertoId = id;
     const cerrar = boton("panel-cerrar", t("visor.cerrar"), "✕", cerrarPanel);
@@ -401,7 +412,7 @@ export async function montar(d: DatosVisor): Promise<void> {
       h(
         "h2",
         { id: "visor-panel-titulo", "data-visor": "panel-titulo" },
-        info.ruta[info.ruta.length - 1] ?? nombreDe.get(id) ?? id,
+        info.ruta[info.ruta.length - 1] ?? nombreDe.get(unidad) ?? unidad,
       ),
       h("div", { "data-visor": "ruta" }, info.ruta.join(SEP)),
       ...(info.jefatura ? [h("h3", {}, t("visor.jefatura")), h("ul", {}, persona(info.jefatura))] : []),

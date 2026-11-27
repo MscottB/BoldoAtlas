@@ -19,6 +19,8 @@ import {
   logoSeguro,
   posicionEnHermanos,
   siguienteResultado,
+  teclaEnTarjeta,
+  unidadDelPanel,
 } from "./estado";
 
 beforeEach(() => {
@@ -208,5 +210,25 @@ describe("logoSeguro", () => {
       " data:image/png,",
     ])
       expect(logoSeguro(x), String(x)).toBeUndefined();
+  });
+});
+
+describe("unidadDelPanel", () => {
+  it("una unidad es la suya; un puesto, la de su unidad; lo demás, ninguna", () => {
+    const d = visor({ nivel: "pantalla", config: { ...VISTA_POR_DEFECTO, verPuestos: true } });
+    expect(d.puestos.some((p) => p.id === "p-x")).toBe(true);
+    expect(unidadDelPanel(d, "a1")).toBe("a1");
+    expect(unidadDelPanel(d, "p-x")).toBe("a1");
+    expect(unidadDelPanel(d, "no-existe")).toBeNull();
+  });
+});
+
+describe("teclaEnTarjeta", () => {
+  it("Espacio pliega si hay ramas y si no abre el panel; Enter siempre abre el panel", () => {
+    expect(teclaEnTarjeta(" ", true)).toBe("plegar");
+    expect(teclaEnTarjeta(" ", false)).toBe("panel");
+    expect(teclaEnTarjeta("Enter", true)).toBe("panel");
+    expect(teclaEnTarjeta("Enter", false)).toBe("panel");
+    expect(teclaEnTarjeta("a", true)).toBeNull();
   });
 });
