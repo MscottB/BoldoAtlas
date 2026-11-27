@@ -2277,6 +2277,7 @@
   },
   "visor": {
     "plegar": "Collapse the branch",
-    "desplegar": "Expand the branch"
+    "desplegar": "Expand the branch",
+    "sinJavascript": "This viewer needs JavaScript to show the org chart."
   }
 }

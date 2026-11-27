@@ -2277,6 +2277,7 @@
   },
   "visor": {
     "plegar": "Plegar la rama",
-    "desplegar": "Desplegar la rama"
+    "desplegar": "Desplegar la rama",
+    "sinJavascript": "Este visor necesita JavaScript para mostrar el organigrama."
   }
 }
