@@ -683,6 +683,7 @@ Salen de comparar BoldoAtlas con otros productos de organigramas. Su orden frent
 - Plantilla del PDF de la 23b con los puestos, su descripción, titular y vacantes. Se puede entregar sin procesos y sumarlos cuando exista la Fase 3.
 
 ### Task 23d: Visor HTML (spec §11 "Visor HTML")
+- Diseño aprobado (2026-11-27): `docs/superpowers/specs/2026-11-27-visor-html-design.md`. Manda sobre este resumen.
 - Después de la 23b, porque usa `treeSvg.ts`. Prueba obligatoria: un nombre con `</script>` o HTML no se ejecuta, y el archivo no pide nada a la red.
 
 ### Task 23e: Costo por puesto (spec §5 "Costo por puesto" y §8)
