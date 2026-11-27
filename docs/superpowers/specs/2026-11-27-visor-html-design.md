@@ -11,9 +11,10 @@ El autor lo aprobó por partes el 2026-11-27. Detalla la Task 23d del plan de la
 
 ## Decisiones del autor
 
-1. **Los tres niveles de la imagen y el PDF:** Estructura, Presentación y Como en pantalla, con **Presentación por defecto**, que ya lleva el cargo y el nombre de la jefatura. Correo y Teléfono son casillas aparte, desmarcadas.
+1. **Los tres niveles de la imagen y el PDF:** Estructura, Presentación y Como en pantalla. Correo y Teléfono son casillas aparte, desmarcadas.
 2. **Un clic en una unidad abre un panel** con su ruta, su jefatura y sus personas. En Estructura muestra solo la ruta y los cargos de sus puestos, sin nombres.
-3. **Plegar reordena el dibujo,** como en la app. El archivo lleva el mismo programa que ordena el lienzo (elk) y dibuja la imagen (`treeSvg.ts`). Pesa unos 2 MB más los datos.
+3. **Plegar reordena el dibujo,** como en la app. El archivo lleva el mismo programa que ordena el lienzo (elk) y dibuja la imagen (`treeSvg.ts`). Pesa unos 1,5 MB más los datos (medido al empaquetarlo).
+4. **El visor es un formato más del diálogo de la imagen,** «Visor HTML», junto a PNG, JPG, SVG y PDF, como ya lo es el PDF. No tiene diálogo ni entradas de menú propias, y el nivel es el último elegido en ese diálogo.
 
 **Corrección a la spec principal:** donde dice «vista guardada», el visor usa la configuración actual de Personalizar, como la imagen. Para usar una vista guardada, se aplica antes en el árbol. Las notas, las fotos y los costos nunca van, como dice la spec.
 
@@ -32,7 +33,7 @@ Dos piezas: la app prepara los datos al exportar, y el archivo lleva su propio p
   - usa los mismos `layout.ts` (elk), `treeSvg.ts`, `lateral.ts` y `zonas.ts` del lienzo y la imagen, sin Vue ni el store;
   - al plegar o desplegar, vuelve a ordenar con elk y a dibujar con `treeSvg.ts`, con «Ordenando…» mientras tanto;
   - elk corre en la misma página, sin worker: un archivo abierto desde una carpeta no puede crear workers en todos los navegadores.
-- **Empaquetado:** un complemento chico en la configuración de Vite empaqueta el programa con esbuild, que ya viene con Vite, en un solo texto minificado. La app lo importa como texto y lo pega dentro del HTML al exportar. Sin dependencias nuevas. Las pruebas de Vitest usan la misma configuración, así prueban el programa real.
+- **Empaquetado:** un complemento chico en la configuración de Vite empaqueta el programa con la función `build` de Vite 8 (rolldown), en un solo texto minificado. La app lo importa como texto y lo pega dentro del HTML al exportar. Sin dependencias nuevas. Las pruebas de Vitest usan la misma configuración, así prueban el programa real.
 - **`treeSvg.ts`** suma una opción para el visor: marca cada tarjeta con su id y agrega el botón de plegar en las que tienen ramas. La imagen y el PDF no cambian.
 
 ## El archivo
@@ -71,18 +72,15 @@ Dos piezas: la app prepara los datos al exportar, y el archivo lleva su propio p
   - `base-uri 'none'` y `form-action 'none'`.
 - **Funciona sin internet** en Chrome, Edge, Firefox y Safari, también abierto desde una carpeta o desde un correo descargado.
 
-## El diálogo «Exportar visor HTML»
+## En el diálogo de la imagen
 
-- **Se abre desde los mismos lugares que la imagen:** la página «Importar y exportar», el botón de la barra del árbol y el clic derecho en una unidad («Exportar esta rama como visor HTML», con esa rama como alcance).
-- **Opciones:**
-  - el alcance: toda la organización, una gerencia o una rama;
-  - el nivel, con Presentación por defecto;
-  - la casilla «Abrir todas las ramas del alcance»;
-  - las casillas Correo y Teléfono, desmarcadas y apagadas en Estructura.
+- **«Visor HTML» es un formato más** de `DialogoImagen.vue`, junto a PNG, JPG, SVG y PDF. Se abre desde los mismos lugares: la página «Importar y exportar», el botón de la barra del árbol y el clic derecho en una unidad.
+- **Usa las opciones que ya tiene:** el alcance, el nivel y «Abrir todas las ramas del alcance».
+- **Suma solo para el visor** las casillas Correo y Teléfono, desmarcadas y apagadas en Estructura.
 - **Vista previa:** el mismo dibujo de la imagen, que es lo que el visor muestra al abrir.
-- **«Guardar…»** usa el mismo «Guardar como» y el mismo comando de Rust que la imagen, y después ofrece «Abrir carpeta».
-- **Aceptación:** antes de guardar sale el mismo aviso de «queda sin cifrar» (`AvisoSinCifrar.vue`), en todos los niveles y en cada exportación. Sin aceptar no se escribe nada.
-- **Recuerda** lo elegido la última vez, salvo el alcance.
+- **«Guardar…»** usa el mismo «Guardar como» y el mismo comando de Rust que la imagen, que suma la extensión `html`, y después ofrece «Abrir carpeta». «Copiar imagen» no se ofrece con este formato.
+- **Aceptación:** antes de guardar sale el mismo aviso de «queda sin cifrar», en todos los niveles y en cada exportación. Sin aceptar no se escribe nada.
+- **Recuerda** lo elegido la última vez, salvo el alcance, con las casillas nuevas.
 - **En la organización de al lado,** que es de solo lectura, también se puede exportar.
 
 ## Textos
@@ -104,7 +102,7 @@ Dos piezas: la app prepara los datos al exportar, y el archivo lleva su propio p
   - El diálogo.
 - **Arnés en la app real (CI de Windows),** comprobando `rutaBd`:
   1. guarda un visor de la organización de prueba en la carpeta de prueba;
-  2. lo abre en el navegador de la app;
+  2. lo abre en Edge sin interfaz (viene con Windows), controlado por CDP como la app;
   3. comprueba que dibuja las tarjetas, que plegar reordena, que buscar encuentra una unidad y que la lista se recorre con teclado;
   4. comprueba que no hace ningún pedido a la red, que la CSP no reclama y que el nombre con `</script>` no ejecuta nada.
 - **Medición con la organización grande:** el tiempo para generar el archivo, su peso, cuánto tarda en abrir y cuánto en reordenar al plegar.
