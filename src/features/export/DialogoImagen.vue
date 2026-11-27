@@ -191,7 +191,8 @@ async function mostrar() {
     } else {
       const e = await entrada();
       if (v !== vuelta) return;
-      const { svg, ancho, alto } = dibujarSvg(e);
+      // El visor dibuja sin el encabezado: su barra ya lo muestra.
+      const { svg, ancho, alto } = dibujarSvg(e, { sinEncabezado: esHtml.value });
       previa.value = dataUrl(svg);
       chicaPrevia.value = pngMenorQuePantalla(ancho, alto);
     }
@@ -224,7 +225,7 @@ function programar(dibujo = true) {
 }
 // Personalizar no se puede tocar con la ventana abierta: basta con ver si cambia la configuración entera.
 watch([pedido, ...fuentesDelOrganigrama(org), abierto], () => programar());
-watch([esPdf, opcionesPdf], () => programar(false));
+watch([esPdf, esHtml, opcionesPdf], () => programar(false));
 onMounted(() => programar()); // no en el servidor de las pruebas: ahí no hay worker
 
 const ocupado = ref(false);

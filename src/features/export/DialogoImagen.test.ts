@@ -36,6 +36,41 @@ vi.mock("@/components/ui/dialog", async () => {
   };
 });
 
+// Para Guardar: el clic del botón, la respuesta al aviso y lo que se carga y se guarda.
+const guardado = vi.hoisted(() => ({
+  clic: null as null | (() => Promise<void>),
+  acepta: true,
+  cargas: 0,
+}));
+vi.mock("@/components/ui/button", async () => {
+  const { h: hh } = await import("vue");
+  return {
+    Button: {
+      inheritAttrs: false,
+      setup: (_: unknown, { attrs, slots }: { attrs: Record<string, unknown>; slots: Slots }) => {
+        if (attrs["data-accion"] === "guardar-imagen") guardado.clic = attrs.onClick as () => Promise<void>;
+        return () => hh("button", { "data-accion": attrs["data-accion"] }, slots.default?.());
+      },
+    },
+  };
+});
+vi.mock("@/features/excel/aviso", () => ({
+  crearAviso: () => ({ preguntar: async () => guardado.acepta, aceptar: () => {}, cerrado: () => {} }),
+}));
+vi.mock("@/features/visor/datos", () => ({ datosVisor: vi.fn(() => ({})) }));
+vi.mock("@/features/visor/html", () => {
+  guardado.cargas++;
+  return { armarHtml: vi.fn(async () => "<!doctype html>") };
+});
+vi.mock("virtual:visor-programa", () => {
+  guardado.cargas++;
+  return { default: "" };
+});
+vi.mock("@/db/cliente", async (original) => ({
+  ...(await original<object>()),
+  archivoGuardar: vi.fn(async () => null),
+}));
+
 const t = i18n.global.t;
 let pinia: Pinia;
 beforeEach(() => {
@@ -152,6 +187,32 @@ describe("DialogoImagen", () => {
       expect(c, accion).toContain("disabled");
       expect(c, accion).not.toContain("checked");
     }
+  });
+
+  it("Guardar el visor: sin el aviso aceptado no carga ni guarda; en Estructura, sin correo ni teléfono", async () => {
+    pref.valor = { formato: "html", nivel: "estructura", correo: true, telefono: true };
+    conHijas(2);
+    await html();
+    const { datosVisor } = await import("@/features/visor/datos");
+    const { archivoGuardar } = await import("@/db/cliente");
+
+    guardado.acepta = false;
+    await guardado.clic!();
+    expect(guardado.cargas).toBe(0);
+    expect(datosVisor).not.toHaveBeenCalled();
+    expect(archivoGuardar).not.toHaveBeenCalled();
+
+    guardado.acepta = true;
+    await guardado.clic!();
+    expect(guardado.cargas).toBe(2);
+    expect(datosVisor).toHaveBeenCalledWith(
+      expect.objectContaining({ nivel: "estructura", correo: false, telefono: false }),
+    );
+    expect(archivoGuardar).toHaveBeenCalledWith(
+      expect.stringMatching(/\.html$/),
+      expect.any(Uint8Array),
+      "html",
+    );
   });
 
   it("sin el visor HTML no hay casillas de correo ni teléfono", async () => {
