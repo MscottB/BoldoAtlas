@@ -47,8 +47,13 @@ describe.skipIf(!RUTA)("medición del visor con la organización grande", () => 
     t = performance.now();
     const todas = await dibujar(d, new Set());
     const abrirTodas = ms(t);
-    const raiz = d.unidades.find((u) => !u.parent_id)!;
-    const gerencia = d.unidades.find((u) => u.parent_id === raiz.id && u.tipo_id === raiz.tipo_id)!;
+    // Una hija de la raíz con ramas: si ninguna es del tipo de la raíz, cualquiera.
+    const raiz = d.unidades.find((u) => !u.parent_id);
+    const hijas = d.unidades.filter(
+      (u) => raiz && u.parent_id === raiz.id && d.unidades.some((x) => x.parent_id === u.id),
+    );
+    const gerencia = hijas.find((u) => u.tipo_id === raiz?.tipo_id) ?? hijas[0];
+    if (!gerencia) throw new Error("la base no tiene una gerencia con ramas");
     t = performance.now();
     const plegada = await dibujar(d, plegar(new Set(), gerencia.id));
     const plegarGerencia = ms(t);

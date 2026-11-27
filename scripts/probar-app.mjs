@@ -535,6 +535,21 @@ const alArbol = async (app) => {
   );
 };
 
+/** El botón con ese `data-accion`, como expresión para la página. @param {string} a */
+const por = (a) => `document.querySelector('[data-accion="${a}"]')`;
+
+/**
+ * Pulsa el botón con ese `data-accion` recién cuando está habilitado: el archivo aparece antes de que la ventana suelte
+ * `ocupado`. @param {Awaited<ReturnType<typeof abrirApp>>} app
+ */
+const clicEn = (app) => async (/** @type {string} */ a) => {
+  await app.hasta(
+    `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
+    `el botón ${a}`,
+  );
+  await app.evaluar(`${por(a)}.click()`);
+};
+
 /**
  * Deshacer y rehacer que sobreviven a cerrar la app: se renombra una unidad, Ctrl+Z devuelve el nombre anterior y, ya con
  * la app cerrada y vuelta a abrir, Ctrl+Y vuelve a poner el nuevo. `revisarBase` comprueba `rutaBd` antes de cada escritura.
@@ -797,15 +812,7 @@ async function exportarImagen(exe, carpeta) {
   await revisarBase(app, carpeta);
   try {
     await alArbol(app);
-    const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
-    // habilitado: el archivo aparece antes de que la ventana suelte `ocupado`
-    const clic = async (/** @type {string} */ a) => {
-      await app.hasta(
-        `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
-        `el botón ${a}`,
-      );
-      await app.evaluar(`${por(a)}.click()`);
-    };
+    const clic = clicEn(app);
     await clic("abrir-imagen-barra");
     await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
     const guardar = async (
@@ -899,14 +906,7 @@ async function manualSinPersonas(exe, carpeta) {
   await revisarBase(app, carpeta);
   try {
     await app.evaluar(`location.hash = "#/importar-exportar"`);
-    const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
-    const clic = async (/** @type {string} */ a) => {
-      await app.hasta(
-        `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
-        `el botón ${a}`,
-      );
-      await app.evaluar(`${por(a)}.click()`);
-    };
+    const clic = clicEn(app);
     await clic("abrir-manual");
     await app.hasta(`Boolean(document.querySelector("[data-dialogo-manual]"))`, "el diálogo del manual");
     // Sin personas, en carta vertical
@@ -1124,14 +1124,7 @@ async function exportarVisor(exe, carpeta) {
   const guardado = () => readdirSync(destino).find((f) => f.includes("_presentacion") && f.endsWith(".html"));
   try {
     await alArbol(app);
-    const por = (/** @type {string} */ a) => `document.querySelector('[data-accion="${a}"]')`;
-    const clic = async (/** @type {string} */ a) => {
-      await app.hasta(
-        `(() => { const e = ${por(a)}; return Boolean(e) && !e.matches(":disabled"); })()`,
-        `el botón ${a}`,
-      );
-      await app.evaluar(`${por(a)}.click()`);
-    };
+    const clic = clicEn(app);
     await clic("abrir-imagen-barra");
     await app.hasta(`Boolean(document.querySelector("[data-dialogo-imagen]"))`, "el diálogo de la imagen");
     await clic("nivel-presentacion");
