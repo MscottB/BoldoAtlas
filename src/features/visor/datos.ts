@@ -3,7 +3,7 @@ import type { Conexion, Puesto, Unidad } from "@/db/tipos";
 import { i18n, type Idioma } from "@/i18n";
 import { useOrganizacion } from "@/stores/organizacion";
 import { datosDePuestos } from "@/features/arbol/datosNodo";
-import type { ConfigVista } from "@/features/arbol/vista";
+import { VISTA_POR_DEFECTO, type ConfigVista } from "@/features/arbol/vista";
 import type { Tarjeta } from "@/features/export/niveles";
 import { contenidoImagen, type ContenidoImagen, type PedidoImagen } from "@/features/export/preparar";
 
@@ -88,12 +88,10 @@ export function datosVisor(o: PedidoImagen & { correo: boolean; telefono: boolea
   for (const p of puestos) porUnidad.set(p.unidad_id, [...(porUnidad.get(p.unidad_id) ?? []), p]);
 
   const persona = (p: Puesto): PersonaPanel => {
-    const { cargo, titular, reemplazo } = datosPuesto.get(p.id)!;
+    const { cargo = "", titular, reemplazo } = datosPuesto.get(p.id) ?? {};
     // El contacto es solo el del titular, y solo con su casilla.
-    const t =
-      titular && (o.correo || o.telefono)
-        ? trabajadores.get(e.vigentes.get(p.id)!.titular!.trabajador_id)
-        : null;
+    const idTitular = e.vigentes.get(p.id)?.titular?.trabajador_id;
+    const t = titular && idTitular && (o.correo || o.telefono) ? trabajadores.get(idTitular) : null;
     return {
       cargo,
       ...(titular && { nombre: titular }),
@@ -123,6 +121,10 @@ export function datosVisor(o: PedidoImagen & { correo: boolean; telefono: boolea
     };
   }
 
+  // Con una rama de alcance, solo las zonas de sus unidades.
+  const enAlcance = new Set(abiertas.unidades.map((u) => u.id));
+  const zonaUnidades = abiertas.zonasDatos?.zonaUnidades.filter((x) => enAlcance.has(x.unidad_id)) ?? [];
+  const zonasUsadas = new Set(zonaUnidades.map((x) => x.zona_id));
   const sinDescripcion = <T extends { descripcion: string | null }>(x: T): T => ({ ...x, descripcion: null });
   return {
     version: 1,
@@ -140,9 +142,13 @@ export function datosVisor(o: PedidoImagen & { correo: boolean; telefono: boolea
     jefeEnTarjeta: abiertas.jefeEnTarjeta,
     tam: abiertas.tam,
     opcionesLayout: abiertas.opcionesLayout,
-    config: o.config,
+    // El texto del resaltado del lienzo se compara con nombres: no viaja, aunque el nivel sea Estructura.
+    config: { ...o.config, resaltar: VISTA_POR_DEFECTO.resaltar },
     tarjetas: abiertas.tarjetas.map((t) => ({ ...t, mas: 0 })),
-    zonas: abiertas.zonasDatos,
+    zonas: abiertas.zonasDatos && {
+      zonas: abiertas.zonasDatos.zonas.filter((z) => zonasUsadas.has(z.id)),
+      zonaUnidades,
+    },
     leyenda: abiertas.leyenda,
     plegadas: [...plegadas],
     panel,

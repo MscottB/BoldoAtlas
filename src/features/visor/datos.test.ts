@@ -32,8 +32,10 @@ const sin = { correo: false, telefono: false };
 
 describe("datosVisor", () => {
   it("estructura_no_lleva_personas", () => {
+    // El texto del resaltado del lienzo se compara con nombres: tampoco viaja.
+    const config = { ...VISTA_POR_DEFECTO, resaltar: { ...VISTA_POR_DEFECTO.resaltar, texto: "Ximena" } };
     const json = JSON.stringify(
-      datosVisor({ ...pedido({ nivel: "estructura" }), correo: true, telefono: true }),
+      datosVisor({ ...pedido({ nivel: "estructura", config }), correo: true, telefono: true }),
     );
     for (const x of ["Ximena", "Bruno", "Carla", "@correo.cl", "+56 9"]) expect(json).not.toContain(x);
     expect(json).toContain("Bodega");
@@ -62,6 +64,24 @@ describe("datosVisor", () => {
     const v = datosVisor({ ...pedido({ alcance: { rama: "a2" } }), ...sin });
     expect(v.unidades.map((x) => x.id).sort()).toEqual(["a2", "s1", "s2", "s3"]);
     expect(v.panel.s3!.ruta).toEqual(["Gerencia General", "Operaciones", "Logística", "Bodega"]);
+  });
+
+  it("rama_como_alcance_solo_lleva_sus_zonas", () => {
+    useOrganizacion().$patch({
+      zonas: [
+        { id: "z1", nombre: "Zona Sur", color: "#2563eb" },
+        { id: "z2", nombre: "Zona Fuera", color: "#16a34a" },
+      ],
+      zonaUnidades: [
+        { zona_id: "z1", unidad_id: "s1" },
+        { zona_id: "z1", unidad_id: "g" },
+        { zona_id: "z2", unidad_id: "a1" },
+      ],
+    });
+    const v = datosVisor({ ...pedido({ alcance: { rama: "a2" } }), ...sin });
+    expect(v.zonas!.zonas.map((z) => z.id)).toEqual(["z1"]);
+    expect(v.zonas!.zonaUnidades).toEqual([{ zona_id: "z1", unidad_id: "s1" }]);
+    expect(JSON.stringify(v)).not.toContain("Zona Fuera");
   });
 
   it("plegadas_al_abrir", () => {

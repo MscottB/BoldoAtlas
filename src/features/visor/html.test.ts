@@ -53,7 +53,11 @@ describe("armarHtml", () => {
   });
 
   it("html_de_estructura_sin_personas", async () => {
-    const html = await armarHtml(datosVisor({ ...pedido({ nivel: "estructura" }), ...sin }), programa);
+    const config = { ...VISTA_POR_DEFECTO, resaltar: { ...VISTA_POR_DEFECTO.resaltar, texto: "Ximena" } };
+    const html = await armarHtml(
+      datosVisor({ ...pedido({ nivel: "estructura", config }), ...sin }),
+      programa,
+    );
     for (const x of ["Ximena", "Bruno", "Carla"]) expect(html).not.toContain(x);
   });
 
