@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import programa from "virtual:visor-programa";
@@ -74,5 +76,16 @@ describe("armarHtml", () => {
   it("programa_sin_vue", () => {
     expect(programa).not.toContain("createApp");
     expect(programa.length).toBeLessThan(2.5 * 1024 * 1024);
+  });
+
+  // Para abrirlo a mano en un navegador: BOLDO_VISOR_SALIDA=<carpeta> npx vitest run src/features/visor/html.test.ts
+  it.skipIf(!process.env.BOLDO_VISOR_SALIDA)("escribe_el_visor_del_fixture", async () => {
+    const dir = process.env.BOLDO_VISOR_SALIDA!;
+    mkdirSync(dir, { recursive: true });
+    for (const nivel of ["estructura", "presentacion", "pantalla"] as const)
+      writeFileSync(
+        join(dir, `visor-${nivel}.html`),
+        await armarHtml(datosVisor({ ...pedido({ nivel }), correo: true, telefono: true }), programa),
+      );
   });
 });

@@ -2278,6 +2278,24 @@
   "visor": {
     "plegar": "Collapse the branch",
     "desplegar": "Expand the branch",
-    "sinJavascript": "This viewer needs JavaScript to show the org chart."
+    "sinJavascript": "This viewer needs JavaScript to show the org chart.",
+    "buscar": "Search unit, person or position",
+    "resultados": "Search results",
+    "sinResultados": "No results",
+    "acercar": "Zoom in",
+    "alejar": "Zoom out",
+    "encuadrar": "Fit to screen",
+    "vista": "View",
+    "diagrama": "Diagram",
+    "lista": "List",
+    "organigrama": "Org chart",
+    "generado": "Generated on {generado}",
+    "ordenando": "Arranging…",
+    "error": "The org chart could not be shown.",
+    "sinCargo": "No position",
+    "cerrar": "Close",
+    "jefatura": "Head",
+    "personas": "People",
+    "sinPuestos": "This unit has no positions."
   }
 }

@@ -1,7 +1,20 @@
 import type { DatosVisor } from "../datos";
-import { dibujar } from "./dibujo";
+import { montar } from "./interfaz";
 
-const d: DatosVisor = JSON.parse(document.getElementById("datos-visor")!.textContent!);
-const dibujo = document.querySelector<HTMLElement>('main[data-visor="dibujo"]')!;
-// El SVG sale de dibujarSvg, que ya escapa todos los textos.
-void dibujar(d, new Set(d.plegadas)).then((r) => (dibujo.innerHTML = r.svg));
+const FALLO = { es: "No se pudo mostrar el organigrama.", en: "The org chart could not be shown." };
+
+function mostrarError(d?: DatosVisor) {
+  const p = document.createElement("p");
+  p.setAttribute("role", "alert");
+  p.setAttribute("data-visor", "error");
+  p.textContent = d?.textos["visor.error"] ?? (document.documentElement.lang === "en" ? FALLO.en : FALLO.es);
+  document.body.append(p);
+}
+
+let d: DatosVisor | undefined;
+try {
+  d = JSON.parse(document.getElementById("datos-visor")!.textContent!);
+  montar(d!).catch(() => mostrarError(d));
+} catch {
+  mostrarError(d);
+}

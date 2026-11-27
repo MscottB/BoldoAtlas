@@ -2278,6 +2278,24 @@
   "visor": {
     "plegar": "Plegar la rama",
     "desplegar": "Desplegar la rama",
-    "sinJavascript": "Este visor necesita JavaScript para mostrar el organigrama."
+    "sinJavascript": "Este visor necesita JavaScript para mostrar el organigrama.",
+    "buscar": "Buscar unidad, persona o cargo",
+    "resultados": "Resultados de la búsqueda",
+    "sinResultados": "Sin resultados",
+    "acercar": "Acercar",
+    "alejar": "Alejar",
+    "encuadrar": "Ver todo",
+    "vista": "Vista",
+    "diagrama": "Diagrama",
+    "lista": "Lista",
+    "organigrama": "Organigrama",
+    "generado": "Generado el {generado}",
+    "ordenando": "Ordenando…",
+    "error": "No se pudo mostrar el organigrama.",
+    "sinCargo": "Sin cargo",
+    "cerrar": "Cerrar",
+    "jefatura": "Jefatura",
+    "personas": "Personas",
+    "sinPuestos": "Esta unidad no tiene puestos."
   }
 }
