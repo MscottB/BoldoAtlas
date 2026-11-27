@@ -2287,6 +2287,7 @@
     "desplegar": "Desplegar la rama",
     "sinJavascript": "Este visor necesita JavaScript para mostrar el organigrama.",
     "buscar": "Buscar unidad, persona o cargo",
+    "buscarSinPersonas": "Buscar unidad o cargo",
     "resultados": "Resultados de la búsqueda",
     "sinResultados": "Sin resultados",
     "acercar": "Acercar",

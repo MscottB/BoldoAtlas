@@ -129,6 +129,7 @@ describe("datosVisor", () => {
   it("textos_del_visor", () => {
     const t = datosVisor({ ...pedido(), ...sin }).textos;
     expect(t["visor.plegar"]).toBe("Plegar la rama");
+    expect(t["visor.buscarSinPersonas"]).toBe("Buscar unidad o cargo");
     expect(Object.keys(t)).toEqual(
       expect.arrayContaining(["imagen.masUnidades", "puesto.vacante", "puesto.reemplazoDe"]),
     );

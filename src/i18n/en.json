@@ -2287,6 +2287,7 @@
     "desplegar": "Expand the branch",
     "sinJavascript": "This viewer needs JavaScript to show the org chart.",
     "buscar": "Search unit, person or position",
+    "buscarSinPersonas": "Search unit or position",
     "resultados": "Search results",
     "sinResultados": "No results",
     "acercar": "Zoom in",

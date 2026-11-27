@@ -67,6 +67,8 @@ export async function montar(d: DatosVisor): Promise<void> {
     return b;
   };
   const buscador = h("div", { "data-visor": "buscador" });
+  // Estructura no lleva personas: no se buscan.
+  const textoBuscar = t(d.nivel === "estructura" ? "visor.buscarSinPersonas" : "visor.buscar");
   const campo = h("input", {
     type: "search",
     "data-visor": "buscar",
@@ -74,8 +76,8 @@ export async function montar(d: DatosVisor): Promise<void> {
     "aria-autocomplete": "list",
     "aria-expanded": "false",
     "aria-controls": "visor-resultados",
-    "aria-label": t("visor.buscar"),
-    placeholder: t("visor.buscar"),
+    "aria-label": textoBuscar,
+    placeholder: textoBuscar,
     autocomplete: "off",
   });
   const resultados = h("ul", {
