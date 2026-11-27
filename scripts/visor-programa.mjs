@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
+import { constantesVersion } from "./constantes-version.mjs";
 
 const ID = "virtual:visor-programa";
 const raiz = fileURLToPath(new URL("..", import.meta.url));
@@ -18,6 +19,7 @@ export function visorPrograma() {
       root: raiz,
       logLevel: "silent",
       publicDir: false,
+      define: constantesVersion(),
       resolve: { alias: { "@": fileURLToPath(new URL("../src", import.meta.url)) } },
       build: {
         write: false,
@@ -41,7 +43,10 @@ export function visorPrograma() {
     resolveId: (id) => (id === ID ? `\0${ID}` : null),
     async load(id) {
       if (id !== `\0${ID}`) return null;
-      hecho ??= empaquetar();
+      hecho ??= empaquetar().catch((e) => {
+        hecho = null; // que la próxima carga reintente
+        throw e;
+      });
       const { codigo, modulos } = await hecho;
       for (const m of modulos) this.addWatchFile(m);
       return `export default ${JSON.stringify(codigo)}`;

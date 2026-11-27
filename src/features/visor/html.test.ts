@@ -41,9 +41,12 @@ describe("armarHtml", () => {
     d.unidades[0].nombre = `</script><img src=x onerror="window.x=1">`;
     d.zonas = { zonas: [{ id: "z", nombre: "<!-- a", color: "#aabbcc" }], zonaUnidades: [] };
     d.encabezado.organizacion = `"&'`;
-    d.conexiones = [{ id: "c", origen_id: "a1", destino_id: "a2", etiqueta: "uno" + String.fromCharCode(0x2028) + "dos" }];
+    d.conexiones = [
+      { id: "c", origen_id: "a1", destino_id: "a2", etiqueta: "uno" + String.fromCharCode(0x2028) + "dos" },
+    ];
     const html = await armarHtml(d, programa);
-    for (const x of ["</script><img", "onerror=\"window", "<!-- a", String.fromCharCode(0x2028), `"&'`]) expect(html).not.toContain(x);
+    for (const x of ["</script><img", 'onerror="window', "<!-- a", String.fromCharCode(0x2028), `"&'`])
+      expect(html).not.toContain(x);
     expect(leerDatos(html)).toEqual(d);
   });
 

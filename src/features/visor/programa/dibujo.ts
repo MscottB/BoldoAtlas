@@ -14,12 +14,13 @@ import type { Traducir } from "@/features/arbol/escala";
 import { dibujarSvg } from "@/features/export/treeSvg";
 import type { DatosVisor } from "../datos";
 
-/** Un `t` sobre los textos del archivo: reemplaza `{n}` y `{nombre}` y elige la forma de `a | b` (singular con n = 1). */
+/** Un `t` sobre los textos del archivo: reemplaza `{n}` y `{nombre}` y elige la forma de `a | b` (como vue-i18n). */
 export function traductor(textos: Record<string, string>): Traducir {
   return ((clave: string, nombrados: Record<string, unknown> = {}, plural?: number) => {
     const formas = (textos[clave] ?? clave).split("|").map((x) => x.trim());
     const n = plural ?? (typeof nombrados.n === "number" ? nombrados.n : 1);
-    const forma = formas.length > 1 ? formas[n === 1 ? 0 : 1] : formas[0];
+    // Como vue-i18n: con dos formas, 1 es la primera; con tres, 0, 1 y 2 o más.
+    const forma = formas[formas.length === 3 ? Math.min(n, 2) : formas.length === 2 ? (n === 1 ? 0 : 1) : 0];
     return forma.replace(/\{(\w+)\}/g, (m, k: string) => (k in nombrados ? String(nombrados[k]) : m));
   }) as Traducir;
 }
@@ -34,7 +35,13 @@ export async function dibujar(
   const { tam, opcionesLayout } = d;
   const grafo = grafoElk(g, tam.unidad, tam.puesto, opcionesLayout, d.tiposAlinear);
   // elk.bundled va en la misma página (sin worker): el archivo no carga nada de afuera.
-  const pos = posiciones(g, (await new ELK().layout(grafo)).children ?? [], tam.unidad, tam.puesto, opcionesLayout);
+  const pos = posiciones(
+    g,
+    (await new ELK().layout(grafo)).children ?? [],
+    tam.unidad,
+    tam.puesto,
+    opcionesLayout,
+  );
   const cajas = cajasDibujadas(g, pos, tam.unidad, tam.puesto);
   const conRamas = new Set(d.unidades.flatMap((u) => (u.parent_id ? [u.parent_id] : [])));
   return dibujarSvg(

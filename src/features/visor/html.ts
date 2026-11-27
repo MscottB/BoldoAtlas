@@ -1,11 +1,20 @@
 import type { DatosVisor } from "./datos";
 import { ESTILOS } from "./programa/estilos";
 
-const ESCAPES_HTML: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const ESCAPES_HTML: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
 const html = (s: string) => s.replace(/[&<>"']/g, (c) => ESCAPES_HTML[c]);
 // En el bloque de datos nada puede cerrar el <script> ni abrir un comentario: se escapa con \u (JSON lo lee igual).
 const json = (d: DatosVisor) =>
-  JSON.stringify(d).replace(new RegExp("[<>&\\u2028\\u2029]", "g"), (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  JSON.stringify(d).replace(
+    new RegExp("[<>&\\u2028\\u2029]", "g"),
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 
 async function huella(texto: string): Promise<string> {
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto)));

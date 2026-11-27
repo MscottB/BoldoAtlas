@@ -6,7 +6,7 @@ import { prepararImagen, type PedidoImagen } from "@/features/export/preparar";
 import { dibujarSvg } from "@/features/export/treeSvg";
 import { useOrganizacion } from "@/stores/organizacion";
 import { datosVisor } from "../datos";
-import { dibujar } from "./dibujo";
+import { dibujar, traductor } from "./dibujo";
 
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -46,5 +46,24 @@ describe("dibujar", () => {
     const plegado = await dibujar(d, new Set(["a2"]));
     expect(cuantos(plegado.svg)).toBeLessThan(cuantos(abierto.svg));
     expect(plegado.svg).toContain("+3 unidades");
+  });
+});
+
+describe("traductor", () => {
+  const t = traductor({
+    uno: "+{n} unidad | +{n} unidades",
+    tres: "ninguna | una | {n} muchas",
+    hola: "Hola {nombre}",
+  });
+  it("elige la forma como vue-i18n", () => {
+    expect(t("uno", { n: 1 }, 1)).toBe("+1 unidad");
+    expect(t("uno", { n: 3 }, 3)).toBe("+3 unidades");
+    expect(t("tres", { n: 0 }, 0)).toBe("ninguna");
+    expect(t("tres", { n: 1 }, 1)).toBe("una");
+    expect(t("tres", { n: 5 }, 5)).toBe("5 muchas");
+  });
+  it("reemplaza {nombre} y deja la clave si falta", () => {
+    expect(t("hola", { nombre: "Ana" })).toBe("Hola Ana");
+    expect(t("falta")).toBe("falta");
   });
 });
