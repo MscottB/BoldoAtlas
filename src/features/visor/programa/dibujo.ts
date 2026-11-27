@@ -69,6 +69,7 @@ export async function dibujar(
       fondo: true,
       t: traductor(d.textos),
     },
-    { interactivo: { conRamas, plegadas: cerradas } },
+    // La barra del visor ya muestra el logo, la organización, el alcance y la fecha.
+    { interactivo: { conRamas, plegadas: cerradas }, sinEncabezado: true },
   );
 }

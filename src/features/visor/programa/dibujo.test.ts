@@ -36,7 +36,7 @@ const cuantos = (svg: string) => svg.split("data-id=").length - 1;
 describe("dibujar", () => {
   it("dibujar_igual_que_la_imagen", async () => {
     const r = await dibujar(visor(), new Set());
-    const img = dibujarSvg(await prepararImagen(pedido()));
+    const img = dibujarSvg(await prepararImagen(pedido()), { sinEncabezado: true });
     expect([r.ancho, r.alto]).toEqual([img.ancho, img.alto]);
   });
 

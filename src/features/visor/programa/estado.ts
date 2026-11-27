@@ -124,3 +124,33 @@ export function moverEnLista(
     }
   }
 }
+
+/** El resultado activo de la búsqueda tras ↓ o ↑: desde ninguno (-1) entra por el primero o el último, y da la vuelta en los extremos. */
+export function siguienteResultado(activo: number, n: number, abajo: boolean): number {
+  if (n <= 0) return -1;
+  if (activo < 0) return abajo ? 0 : n - 1;
+  return (activo + (abajo ? 1 : -1) + n) % n;
+}
+
+/** RFC 6068: la `@` queda literal; lo demás se codifica, así `?cc=` o `&body=` no se cuelan. */
+export const enlaceCorreo = (correo: string): string =>
+  `mailto:${encodeURIComponent(correo).replace(/%40/g, "@")}`;
+
+/** RFC 3966: solo dígitos y un `+` al comienzo. Sin dígitos no hay enlace (null). */
+export function enlaceTelefono(telefono: string): string | null {
+  const digitos = telefono.replace(/\D/g, "");
+  return digitos ? `tel:${telefono.trim().startsWith("+") ? "+" : ""}${digitos}` : null;
+}
+
+/** `aria-setsize` y `aria-posinset` de cada fila: entre las filas con el mismo superior. */
+export function posicionEnHermanos(filas: readonly FilaLista[]): { tam: number; pos: number }[] {
+  const grupos = new Map<number, number[]>();
+  const r = filas.map(() => ({ tam: 0, pos: 0 }));
+  filas.forEach((f, i) => {
+    let p = i - 1;
+    while (p >= 0 && filas[p].nivel >= f.nivel) p--;
+    grupos.set(p, [...(grupos.get(p) ?? []), i]);
+  });
+  for (const g of grupos.values()) g.forEach((i, k) => (r[i] = { tam: g.length, pos: k + 1 }));
+  return r;
+}

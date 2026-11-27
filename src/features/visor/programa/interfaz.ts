@@ -1,6 +1,18 @@
 import type { DatosVisor, PersonaPanel } from "../datos";
 import { dibujar, traductor } from "./dibujo";
-import { abrirHasta, buscar, desplegar, filasDeLista, moverEnLista, plegar, type TeclaLista } from "./estado";
+import {
+  abrirHasta,
+  buscar,
+  desplegar,
+  enlaceCorreo,
+  enlaceTelefono,
+  filasDeLista,
+  moverEnLista,
+  plegar,
+  posicionEnHermanos,
+  siguienteResultado,
+  type TeclaLista,
+} from "./estado";
 
 // La página del visor, armada con createElement y textContent: ningún texto de los datos entra como HTML. La única
 // excepción es el SVG de `dibujar`, que ya sale escapado. Cada parte lleva su `data-visor`, que es lo que usan las
@@ -184,6 +196,7 @@ export async function montar(d: DatosVisor): Promise<void> {
       }
       marcarResaltado();
       estado.textContent = "";
+      document.querySelector('[data-visor="error"]')?.remove();
       return true;
     } catch {
       if (mio === ticket) mostrarError();
@@ -200,6 +213,7 @@ export async function montar(d: DatosVisor): Promise<void> {
   });
   main.addEventListener("pointermove", (e) => {
     const m = svg?.getScreenCTM();
+    if (inicio && !(e.buttons & 1)) soltar(); // se soltó fuera de la página
     if (!inicio || !m) return;
     const [dx, dy] = [e.clientX - inicio.x, e.clientY - inicio.y];
     if (!arrastrando && Math.hypot(dx, dy) > 4) {
@@ -212,7 +226,7 @@ export async function montar(d: DatosVisor): Promise<void> {
       aplicar();
     }
   });
-  const soltar = () => {
+  function soltar() {
     if (arrastrando) {
       sinClic = true;
       setTimeout(() => (sinClic = false), 0);
@@ -220,7 +234,7 @@ export async function montar(d: DatosVisor): Promise<void> {
     inicio = null;
     arrastrando = false;
     main.classList.remove("arrastrando");
-  };
+  }
   main.addEventListener("pointerup", soltar);
   main.addEventListener("pointercancel", soltar);
   main.addEventListener(
@@ -244,7 +258,10 @@ export async function montar(d: DatosVisor): Promise<void> {
     if (plegarId && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
       alternar(plegarId);
-    } else if (o && !plegarId && e.key === "Enter") abrirPanel(o.getAttribute("data-id")!);
+    } else if (o && !plegarId && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      abrirPanel(o.getAttribute("data-id")!);
+    }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !panel.hidden) return cerrarPanel();
@@ -270,9 +287,10 @@ export async function montar(d: DatosVisor): Promise<void> {
   // ---- La lista
   function construirLista() {
     const filas = filasDeLista(d, plegadas);
+    const pos = posicionEnHermanos(filas);
     if (!filas.some((f) => f.id === focoLista)) focoLista = filas[0]?.id ?? "";
     lista.replaceChildren(
-      ...filas.map((f) => {
+      ...filas.map((f, i) => {
         const fila = h(
           "div",
           {
@@ -280,6 +298,8 @@ export async function montar(d: DatosVisor): Promise<void> {
             "data-visor": "fila",
             "data-unidad": f.id,
             "aria-level": String(f.nivel),
+            "aria-setsize": String(pos[i].tam),
+            "aria-posinset": String(pos[i].pos),
             tabindex: f.id === focoLista ? "0" : "-1",
             ...(f.conRamas && { "aria-expanded": String(f.abierta) }),
           },
@@ -357,12 +377,15 @@ export async function montar(d: DatosVisor): Promise<void> {
       );
     if (p.reemplazo)
       li.append(h("div", { "data-visor": "reemplazo" }, t("puesto.reemplazoDe", { nombre: p.reemplazo })));
-    if (p.correo)
-      li.append(h("a", { "data-visor": "correo", href: `mailto:${encodeURIComponent(p.correo)}` }, p.correo));
-    if (p.telefono)
+    if (p.correo) li.append(h("a", { "data-visor": "correo", href: enlaceCorreo(p.correo) }, p.correo));
+    if (p.telefono) {
+      const href = enlaceTelefono(p.telefono);
       li.append(
-        h("a", { "data-visor": "telefono", href: `tel:${encodeURIComponent(p.telefono)}` }, p.telefono),
+        href
+          ? h("a", { "data-visor": "telefono", href }, p.telefono)
+          : h("div", { "data-visor": "telefono" }, p.telefono),
       );
+    }
     return li;
   };
   function abrirPanel(id: string) {
@@ -466,7 +489,7 @@ export async function montar(d: DatosVisor): Promise<void> {
       e.preventDefault();
       if (resultados.hidden) mostrarResultados();
       const n = encontrados.length;
-      if (n) marcarActivo((activo + (e.key === "ArrowDown" ? 1 : -1) + n + (activo < 0 ? 1 : 0)) % n);
+      if (n) marcarActivo(siguienteResultado(activo, n, e.key === "ArrowDown"));
     } else if (e.key === "Enter") {
       const r = encontrados[Math.max(activo, 0)];
       if (r && !resultados.hidden) void elegir(r.id);

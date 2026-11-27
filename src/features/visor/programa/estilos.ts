@@ -40,8 +40,8 @@ main[data-visor="dibujo"].arrastrando{cursor:grabbing}
 main[data-visor="dibujo"] svg{display:block;width:100%;height:100%;user-select:none}
 [data-id],[data-plegar]{cursor:pointer}
 [data-id].resaltada{filter:drop-shadow(0 0 3px ${c.acento}) drop-shadow(0 0 3px ${c.acento})}
-[data-visor="estado"]:empty{display:none}
 [data-visor="estado"]{position:fixed;z-index:6;top:72px;left:50%;transform:translateX(-50%);padding:4px 12px;background:${c.texto};color:${c.fondo};border-radius:999px}
+[data-visor="estado"]:empty{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%)}
 [role="alert"]{margin:16px;padding:12px;border:1px solid ${c.texto};border-radius:6px}
 [data-visor="lista"]{flex:1;min-height:0;overflow:auto;padding:8px 16px}
 [data-visor="lista"] [role="treeitem"]{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:4px;cursor:pointer}

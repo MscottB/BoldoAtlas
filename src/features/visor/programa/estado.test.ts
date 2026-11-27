@@ -7,7 +7,18 @@ import { contraste } from "@/features/tema/tema";
 import { useOrganizacion } from "@/stores/organizacion";
 import { datosVisor, type DatosVisor } from "../datos";
 import { COLORES } from "./estilos";
-import { abrirHasta, buscar, desplegar, filasDeLista, moverEnLista, plegar } from "./estado";
+import {
+  abrirHasta,
+  buscar,
+  desplegar,
+  filasDeLista,
+  moverEnLista,
+  plegar,
+  enlaceCorreo,
+  enlaceTelefono,
+  posicionEnHermanos,
+  siguienteResultado,
+} from "./estado";
 
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -101,6 +112,8 @@ describe("la lista", () => {
     // ↓ salta lo que hay bajo una rama plegada.
     expect(moverEnLista(filas(["s1"]), "s1", "ArrowDown")).toEqual({ foco: "s2" });
     expect(moverEnLista(filas(["a2"]), "a1", "ArrowDown")).toEqual({ foco: "a2" });
+    // a2 plegada es la última fila: ↓ se queda.
+    expect(moverEnLista(filas(["a2"]), "a2", "ArrowDown")).toEqual({ foco: "a2" });
     expect(moverEnLista(filas(), "a2", "ArrowDown")).toEqual({ foco: "s1" });
     expect(moverEnLista(filas(), "g", "ArrowUp")).toEqual({ foco: "g" });
     // ← en una hoja sube a su superior; en una rama abierta la cierra.
@@ -113,6 +126,49 @@ describe("la lista", () => {
     expect(moverEnLista(filas(), "s3", "ArrowRight")).toEqual({ foco: "s3" });
     expect(moverEnLista(filas(), "s1", "Home")).toEqual({ foco: "g" });
     expect(moverEnLista(filas(), "s1", "End")).toEqual({ foco: "s2" });
+  });
+});
+
+describe("búsqueda con teclado", () => {
+  it("siguienteResultado entra por los extremos y da la vuelta", () => {
+    expect(siguienteResultado(-1, 3, true)).toBe(0);
+    expect(siguienteResultado(-1, 3, false)).toBe(2);
+    expect(siguienteResultado(0, 3, true)).toBe(1);
+    expect(siguienteResultado(2, 3, true)).toBe(0);
+    expect(siguienteResultado(0, 3, false)).toBe(2);
+    expect(siguienteResultado(-1, 1, true)).toBe(0);
+    expect(siguienteResultado(-1, 1, false)).toBe(0);
+    expect(siguienteResultado(0, 1, true)).toBe(0);
+    expect(siguienteResultado(0, 1, false)).toBe(0);
+    expect(siguienteResultado(-1, 0, true)).toBe(-1);
+  });
+});
+
+describe("enlaces del panel", () => {
+  it("correo: la @ queda y lo demás se codifica", () => {
+    expect(enlaceCorreo("ZQX.w1@correo.cl")).toBe("mailto:ZQX.w1@correo.cl");
+    expect(enlaceCorreo("a@b.cl?cc=x@y")).toBe("mailto:a@b.cl%3Fcc%3Dx@y");
+    expect(enlaceCorreo("a@b.cl&body=hola")).not.toContain("&");
+  });
+  it("teléfono: solo dígitos y un + al comienzo", () => {
+    expect(enlaceTelefono("+56 9 1111 2222")).toBe("tel:+56911112222");
+    expect(enlaceTelefono("(2) 2345-6789")).toBe("tel:223456789");
+    expect(enlaceTelefono("sin número")).toBeNull();
+  });
+});
+
+describe("posición entre hermanos", () => {
+  it("cuenta las filas con el mismo superior", () => {
+    const filas = filasDeLista(visor(), new Set());
+    // g, a1, a2, s1, s3, s2
+    expect(posicionEnHermanos(filas)).toEqual([
+      { tam: 1, pos: 1 },
+      { tam: 2, pos: 1 },
+      { tam: 2, pos: 2 },
+      { tam: 2, pos: 1 },
+      { tam: 1, pos: 1 },
+      { tam: 2, pos: 2 },
+    ]);
   });
 });
 
