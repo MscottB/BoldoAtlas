@@ -1082,7 +1082,7 @@ export async function revisarVisorEnEdge(archivo, carpeta, { raiz, unidad }) {
 
 /**
  * El visor HTML, sobre la base que sembró `exportarImagen` (la persona de humo es jefa de la raíz). Con la app abierta se
- * renombra una hija de la raíz a `NOMBRE_XSS`; con la app vuelta a abrir y `BOLDO_GUARDAR_EN`, se guarda un visor de
+ * crea una hija de la raíz llamada `NOMBRE_XSS`; con la app vuelta a abrir y `BOLDO_GUARDAR_EN`, se guarda un visor de
  * Presentación desde el diálogo de la imagen, por `data-accion`, y se revisa en Edge. `revisarBase` comprueba `rutaBd`
  * antes de cada escritura.
  * @param {string} exe @param {string} carpeta
@@ -1093,31 +1093,33 @@ async function exportarVisor(exe, carpeta) {
 
   let app = await abrirApp(exe);
   let info = await revisarBase(app, carpeta);
-  const leidas = await app.llamar("db_consultar", {
+  const leida = await app.llamar("db_consultar", {
     baseId: info.baseId,
-    sql: `SELECT id, parent_id FROM unidades WHERE deleted_at IS NULL
-          AND (parent_id IS NULL OR parent_id IN (SELECT id FROM unidades WHERE parent_id IS NULL)) ORDER BY parent_id`,
+    sql: "SELECT id, tipo_id FROM unidades WHERE parent_id IS NULL AND deleted_at IS NULL LIMIT 1",
     params: [],
   });
-  /** @type {{ id: string, parent_id: string | null }[]} */
-  const filas = leidas.ok ? leidas.valor : [];
-  const raiz = filas.find((f) => f.parent_id === null)?.id;
-  const hija = filas.find((f) => f.parent_id === raiz)?.id;
-  comprobar("hay una raíz con una hija para el visor", Boolean(raiz && hija), leidas);
-  if (!raiz || !hija) throw new Error("sin raíz con hijas: no se puede probar el visor");
+  /** @type {{ id: string, tipo_id: string } | undefined} */
+  const fila = leida.ok ? leida.valor[0] : undefined;
+  comprobar("hay una raíz para el visor", Boolean(fila), leida);
+  if (!fila) throw new Error("sin raíz: no se puede probar el visor");
+  const raiz = fila.id;
+  // la organización de prueba trae solo la raíz: se le crea una hija, así hay una rama que plegar
+  const hija = "humo-hija-visor";
   info = await revisarBase(app, carpeta);
+  const t = new Date().toISOString();
   const lote = await app.llamar("db_lote", {
     baseId: info.baseId,
     versionApp: "humo",
     sentencias: [
       {
-        sql: "UPDATE unidades SET nombre = ?1, updated_at = ?3 WHERE id = ?2",
-        params: [NOMBRE_XSS, hija, new Date().toISOString()],
+        sql: `INSERT INTO unidades (id, tipo_id, nombre, parent_id, orden, created_at, updated_at)
+              VALUES (?1, ?2, ?3, ?4, 0, ?5, ?5)`,
+        params: [hija, fila.tipo_id, NOMBRE_XSS, raiz, t],
       },
     ],
   });
-  comprobar("se renombró una unidad con </script>", lote.ok, lote);
-  comprobar("la app del renombre cierra sola y con código 0", (await app.cerrar()) === 0);
+  comprobar("se creó una hija de la raíz con </script> en el nombre", lote.ok, lote);
+  comprobar("la app de la siembra del visor cierra sola y con código 0", (await app.cerrar()) === 0);
 
   app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
   await revisarBase(app, carpeta);
