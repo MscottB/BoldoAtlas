@@ -905,7 +905,11 @@ async function manualSinPersonas(exe, carpeta) {
   const app = await abrirApp(exe, { BOLDO_GUARDAR_EN: destino });
   await revisarBase(app, carpeta);
   try {
-    await app.evaluar(`location.hash = "#/importar-exportar"`);
+    // al arrancar, la app puede ir a Inicio después de este cambio de ruta: se repite hasta quedar
+    await app.hasta(
+      `(location.hash === "#/importar-exportar" || ((location.hash = "#/importar-exportar"), false)) && Boolean(${por("abrir-manual")})`,
+      "Importar/Exportar con el botón del manual",
+    );
     const clic = clicEn(app);
     await clic("abrir-manual");
     await app.hasta(`Boolean(document.querySelector("[data-dialogo-manual]"))`, "el diálogo del manual");
