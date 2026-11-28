@@ -4,12 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 import process from "node:process";
 import { constantesVersion } from "./scripts/constantes-version.mjs";
+import { visorPrograma } from "./scripts/visor-programa.mjs";
 
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [vue(), tailwindcss()],
+  plugins: [vue(), tailwindcss(), visorPrograma()],
   // App de escritorio: carga desde el disco local; elkjs (layout del árbol) solo ya pesa ~1,5 MB.
   build: { chunkSizeWarningLimit: 2000 },
   define: constantesVersion(),

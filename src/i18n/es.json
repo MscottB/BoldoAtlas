@@ -1818,7 +1818,7 @@
     },
     "imagen": {
       "titulo": "Imagen del organigrama",
-      "texto": "El organigrama, o una parte, en PNG, JPG o SVG, o copiado para pegarlo."
+      "texto": "El organigrama, o una parte, en PNG, JPG, SVG o PDF, como visor HTML o copiado para pegarlo."
     },
     "manual": {
       "titulo": "Manual de organización",
@@ -2177,6 +2177,12 @@
       "pantallaAyuda": "Lo que muestra el lienzo con tu configuración."
     },
     "formato": "Formato",
+    "formatos": {
+      "html": "Visor HTML"
+    },
+    "contacto": "Datos de contacto",
+    "correo": "Correo",
+    "telefono": "Teléfono",
     "fondo": "Fondo",
     "fondos": {
       "blanco": "Blanco",
@@ -2190,6 +2196,7 @@
     "guardar": "Guardar…",
     "copiar": "Copiar imagen",
     "aviso": "La imagen queda sin cifrar: cualquiera que la abra verá lo que contiene. Quien la genera es responsable de dónde la guarda y con quién la comparte.",
+    "avisoVisor": "El visor queda sin cifrar: cualquiera que abra el archivo verá lo que contiene. Quien lo genera es responsable de dónde lo guarda y con quién lo comparte.",
     "aceptar": "Acepto, continuar",
     "guardada": "Se guardó {nombre}",
     "copiada": "Imagen copiada. Ya puedes pegarla.",
@@ -2274,5 +2281,29 @@
     "dibujando": "Dibujando las unidades… {n} de {m}",
     "armando": "Armando el manual… {n} de {m}",
     "muchas": "El manual lleva {n} páginas, más de {limite}."
+  },
+  "visor": {
+    "plegar": "Plegar la rama",
+    "desplegar": "Desplegar la rama",
+    "sinJavascript": "Este visor necesita JavaScript para mostrar el organigrama.",
+    "buscar": "Buscar unidad, persona o cargo",
+    "buscarSinPersonas": "Buscar unidad o cargo",
+    "resultados": "Resultados de la búsqueda",
+    "sinResultados": "Sin resultados",
+    "acercar": "Acercar",
+    "alejar": "Alejar",
+    "encuadrar": "Ver todo",
+    "vista": "Vista",
+    "diagrama": "Diagrama",
+    "lista": "Lista",
+    "organigrama": "Organigrama",
+    "generado": "Generado el {generado}",
+    "ordenando": "Ordenando…",
+    "error": "No se pudo mostrar el organigrama.",
+    "sinCargo": "Sin cargo",
+    "cerrar": "Cerrar",
+    "jefatura": "Jefatura",
+    "personas": "Personas",
+    "sinPuestos": "Esta unidad no tiene puestos."
   }
 }

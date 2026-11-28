@@ -44,6 +44,11 @@ describe("nombre_archivo_seguro", () => {
       "BoldoAtlas_pantalla_2026-11-20.jpg",
     );
   });
+  it("también sirve para el visor HTML", () => {
+    expect(nombreArchivo("Atlas", "Ventas", "presentacion", "html", "2026-11-20")).toBe(
+      "Atlas_Ventas_presentacion_2026-11-20.html",
+    );
+  });
   it("también sirve para el PDF", () => {
     expect(nombreArchivo("Atlas", "Ventas", "estructura", "pdf", "2026-11-20")).toBe(
       "Atlas_Ventas_estructura_2026-11-20.pdf",

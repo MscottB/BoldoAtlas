@@ -30,7 +30,8 @@
         "Saved views, and highlighting by tag or by text.",
         "Colors by mark, by legend, by time in position or by people reporting, with the value written on each card.",
         "Export the whole org chart or one branch as a PNG, JPG or SVG image, or as a PDF on Letter, Oficio, A4, A3 or A2 sheets: structure only, with each head, or as you see it, with a preview.",
-        "Generate the organization and functions manual as a PDF: cover, contents, general org chart and a section for each unit with its positions, with or without the people's names."
+        "Generate the organization and functions manual as a PDF: cover, contents, general org chart and a section for each unit with its positions, with or without the people's names.",
+        "Save the org chart as an HTML viewer: a file that opens in any browser, with no internet, to fold branches, search and see the details of each unit."
       ],
       "imagen": {
         "nombre": "arbol",

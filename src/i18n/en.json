@@ -1818,7 +1818,7 @@
     },
     "imagen": {
       "titulo": "Org chart image",
-      "texto": "The org chart, or part of it, as PNG, JPG or SVG, or copied to paste."
+      "texto": "The org chart, or part of it, as PNG, JPG, SVG or PDF, as an HTML viewer or copied to paste."
     },
     "manual": {
       "titulo": "Organization manual",
@@ -2177,6 +2177,12 @@
       "pantallaAyuda": "What the canvas shows with your settings."
     },
     "formato": "Format",
+    "formatos": {
+      "html": "HTML viewer"
+    },
+    "contacto": "Contact details",
+    "correo": "Email",
+    "telefono": "Phone",
     "fondo": "Background",
     "fondos": {
       "blanco": "White",
@@ -2190,6 +2196,7 @@
     "guardar": "Save…",
     "copiar": "Copy image",
     "aviso": "The image is not encrypted: anyone who opens it will see what it contains. Whoever makes it is responsible for where it is saved and who it is shared with.",
+    "avisoVisor": "The viewer is not encrypted: anyone who opens the file will see what it contains. Whoever makes it is responsible for where it is saved and who it is shared with.",
     "aceptar": "I accept, continue",
     "guardada": "Saved {nombre}",
     "copiada": "Image copied. You can paste it now.",
@@ -2274,5 +2281,29 @@
     "dibujando": "Drawing the units… {n} of {m}",
     "armando": "Building the manual… {n} of {m}",
     "muchas": "The manual has {n} pages, more than {limite}."
+  },
+  "visor": {
+    "plegar": "Collapse the branch",
+    "desplegar": "Expand the branch",
+    "sinJavascript": "This viewer needs JavaScript to show the org chart.",
+    "buscar": "Search unit, person or position",
+    "buscarSinPersonas": "Search unit or position",
+    "resultados": "Search results",
+    "sinResultados": "No results",
+    "acercar": "Zoom in",
+    "alejar": "Zoom out",
+    "encuadrar": "Fit to screen",
+    "vista": "View",
+    "diagrama": "Diagram",
+    "lista": "List",
+    "organigrama": "Org chart",
+    "generado": "Generated on {generado}",
+    "ordenando": "Arranging…",
+    "error": "The org chart could not be shown.",
+    "sinCargo": "No position",
+    "cerrar": "Close",
+    "jefatura": "Head",
+    "personas": "People",
+    "sinPuestos": "This unit has no positions."
   }
 }
